@@ -45,6 +45,12 @@ export type ChatSchemaType = {
   variables: Record<string, any>;
   pluginInputs?: FlowNodeInputItemType[];
   metadata?: Record<string, any>;
+
+  // Boolean flags for efficient filtering
+  hasGoodFeedback?: boolean;
+  hasBadFeedback?: boolean;
+  hasUnreadGoodFeedback?: boolean;
+  hasUnreadBadFeedback?: boolean;
 };
 
 export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {

@@ -71,7 +71,8 @@ const LogTable = ({
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
-  const [feedbackType, setFeedbackType] = useState<'all' | 'good' | 'bad'>('all');
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
 
   // source
   const sourceList = useMemo(
@@ -183,7 +184,8 @@ const LogTable = ({
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
       chatSearch,
-      feedbackType
+      feedbackType,
+      unreadOnly: feedbackType === 'all' ? undefined : unreadOnly
     }),
     [
       appId,
@@ -194,7 +196,8 @@ const LogTable = ({
       selectTmbIds,
       isSelectAllTmb,
       chatSearch,
-      feedbackType
+      feedbackType,
+      unreadOnly
     ]
   );
 
@@ -237,6 +240,8 @@ const LogTable = ({
           <FeedbackTypeFilter
             feedbackType={feedbackType}
             setFeedbackType={setFeedbackType}
+            unreadOnly={unreadOnly}
+            setUnreadOnly={setUnreadOnly}
             menuButtonProps={{
               fontSize: '12.8px',
               fontWeight: 'medium',
@@ -272,7 +277,7 @@ const LogTable = ({
         <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
       )
     }),
-    [t, feedbackType, setFeedbackType]
+    [t, feedbackType, setFeedbackType, unreadOnly, setUnreadOnly]
   );
 
   const getCellRenderMap = (item: AppLogsListItemType) => ({

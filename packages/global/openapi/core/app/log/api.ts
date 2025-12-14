@@ -89,9 +89,13 @@ export const GetAppChatLogsBodySchema = PaginationSchema.safeExtend({
     example: 'hello',
     description: '对话内容搜索关键词'
   }),
-  feedbackType: z.enum(['all', 'good', 'bad']).optional().meta({
+  feedbackType: z.enum(['all', 'has_feedback', 'good', 'bad']).optional().meta({
     example: 'good',
-    description: '反馈类型'
+    description: '反馈类型：all-全部记录，has_feedback-包含反馈，good-包含赞，bad-包含踩'
+  }),
+  unreadOnly: z.boolean().optional().meta({
+    example: false,
+    description: '是否仅显示未读反馈（当 feedbackType 为 all 时忽略）'
   })
 });
 export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;

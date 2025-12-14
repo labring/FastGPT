@@ -24,7 +24,7 @@ async function handler(
     chatId
   });
 
-  await MongoChatItem.findOneAndUpdate(
+  await MongoChatItem.updateOne(
     {
       appId,
       chatId,

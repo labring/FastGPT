@@ -9,6 +9,8 @@ import {
   UpdateFeedbackReadStatusResponseSchema,
   type UpdateFeedbackReadStatusResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
+import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 async function handler(
   req: ApiRequestProps,
@@ -23,19 +25,29 @@ async function handler(
     chatId
   });
 
-  await MongoChatItem.updateOne(
-    {
+  await mongoSessionRun(async (session) => {
+    await MongoChatItem.updateOne(
+      {
+        appId,
+        chatId,
+        dataId,
+        obj: ChatRoleEnum.AI
+      },
+      {
+        $set: {
+          isFeedbackRead: isRead
+        }
+      },
+      { session }
+    );
+
+    // Update Chat table feedback statistics to refresh unread feedback flags
+    await updateChatFeedbackCount({
       appId,
       chatId,
-      dataId,
-      obj: ChatRoleEnum.AI
-    },
-    {
-      $set: {
-        isFeedbackRead: isRead
-      }
-    }
-  );
+      session
+    });
+  });
 
   return UpdateFeedbackReadStatusResponseSchema.parse({ success: true });
 }

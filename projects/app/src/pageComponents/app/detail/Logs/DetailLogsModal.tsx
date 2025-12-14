@@ -21,7 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import NavigationBar from './NavigationBar';
+import FeedbackTypeFilter from './FeedbackTypeFilter';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -30,9 +30,21 @@ type Props = {
   appId: string;
   chatId: string;
   onClose: () => void;
+  feedbackType: 'all' | 'has_feedback' | 'good' | 'bad';
+  setFeedbackType: (type: 'all' | 'has_feedback' | 'good' | 'bad') => void;
+  unreadOnly: boolean;
+  setUnreadOnly: (value: boolean) => void;
 };
 
-const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
+const DetailLogsModal = ({
+  appId,
+  chatId,
+  onClose,
+  feedbackType,
+  setFeedbackType,
+  unreadOnly,
+  setUnreadOnly
+}: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -207,12 +219,21 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
             )}
           </Flex>
 
-          <NavigationBar
-            appId={appId}
-            chatId={chatId}
-            onNavigate={handleScrollToChatItem}
-            refreshTrigger={refreshTrigger}
-          />
+          {/* Feedback filter bar */}
+          {/* {!isPlugin && (
+            <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="gray.200">
+              <FeedbackTypeFilter
+                feedbackType={feedbackType}
+                setFeedbackType={setFeedbackType}
+                unreadOnly={unreadOnly}
+                setUnreadOnly={setUnreadOnly}
+                menuButtonProps={{
+                  color: 'myGray.700',
+                  _active: {}
+                }}
+              />
+            </Flex>
+          )} */}
         </Flex>
       </MyBox>
 
@@ -223,14 +244,24 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
 const Render = (props: Props) => {
   const { appId, chatId } = props;
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+
   const params = useMemo(() => {
+    // Convert 'has_feedback' to 'all' for API, since backend doesn't support 'has_feedback'
+    // The 'has_feedback' filtering will be handled by showing both good and bad
+    const apiFilterType: 'all' | 'good' | 'bad' =
+      feedbackType === 'has_feedback' ? 'all' : feedbackType;
+
     return {
       chatId,
       appId,
       loadCustomFeedbacks: true,
-      type: GetChatTypeEnum.normal
+      type: GetChatTypeEnum.normal,
+      feedbackType: apiFilterType,
+      unreadOnly: feedbackType === 'all' ? undefined : unreadOnly
     };
-  }, [appId, chatId]);
+  }, [appId, chatId, feedbackType, unreadOnly]);
 
   return (
     <ChatItemContextProvider
@@ -241,7 +272,13 @@ const Render = (props: Props) => {
       showNodeStatus
     >
       <ChatRecordContextProvider params={params}>
-        <DetailLogsModal {...props} />
+        <DetailLogsModal
+          {...props}
+          feedbackType={feedbackType}
+          setFeedbackType={setFeedbackType}
+          unreadOnly={unreadOnly}
+          setUnreadOnly={setUnreadOnly}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

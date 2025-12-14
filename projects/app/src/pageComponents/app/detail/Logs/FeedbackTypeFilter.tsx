@@ -22,10 +22,10 @@ const FeedbackTypeFilter = ({
   setUnreadOnly,
   menuButtonProps
 }: {
-  feedbackType: 'all' | 'good' | 'bad';
-  setFeedbackType: (feedbackType: 'all' | 'good' | 'bad') => void;
-  unreadOnly?: boolean;
-  setUnreadOnly?: (unreadOnly: boolean) => void;
+  feedbackType: 'all' | 'has_feedback' | 'good' | 'bad';
+  setFeedbackType: (feedbackType: 'all' | 'has_feedback' | 'good' | 'bad') => void;
+  unreadOnly: boolean;
+  setUnreadOnly: (unreadOnly: boolean) => void;
   menuButtonProps?: ButtonProps;
 }) => {
   const { t } = useTranslation();
@@ -34,15 +34,19 @@ const FeedbackTypeFilter = ({
   const feedbackOptions = [
     {
       value: 'all' as const,
-      label: t('app:logs_all_feedback')
+      label: t('app:logs_all_records')
+    },
+    {
+      value: 'has_feedback' as const,
+      label: t('app:logs_has_any_feedback')
     },
     {
       value: 'good' as const,
-      label: t('app:logs_good_feedback_only')
+      label: t('app:logs_has_good_feedback')
     },
     {
       value: 'bad' as const,
-      label: t('app:logs_bad_feedback_only')
+      label: t('app:logs_has_bad_feedback')
     }
   ];
 
@@ -77,35 +81,7 @@ const FeedbackTypeFilter = ({
         }
         zIndex={99}
       >
-        {!!setUnreadOnly && (
-          <>
-            <MenuItem
-              borderRadius="sm"
-              py={2}
-              _hover={{ bg: 'myGray.100' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setUnreadOnly(!unreadOnly);
-              }}
-              autoFocus={false}
-            >
-              <Checkbox
-                isChecked={!!unreadOnly}
-                size="sm"
-                colorScheme="primary"
-                pointerEvents="none"
-              >
-                <Box fontSize={'sm'} fontWeight={'normal'} ml={0.5} whiteSpace={'nowrap'}>
-                  {t('app:logs_unread_only')}
-                </Box>
-              </Checkbox>
-            </MenuItem>
-
-            <Divider my={2} borderColor="gray.200" />
-          </>
-        )}
-
+        {/* Radio options */}
         {feedbackOptions.map((option) => (
           <MenuItem
             key={option.value}
@@ -120,8 +96,12 @@ const FeedbackTypeFilter = ({
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
+
+              // When switching from "all" to other options, keep unreadOnly state
+              // When switching to "all", unreadOnly state is preserved but ignored in query
               setFeedbackType(option.value);
-              onClose();
+
+              // Don't close the menu - allow user to continue selecting checkbox
             }}
           >
             <Flex alignItems={'center'} gap={2}>
@@ -154,6 +134,30 @@ const FeedbackTypeFilter = ({
             </Flex>
           </MenuItem>
         ))}
+
+        {/* Divider + Checkbox (only show when feedbackType is not "all") */}
+        {feedbackType !== 'all' && (
+          <>
+            <Divider my={2} borderColor="gray.200" />
+            <MenuItem
+              borderRadius="sm"
+              py={2}
+              _hover={{ bg: 'myGray.100' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setUnreadOnly(!unreadOnly);
+              }}
+              autoFocus={false}
+            >
+              <Checkbox isChecked={unreadOnly} size="sm" colorScheme="primary" pointerEvents="none">
+                <Box fontSize={'sm'} fontWeight={'normal'} ml={0.5} whiteSpace={'nowrap'}>
+                  {t('app:logs_unread_only')}
+                </Box>
+              </Checkbox>
+            </MenuItem>
+          </>
+        )}
       </MenuList>
     </Menu>
   );

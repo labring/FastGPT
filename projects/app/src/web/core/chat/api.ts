@@ -36,10 +36,6 @@ import type {
   UpdateFavouriteAppParamsType
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
-import type {
-  GetFeedbackIndicesQueryType,
-  GetFeedbackIndicesResponseType
-} from '@fastgpt/global/openapi/core/chat/feedback/api';
 import type { UpdateFeedbackReadStatusBodyType } from '@fastgpt/global/openapi/core/chat/feedback/api';
 
 /**
@@ -96,9 +92,6 @@ export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
 
 export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
   POST('/core/chat/feedback/closeCustom', data).catch();
-
-export const getFeedbackIndices = (data: GetFeedbackIndicesQueryType) =>
-  GET<GetFeedbackIndicesResponseType>('core/chat/feedback/getFeedbackIndices', data);
 
 export const updateFeedbackReadStatus = (data: UpdateFeedbackReadStatusBodyType) =>
   POST('/core/chat/feedback/updateFeedbackReadStatus', data);

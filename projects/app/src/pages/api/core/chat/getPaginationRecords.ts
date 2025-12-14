@@ -23,7 +23,8 @@ export type getPaginationRecordsQuery = {};
 
 export type getPaginationRecordsBody = PaginationProps &
   GetChatRecordsProps & {
-    targetDataId?: string;
+    feedbackType?: 'all' | 'good' | 'bad';
+    unreadOnly?: boolean;
   };
 
 export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
@@ -37,7 +38,8 @@ async function handler(
     chatId,
     loadCustomFeedbacks,
     type = GetChatTypeEnum.normal,
-    targetDataId
+    feedbackType,
+    unreadOnly
   } = req.body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
@@ -79,7 +81,8 @@ async function handler(
     field: fieldMap[type],
     offset,
     limit: pageSize,
-    targetDataId
+    feedbackType,
+    unreadOnly
   });
 
   // Presign file urls

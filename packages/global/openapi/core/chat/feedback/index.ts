@@ -1,8 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  GetFeedbackIndicesQuerySchema,
-  GetFeedbackIndicesResponseSchema,
   UpdateFeedbackReadStatusBodySchema,
   UpdateFeedbackReadStatusResponseSchema,
   AdminUpdateFeedbackBodySchema,
@@ -12,26 +10,6 @@ import {
 } from './api';
 
 export const ChatFeedbackPath: OpenAPIPath = {
-  '/core/chat/feedback/getFeedbackIndices': {
-    get: {
-      summary: '获取反馈索引',
-      description: '获取指定对话中有反馈的消息索引和位置，支持按反馈类型和已读状态筛选',
-      tags: [TagsMap.chatFeedback],
-      requestParams: {
-        query: GetFeedbackIndicesQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功获取反馈索引列表',
-          content: {
-            'application/json': {
-              schema: GetFeedbackIndicesResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
   '/core/chat/feedback/updateFeedbackReadStatus': {
     post: {
       summary: '更新反馈阅读状态',

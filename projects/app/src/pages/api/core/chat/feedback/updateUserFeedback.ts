@@ -4,6 +4,8 @@ import { type UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -26,56 +28,68 @@ async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextA
     return Promise.reject('Chat item not found');
   }
 
-  await MongoChatItem.updateOne(
-    { appId, chatId, dataId },
-    {
-      $unset: {
-        ...(userBadFeedback === undefined && { userBadFeedback: '' }),
-        ...(userGoodFeedback === undefined && { userGoodFeedback: '' })
+  await mongoSessionRun(async (session) => {
+    // Update ChatItem feedback
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId },
+      {
+        $unset: {
+          ...(userBadFeedback === undefined && { userBadFeedback: '' }),
+          ...(userGoodFeedback === undefined && { userGoodFeedback: '' })
+        },
+        $set: {
+          ...(userBadFeedback !== undefined && { userBadFeedback }),
+          ...(userGoodFeedback !== undefined && { userGoodFeedback })
+        }
       },
-      $set: {
-        ...(userBadFeedback !== undefined && { userBadFeedback }),
-        ...(userGoodFeedback !== undefined && { userGoodFeedback })
-      }
-    }
-  );
+      { session }
+    );
 
-  if (chatItem.obj !== ChatRoleEnum.AI) return;
-
-  const goodFeedbackDelta = (() => {
-    if (!userGoodFeedback && chatItem.userGoodFeedback) {
-      return -1;
-    } else if (userGoodFeedback && !chatItem.userGoodFeedback) {
-      return 1;
-    }
-    return 0;
-  })();
-
-  const badFeedbackDelta = (() => {
-    if (!userBadFeedback && chatItem.userBadFeedback) {
-      return -1;
-    } else if (userBadFeedback && !chatItem.userBadFeedback) {
-      return 1;
-    }
-    return 0;
-  })();
-
-  await MongoAppChatLog.findOneAndUpdate(
-    {
-      teamId,
+    // Update Chat table feedback statistics (redundant fields for performance)
+    await updateChatFeedbackCount({
       appId,
-      chatId
-    },
-    {
-      $inc: {
-        goodFeedbackCount: goodFeedbackDelta,
-        badFeedbackCount: badFeedbackDelta
-      }
-    },
-    {
-      sort: { createTime: -1 }
+      chatId,
+      session
+    });
+
+    // Update ChatLog table statistics (data analytics table)
+    if (chatItem.obj === ChatRoleEnum.AI) {
+      const goodFeedbackDelta = (() => {
+        if (!userGoodFeedback && chatItem.userGoodFeedback) {
+          return -1;
+        } else if (userGoodFeedback && !chatItem.userGoodFeedback) {
+          return 1;
+        }
+        return 0;
+      })();
+
+      const badFeedbackDelta = (() => {
+        if (!userBadFeedback && chatItem.userBadFeedback) {
+          return -1;
+        } else if (userBadFeedback && !chatItem.userBadFeedback) {
+          return 1;
+        }
+        return 0;
+      })();
+
+      await MongoAppChatLog.updateOne(
+        {
+          teamId,
+          appId,
+          chatId
+        },
+        {
+          $inc: {
+            goodFeedbackCount: goodFeedbackDelta,
+            badFeedbackCount: badFeedbackDelta
+          }
+        },
+        {
+          sort: { createTime: -1 }
+        }
+      );
     }
-  );
+  });
 }
 
 export default NextAPI(handler);
