@@ -30,21 +30,9 @@ type Props = {
   appId: string;
   chatId: string;
   onClose: () => void;
-  feedbackType: 'all' | 'has_feedback' | 'good' | 'bad';
-  setFeedbackType: (type: 'all' | 'has_feedback' | 'good' | 'bad') => void;
-  unreadOnly: boolean;
-  setUnreadOnly: (value: boolean) => void;
 };
 
-const DetailLogsModal = ({
-  appId,
-  chatId,
-  onClose,
-  feedbackType,
-  setFeedbackType,
-  unreadOnly,
-  setUnreadOnly
-}: Props) => {
+const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -272,13 +260,7 @@ const Render = (props: Props) => {
       showNodeStatus
     >
       <ChatRecordContextProvider params={params}>
-        <DetailLogsModal
-          {...props}
-          feedbackType={feedbackType}
-          setFeedbackType={setFeedbackType}
-          unreadOnly={unreadOnly}
-          setUnreadOnly={setUnreadOnly}
-        />
+        <DetailLogsModal {...props} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );
