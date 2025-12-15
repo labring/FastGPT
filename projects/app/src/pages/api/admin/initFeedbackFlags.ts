@@ -36,7 +36,7 @@ async function createTemporaryIndexes(): Promise<void> {
       { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
       {
         name: 'temp_feedback_migration_good',
-        partialFilterExpression: { userGoodFeedback: { $exists: true, $ne: null } }
+        partialFilterExpression: { userGoodFeedback: { $exists: true } }
       } as any
     );
 
@@ -45,7 +45,7 @@ async function createTemporaryIndexes(): Promise<void> {
       { userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
       {
         name: 'temp_feedback_migration_bad',
-        partialFilterExpression: { userBadFeedback: { $exists: true, $ne: null } }
+        partialFilterExpression: { userBadFeedback: { $exists: true } }
       } as any
     );
 
