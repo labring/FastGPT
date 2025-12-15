@@ -121,11 +121,11 @@ export type UpdateUserFeedbackResponseType = z.infer<typeof UpdateUserFeedbackRe
 
 /* =============== getFeedbackRecordIds =============== */
 export const GetFeedbackRecordIdsBodySchema = z.object({
-  appId: z.string().min(1).meta({
+  appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  chatId: z.string().min(1).meta({
+  chatId: z.string().meta({
     example: 'chat123',
     description: '对话 ID'
   }),

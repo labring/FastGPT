@@ -10,7 +10,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { subRoute } from '@fastgpt/web/common/system/utils';
-import { safeDecodeURIComponent } from '@/web/common/utils/uri';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
 
 const Login = () => {
   const router = useRouter();
@@ -23,7 +23,7 @@ const Login = () => {
     async (res: LoginSuccessResponse) => {
       setUserInfo(res.user);
 
-      const decodeLastRoute = safeDecodeURIComponent(lastRoute);
+      const decodeLastRoute = validateRedirectUrl(lastRoute);
 
       const navigateTo = await (async () => {
         if (res.user.team.status !== 'active') {
@@ -42,11 +42,7 @@ const Login = () => {
           return '/dashboard/agent';
         }
 
-        return decodeLastRoute &&
-          !decodeLastRoute.includes('/login') &&
-          decodeLastRoute.startsWith('/')
-          ? decodeLastRoute
-          : '/dashboard/agent';
+        return decodeLastRoute;
       })();
 
       navigateTo && router.replace(navigateTo);

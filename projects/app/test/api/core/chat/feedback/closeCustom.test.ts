@@ -60,11 +60,7 @@ describe('closeCustom api test', () => {
           }
         }
       ],
-      customFeedbacks: [
-        { dataId: 'feedback1', text: 'First feedback' },
-        { dataId: 'feedback2', text: 'Second feedback' },
-        { dataId: 'feedback3', text: 'Third feedback' }
-      ]
+      customFeedbacks: ['feedback1', 'feedback2', 'feedback3']
     });
   });
 
@@ -93,8 +89,8 @@ describe('closeCustom api test', () => {
     });
 
     expect(updatedChatItem?.customFeedbacks).toHaveLength(2);
-    expect(updatedChatItem?.customFeedbacks?.[0]?.dataId).toBe('feedback1');
-    expect(updatedChatItem?.customFeedbacks?.[1]?.dataId).toBe('feedback3');
+    expect(updatedChatItem?.customFeedbacks?.[0]).toBe('feedback1');
+    expect(updatedChatItem?.customFeedbacks?.[1]).toBe('feedback3');
   });
 
   it('should fail when user does not have permission', async () => {
@@ -140,7 +136,7 @@ describe('closeCustom api test', () => {
     });
 
     expect(updatedChatItem?.customFeedbacks).toHaveLength(2);
-    expect(updatedChatItem?.customFeedbacks?.[0]?.dataId).toBe('feedback2');
+    expect(updatedChatItem?.customFeedbacks?.[0]).toBe('feedback2');
   });
 
   it('should handle closing last feedback', async () => {
@@ -166,6 +162,6 @@ describe('closeCustom api test', () => {
     });
 
     expect(updatedChatItem?.customFeedbacks).toHaveLength(2);
-    expect(updatedChatItem?.customFeedbacks?.[1]?.dataId).toBe('feedback2');
+    expect(updatedChatItem?.customFeedbacks?.[1]).toBe('feedback2');
   });
 });

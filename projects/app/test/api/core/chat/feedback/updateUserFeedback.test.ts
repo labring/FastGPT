@@ -50,6 +50,10 @@ describe('updateUserFeedback api test', () => {
       tmbId: testUser.tmbId,
       appId,
       chatId,
+      userId: String(testUser.userId),
+      source: ChatSourceEnum.test,
+      createTime: new Date(),
+      updateTime: new Date(),
       goodFeedbackCount: 0,
       badFeedbackCount: 0
     });
