@@ -48,6 +48,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 7. 增加对于无效的 S3 key 检测。
 8. 删除应用和知识库时，强制要求输入名称校验。
 9. Mongo 慢操作日志，可以准确打印集合名和操作内容。
+10. 分享链接，自定义鉴权返回的 uid，强制要求长度小于 200（太长会影响文件上传）。
 
 ## 🐛 修复
 
@@ -69,6 +70,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 16. 日志导出时，结束时间会多出一天。
 17. 表单输入，前端默认值未传递到实体值。
 18. 工具调用时，未传递 max_tokens 参数。
+19. 工作流判断器 value 值，未结合 condition 来综合获取数据类型。
 
 ## 插件
 

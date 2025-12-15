@@ -22,7 +22,7 @@ import {
   stringConditionList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
@@ -452,10 +452,6 @@ const ConditionValueInput = ({
       return output?.valueType;
     }
   }, [globalVariables, getNodeById, variable]);
-  const { referenceList } = useReference({
-    nodeId,
-    valueType
-  });
 
   const showBooleanSelect = useMemo(() => {
     return (
@@ -472,6 +468,45 @@ const ConditionValueInput = ({
       (valueType?.includes('array') && condition && renderNumberConditionList.has(condition))
     );
   }, [condition, valueType]);
+
+  // Get array element type for include/notInclude operations
+  const getArrayElementType = useCallback((arrayType: WorkflowIOValueTypeEnum) => {
+    const typeMap: Record<string, WorkflowIOValueTypeEnum> = {
+      [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
+      [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
+      [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
+      [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
+      [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
+    };
+    return typeMap[arrayType] || arrayType;
+  }, []);
+
+  // Adjust reference value type based on condition
+  const referenceValueType = useMemo(() => {
+    if (!valueType?.includes('array') || !condition) {
+      return valueType;
+    }
+
+    // Array length operations need number type
+    if (renderNumberConditionList.has(condition)) {
+      return WorkflowIOValueTypeEnum.number;
+    }
+
+    // Array include/notInclude operations need element type
+    if (
+      condition === VariableConditionEnum.include ||
+      condition === VariableConditionEnum.notInclude
+    ) {
+      return getArrayElementType(valueType);
+    }
+
+    return valueType;
+  }, [condition, valueType, getArrayElementType]);
+
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: referenceValueType
+  });
 
   const RenderInput = useMemo(() => {
     if (showBooleanSelect) {
