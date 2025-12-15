@@ -1,13 +1,14 @@
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
-import React, { type ReactNode, useState } from 'react';
+import React, { type ReactNode, useState, useEffect } from 'react';
 import { createContext } from 'use-context-selector';
 import { getChatRecords } from '../api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { GetChatRecordsProps } from '@/global/core/chat/api';
+import { usePrevious } from 'ahooks';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -60,6 +61,7 @@ const ChatRecordContextProvider = ({
 }) => {
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
+  const prevChatId = usePrevious(params.chatId);
 
   const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
   const {
@@ -67,7 +69,8 @@ const ChatRecordContextProvider = ({
     setDataList: setChatRecords,
     ScrollData,
     isLoading,
-    itemRefs
+    itemRefs,
+    loadInitData
   } = useLinkedScroll(
     async (
       data: LinkedPaginationProps<GetChatRecordsProps>
@@ -96,6 +99,12 @@ const ChatRecordContextProvider = ({
       defaultScroll: 'bottom'
     }
   );
+
+  useEffect(() => {
+    if (prevChatId && prevChatId !== params.chatId) {
+      loadInitData({ refresh: true, scrollWhenFinish: true });
+    }
+  }, [params.chatId, prevChatId, loadInitData]);
 
   const contextValue = useMemoEnhance(() => {
     return {

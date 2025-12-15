@@ -69,7 +69,7 @@ export function useLinkedScroll<
 
   const { runAsync: callApi, loading: isLoading } = useRequest2(api);
 
-  let scroolSign = useRef(false);
+  let scrollSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       if (isLoading) return;
@@ -91,7 +91,7 @@ export function useLinkedScroll<
       setHasMorePrev(response.hasMorePrev);
       setHasMoreNext(response.hasMoreNext);
 
-      scroolSign.current = scrollWhenFinish;
+      scrollSign.current = scrollWhenFinish;
       setDataList(response.list);
 
       if (response.list.length > 0) {
@@ -105,8 +105,8 @@ export function useLinkedScroll<
     }
   );
   useEffect(() => {
-    if (scroolSign.current) {
-      scroolSign.current = false;
+    if (scrollSign.current) {
+      scrollSign.current = false;
       scrollToItem(currentData?.id);
     }
   }, [dataList]);

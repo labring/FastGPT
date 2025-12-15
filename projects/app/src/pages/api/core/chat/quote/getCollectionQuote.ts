@@ -135,7 +135,7 @@ async function handleInitialLoad({
 
   if (!centerNode) {
     const list = await MongoDatasetData.find(baseMatch, quoteDataFieldSelector)
-      .sort({ chunkIndex: 1 })
+      .sort({ chunkIndex: 1, _id: 1 })
       .limit(pageSize)
       .lean();
 
@@ -220,12 +220,15 @@ async function getPrevNodes(
 }> {
   const match: BaseMatchType = {
     ...baseMatch,
-    chunkIndex: { $lte: initialIndex },
-    _id: { $ne: new Types.ObjectId(initialId) }
+    $or: [
+      { chunkIndex: { $lt: initialIndex } },
+      // If all chunkIndex are 0, sort by id
+      { chunkIndex: initialIndex, _id: { $lt: new Types.ObjectId(initialId) } }
+    ]
   };
 
   const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
-    .sort({ chunkIndex: -1 })
+    .sort({ chunkIndex: -1, _id: -1 })
     .limit(limit)
     .lean();
 
@@ -246,12 +249,14 @@ async function getNextNodes(
 }> {
   const match: BaseMatchType = {
     ...baseMatch,
-    chunkIndex: { $gte: initialIndex },
-    _id: { $ne: new Types.ObjectId(initialId) }
+    $or: [
+      { chunkIndex: { $gt: initialIndex } },
+      { chunkIndex: initialIndex, _id: { $gt: new Types.ObjectId(initialId) } }
+    ]
   };
 
   const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
-    .sort({ chunkIndex: 1 })
+    .sort({ chunkIndex: 1, _id: 1 })
     .limit(limit)
     .lean();
 
