@@ -217,6 +217,7 @@ export const runAgentCall = async ({
     } = await createLLMResponse({
       body: {
         ...body,
+        max_tokens: maxTokens,
         model,
         messages: requestMessages,
         tool_choice: 'auto',

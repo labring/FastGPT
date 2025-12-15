@@ -10,7 +10,12 @@ import type {
   StreamChatType,
   UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
-import { computedTemperature, parseLLMStreamResponse, parseReasoningContent } from '../utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  parseLLMStreamResponse,
+  parseReasoningContent
+} from '../utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -525,8 +530,14 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   })();
   const stop = body.stop ?? undefined;
 
+  const maxTokens = computedMaxToken({
+    model: modelData,
+    maxToken: body.max_tokens || undefined
+  });
+
   const requestBody = {
     ...body,
+    max_tokens: maxTokens,
     model: modelData.model,
     temperature:
       typeof body.temperature === 'number'
