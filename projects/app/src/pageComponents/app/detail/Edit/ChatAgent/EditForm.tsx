@@ -213,30 +213,26 @@ const EditForm = ({
             onEditSkill={onEditSkill}
             onDeleteSkill={async (skill) => {
               try {
-                // 如果有 dbId，从数据库删除
                 if (skill.dbId) {
                   await deleteGeneratedSkill({ id: skill.dbId });
                   toast({
-                    title: '技能删除成功',
+                    title: t('app:skill_delete_success'),
                     status: 'success'
                   });
                 } else {
-                  // 没有 dbId 的是本地临时技能，只需提示
                   toast({
-                    title: '本地技能已移除',
+                    title: t('app:skill_local_removed'),
                     status: 'info'
                   });
                 }
 
-                // 从 appForm.skills 中移除（无论是否有 dbId）
                 setAppForm((state) => ({
                   ...state,
                   skills: state.skills.filter((s) => s.id !== skill.id)
                 }));
               } catch (error) {
-                console.error('删除失败:', error);
                 toast({
-                  title: '删除失败',
+                  title: t('app:delete_failed'),
                   status: 'error'
                 });
               }

@@ -166,7 +166,9 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
 
           // Special event: form data
           if (event === SseResponseEventEnum.formData && formData) {
-            onApply?.(formData);
+            if (type === HelperBotTypeEnum.topAgent) {
+              (onApply as (e: typeof formData) => void)?.(formData);
+            }
             return item;
           }
 

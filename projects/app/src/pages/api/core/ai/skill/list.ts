@@ -3,10 +3,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import type {
   GetGeneratedSkillsParamsType,
   GetGeneratedSkillsResponseType
-} from '@fastgpt/global/openapi/core/chat/helperBot/generatedSkill/api';
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type ListBody = GetGeneratedSkillsParamsType;
 type ListResponse = GetGeneratedSkillsResponseType;
@@ -16,7 +17,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<ListResponse> {
   const { appId, searchText, status } = req.body;
-  const { userId, teamId } = await authUserPer({ req, authToken: true, per: 'r' });
+  const { userId, teamId } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
 
   const { offset, pageSize } = parsePaginationRequest(req);
 

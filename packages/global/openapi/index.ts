@@ -4,6 +4,7 @@ import { ApiKeyPath } from './support/openapi';
 import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
 import { WalletPath } from './support/wallet';
+import { AIPath } from './core/ai';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -16,7 +17,8 @@ export const openAPIDocument = createDocument({
     ...ChatPath,
     ...ApiKeyPath,
     ...PluginPath,
-    ...WalletPath
+    ...WalletPath,
+    ...AIPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [

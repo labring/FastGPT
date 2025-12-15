@@ -282,7 +282,6 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.generatedSkill) {
             // Directly call onMessage for generatedSkill, no need to queue
-            console.log('🔥 streamFetch: Received generatedSkill event', rest);
             onMessage({
               event,
               generatedSkill: rest

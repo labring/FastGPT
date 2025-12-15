@@ -5,10 +5,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../context';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { cardStyles } from '../../../constants';
 import HelperBot from '@/components/core/chat/HelperBot';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -22,7 +19,6 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  // 构建 SkillAgent metadata
   const skillAgentMetadata = useMemo(() => {
     return {
       skillAgent: {
@@ -65,16 +61,10 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
           type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
           onApply={(generatedSkillData) => {
-            console.log('📝 ChatTest onApply - Received generated skill data:', generatedSkillData);
-            console.log('📝 Current skill id:', skill.id);
-
-            // 检查是否是 generatedSkill 类型
             if (!generatedSkillData.plan_analysis || !generatedSkillData.execution_plan) {
-              console.warn('❌ Invalid generated skill data format');
               return;
             }
 
-            // 将 steps 数组转换为格式化的文本
             const stepsText = generatedSkillData.execution_plan.steps
               .map((step, index) => {
                 let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
@@ -88,7 +78,6 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
               })
               .join('\n\n');
 
-            // 通知父组件更新状态（自动同步到 EditForm）
             onAIGenerate({
               name: generatedSkillData.plan_analysis.name || skill.name,
               description: generatedSkillData.plan_analysis.description || skill.description,

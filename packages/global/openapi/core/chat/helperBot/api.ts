@@ -4,8 +4,7 @@ import {
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema,
   topAgentParamsSchema,
-  skillAgentParamsSchema,
-  skillEditorParamsSchema
+  skillAgentParamsSchema
 } from '../../../../core/chat/helperBot/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';

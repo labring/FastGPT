@@ -25,10 +25,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../../FormComponent/ToolSelector/ToolSelect';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import {
-  saveGeneratedSkill,
-  updateGeneratedSkill
-} from '@/components/core/chat/HelperBot/generatedSkill/api';
+import { updateGeneratedSkill } from '@/components/core/chat/HelperBot/generatedSkill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -45,8 +42,8 @@ const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'
 type EditFormProps = {
   model: string;
   fileSelectConfig?: AppFileSelectConfigType;
-  skill: SkillEditType; // 受控：从父组件接收
-  onFieldChange: (updates: Partial<SkillEditType>) => void; // 变化时通知父组件
+  skill: SkillEditType;
+  onFieldChange: (updates: Partial<SkillEditType>) => void;
   onClose: () => void;
   onSave: (skill: SkillEditType) => void;
 };
@@ -79,29 +76,18 @@ const EditForm = ({
     try {
       let dbId = skill.dbId;
 
-      // 保存到数据库
-      if (dbId) {
-        await updateGeneratedSkill({
-          id: dbId,
-          name: skill.name,
-          description: skill.description,
-          steps: skill.stepsText || '',
-          status: 'active'
-        });
-      } else {
-        const result = await saveGeneratedSkill({
-          appId: appId,
-          chatId: 'temp-chat-id',
-          chatItemId: 'temp-item-id',
-          name: skill.name,
-          description: skill.description || '',
-          steps: skill.stepsText || '',
-          status: 'active'
-        });
+      const result = await updateGeneratedSkill({
+        ...(dbId ? { id: dbId } : { appId, chatId: 'temp-chat-id', chatItemId: 'temp-item-id' }),
+        name: skill.name,
+        description: skill.description || '',
+        steps: skill.stepsText || '',
+        status: 'active'
+      });
+
+      if (!dbId) {
         dbId = result._id;
       }
 
-      // 通知父组件保存成功
       onSave({ ...skill, dbId });
 
       toast({

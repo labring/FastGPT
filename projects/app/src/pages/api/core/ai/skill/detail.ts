@@ -1,9 +1,10 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { GetGeneratedSkillDetailParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/generatedSkill/api';
+import type { GetGeneratedSkillDetailParamsType } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { GeneratedSkillSiteType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type DetailQuery = GetGeneratedSkillDetailParamsType;
 type DetailResponse = GeneratedSkillSiteType;
@@ -13,7 +14,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<DetailResponse> {
   const { id } = req.query;
-  const { userId, teamId } = await authUserPer({ req, authToken: true, per: 'r' });
+  const { userId, teamId } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
 
   // Find the generated skill and verify ownership
   const generatedSkill = await MongoHelperBotGeneratedSkill.findOne({
