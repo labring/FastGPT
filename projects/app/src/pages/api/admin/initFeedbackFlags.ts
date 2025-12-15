@@ -31,23 +31,19 @@ async function createTemporaryIndexes(): Promise<void> {
   addLog.info('Creating temporary indexes for migration...');
 
   try {
-    // Create index on ChatItem for finding chats with good feedback
-    await MongoChatItem.collection.createIndex(
-      { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
-      {
-        name: 'temp_feedback_migration_good',
-        partialFilterExpression: { userGoodFeedback: { $exists: true } }
-      } as any
-    );
-
-    // Create index on ChatItem for finding chats with bad feedback
-    await MongoChatItem.collection.createIndex(
-      { userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
-      {
+    await Promise.all([
+      MongoChatItem.collection.createIndex(
+        { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
+        {
+          name: 'temp_feedback_migration_good',
+          partialFilterExpression: { userGoodFeedback: { $exists: true } }
+        } as any
+      ),
+      MongoChatItem.collection.createIndex({ userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 }, {
         name: 'temp_feedback_migration_bad',
         partialFilterExpression: { userBadFeedback: { $exists: true } }
-      } as any
-    );
+      } as any)
+    ]);
 
     addLog.info('Temporary indexes created successfully');
   } catch (error: any) {
@@ -89,7 +85,7 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
         }
       }
     ],
-    { allowDiskUse: true, maxTimeMS: 600000 }
+    { allowDiskUse: true, maxTimeMS: 6000000 }
   );
 
   const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
@@ -117,7 +113,7 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
         }
       }
     ],
-    { allowDiskUse: true, maxTimeMS: 600000 }
+    { allowDiskUse: true, maxTimeMS: 6000000 }
   );
 
   // Execute both queries in parallel
