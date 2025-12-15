@@ -304,6 +304,422 @@ describe('getChatItems', () => {
       });
     });
   });
+
+  describe('initialId Mode - Get items around target', () => {
+    it('should return items around the target item when initialId is provided', async () => {
+      const items = await createChatItems(10);
+      const targetItem = items[4]; // Middle item
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: targetItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // With limit 5: halfLimit=2, ceilLimit=3
+      // Returns 2 items before + target + 3 items after = 6 items
+      expect(result.histories).toHaveLength(6);
+      expect(result.histories[2].dataId).toBe(targetItem.dataId);
+      expect(result.total).toBe(10);
+    });
+
+    it('should handle initialId at the beginning of chat history', async () => {
+      const items = await createChatItems(10);
+      const firstItem = items[0];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: firstItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should get first item and 4 items after it
+      expect(result.histories[0].dataId).toBe(firstItem.dataId);
+      expect(result.hasMorePrev).toBe(false);
+      expect(result.hasMoreNext).toBe(true);
+    });
+
+    it('should handle initialId at the end of chat history', async () => {
+      const items = await createChatItems(10);
+      const lastItem = items[9];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: lastItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should get last item and items before it
+      expect(result.histories[result.histories.length - 1].dataId).toBe(lastItem.dataId);
+      expect(result.hasMorePrev).toBe(true);
+      expect(result.hasMoreNext).toBe(false);
+    });
+
+    it('should set hasMorePrev and hasMoreNext correctly with initialId', async () => {
+      const items = await createChatItems(20);
+      const middleItem = items[10];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: middleItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      expect(result.hasMorePrev).toBe(true);
+      expect(result.hasMoreNext).toBe(true);
+      expect(result.total).toBe(20);
+    });
+
+    it('should throw error when initialId does not exist', async () => {
+      await createChatItems(5);
+
+      await expect(
+        getChatItems({
+          appId,
+          chatId,
+          initialId: 'non-existent-id',
+          limit: 5,
+          field: 'obj value'
+        })
+      ).rejects.toThrow('Target item not found');
+    });
+
+    it('should handle small limit with initialId', async () => {
+      const items = await createChatItems(10);
+      const middleItem = items[5];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: middleItem.dataId,
+        limit: 3,
+        field: 'obj value'
+      });
+
+      // With limit 3: halfLimit=1, ceilLimit=2
+      // Returns 1 item before + target + 2 items after = 4 items
+      expect(result.histories).toHaveLength(4);
+      expect(result.histories[1].dataId).toBe(middleItem.dataId);
+    });
+
+    it('should handle odd limit with initialId', async () => {
+      const items = await createChatItems(15);
+      const middleItem = items[7];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: middleItem.dataId,
+        limit: 7,
+        field: 'obj value'
+      });
+
+      // With limit 7: halfLimit=3, ceilLimit=4
+      // Returns 3 items before + target + 4 items after = 8 items
+      expect(result.histories).toHaveLength(8);
+      expect(result.histories[3].dataId).toBe(middleItem.dataId);
+    });
+
+    it('should handle even limit with initialId', async () => {
+      const items = await createChatItems(15);
+      const middleItem = items[7];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        initialId: middleItem.dataId,
+        limit: 6,
+        field: 'obj value'
+      });
+
+      // With limit 6: halfLimit=3, ceilLimit=3
+      // Returns 3 items before + target + 3 items after = 7 items
+      expect(result.histories).toHaveLength(7);
+      expect(result.histories[3].dataId).toBe(middleItem.dataId);
+    });
+
+    it('should return latest items when no initialId provided', async () => {
+      const items = await createChatItems(20);
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should return the 5 latest items (items 16-20)
+      expect(result.histories).toHaveLength(5);
+      expect(result.histories[0].dataId).toBe(items[15].dataId);
+      expect(result.hasMorePrev).toBe(true);
+      expect(result.hasMoreNext).toBe(false);
+    });
+  });
+
+  describe('prevId Mode - Get items before target', () => {
+    it('should return items before the target item when prevId is provided', async () => {
+      const items = await createChatItems(10);
+      const targetItem = items[5];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: targetItem.dataId,
+        limit: 3,
+        field: 'obj value'
+      });
+
+      // Should return 3 items before the target (items 2, 3, 4)
+      expect(result.histories).toHaveLength(3);
+      expect(result.histories[0].dataId).toBe(items[2].dataId);
+      expect(result.histories[2].dataId).toBe(items[4].dataId);
+      expect(result.hasMoreNext).toBe(true); // Target item and items after exist
+      expect(result.total).toBe(10);
+    });
+
+    it('should set hasMorePrev correctly with prevId', async () => {
+      const items = await createChatItems(20);
+      const targetItem = items[15];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: targetItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should return 5 items before item 15 (items 10-14)
+      expect(result.histories).toHaveLength(5);
+      expect(result.hasMorePrev).toBe(true); // Items 0-9 still exist
+      expect(result.hasMoreNext).toBe(true); // Target and items after exist
+    });
+
+    it('should handle prevId at the beginning of chat history', async () => {
+      const items = await createChatItems(10);
+      const earlyItem = items[2];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: earlyItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should only return 2 items (items 0 and 1)
+      expect(result.histories).toHaveLength(2);
+      expect(result.histories[0].dataId).toBe(items[0].dataId);
+      expect(result.hasMorePrev).toBe(false);
+      expect(result.hasMoreNext).toBe(true);
+    });
+
+    it('should throw error when prevId does not exist', async () => {
+      await createChatItems(5);
+
+      await expect(
+        getChatItems({
+          appId,
+          chatId,
+          prevId: 'non-existent-id',
+          limit: 5,
+          field: 'obj value'
+        })
+      ).rejects.toThrow('Prev item not found');
+    });
+
+    it('should return empty array when prevId is the first item', async () => {
+      const items = await createChatItems(10);
+      const firstItem = items[0];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: firstItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // No items before the first item
+      expect(result.histories).toHaveLength(0);
+      expect(result.hasMorePrev).toBe(false);
+      expect(result.hasMoreNext).toBe(true);
+    });
+
+    it('should maintain chronological order with prevId', async () => {
+      const items = await createChatItems(10);
+      const targetItem = items[7];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: targetItem.dataId,
+        limit: 4,
+        field: 'obj value'
+      });
+
+      // Should return items 3, 4, 5, 6 in order
+      expect(result.histories).toHaveLength(4);
+      for (let i = 0; i < result.histories.length; i++) {
+        expect(result.histories[i].dataId).toBe(items[3 + i].dataId);
+      }
+    });
+  });
+
+  describe('nextId Mode - Get items after target', () => {
+    it('should return items after the target item when nextId is provided', async () => {
+      const items = await createChatItems(10);
+      const targetItem = items[4];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        nextId: targetItem.dataId,
+        limit: 3,
+        field: 'obj value'
+      });
+
+      // Should return 3 items after the target (items 5, 6, 7)
+      expect(result.histories).toHaveLength(3);
+      expect(result.histories[0].dataId).toBe(items[5].dataId);
+      expect(result.histories[2].dataId).toBe(items[7].dataId);
+      expect(result.hasMorePrev).toBe(true); // Target item and items before exist
+      expect(result.total).toBe(10);
+    });
+
+    it('should set hasMoreNext correctly with nextId', async () => {
+      const items = await createChatItems(20);
+      const targetItem = items[5];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        nextId: targetItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should return 5 items after item 5 (items 6-10)
+      expect(result.histories).toHaveLength(5);
+      expect(result.hasMorePrev).toBe(true); // Target and items before exist
+      expect(result.hasMoreNext).toBe(true); // Items 11-19 still exist
+    });
+
+    it('should handle nextId at the end of chat history', async () => {
+      const items = await createChatItems(10);
+      const lateItem = items[7];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        nextId: lateItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Should only return 2 items (items 8 and 9)
+      expect(result.histories).toHaveLength(2);
+      expect(result.histories[0].dataId).toBe(items[8].dataId);
+      expect(result.hasMorePrev).toBe(true);
+      expect(result.hasMoreNext).toBe(false);
+    });
+
+    it('should throw error when nextId does not exist', async () => {
+      await createChatItems(5);
+
+      await expect(
+        getChatItems({
+          appId,
+          chatId,
+          nextId: 'non-existent-id',
+          limit: 5,
+          field: 'obj value'
+        })
+      ).rejects.toThrow('Next item not found');
+    });
+
+    it('should return empty array when nextId is the last item', async () => {
+      const items = await createChatItems(10);
+      const lastItem = items[9];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        nextId: lastItem.dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // No items after the last item
+      expect(result.histories).toHaveLength(0);
+      expect(result.hasMorePrev).toBe(true);
+      expect(result.hasMoreNext).toBe(false);
+    });
+
+    it('should maintain chronological order with nextId', async () => {
+      const items = await createChatItems(10);
+      const targetItem = items[2];
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        nextId: targetItem.dataId,
+        limit: 4,
+        field: 'obj value'
+      });
+
+      // Should return items 3, 4, 5, 6 in order
+      expect(result.histories).toHaveLength(4);
+      for (let i = 0; i < result.histories.length; i++) {
+        expect(result.histories[i].dataId).toBe(items[3 + i].dataId);
+      }
+    });
+  });
+
+  describe('Pagination Mode Priorities', () => {
+    it('should use offset mode when offset is provided with other params', async () => {
+      const items = await createChatItems(10);
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        offset: 0,
+        initialId: items[5].dataId,
+        limit: 5,
+        field: 'obj value'
+      });
+
+      // Offset mode should take precedence - returns latest items
+      expect(result.histories).toHaveLength(5);
+      expect(result.hasMoreNext).toBe(false); // Offset mode starts from newest
+    });
+
+    it('should use prevId mode when both prevId and nextId are provided', async () => {
+      const items = await createChatItems(10);
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        prevId: items[5].dataId,
+        nextId: items[7].dataId,
+        limit: 3,
+        field: 'obj value'
+      });
+
+      // prevId mode should take precedence (checked before nextId in code)
+      expect(result.hasMoreNext).toBe(true);
+      // Should return items before items[5]
+      expect(result.histories.every((h) => h.dataId !== items[5].dataId)).toBe(true);
+    });
+  });
 });
 
 describe('addCustomFeedbacks', () => {
