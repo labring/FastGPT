@@ -57,8 +57,20 @@ export const ChatLogItemSchema = z.object({
 export type AppLogsListItemType = z.infer<typeof ChatLogItemSchema>;
 
 /* Get chat logs */
+const FeedbackLogParamSchema = z.object({
+  feedbackType: z.enum(['all', 'has_feedback', 'good', 'bad']).optional().meta({
+    example: 'good',
+    description: '反馈类型：all-全部记录，has_feedback-包含反馈，good-包含赞，bad-包含踩'
+  }),
+  unreadOnly: z.boolean().optional().meta({
+    example: false,
+    description: '是否仅显示未读反馈（当 feedbackType 为 all 时忽略）'
+  })
+});
 // Get App Chat Logs Query Parameters (based on GetAppChatLogsProps)
-export const GetAppChatLogsBodySchema = PaginationSchema.safeExtend({
+export const GetAppChatLogsBodySchema = PaginationSchema.extend(
+  FeedbackLogParamSchema.shape
+).extend({
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
@@ -88,14 +100,6 @@ export const GetAppChatLogsBodySchema = PaginationSchema.safeExtend({
   chatSearch: z.string().optional().meta({
     example: 'hello',
     description: '对话内容搜索关键词'
-  }),
-  feedbackType: z.enum(['all', 'has_feedback', 'good', 'bad']).optional().meta({
-    example: 'good',
-    description: '反馈类型：all-全部记录，has_feedback-包含反馈，good-包含赞，bad-包含踩'
-  }),
-  unreadOnly: z.boolean().optional().meta({
-    example: false,
-    description: '是否仅显示未读反馈（当 feedbackType 为 all 时忽略）'
   })
 });
 export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;
@@ -109,7 +113,11 @@ export const GetAppChatLogsResponseSchema = z
 export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSchema>;
 
 /* Export chat log */
-export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.safeExtend({
+export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.omit({
+  pageSize: true,
+  offset: true,
+  pageNum: true
+}).safeExtend({
   title: z.string().meta({
     example: 'chat logs',
     description: '标题'
@@ -123,7 +131,6 @@ export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.safeExtend({
     description: '日志键'
   })
 });
-export type exportChatLogsBody = z.infer<typeof ExportChatLogsBodySchema>;
 
 /* Get chart data */
 // Get Chart Data Request Body (based on getChartDataBody)

@@ -27,7 +27,7 @@ import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
-import type { exportChatLogsBody } from '@fastgpt/global/openapi/core/app/log/api';
+import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -37,7 +37,7 @@ const formatJsonString = (data: any) => {
   return data;
 };
 
-async function handler(req: ApiRequestProps<exportChatLogsBody, {}>, res: NextApiResponse) {
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
   let {
     appId,
     dateStart,
@@ -47,8 +47,10 @@ async function handler(req: ApiRequestProps<exportChatLogsBody, {}>, res: NextAp
     chatSearch,
     title,
     sourcesMap,
-    logKeys = []
-  } = req.body;
+    logKeys = [],
+    feedbackType,
+    unreadOnly
+  } = ExportChatLogsBodySchema.parse(req.body);
 
   if (!appId) {
     throw new Error('缺少参数');
@@ -95,12 +97,37 @@ async function handler(req: ApiRequestProps<exportChatLogsBody, {}>, res: NextAp
   const where = {
     teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
+    source: sources ? { $in: sources } : { $exists: true },
+    tmbId: tmbIds ? { $in: tmbIds.map((item) => new Types.ObjectId(item)) } : { $exists: true },
+    // Feedback type filtering (BEFORE pagination for performance)
+    ...(feedbackType === 'has_feedback' &&
+      !unreadOnly && {
+        $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }]
+      }),
+    ...(feedbackType === 'has_feedback' &&
+      unreadOnly && {
+        $or: [{ hasUnreadGoodFeedback: true }, { hasUnreadBadFeedback: true }]
+      }),
+    ...(feedbackType === 'good' &&
+      !unreadOnly && {
+        hasGoodFeedback: true
+      }),
+    ...(feedbackType === 'good' &&
+      unreadOnly && {
+        hasUnreadGoodFeedback: true
+      }),
+    ...(feedbackType === 'bad' &&
+      !unreadOnly && {
+        hasBadFeedback: true
+      }),
+    ...(feedbackType === 'bad' &&
+      unreadOnly && {
+        hasUnreadBadFeedback: true
+      }),
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
     },
-    ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds } }),
     ...(chatSearch
       ? {
           $or: [

@@ -17,7 +17,7 @@ import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -52,6 +52,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -145,38 +146,35 @@ const LogTable = ({
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
-  const { runAsync: exportLogs } = useRequest2(
-    async () => {
-      const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
-      await downloadFetch({
-        url: '/api/core/app/logs/exportLogs',
-        filename: t('app:export_log_filename', { name: appName }),
-        body: {
-          appId,
-          dateStart: dayjs(dateRange.from || new Date()).format(),
-          dateEnd: dayjs(dateRange.to || new Date()).format(),
-          sources: isSelectAllSource ? undefined : chatSources,
-          tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-          chatSearch,
-          title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
-          logKeys: enabledKeys,
-          sourcesMap: Object.fromEntries(
-            Object.entries(ChatSourceMap).map(([key, config]) => [
-              key,
-              {
-                label: t(config.name as any)
-              }
-            ])
-          )
-        }
-      });
-    },
-    {
-      refreshDeps: [chatSources]
-    }
-  );
-  const params = useMemo(
+  const { runAsync: exportLogs } = useRequest2(async () => {
+    const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
+    const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+    await downloadFetch({
+      url: '/api/core/app/logs/exportLogs',
+      filename: t('app:export_log_filename', { name: appName }),
+      body: {
+        appId,
+        dateStart: dayjs(dateRange.from || new Date()).format(),
+        dateEnd: dayjs(dateRange.to || new Date()).format(),
+        sources: isSelectAllSource ? undefined : chatSources,
+        tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
+        chatSearch,
+        title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
+        logKeys: enabledKeys,
+        sourcesMap: Object.fromEntries(
+          Object.entries(ChatSourceMap).map(([key, config]) => [
+            key,
+            {
+              label: t(config.name as any)
+            }
+          ])
+        ),
+        feedbackType,
+        unreadOnly
+      }
+    });
+  });
+  const params = useMemoEnhance(
     () => ({
       appId,
       dateStart: dateRange.from!,
@@ -242,6 +240,7 @@ const LogTable = ({
             setFeedbackType={setFeedbackType}
             unreadOnly={unreadOnly}
             setUnreadOnly={setUnreadOnly}
+            placement="right"
             menuButtonProps={{
               fontSize: '12.8px',
               fontWeight: 'medium',
@@ -280,88 +279,95 @@ const LogTable = ({
     [t, feedbackType, setFeedbackType, unreadOnly, setUnreadOnly]
   );
 
-  const getCellRenderMap = (item: AppLogsListItemType) => ({
-    [AppLogKeysEnum.SOURCE]: (
-      <Td key={AppLogKeysEnum.SOURCE}>
-        {/* @ts-ignore */}
-        {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
-      </Td>
-    ),
-    [AppLogKeysEnum.CREATED_TIME]: (
-      <Td key={AppLogKeysEnum.CREATED_TIME}>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
-    ),
-    [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
-      <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
-        {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
-      </Td>
-    ),
-    [AppLogKeysEnum.USER]: (
-      <Td key={AppLogKeysEnum.USER}>
-        <Box>
-          {!!item.outLinkUid ? (
-            item.outLinkUid
-          ) : item.sourceMember ? (
-            <UserBox sourceMember={item.sourceMember} />
-          ) : (
-            '-'
-          )}
-        </Box>
-      </Td>
-    ),
-    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>,
-    [AppLogKeysEnum.TITLE]: (
-      <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-        {item.customTitle || item.title}
-      </Td>
-    ),
-    [AppLogKeysEnum.SESSION_ID]: (
-      <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
-        {item.chatId || '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
-    [AppLogKeysEnum.FEEDBACK]: (
-      <Td key={AppLogKeysEnum.FEEDBACK}>
-        <Flex gap={3} px={1}>
-          {!!item?.userGoodFeedbackCount && (
-            <Flex alignItems={'center'}>
-              <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.500'} w={4} />
-              {item.userGoodFeedbackCount}
-            </Flex>
-          )}
-          {!!item?.userBadFeedbackCount && (
-            <Flex alignItems={'center'}>
-              <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'yellow.500'} w={4} />
-              {item.userBadFeedbackCount}
-            </Flex>
-          )}
-          {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
-        </Flex>
-      </Td>
-    ),
-    [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
-      <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.ANNOTATED_COUNT]: (
-      <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
-    ),
-    [AppLogKeysEnum.RESPONSE_TIME]: (
-      <Td key={AppLogKeysEnum.RESPONSE_TIME}>
-        {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.ERROR_COUNT]: (
-      <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.POINTS]: (
-      <Td key={AppLogKeysEnum.POINTS}>
-        {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.VERSION_NAME]: (
-      <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
-    )
-  });
+  const getCellRenderMap = useCallback(
+    (item: AppLogsListItemType) => ({
+      [AppLogKeysEnum.SOURCE]: (
+        <Td key={AppLogKeysEnum.SOURCE}>
+          {/* @ts-ignore */}
+          {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+        </Td>
+      ),
+      [AppLogKeysEnum.CREATED_TIME]: (
+        <Td key={AppLogKeysEnum.CREATED_TIME}>
+          {dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}
+        </Td>
+      ),
+      [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
+        <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
+          {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
+        </Td>
+      ),
+      [AppLogKeysEnum.USER]: (
+        <Td key={AppLogKeysEnum.USER}>
+          <Box>
+            {!!item.outLinkUid ? (
+              item.outLinkUid
+            ) : item.sourceMember ? (
+              <UserBox sourceMember={item.sourceMember} />
+            ) : (
+              '-'
+            )}
+          </Box>
+        </Td>
+      ),
+      [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>,
+      [AppLogKeysEnum.TITLE]: (
+        <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
+          {item.customTitle || item.title}
+        </Td>
+      ),
+      [AppLogKeysEnum.SESSION_ID]: (
+        <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
+          {item.chatId || '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.MESSAGE_COUNT]: (
+        <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>
+      ),
+      [AppLogKeysEnum.FEEDBACK]: (
+        <Td key={AppLogKeysEnum.FEEDBACK}>
+          <Flex gap={3} px={1}>
+            {!!item?.userGoodFeedbackCount && (
+              <Flex alignItems={'center'}>
+                <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.500'} w={4} />
+                {item.userGoodFeedbackCount}
+              </Flex>
+            )}
+            {!!item?.userBadFeedbackCount && (
+              <Flex alignItems={'center'}>
+                <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'yellow.500'} w={4} />
+                {item.userBadFeedbackCount}
+              </Flex>
+            )}
+            {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+          </Flex>
+        </Td>
+      ),
+      [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
+        <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
+      ),
+      [AppLogKeysEnum.ANNOTATED_COUNT]: (
+        <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
+      ),
+      [AppLogKeysEnum.RESPONSE_TIME]: (
+        <Td key={AppLogKeysEnum.RESPONSE_TIME}>
+          {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.ERROR_COUNT]: (
+        <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
+      ),
+      [AppLogKeysEnum.POINTS]: (
+        <Td key={AppLogKeysEnum.POINTS}>
+          {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.VERSION_NAME]: (
+        <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
+      )
+    }),
+    [t]
+  );
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>

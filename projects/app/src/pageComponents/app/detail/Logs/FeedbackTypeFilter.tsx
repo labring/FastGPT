@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import type { ButtonProps, PlacementWithLogical } from '@chakra-ui/react';
 import {
   Checkbox,
@@ -195,18 +195,18 @@ export const DetailLogsModalFeedbackTypeFilter = ({
 
   // Get feedback record IDs when in feedback mode
   const { data: feedbackRecords, runAsync: loadFeedbackRecords } = useRequest2(
-    async () => {
-      if (!appId || !chatId || feedbackType === 'all') return null;
+    async (_feedbackType = feedbackType, _unreadOnly = unreadOnly) => {
+      if (!appId || !chatId || _feedbackType === 'all') return null;
       return await getFeedbackRecordIds({
         appId,
         chatId,
-        feedbackType,
-        unreadOnly
+        feedbackType: _feedbackType,
+        unreadOnly: _unreadOnly
       });
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId, feedbackType, unreadOnly]
+      refreshDeps: [appId, chatId]
     }
   );
 
@@ -216,49 +216,55 @@ export const DetailLogsModalFeedbackTypeFilter = ({
   const totalCount = feedbackRecords?.total ?? 0;
 
   // Handle feedback type change
-  const handleFeedbackTypeChange = (type: 'all' | 'has_feedback' | 'good' | 'bad') => {
-    setFeedbackType(type);
+  const handleFeedbackTypeChange = useCallback(
+    (type: 'all' | 'has_feedback' | 'good' | 'bad') => {
+      setFeedbackType(type);
 
-    if (type === 'all') {
-      // Switch to all records - no feedbackRecordId
-      onRecordChange?.(undefined);
-    }
-    // For feedback types, wait for new records to load, then select the last one
-    // This is handled in useEffect below
-  };
-
-  // Auto-select last feedback record when switching to feedback mode
-  useEffect(() => {
-    if (
-      feedbackType !== 'all' &&
-      feedbackRecords &&
-      feedbackRecords.dataIds.length > 0 &&
-      (!currentRecordId || !feedbackRecords.dataIds.includes(currentRecordId))
-    ) {
-      // Select the last (latest) feedback record
-      const lastRecordId = feedbackRecords.dataIds[feedbackRecords.dataIds.length - 1];
-      onRecordChange?.(lastRecordId);
-    }
-  }, [feedbackType, feedbackRecords, currentRecordId, onRecordChange]);
+      if (type === 'all') {
+        // Switch to all records - no feedbackRecordId
+        loadFeedbackRecords(type);
+      } else {
+        loadFeedbackRecords(type).then((records) => {
+          if (!records) return;
+          // Select the last (latest) feedback record
+          const lastRecordId = records.dataIds[records.dataIds.length - 1];
+          onRecordChange?.(lastRecordId);
+        });
+      }
+    },
+    [setFeedbackType, onRecordChange, loadFeedbackRecords]
+  );
+  const handleUnreadOnlyChange = useCallback(
+    (unreadOnly: boolean) => {
+      setUnreadOnly(unreadOnly);
+      loadFeedbackRecords(feedbackType, unreadOnly).then((records) => {
+        if (!records) return;
+        // Select the last (latest) feedback record
+        const lastRecordId = records.dataIds[records.dataIds.length - 1];
+        onRecordChange?.(lastRecordId);
+      });
+    },
+    [setUnreadOnly, loadFeedbackRecords, feedbackType, onRecordChange]
+  );
 
   // Navigation handlers
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (!feedbackRecords) return;
     if (currentIndex > 0) {
       onRecordChange?.(feedbackRecords.dataIds[currentIndex - 1]);
     } else {
       onRecordChange?.(feedbackRecords.dataIds[feedbackRecords.dataIds.length - 1]);
     }
-  };
+  }, [feedbackRecords, currentIndex, onRecordChange]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (!feedbackRecords) return;
     if (currentIndex < (feedbackRecords?.dataIds.length ?? 0) - 1) {
       onRecordChange?.(feedbackRecords.dataIds[currentIndex + 1]);
     } else {
       onRecordChange?.(feedbackRecords.dataIds[0]);
     }
-  };
+  }, [feedbackRecords, currentIndex, onRecordChange]);
 
   const showNavigation = appId && chatId && feedbackType !== 'all';
 
@@ -277,7 +283,7 @@ export const DetailLogsModalFeedbackTypeFilter = ({
         feedbackType={feedbackType}
         setFeedbackType={handleFeedbackTypeChange}
         unreadOnly={unreadOnly}
-        setUnreadOnly={setUnreadOnly}
+        setUnreadOnly={handleUnreadOnlyChange}
         menuButtonProps={menuButtonProps}
       />
 
