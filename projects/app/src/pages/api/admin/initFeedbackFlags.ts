@@ -31,23 +31,19 @@ async function createTemporaryIndexes(): Promise<void> {
   addLog.info('Creating temporary indexes for migration...');
 
   try {
-    // Create index on ChatItem for finding chats with good feedback
-    await MongoChatItem.collection.createIndex(
-      { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
-      {
-        name: 'temp_feedback_migration_good',
-        partialFilterExpression: { userGoodFeedback: { $exists: true } }
-      } as any
-    );
-
-    // Create index on ChatItem for finding chats with bad feedback
-    await MongoChatItem.collection.createIndex(
-      { userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
-      {
+    await Promise.all([
+      MongoChatItem.collection.createIndex(
+        { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
+        {
+          name: 'temp_feedback_migration_good',
+          partialFilterExpression: { userGoodFeedback: { $exists: true } }
+        } as any
+      ),
+      MongoChatItem.collection.createIndex({ userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 }, {
         name: 'temp_feedback_migration_bad',
         partialFilterExpression: { userBadFeedback: { $exists: true } }
-      } as any
-    );
+      } as any)
+    ]);
 
     addLog.info('Temporary indexes created successfully');
   } catch (error: any) {
@@ -58,39 +54,90 @@ async function createTemporaryIndexes(): Promise<void> {
 
 /**
  * Get all unique chats that have feedback
+ * Optimized: Separate queries for good/bad feedback to utilize indexes better
  */
 async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   addLog.info('Aggregating chats with feedback from chatItems...');
 
-  const result = await MongoChatItem.aggregate<ChatIdentifier>([
-    {
-      $match: {
-        $or: [
-          { userGoodFeedback: { $exists: true, $ne: null } },
-          { userBadFeedback: { $exists: true, $ne: null } }
-        ]
-      }
-    },
-    {
-      $group: {
-        _id: {
-          teamId: '$teamId',
-          appId: '$appId',
-          chatId: '$chatId'
+  // Separate queries for good and bad feedback to utilize partial indexes better
+  const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
+    [
+      {
+        $match: {
+          userGoodFeedback: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            teamId: '$teamId',
+            appId: '$appId',
+            chatId: '$chatId'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          teamId: { $toString: '$_id.teamId' },
+          appId: { $toString: '$_id.appId' },
+          chatId: '$_id.chatId'
         }
       }
-    },
-    {
-      $project: {
-        _id: 0,
-        teamId: { $toString: '$_id.teamId' },
-        appId: { $toString: '$_id.appId' },
-        chatId: '$_id.chatId'
+    ],
+    { allowDiskUse: true, maxTimeMS: 6000000 }
+  );
+
+  const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
+    [
+      {
+        $match: {
+          userBadFeedback: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            teamId: '$teamId',
+            appId: '$appId',
+            chatId: '$chatId'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          teamId: { $toString: '$_id.teamId' },
+          appId: { $toString: '$_id.appId' },
+          chatId: '$_id.chatId'
+        }
       }
-    }
+    ],
+    { allowDiskUse: true, maxTimeMS: 6000000 }
+  );
+
+  // Execute both queries in parallel
+  const [goodChats, badChats] = await Promise.all([
+    goodFeedbackChatsPromise,
+    badFeedbackChatsPromise
   ]);
 
-  addLog.info(`Found ${result.length.toLocaleString()} unique chats with feedback`);
+  addLog.info(`Found ${goodChats.length.toLocaleString()} chats with good feedback`);
+  addLog.info(`Found ${badChats.length.toLocaleString()} chats with bad feedback`);
+
+  // Deduplicate in application layer using Map
+  const chatMap = new Map<string, ChatIdentifier>();
+
+  for (const chat of [...goodChats, ...badChats]) {
+    const key = `${chat.teamId}_${chat.appId}_${chat.chatId}`;
+    if (!chatMap.has(key)) {
+      chatMap.set(key, chat);
+    }
+  }
+
+  const result = Array.from(chatMap.values());
+  addLog.info(`Found ${result.length.toLocaleString()} unique chats with feedback (after dedup)`);
+
   return result;
 }
 
@@ -106,7 +153,6 @@ export async function migrateFeedbackFlags() {
   addLog.info('========================================');
 
   // Step 1: Create temporary indexes
-  addLog.info('Creating temporary indexes for migration...');
   await createTemporaryIndexes();
 
   // Step 2: Get all chats with feedback

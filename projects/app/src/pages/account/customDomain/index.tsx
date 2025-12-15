@@ -75,11 +75,11 @@ const CustomDomain = () => {
 
   // 检查用户是否有 advanced 套餐
   const isAdvancedPlan = useMemo(() => {
-    const currentLevel = teamPlanStatus?.standard?.currentSubLevel;
-    if (!currentLevel) return false;
+    const plan = teamPlanStatus?.standard;
+    if (!plan) return false;
 
-    return currentLevel === StandardSubLevelEnum.advanced;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    return plan.customDomain && plan.customDomain > 0;
+  }, [teamPlanStatus?.standard]);
 
   return (
     <>
