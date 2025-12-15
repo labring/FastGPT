@@ -64,55 +64,61 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   addLog.info('Aggregating chats with feedback from chatItems...');
 
   // Separate queries for good and bad feedback to utilize partial indexes better
-  const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
-    {
-      $match: {
-        userGoodFeedback: { $exists: true }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          teamId: '$teamId',
-          appId: '$appId',
-          chatId: '$chatId'
+  const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
+    [
+      {
+        $match: {
+          userGoodFeedback: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            teamId: '$teamId',
+            appId: '$appId',
+            chatId: '$chatId'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          teamId: { $toString: '$_id.teamId' },
+          appId: { $toString: '$_id.appId' },
+          chatId: '$_id.chatId'
         }
       }
-    },
-    {
-      $project: {
-        _id: 0,
-        teamId: { $toString: '$_id.teamId' },
-        appId: { $toString: '$_id.appId' },
-        chatId: '$_id.chatId'
-      }
-    }
-  ]).allowDiskUse(true);
+    ],
+    { allowDiskUse: true, maxTimeMS: 600000 }
+  );
 
-  const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
-    {
-      $match: {
-        userBadFeedback: { $exists: true }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          teamId: '$teamId',
-          appId: '$appId',
-          chatId: '$chatId'
+  const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
+    [
+      {
+        $match: {
+          userBadFeedback: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            teamId: '$teamId',
+            appId: '$appId',
+            chatId: '$chatId'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          teamId: { $toString: '$_id.teamId' },
+          appId: { $toString: '$_id.appId' },
+          chatId: '$_id.chatId'
         }
       }
-    },
-    {
-      $project: {
-        _id: 0,
-        teamId: { $toString: '$_id.teamId' },
-        appId: { $toString: '$_id.appId' },
-        chatId: '$_id.chatId'
-      }
-    }
-  ]).allowDiskUse(true);
+    ],
+    { allowDiskUse: true, maxTimeMS: 600000 }
+  );
 
   // Execute both queries in parallel
   const [goodChats, badChats] = await Promise.all([
