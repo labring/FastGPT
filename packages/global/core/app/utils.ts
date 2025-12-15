@@ -9,6 +9,7 @@ import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
+import { VARIABLE_KEYS } from '../../../../projects/app/src/pageComponents/app/detail/SmartCustomerService/constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -169,6 +170,22 @@ export const appWorkflow2Form = ({
         pluginData: node.pluginData,
         toolConfig: node.toolConfig
       });
+    } else if (node.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
+      // 处理智能客服的 fallbackReply 字段
+      const updateList = findInputValueByKey(node.inputs, NodeInputKeyEnum.updateList);
+      if (Array.isArray(updateList)) {
+        const fallbackReplyItem = updateList.find(
+          (item) =>
+            Array.isArray(item.variable) && item.variable[1] === VARIABLE_KEYS.FALLBACK_REPLY
+        );
+        if (
+          fallbackReplyItem &&
+          Array.isArray(fallbackReplyItem.value) &&
+          fallbackReplyItem.value[1]
+        ) {
+          defaultAppForm.chatConfig.fallbackReply = fallbackReplyItem.value[1];
+        }
+      }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
         chatConfig,

@@ -22,9 +22,11 @@ import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import {
   compareSimpleAppSnapshot,
+  compareAssistantAppSnapshot,
   type onSaveSnapshotFnType,
   type SimpleAppSnapshotType
 } from './useSnapshots';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import PublishHistories from '../PublishHistoriesSlider';
 import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
@@ -56,6 +58,7 @@ const Header = ({
   const { toast } = useToast();
   const router = useRouter();
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
@@ -91,7 +94,7 @@ const Header = ({
       versionName?: string;
       autoSave?: boolean;
     }) => {
-      const { nodes, edges } = form2AppWorkflow(appForm, t);
+      const { nodes, edges } = form2AppWorkflow(appForm, t, appDetail.type);
       await onSaveApp({
         nodes,
         edges,
@@ -157,10 +160,14 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
+      // 根据应用类型选择不同的比较函数
+      const val =
+        appDetail.type === AppTypeEnum.assistant
+          ? compareAssistantAppSnapshot(savedSnapshot?.appForm, appForm)
+          : compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
       setIsSaved(val);
     },
-    [past],
+    [past, appDetail.type],
     { wait: 500 }
   );
 
@@ -243,7 +250,11 @@ const Header = ({
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => {
-                    const { nodes: storeNodes, edges: storeEdges } = form2AppWorkflow(appForm, t);
+                    const { nodes: storeNodes, edges: storeEdges } = form2AppWorkflow(
+                      appForm,
+                      t,
+                      appDetail.type
+                    );
 
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
                     const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));

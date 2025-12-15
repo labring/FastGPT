@@ -28,7 +28,8 @@ const SmartCustomerServiceEdit = () => {
 
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
   const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
-    appDetail._id
+    appDetail._id,
+    appDetail.type
   );
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());

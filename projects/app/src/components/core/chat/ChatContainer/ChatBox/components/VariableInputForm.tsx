@@ -12,6 +12,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../Provider';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const VariableInput = ({
   chatForm,
@@ -28,6 +29,10 @@ const VariableInput = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
+  const isAssistantType = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
+  );
 
   const externalVariableList = useMemo(
     () =>
@@ -39,8 +44,13 @@ const VariableInput = ({
 
   const { getValues, setValue, reset } = variablesForm;
 
+  if (isAssistantType && !chatForm.getValues('chatStarted')) {
+    chatForm.setValue('chatStarted', true);
+  }
+
   // Init variables and add default values
   useEffect(() => {
+    if (isAssistantType) return;
     const values = getValues();
 
     allVariableList.forEach((item) => {
@@ -51,9 +61,9 @@ const VariableInput = ({
     });
 
     reset(values);
-  }, [allVariableList, getValues, reset, setValue, variableList]);
+  }, [allVariableList, getValues, reset, setValue, variableList, isAssistantType]);
 
-  return (
+  return isAssistantType ? null : (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
       {externalVariableList.length > 0 && (
