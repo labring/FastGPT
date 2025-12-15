@@ -22,7 +22,7 @@ import {
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { validateRedirectUrl, safeDecodeURIComponent } from '@/web/common/utils/uri';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
 
 let isOauthLogging = false;
 
