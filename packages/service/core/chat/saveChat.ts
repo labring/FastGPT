@@ -301,7 +301,7 @@ export async function saveChat(props: Props) {
             teamId,
             tmbId,
             appId,
-            versionId,
+            appVersionId: versionId,
             chatId,
             variableList,
             welcomeText,

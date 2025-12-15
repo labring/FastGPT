@@ -49,7 +49,12 @@ const CollectionReader = ({
   const filterResults = useMemo(() => {
     const res = rawSearch
       .filter((item) => item.collectionId === collectionId)
-      .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+      .sort((a, b) => {
+        const chunkDiff = (a.chunkIndex || 0) - (b.chunkIndex || 0);
+        if (chunkDiff !== 0) return chunkDiff;
+
+        return a.id.localeCompare(b.id);
+      });
 
     if (quoteId) {
       setQuoteIndex(res.findIndex((item) => item.id === quoteId));

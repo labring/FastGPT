@@ -37,6 +37,7 @@ export function useLinkedScroll<
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const isInit = useRef(false);
 
   const scrollToItem = useCallback(
     async (id?: string) => {
@@ -69,7 +70,7 @@ export function useLinkedScroll<
 
   const { runAsync: callApi, loading: isLoading } = useRequest2(api);
 
-  let scroolSign = useRef(false);
+  let scrollSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       if (isLoading) return;
@@ -91,7 +92,7 @@ export function useLinkedScroll<
       setHasMorePrev(response.hasMorePrev);
       setHasMoreNext(response.hasMoreNext);
 
-      scroolSign.current = scrollWhenFinish;
+      scrollSign.current = scrollWhenFinish;
       setDataList(response.list);
 
       if (response.list.length > 0) {
@@ -101,12 +102,19 @@ export function useLinkedScroll<
     },
     {
       refreshDeps: [currentData],
+      onFinally() {
+        isInit.current = true;
+      },
       manual: false
     }
   );
   useEffect(() => {
-    if (scroolSign.current) {
-      scroolSign.current = false;
+    if (!isInit.current) return;
+    loadInitData({ refresh: true, scrollWhenFinish: true });
+  }, [params]);
+  useEffect(() => {
+    if (scrollSign.current) {
+      scrollSign.current = false;
       scrollToItem(currentData?.id);
     }
   }, [dataList]);

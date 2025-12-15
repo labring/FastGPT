@@ -1,7 +1,7 @@
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
-import React, { type ReactNode, useState } from 'react';
+import React, { type ReactNode, useState, useEffect } from 'react';
 import { createContext } from 'use-context-selector';
 import { getChatRecords } from '../api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -67,7 +67,8 @@ const ChatRecordContextProvider = ({
     setDataList: setChatRecords,
     ScrollData,
     isLoading,
-    itemRefs
+    itemRefs,
+    loadInitData
   } = useLinkedScroll(
     async (
       data: LinkedPaginationProps<GetChatRecordsProps>
