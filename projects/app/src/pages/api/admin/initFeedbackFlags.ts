@@ -67,7 +67,7 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
     {
       $match: {
-        userGoodFeedback: { $exists: true, $ne: null }
+        userGoodFeedback: { $exists: true }
       }
     },
     {
@@ -92,7 +92,7 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
     {
       $match: {
-        userBadFeedback: { $exists: true, $ne: null }
+        userBadFeedback: { $exists: true }
       }
     },
     {
@@ -151,7 +151,6 @@ export async function migrateFeedbackFlags() {
   addLog.info('========================================');
 
   // Step 1: Create temporary indexes
-  addLog.info('Creating temporary indexes for migration...');
   await createTemporaryIndexes();
 
   // Step 2: Get all chats with feedback
