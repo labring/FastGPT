@@ -58,17 +58,16 @@ async function createTemporaryIndexes(): Promise<void> {
 
 /**
  * Get all unique chats that have feedback
+ * Optimized: Separate queries for good/bad feedback to utilize indexes better
  */
 async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   addLog.info('Aggregating chats with feedback from chatItems...');
 
-  const result = await MongoChatItem.aggregate<ChatIdentifier>([
+  // Separate queries for good and bad feedback to utilize partial indexes better
+  const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
     {
       $match: {
-        $or: [
-          { userGoodFeedback: { $exists: true, $ne: null } },
-          { userBadFeedback: { $exists: true, $ne: null } }
-        ]
+        userGoodFeedback: { $exists: true, $ne: null }
       }
     },
     {
@@ -88,9 +87,55 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
         chatId: '$_id.chatId'
       }
     }
+  ]).allowDiskUse(true);
+
+  const badFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>([
+    {
+      $match: {
+        userBadFeedback: { $exists: true, $ne: null }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          teamId: '$teamId',
+          appId: '$appId',
+          chatId: '$chatId'
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        teamId: { $toString: '$_id.teamId' },
+        appId: { $toString: '$_id.appId' },
+        chatId: '$_id.chatId'
+      }
+    }
+  ]).allowDiskUse(true);
+
+  // Execute both queries in parallel
+  const [goodChats, badChats] = await Promise.all([
+    goodFeedbackChatsPromise,
+    badFeedbackChatsPromise
   ]);
 
-  addLog.info(`Found ${result.length.toLocaleString()} unique chats with feedback`);
+  addLog.info(`Found ${goodChats.length.toLocaleString()} chats with good feedback`);
+  addLog.info(`Found ${badChats.length.toLocaleString()} chats with bad feedback`);
+
+  // Deduplicate in application layer using Map
+  const chatMap = new Map<string, ChatIdentifier>();
+
+  for (const chat of [...goodChats, ...badChats]) {
+    const key = `${chat.teamId}_${chat.appId}_${chat.chatId}`;
+    if (!chatMap.has(key)) {
+      chatMap.set(key, chat);
+    }
+  }
+
+  const result = Array.from(chatMap.values());
+  addLog.info(`Found ${result.length.toLocaleString()} unique chats with feedback (after dedup)`);
+
   return result;
 }
 
@@ -180,3 +225,5 @@ export default NextAPI(async function handler(req, res) {
 
   return result;
 });
+
+export { CONCURRENCY, createTemporaryIndexes, getChatsWithFeedback };
