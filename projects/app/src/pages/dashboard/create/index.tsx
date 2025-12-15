@@ -276,8 +276,8 @@ const CreateAppsPage = () => {
               </MyTooltip>
               <Input
                 flex={1}
-                h={8}
-                mr={selectedAppType !== AppTypeEnum.mcpToolSet ? 5 : 0}
+                h={'34px'}
+                mr={selectedAppType !== AppTypeEnum.mcpToolSet ? 3 : 0}
                 placeholder={t('app:unnamed_app')}
                 {...register('name')}
               />
@@ -285,6 +285,7 @@ const CreateAppsPage = () => {
                 <Button
                   isLoading={isCreating}
                   onClick={handleSubmit((data) => onClickCreate(data))}
+                  h={'34px'}
                 >
                   {t('common:Create')}
                 </Button>
