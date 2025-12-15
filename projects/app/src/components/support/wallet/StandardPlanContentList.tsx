@@ -164,7 +164,7 @@ const StandardPlanContentList = ({
               })
             : t('common:community_support')}
         </Box>
-        {subPlans?.communitySupportTip && (
+        {subPlans?.communitySupportTip && !planContent.ticketResponseTime && (
           <MyPopover
             trigger="hover"
             placement="bottom"
