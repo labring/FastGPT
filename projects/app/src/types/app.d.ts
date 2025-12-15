@@ -47,6 +47,7 @@ export type AppLogsListItemType = {
   customFeedbacksCount: number;
   markCount: number;
   optimizedCount?: number;
+  correctionCount: number;
   averageResponseTime: number;
   errorCount: number;
   totalPoints: number;
