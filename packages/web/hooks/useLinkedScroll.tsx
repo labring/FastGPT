@@ -37,6 +37,7 @@ export function useLinkedScroll<
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const isInit = useRef(false);
 
   const scrollToItem = useCallback(
     async (id?: string) => {
@@ -101,9 +102,16 @@ export function useLinkedScroll<
     },
     {
       refreshDeps: [currentData],
+      onFinally() {
+        isInit.current = true;
+      },
       manual: false
     }
   );
+  useEffect(() => {
+    if (!isInit.current) return;
+    loadInitData({ refresh: true, scrollWhenFinish: true });
+  }, [params]);
   useEffect(() => {
     if (scrollSign.current) {
       scrollSign.current = false;

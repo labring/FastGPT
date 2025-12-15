@@ -100,12 +100,6 @@ const ChatRecordContextProvider = ({
     }
   );
 
-  useEffect(() => {
-    if (prevChatId && prevChatId !== params.chatId) {
-      loadInitData({ refresh: true, scrollWhenFinish: true });
-    }
-  }, [params.chatId, prevChatId, loadInitData]);
-
   const contextValue = useMemoEnhance(() => {
     return {
       isLoadingRecords: isLoading,

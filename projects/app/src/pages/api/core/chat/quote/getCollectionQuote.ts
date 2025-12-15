@@ -152,19 +152,16 @@ async function handleInitialLoad({
     };
   }
 
-  const prevHalfSize = Math.floor(pageSize / 2);
-  const nextHalfSize = pageSize - prevHalfSize - 1;
-
   const { list: prevList, hasMore: hasMorePrev } = await getPrevNodes(
     initialId,
     initialIndex,
-    prevHalfSize,
+    pageSize,
     baseMatch
   );
   const { list: nextList, hasMore: hasMoreNext } = await getNextNodes(
     initialId,
     initialIndex,
-    nextHalfSize,
+    pageSize,
     baseMatch
   );
 
