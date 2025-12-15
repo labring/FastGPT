@@ -203,7 +203,7 @@ export async function migrateFeedbackFlags() {
   const durationMinutes = (duration / 1000 / 60).toFixed(2);
 
   addLog.info('========================================');
-  addLog.info('Migration completed!');
+  addLog.info('Migration feedback completed!');
   addLog.info(`Total: ${chats.length.toLocaleString()}`);
   addLog.info(`Succeeded: ${succeeded.toLocaleString()}`);
   addLog.info(`Failed: ${failed.toLocaleString()}`);
