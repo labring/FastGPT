@@ -94,7 +94,7 @@ const ChatItemSchema = new Schema({
   close custom feedback; 
 */
 ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-// Get feedback chats
+// Anchor filter
 ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
 // timer, clear history
 ChatItemSchema.index({ teamId: 1, time: -1 });
