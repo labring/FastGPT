@@ -357,7 +357,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         addLog.debug('尝试匹配用户的历史 skills');
 
         const matchResult = await matchSkillForPlan({
-          tmbId: runningUserInfo.tmbId,
+          teamId: runningUserInfo.teamId,
+          appId: runningAppInfo.id,
+          historyMessages: historiesMessages,
           userInput: userChatInput,
           model
         });

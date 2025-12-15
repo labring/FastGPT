@@ -77,7 +77,7 @@ const EditForm = ({
       let dbId = skill.dbId;
 
       const result = await updateGeneratedSkill({
-        ...(dbId ? { id: dbId } : { appId, chatId: 'temp-chat-id', chatItemId: 'temp-item-id' }),
+        ...(dbId ? { id: dbId } : { appId }),
         name: skill.name,
         description: skill.description || '',
         steps: skill.stepsText || '',

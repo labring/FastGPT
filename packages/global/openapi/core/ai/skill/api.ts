@@ -21,8 +21,6 @@ export type GetGeneratedSkillDetailParamsType = z.infer<typeof GetGeneratedSkill
 export const UpdateGeneratedSkillParamsSchema = z.object({
   id: z.string().optional(),
   appId: z.string().optional(),
-  chatId: z.string().optional(),
-  chatItemId: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
   steps: z.string().optional(),

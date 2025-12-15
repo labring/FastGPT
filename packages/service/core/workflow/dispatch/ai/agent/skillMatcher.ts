@@ -1,7 +1,7 @@
 import { MongoHelperBotGeneratedSkill } from '../../../../chat/HelperBot/generatedSkillSchema';
 import type { HelperBotGeneratedSkillType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
 import { createLLMResponse } from '../../../../ai/llm/request';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from '../../../../ai/model';
 
 /**
@@ -70,24 +70,12 @@ export const formatSkillAsSystemPrompt = (skill: HelperBotGeneratedSkillType): s
   let prompt = '<reference_skill>\n';
   prompt += `**参考技能**: ${skill.name}\n\n`;
 
-  if (skill.goal) {
-    prompt += `**目标**: ${skill.goal}\n\n`;
-  }
-
   if (skill.description) {
     prompt += `**描述**: ${skill.description}\n\n`;
   }
 
-  if (skill.steps && skill.steps.length > 0) {
-    prompt += `**步骤流程**:\n`;
-    skill.steps.forEach((step, index) => {
-      prompt += `${index + 1}. **${step.title}**: ${step.description}\n`;
-      if (step.expectedTools && step.expectedTools.length > 0) {
-        const toolNames = step.expectedTools.map((t) => `@${t.id}`).join(', ');
-        prompt += `   工具: ${toolNames}\n`;
-      }
-    });
-    prompt += '\n';
+  if (skill.steps && skill.steps.trim()) {
+    prompt += `**步骤信息**:\n${skill.steps}\n\n`;
   }
 
   prompt += '**说明**:\n';
@@ -105,11 +93,15 @@ export const formatSkillAsSystemPrompt = (skill: HelperBotGeneratedSkillType): s
  * 参考 MatcherService.ts 的 match 方法
  */
 export const matchSkillForPlan = async ({
-  tmbId,
+  teamId,
+  appId,
+  historyMessages,
   userInput,
   model
 }: {
-  tmbId: string;
+  teamId: string;
+  appId: string;
+  historyMessages: ChatCompletionMessageParam[];
   userInput: string;
   model: string;
 }): Promise<{
@@ -119,16 +111,17 @@ export const matchSkillForPlan = async ({
   reason?: string;
 }> => {
   try {
-    // 1. 查询用户的 skills (使用 tmbId)
+    // 1. 查询用户的 skills (使用 teamId 和 appId)
     const skills = await MongoHelperBotGeneratedSkill.find({
-      tmbId,
+      teamId,
+      appId,
       status: { $in: ['active', 'draft'] }
     })
       .sort({ createTime: -1 })
       .limit(50) // 限制数量，避免 tools 过多
       .lean();
     console.log('skill list length', skills.length);
-    // console.log('tmbId', tmbId)
+    console.log('skill', skills);
     if (!skills || skills.length === 0) {
       return { matched: false, reason: 'No skills available' };
     }
@@ -136,19 +129,25 @@ export const matchSkillForPlan = async ({
     // 2. 构建 tools 数组
     const { tools, skillsMap } = buildSkillTools(skills);
 
+    console.log('tools', tools);
+
     // 3. 获取模型配置
     const modelData = getLLMModel(model);
 
     // 4. 调用 LLM Tool Calling 进行匹配
+    // 构建完整的消息历史，包含当前用户输入
+    const allMessages = [
+      ...historyMessages,
+      {
+        role: 'user' as const,
+        content: userInput
+      }
+    ];
+
     const { toolCalls } = await createLLMResponse({
       body: {
         model: modelData.model,
-        messages: [
-          {
-            role: 'user',
-            content: userInput
-          }
-        ],
+        messages: allMessages,
         tools,
         tool_choice: 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',

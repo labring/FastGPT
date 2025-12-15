@@ -3,8 +3,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { UpdateGeneratedSkillParamsType } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { authHelperBotChatCrud } from '@/service/support/permission/auth/chat';
-import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 
@@ -15,7 +13,7 @@ async function handler(
   req: ApiRequestProps<UpdateBody>,
   res: ApiResponseType<any>
 ): Promise<UpdateResponse> {
-  const { id, appId, chatId, chatItemId, name, description, steps, status } = req.body;
+  const { id, appId, name, description, steps, status } = req.body;
 
   let userId: string;
   let teamId: string;
@@ -27,18 +25,13 @@ async function handler(
     teamId = auth.teamId;
     tmbId = auth.tmbId || '';
   } else {
-    if (!appId || !chatId || !chatItemId) {
-      throw new Error('appId, chatId, and chatItemId are required for creating a new skill');
+    if (!appId) {
+      throw new Error('appId is required for creating a new skill');
     }
-    const auth = await authHelperBotChatCrud({
-      type: HelperBotTypeEnum.skillAgent,
-      chatId,
-      req,
-      authToken: true
-    });
+    const auth = await authUserPer({ req, authToken: true, per: WritePermissionVal });
     userId = auth.userId;
     teamId = auth.teamId;
-    tmbId = auth.tmbId;
+    tmbId = auth.tmbId || '';
   }
 
   const docId = id || new Types.ObjectId().toString();
@@ -58,8 +51,6 @@ async function handler(
     tmbId,
     teamId,
     appId: appId || '',
-    chatId: chatId || '',
-    chatItemId: chatItemId || '',
     createTime: new Date()
   };
 

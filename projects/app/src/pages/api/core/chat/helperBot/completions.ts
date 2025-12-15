@@ -37,12 +37,12 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     id: chatId,
     showNodeStatus: true
   });
-  console.log('=== HelperBot Completions ===');
-  console.log('chatId:', chatId);
-  console.log('chatItemId:', chatItemId);
-  console.log('query:', query);
-  console.log('files:', files);
-  console.log('metadata:', JSON.stringify(metadata, null, 2));
+  // console.log('=== HelperBot Completions ===');
+  // console.log('chatId:', chatId);
+  // console.log('chatItemId:', chatItemId);
+  // console.log('query:', query);
+  // console.log('files:', files);
+  // console.log('metadata:', JSON.stringify(metadata, null, 2));
 
   // 执行不同逻辑
   const fn = dispatchMap[metadata.type];

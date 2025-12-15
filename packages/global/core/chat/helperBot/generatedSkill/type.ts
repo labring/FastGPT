@@ -44,8 +44,6 @@ export const HelperBotGeneratedSkillSchema = z.object({
   tmbId: z.string(),
   teamId: z.string(),
   appId: z.string(),
-  chatId: z.string(),
-  chatItemId: z.string(),
   createTime: z.date(),
   updateTime: z.date(),
   name: z.string(),
