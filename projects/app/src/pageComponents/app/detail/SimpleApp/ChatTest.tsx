@@ -16,6 +16,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
 type Props = {
@@ -50,6 +51,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
     chatConfig: appForm.chatConfig,
     isReady: true
   });
+  const isAssistantType = appDetail.type === AppTypeEnum.assistant;
 
   return (
     <Flex h={'full'} gap={2}>
@@ -68,7 +70,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
           <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
             {t('app:chat_debug')}
           </Box>
-          {!isVariableVisible && <VariablePopover showExternalVariables />}
+          {!isVariableVisible && !isAssistantType && <VariablePopover showExternalVariables />}
           <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton

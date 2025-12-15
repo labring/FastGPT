@@ -2,6 +2,7 @@ import { useMemoizedFn } from 'ahooks';
 import { useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { isEqual } from 'lodash';
 
 export type SimpleAppSnapshotType = {
@@ -54,7 +55,34 @@ export const compareSimpleAppSnapshot = (
   return isEqual({ ...appForm1, chatConfig: undefined }, { ...appForm2, chatConfig: undefined });
 };
 
-export const useSimpleAppSnapshots = (appId: string) => {
+export const compareAssistantAppSnapshot = (
+  appForm1?: AppSimpleEditFormType,
+  appForm2?: AppSimpleEditFormType
+) => {
+  if (
+    appForm1?.chatConfig &&
+    appForm2?.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        questionGuide: appForm1.chatConfig?.questionGuide || undefined,
+        fallbackReply: appForm1.chatConfig?.fallbackReply || ''
+      },
+      {
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        questionGuide: appForm2.chatConfig?.questionGuide || undefined,
+        fallbackReply: appForm2.chatConfig?.fallbackReply || ''
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  return isEqual({ ...appForm1, chatConfig: undefined }, { ...appForm2, chatConfig: undefined });
+};
+
+export const useSimpleAppSnapshots = (appId: string, type?: AppTypeEnum) => {
   const forbiddenSaveSnapshot = useRef(false);
   const [past, setPast] = useState<SimpleAppSnapshotType[]>([]);
 
@@ -76,7 +104,12 @@ export const useSimpleAppSnapshots = (appId: string) => {
     }
 
     const pastState = past[0];
-    const isPastEqual = compareSimpleAppSnapshot(pastState?.appForm, appForm);
+    // 根据应用类型选择不同的比较函数
+    const isPastEqual =
+      type === AppTypeEnum.assistant
+        ? compareAssistantAppSnapshot(pastState?.appForm, appForm)
+        : compareSimpleAppSnapshot(pastState?.appForm, appForm);
+
     if (isPastEqual) return false;
 
     setPast((past) => [

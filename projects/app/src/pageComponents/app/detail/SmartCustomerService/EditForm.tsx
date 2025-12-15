@@ -26,13 +26,12 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 // 导入常量
-import { FAQAnswerModeEnum, VARIABLE_KEYS, DEFAULT_VALUES, GRID_COLUMNS, SIZES } from './constants';
+import { FAQAnswerModeEnum, DEFAULT_VALUES, GRID_COLUMNS, SIZES } from './constants';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import AIModelSelector from '@/components/Select/AIModelSelector';
@@ -152,11 +151,6 @@ const EditForm = ({
     onOpen: onOpenKbSelect,
     onClose: onCloseKbSelect
   } = useDisclosure();
-  const {
-    isOpen: isOpenDatasetParams,
-    onOpen: onOpenDatasetParams,
-    onClose: onCloseDatasetParams
-  } = useDisclosure();
 
   const formatVariables = useMemo(
     () =>
@@ -224,48 +218,19 @@ const EditForm = ({
     [appForm.aiSettings.systemPrompt, setAppForm]
   );
 
-  // 通用的变量更新函数 - 优化性能
   const updateVariableValue = useCallback(
-    (variableKey: string, newValue: any) => {
+    (newValue: any) => {
       setAppForm((state) => {
-        const variables = state.chatConfig.variables || [];
-        const existingVariableIndex = variables.findIndex((v) => v.key === variableKey);
-
-        // 如果变量不存在，直接返回原状态
-        if (existingVariableIndex === -1) {
-          return state;
-        }
-
-        const updatedVariables = [...variables];
-        updatedVariables[existingVariableIndex] = {
-          ...updatedVariables[existingVariableIndex],
-          defaultValue: newValue
-        };
-
         return {
           ...state,
           chatConfig: {
             ...state.chatConfig,
-            variables: updatedVariables
+            fallbackReply: newValue
           }
         };
       });
     },
     [setAppForm]
-  );
-
-  // 通用的变量值获取函数 - 优化性能
-  const getVariableValue = useCallback(
-    (variableKey: string, defaultValue: any = '') => {
-      const variables = appForm.chatConfig.variables;
-      if (!variables || variables.length === 0) {
-        return defaultValue;
-      }
-
-      const variable = variables.find((v) => v.key === variableKey);
-      return variable?.defaultValue ?? defaultValue;
-    },
-    [appForm.chatConfig.variables]
   );
 
   // 优化的聊天配置更新函数
@@ -386,7 +351,7 @@ const EditForm = ({
               />
             </Box>
 
-            <FormItem
+            {/* <FormItem
               label={t('app:smart_customer_service_faq_answer_mode')}
               tooltip={t('app:smart_customer_service_faq_answer_mode_tooltip')}
             >
@@ -404,7 +369,7 @@ const EditForm = ({
                 activeBg="white"
                 gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
               />
-            </FormItem>
+            </FormItem> */}
 
             <FormItem
               label={t('app:smart_customer_service_welcome_text')}
@@ -426,9 +391,9 @@ const EditForm = ({
                 />
               </FormLabel>
               <MyTextarea
-                value={getVariableValue(VARIABLE_KEYS.FALLBACK_REPLY, '')}
+                value={appForm.chatConfig.fallbackReply}
                 rows={3}
-                onChange={(e) => updateVariableValue(VARIABLE_KEYS.FALLBACK_REPLY, e.target.value)}
+                onChange={(e) => updateVariableValue(e.target.value)}
               />
             </Flex>
           </AccordionSection>

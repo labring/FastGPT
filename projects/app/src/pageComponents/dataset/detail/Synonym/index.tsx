@@ -71,6 +71,7 @@ interface FileInfoProps {
   uploadTime: Date;
   isUploadedFile?: boolean;
   uploaderName?: string;
+  uploaderAvatar?: string;
   onDownload?: () => void;
   onDelete?: (e: React.MouseEvent) => void;
   onClear?: () => void;
@@ -89,6 +90,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
   uploadTime,
   isUploadedFile = false,
   uploaderName,
+  uploaderAvatar,
   onDownload,
   onDelete,
   onClear,
@@ -135,7 +137,18 @@ const FileInfo: React.FC<FileInfoProps> = ({
                     {userInfo?.team?.memberName || '-'}
                   </Flex>
                 ) : (
-                  <Flex alignItems={'center'}>{uploaderName || '-'}</Flex>
+                  <Flex alignItems={'center'}>
+                    {uploaderAvatar && (
+                      <Avatar
+                        src={uploaderAvatar}
+                        w={'14px'}
+                        h={'14px'}
+                        borderRadius="50%"
+                        mr={1}
+                      />
+                    )}
+                    {uploaderName || '-'}
+                  </Flex>
                 )}
               </HStack>
             </Box>
@@ -426,6 +439,7 @@ order,purchase order,order number,transaction,invoice`;
             uploadTime={new Date(synonymFile.uploadTime)}
             isUploadedFile={false}
             uploaderName={synonymFile.uploaderName}
+            uploaderAvatar={synonymFile.uploaderAvatar}
             onDownload={handleFileDownload}
             onDelete={handleDeleteClick}
             showDeleteConfirm={deleteConfirmItem}

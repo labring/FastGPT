@@ -381,6 +381,48 @@ export function form2AppWorkflow(
     };
   }
   // Assistant workflow node templates
+  function createVariableUpdateNode(
+    nodeId: string,
+    position: { x: number; y: number },
+    formData: AppSimpleEditFormType
+  ): StoreNodeItemType {
+    return {
+      nodeId,
+      name: t('workflow:variable_update'),
+      avatar: 'core/workflow/template/variableUpdate',
+      flowNodeType: FlowNodeTypeEnum.variableUpdate,
+      showStatus: false,
+      position,
+      inputs: [
+        {
+          key: 'updateList',
+          valueType: WorkflowIOValueTypeEnum.any,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              variable: ['VARIABLE_NODE_ID', 'byG7WNk4'],
+              value: [
+                '',
+                formData.chatConfig.fallbackReply ||
+                  '抱歉,我没有找到答案,您可以尝试重新提问,我也会帮您反馈给相关团队。'
+              ],
+              valueType: 'string',
+              renderType: 'input'
+            },
+            {
+              variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
+              value: ['', 'llm-summary'],
+              renderType: 'input',
+              valueType: 'string'
+            }
+          ]
+        }
+      ],
+      outputs: []
+    };
+  }
+
   function createConditionCheckerNode(
     nodeId: string,
     position: { x: number; y: number }
@@ -455,52 +497,6 @@ export function form2AppWorkflow(
     };
   }
 
-  function createAnswerModeCheckerNode(
-    nodeId: string,
-    position: { x: number; y: number }
-  ): StoreNodeItemType {
-    return {
-      nodeId,
-      name: t('workflow:customer_service.checker_node_name'),
-      intro: t('workflow:execute_different_branches_based_on_conditions'),
-      avatar: 'core/workflow/template/ifelse',
-      flowNodeType: FlowNodeTypeEnum.ifElseNode,
-      showStatus: true,
-      position,
-      version: '481',
-      inputs: [
-        {
-          key: 'ifElseList',
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.any,
-          label: '',
-          value: [
-            {
-              condition: 'AND',
-              list: [
-                {
-                  variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
-                  condition: 'equalTo',
-                  value: 'llm-summary',
-                  valueType: 'input'
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          id: 'ifElseResult',
-          key: 'ifElseResult',
-          label: t('workflow:judgment_result'),
-          valueType: WorkflowIOValueTypeEnum.string,
-          type: FlowNodeOutputTypeEnum.static
-        }
-      ]
-    };
-  }
-
   function createAssistantAiChatNode(
     formData: AppSimpleEditFormType,
     nodeId: string,
@@ -513,7 +509,6 @@ export function form2AppWorkflow(
       ...baseAiChatNode,
       nodeId,
       position,
-      version: '4.9.7',
       // 覆盖特定的输入配置
       inputs: baseAiChatNode.inputs.map((input) => {
         // 更新历史记录的最大值为50（assistant模式）
@@ -530,6 +525,21 @@ export function form2AppWorkflow(
             ...input,
             label: t('workflow:user_question'),
             toolDescription: t('workflow:user_question_tool_desc')
+          };
+        }
+        // 更新文件输入的键名和配置
+        if (input.key === NodeInputKeyEnum.aiChatDatasetQuote) {
+          return {
+            ...input,
+            key: 'quoteQA',
+            value: [datasetNodeId, 'quoteQA']
+          };
+        }
+        // 更新文件链接输入
+        if (input.key === 'fileUrlList') {
+          return {
+            ...input,
+            value: [[workflowStartNodeId, 'userFiles']]
           };
         }
         return input;
@@ -552,21 +562,54 @@ export function form2AppWorkflow(
           valueType: WorkflowIOValueTypeEnum.string,
           label: t('workflow:error_text')
         }
-      ]
+      ],
+      catchError: false
     };
   }
 
-  function createAssistantEdges(nodeIds: {
-    conditionChecker: string;
-    fallbackReply: string;
-    answerModeChecker: string;
-    aiChat: string;
-  }): StoreEdgeItemType[] {
-    return [
+  function assistantTemplate(formData: AppSimpleEditFormType): WorkflowType {
+    const nodeIds = {
+      variableUpdate: 'variableUpdateNodeId',
+      conditionChecker: 'qaFDoVSH4WcXMZPO',
+      fallbackReply: 'vprtN0xvK1dV0c6M',
+      aiChat: aiChatNodeId
+    };
+
+    const nodes = [
+      createVariableUpdateNode(
+        nodeIds.variableUpdate,
+        {
+          x: 494.7192302293264,
+          y: -1192.140341718712
+        },
+        formData
+      ),
+      datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput']),
+      createConditionCheckerNode(nodeIds.conditionChecker, {
+        x: 1846.7192302293263,
+        y: -1165.140341718712
+      }),
+      createFallbackReplyNode(nodeIds.fallbackReply, {
+        x: 2683.7192302293265,
+        y: -1426.390341718712
+      }),
+      createAssistantAiChatNode(formData, nodeIds.aiChat, {
+        x: 2754.7192302293265,
+        y: -1123.390341718712
+      })
+    ];
+
+    const edges = [
       {
         source: workflowStartNodeId,
-        target: datasetNodeId,
+        target: nodeIds.variableUpdate,
         sourceHandle: `${workflowStartNodeId}-source-right`,
+        targetHandle: `${nodeIds.variableUpdate}-target-left`
+      },
+      {
+        source: nodeIds.variableUpdate,
+        target: datasetNodeId,
+        sourceHandle: `${nodeIds.variableUpdate}-source-right`,
         targetHandle: `${datasetNodeId}-target-left`
       },
       {
@@ -583,48 +626,11 @@ export function form2AppWorkflow(
       },
       {
         source: nodeIds.conditionChecker,
-        target: nodeIds.answerModeChecker,
-        sourceHandle: `${nodeIds.conditionChecker}-source-ELSE`,
-        targetHandle: `${nodeIds.answerModeChecker}-target-left`
-      },
-      {
-        source: nodeIds.answerModeChecker,
         target: nodeIds.aiChat,
-        sourceHandle: `${nodeIds.answerModeChecker}-source-IF`,
+        sourceHandle: `${nodeIds.conditionChecker}-source-ELSE`,
         targetHandle: `${nodeIds.aiChat}-target-left`
       }
     ];
-  }
-
-  function assistantTemplate(formData: AppSimpleEditFormType): WorkflowType {
-    const nodeIds = {
-      conditionChecker: 'qaFDoVSH4WcXMZPO',
-      fallbackReply: 'vprtN0xvK1dV0c6M',
-      answerModeChecker: 'zPMaGZJTcmh6qjx2',
-      aiChat: aiChatNodeId
-    };
-
-    const nodes = [
-      datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput']),
-      createConditionCheckerNode(nodeIds.conditionChecker, {
-        x: 2277.985028019776,
-        y: -1299.563387920271
-      }),
-      createFallbackReplyNode(nodeIds.fallbackReply, {
-        x: 3281.4085684466586,
-        y: -1344.9921952365255
-      }),
-      createAnswerModeCheckerNode(nodeIds.answerModeChecker, {
-        x: 3067.066917987494,
-        y: -837.539310501848
-      }),
-      createAssistantAiChatNode(formData, nodeIds.aiChat, {
-        x: 4430.42738186963,
-        y: -837.539310501848
-      })
-    ];
-
-    const edges = createAssistantEdges(nodeIds);
 
     return {
       nodes,
