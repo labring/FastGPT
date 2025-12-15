@@ -221,6 +221,14 @@ async function handler(
             from: AppVersionCollectionName,
             localField: 'appVersionId',
             foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  versionName: 1,
+                  _id: 0 // 排除 _id 字段，只返回 versionName
+                }
+              }
+            ],
             as: 'versionData'
           }
         },

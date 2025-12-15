@@ -277,6 +277,22 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         }
       },
       {
+        $lookup: {
+          from: AppVersionCollectionName,
+          localField: 'appVersionId',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $project: {
+                versionName: 1,
+                _id: 0
+              }
+            }
+          ],
+          as: 'versionData'
+        }
+      },
+      {
         $addFields: {
           messageCount: { $ifNull: [{ $arrayElemAt: ['$chatData.messageCount', 0] }, 0] },
           userGoodFeedbackCount: {
@@ -363,36 +379,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
                 value: '$$item.value'
               }
             }
-          }
-        }
-      },
-      {
-        $lookup: {
-          from: AppVersionCollectionName,
-          let: { appVersionId: '$appVersionId' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $ne: ['$$appVersionId', null] },
-                    { $ne: ['$$appVersionId', undefined] },
-                    { $eq: ['$_id', '$$appVersionId'] }
-                  ]
-                }
-              }
-            },
-            {
-              $project: {
-                versionName: 1
-              }
-            }
-          ],
-          as: 'versionData'
-        }
-      },
-      {
-        $addFields: {
+          },
           versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
         }
       },
