@@ -14,29 +14,39 @@ import {
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 
-export type getPaginationRecordsQuery = {};
+export type getChatRecordsQuery = {};
 
-export type getPaginationRecordsBody = PaginationProps & GetChatRecordsProps;
+export type getChatRecordsBody = LinkedPaginationProps<GetChatRecordsProps>;
 
-export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
+export type getChatRecordsResponse = LinkedListResponse<ChatItemType> & {
+  total: number;
+};
 
 async function handler(
-  req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
+  req: ApiRequestProps<getChatRecordsBody, getChatRecordsQuery>,
   _res: ApiResponseType<any>
-): Promise<getPaginationRecordsResponse> {
-  const { appId, chatId, loadCustomFeedbacks, type = GetChatTypeEnum.normal } = req.body;
-
-  const { offset, pageSize } = parsePaginationRequest(req);
+): Promise<getChatRecordsResponse> {
+  const {
+    appId,
+    chatId,
+    loadCustomFeedbacks,
+    type = GetChatTypeEnum.normal,
+    pageSize,
+    initialId,
+    nextId,
+    prevId
+  } = req.body;
 
   if (!appId || !chatId) {
     return {
       list: [],
-      total: 0
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false
     };
   }
 
@@ -58,26 +68,28 @@ async function handler(
 
   const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
+    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
     [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
   };
 
-  const { total, histories } = await getChatItems({
+  const result = await getChatItems({
     appId,
     chatId,
     field: fieldMap[type],
-    offset,
-    limit: pageSize
+    limit: pageSize,
+    initialId,
+    prevId,
+    nextId
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
+  await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.workflowTool) {
-    histories.forEach((item) => {
+    result.histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
@@ -91,16 +103,25 @@ async function handler(
     });
   }
   if (!responseDetail) {
-    histories.forEach((item) => {
+    result.histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
       }
     });
   }
 
+  const list = isPlugin
+    ? result.histories
+    : transformPreviewHistories(result.histories, responseDetail);
+
   return {
-    list: isPlugin ? histories : transformPreviewHistories(histories, responseDetail),
-    total
+    list: list.map((item) => ({
+      ...item,
+      id: item.dataId!
+    })),
+    total: result.total,
+    hasMorePrev: result.hasMorePrev,
+    hasMoreNext: result.hasMoreNext
   };
 }
 

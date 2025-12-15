@@ -21,7 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import FeedbackTypeFilter from './FeedbackTypeFilter';
+import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -32,11 +32,23 @@ type Props = {
   onClose: () => void;
 };
 
-const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
+const DetailLogsModal = ({
+  appId,
+  chatId,
+  onClose,
+
+  feedbackRecordId,
+  handleRecordChange
+}: Props & {
+  feedbackRecordId: string | undefined;
+  handleRecordChange: (recordId: string | undefined) => void;
+}) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const [refreshTrigger, setRefreshTrigger] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -207,21 +219,23 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
             )}
           </Flex>
 
-          {/* Feedback filter bar */}
-          {/* {!isPlugin && (
-            <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="gray.200">
-              <FeedbackTypeFilter
-                feedbackType={feedbackType}
-                setFeedbackType={setFeedbackType}
-                unreadOnly={unreadOnly}
-                setUnreadOnly={setUnreadOnly}
-                menuButtonProps={{
-                  color: 'myGray.700',
-                  _active: {}
-                }}
-              />
-            </Flex>
-          )} */}
+          {/* Feedback filter bar - commented out, moved to Render component */}
+          <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="gray.200">
+            <DetailLogsModalFeedbackTypeFilter
+              feedbackType={feedbackType}
+              setFeedbackType={setFeedbackType}
+              unreadOnly={unreadOnly}
+              setUnreadOnly={setUnreadOnly}
+              appId={appId}
+              chatId={chatId}
+              currentRecordId={feedbackRecordId}
+              onRecordChange={handleRecordChange}
+              menuButtonProps={{
+                color: 'myGray.700',
+                _active: {}
+              }}
+            />
+          </Flex>
         </Flex>
       </MyBox>
 
@@ -232,24 +246,20 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
 const Render = (props: Props) => {
   const { appId, chatId } = props;
-  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
-  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+  const [feedbackRecordId, setFeedbackRecordId] = useState<string | undefined>(undefined);
 
   const params = useMemo(() => {
-    // Convert 'has_feedback' to 'all' for API, since backend doesn't support 'has_feedback'
-    // The 'has_feedback' filtering will be handled by showing both good and bad
-    const apiFilterType: 'all' | 'good' | 'bad' =
-      feedbackType === 'has_feedback' ? 'all' : feedbackType;
-
     return {
       chatId,
       appId,
       loadCustomFeedbacks: true,
-      type: GetChatTypeEnum.normal,
-      feedbackType: apiFilterType,
-      unreadOnly: feedbackType === 'all' ? undefined : unreadOnly
+      type: GetChatTypeEnum.normal
     };
-  }, [appId, chatId, feedbackType, unreadOnly]);
+  }, [appId, chatId]);
+
+  const handleRecordChange = useCallback((recordId: string | undefined) => {
+    setFeedbackRecordId(recordId);
+  }, []);
 
   return (
     <ChatItemContextProvider
@@ -259,8 +269,12 @@ const Render = (props: Props) => {
       // isShowFullText={true}
       showNodeStatus
     >
-      <ChatRecordContextProvider params={params}>
-        <DetailLogsModal {...props} />
+      <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
+        <DetailLogsModal
+          {...props}
+          feedbackRecordId={feedbackRecordId}
+          handleRecordChange={handleRecordChange}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

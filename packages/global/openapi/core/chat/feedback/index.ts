@@ -6,7 +6,11 @@ import {
   AdminUpdateFeedbackBodySchema,
   AdminUpdateFeedbackResponseSchema,
   CloseCustomFeedbackBodySchema,
-  CloseCustomFeedbackResponseSchema
+  CloseCustomFeedbackResponseSchema,
+  UpdateUserFeedbackBodySchema,
+  UpdateUserFeedbackResponseSchema,
+  GetFeedbackRecordIdsBodySchema,
+  GetFeedbackRecordIdsResponseSchema
 } from './api';
 
 export const ChatFeedbackPath: OpenAPIPath = {
@@ -76,6 +80,54 @@ export const ChatFeedbackPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: CloseCustomFeedbackResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/feedback/updateUserFeedback': {
+    post: {
+      summary: '更新用户反馈',
+      description: '用户对消息添加或更新好评/差评反馈',
+      tags: [TagsMap.chatFeedback],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateUserFeedbackBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新用户反馈',
+          content: {
+            'application/json': {
+              schema: UpdateUserFeedbackResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/feedback/getFeedbackRecordIds': {
+    post: {
+      summary: '获取反馈记录ID列表',
+      description: '根据反馈类型和已读状态，获取符合条件的消息ID列表',
+      tags: [TagsMap.chatFeedback],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetFeedbackRecordIdsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取反馈记录ID列表',
+          content: {
+            'application/json': {
+              schema: GetFeedbackRecordIdsResponseSchema
             }
           }
         }

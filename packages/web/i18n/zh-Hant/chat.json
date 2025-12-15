@@ -2,6 +2,8 @@
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "Delete_all": "清除所有詞彙",
   "LLM_model_response_empty": "模型流程回應為空，請檢查模型流程輸出是否正常",
+  "Next": "下一個",
+  "Previous": "上一個",
   "ai_reasoning": "思考過程",
   "back_to_text": "返回輸入",
   "balance_not_enough_pause": "由於 AI 積分不足，暫停運行工作流",

@@ -2,7 +2,6 @@ import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
-  CloseCustomFeedbackParams,
   InitChatProps,
   InitChatResponse,
   InitOutLinkChatProps,
@@ -11,20 +10,18 @@ import type {
 } from '@/global/core/chat/api.d';
 
 import type {
-  AdminUpdateFeedbackParams,
   ClearHistoriesProps,
   DelHistoryProps,
   DeleteChatItemProps,
   UpdateHistoryProps
 } from '@/global/core/chat/api.d';
-import type { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import type { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
 import type { AppListItemType } from '@fastgpt/global/core/app/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type {
-  getPaginationRecordsBody,
-  getPaginationRecordsResponse
-} from '@/pages/api/core/chat/getPaginationRecords';
+  getChatRecordsBody,
+  getChatRecordsResponse
+} from '@/pages/api/core/chat/getRecords_v2';
 import type { GetQuoteProps, GetQuotesRes } from '@/pages/api/core/chat/quote/getQuote';
 import type {
   GetCollectionQuoteProps,
@@ -36,7 +33,6 @@ import type {
   UpdateFavouriteAppParamsType
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
-import type { UpdateFeedbackReadStatusBodyType } from '@fastgpt/global/openapi/core/chat/feedback/api';
 
 /**
  * 获取初始化聊天内容
@@ -59,8 +55,8 @@ export const getChatHistories = (data: PaginationProps<GetHistoriesProps>) =>
 export const getChatResData = (data: getResDataQuery) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 
-export const getChatRecords = (data: getPaginationRecordsBody) =>
-  POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data);
+export const getChatRecords = (data: getChatRecordsBody) =>
+  POST<getChatRecordsResponse>('/core/chat/getRecords_v2', data);
 
 /**
  * delete one history
@@ -82,19 +78,6 @@ export const delChatRecordById = (data: DeleteChatItemProps) =>
  * 修改历史记录: 标题/置顶
  */
 export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/updateHistory', data);
-
-/* -------------- feedback ------------ */
-export const updateChatUserFeedback = (data: UpdateChatFeedbackProps) =>
-  POST('/core/chat/feedback/updateUserFeedback', data);
-
-export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
-  POST('/core/chat/feedback/adminUpdate', data);
-
-export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
-  POST('/core/chat/feedback/closeCustom', data).catch();
-
-export const updateFeedbackReadStatus = (data: UpdateFeedbackReadStatusBodyType) =>
-  POST('/core/chat/feedback/updateFeedbackReadStatus', data);
 
 /* team chat */
 /**

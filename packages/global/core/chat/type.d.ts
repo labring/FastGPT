@@ -160,6 +160,7 @@ export type ChatItemType = ChatItemMergeType & {
 // Frontend type
 export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
+  id: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;

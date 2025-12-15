@@ -8,99 +8,190 @@ import { MongoChatItemResponse } from './chatItemResponseSchema';
 import type { ClientSession } from '../../common/mongo';
 import { Types } from '../../common/mongo';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export async function getChatItems({
   appId,
   chatId,
-  offset,
-  limit,
   field,
-  feedbackType,
-  unreadOnly
+  limit,
+
+  offset,
+  initialId,
+  prevId,
+  nextId
 }: {
   appId: string;
   chatId?: string;
-  offset: number;
-  limit: number;
   field: string;
-  feedbackType?: 'all' | 'good' | 'bad';
-  unreadOnly?: boolean;
-}): Promise<{ histories: ChatItemType[]; total: number }> {
+  limit: number;
+
+  offset?: number;
+  initialId?: string;
+  prevId?: string;
+  nextId?: string;
+}): Promise<{
+  histories: ChatItemType[];
+  total: number;
+  hasMorePrev: boolean;
+  hasMoreNext: boolean;
+}> {
   if (!chatId) {
-    return { histories: [], total: 0 };
+    return { histories: [], total: 0, hasMorePrev: false, hasMoreNext: false };
   }
 
   // Extend dataId
   field = `dataId ${field}`;
 
-  // Build feedback filter condition
-  const buildFeedbackCondition = () => {
-    if (!feedbackType || feedbackType === 'all') {
-      return {};
+  const baseCondition = { appId, chatId };
+
+  const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
+    // Mode 1: offset pagination (original logic)
+    if (offset !== undefined) {
+      const [foundHistories, count] = await Promise.all([
+        MongoChatItem.find(baseCondition, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
+        MongoChatItem.countDocuments(baseCondition)
+      ]);
+      return {
+        histories: foundHistories.reverse(),
+        total: count,
+        hasMorePrev: count > limit,
+        hasMoreNext: offset > 0
+      };
     }
+    // Mode 2: prevId - get records before the target
+    else if (prevId) {
+      const prevItem = await MongoChatItem.findOne(
+        {
+          ...baseCondition,
+          dataId: prevId
+        },
+        { _id: 1 }
+      ).lean();
+      if (!prevItem) return Promise.reject(new UserError('Prev item not found'));
 
-    const goodCondition = unreadOnly
-      ? { userGoodFeedback: { $exists: true, $ne: null }, isFeedbackRead: { $ne: true } }
-      : { userGoodFeedback: { $exists: true, $ne: null } };
+      const [items, count] = await Promise.all([
+        MongoChatItem.find({ ...baseCondition, _id: { $lt: prevItem._id } }, field)
+          .sort({ _id: -1 })
+          .limit(limit + 1)
+          .lean(),
+        MongoChatItem.countDocuments({ ...baseCondition })
+      ]);
 
-    const badCondition = unreadOnly
-      ? { userBadFeedback: { $exists: true, $ne: null }, isFeedbackRead: { $ne: true } }
-      : { userBadFeedback: { $exists: true, $ne: null } };
-
-    if (feedbackType === 'good') {
-      return { obj: ChatRoleEnum.AI, ...goodCondition };
-    } else if (feedbackType === 'bad') {
-      return { obj: ChatRoleEnum.AI, ...badCondition };
+      return {
+        histories: items.slice(0, limit).reverse(),
+        total: count,
+        hasMorePrev: items.length > limit,
+        hasMoreNext: true
+      };
     }
+    // Mode 3: nextId - get records after the target
+    else if (nextId) {
+      const nextItem = await MongoChatItem.findOne(
+        {
+          ...baseCondition,
+          dataId: nextId
+        },
+        { _id: 1 }
+      ).lean();
+      if (!nextItem) return Promise.reject(new UserError('Next item not found'));
 
-    return {};
-  };
+      const [items, total] = await Promise.all([
+        MongoChatItem.find({ ...baseCondition, _id: { $gt: nextItem._id } }, field)
+          .sort({ _id: 1 })
+          .limit(limit + 1)
+          .lean(),
+        MongoChatItem.countDocuments({ ...baseCondition })
+      ]);
 
-  const feedbackCondition = buildFeedbackCondition();
+      return {
+        histories: items.slice(0, limit),
+        total,
+        hasMorePrev: true,
+        hasMoreNext: items.length > limit
+      };
+    }
+    // Mode 2: initialId - get records around the target
+    else {
+      if (!initialId) {
+        const [foundHistories, count] = await Promise.all([
+          MongoChatItem.find(baseCondition, field).sort({ _id: -1 }).skip(0).limit(limit).lean(),
+          MongoChatItem.countDocuments(baseCondition)
+        ]);
+        return {
+          histories: foundHistories.reverse(),
+          total: count,
+          hasMorePrev: count > limit,
+          hasMoreNext: false
+        };
+      }
 
-  // Normal pagination
-  const [histories, total] = await Promise.all([
-    MongoChatItem.find({ appId, chatId, ...feedbackCondition }, field)
-      .sort({ _id: -1 })
-      .skip(offset)
-      .limit(limit)
-      .lean(),
-    MongoChatItem.countDocuments({ appId, chatId, ...feedbackCondition })
-  ]);
+      const halfLimit = Math.floor(limit / 2);
+      const ceilLimit = Math.ceil(limit / 2);
 
-  // Reverse to chronological order
-  const chronologicalHistories = histories.reverse();
+      const targetItem = await MongoChatItem.findOne(
+        { ...baseCondition, dataId: initialId },
+        field
+      ).lean();
+      if (!targetItem) return Promise.reject(new UserError('Target item not found'));
+
+      const [prevItems, nextItems, count] = await Promise.all([
+        MongoChatItem.find({ ...baseCondition, _id: { $lt: targetItem._id } }, field)
+          .sort({ _id: -1 })
+          .limit(halfLimit + 1)
+          .lean(),
+        MongoChatItem.find({ ...baseCondition, _id: { $gt: targetItem._id } }, field)
+          .sort({ _id: 1 })
+          .limit(ceilLimit + 1)
+          .lean(),
+        MongoChatItem.countDocuments(baseCondition)
+      ]);
+
+      return {
+        histories: [
+          ...prevItems.slice(0, halfLimit).reverse(),
+          targetItem,
+          ...nextItems.slice(0, ceilLimit)
+        ].filter(Boolean),
+        total: count,
+        hasMorePrev: prevItems.length > halfLimit,
+        hasMoreNext: nextItems.length > ceilLimit
+      };
+    }
+  })();
 
   // Add node responses field
-  if (field.includes(DispatchNodeResponseKeyEnum.nodeResponse)) {
-    const chatItemDataIds = chronologicalHistories
+  if (field.includes(DispatchNodeResponseKeyEnum.nodeResponse) && histories.length > 0) {
+    const chatItemDataIds = histories
       .filter((item) => item.obj === ChatRoleEnum.AI && !item.responseData?.length)
       .map((item) => item.dataId);
 
-    const chatItemResponsesMap = await MongoChatItemResponse.find(
-      { appId, chatId, chatItemDataId: { $in: chatItemDataIds } },
-      { chatItemDataId: 1, data: 1 }
-    )
-      .lean()
-      .then((res) => {
-        const map = new Map<string, ChatHistoryItemResType[]>();
-        res.forEach((item) => {
-          const val = map.get(item.chatItemDataId) || [];
-          val.push(item.data);
-          map.set(item.chatItemDataId, val);
+    if (chatItemDataIds.length > 0) {
+      const chatItemResponsesMap = await MongoChatItemResponse.find(
+        { appId, chatId, chatItemDataId: { $in: chatItemDataIds } },
+        { chatItemDataId: 1, data: 1 }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, ChatHistoryItemResType[]>();
+          res.forEach((item) => {
+            const val = map.get(item.chatItemDataId) || [];
+            val.push(item.data);
+            map.set(item.chatItemDataId, val);
+          });
+          return map;
         });
-        return map;
-      });
 
-    chronologicalHistories.forEach((item) => {
-      const val = chatItemResponsesMap.get(String(item.dataId));
-      if (item.obj === ChatRoleEnum.AI && val) {
-        item.responseData = val;
-      }
-    });
+      histories.forEach((item) => {
+        const val = chatItemResponsesMap.get(String(item.dataId));
+        if (item.obj === ChatRoleEnum.AI && val) {
+          item.responseData = val;
+        }
+      });
+    }
   }
 
-  return { histories: chronologicalHistories, total };
+  return { histories, total, hasMorePrev, hasMoreNext };
 }
 
 export const addCustomFeedbacks = async ({

@@ -11,6 +11,8 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -69,6 +71,16 @@ const ChatController = ({
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
   const isLogMode = chatType === 'log';
+
+  const {
+    runAsync: requestOnToggleFeedbackReadStatus,
+    loading: isLoadingOnToggleFeedbackReadStatus
+  } = useRequest2(async () => onToggleFeedbackReadStatus?.(), {
+    manual: true,
+    onSuccess: () => {
+      eventBus.emit(EventNameEnum.refreshFeedback);
+    }
+  });
 
   return (
     <>
@@ -188,6 +200,7 @@ const ChatController = ({
           )}
           {chat.obj === ChatRoleEnum.AI && (
             <>
+              {/* 日志模式下，始终展示赞/踩 */}
               {isLogMode ? (
                 <>
                   {!!chat.userGoodFeedback && (
@@ -283,22 +296,26 @@ const ChatController = ({
           (chat.userGoodFeedback || chat.userBadFeedback) && (
             <>
               {chat.isFeedbackRead ? (
-                <Box
+                <Button
+                  variant={'unstyled'}
+                  alignItems={'center'}
                   fontSize={'xs'}
                   color={'myGray.500'}
                   cursor={'pointer'}
                   _hover={{ color: 'primary.600' }}
-                  onClick={onToggleFeedbackReadStatus}
+                  isLoading={isLoadingOnToggleFeedbackReadStatus}
+                  onClick={requestOnToggleFeedbackReadStatus}
                 >
                   {t('chat:log.feedback.read')}
-                </Box>
+                </Button>
               ) : (
                 <Button
                   size={'xs'}
                   variant={'whitePrimaryOutline'}
                   fontSize={'xs'}
                   h={'22px'}
-                  onClick={onToggleFeedbackReadStatus}
+                  isLoading={isLoadingOnToggleFeedbackReadStatus}
+                  onClick={requestOnToggleFeedbackReadStatus}
                 >
                   {t('chat:log.feedback.mark_as_read')}
                 </Button>

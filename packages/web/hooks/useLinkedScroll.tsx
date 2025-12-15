@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { type LinkedListResponse, type LinkedPaginationProps } from '../common/fetch/type';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useRequest2 } from './useRequest';
-import { delay } from '../../global/common/system/utils';
 
-const threshold = 100;
+const threshold = 200;
 
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
@@ -17,11 +16,13 @@ export function useLinkedScroll<
   {
     pageSize = 10,
     params = {},
-    currentData
+    currentData,
+    defaultScroll = 'top'
   }: {
     pageSize?: number;
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
+    defaultScroll?: 'top' | 'bottom';
   }
 ) {
   const { t } = useTranslation();
@@ -37,46 +38,52 @@ export function useLinkedScroll<
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
 
-  const scrollToItem = async (id: string, retry = 3) => {
-    const itemIndex = dataList.findIndex((item) => item.id === id);
-    if (itemIndex === -1) return;
-
-    const element = itemRefs.current.get(id);
-
-    if (!element || !containerRef.current) {
-      if (retry > 0) {
-        await delay(500);
-        return scrollToItem(id, retry - 1);
+  const scrollToItem = useCallback(
+    async (id?: string) => {
+      if (!id) {
+        id = defaultScroll === 'top' ? dataList[0]?.id : dataList[dataList.length - 1]?.id;
       }
-      return;
-    }
 
-    const elementRect = element.getBoundingClientRect();
-    const containerRect = containerRef.current.getBoundingClientRect();
+      const itemIndex = dataList.findIndex((item) => item.id === id);
+      if (itemIndex === -1) {
+        return;
+      }
 
-    const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
+      const element = itemRefs.current.get(id);
+      if (!element || !containerRef.current) {
+        requestAnimationFrame(() => scrollToItem(id));
+        return;
+      }
 
-    containerRef.current.scrollTo({
-      top: scrollTop
-    });
-  };
+      const elementRect = element.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+
+      const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
+
+      containerRef.current.scrollTo({
+        top: scrollTop
+      });
+    },
+    [dataList, defaultScroll]
+  );
 
   const { runAsync: callApi, loading: isLoading } = useRequest2(api);
 
   let scroolSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
-      if (!currentData || isLoading) return;
+      if (isLoading) return;
 
-      const item = dataList.find((item) => item.id === currentData.id);
+      // 已经被加载的数据，直接滚动到该位置
+      const item = dataList.find((item) => item.id === currentData?.id);
       if (item && !refresh) {
         scrollToItem(item.id);
         return;
       }
 
       const response = await callApi({
-        initialId: currentData.id,
-        anchor: currentData.anchor,
+        initialId: currentData?.id,
+        anchor: currentData?.anchor,
         pageSize,
         ...params
       } as TParams);
@@ -98,9 +105,9 @@ export function useLinkedScroll<
     }
   );
   useEffect(() => {
-    if (scroolSign.current && currentData) {
+    if (scroolSign.current) {
       scroolSign.current = false;
-      scrollToItem(currentData.id);
+      scrollToItem(currentData?.id);
     }
   }, [dataList]);
 
@@ -186,23 +193,37 @@ export function useLinkedScroll<
       children: ReactNode;
       ScrollContainerRef?: React.RefObject<HTMLDivElement>;
     } & BoxProps) => {
-      const ref = ScrollContainerRef || containerRef;
-      const scroll = useScroll(ref);
+      // If external ref is provided, use it; otherwise use internal ref
+      const actualContainerRef = ScrollContainerRef || containerRef;
+      const scroll = useScroll(actualContainerRef);
+
+      // Merge refs: set both internal and external refs when element mounts
+      const setRefs = useCallback(
+        (el: HTMLDivElement | null) => {
+          // @ts-ignore - RefObject.current is readonly, but we need to set it
+          containerRef.current = el;
+          if (ScrollContainerRef) {
+            // @ts-ignore - RefObject.current is readonly, but we need to set it
+            ScrollContainerRef.current = el;
+          }
+        },
+        [ScrollContainerRef]
+      );
 
       useDebounceEffect(
         () => {
-          if (!ref?.current || isLoading) return;
+          if (!actualContainerRef?.current || isLoading) return;
 
-          const { scrollTop, scrollHeight, clientHeight } = ref.current;
+          const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
 
           // 滚动到底部附近，加载更多下方数据
           if (scrollTop + clientHeight >= scrollHeight - threshold) {
-            loadNextData(ref);
+            loadNextData(actualContainerRef);
           }
 
           // 滚动到顶部附近，加载更多上方数据
           if (scrollTop <= threshold) {
-            loadPrevData(ref);
+            loadPrevData(actualContainerRef);
           }
         },
         [scroll],
@@ -210,7 +231,7 @@ export function useLinkedScroll<
       );
 
       return (
-        <MyBox ref={ref} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
+        <MyBox ref={setRefs} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
           {hasMorePrev && prevLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:is_requesting')}

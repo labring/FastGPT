@@ -1,5 +1,5 @@
-import React from 'react';
-import type { ButtonProps } from '@chakra-ui/react';
+import React, { useEffect } from 'react';
+import type { ButtonProps, PlacementWithLogical } from '@chakra-ui/react';
 import {
   Checkbox,
   Menu,
@@ -14,20 +14,26 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getFeedbackRecordIds } from '@/web/core/chat/feedback/api';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
-const FeedbackTypeFilter = ({
-  feedbackType,
-  setFeedbackType,
-  unreadOnly,
-  setUnreadOnly,
-  menuButtonProps
-}: {
+type FilterProps = {
   feedbackType: 'all' | 'has_feedback' | 'good' | 'bad';
   setFeedbackType: (feedbackType: 'all' | 'has_feedback' | 'good' | 'bad') => void;
   unreadOnly: boolean;
   setUnreadOnly: (unreadOnly: boolean) => void;
   menuButtonProps?: ButtonProps;
-}) => {
+  placement?: PlacementWithLogical;
+};
+const FeedbackTypeFilter = ({
+  feedbackType,
+  setFeedbackType,
+  unreadOnly,
+  setUnreadOnly,
+  menuButtonProps,
+  placement
+}: FilterProps) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -58,7 +64,7 @@ const FeedbackTypeFilter = ({
       closeOnSelect={false}
       strategy={'fixed'}
       autoSelect={false}
-      placement="right"
+      placement={placement}
     >
       <MenuButton
         as={Button}
@@ -165,3 +171,130 @@ const FeedbackTypeFilter = ({
 };
 
 export default FeedbackTypeFilter;
+
+// Enhanced FeedbackTypeFilter with navigation for DetailLogsModal
+export const DetailLogsModalFeedbackTypeFilter = ({
+  feedbackType,
+  setFeedbackType,
+  unreadOnly,
+  setUnreadOnly,
+  menuButtonProps,
+  appId,
+  chatId,
+  currentRecordId,
+  onRecordChange
+}: FilterProps & {
+  appId?: string;
+  chatId?: string;
+  currentRecordId?: string;
+  onRecordChange?: (recordId: string | undefined) => void;
+}) => {
+  const { t } = useTranslation();
+
+  // Get feedback record IDs when in feedback mode
+  const { data: feedbackRecords, runAsync: loadFeedbackRecords } = useRequest2(
+    async () => {
+      if (!appId || !chatId || feedbackType === 'all') return null;
+      return await getFeedbackRecordIds({
+        appId,
+        chatId,
+        feedbackType,
+        unreadOnly
+      });
+    },
+    {
+      manual: false,
+      refreshDeps: [appId, chatId, feedbackType, unreadOnly]
+    }
+  );
+
+  // Calculate current position
+  const currentIndex = feedbackRecords?.dataIds.findIndex((id) => id === currentRecordId) ?? -1;
+  const currentPosition = currentIndex >= 0 ? currentIndex + 1 : 0;
+  const totalCount = feedbackRecords?.total ?? 0;
+
+  // Handle feedback type change
+  const handleFeedbackTypeChange = (type: 'all' | 'has_feedback' | 'good' | 'bad') => {
+    setFeedbackType(type);
+
+    if (type === 'all') {
+      // Switch to all records - no feedbackRecordId
+      onRecordChange?.(undefined);
+    }
+    // For feedback types, wait for new records to load, then select the last one
+    // This is handled in useEffect below
+  };
+
+  // Auto-select last feedback record when switching to feedback mode
+  useEffect(() => {
+    if (
+      feedbackType !== 'all' &&
+      feedbackRecords &&
+      feedbackRecords.dataIds.length > 0 &&
+      (!currentRecordId || !feedbackRecords.dataIds.includes(currentRecordId))
+    ) {
+      // Select the last (latest) feedback record
+      const lastRecordId = feedbackRecords.dataIds[feedbackRecords.dataIds.length - 1];
+      onRecordChange?.(lastRecordId);
+    }
+  }, [feedbackType, feedbackRecords, currentRecordId, onRecordChange]);
+
+  // Navigation handlers
+  const handlePrev = () => {
+    if (!feedbackRecords) return;
+    if (currentIndex > 0) {
+      onRecordChange?.(feedbackRecords.dataIds[currentIndex - 1]);
+    } else {
+      onRecordChange?.(feedbackRecords.dataIds[feedbackRecords.dataIds.length - 1]);
+    }
+  };
+
+  const handleNext = () => {
+    if (!feedbackRecords) return;
+    if (currentIndex < (feedbackRecords?.dataIds.length ?? 0) - 1) {
+      onRecordChange?.(feedbackRecords.dataIds[currentIndex + 1]);
+    } else {
+      onRecordChange?.(feedbackRecords.dataIds[0]);
+    }
+  };
+
+  const showNavigation = appId && chatId && feedbackType !== 'all';
+
+  useEffect(() => {
+    eventBus.on(EventNameEnum.refreshFeedback, () => {
+      loadFeedbackRecords();
+    });
+    return () => {
+      eventBus.off(EventNameEnum.refreshFeedback);
+    };
+  }, []);
+
+  return (
+    <Flex alignItems={'center'} gap={3} w={'100%'}>
+      <FeedbackTypeFilter
+        feedbackType={feedbackType}
+        setFeedbackType={handleFeedbackTypeChange}
+        unreadOnly={unreadOnly}
+        setUnreadOnly={setUnreadOnly}
+        menuButtonProps={menuButtonProps}
+      />
+
+      {showNavigation && (
+        <>
+          {/* Current position indicator */}
+          <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'} flex={1}>
+            {currentPosition}/{totalCount}
+          </Box>
+
+          {/* Previous button */}
+          <Button size="sm" w={'100px'} variant={'whiteBase'} onClick={handlePrev}>
+            {t('chat:Previous')}
+          </Button>
+          <Button size="sm" w={'100px'} variant={'whiteBase'} onClick={handleNext}>
+            {t('chat:Next')}
+          </Button>
+        </>
+      )}
+    </Flex>
+  );
+};

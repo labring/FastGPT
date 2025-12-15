@@ -4,7 +4,6 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import {
   AdminUpdateFeedbackBodySchema,
-  type AdminUpdateFeedbackBodyType,
   AdminUpdateFeedbackResponseSchema,
   type AdminUpdateFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';

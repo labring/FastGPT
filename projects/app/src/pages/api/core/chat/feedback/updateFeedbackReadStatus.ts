@@ -5,7 +5,6 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   UpdateFeedbackReadStatusBodySchema,
-  type UpdateFeedbackReadStatusBodyType,
   UpdateFeedbackReadStatusResponseSchema,
   type UpdateFeedbackReadStatusResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';

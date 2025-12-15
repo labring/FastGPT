@@ -15,11 +15,10 @@ type PaginationResponse<T = {}> = {
 type LinkedPaginationProps<T = {}, A = any> = T & {
   pageSize: number;
   anchor?: A;
-} & RequireOnlyOne<{
-    initialId: string;
-    nextId: string;
-    prevId: string;
-  }>;
+  initialId?: string;
+  nextId?: string;
+  prevId?: string;
+};
 
 type LinkedListResponse<T = {}, A = any> = {
   list: Array<T & { id: string; anchor?: A }>;
