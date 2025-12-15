@@ -74,7 +74,9 @@ const FeedbackTypeFilter = ({
         fontWeight={'normal'}
         {...menuButtonProps}
       >
-        {feedbackOptions.find((option) => option.value === feedbackType)?.label}
+        {feedbackType === 'all'
+          ? t('app:logs_keys_feedback')
+          : feedbackOptions.find((option) => option.value === feedbackType)?.label}
       </MenuButton>
 
       <MenuList
