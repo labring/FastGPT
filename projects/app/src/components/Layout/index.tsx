@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -70,11 +70,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const { loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
+  const { setLastRoute, loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
+  // Auto redeem coupon
   useCheckCoupon();
 
   const isChatPage = useMemo(
@@ -126,6 +127,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       wait: 2000
     }
   );
+
+  // Route watch
+  useEffect(() => {
+    setLastRoute(router.pathname);
+  }, [router.pathname]);
 
   return (
     <>

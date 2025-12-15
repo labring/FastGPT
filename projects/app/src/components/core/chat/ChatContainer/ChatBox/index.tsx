@@ -22,10 +22,11 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import {
   closeCustomFeedback,
-  delChatRecordById,
   updateChatAdminFeedback,
-  updateChatUserFeedback
-} from '@/web/core/chat/api';
+  updateChatUserFeedback,
+  updateFeedbackReadStatus
+} from '@/web/core/chat/feedback/api';
+import { delChatRecordById } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
@@ -68,9 +69,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
-const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
-const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
@@ -90,7 +89,6 @@ type Props = OutLinkChatAuthProps &
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
-    showEmptyIntro?: boolean;
     active?: boolean; // can use
     showWorkorder?: boolean;
 
@@ -99,6 +97,7 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    onTriggerRefresh?: () => void;
   };
 
 const ChatBox = ({
@@ -106,16 +105,16 @@ const ChatBox = ({
   feedbackType = FeedbackTypeEnum.hidden,
   showMarkIcon = false,
   showVoiceIcon = true,
-  showEmptyIntro = false,
   active = true,
   showWorkorder,
   onStartChat,
-  chatType
+  chatType,
+  onTriggerRefresh
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs, setNotSufficientModalType } = useSystemStore();
+  const { setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -124,10 +123,6 @@ const ChatBox = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
-  const [readFeedbackData, setReadFeedbackData] = useState<{
-    dataId: string;
-    content: string;
-  }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
@@ -144,6 +139,7 @@ const ChatBox = ({
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
+  const itemRefs = useContextSelector(ChatRecordContext, (v) => v.itemRefs);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -506,6 +502,7 @@ const ChatBox = ({
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
+          const humanChatId = getNanoid(24);
           const responseChatId = getNanoid(24);
 
           // set auto audio playing
@@ -517,7 +514,8 @@ const ChatBox = ({
           const newChatList: ChatSiteItemType[] = [
             ...history,
             {
-              dataId: getNanoid(24),
+              id: humanChatId,
+              dataId: humanChatId,
               obj: ChatRoleEnum.Human,
               time: new Date(),
               hideInUI,
@@ -546,6 +544,7 @@ const ChatBox = ({
               status: ChatStatusEnum.finish
             },
             {
+              id: responseChatId,
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
               value: [
@@ -803,24 +802,6 @@ const ChatBox = ({
       } catch (error) {}
     };
   });
-  const onCloseUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (feedbackType !== FeedbackTypeEnum.admin) return;
-    return () => {
-      if (!chat.dataId || !chatId || !appId) return;
-      setChatRecords((state) =>
-        state.map((chatItem) =>
-          chatItem.dataId === chat.dataId ? { ...chatItem, userGoodFeedback: undefined } : chatItem
-        )
-      );
-      updateChatUserFeedback({
-        appId,
-        chatId,
-        dataId: chat.dataId,
-        userGoodFeedback: undefined,
-        ...outLinkAuthData
-      });
-    };
-  });
   const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
     if (
       feedbackType !== FeedbackTypeEnum.user ||
@@ -850,16 +831,6 @@ const ChatBox = ({
       return () => setFeedbackId(chat.dataId);
     }
   });
-  const onReadUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
-    return () => {
-      if (!chat.dataId) return;
-      setReadFeedbackData({
-        dataId: chat.dataId || '',
-        content: chat.userBadFeedback || ''
-      });
-    };
-  });
   const onCloseCustomFeedback = useMemoizedFn((chat: ChatSiteItemType, i: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.checked && appId && chatId && chat.dataId) {
@@ -883,26 +854,37 @@ const ChatBox = ({
       }
     };
   });
+  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
+    return async () => {
+      if (!appId || !chatId || !chat.dataId) return;
 
-  const showEmpty = useMemo(
-    () =>
-      chatType !== ChatTypeEnum.home &&
-      feConfigs?.show_emptyChat &&
-      showEmptyIntro &&
-      chatRecords.length === 0 &&
-      !commonVariableList?.length &&
-      !showExternalVariable &&
-      !welcomeText,
-    [
-      chatType,
-      feConfigs?.show_emptyChat,
-      showEmptyIntro,
-      chatRecords.length,
-      commonVariableList?.length,
-      showExternalVariable,
-      welcomeText
-    ]
-  );
+      const newReadStatus = !chat.isFeedbackRead;
+
+      try {
+        await updateFeedbackReadStatus({
+          appId,
+          chatId,
+          dataId: chat.dataId,
+          isRead: newReadStatus
+        });
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      } catch (error) {}
+    };
+  });
+
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -1033,7 +1015,12 @@ const ChatBox = ({
     return (
       <Box id={'history'}>
         {chatRecords.map((item, index) => (
-          <Box key={item.dataId}>
+          <Box
+            key={item.dataId}
+            ref={(e) => {
+              itemRefs.current.set(item.dataId, e);
+            }}
+          >
             {/* 并且时间和上一条的time相差超过十分钟 */}
             {index !== 0 &&
               item.time &&
@@ -1067,9 +1054,8 @@ const ChatBox = ({
                       formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
                     ),
                     onAddUserLike: onAddUserLike(item),
-                    onCloseUserLike: onCloseUserLike(item),
                     onAddUserDislike: onAddUserDislike(item),
-                    onReadUserDislike: onReadUserDislike(item)
+                    onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                   }}
                 >
                   {/* custom feedback */}
@@ -1124,11 +1110,11 @@ const ChatBox = ({
     questionGuides,
     onMark,
     onAddUserLike,
-    onCloseUserLike,
     onAddUserDislike,
-    onReadUserDislike,
+    onToggleFeedbackReadStatus,
     t,
     showMarkIcon,
+    itemRefs,
     onCloseCustomFeedback
   ]);
 
@@ -1144,8 +1130,7 @@ const ChatBox = ({
         px={[4, 0]}
         pb={6}
       >
-        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
+        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1157,7 +1142,7 @@ const ChatBox = ({
         </Box>
       </ScrollData>
     );
-  }, [ScrollData, showEmpty, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
+  }, [ScrollData, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>
@@ -1248,31 +1233,6 @@ const ChatBox = ({
           }}
         />
       )}
-      {/* admin read feedback modal */}
-      {!!readFeedbackData && (
-        <ReadFeedbackModal
-          content={readFeedbackData.content}
-          onClose={() => setReadFeedbackData(undefined)}
-          onCloseFeedback={() => {
-            setChatRecords((state) =>
-              state.map((chatItem) =>
-                chatItem.dataId === readFeedbackData.dataId
-                  ? { ...chatItem, userBadFeedback: undefined }
-                  : chatItem
-              )
-            );
-            try {
-              if (!chatId || !appId) return;
-              updateChatUserFeedback({
-                appId,
-                chatId,
-                dataId: readFeedbackData.dataId
-              });
-            } catch (error) {}
-            setReadFeedbackData(undefined);
-          }}
-        />
-      )}
       {/* admin mark data */}
       {!!adminMarkData && (
         <SelectMarkCollection
@@ -1299,23 +1259,6 @@ const ChatBox = ({
                   : chatItem
               )
             );
-
-            if (readFeedbackData && chatId && appId) {
-              updateChatUserFeedback({
-                appId,
-                chatId,
-                dataId: readFeedbackData.dataId,
-                userBadFeedback: undefined
-              });
-              setChatRecords((state) =>
-                state.map((chatItem) =>
-                  chatItem.dataId === readFeedbackData.dataId
-                    ? { ...chatItem, userBadFeedback: undefined }
-                    : chatItem
-                )
-              );
-              setReadFeedbackData(undefined);
-            }
           }}
         />
       )}

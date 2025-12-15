@@ -21,6 +21,7 @@ import {
   truncateFilename
 } from '@fastgpt/service/common/s3/utils';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
+import { migrateFeedbackFlags } from './initFeedbackFlags';
 
 // 将 GridFS 的流转换为 Buffer
 async function gridFSStreamToBuffer(
@@ -976,6 +977,9 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
 
   addLog.info(`[Migration ${batchId}] Converted fileId: ${converted}`);
   addLog.info(`[Migration ${batchId}] =======================================`);
+
+  // 重新统计每一个 chat 的反馈情况
+  await migrateFeedbackFlags();
 
   return {
     batchId,

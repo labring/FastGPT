@@ -1,5 +1,12 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+  useMemo,
+  useCallback
+} from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -95,7 +102,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, filterTags]
   });
 
-  const syncDataset = async () => {
+  const syncDataset = useCallback(async () => {
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
       await checkTeamWebSyncLimit();
     }
@@ -110,7 +117,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       status: 'success',
       title: t('dataset:collection.sync.submit')
     });
-  };
+  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum, t, toast]);
 
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
@@ -141,22 +148,38 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     }
   );
 
-  const contextValue: CollectionPageContextType = {
-    openDatasetSyncConfirm: openDatasetSyncConfirm(syncDataset),
-    onOpenWebsiteModal,
+  const contextValue: CollectionPageContextType = useMemo(
+    () => ({
+      openDatasetSyncConfirm: openDatasetSyncConfirm({ onConfirm: syncDataset }),
+      onOpenWebsiteModal,
 
-    searchText,
-    setSearchText,
-    filterTags,
-    setFilterTags,
-    collections,
-    Pagination,
-    total,
-    getData,
-    isGetting,
-    pageNum,
-    pageSize
-  };
+      searchText,
+      setSearchText,
+      filterTags,
+      setFilterTags,
+      collections,
+      Pagination,
+      total,
+      getData,
+      isGetting,
+      pageNum,
+      pageSize
+    }),
+    [
+      Pagination,
+      collections,
+      filterTags,
+      getData,
+      isGetting,
+      onOpenWebsiteModal,
+      openDatasetSyncConfirm,
+      pageNum,
+      pageSize,
+      searchText,
+      syncDataset,
+      total
+    ]
+  );
 
   return (
     <CollectionPageContext.Provider value={contextValue}>

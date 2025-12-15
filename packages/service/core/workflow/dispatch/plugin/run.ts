@@ -110,7 +110,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
               Array.isArray(val) &&
               data[input.key]
             ) {
-              data[input.key] = val.map((item) => item.url);
+              data[input.key] = val.map((item) => (typeof item === 'string' ? item : item.url));
             }
 
             return {

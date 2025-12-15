@@ -215,13 +215,12 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                 icon: 'delete',
                                 label: t('common:Delete'),
                                 onClick: () =>
-                                  openConfirm(
-                                    () => onDeleteChannel(item.id),
-                                    undefined,
-                                    t('account_model:confirm_delete_channel', {
+                                  openConfirm({
+                                    onConfirm: () => onDeleteChannel(item.id),
+                                    customContent: t('account_model:confirm_delete_channel', {
                                       name: item.name
                                     })
-                                  )()
+                                  })()
                               }
                             ]
                           }

@@ -10,7 +10,12 @@ import type {
   StreamChatType,
   UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
-import { computedTemperature, parseLLMStreamResponse, parseReasoningContent } from '../utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  parseLLMStreamResponse,
+  parseReasoningContent
+} from '../utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -525,8 +530,14 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   })();
   const stop = body.stop ?? undefined;
 
+  const maxTokens = computedMaxToken({
+    model: modelData,
+    maxToken: body.max_tokens || undefined
+  });
+
   const requestBody = {
     ...body,
+    max_tokens: maxTokens,
     model: modelData.model,
     temperature:
       typeof body.temperature === 'number'
@@ -567,7 +578,7 @@ const createChatCompletion = async ({
   timeout,
   options
 }: {
-  modelData?: LLMModelItemType;
+  modelData: LLMModelItemType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
@@ -587,13 +598,10 @@ const createChatCompletion = async ({
   )
 > => {
   try {
-    // Rewrite model
-    const modelConstantsData = modelData || getLLMModel(body.model);
-
-    if (!modelConstantsData) {
+    if (!modelData) {
       return Promise.reject(`${body.model} not found`);
     }
-    body.model = modelConstantsData.model;
+    body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;
     const ai = getAIApi({
@@ -607,12 +615,10 @@ const createChatCompletion = async ({
 
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),
+      ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelConstantsData.requestAuth
-          ? { Authorization: `Bearer ${modelConstantsData.requestAuth}` }
-          : {})
+        ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
       }
     });
 

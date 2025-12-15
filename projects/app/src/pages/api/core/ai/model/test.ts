@@ -71,7 +71,7 @@ export default NextAPI(handler);
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const { answerText } = await createLLMResponse({
     body: {
-      model,
+      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },

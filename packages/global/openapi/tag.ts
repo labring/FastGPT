@@ -1,15 +1,32 @@
 export const TagsMap = {
+  /* Core */
+  // Agent - log
+  appLog: 'Agent 日志',
+
+  // Chat - home
   chatPage: '对话页',
-  chatSetting: '对话页配置',
-  pluginMarketplace: '插件市场(管理员视角)',
+  chatSetting: '门户页配置',
+  chatFeedback: '对话反馈',
+
+  // Plugin
   pluginToolTag: '工具标签',
-  pluginAdmin: '管理员插件管理',
-  pluginToolAdmin: '管理员系统工具管理',
   pluginTeam: '团队插件管理',
-  apiKey: 'APIKey',
+
+  /* Support */
+  // Wallet
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
   customDomain: '自定义域名',
 
+  /* Common */
+  // APIKey
+  apiKey: 'APIKey',
+
+  /* Admin */
+  // Plugin
+  pluginMarketplace: '插件市场',
+  pluginAdmin: '管理员插件管理',
+  pluginToolAdmin: '管理员系统工具管理',
+  // Data
   adminDashboard: '管理员仪表盘'
 };

@@ -1,8 +1,9 @@
-import type { LangEnum } from '../common/i18n/type';
+import type { LangEnum } from '../../common/i18n/type';
 import type { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
-import type { TeamMemberStatusEnum } from './team/constant';
+import { TeamMemberStatusEnum } from './team/constant';
 import type { TeamTmbItemType } from './team/type';
+import z from 'zod';
 
 export type UserModelSchema = {
   _id: string;
@@ -35,8 +36,13 @@ export type UserType = {
   contact?: string;
 };
 
-export type SourceMemberType = {
-  name: string;
-  avatar: string;
-  status: `${TeamMemberStatusEnum}`;
-};
+export const SourceMemberSchema = z.object({
+  name: z.string().meta({ example: '张三', description: '成员名称' }),
+  avatar: z
+    .string()
+    .meta({ example: 'https://cloud.fastgpt.cn/avatar.png', description: '成员头像' }),
+  status: z
+    .enum(TeamMemberStatusEnum)
+    .meta({ example: TeamMemberStatusEnum.active, description: '成员状态' })
+});
+export type SourceMemberType = z.infer<typeof SourceMemberSchema>;
