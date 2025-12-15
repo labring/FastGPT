@@ -105,7 +105,10 @@ const AppCard = ({
             variant={'whitePrimary'}
             leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
             onClick={() =>
-              router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
+              window.open(
+                `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+                '_blank'
+              )
             }
           >
             {t('common:core.Chat')}

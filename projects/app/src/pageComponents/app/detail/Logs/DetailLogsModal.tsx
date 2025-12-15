@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Flex, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
@@ -21,6 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -31,9 +32,23 @@ type Props = {
   onClose: () => void;
 };
 
-const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
+const DetailLogsModal = ({
+  appId,
+  chatId,
+  onClose,
+
+  feedbackRecordId,
+  handleRecordChange
+}: Props & {
+  feedbackRecordId: string | undefined;
+  handleRecordChange: (recordId: string | undefined) => void;
+}) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -66,6 +81,15 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
       }
     }
   );
+
+  const handleScrollToChatItem = React.useCallback((dataId: string) => {
+    setTimeout(() => {
+      const element = document.querySelector(`[data-chat-id="${dataId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }, []);
 
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
@@ -152,45 +176,66 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         )}
 
         {/* Chat container */}
-        <Flex pt={2} flex={'1 0 0'} h={0}>
-          <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
-            {isPlugin ? (
-              <Box px={5} py={2}>
-                <PluginRunBox appId={appId} chatId={chatId} />
-              </Box>
-            ) : (
-              <ChatBox
-                isReady
-                appId={appId}
-                chatId={chatId}
-                feedbackType={'admin'}
-                showMarkIcon
-                showVoiceIcon={false}
-                chatType={ChatTypeEnum.log}
-              />
-            )}
-          </Box>
-
-          {datasetCiteData && (
-            <Box
-              flex={'1 0 0'}
-              w={0}
-              mr={4}
-              maxW={'460px'}
-              h={'98%'}
-              bg={'white'}
-              boxShadow={
-                '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
-              }
-              borderRadius={'md'}
-            >
-              <ChatQuoteList
-                rawSearch={datasetCiteData.rawSearch}
-                metadata={datasetCiteData.metadata}
-                onClose={() => setCiteModalData(undefined)}
-              />
+        <Flex pt={2} flex={'1 0 0'} h={0} flexDirection={'column'}>
+          <Flex flex={'1 0 0'} h={0}>
+            <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+              {isPlugin ? (
+                <Box px={5} py={2}>
+                  <PluginRunBox appId={appId} chatId={chatId} />
+                </Box>
+              ) : (
+                <ChatBox
+                  isReady
+                  appId={appId}
+                  chatId={chatId}
+                  feedbackType={'admin'}
+                  showMarkIcon
+                  showVoiceIcon={false}
+                  chatType={ChatTypeEnum.log}
+                  onTriggerRefresh={() => setRefreshTrigger((prev) => !prev)}
+                />
+              )}
             </Box>
-          )}
+
+            {datasetCiteData && (
+              <Box
+                flex={'1 0 0'}
+                w={0}
+                mr={4}
+                maxW={'460px'}
+                h={'98%'}
+                bg={'white'}
+                boxShadow={
+                  '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+                }
+                borderRadius={'md'}
+              >
+                <ChatQuoteList
+                  rawSearch={datasetCiteData.rawSearch}
+                  metadata={datasetCiteData.metadata}
+                  onClose={() => setCiteModalData(undefined)}
+                />
+              </Box>
+            )}
+          </Flex>
+
+          {/* Feedback filter bar - commented out, moved to Render component */}
+          <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="gray.200">
+            <DetailLogsModalFeedbackTypeFilter
+              feedbackType={feedbackType}
+              setFeedbackType={setFeedbackType}
+              unreadOnly={unreadOnly}
+              setUnreadOnly={setUnreadOnly}
+              appId={appId}
+              chatId={chatId}
+              currentRecordId={feedbackRecordId}
+              onRecordChange={handleRecordChange}
+              menuButtonProps={{
+                color: 'myGray.700',
+                _active: {}
+              }}
+            />
+          </Flex>
         </Flex>
       </MyBox>
 
@@ -201,6 +246,8 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
 const Render = (props: Props) => {
   const { appId, chatId } = props;
+  const [feedbackRecordId, setFeedbackRecordId] = useState<string | undefined>(undefined);
+
   const params = useMemo(() => {
     return {
       chatId,
@@ -210,6 +257,10 @@ const Render = (props: Props) => {
     };
   }, [appId, chatId]);
 
+  const handleRecordChange = useCallback((recordId: string | undefined) => {
+    setFeedbackRecordId(recordId);
+  }, []);
+
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
@@ -218,8 +269,12 @@ const Render = (props: Props) => {
       // isShowFullText={true}
       showNodeStatus
     >
-      <ChatRecordContextProvider params={params}>
-        <DetailLogsModal {...props} />
+      <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
+        <DetailLogsModal
+          {...props}
+          feedbackRecordId={feedbackRecordId}
+          handleRecordChange={handleRecordChange}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

@@ -64,6 +64,10 @@ const ChatItemSchema = new Schema({
   // Field memory
   memories: Object,
   errorMsg: String,
+  durationSeconds: Number,
+  citeCollectionIds: [String],
+
+  // Feedback
   userGoodFeedback: String,
   userBadFeedback: String,
   customFeedbacks: [String],
@@ -76,8 +80,7 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  durationSeconds: Number,
-  citeCollectionIds: [String],
+  isFeedbackRead: Boolean,
 
   // @deprecated
   [DispatchNodeResponseKeyEnum.nodeResponse]: Array
@@ -91,6 +94,8 @@ const ChatItemSchema = new Schema({
   close custom feedback; 
 */
 ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+// Anchor filter
+ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
 // timer, clear history
 ChatItemSchema.index({ teamId: 1, time: -1 });
 

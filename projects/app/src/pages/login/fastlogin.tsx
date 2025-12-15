@@ -9,6 +9,8 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
+
 const FastLogin = ({
   code,
   token,
@@ -27,7 +29,7 @@ const FastLogin = ({
       setUserInfo(res.user);
 
       setTimeout(() => {
-        router.push(decodeURIComponent(callbackUrl));
+        router.push(validateRedirectUrl(callbackUrl));
       }, 100);
     },
     [setUserInfo, router, callbackUrl]
@@ -65,7 +67,8 @@ const FastLogin = ({
 
   useEffect(() => {
     clearToken();
-    router.prefetch(callbackUrl);
+    const safeCallbackUrl = validateRedirectUrl(callbackUrl);
+    router.prefetch(safeCallbackUrl);
     authCode(code, token);
   }, [authCode, callbackUrl, code, router, token]);
 

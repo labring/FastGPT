@@ -12,6 +12,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 export type ChatSettingContextValue = {
   pane: ChatSidebarPaneEnum;
@@ -121,17 +122,21 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     [chatSettings?.squareLogoUrl, chatSettings?.wideLogoUrl]
   );
 
-  const value: ChatSettingContextValue = useMemo(
+  const onTriggerCollapse = useCallback(() => {
+    setCollapse(collapse === 0 ? 1 : 0);
+  }, [collapse]);
+
+  const value: ChatSettingContextValue = useMemoEnhance(
     () => ({
       pane,
       handlePaneChange,
       collapse,
-      onTriggerCollapse: () => setCollapse(collapse === 0 ? 1 : 0),
+      onTriggerCollapse,
       chatSettings,
       refreshChatSetting,
       logos
     }),
-    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, logos]
+    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, onTriggerCollapse, logos]
   );
 
   return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;

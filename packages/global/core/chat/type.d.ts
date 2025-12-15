@@ -28,6 +28,7 @@ export type ChatSchemaType = {
   teamId: string;
   tmbId: string;
   appId: string;
+  appVersionId?: string;
   createTime: Date;
   updateTime: Date;
   title: string;
@@ -44,6 +45,12 @@ export type ChatSchemaType = {
   variables: Record<string, any>;
   pluginInputs?: FlowNodeInputItemType[];
   metadata?: Record<string, any>;
+
+  // Boolean flags for efficient filtering
+  hasGoodFeedback?: boolean;
+  hasBadFeedback?: boolean;
+  hasUnreadGoodFeedback?: boolean;
+  hasUnreadBadFeedback?: boolean;
 };
 
 export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
@@ -105,6 +112,7 @@ export type AIChatItemType = {
   userBadFeedback?: string;
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
+  isFeedbackRead?: boolean;
 
   durationSeconds?: number;
   errorMsg?: string;
@@ -152,6 +160,7 @@ export type ChatItemType = ChatItemMergeType & {
 // Frontend type
 export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
+  id: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;

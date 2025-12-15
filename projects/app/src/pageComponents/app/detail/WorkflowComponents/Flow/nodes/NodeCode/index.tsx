@@ -64,23 +64,25 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ]}
                 value={codeType?.value}
                 onChange={(newLang) => {
-                  openSwitchLangConfirm(() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: NodeInputKeyEnum.codeType,
-                      value: { ...codeType, value: newLang }
-                    });
+                  openSwitchLangConfirm({
+                    onConfirm: () => {
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: NodeInputKeyEnum.codeType,
+                        value: { ...codeType, value: newLang }
+                      });
 
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: SANDBOX_CODE_TEMPLATE[newLang]
-                      }
-                    });
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: item.key,
+                        value: {
+                          ...item,
+                          value: SANDBOX_CODE_TEMPLATE[newLang]
+                        }
+                      });
+                    }
                   })();
                 }}
               />

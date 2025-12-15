@@ -1,49 +1,45 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-
-import type { AdminUpdateFeedbackParams } from '@/global/core/chat/api.d';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
+import {
+  AdminUpdateFeedbackBodySchema,
+  AdminUpdateFeedbackResponseSchema,
+  type AdminUpdateFeedbackResponseType
+} from '@fastgpt/global/openapi/core/chat/feedback/api';
 
-/* 初始化我的聊天框，需要身份验证 */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } =
-      req.body as AdminUpdateFeedbackParams;
+async function handler(
+  req: ApiRequestProps,
+  _res: ApiResponseType<any>
+): Promise<AdminUpdateFeedbackResponseType> {
+  const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } =
+    AdminUpdateFeedbackBodySchema.parse(req.body);
 
-    if (!dataId || !datasetId || !feedbackDataId || !q) {
-      throw new Error('missing parameter');
-    }
+  await authChatCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    appId,
+    chatId
+  });
 
-    await authChatCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
+  await MongoChatItem.updateOne(
+    {
       appId,
-      chatId
-    });
-
-    await MongoChatItem.findOneAndUpdate(
-      {
-        appId,
-        chatId,
-        dataId
-      },
-      {
-        adminFeedback: {
-          datasetId,
-          dataId: feedbackDataId,
-          q,
-          a
-        }
+      chatId,
+      dataId
+    },
+    {
+      adminFeedback: {
+        datasetId,
+        dataId: feedbackDataId,
+        q,
+        a
       }
-    );
+    }
+  );
 
-    jsonRes(res);
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  return AdminUpdateFeedbackResponseSchema.parse({});
 }
+
+export default NextAPI(handler);

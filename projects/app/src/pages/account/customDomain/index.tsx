@@ -139,7 +139,9 @@ const CustomDomain = () => {
                           <Button
                             variant="whiteDanger"
                             onClick={() => {
-                              return openConfirm(() => onDelete(customDomain.domain))();
+                              return openConfirm({
+                                onConfirm: () => onDelete(customDomain.domain)
+                              })();
                             }}
                           >
                             {t('common:Delete')}

@@ -139,9 +139,11 @@ const AccountContainer = ({
   const setCurrentTab = useCallback(
     (tab: string) => {
       if (tab === TabEnum.loginout) {
-        openConfirm(() => {
-          setUserInfo(null);
-          router.replace('/login');
+        openConfirm({
+          onConfirm: () => {
+            setUserInfo(null);
+            router.replace('/login');
+          }
         })();
       } else {
         router.replace('/account/' + tab);
