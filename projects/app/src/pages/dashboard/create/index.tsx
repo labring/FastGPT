@@ -38,6 +38,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import { getMCPTools, postCreateHttpTools, postCreateMCPTools } from '@/web/core/app/api/tool';
+import { headerValue2StoreHeader } from '@/components/common/secret/HeaderAuthConfig';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import AppTypeCard from '@/pageComponents/app/create/AppTypeCard';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -133,10 +134,11 @@ const CreateAppsPage = () => {
       };
 
       if (appType === AppTypeEnum.mcpToolSet) {
+        const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
         return postCreateMCPTools({
           ...baseParams,
           url: mcpUrl || '',
-          headerSecret: mcpHeaderSecret || {},
+          headerSecret,
           toolList: (mcpToolList || []) as McpToolConfigType[]
         });
       }
@@ -421,9 +423,10 @@ const CreateAppsPage = () => {
                     h={8}
                     isLoading={isGettingMCPTools}
                     onClick={() => {
+                      const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
                       runGetMCPTools({
                         url: mcpUrl || '',
-                        headerSecret: mcpHeaderSecret
+                        headerSecret
                       });
                     }}
                   >
