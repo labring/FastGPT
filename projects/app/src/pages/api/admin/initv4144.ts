@@ -979,7 +979,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   addLog.info(`[Migration ${batchId}] =======================================`);
 
   // 重新统计每一个 chat 的反馈情况
-  await migrateFeedbackFlags();
+  migrateFeedbackFlags();
 
   return {
     batchId,
