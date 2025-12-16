@@ -131,8 +131,8 @@ const EditForm = ({ model, fileSelectConfig, skill, onClose, onSave }: EditFormP
             h={'28px'}
             onClick={() => {
               if (isDirty) {
-                openConfirm(() => {
-                  onClose();
+                openConfirm({
+                  onConfirm: onClose
                 })();
               } else {
                 onClose();
