@@ -9,7 +9,7 @@ import { generateResourceList } from './utils';
 import { TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
-import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>

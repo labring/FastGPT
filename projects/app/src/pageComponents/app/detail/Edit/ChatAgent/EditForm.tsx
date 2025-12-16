@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -7,8 +7,7 @@ import {
   useTheme,
   useDisclosure,
   Button,
-  HStack,
-  Input
+  HStack
 } from '@chakra-ui/react';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -32,6 +31,8 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getAiSkillDetail } from '@/web/core/ai/skill/api';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -102,6 +103,29 @@ const EditForm = ({
     }
   }, [selectedModel, setAppForm]);
 
+  // 打开编辑器
+  const handleEditSkill = useCallback(
+    async (skill: SkillEditType) => {
+      // If skill has dbId, load full details from server
+      if (skill.id) {
+        const detail = await getAiSkillDetail({ id: skill.id });
+        // Merge server data with local data
+        onEditSkill({
+          id: detail._id,
+          name: detail.name,
+          description: detail.description || '',
+          stepsText: detail.steps,
+          selectedTools: detail.tools || [],
+          dataset: { list: detail.datasets || [] }
+        });
+      } else {
+        // New skill without dbId
+        onEditSkill(skill);
+      }
+    },
+    [onEditSkill]
+  );
+
   return (
     <>
       <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
@@ -168,7 +192,6 @@ const EditForm = ({
                     }));
                   });
                 }}
-                // variableLabels={formatVariables}
                 title={t('app:ai_role')}
                 isRichText={false}
               />
@@ -204,16 +227,7 @@ const EditForm = ({
         </Box>
 
         <Box {...BoxStyles}>
-          <SkillRow
-            skills={appForm.skills}
-            onEditSkill={onEditSkill}
-            onDeleteSkill={(id) => {
-              setAppForm((state) => ({
-                ...state,
-                skills: state.skills.filter((item) => item.id !== id)
-              }));
-            }}
-          />
+          <SkillRow skills={appForm.skills} onEditSkill={handleEditSkill} setAppForm={setAppForm} />
         </Box>
         {/* tool choice */}
         <Box {...BoxStyles}>

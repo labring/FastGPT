@@ -280,6 +280,12 @@ export const streamFetch = ({
               event,
               formData: rest
             });
+          } else if (event === SseResponseEventEnum.generatedSkill) {
+            // Directly call onMessage for generatedSkill, no need to queue
+            onMessage({
+              event,
+              generatedSkill: rest
+            });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);

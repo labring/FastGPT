@@ -1,8 +1,8 @@
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { dispatchTopAgent } from './topAgent';
-import { dispatchSkillEditor } from './skillEditor';
+import { dispatchSkillAgent } from './skillAgent';
 
 export const dispatchMap = {
   [HelperBotTypeEnum.topAgent]: dispatchTopAgent,
-  [HelperBotTypeEnum.skillEditor]: dispatchSkillEditor
+  [HelperBotTypeEnum.skillAgent]: dispatchSkillAgent
 };
