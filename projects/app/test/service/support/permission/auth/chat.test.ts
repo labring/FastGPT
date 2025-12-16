@@ -82,6 +82,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -118,6 +119,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -147,6 +149,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -208,6 +211,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: false,
         showRawSource: true,
         authType: AuthUserTypeEnum.outLink
       });
@@ -283,6 +287,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: false,
         showRawSource: true,
         authType: AuthUserTypeEnum.outLink
       });
@@ -320,6 +325,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         responseDetail: true,
         showNodeStatus: false,
+        showFullText: false,
         showRawSource: true,
         authType: AuthUserTypeEnum.outLink
       });
@@ -335,7 +341,10 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: true
+          responseDetail: true,
+          showFullText: true,
+          showNodeStatus: true,
+          showRawSource: true
         },
         uid: 'user1',
         appId: 'app1'
@@ -430,6 +439,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -469,6 +479,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -509,6 +520,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
@@ -541,6 +553,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         responseDetail: true,
         showNodeStatus: true,
+        showFullText: true,
         showRawSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
