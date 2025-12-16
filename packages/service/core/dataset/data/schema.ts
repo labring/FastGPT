@@ -74,6 +74,16 @@ const DatasetDataSchema = new Schema({
         // 同义词转换元数据
         synonymMetadata: {
           type: Object
+        },
+        synId: {
+          type: Number,
+          validate: {
+            validator: function (this: any, v: number) {
+              if (this.type === DatasetDataIndexTypeEnum.synthesis) return v !== undefined;
+              return true;
+            },
+            message: 'synId is required when type is synthesis'
+          }
         }
       }
     ],

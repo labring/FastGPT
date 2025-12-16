@@ -54,6 +54,7 @@
   "data_amount": "{{dataAmount}} 組資料，{{indexAmount}} 組索引",
   "data_error_amount": "{{errorAmount}} 組訓練異常",
   "data_index_image": "圖片索引",
+  "data_index_synthesis": "合成索引",
   "data_index_num": "索引 {{index}}",
   "data_parsing": "數據解析中",
   "data_process_params": "處理參數",

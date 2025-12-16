@@ -83,7 +83,8 @@ export const createCollectionAndInsertData = async ({
     trainingType: trainingType,
     autoIndexes: formatCreateCollectionParams.autoIndexes,
     imageIndex: formatCreateCollectionParams.imageIndex,
-    small2bigIndexes: formatCreateCollectionParams.small2bigIndexes
+    small2bigIndexes: formatCreateCollectionParams.small2bigIndexes,
+    syntheticIndex: formatCreateCollectionParams.syntheticIndex
   });
 
   if (

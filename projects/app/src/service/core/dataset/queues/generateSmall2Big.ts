@@ -154,7 +154,8 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: data.collection?.autoIndexes,
         imageIndex: false,
-        small2bigIndexes: false
+        small2bigIndexes: false,
+        syntheticIndex: false
       });
 
       // 创建下一阶段任务（auto 或 chunk）

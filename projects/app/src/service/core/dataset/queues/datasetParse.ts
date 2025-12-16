@@ -181,7 +181,9 @@ export const datasetParseQueue = async (): Promise<any> => {
       const trainingMode = getTrainingModeByCollection({
         trainingType: collection.trainingType,
         autoIndexes: collection.autoIndexes,
-        imageIndex: collection.imageIndex
+        imageIndex: collection.imageIndex,
+        small2bigIndexes: collection.small2bigIndexes,
+        syntheticIndex: collection.syntheticIndex
       });
 
       // 1. Parse rawtext
