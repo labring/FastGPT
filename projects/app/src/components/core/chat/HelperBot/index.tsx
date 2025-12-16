@@ -167,7 +167,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
           // Special event: form data
           if (event === SseResponseEventEnum.formData && formData) {
             if (type === HelperBotTypeEnum.topAgent) {
-              (onApply as (e: typeof formData) => void)?.(formData);
+              onApply?.(formData);
             }
             return item;
           }
@@ -177,15 +177,9 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
             console.log('📊 HelperBot: Received generatedSkill event', generatedSkill);
             // 直接将生成的 skill 数据传递给 onApply 回调（仅在 skillAgent 类型时）
             if (type === HelperBotTypeEnum.skillAgent) {
-              (onApply as (e: typeof generatedSkill) => void)?.(generatedSkill);
+              onApply?.(generatedSkill);
             }
-            const val: AIChatItemValueItemType = {
-              generatedSkill
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
-            };
+            return item;
           }
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {

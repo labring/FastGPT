@@ -1,4 +1,4 @@
-import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/skillAgent/type';
 import { buildSkillAgentMetadataInfo } from './utils';
 
 export const getPrompt = ({

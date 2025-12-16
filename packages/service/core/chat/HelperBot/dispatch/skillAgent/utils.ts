@@ -1,4 +1,4 @@
-import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/skillAgent/type';
 
 export const buildSkillAgentMetadataInfo = (metadata?: SkillAgentParamsType): string => {
   if (!metadata) return '';
