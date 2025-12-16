@@ -65,6 +65,8 @@ export async function authOutLinkChatStart({
     authType: AuthUserTypeEnum.token,
     responseDetail: outLinkConfig.responseDetail,
     showNodeStatus: outLinkConfig.showNodeStatus,
+    showFullText: outLinkConfig.showFullText,
+    showRawSource: outLinkConfig.showRawSource,
     appId,
     uid
   };

@@ -184,7 +184,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 name: item.name,
                                 responseDetail: item.responseDetail ?? false,
                                 showRawSource: item.showRawSource ?? false,
-                                // showFullText: item.showFullText ?? false,
+                                showFullText: item.showFullText ?? item.showRawSource ?? false,
                                 showNodeStatus: item.showNodeStatus ?? false,
                                 limit: item.limit
                               })
@@ -282,7 +282,7 @@ function EditLinkModal({
   });
 
   const responseDetail = watch('responseDetail');
-  // const showFullText = watch('showFullText');
+  const showFullText = watch('showFullText');
   const showRawSource = watch('showRawSource');
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
@@ -427,7 +427,7 @@ function EditLinkModal({
               {...register('responseDetail', {
                 onChange(e) {
                   if (!e.target.checked) {
-                    // setValue('showFullText', false);
+                    setValue('showFullText', false);
                     setValue('showRawSource', false);
                   }
                 }
@@ -435,41 +435,41 @@ function EditLinkModal({
               isChecked={responseDetail}
             />
           </Flex>
-          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
-              <FormLabel>{t('common:support.outlink.share.Chat_quote_reader')}</FormLabel>
+              <FormLabel>{t('common:core.app.share.Show full text')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.Full_text tips')}
+                label={t('common:support.outlink.share.Show full text tips')}
               ></QuestionTip>
             </Flex>
             <Switch
               {...register('showFullText', {
                 onChange(e) {
-                  if (e.target.checked) {
-                    setValue('responseDetail', true);
-                  } else {
+                  if (!e.target.checked) {
                     setValue('showRawSource', false);
+                  } else {
+                    setValue('responseDetail', true);
                   }
                 }
               })}
               isChecked={showFullText}
             />
-          </Flex> */}
+          </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
-              <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
+              <FormLabel>{t('common:core.app.share.Download source')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.show_complete_quote_tips')}
+                label={t('common:support.outlink.share.Download source tips')}
               ></QuestionTip>
             </Flex>
             <Switch
               {...register('showRawSource', {
                 onChange(e) {
                   if (e.target.checked) {
+                    setValue('showFullText', true);
                     setValue('responseDetail', true);
-                    // setValue('showFullText', true);
                   }
                 }
               })}

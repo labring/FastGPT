@@ -57,7 +57,7 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [collection, { chat, showRawSource }, chatItem] = await Promise.all([
+  const [collection, { chat, showRawSource, showFullText }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
     authChatCrud({
       req,
@@ -73,7 +73,7 @@ async function handler(
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
 
-  if (!showRawSource || !chat || !chatItem || initialAnchor === undefined) {
+  if ((!showRawSource && !showFullText) || !chat || !chatItem || initialAnchor === undefined) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

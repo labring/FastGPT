@@ -68,7 +68,7 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   // whether to hide the node status
   showNodeStatus?: boolean;
   // wheter to show the full text reader
-  // showFullText?: boolean;
+  showFullText?: boolean;
   // whether to show the complete quote
   showRawSource?: boolean;
 
@@ -95,7 +95,7 @@ export type OutLinkEditType<T = undefined> = {
   name: string;
   responseDetail?: OutLinkSchema<T>['responseDetail'];
   showNodeStatus?: OutLinkSchema<T>['showNodeStatus'];
-  // showFullText?: OutLinkSchema<T>['showFullText'];
+  showFullText?: OutLinkSchema<T>['showFullText'];
   showRawSource?: OutLinkSchema<T>['showRawSource'];
   // response when request
   immediateResponse?: string;

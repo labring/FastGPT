@@ -15,7 +15,7 @@ type ContextProps = {
   showRouteToDatasetDetail: boolean;
   isShowReadRawSource: boolean;
   isResponseDetail: boolean;
-  // isShowFullText: boolean;
+  isShowFullText: boolean;
   showNodeStatus: boolean;
 };
 type ChatBoxDataType = {
@@ -122,7 +122,7 @@ const ChatItemContextProvider = ({
   showRouteToDatasetDetail,
   isShowReadRawSource,
   isResponseDetail,
-  // isShowFullText,
+  isShowFullText,
   showNodeStatus
 }: {
   children: ReactNode;
@@ -198,7 +198,7 @@ const ChatItemContextProvider = ({
       showRouteToDatasetDetail,
       isShowReadRawSource,
       isResponseDetail,
-      // isShowFullText,
+      isShowFullText,
       showNodeStatus,
 
       datasetCiteData,
@@ -216,7 +216,7 @@ const ChatItemContextProvider = ({
     showRouteToDatasetDetail,
     isShowReadRawSource,
     isResponseDetail,
-    // isShowFullText,
+    isShowFullText,
     showNodeStatus,
     datasetCiteData,
     setCiteModalData,

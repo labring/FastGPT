@@ -266,7 +266,7 @@ const Render = (props: Props) => {
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}
-      // isShowFullText={true}
+      isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>

@@ -251,3 +251,10 @@ export type TemplateTypeSchemaType = {
   typeId: string;
   typeOrder: number;
 };
+
+export type ChatVisibilityConfigType = {
+  showNodeStatus: boolean;
+  responseDetail: boolean;
+  showFullText: boolean;
+  showRawSource: boolean;
+};

@@ -26,6 +26,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 export const defaultResponseShow = {
   responseDetail: true,
   showNodeStatus: true,
+  showFullText: true,
   showRawSource: true
 };
 type AuthChatCommonProps = {
@@ -56,6 +57,7 @@ export async function authChatCrud({
   chat?: ChatSchemaType;
   responseDetail: boolean;
   showNodeStatus: boolean;
+  showFullText: boolean;
   showRawSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
@@ -111,6 +113,7 @@ export async function authChatCrud({
         uid,
         responseDetail: outLinkConfig.responseDetail,
         showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
         showRawSource: outLinkConfig.showRawSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
@@ -125,6 +128,7 @@ export async function authChatCrud({
         uid,
         responseDetail: outLinkConfig.responseDetail,
         showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
         showRawSource: outLinkConfig.showRawSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
@@ -137,6 +141,7 @@ export async function authChatCrud({
       uid,
       responseDetail: outLinkConfig.responseDetail,
       showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+      showFullText: outLinkConfig.showFullText ?? false,
       showRawSource: outLinkConfig.showRawSource ?? false,
       authType: AuthUserTypeEnum.outLink
     };

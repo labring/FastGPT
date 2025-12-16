@@ -55,7 +55,7 @@ type Props = {
   customUid: string;
   showRawSource: boolean;
   responseDetail: boolean;
-  // showFullText: boolean;
+  showFullText: boolean;
   showNodeStatus: boolean;
 };
 
@@ -390,7 +390,7 @@ const Render = (props: Props) => {
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
         isResponseDetail={props.responseDetail}
-        // isShowFullText={props.showFullText}
+        isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -416,7 +416,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSource showNodeStatus responseDetail'
+        'appId showRawSource showNodeStatus responseDetail showFullText'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -434,7 +434,7 @@ export async function getServerSideProps(context: any) {
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
       responseDetail: app?.responseDetail ?? false,
-      // showFullText: app?.showFullText ?? false,
+      showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',

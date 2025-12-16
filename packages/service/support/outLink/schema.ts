@@ -51,9 +51,9 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: true
   },
-  // showFullText: {
-  //   type: Boolean
-  // },
+  showFullText: {
+    type: Boolean
+  },
   showRawSource: {
     type: Boolean
   },

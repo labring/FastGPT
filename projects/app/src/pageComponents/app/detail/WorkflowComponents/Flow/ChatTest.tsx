@@ -208,7 +208,7 @@ const Render = (Props: Props) => {
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
       isResponseDetail={true}
-      // isShowFullText={true}
+      isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>

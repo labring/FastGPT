@@ -1,3 +1,8 @@
+import type {
+  ChatVisibilityConfigQuery,
+  ChatVisibilityConfigResponse
+} from '@/pages/api/support/outLink/chat/config';
+import type { UpdateChatVisibilityConfigBody } from '@/pages/api/support/outLink/chat/update';
 import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   OutlinkAppType,
@@ -34,6 +39,14 @@ export function delShareChatById(id: string) {
 // update a shareChat
 export function updateShareChat<T extends OutlinkAppType>(data: OutLinkEditType<T>) {
   return POST<string>(`/support/outLink/update`, data);
+}
+
+export function getChatVisibilityConfig(data: ChatVisibilityConfigQuery) {
+  return GET<ChatVisibilityConfigResponse>('/support/outLink/chat/config', data);
+}
+
+export function updateChatVisibilityConfig(data: UpdateChatVisibilityConfigBody) {
+  return POST<string>(`/support/outLink/chat/update`, data);
 }
 
 // /**

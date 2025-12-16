@@ -169,6 +169,7 @@ const ChatItem = (props: Props) => {
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
 
   const { totalQuoteList: quoteList = [] } = useMemo(
     () => addStatisticalDataToHistoryItem(chat),
@@ -258,7 +259,7 @@ const ChatItem = (props: Props) => {
       setCiteModalData({
         rawSearch: quoteList,
         metadata:
-          item?.collectionId && isShowReadRawSource
+          item?.collectionId && (isShowReadRawSource || isShowFullText)
             ? {
                 appId: appId,
                 chatId: chatId,
