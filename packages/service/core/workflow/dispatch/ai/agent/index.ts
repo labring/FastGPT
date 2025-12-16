@@ -353,17 +353,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
       let matchedSkillSystemPrompt: string | undefined;
 
+      console.log('planHistoryMessages', planHistoryMessages);
+      // 执行 Plan/replan
       if (isPlanStep) {
+        // match skill
         addLog.debug('尝试匹配用户的历史 skills');
-
         const matchResult = await matchSkillForPlan({
           teamId: runningUserInfo.teamId,
           appId: runningAppInfo.id,
-          historyMessages: historiesMessages,
-          userInput: userChatInput,
+          userInput: lastInteractive ? interactiveInput : userChatInput,
           model
         });
-
         if (matchResult.matched && matchResult.systemPrompt) {
           addLog.debug(`匹配到 skill: ${matchResult.skill?.name}`);
           matchedSkillSystemPrompt = matchResult.systemPrompt;
@@ -372,18 +372,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
             data: textAdaptGptResponse({
-              text: `📋 找到参考技能: ${matchResult.skill?.name}`
+              text: `📋 找到参考技能: ${matchResult.systemPrompt}`
             })
           });
         } else {
           addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
         }
-      }
-      // console.log('matchedSkillSystemPrompt', matchedSkillSystemPrompt);
-      // console.log('isPlanStep', isPlanStep);
-      console.log('planHistoryMessages', planHistoryMessages);
-      // 执行 Plan/replan
-      if (isPlanStep) {
+
         const result = await planCallFn(matchedSkillSystemPrompt);
         // 有 result 代表 plan 有交互响应（check/ask）
         if (result) return result;

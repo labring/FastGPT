@@ -21,7 +21,8 @@ const generateUniqueFunctionName = (skill: HelperBotGeneratedSkillType): string 
   }
 
   const timestampSuffix = Date.now().toString().slice(-6);
-  return `${cleanName}_${timestampSuffix}`;
+  // return `${cleanName}_${timestampSuffix}`;
+  return `${cleanName}`;
 };
 
 /**
@@ -95,13 +96,11 @@ export const formatSkillAsSystemPrompt = (skill: HelperBotGeneratedSkillType): s
 export const matchSkillForPlan = async ({
   teamId,
   appId,
-  historyMessages,
   userInput,
   model
 }: {
   teamId: string;
   appId: string;
-  historyMessages: ChatCompletionMessageParam[];
   userInput: string;
   model: string;
 }): Promise<{
@@ -135,14 +134,34 @@ export const matchSkillForPlan = async ({
     const modelData = getLLMModel(model);
 
     // 4. 调用 LLM Tool Calling 进行匹配
-    // 构建完整的消息历史，包含当前用户输入
+    // 构建系统提示词，指导 LLM 选择相似的任务
+    const systemPrompt = `你是一个智能任务匹配助手。请根据用户的当前需求，从提供的技能工具集中选择最相似的任务。
+
+      **匹配原则**：
+      1. **任务目标相似性**：选择与用户目标最匹配的技能
+      2. **执行步骤相似性**：考虑任务执行的流程和步骤
+      3. **工具使用相似性**：优先选择使用类似工具组合的技能
+      4. **场景适用性**：考虑应用场景和上下文的相似性
+      
+      **选择建议**：
+      - 如果用户的需求与某个技能高度匹配，直接选择对应的工具
+      - 如果有多个相似技能，选择最符合主要目标的那个
+      - 如果没有找到完全匹配的技能，选择功能最相近的
+      
+      请从以下工具中选择一个最匹配的：`;
+
+    // 构建简化的消息，只包含系统提示词和用户输入
     const allMessages = [
-      ...historyMessages,
+      {
+        role: 'system' as const,
+        content: systemPrompt
+      },
       {
         role: 'user' as const,
         content: userInput
       }
     ];
+    console.log('match request', { userInput, skillCount: skills.length });
 
     const { toolCalls } = await createLLMResponse({
       body: {
