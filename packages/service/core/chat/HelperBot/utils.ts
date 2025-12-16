@@ -1,10 +1,10 @@
-import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import type { HelperBotCompletionsParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
-import { MongoHelperBotChat } from './chatSchema';
 import type {
   AIChatItemValueItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+  HelperBotTypeEnum
+} from '@fastgpt/global/core/chat/helperBot/type';
+import type { HelperBotCompletionsParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
+import { MongoHelperBotChat } from './chatSchema';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { MongoHelperBotChatItem } from './chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';

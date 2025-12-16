@@ -276,9 +276,9 @@ export const authHelperBotChatCrud = async ({
   type: `${HelperBotTypeEnum}`;
   chatId: string;
 }) => {
-  const { userId } = await authCert(props);
+  const { userId, teamId, tmbId } = await authCert(props);
 
   const chat = await MongoHelperBotChat.findOne({ type, userId, chatId }).lean();
 
-  return { chat, userId };
+  return { chat, userId, teamId, tmbId };
 };

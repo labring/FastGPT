@@ -36,6 +36,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../../../common/system/log';
 import { checkTaskComplexity } from './master/taskComplexity';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { matchSkillForPlan } from './skillMatcher';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -163,7 +164,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     if (taskIsComplexity) {
       /* ===== Plan Agent ===== */
-      const planCallFn = async () => {
+      const planCallFn = async (referencePlanSystemPrompt?: string) => {
         // 点了确认。此时肯定有 agentPlans
         if (
           lastInteractive?.type === 'agentPlanCheck' &&
@@ -179,7 +180,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               interactive: lastInteractive,
               subAppList,
               getSubAppInfo,
-              systemPrompt,
+              systemPrompt: referencePlanSystemPrompt || systemPrompt,
               model,
               temperature,
               top_p: aiChatTopP,
@@ -349,9 +350,36 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // Replan step: 已有 plan，且有 replan 历史消息
       const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
+      // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
+      let matchedSkillSystemPrompt: string | undefined;
+
+      console.log('planHistoryMessages', planHistoryMessages);
       // 执行 Plan/replan
       if (isPlanStep) {
-        const result = await planCallFn();
+        // match skill
+        addLog.debug('尝试匹配用户的历史 skills');
+        const matchResult = await matchSkillForPlan({
+          teamId: runningUserInfo.teamId,
+          appId: runningAppInfo.id,
+          userInput: lastInteractive ? interactiveInput : userChatInput,
+          model
+        });
+        if (matchResult.matched && matchResult.systemPrompt) {
+          addLog.debug(`匹配到 skill: ${matchResult.skill?.name}`);
+          matchedSkillSystemPrompt = matchResult.systemPrompt;
+
+          // 可选: 推送匹配信息给前端
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: `📋 找到参考技能: ${matchResult.systemPrompt}`
+            })
+          });
+        } else {
+          addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
+        }
+
+        const result = await planCallFn(matchedSkillSystemPrompt);
         // 有 result 代表 plan 有交互响应（check/ask）
         if (result) return result;
       } else if (isReplanStep) {

@@ -6,6 +6,7 @@ import { PluginPath } from './core/plugin';
 import { WalletPath } from './support/wallet';
 import { CustomDomainPath } from './support/customDomain';
 import { AppPath } from './core/app';
+import { AIPath } from './core/ai';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -20,13 +21,22 @@ export const openAPIDocument = createDocument({
     ...ApiKeyPath,
     ...PluginPath,
     ...WalletPath,
-    ...CustomDomainPath
+    ...CustomDomainPath,
+    ...AIPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
       name: 'Agent 应用',
       tags: [TagsMap.appLog]
+    },
+    {
+      name: 'AI 相关',
+      tags: [TagsMap.aiSkill]
+    },
+    {
+      name: '对话',
+      tags: [TagsMap.chatSetting, TagsMap.chatPage]
     },
     {
       name: '对话管理',

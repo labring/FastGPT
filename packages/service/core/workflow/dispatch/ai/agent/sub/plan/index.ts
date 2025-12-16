@@ -103,11 +103,11 @@ export const dispatchPlanAgent = async ({
     });
   }
 
-  console.log('Plan request messages');
-  console.dir(
-    { requestMessages, tools: isTopPlanAgent ? [PlanAgentAskTool] : [] },
-    { depth: null }
-  );
+  // console.log('Plan request messages');
+  // console.dir(
+  //   { requestMessages, tools: isTopPlanAgent ? [PlanAgentAskTool] : [] },
+  //   { depth: null }
+  // );
   let {
     answerText,
     toolCalls = [],
