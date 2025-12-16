@@ -11,7 +11,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import {
+  AppFolderTypeList,
+  AppTypeEnum,
+  AppTypeList,
+  ToolTypeList
+} from '@fastgpt/global/core/app/constants';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -35,7 +40,6 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { type CreateAppType } from '@/pages/dashboard/create';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
@@ -183,6 +187,9 @@ const List = () => {
         >
           {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
           {myApps.map((app, index) => {
+            const isAgent = AppTypeList.includes(app.type);
+            const isTool = ToolTypeList.includes(app.type);
+            const isFolder = AppFolderTypeList.includes(app.type);
             return (
               <MyTooltip
                 key={app._id}
@@ -416,10 +423,13 @@ const List = () => {
                                             openConfirmDel({
                                               onConfirm: () => onclickDelApp(app._id),
                                               inputConfirmText: app.name,
-                                              customContent:
-                                                app.type === AppTypeEnum.folder
-                                                  ? t('app:confirm_delete_folder_tip')
-                                                  : t('app:confirm_del_app_tip')
+                                              customContent: (() => {
+                                                if (isFolder)
+                                                  return t('app:confirm_delete_folder_tip');
+                                                if (isAgent) return t('app:confirm_del_app_tip');
+                                                if (isTool) return t('app:confirm_del_tool_tip');
+                                                return t('app:confirm_del_app_tip');
+                                              })()
                                             })()
                                         }
                                       ]

@@ -22,6 +22,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { AppTypeList } from '@fastgpt/global/core/app/constants';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -184,9 +185,10 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
+  const isAgent = AppTypeList.includes(appDetail.type);
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app:confirm_del_app_tip', { name: appDetail.name }),
-    type: 'delete'
+    type: 'delete',
+    content: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip')
   });
   const { runAsync: deleteApp } = useRequest2(
     async () => {
@@ -199,7 +201,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem(`app_log_keys_${appId}`);
         });
 
-        router.replace(`/dashboard/agent`);
+        router.replace(isAgent ? `/dashboard/agent` : `/dashboard/tool`);
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')
@@ -209,9 +211,9 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     () =>
       openConfirmDel({
         onConfirm: deleteApp,
-        customContent: t('app:confirm_del_app_tip', { name: appDetail.name })
+        inputConfirmText: appDetail.name
       })(),
-    [appDetail.name, deleteApp, openConfirmDel, t]
+    [deleteApp, openConfirmDel, appDetail.name]
   );
 
   const contextValue: AppContextType = useMemo(
