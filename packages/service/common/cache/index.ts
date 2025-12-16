@@ -12,21 +12,56 @@ const cachePrefix = `VERSION_KEY:`;
  * @param key SystemCacheKeyEnum
  * @param id string (teamId, tmbId, etc), if '*' is used, all keys will be refreshed
  */
-export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string | '*') => {
+export const refreshVersionKey = async (
+  key: `${SystemCacheKeyEnum}`,
+  id?: string | '*'
+) => {
   const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
 
   const val = randomUUID();
   const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
+
   if (id === '*') {
     const pattern = `${cachePrefix}${key}:*`;
-    const keys = await redis.keys(pattern);
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
-  } else {
-    await redis.set(versionKey, val);
+
+    let cursor = '0';
+    const batchSize = 1000;   // SCAN 每次取多少
+    const delChunk = 500;     // 每次 pipeline 删除多少（可按需调）
+
+    let buffer: string[] = [];
+
+    const flush = async () => {
+      if (buffer.length === 0) return;
+      const pipeline = redis.pipeline();
+      for (const k of buffer) pipeline.del(k);
+      await pipeline.exec();
+      buffer = [];
+    };
+
+    do {
+      const [nextCursor, keys] = await redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        batchSize
+      );
+      cursor = nextCursor;
+
+      for (const k of keys) {
+        buffer.push(k);
+        if (buffer.length >= delChunk) {
+          await flush();
+        }
+      }
+    } while (cursor !== '0');
+
+    await flush();
+    return;
   }
+
+  await redis.set(versionKey, val);
 };
 
 export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
