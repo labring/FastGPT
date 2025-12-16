@@ -110,7 +110,7 @@ export const UserSelectInteractiveSchema = z.object({
 export type UserSelectInteractive = z.infer<typeof UserSelectInteractiveSchema>;
 
 // User input
-export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend(
+export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.and(
   z.object({
     type: z.enum(FlowNodeInputTypeEnum),
     key: z.string(),
