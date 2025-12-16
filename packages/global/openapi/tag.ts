@@ -1,4 +1,5 @@
 export const TagsMap = {
+  aiSkill: 'AI技能管理',
   chatPage: '对话页',
   chatSetting: '对话页配置',
   pluginMarketplace: '插件市场(管理员视角)',
@@ -9,6 +10,7 @@ export const TagsMap = {
   apiKey: 'APIKey',
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
+
   helperBot: '辅助助手',
 
   // Admin

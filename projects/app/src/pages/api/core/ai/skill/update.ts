@@ -1,69 +1,64 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { UpdateGeneratedSkillParamsType } from '@fastgpt/global/openapi/core/ai/skill/api';
-import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import {
+  UpdateAiSkillBody,
+  type UpdateAiSkillBodyType,
+  type UpdateAiSkillResponse
+} from '@fastgpt/global/openapi/core/ai/skill/api';
+import { MongoAiSkill } from '@fastgpt/service/core/ai/skill/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { Types } from '@fastgpt/service/common/mongo';
-
-type UpdateBody = UpdateGeneratedSkillParamsType;
-type UpdateResponse = { success: boolean; _id: string };
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(
-  req: ApiRequestProps<UpdateBody>,
+  req: ApiRequestProps<UpdateAiSkillBodyType>,
   res: ApiResponseType<any>
-): Promise<UpdateResponse> {
-  const { id, appId, name, description, steps, status } = req.body;
-
-  let userId: string;
-  let teamId: string;
-  let tmbId: string | number;
-
-  if (id) {
-    const auth = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-    userId = auth.userId;
-    teamId = auth.teamId;
-    tmbId = auth.tmbId || '';
-  } else {
-    if (!appId) {
-      throw new Error('appId is required for creating a new skill');
-    }
-    const auth = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-    userId = auth.userId;
-    teamId = auth.teamId;
-    tmbId = auth.tmbId || '';
-  }
-
-  const docId = id || new Types.ObjectId().toString();
-
-  const updateData: any = {
-    updateTime: new Date()
-  };
-
-  if (name !== undefined) updateData.name = name;
-  if (description !== undefined) updateData.description = description;
-  if (steps !== undefined) updateData.steps = steps;
-  if (status !== undefined) updateData.status = status;
-
-  const setOnInsert: any = {
-    _id: docId,
-    userId,
-    tmbId,
-    teamId,
-    appId: appId || '',
-    createTime: new Date()
-  };
-
-  const result = await MongoHelperBotGeneratedSkill.updateOne(
-    { _id: docId },
-    {
-      $set: updateData,
-      $setOnInsert: setOnInsert
-    },
-    { upsert: true }
+): Promise<UpdateAiSkillResponse> {
+  const { id, appId, name, description, steps, tools, datasets } = UpdateAiSkillBody.parse(
+    req.body
   );
 
-  return { success: true, _id: docId };
+  // Auth app with write permission
+  const { teamId, tmbId } = await authApp({
+    req,
+    appId,
+    per: WritePermissionVal,
+    authToken: true
+  });
+
+  if (id) {
+    const skill = await MongoAiSkill.findOne({ _id: id, teamId, appId });
+    if (!skill) {
+      return Promise.reject(new UserError('AI skill not found'));
+    }
+
+    if (name !== undefined) {
+      skill.name = name;
+    }
+    if (description !== undefined) skill.description = description;
+    if (steps !== undefined) skill.steps = steps;
+    if (tools !== undefined) skill.tools = tools;
+    if (datasets !== undefined) skill.datasets = datasets;
+    skill.updateTime = new Date();
+
+    await skill.save();
+
+    return skill._id;
+  }
+
+  // Create
+  const newSkill = await MongoAiSkill.create({
+    teamId,
+    tmbId,
+    appId,
+    name,
+    description,
+    steps,
+    tools,
+    datasets
+  });
+
+  return newSkill._id;
 }
 
 export default NextAPI(handler);

@@ -213,6 +213,7 @@
   "compliance.chat": "內容由第三方 AI 產生，無法保證其真實性與準確性，僅供參考。",
   "compliance.dataset": "請確保您的內容嚴格遵守相關法律法規，避免包含任何違法或侵權的內容。\n在上傳可能涉及敏感資訊的資料時請務必謹慎。",
   "confirm_choice": "確認選擇",
+  "confirm_exit_without_saving": "確認離開？\n編輯結果不會被保留。",
   "confirm_logout": "確認退出登錄?",
   "confirm_move": "移動至此",
   "confirm_update": "確認更新",

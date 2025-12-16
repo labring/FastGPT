@@ -69,10 +69,6 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
     </Accordion>
   );
 });
-// GeneratedSkill 不再需要渲染UI，直接通过onApply填充到编辑器
-const RenderGeneratedSkill = React.memo(function RenderGeneratedSkill() {
-  return null;
-});
 
 const RenderText = React.memo(function RenderText({
   showAnimation,
@@ -139,9 +135,6 @@ const AIItem = ({
                 content={value.reasoning.content}
               />
             );
-          }
-          if ('generatedSkill' in value && value.generatedSkill) {
-            return <RenderGeneratedSkill key={i} />;
           }
         })}
       </Box>

@@ -23,6 +23,10 @@ export const openAPIDocument = createDocument({
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
+      name: 'AI 相关',
+      tags: [TagsMap.aiSkill]
+    },
+    {
       name: '对话',
       tags: [TagsMap.chatSetting, TagsMap.chatPage]
     },

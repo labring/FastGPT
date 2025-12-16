@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -15,6 +15,7 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { useForm } from 'react-hook-form';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -25,46 +26,49 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../../FormComponent/ToolSelector/ToolSelect';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { updateGeneratedSkill } from '@/components/core/chat/HelperBot/generatedSkill/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { updateAiSkill } from '@/web/core/ai/skill/api';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
-const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
-const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
-const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
-const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
-const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
-const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
-const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 type EditFormProps = {
   model: string;
   fileSelectConfig?: AppFileSelectConfigType;
   skill: SkillEditType;
-  onFieldChange: (updates: Partial<SkillEditType>) => void;
   onClose: () => void;
   onSave: (skill: SkillEditType) => void;
 };
 
-const EditForm = ({
-  model,
-  fileSelectConfig,
-  skill,
-  onFieldChange,
-  onClose,
-  onSave
-}: EditFormProps) => {
+const EditForm = ({ model, fileSelectConfig, skill, onClose, onSave }: EditFormProps) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { toast } = useToast();
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
+  // Form state management with validation
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { isDirty }
+  } = useForm<SkillEditType>({
+    defaultValues: skill
+  });
+
+  // Reset form when skill prop changes
+  useEffect(() => {
+    reset(skill);
+  }, [skill, reset]);
+
   const selectedModel = getWebLLMModel(model);
-  const selectDatasets = skill.dataset?.list || [];
-  const selectedTools = skill.selectedTools || [];
+  const selectedTools = watch('selectedTools') || [];
+  const selectDatasets = watch('dataset.list') || [];
+  const skillName = watch('name');
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -72,36 +76,46 @@ const EditForm = ({
     onClose: onCloseKbSelect
   } = useDisclosure();
 
-  const handleSave = async () => {
-    try {
-      let dbId = skill.dbId;
+  const { openConfirm, ConfirmModal } = useConfirm({
+    content: t('common:confirm_exit_without_saving')
+  });
 
-      const result = await updateGeneratedSkill({
-        ...(dbId ? { id: dbId } : { appId }),
-        name: skill.name,
-        description: skill.description || '',
-        steps: skill.stepsText || '',
-        status: 'active'
+  const { runAsync: onSubmit, loading: isSaving } = useRequest2(
+    async (formData: SkillEditType) => {
+      const result = await updateAiSkill({
+        id: formData.id,
+        appId,
+        name: formData.name,
+        description: formData.description || '',
+        steps: formData.stepsText || '',
+        tools: (formData.selectedTools || []).map((item) => ({
+          id: item.pluginId!,
+          // 遍历 tool 的 inputs，转成 object
+          config: item.inputs?.reduce(
+            (acc, input) => {
+              acc[input.key] = input.value;
+              return acc;
+            },
+            {} as Record<string, any>
+          )
+        })),
+        datasets: (formData.dataset?.list || []).map((item) => ({
+          datasetId: item.datasetId,
+          name: item.name,
+          avatar: item.avatar,
+          vectorModel: item.vectorModel
+        }))
       });
 
-      if (!dbId) {
-        dbId = result._id;
-      }
-
-      onSave({ ...skill, dbId });
-
-      toast({
-        title: dbId ? '技能更新成功' : '技能保存成功',
-        status: 'success'
-      });
-    } catch (error) {
-      console.error('保存失败:', error);
-      toast({
-        title: '保存失败',
-        status: 'error'
-      });
+      onSave({ ...formData, id: result });
+    },
+    {
+      manual: true,
+      successToast: t('common:save_success')
     }
-  };
+  );
+
+  const handleFormSubmit = handleSubmit(onSubmit);
 
   return (
     <>
@@ -115,17 +129,26 @@ const EditForm = ({
             aria-label={''}
             w={'28px'}
             h={'28px'}
-            onClick={onClose}
+            onClick={() => {
+              if (isDirty) {
+                openConfirm(() => {
+                  onClose();
+                })();
+              } else {
+                onClose();
+              }
+            }}
           />
           <Box color={'myGray.900'} flex={'1 0 0'} w={'0'} className={'textEllipsis'}>
-            {skill.name || t('app:skill_empty_name')}
+            {skillName || t('app:skill_empty_name')}
           </Box>
 
           <Button
             variant={'primaryOutline'}
             size={'sm'}
             leftIcon={<MyIcon name="save" w={'1rem'} />}
-            onClick={handleSave}
+            onClick={handleFormSubmit}
+            isLoading={isSaving}
           >
             {t('common:Save')}
           </Button>
@@ -135,13 +158,16 @@ const EditForm = ({
           <FormLabel mr={3} required>
             {t('common:Name')}
           </FormLabel>
-          <Input
-            value={skill.name}
-            onChange={(e) => onFieldChange({ name: e.target.value })}
-            bg={'myGray.50'}
-            maxLength={30}
-            placeholder={t('app:skill_name_placeholder')}
-          />
+          <Box flex={1}>
+            <Input
+              {...register('name', {
+                required: true
+              })}
+              bg={'myGray.50'}
+              maxLength={50}
+              placeholder={t('app:skill_name_placeholder')}
+            />
+          </Box>
         </HStack>
         {/* Desc */}
         <Box mt={4}>
@@ -152,9 +178,11 @@ const EditForm = ({
             <QuestionTip label={t('app:skill_description_placeholder')} />
           </HStack>
           <Textarea
-            value={skill.description}
-            onChange={(e) => onFieldChange({ description: e.target.value })}
+            {...register('description', {
+              required: true
+            })}
             bg={'myGray.50'}
+            maxLength={10000}
             rows={3}
             mt={1}
             resize={'vertical'}
@@ -168,8 +196,8 @@ const EditForm = ({
           </HStack>
           <Box mt={2}>
             <Textarea
-              value={skill.stepsText || ''}
-              onChange={(e) => onFieldChange({ stepsText: e.target.value })}
+              {...register('stepsText')}
+              maxLength={1000000}
               bg={'myGray.50'}
               rows={10}
               resize={'vertical'}
@@ -187,18 +215,18 @@ const EditForm = ({
             selectedTools={selectedTools}
             fileSelectConfig={fileSelectConfig}
             onAddTool={(e) => {
-              onFieldChange({
-                selectedTools: [e, ...(selectedTools || [])]
-              });
+              setValue('selectedTools', [e, ...(selectedTools || [])], { shouldDirty: true });
             }}
             onUpdateTool={(e) => {
-              onFieldChange({
-                selectedTools: selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              });
+              setValue(
+                'selectedTools',
+                selectedTools?.map((item) => (item.id === e.id ? e : item)) || [],
+                { shouldDirty: true }
+              );
             }}
             onRemoveTool={(id) => {
-              onFieldChange({
-                selectedTools: selectedTools?.filter((item) => item.id !== id) || []
+              setValue('selectedTools', selectedTools?.filter((item) => item.id !== id) || [], {
+                shouldDirty: true
               });
             }}
           />
@@ -271,12 +299,12 @@ const EditForm = ({
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {
-            onFieldChange({
-              dataset: { list: e }
-            });
+            setValue('dataset.list', e, { shouldDirty: true });
           }}
         />
       )}
+
+      <ConfirmModal />
     </>
   );
 };

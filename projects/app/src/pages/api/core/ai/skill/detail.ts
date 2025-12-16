@@ -1,39 +1,82 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { GetGeneratedSkillDetailParamsType } from '@fastgpt/global/openapi/core/ai/skill/api';
-import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { GeneratedSkillSiteType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import {
+  GetAiSkillDetailQuery,
+  GetAiSkillDetailResponseSchema,
+  type GetAiSkillDetailQueryType,
+  type GetAiSkillDetailResponse
+} from '@fastgpt/global/openapi/core/ai/skill/api';
+import { MongoAiSkill } from '@fastgpt/service/core/ai/skill/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-
-type DetailQuery = GetGeneratedSkillDetailParamsType;
-type DetailResponse = GeneratedSkillSiteType;
+import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(
-  req: ApiRequestProps<{}, DetailQuery>,
+  req: ApiRequestProps<{}, GetAiSkillDetailQueryType>,
   res: ApiResponseType<any>
-): Promise<DetailResponse> {
-  const { id } = req.query;
-  const { userId, teamId } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
+): Promise<GetAiSkillDetailResponse> {
+  const { id } = GetAiSkillDetailQuery.parse(req.query);
 
-  // Find the generated skill and verify ownership
-  const generatedSkill = await MongoHelperBotGeneratedSkill.findOne({
-    _id: id,
-    userId,
-    teamId
-  }).lean();
-
-  if (!generatedSkill) {
-    throw new Error('Generated skill not found or access denied');
+  // First, find the skill to get appId
+  const skill = await MongoAiSkill.findById(id).lean();
+  if (!skill) {
+    return Promise.reject(new UserError('AI skill not found'));
   }
 
-  // Remove userId and teamId from response
-  const { userId: _, teamId: __, ...rest } = generatedSkill;
+  // Auth app with read permission
+  const { teamId } = await authApp({
+    req,
+    appId: String(skill.appId),
+    per: ReadPermissionVal,
+    authToken: true
+  });
 
-  return {
-    ...rest,
-    _id: String(rest._id)
-  } as any;
+  // Verify team ownership
+  if (String(skill.teamId) !== teamId) {
+    return Promise.reject(new UserError('AI skill not found or access denied'));
+  }
+
+  // Get full tool data using getChildAppPreviewNode
+  const expandedTools: SelectedToolItemType[] = await Promise.all(
+    (skill.tools || []).map(async (tool) => {
+      try {
+        const toolNode = await getChildAppPreviewNode({
+          appId: tool.id,
+          lang: getLocale(req)
+        });
+        return {
+          ...toolNode,
+          configStatus: 'active' as const
+        };
+      } catch (error) {
+        // If tool not found or error, mark as invalid
+        return {
+          id: tool.id,
+          templateType: 'personalTool' as const,
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: 'Invalid Tool',
+          avatar: '',
+          intro: '',
+          showStatus: false,
+          weight: 0,
+          isTool: true,
+          version: 'v1',
+          inputs: [],
+          outputs: [],
+          configStatus: 'invalid' as const
+        };
+      }
+    })
+  );
+
+  return GetAiSkillDetailResponseSchema.parse({
+    ...skill,
+    tools: expandedTools
+  });
 }
 
 export default NextAPI(handler);

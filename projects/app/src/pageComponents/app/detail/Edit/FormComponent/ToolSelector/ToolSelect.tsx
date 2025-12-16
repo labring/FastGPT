@@ -95,7 +95,6 @@ const ToolSelect = ({
                 borderColor={toolError ? 'red.600' : ''}
                 userSelect={'none'}
                 _hover={{
-                  ...hoverDeleteStyles,
                   borderColor: toolError ? 'red.600' : 'primary.300',
                   '.delete': {
                     display: 'block'
@@ -158,18 +157,17 @@ const ToolSelect = ({
                 )}
 
                 {/* Delete icon */}
-                <MyIconButton
-                  className="hoverStyle"
-                  display={['block', 'none']}
-                  ml={0.5}
-                  icon="delete"
-                  hoverBg="red.50"
-                  hoverColor="red.600"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveTool(item.id);
-                  }}
-                />
+                <Box className="hoverStyle" display={['block', 'none']} ml={0.5}>
+                  <MyIconButton
+                    icon="delete"
+                    hoverBg="red.50"
+                    hoverColor="red.600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveTool(item.id);
+                    }}
+                  />
+                </Box>
               </Flex>
             </MyTooltip>
           );

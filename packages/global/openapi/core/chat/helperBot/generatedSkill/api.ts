@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { PaginationPropsSchema } from '../../../../type';
 import type { PaginationResponse } from '../../../../../../web/common/fetch/type';
-import { type GeneratedSkillSiteType } from '../../../../../core/chat/helperBot/generatedSkill/type';
+import { type GeneratedSkillSiteType } from '../../../../../core/chat/helperBot/skillAgent/type';
 
 // Save Generated Skill
 export const SaveGeneratedSkillParamsSchema = z.object({

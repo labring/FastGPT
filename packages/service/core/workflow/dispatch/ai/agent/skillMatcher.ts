@@ -1,5 +1,5 @@
-import { MongoHelperBotGeneratedSkill } from '../../../../chat/HelperBot/generatedSkillSchema';
-import type { HelperBotGeneratedSkillType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import { MongoAiSkill } from '../../../../ai/skill/schema';
+import type { AiSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from '../../../../ai/model';
@@ -111,7 +111,7 @@ export const matchSkillForPlan = async ({
 }> => {
   try {
     // 1. 查询用户的 skills (使用 teamId 和 appId)
-    const skills = await MongoHelperBotGeneratedSkill.find({
+    const skills = await MongoAiSkill.find({
       teamId,
       appId,
       status: { $in: ['active', 'draft'] }

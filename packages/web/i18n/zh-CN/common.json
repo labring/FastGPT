@@ -214,6 +214,7 @@
   "compliance.chat": "内容由第三方 AI 生成，无法确保真实准确，仅供参考",
   "compliance.dataset": "请确保您的内容严格遵守相关法律法规，避免包含任何违法或侵权的内容。请谨慎上传可能涉及敏感信息的资料。",
   "confirm_choice": "确认选择",
+  "confirm_exit_without_saving": "确认离开？编辑结果不会被保留。",
   "confirm_logout": "确认退出登录?",
   "confirm_move": "移动到这",
   "confirm_update": "确认更新",

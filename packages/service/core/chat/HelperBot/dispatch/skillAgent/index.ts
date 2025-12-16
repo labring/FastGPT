@@ -8,8 +8,12 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { generateResourceList } from '../topAgent/utils';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
-import { GeneratedSkillDataSchema } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
-import type { SkillAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import {
+  type SkillAgentParamsType,
+  type GeneratedSkillType,
+  GeneratedSkillResultSchema
+} from '@fastgpt/global/core/chat/helperBot/skillAgent/type';
+import { parseJsonArgs } from '../../../../ai/utils';
 
 export const dispatchSkillAgent = async (
   props: HelperBotDispatchParamsType<SkillAgentParamsType>
@@ -47,6 +51,7 @@ export const dispatchSkillAgent = async (
     { role: 'user' as const, content: query }
   ];
 
+  console.dir(conversationMessages, { depth: null });
   // Single LLM call - LLM self-determines phase and outputs corresponding format
   const llmResponse = await createLLMResponse({
     body: {
@@ -76,19 +81,28 @@ export const dispatchSkillAgent = async (
 
   // Parse JSON response
   try {
-    const responseJson = JSON.parse(answerText);
+    const responseJson = parseJsonArgs<GeneratedSkillType>(answerText);
 
+    if (!responseJson) {
+      addLog.warn(`[Skill agent] Failed to parse JSON response`, { text: answerText });
+      throw new Error('Failed to parse JSON response');
+    }
+    console.log(responseJson, 22323);
     // Handle based on phase field
     if (responseJson.phase === 'generation') {
       addLog.debug('🔄 SkillAgent: Generated skill generation phase');
 
-      // Parse and validate the generated skill data
-      const generatedSkillData = GeneratedSkillDataSchema.parse(responseJson);
+      const parseResult = GeneratedSkillResultSchema.safeParse(responseJson).data;
+
+      if (!parseResult) {
+        addLog.warn(`[Skill agent] Failed to parse JSON response`, { responseJson });
+        throw new Error('Failed to parse JSON response');
+      }
 
       // Send generatedSkill event
       workflowResponseWrite?.({
         event: SseResponseEventEnum.generatedSkill,
-        data: generatedSkillData
+        data: parseResult
       });
 
       // Return original format (backward compatible)
@@ -112,7 +126,7 @@ export const dispatchSkillAgent = async (
       };
     } else {
       // Unknown phase
-      addLog.warn(`[Skill agent] Unknown phase: ${responseJson.phase}`);
+      addLog.warn(`[Skill agent] Unknown phase`, responseJson);
       return {
         aiResponse: formatAIResponse({
           text: answerText,

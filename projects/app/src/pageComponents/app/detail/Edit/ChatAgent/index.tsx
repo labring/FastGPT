@@ -11,10 +11,11 @@ import { useTranslation } from 'next-i18next';
 import { useSimpleAppSnapshots } from '../FormComponent/useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
-import { getGeneratedSkillList } from '@/components/core/chat/HelperBot/generatedSkill/api';
+import { getAiSkillList } from '@/web/core/ai/skill/api';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { defaultSkill } from './SkillEdit/Row';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../../Logs/index'));
@@ -54,37 +55,39 @@ const AgentEdit = () => {
       initialAppForm = past[0].appForm;
     }
 
-    // 加载技能列表
-    try {
-      const result = await getGeneratedSkillList({
-        appId: appDetail._id,
-        current: 1,
-        pageSize: 100
+    // Set initial app form
+    setAppForm(initialAppForm);
+  });
+
+  // Load skills list using useRequest2
+  useRequest2(
+    async () => {
+      const result = await getAiSkillList({
+        appId: appDetail._id
       });
 
-      // 将数据库数据映射为 SkillEditType 格式
-      const skills: SkillEditType[] = result.list.map((skill) => ({
-        id: getNanoid(6),
-        dbId: skill._id,
+      // Map database data to SkillEditType format
+      const skills: SkillEditType[] = result.map((skill) => ({
+        id: skill._id,
         name: skill.name,
-        description: skill.description || '',
-        stepsText: skill.steps || '',
+        description: '',
+        stepsText: '',
         dataset: { list: [] },
-        selectedTools: [],
-        fileSelectConfig: defaultSkill.fileSelectConfig
+        selectedTools: []
       }));
 
-      // 合并技能列表到 appForm
-      setAppForm({
-        ...initialAppForm,
-        skills: skills
-      });
-    } catch (error) {
-      console.error('Failed to load skills:', error);
-      // 即使加载失败也要设置 appForm
-      setAppForm(initialAppForm);
+      // Update appForm with skills
+      setAppForm((state) => ({
+        ...state,
+        skills
+      }));
+
+      return skills;
+    },
+    {
+      manual: false
     }
-  });
+  );
 
   // Save snapshot to local
   useDebounceEffect(

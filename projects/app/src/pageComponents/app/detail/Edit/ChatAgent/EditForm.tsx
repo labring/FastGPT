@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -7,8 +7,7 @@ import {
   useTheme,
   useDisclosure,
   Button,
-  HStack,
-  Input
+  HStack
 } from '@chakra-ui/react';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -32,8 +31,8 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { deleteGeneratedSkill } from '@/components/core/chat/HelperBot/generatedSkill/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getAiSkillDetail } from '@/web/core/ai/skill/api';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -63,10 +62,8 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { toast } = useToast();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const appId = appDetail._id;
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
 
@@ -105,6 +102,29 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
+
+  // 打开编辑器
+  const handleEditSkill = useCallback(
+    async (skill: SkillEditType) => {
+      // If skill has dbId, load full details from server
+      if (skill.id) {
+        const detail = await getAiSkillDetail({ id: skill.id });
+        // Merge server data with local data
+        onEditSkill({
+          id: detail._id,
+          name: detail.name,
+          description: detail.description || '',
+          stepsText: detail.steps,
+          selectedTools: detail.tools || [],
+          dataset: { list: detail.datasets || [] }
+        });
+      } else {
+        // New skill without dbId
+        onEditSkill(skill);
+      }
+    },
+    [onEditSkill]
+  );
 
   return (
     <>
@@ -172,7 +192,6 @@ const EditForm = ({
                     }));
                   });
                 }}
-                // variableLabels={formatVariables}
                 title={t('app:ai_role')}
                 isRichText={false}
               />
@@ -208,36 +227,7 @@ const EditForm = ({
         </Box>
 
         <Box {...BoxStyles}>
-          <SkillRow
-            skills={appForm.skills}
-            onEditSkill={onEditSkill}
-            onDeleteSkill={async (skill) => {
-              try {
-                if (skill.dbId) {
-                  await deleteGeneratedSkill({ id: skill.dbId });
-                  toast({
-                    title: t('app:skill_delete_success'),
-                    status: 'success'
-                  });
-                } else {
-                  toast({
-                    title: t('app:skill_local_removed'),
-                    status: 'info'
-                  });
-                }
-
-                setAppForm((state) => ({
-                  ...state,
-                  skills: state.skills.filter((s) => s.id !== skill.id)
-                }));
-              } catch (error) {
-                toast({
-                  title: t('app:delete_failed'),
-                  status: 'error'
-                });
-              }
-            }}
-          />
+          <SkillRow skills={appForm.skills} onEditSkill={handleEditSkill} setAppForm={setAppForm} />
         </Box>
         {/* tool choice */}
         <Box {...BoxStyles}>

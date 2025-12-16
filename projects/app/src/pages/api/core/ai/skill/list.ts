@@ -1,64 +1,46 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type {
-  GetGeneratedSkillsParamsType,
-  GetGeneratedSkillsResponseType
+import {
+  ListAiSkillBody,
+  ListAiSkillResponseSchema,
+  type ListAiSkillBodyType,
+  type ListAiSkillResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
-import { MongoHelperBotGeneratedSkill } from '@fastgpt/service/core/chat/HelperBot/generatedSkillSchema';
+import { MongoAiSkill } from '@fastgpt/service/core/ai/skill/schema';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-
-type ListBody = GetGeneratedSkillsParamsType;
-type ListResponse = GetGeneratedSkillsResponseType;
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(
-  req: ApiRequestProps<ListBody>,
+  req: ApiRequestProps<ListAiSkillBodyType>,
   res: ApiResponseType<any>
-): Promise<ListResponse> {
-  const { appId, searchText, status } = req.body;
-  const { userId, teamId } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
+): Promise<ListAiSkillResponse> {
+  const { appId, searchText } = ListAiSkillBody.parse(req.body);
+
+  // Auth app with read permission
+  const { teamId } = await authApp({ req, appId, per: WritePermissionVal, authToken: true });
 
   const { offset, pageSize } = parsePaginationRequest(req);
 
   // Build query
-  const query: any = {
-    userId,
+  const query = {
     teamId,
-    appId
+    appId,
+    ...(searchText && {
+      $or: [
+        { name: { $regex: searchText, $options: 'i' } },
+        { description: { $regex: searchText, $options: 'i' } }
+      ]
+    })
   };
 
-  if (status) {
-    query.status = status;
-  }
-
-  if (searchText) {
-    query.$or = [
-      { name: { $regex: searchText, $options: 'i' } },
-      { description: { $regex: searchText, $options: 'i' } }
-    ];
-  }
-
-  // Execute query with pagination
-  const [list, total] = await Promise.all([
-    MongoHelperBotGeneratedSkill.find(query)
-      .sort({ createTime: -1 })
-      .skip(offset)
-      .limit(pageSize)
-      .lean(),
-    MongoHelperBotGeneratedSkill.countDocuments(query)
-  ]);
-
-  // Remove userId and teamId from response
-  const sanitizedList = list.map(({ userId, teamId, ...rest }) => ({
-    ...rest,
-    _id: String(rest._id)
-  }));
-
-  return {
-    total,
-    list: sanitizedList as any
-  };
+  // Execute query with pagination - only fetch _id and name
+  const list = await MongoAiSkill.find(query, '_id name')
+    .sort({ updateTime: -1 })
+    .skip(offset)
+    .limit(pageSize)
+    .lean();
+  return ListAiSkillResponseSchema.parse(list);
 }
 
 export default NextAPI(handler);

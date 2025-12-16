@@ -1,34 +1,54 @@
 import { z } from 'zod';
-import { PaginationPropsSchema } from '../../../type';
-import type { PaginationResponse } from '../../../../../web/common/fetch/type';
-import { type GeneratedSkillSiteType } from '../../../../core/chat/helperBot/generatedSkill/type';
+import { AiSkillSchema, SkillToolSchema } from '../../../../core/ai/skill/type';
+import { SelectedToolItemTypeSchema } from '../../../../core/app/formEdit/type';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
 
-export const GetGeneratedSkillsParamsSchema = z
-  .object({
-    appId: z.string(),
-    searchText: z.string().optional(),
-    status: z.enum(['draft', 'active', 'archived']).optional()
-  })
-  .and(PaginationPropsSchema);
-export type GetGeneratedSkillsParamsType = z.infer<typeof GetGeneratedSkillsParamsSchema>;
-export type GetGeneratedSkillsResponseType = PaginationResponse<GeneratedSkillSiteType>;
+export const ListAiSkillBody = z.object({
+  appId: z.string(),
+  searchText: z.string().optional()
+});
+export type ListAiSkillBodyType = z.infer<typeof ListAiSkillBody>;
+// Simplified list item schema - only id and name
+export const ListAiSkillItemSchema = z.object({
+  _id: ObjectIdSchema,
+  name: z.string()
+});
+export const ListAiSkillResponseSchema = z.array(ListAiSkillItemSchema);
+export type ListAiSkillResponse = z.infer<typeof ListAiSkillResponseSchema>;
 
-export const GetGeneratedSkillDetailParamsSchema = z.object({
+export const GetAiSkillDetailQuery = z.object({
   id: z.string()
 });
-export type GetGeneratedSkillDetailParamsType = z.infer<typeof GetGeneratedSkillDetailParamsSchema>;
+export type GetAiSkillDetailQueryType = z.infer<typeof GetAiSkillDetailQuery>;
+// Detail response with expanded tools
+export const GetAiSkillDetailResponseSchema = AiSkillSchema.omit({
+  tools: true,
+  teamId: true,
+  tmbId: true,
+  appId: true,
+  createTime: true,
+  updateTime: true
+}).extend({
+  tools: z.array(SelectedToolItemTypeSchema)
+});
+export type GetAiSkillDetailResponse = z.infer<typeof GetAiSkillDetailResponseSchema>;
 
-export const UpdateGeneratedSkillParamsSchema = z.object({
+export const UpdateAiSkillBody = z.object({
   id: z.string().optional(),
-  appId: z.string().optional(),
+  appId: z.string(), // Required for creating new skill, optional for updating existing skill
   name: z.string().optional(),
   description: z.string().optional(),
   steps: z.string().optional(),
-  status: z.enum(['draft', 'active', 'archived']).optional()
+  tools: z.array(SkillToolSchema).optional(),
+  datasets: z.array(z.any()).optional()
 });
-export type UpdateGeneratedSkillParamsType = z.infer<typeof UpdateGeneratedSkillParamsSchema>;
+export type UpdateAiSkillBodyType = z.infer<typeof UpdateAiSkillBody>;
+export const UpdateAiSkillResponseSchema = z.string();
+export type UpdateAiSkillResponse = z.infer<typeof UpdateAiSkillResponseSchema>;
 
-export const DeleteGeneratedSkillParamsSchema = z.object({
+export const DeleteAiSkillQuery = z.object({
   id: z.string()
 });
-export type DeleteGeneratedSkillParamsType = z.infer<typeof DeleteGeneratedSkillParamsSchema>;
+export type DeleteAiSkillQueryType = z.infer<typeof DeleteAiSkillQuery>;
+export const DeleteAiSkillResponseSchema = z.object({});
+export type DeleteAiSkillResponse = z.infer<typeof DeleteAiSkillResponseSchema>;

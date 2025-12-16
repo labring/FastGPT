@@ -1,11 +1,11 @@
-import { PaginationPropsSchema, PaginationResponseSchema } from '../../../type';
+import { PaginationPropsSchema } from '../../../type';
 import {
   type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
-  HelperBotTypeEnumSchema,
-  topAgentParamsSchema,
-  skillAgentParamsSchema
+  HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
+import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
+import { skillAgentParamsSchema } from '../../../../core/chat/helperBot/skillAgent/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';

@@ -20,16 +20,14 @@ export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
 
 /* ===== skill ===== */
 export const SkillEditTypeSchema = z.object({
-  id: z.string(), // 前端临时 ID
-  dbId: z.string().optional(), // 数据库 _id
+  id: z.string(),
   name: z.string(),
   description: z.string(),
   stepsText: z.string().optional(), // 执行步骤的文本描述
   dataset: z.object({
     list: z.array(SelectedDatasetSchema)
   }),
-  selectedTools: z.array(SelectedToolItemTypeSchema),
-  fileSelectConfig: AppFileSelectConfigTypeSchema
+  selectedTools: z.array(SelectedToolItemTypeSchema)
 });
 export type SkillEditType = z.infer<typeof SkillEditTypeSchema>;
 

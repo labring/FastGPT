@@ -2,7 +2,6 @@ import { ObjectIdSchema } from '../../../common/type/mongo';
 import { z } from 'zod';
 import { ChatRoleEnum } from '../constants';
 import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
-import { GeneratedSkillDataSchema } from './generatedSkill/type';
 
 export enum HelperBotTypeEnum {
   topAgent = 'topAgent',
@@ -36,9 +35,6 @@ export const AIChatItemValueItemSchema = z.union([
   }),
   z.object({
     tool: ToolModuleResponseItemSchema
-  }),
-  z.object({
-    generatedSkill: GeneratedSkillDataSchema
   })
 ]);
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueItemSchema>;
@@ -74,38 +70,3 @@ export const HelperBotChatItemSiteSchema = z
   })
   .and(HelperBotChatRoleSchema);
 export type HelperBotChatItemSiteType = z.infer<typeof HelperBotChatItemSiteSchema>;
-
-/* 具体的 bot 的特有参数 */
-
-// TopAgent 参数配置
-export const topAgentParamsSchema = z.object({
-  role: z.string().nullish(),
-  taskObject: z.string().nullish(),
-  selectedTools: z.array(z.string()).nullish(),
-  selectedDatasets: z.array(z.string()).nullish(),
-  fileUpload: z.boolean().nullish()
-});
-export type TopAgentParamsType = z.infer<typeof topAgentParamsSchema>;
-
-// SkillAgent 参数配置 (区分 skill 特有配置和 topAgent 通用配置)
-export const skillAgentParamsSchema = z.object({
-  // Skill 特有配置
-  skillAgent: z
-    .object({
-      name: z.string().nullish(),
-      description: z.string().nullish(),
-      stepsText: z.string().nullish()
-    })
-    .nullish(),
-  // TopAgent 通用配置
-  topAgent: z
-    .object({
-      role: z.string().nullish(),
-      taskObject: z.string().nullish(),
-      selectedTools: z.array(z.string()).nullish(),
-      selectedDatasets: z.array(z.string()).nullish(),
-      fileUpload: z.boolean().nullish()
-    })
-    .nullish()
-});
-export type SkillAgentParamsType = z.infer<typeof skillAgentParamsSchema>;

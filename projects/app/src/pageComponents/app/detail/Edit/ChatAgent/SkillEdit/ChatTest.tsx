@@ -17,7 +17,6 @@ type Props = {
 };
 const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
   const skillAgentMetadata = useMemo(() => {
     return {
@@ -61,33 +60,25 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
           type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
           onApply={(generatedSkillData) => {
-            if (!generatedSkillData.plan_analysis || !generatedSkillData.execution_plan) {
-              return;
-            }
+            console.log(generatedSkillData, 222);
+            // const stepsText = generatedSkillData.execution_plan.steps
+            //   .map((step, index) => {
+            //     let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
+            //     if (step.expectedTools && step.expectedTools.length > 0) {
+            //       const tools = step.expectedTools
+            //         .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
+            //         .join(', ');
+            //       stepText += `\n使用工具: ${tools}`;
+            //     }
+            //     return stepText;
+            //   })
+            //   .join('\n\n');
 
-            const stepsText = generatedSkillData.execution_plan.steps
-              .map((step, index) => {
-                let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
-                if (step.expectedTools && step.expectedTools.length > 0) {
-                  const tools = step.expectedTools
-                    .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
-                    .join(', ');
-                  stepText += `\n使用工具: ${tools}`;
-                }
-                return stepText;
-              })
-              .join('\n\n');
-
-            onAIGenerate({
-              name: generatedSkillData.plan_analysis.name || skill.name,
-              description: generatedSkillData.plan_analysis.description || skill.description,
-              stepsText: stepsText
-            });
-
-            toast({
-              title: t('chat:generated_skill.applied_success'),
-              status: 'success'
-            });
+            // onAIGenerate({
+            //   name: generatedSkillData.plan_analysis.name || skill.name,
+            //   description: generatedSkillData.plan_analysis.description || skill.description,
+            //   stepsText: stepsText
+            // });
           }}
         />
       </Box>

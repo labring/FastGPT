@@ -1,9 +1,9 @@
 import type { OpenAPIPath } from '../../../type';
 import {
-  GetGeneratedSkillsParamsSchema,
-  GetGeneratedSkillDetailParamsSchema,
-  UpdateGeneratedSkillParamsSchema,
-  DeleteGeneratedSkillParamsSchema
+  ListAiSkillBody,
+  GetAiSkillDetailQuery,
+  UpdateAiSkillBody,
+  DeleteAiSkillQuery
 } from './api';
 import { TagsMap } from '../../../tag';
 import { z } from 'zod';
@@ -13,11 +13,11 @@ export const AISkillPath: OpenAPIPath = {
     post: {
       summary: '获取AI技能列表',
       description: '获取指定应用的AI技能列表，支持分页和搜索',
-      tags: [TagsMap.helperBot],
+      tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
           'application/json': {
-            schema: GetGeneratedSkillsParamsSchema
+            schema: ListAiSkillBody
           }
         }
       },
@@ -39,10 +39,10 @@ export const AISkillPath: OpenAPIPath = {
   '/core/ai/skill/detail': {
     get: {
       summary: '获取AI技能详情',
-      description: '根据技能ID获取详细信息',
-      tags: [TagsMap.helperBot],
+      description: '根据技能ID获取详细信息，会自动获取对应的应用权限进行鉴权',
+      tags: [TagsMap.aiSkill],
       requestParams: {
-        query: GetGeneratedSkillDetailParamsSchema
+        query: GetAiSkillDetailQuery
       },
       responses: {
         200: {
@@ -60,12 +60,12 @@ export const AISkillPath: OpenAPIPath = {
     put: {
       summary: '更新或创建AI技能',
       description:
-        '使用 upsert 方式更新或创建AI技能。如果提供 id 则更新现有技能，如果不提供 id 则创建新技能（需提供 appId、chatId、chatItemId）',
-      tags: [TagsMap.helperBot],
+        '使用 upsert 方式更新或创建AI技能。如果提供 id 则更新现有技能（会自动获取 appId 进行鉴权），如果不提供 id 则创建新技能（需提供 appId）',
+      tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
           'application/json': {
-            schema: UpdateGeneratedSkillParamsSchema
+            schema: UpdateAiSkillBody
           }
         }
       },
@@ -87,10 +87,10 @@ export const AISkillPath: OpenAPIPath = {
   '/core/ai/skill/delete': {
     delete: {
       summary: '删除AI技能',
-      description: '删除指定的AI技能',
-      tags: [TagsMap.helperBot],
+      description: '根据技能ID删除AI技能，会自动获取对应的应用权限进行鉴权',
+      tags: [TagsMap.aiSkill],
       requestParams: {
-        query: DeleteGeneratedSkillParamsSchema
+        query: DeleteAiSkillQuery
       },
       responses: {
         200: {
