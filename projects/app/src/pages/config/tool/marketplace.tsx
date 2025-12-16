@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useState, useMemo, useRef, useEffect, useCallback, useReducer } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useDebounce, useMount, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
@@ -173,10 +173,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
           }
+          await refreshInstalledPlugins();
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
-          await refreshInstalledPlugins();
         }
       })();
       operatingPromisesRef.current.set(tool.id, operationPromise);
@@ -213,10 +213,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
           }
+          await refreshInstalledPlugins();
         } finally {
           updatingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
-          await refreshInstalledPlugins();
         }
       })();
 
@@ -243,10 +243,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
           }
+          await refreshInstalledPlugins();
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
-          await refreshInstalledPlugins();
         }
       })();
       operatingPromisesRef.current.set(tool.id, operationPromise);
@@ -374,6 +374,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             onClick={() => router.push('/config/tool')}
             position={'absolute'}
             top={4}
+            zIndex={1000}
             {...(showCompactSearch ? { right: 4 } : { left: 4 })}
           />
           {!showCompactSearch && (
