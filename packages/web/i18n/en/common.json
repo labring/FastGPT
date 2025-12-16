@@ -223,6 +223,7 @@
   "confirm_choice": "Confirm Choice",
   "confirm_input_delete_placeholder": "Please enter: {{confirmText}}",
   "confirm_input_delete_tip": "Please type <bold>{{confirmText}}</bold> to confirm",
+  "confirm_exit_without_saving": "Confirm to leave? \nEditing results will not be retained.",
   "confirm_logout": "Confirm to log out?",
   "confirm_move": "Move Here",
   "confirm_update": "confirm_update",

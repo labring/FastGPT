@@ -7,11 +7,9 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Button,
   Flex,
   HStack
 } from '@chakra-ui/react';
-import AIResponseBox from '../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
@@ -71,6 +69,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
     </Accordion>
   );
 });
+
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text

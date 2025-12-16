@@ -11,6 +11,11 @@ import { useTranslation } from 'next-i18next';
 import { useSimpleAppSnapshots } from '../FormComponent/useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
+import { getAiSkillList } from '@/web/core/ai/skill/api';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { defaultSkill } from './SkillEdit/Row';
+import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../../Logs/index'));
@@ -27,9 +32,11 @@ const AgentEdit = () => {
   const [appForm, setAppForm] = useState(getDefaultAppForm());
 
   // Init app form
-  useMount(() => {
+  useMount(async () => {
+    let initialAppForm;
+
     if (past.length === 0) {
-      const appForm = appWorkflow2AgentForm({
+      initialAppForm = appWorkflow2AgentForm({
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
@@ -40,15 +47,47 @@ const AgentEdit = () => {
         }
       });
       saveSnapshot({
-        appForm,
+        appForm: initialAppForm,
         title: t('app:initial_form'),
         isSaved: true
       });
-      setAppForm(appForm);
     } else {
-      setAppForm(past[0].appForm);
+      initialAppForm = past[0].appForm;
     }
+
+    // Set initial app form
+    setAppForm(initialAppForm);
   });
+
+  // Load skills list using useRequest2
+  useRequest2(
+    async () => {
+      const result = await getAiSkillList({
+        appId: appDetail._id
+      });
+
+      // Map database data to SkillEditType format
+      const skills: SkillEditType[] = result.map((skill) => ({
+        id: skill._id,
+        name: skill.name,
+        description: '',
+        stepsText: '',
+        dataset: { list: [] },
+        selectedTools: []
+      }));
+
+      // Update appForm with skills
+      setAppForm((state) => ({
+        ...state,
+        skills
+      }));
+
+      return skills;
+    },
+    {
+      manual: false
+    }
+  );
 
   // Save snapshot to local
   useDebounceEffect(

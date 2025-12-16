@@ -5,6 +5,7 @@ import { PluginPath } from './core/plugin';
 import { AppPath } from './core/app';
 import { SupportPath } from './support';
 import { DatasetPath } from './core/dataset';
+import { AIPath } from './core/ai';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -18,13 +19,22 @@ export const openAPIDocument = createDocument({
     ...ChatPath,
     ...DatasetPath,
     ...PluginPath,
-    ...SupportPath
+    ...SupportPath,
+    ...AIPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
       name: 'Agent 应用',
       tags: [TagsMap.appCommon, TagsMap.appLog, TagsMap.publishChannel]
+    },
+    {
+      name: 'AI 相关',
+      tags: [TagsMap.aiSkill]
+    },
+    {
+      name: '对话',
+      tags: [TagsMap.chatSetting, TagsMap.chatPage]
     },
     {
       name: '对话管理',

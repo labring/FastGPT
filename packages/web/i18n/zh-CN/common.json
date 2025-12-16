@@ -224,6 +224,7 @@
   "confirm_choice": "确认选择",
   "confirm_input_delete_placeholder": "请输入: {{confirmText}}",
   "confirm_input_delete_tip": "请输入 <bold>{{confirmText}}</bold> 确认",
+  "confirm_exit_without_saving": "确认离开？编辑结果不会被保留。",
   "confirm_logout": "确认退出登录?",
   "confirm_move": "移动到这",
   "confirm_update": "确认更新",
