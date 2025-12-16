@@ -250,7 +250,7 @@ export const getUserContent = ({
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
 }) => {
-  let userContent = `任务描述：${userInput}`;
+  let userContent = `用户输入：${userInput}`;
   if (systemPrompt) {
     userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。`;
   }

@@ -1,4 +1,4 @@
-import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import { buildMetadataInfo } from './utils';
 
 export const getPrompt = ({

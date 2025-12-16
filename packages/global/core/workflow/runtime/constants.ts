@@ -19,7 +19,8 @@ export enum SseResponseEventEnum {
 
   agentPlan = 'agentPlan', // agent plan
 
-  formData = 'formData' // form data for TopAgent
+  formData = 'formData', // form data for TopAgent
+  generatedSkill = 'generatedSkill' // generated skill for SkillAgent
 }
 
 export enum DispatchNodeResponseKeyEnum {

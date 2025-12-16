@@ -1,11 +1,11 @@
-import { PaginationPropsSchema, PaginationResponseSchema } from '../../../type';
+import { PaginationPropsSchema } from '../../../type';
 import {
   type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
-  HelperBotTypeEnumSchema,
-  skillEditorParamsSchema,
-  topAgentParamsSchema
+  HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
+import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
+import { skillAgentParamsSchema } from '../../../../core/chat/helperBot/skillAgent/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
@@ -61,8 +61,8 @@ export const HelperBotCompletionsParamsSchema = z.object({
       data: topAgentParamsSchema
     }),
     z.object({
-      type: z.literal(HelperBotTypeEnum.skillEditor),
-      data: skillEditorParamsSchema
+      type: z.literal(HelperBotTypeEnum.skillAgent),
+      data: skillAgentParamsSchema
     })
   ])
 });

@@ -1,8 +1,11 @@
 export const TagsMap = {
   /* Core */
+  // Helper
   helperBot: '辅助助手',
   // Agent - log
   appLog: 'Agent 日志',
+  // Ai -skill
+  aiSkill: 'AI技能管理',
 
   // Chat - home
   chatPage: '对话页操作',

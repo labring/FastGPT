@@ -5,24 +5,35 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../context';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { cardStyles } from '../../../constants';
 import HelperBot from '@/components/core/chat/HelperBot';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   skill: SkillEditType;
-  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
+  appForm: AppFormEditFormType;
+  onAIGenerate: (updates: Partial<SkillEditType>) => void;
 };
-const ChatTest = ({ skill, setAppForm }: Props) => {
+const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
-  // 构建 SkillAgent metadata,从 appForm 中提取配置
-  const skillAgentMetadata = useMemo(() => ({}), []);
+  const skillAgentMetadata = useMemo(() => {
+    return {
+      skillAgent: {
+        name: skill.name,
+        description: skill.description,
+        stepsText: skill.stepsText
+      },
+      topAgent: {
+        role: appForm.aiSettings.aiRole,
+        taskObject: appForm.aiSettings.aiTaskObject,
+        fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
+        selectedTools: skill.selectedTools?.map((tool) => tool.id) || [],
+        selectedDatasets: skill.dataset?.list?.map((ds) => ds.datasetId) || []
+      }
+    };
+  }, [appForm.aiSettings, appForm.chatConfig.fileSelectConfig, skill]);
 
   return (
     <MyBox display={'flex'} position={'relative'} flexDirection={'column'} h={'full'} py={4}>
@@ -46,10 +57,28 @@ const ChatTest = ({ skill, setAppForm }: Props) => {
       </Flex>
       <Box flex={1}>
         <HelperBot
-          type={HelperBotTypeEnum.skillEditor}
+          type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
-          onApply={(e) => {
-            console.log(e);
+          onApply={(generatedSkillData) => {
+            console.log(generatedSkillData, 222);
+            // const stepsText = generatedSkillData.execution_plan.steps
+            //   .map((step, index) => {
+            //     let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
+            //     if (step.expectedTools && step.expectedTools.length > 0) {
+            //       const tools = step.expectedTools
+            //         .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
+            //         .join(', ');
+            //       stepText += `\n使用工具: ${tools}`;
+            //     }
+            //     return stepText;
+            //   })
+            //   .join('\n\n');
+
+            // onAIGenerate({
+            //   name: generatedSkillData.plan_analysis.name || skill.name,
+            //   description: generatedSkillData.plan_analysis.description || skill.description,
+            //   stepsText: stepsText
+            // });
           }}
         />
       </Box>

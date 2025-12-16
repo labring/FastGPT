@@ -1,6 +1,6 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSystemToolsWithInstalled } from '../../../../app/tool/controller';
-import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 export const generateResourceList = async ({
   teamId,
   isRoot,
