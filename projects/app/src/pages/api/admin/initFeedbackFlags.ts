@@ -36,12 +36,14 @@ async function createTemporaryIndexes(): Promise<void> {
         { userGoodFeedback: 1, teamId: 1, appId: 1, chatId: 1 },
         {
           name: 'temp_feedback_migration_good',
-          partialFilterExpression: { userGoodFeedback: { $exists: true } }
+          partialFilterExpression: { userGoodFeedback: { $exists: true } },
+          background: true
         } as any
       ),
       MongoChatItem.collection.createIndex({ userBadFeedback: 1, teamId: 1, appId: 1, chatId: 1 }, {
         name: 'temp_feedback_migration_bad',
-        partialFilterExpression: { userBadFeedback: { $exists: true } }
+        partialFilterExpression: { userBadFeedback: { $exists: true } },
+        background: true
       } as any)
     ]);
 
