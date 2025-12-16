@@ -153,18 +153,20 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   // Controler
   const { runAsync: handleInstallTool } = useRequest2(
     async (tool: ToolCardItemType) => {
-      const downloadUrl = await getMarketplaceDownloadURL(tool.id);
-      if (!downloadUrl) return;
-
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {
         await existingPromise;
         return;
       }
 
-      const operationPromise = (async () => {
-        installingOrDeletingToolIdsDispatch.add(tool.id);
+      installingOrDeletingToolIdsDispatch.add(tool.id);
+      const downloadUrl = await getMarketplaceDownloadURL(tool.id);
+      if (!downloadUrl) {
+        installingOrDeletingToolIdsDispatch.remove(tool.id);
+        return;
+      }
 
+      const operationPromise = (async () => {
         try {
           await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
