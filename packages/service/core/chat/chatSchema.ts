@@ -182,6 +182,9 @@ try {
 
   // timer, clear history
   ChatSchema.index({ teamId: 1, updateTime: -1 });
+
+  // Admin get chat data
+  ChatSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);
 }
