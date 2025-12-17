@@ -1,10 +1,6 @@
 import { SelectedDatasetSchema } from '../../workflow/type/io';
 import { z } from 'zod';
-import {
-  AppChatConfigTypeSchema,
-  AppDatasetSearchParamsTypeSchema,
-  AppFileSelectConfigTypeSchema
-} from '../type';
+import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../type';
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 

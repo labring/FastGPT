@@ -56,12 +56,6 @@ export const appWorkflow2AgentForm = ({
       if (subApps) {
         defaultAppForm.selectedTools = subApps;
       }
-
-      // TODO: 临时存这里，后续会改成单独表存储
-      const skills = inputMap.get(NodeInputKeyEnum.skills) as SkillEditType[];
-      if (skills) {
-        defaultAppForm.skills = skills;
-      }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
         chatConfig,
@@ -215,38 +209,6 @@ export function agentForm2AppWorkflow(
                   }
                   return input;
                 })
-              }))
-            },
-            {
-              key: NodeInputKeyEnum.skills,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.skills.map((skill) => ({
-                ...skill,
-                selectedTools: skill.selectedTools.map((tool) => ({
-                  ...tool,
-                  inputs: tool.inputs.map((input) => {
-                    // Special key value
-                    if (input.key === NodeInputKeyEnum.forbidStream) {
-                      input.value = true;
-                    }
-                    // Special tool
-                    if (
-                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                      input.key === NodeInputKeyEnum.history
-                    ) {
-                      return {
-                        ...input,
-                        value: data.aiSettings.maxHistories
-                      };
-                    }
-                    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-                      input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
-                    }
-                    return input;
-                  })
-                }))
               }))
             }
           ],
