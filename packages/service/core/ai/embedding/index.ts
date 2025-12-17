@@ -59,13 +59,17 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
         )
         .then(async (res) => {
           if (!res.data) {
-            addLog.error('Embedding API is not responding', res);
+            addLog.error('[Embedding] API is not responding', res);
             return Promise.reject('Embedding API is not responding');
           }
           if (!res?.data?.[0]?.embedding) {
-            console.log(res);
             // @ts-ignore
-            return Promise.reject(res.data?.err?.message || 'Embedding API Error');
+            const msg = res.data?.err?.message || 'Embedding API Error';
+            addLog.error('[Embedding] API Error', {
+              message: msg,
+              data: res
+            });
+            return Promise.reject(msg);
           }
 
           const [tokens, vectors] = await Promise.all([
@@ -93,7 +97,7 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
       vectors: allVectors
     };
   } catch (error) {
-    addLog.error(`Embedding Error`, error);
+    addLog.error(`[Embedding] request error`, error);
 
     return Promise.reject(error);
   }
