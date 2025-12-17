@@ -106,3 +106,10 @@ export type OutLinkEditType<T = undefined> = {
   // config for specific platform
   app?: T;
 };
+
+export type PlaygroundVisibilityConfigType = {
+  showNodeStatus: boolean;
+  responseDetail: boolean;
+  showFullText: boolean;
+  showRawSource: boolean;
+};

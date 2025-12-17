@@ -4,17 +4,14 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import {
+  type UpdatePlaygroundVisibilityConfigBody,
+  UpdatePlaygroundVisibilityConfigBodySchema
+} from '@fastgpt/global/support/outLink/api';
 
-export type UpdateChatVisibilityConfigBody = {
-  appId: string;
-  showNodeStatus?: boolean;
-  responseDetail?: boolean;
-  showFullText?: boolean;
-  showRawSource?: boolean;
-};
-
-async function handler(req: ApiRequestProps<UpdateChatVisibilityConfigBody, {}>) {
-  const { appId, showNodeStatus, responseDetail, showFullText, showRawSource } = req.body;
+async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody, {}>) {
+  const { appId, showNodeStatus, responseDetail, showFullText, showRawSource } =
+    UpdatePlaygroundVisibilityConfigBodySchema.parse(req.body);
 
   const { teamId, tmbId } = await authApp({
     req,
@@ -23,18 +20,18 @@ async function handler(req: ApiRequestProps<UpdateChatVisibilityConfigBody, {}>)
     per: ManagePermissionVal
   });
 
-  await MongoOutLink.findOneAndUpdate(
-    { appId, type: PublishChannelEnum.chat },
+  await MongoOutLink.updateOne(
+    { appId, type: PublishChannelEnum.playground },
     {
       $setOnInsert: {
-        shareId: `chat-${appId}`,
+        shareId: `playground-${appId}`,
         teamId,
         tmbId,
-        name: 'Home Chat'
+        name: 'Playground Chat'
       },
       $set: {
         appId,
-        type: PublishChannelEnum.chat,
+        type: PublishChannelEnum.playground,
         showNodeStatus: showNodeStatus ?? true,
         responseDetail: responseDetail ?? true,
         showFullText: showFullText ?? true,

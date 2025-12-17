@@ -6,5 +6,5 @@ export enum PublishChannelEnum {
   dingtalk = 'dingtalk',
   wecom = 'wecom',
   officialAccount = 'official_account',
-  chat = 'chat'
+  playground = 'playground'
 }

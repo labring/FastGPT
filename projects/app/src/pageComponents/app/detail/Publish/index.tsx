@@ -19,7 +19,7 @@ const FeiShu = dynamic(() => import('./FeiShu'));
 const DingTalk = dynamic(() => import('./DingTalk'));
 const Wecom = dynamic(() => import('./Wecom'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
-const Chat = dynamic(() => import('./Chat'));
+const Playground = dynamic(() => import('./Playground'));
 
 const OutLink = () => {
   const { t } = useTranslation();
@@ -91,7 +91,7 @@ const OutLink = () => {
       icon: 'core/chat/sidebar/home',
       title: t('common:navbar.Chat'),
       desc: t('app:publish.chat_desc'),
-      value: PublishChannelEnum.chat,
+      value: PublishChannelEnum.playground,
       isProFn: false
     }
   ]);
@@ -149,7 +149,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
-        {linkType === PublishChannelEnum.chat && <Chat appId={appId} />}
+        {linkType === PublishChannelEnum.playground && <Playground appId={appId} />}
       </Flex>
     </Box>
   );

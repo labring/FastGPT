@@ -174,7 +174,7 @@ export async function getServerSideProps(context: any) {
       const config = await MongoOutLink.findOne(
         {
           appId,
-          type: PublishChannelEnum.chat
+          type: PublishChannelEnum.playground
         },
         'showNodeStatus responseDetail showFullText showRawSource'
       ).lean();

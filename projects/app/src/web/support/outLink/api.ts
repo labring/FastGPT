@@ -1,8 +1,8 @@
 import type {
-  ChatVisibilityConfigQuery,
-  ChatVisibilityConfigResponse
-} from '@/pages/api/support/outLink/chat/config';
-import type { UpdateChatVisibilityConfigBody } from '@/pages/api/support/outLink/chat/update';
+  PlaygroundVisibilityConfigQuery,
+  PlaygroundVisibilityConfigResponse,
+  UpdatePlaygroundVisibilityConfigBody
+} from '@fastgpt/global/support/outLink/api';
 import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   OutlinkAppType,
@@ -41,12 +41,12 @@ export function updateShareChat<T extends OutlinkAppType>(data: OutLinkEditType<
   return POST<string>(`/support/outLink/update`, data);
 }
 
-export function getChatVisibilityConfig(data: ChatVisibilityConfigQuery) {
-  return GET<ChatVisibilityConfigResponse>('/support/outLink/chat/config', data);
+export function getPlaygroundVisibilityConfig(data: PlaygroundVisibilityConfigQuery) {
+  return GET<PlaygroundVisibilityConfigResponse>('/support/outLink/playground/config', data);
 }
 
-export function updateChatVisibilityConfig(data: UpdateChatVisibilityConfigBody) {
-  return POST<string>(`/support/outLink/chat/update`, data);
+export function updatePlaygroundVisibilityConfig(data: UpdatePlaygroundVisibilityConfigBody) {
+  return POST<string>(`/support/outLink/playground/update`, data);
 }
 
 // /**

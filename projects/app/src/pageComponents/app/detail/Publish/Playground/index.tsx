@@ -5,28 +5,31 @@ import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getChatVisibilityConfig, updateChatVisibilityConfig } from '@/web/support/outLink/api';
-import type { ChatVisibilityConfigType } from '@fastgpt/global/core/app/type';
+import {
+  getPlaygroundVisibilityConfig,
+  updatePlaygroundVisibilityConfig
+} from '@/web/support/outLink/api';
+import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/outLink/type';
 
-const defaultChatVisibilityForm: ChatVisibilityConfigType = {
+const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showNodeStatus: true,
   responseDetail: true,
   showFullText: true,
   showRawSource: true
 };
 
-const ChatVisibilityConfig = ({ appId }: { appId: string }) => {
+const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
 
   const { register, watch, setValue, reset } = useForm({
-    defaultValues: defaultChatVisibilityForm
+    defaultValues: defaultPlaygroundVisibilityForm
   });
 
   const responseDetail = watch('responseDetail');
   const showFullText = watch('showFullText');
   const showRawSource = watch('showRawSource');
 
-  useRequest2(() => getChatVisibilityConfig({ appId }), {
+  useRequest2(() => getPlaygroundVisibilityConfig({ appId }), {
     onSuccess: (data) => {
       reset({
         showNodeStatus: data.showNodeStatus,
@@ -39,8 +42,8 @@ const ChatVisibilityConfig = ({ appId }: { appId: string }) => {
   });
 
   const { runAsync: saveConfig } = useRequest2(
-    async (data: ChatVisibilityConfigType) => {
-      return await updateChatVisibilityConfig({
+    async (data: PlaygroundVisibilityConfigType) => {
+      return await updatePlaygroundVisibilityConfig({
         appId,
         ...data
       });
@@ -139,4 +142,4 @@ const ChatVisibilityConfig = ({ appId }: { appId: string }) => {
   );
 };
 
-export default ChatVisibilityConfig;
+export default PlaygroundVisibilityConfig;
