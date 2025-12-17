@@ -105,7 +105,7 @@ const TemplateImportModal = ({
             FileTypeNode={
               <Box fontSize={'xs'}>
                 <Trans
-                  i18nKey={'file:template_csv_file_select_tip'}
+                  i18nKey="file:template_csv_file_select_tip"
                   values={{
                     fileType: '.csv'
                   }}
