@@ -36,7 +36,8 @@ import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import type { AppFileSelectConfigType, AppWhisperConfigType } from '@fastgpt/global/core/app/type';
+import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
@@ -387,15 +388,14 @@ const HomeChatWindow = () => {
       availableModels,
       selectedModel,
       availableTools,
-      selectedTools.length,
+      selectedTools?.length,
       t,
       setSelectedModel,
       selectedToolIds,
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      isQuickApp,
-      isShowCite
+      isQuickApp
     ]
   );
 

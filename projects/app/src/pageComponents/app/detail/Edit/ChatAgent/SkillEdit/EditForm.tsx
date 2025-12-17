@@ -11,7 +11,7 @@ import {
   IconButton,
   Textarea
 } from '@chakra-ui/react';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
