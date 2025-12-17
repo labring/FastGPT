@@ -1,4 +1,11 @@
 {
+  "Correction_Modal_Title": "回答纠错",
+  "Correction_Question_Label": "问题",
+  "Correction_Answer_Label": "答案",
+  "Correction_Edit_Answer": "编辑答案",
+  "Correction_Edit_Answer_Desc": "用户提问该问题时，将直接使用该答案进行回答",
+  "Correction_Annotate_Knowledge": "标注答案引用的知识",
+  "Correction_Annotate_Knowledge_Desc": "将该问题加入所选知识的索引中，再次提问时辅助检索，标注全面效果更佳",
   "AutoOptimize": "Auto optimize",
   "Click_to_delete_this_field": "Click to delete",
   "Filed_is_deprecated": "The field has been deprecated.",
@@ -396,6 +403,7 @@
   "auto_learn.learning_records": "学习记录（{{total}}）",
   "auto_learn.description": "知识库更新时,可使用该方式,自动分析文档,生成评测数据,实现自监督学习,微调模型并检验学习效果,增强应用检索召回的准确率。",
   "auto_learn.start_learning": "开始学习",
+  "auto_learning": "自动学习",
   "auto_learn.learning_time": "学习时间",
   "auto_learn.status": "状态",
   "auto_learn.creator": "创建人",
@@ -407,5 +415,9 @@
   "auto_learn.after_learning": "学习后",
   "auto_learn.learning": "学习中",
   "auto_learn.completed": "已完成",
-  "auto_learn.download_evaluation_data": "下载评测数据"
+  "auto_learn.download_evaluation_data": "下载评测数据",
+  "optimize_records": "优化记录",
+  "knowledge_select_search_placeholder": "搜索选择知识",
+  "knowledge_search_input_tip": "请先输入关键词",
+  "knowledge_search_no_results": "未搜索到相关知识"
 }

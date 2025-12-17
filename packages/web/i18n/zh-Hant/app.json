@@ -1,4 +1,11 @@
 {
+  "Correction_Modal_Title": "回答糾錯",
+  "Correction_Question_Label": "問題",
+  "Correction_Answer_Label": "答案",
+  "Correction_Edit_Answer": "編輯答案",
+  "Correction_Edit_Answer_Desc": "用戶提問該問題時，將直接使用該答案進行回答",
+  "Correction_Annotate_Knowledge": "標註答案引用的知識",
+  "Correction_Annotate_Knowledge_Desc": "將該問題加入所選知識的索引中，再次提問時輔助檢索，標註全面效果更佳",
   "AutoOptimize": "自動優化",
   "Click_to_delete_this_field": "點擊刪除該字段",
   "Filed_is_deprecated": "該字段已棄用",
@@ -396,6 +403,7 @@
   "auto_learn.learning_records": "學習記錄（{{total}}）",
   "auto_learn.description": "知識庫更新時,可使用該方式,自動分析文檔,生成評測數據,實現自監督學習,微調模型並檢驗學習效果,增強應用檢索召回的準確率。",
   "auto_learn.start_learning": "開始學習",
+  "auto_learning": "自動學習",
   "auto_learn.learning_time": "學習時間",
   "auto_learn.status": "狀態",
   "auto_learn.creator": "創建人",
@@ -407,5 +415,9 @@
   "auto_learn.after_learning": "學習後",
   "auto_learn.learning": "學習中",
   "auto_learn.completed": "已完成",
-  "auto_learn.download_evaluation_data": "下載評測數據"
+  "auto_learn.download_evaluation_data": "下載評測數據",
+  "optimize_records": "優化記錄",
+  "knowledge_select_search_placeholder": "搜尋選擇知識",
+  "knowledge_search_input_tip": "請先輸入關鍵詞",
+  "knowledge_search_no_results": "未搜尋到相關知識"
 }

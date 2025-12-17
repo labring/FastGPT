@@ -1,0 +1,73 @@
+/**
+ * @file 优化记录组件样式
+ * @description 优化记录组件的专用样式文件
+ */
+
+/* 文本省略样式 */
+.textEllipsis3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 引用知识卡片样式 */
+.quote-card {
+  border-radius: 4px;
+  background: linear-gradient(0deg, rgba(240, 241, 248, 0) 0%, #e8ebf0 100%);
+  padding: 12px 16px;
+  min-width: 400px;
+  max-width: 400px;
+  flex-shrink: 0;
+}
+
+.quote-content {
+  line-height: 20px;
+  color: #485264;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.quote-source {
+  margin-top: 10px;
+}
+
+/* 引用知识tag容器样式 */
+.quoteTagContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 引用知识tag样式 */
+.quoteTag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: fit-content;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #f7fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #4a5568;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.quoteTagText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}

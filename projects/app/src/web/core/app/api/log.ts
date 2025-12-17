@@ -10,6 +10,10 @@ import type {
   getTotalDataQuery,
   getTotalDataResponse
 } from '@fastgpt/global/core/app/logs/api';
+import type {
+  GetKeywordQuoteParams,
+  GetKeywordQuoteResponse
+} from '@fastgpt/global/core/chat/correction/api';
 
 export const updateLogKeys = (data: updateLogKeysBody) =>
   POST('/core/app/logs/updateLogKeys', data);
@@ -25,3 +29,6 @@ export const getAppTotalData = (data: getTotalDataQuery) =>
 
 export const getAppChartData = (data: getChartDataBody) =>
   POST<getChartDataResponse>('/proApi/core/app/logs/getChartData', data);
+
+export const getKeywordQuote = (data: GetKeywordQuoteParams) =>
+  POST<GetKeywordQuoteResponse>('/core/chat/quote/getKeywordQuote', data);
