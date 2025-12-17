@@ -34,6 +34,7 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
+  hideCiteIcon?: boolean;
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -49,6 +50,7 @@ const MarkdownRender = ({
   showAnimation,
   isDisabled,
   forbidZhFormat,
+  hideCiteIcon,
 
   chatAuthData,
   onOpenCiteModal
@@ -64,6 +66,7 @@ const MarkdownRender = ({
           showAnimation={showAnimation}
           chatAuthData={chatAuthData}
           onOpenCiteModal={onOpenCiteModal}
+          hideCiteIcon={hideCiteIcon}
         />
       )
     };

@@ -10,10 +10,8 @@ import { formatChatValue2InputType } from '../../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useContextSelector } from 'use-context-selector';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const StandaloneResponseModal = dynamic(
@@ -79,7 +77,6 @@ const IconButton = ({
 const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & FlexProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-
   // 从 ChatItemContext 获取 chatBoxData
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const appId = chatBoxData?.appId;
@@ -191,6 +188,15 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
               </Text>
             </MyTag>
           </MyTooltip>
+        );
+      }
+      if (chat.totalQuoteList && chat.totalQuoteList.length === 0) {
+        elements.push(
+          <MyTag key="quote-list" colorSchema="pink" showDot>
+            <Text fontSize="xs" fontWeight={500}>
+              {t('app:logs_filter_not_found_knowledge')}
+            </Text>
+          </MyTag>
         );
       }
     }
