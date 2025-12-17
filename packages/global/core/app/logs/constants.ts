@@ -37,7 +37,7 @@ export const AppLogKeysEnumMap = {
 };
 
 export const DefaultAppLogKeys = [
-  { key: AppLogKeysEnum.SOURCE, enable: true },
+  { key: AppLogKeysEnum.SOURCE, enable: false },
   { key: AppLogKeysEnum.USER, enable: true },
   { key: AppLogKeysEnum.TITLE, enable: true },
   { key: AppLogKeysEnum.SESSION_ID, enable: false },

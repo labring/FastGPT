@@ -54,9 +54,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { permanentlyDelChatHistoryById, batchDeleteChatHistories } from '@/web/core/chat/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -73,7 +74,6 @@ const LogTable = ({
 }: HeaderControlProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { toast } = useToast();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
@@ -222,7 +222,6 @@ const LogTable = ({
     selectedItems,
     toggleSelect,
     isSelected,
-    setSelectedItems,
     FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
@@ -230,42 +229,23 @@ const LogTable = ({
     list: logs,
     getItemId: (item) => item._id
   });
+  const chatIds = useMemoEnhance(() => selectedItems.map((item) => item.chatId), [selectedItems]);
 
-  const handleDelete = async (item: AppLogsListItemType) => {
-    try {
-      await permanentlyDelChatHistoryById({ appId, chatId: item.chatId });
-      toast({
-        title: t('common:delete_success'),
-        status: 'success'
-      });
-      getData(pageNum);
-    } catch (error) {
-      toast({
-        title: t('common:delete_failed'),
-        status: 'error'
-      });
-    }
-  };
+  const { openConfirm: openConfirmDelete, ConfirmModal: ConfirmDeleteModal } = useConfirm({
+    type: 'delete'
+  });
 
-  const handleBatchDelete = async () => {
-    const chatIds = selectedItems.map((item) => item.chatId);
-    try {
+  const { runAsync: handleDelete } = useRequest2(
+    async (chatIds: string[]) => {
       await batchDeleteChatHistories({ appId, chatIds });
-      toast({
-        title: t('common:delete_success'),
-        status: 'success'
-      });
-      setSelectedItems([]);
-      getData(pageNum);
-    } catch (error) {
-      toast({
-        title: t('common:delete_failed'),
-        status: 'error'
-      });
+      await getData(pageNum);
+    },
+    {
+      successToast: t('common:delete_success')
     }
-  };
+  );
 
-  const HeaderRenderMap = useMemo(
+  const HeaderRenderMap = useMemoEnhance(
     () => ({
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -418,11 +398,17 @@ const LogTable = ({
         <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
       )
     }),
-    [t, selectAllTrigger]
+    [t]
   );
 
   return (
-    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
+    <MyBox
+      isLoading={isLoading && logs.length === 0}
+      display={'flex'}
+      flexDir={'column'}
+      h={'full'}
+      px={px}
+    >
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         {showSourceSelector && (
           <Flex>
@@ -572,7 +558,6 @@ const LogTable = ({
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
-                  title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.chatId)}
                 >
                   <Td>
@@ -583,27 +568,15 @@ const LogTable = ({
                   {logKeys
                     .filter((logKey) => logKey.enable)
                     .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
-                  <Td>
+                  <Td onClick={(e) => e.stopPropagation()}>
                     <PopoverConfirm
                       content={t('app:confirm_delete_chat_content')}
                       type="delete"
-                      onConfirm={() => handleDelete(item)}
+                      onConfirm={() => handleDelete([item.chatId])}
                       Trigger={
-                        <Box
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          cursor="pointer"
-                          borderRadius="sm"
-                          w={6}
-                          h={6}
-                          _hover={{ bg: 'myGray.200', color: 'red.500' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        >
-                          <MyIcon name={'delete'} w={4} />
-                        </Box>
+                        <Flex>
+                          <MyIconButton icon={'delete'} hoverColor={'red.600'} hoverBg="red.100" />
+                        </Flex>
                       }
                     />
                   </Td>
@@ -619,18 +592,22 @@ const LogTable = ({
         <FloatingActionBar
           Controler={
             <HStack>
-              <Button colorScheme="red" onClick={handleBatchDelete}>
-                {t('common:Delete')} ({selectedItems.length})
+              <Button
+                variant={'whiteDanger'}
+                onClick={() =>
+                  openConfirmDelete({
+                    onConfirm: () => handleDelete(chatIds),
+                    customContent: t('app:confirm_delete_chats', {
+                      n: chatIds.length
+                    })
+                  })()
+                }
+              >
+                {t('common:Delete')} ({chatIds.length})
               </Button>
             </HStack>
           }
-        >
-          {total >= pageSize && (
-            <Flex justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          )}
-        </FloatingActionBar>
+        ></FloatingActionBar>
       )}
 
       {!selectedItems.length && total >= pageSize && (
@@ -649,6 +626,8 @@ const LogTable = ({
           }}
         />
       )}
+
+      <ConfirmDeleteModal />
     </MyBox>
   );
 };

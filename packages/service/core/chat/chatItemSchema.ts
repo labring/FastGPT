@@ -81,11 +81,6 @@ const ChatItemSchema = new Schema({
     }
   },
   isFeedbackRead: Boolean,
-  deleteTime: {
-    type: Date,
-    default: null,
-    select: false
-  },
 
   // @deprecated
   [DispatchNodeResponseKeyEnum.nodeResponse]: Array
@@ -100,8 +95,8 @@ const ChatItemSchema = new Schema({
 */
 ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
 // Anchor filter
-ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1, _id: -1 });
+ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
 // timer, clear history
-ChatItemSchema.index({ teamId: 1, deleteTime: 1, time: -1 });
+ChatItemSchema.index({ teamId: 1, time: -1 });
 
 export const MongoChatItem = getMongoModel<ChatItemType>(ChatItemCollectionName, ChatItemSchema);

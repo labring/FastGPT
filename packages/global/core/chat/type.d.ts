@@ -199,7 +199,7 @@ export type HistoryItemType = {
 };
 export type ChatHistoryItemType = HistoryItemType & {
   appId: string;
-  top: boolean;
+  top?: boolean;
 };
 
 /* ------- response data ------------ */

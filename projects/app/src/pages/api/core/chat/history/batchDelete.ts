@@ -6,40 +6,36 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { authBatchChatCrud } from '@/service/support/permission/auth/chat';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 
-type BatchDeleteRequest = {
-  appId: string;
-  chatIds: string[];
-};
-
-async function handler(req: ApiRequestProps<BatchDeleteRequest, {}>, res: NextApiResponse) {
-  const { appId, chatIds } = req.body;
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);
 
   if (!Array.isArray(chatIds) || chatIds.length === 0) {
     return Promise.reject(new Error('chatIds is required and must be an array'));
   }
 
-  await authBatchChatCrud({
+  await authApp({
     req,
     authToken: true,
     authApiKey: true,
     appId,
-    chatIds
+    per: AppReadChatLogPerVal
   });
 
   await mongoSessionRun(async (session) => {
-    const chats = await MongoChat.find(
+    const chatList = await MongoChat.find(
       {
         appId,
         chatId: { $in: chatIds }
       },
-      null,
-      { session }
-    ).lean();
-    if (chats.length === 0) {
-      return;
-    }
+      'chatId tmbId outLinkUid'
+    )
+      .lean()
+      .session(session);
+
     await MongoChatItemResponse.deleteMany({
       appId,
       chatId: { $in: chatIds }
@@ -59,17 +55,17 @@ async function handler(req: ApiRequestProps<BatchDeleteRequest, {}>, res: NextAp
       { session }
     );
     await Promise.all(
-      chats.map((chat) =>
-        getS3ChatSource().deleteChatFilesByPrefix({
+      chatList.map((item) => {
+        return getS3ChatSource().deleteChatFilesByPrefix({
           appId,
-          chatId: chat.chatId,
-          uId: chat.userId
-        })
-      )
+          chatId: item.chatId,
+          uId: String(item.outLinkUid || item.tmbId)
+        });
+      })
     );
   });
 
-  return { deletedCount: chatIds.length };
+  return;
 }
 
 export default NextAPI(handler);
