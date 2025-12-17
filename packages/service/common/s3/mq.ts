@@ -27,12 +27,15 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
     }
   );
 };
+
 export const startS3DelWorker = async () => {
+  const limit = pLimit(50);
+
   return getWorker<S3MQJobData>(
     QueueNames.s3FileDelete,
     async (job) => {
       const { prefix, bucketName, key, keys } = job.data;
-      const limit = pLimit(10);
+
       const bucket = s3BucketMap[bucketName];
       if (!bucket) {
         return Promise.reject(`Bucket not found: ${bucketName}`);
@@ -45,50 +48,18 @@ export const startS3DelWorker = async () => {
       }
       if (keys) {
         addLog.info(`[S3 delete] delete keys: ${keys.length}`);
-        const tasks: Promise<void>[] = [];
-        for (const key of keys) {
-          const p = limit(() => retryFn(() => bucket.delete(key)));
-          tasks.push(p);
-        }
+        const tasks = [];
+        const p = limit(() => retryFn(() => bucket.client.deleteObjectsByMultiKeys({ keys })));
+        tasks.push(p);
         await Promise.all(tasks);
         addLog.info(`[S3 delete] delete keys: ${keys.length} success`);
       }
       if (prefix) {
         addLog.info(`[S3 delete] delete prefix: ${prefix}`);
-        const tasks: Promise<void>[] = [];
-        return new Promise<void>(async (resolve, reject) => {
-          const stream = bucket.listObjectsV2(prefix, true);
-          stream.on('data', async (file) => {
-            if (!file.name) return;
-
-            const p = limit(() =>
-              // 因为封装的 delete 方法里，包含前缀删除，这里不能再使用，避免循环。
-              retryFn(() => bucket.client.removeObject(bucket.bucketName, file.name))
-            );
-            tasks.push(p);
-          });
-
-          stream.on('end', async () => {
-            try {
-              const results = await Promise.allSettled(tasks);
-              const failed = results.filter((r) => r.status === 'rejected');
-              if (failed.length > 0) {
-                addLog.error(`[S3 delete] delete prefix: ${prefix} failed`);
-                reject('Some deletes failed');
-              }
-              addLog.info(`[S3 delete] delete prefix: ${prefix} success`);
-              resolve();
-            } catch (err) {
-              addLog.error(`[S3 delete] delete prefix: ${prefix} error`, err);
-              reject(err);
-            }
-          });
-
-          stream.on('error', (err) => {
-            addLog.error(`[S3 delete] delete prefix: ${prefix} error`, err);
-            reject(err);
-          });
-        });
+        const tasks = [];
+        const p = limit(() => retryFn(() => bucket.client.deleteObjectsByPrefix({ prefix })));
+        tasks.push(p);
+        await Promise.all(tasks);
       }
     },
     {

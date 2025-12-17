@@ -14,7 +14,7 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
-import { POST } from '@/web/common/api/request';
+import { PUT } from '@/web/common/api/request';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
@@ -176,7 +176,11 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
           // Get Upload Post Presigned URL
-          const { url, fields, maxSize } = await getUploadChatFilePresignedUrl({
+          const {
+            url,
+            fields: { key, ...headers },
+            maxSize
+          } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
             appId,
             chatId,
@@ -184,10 +188,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           });
 
           // Upload File to S3
-          const formData = new FormData();
-          Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-          formData.set('file', copyFile.rawFile);
-          await POST(url, formData, {
+          await PUT(url, copyFile.rawFile, {
+            headers: {
+              ...headers
+            },
             onUploadProgress: (e) => {
               if (!e.total) return;
               const percent = Math.round((e.loaded / e.total) * 100);
@@ -198,14 +202,14 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           }).catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
 
           const previewUrl = await getPresignedChatFileGetUrl({
-            key: fields.key,
+            key: key,
             appId,
             outLinkAuthData
           });
 
           // Update file url and key
           copyFile.url = previewUrl;
-          copyFile.key = fields.key;
+          copyFile.key = key;
           updateFiles(fileIndex, copyFile);
         } catch (error) {
           errorFileIndex.push(fileList.findIndex((item) => item.id === file.id)!);

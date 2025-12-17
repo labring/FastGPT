@@ -8,6 +8,7 @@ import { MongoS3TTL } from '../../schema';
 import { addMinutes } from 'date-fns';
 import { getFileS3Key } from '../../utils';
 import { createHash } from 'node:crypto';
+import streamConsumer from 'node:stream/consumers';
 
 export class S3RawTextSource extends S3PrivateBucket {
   constructor() {
@@ -16,10 +17,10 @@ export class S3RawTextSource extends S3PrivateBucket {
 
   // 获取文件元数据
   async getFilename(key: string) {
-    const stat = await this.statObject(key);
-    if (!stat) return '';
+    const metadataResponse = await this.client.getObjectMetadata({ key });
+    if (!metadataResponse) return '';
 
-    const filename: string = decodeURIComponent(stat.metaData['origin-filename']);
+    const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
     return filename;
   }
 
@@ -38,10 +39,14 @@ export class S3RawTextSource extends S3PrivateBucket {
       expiredTime: addMinutes(new Date(), 20)
     });
 
-    await this.putObject(key, buffer, buffer.length, {
-      'content-type': 'text/plain',
-      'origin-filename': encodeURIComponent(sourceName),
-      'upload-time': new Date().toISOString()
+    await this.client.uploadObject({
+      key,
+      body: buffer,
+      contentType: 'text/plain',
+      metadata: {
+        originFilename: encodeURIComponent(sourceName),
+        uploadTime: new Date().toISOString()
+      }
     });
 
     return key;
@@ -55,13 +60,16 @@ export class S3RawTextSource extends S3PrivateBucket {
 
     if (!(await this.isObjectExists(key))) return null;
 
-    const [stream, filename] = await Promise.all([this.getFileStream(key), this.getFilename(key)]);
+    const [downloadResponse, fileMetadata] = await Promise.all([
+      this.client.downloadObject({ key }),
+      this.getFileMetadata(key)
+    ]);
 
-    const buffer = await this.fileStreamToBuffer(stream);
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
 
     return {
       text: buffer.toString('utf-8'),
-      filename
+      filename: fileMetadata?.filename || ''
     };
   }
 }

@@ -156,10 +156,11 @@ export async function dispatchWorkFlow({
   await addPreviewUrlToChatItems(histories, 'chatFlow');
   for (const item of query) {
     if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
-    item.file.url = await getS3ChatSource().createGetChatFileURL({
+    const { getUrl: url } = await getS3ChatSource().createGetChatFileURL({
       key: item.file.key,
       external: true
     });
+    item.file.url = url;
   }
 
   // Get default variables

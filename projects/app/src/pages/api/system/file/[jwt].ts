@@ -32,8 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           })()
         );
 
+        if (!stream) {
+          return jsonRes(res, {
+            code: 404,
+            error: 'File not found'
+          });
+        }
+
         if (metadata) {
           res.setHeader('Content-Type', metadata.contentType);
+        }
+        if (metadata?.contentLength) {
           res.setHeader('Content-Length', metadata.contentLength);
         }
         res.setHeader('Cache-Control', 'public, max-age=31536000');

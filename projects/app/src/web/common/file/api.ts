@@ -1,16 +1,18 @@
-import { POST } from '@/web/common/api/request';
+import { POST, PUT } from '@/web/common/api/request';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { type AxiosProgressEvent } from 'axios';
 
 export const postS3UploadFile = (
   postURL: string,
-  form: FormData,
+  file: File,
+  headers?: Record<string, string>,
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
 ) =>
-  POST(postURL, form, {
+  PUT(postURL, file, {
     timeout: 600000,
-    onUploadProgress
+    onUploadProgress,
+    ...(headers ? { headers } : {})
   });
 
 export const getUploadAvatarPresignedUrl = (params: {
