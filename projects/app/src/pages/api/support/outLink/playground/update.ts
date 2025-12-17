@@ -7,7 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   type UpdatePlaygroundVisibilityConfigBody,
   UpdatePlaygroundVisibilityConfigBodySchema
-} from '@fastgpt/global/support/outLink/api';
+} from '@fastgpt/global/support/outLink/api.d';
 
 async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody, {}>) {
   const { appId, showNodeStatus, responseDetail, showFullText, showRawSource } =

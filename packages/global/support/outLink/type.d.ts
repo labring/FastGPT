@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { AppSchema } from '../../core/app/type';
 import type { PublishChannelEnum } from './constant';
 import { RequireOnlyOne } from '../../common/type/utils';
@@ -113,3 +114,10 @@ export type PlaygroundVisibilityConfigType = {
   showFullText: boolean;
   showRawSource: boolean;
 };
+
+export const PlaygroundVisibilityConfigSchema = z.object({
+  showNodeStatus: z.boolean(),
+  responseDetail: z.boolean(),
+  showFullText: z.boolean(),
+  showRawSource: z.boolean()
+});

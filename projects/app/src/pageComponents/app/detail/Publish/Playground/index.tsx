@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Flex, Grid, Switch } from '@chakra-ui/react';
+import React, { useMemo } from 'react';
+import { Box, Flex, Grid, Switch, Button, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -10,6 +10,8 @@ import {
   updatePlaygroundVisibilityConfig
 } from '@/web/support/outLink/api';
 import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/outLink/type';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showNodeStatus: true,
@@ -20,6 +22,7 @@ const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
 
 const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
+  const { copyData } = useCopyData();
 
   const { register, watch, setValue, reset } = useForm({
     defaultValues: defaultPlaygroundVisibilityForm
@@ -28,6 +31,13 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const responseDetail = watch('responseDetail');
   const showFullText = watch('showFullText');
   const showRawSource = watch('showRawSource');
+
+  const playgroundLink = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/chat?appId=${appId}`;
+    }
+    return '';
+  }, [appId]);
 
   useRequest2(() => getPlaygroundVisibilityConfig({ appId }), {
     onSuccess: (data) => {
@@ -60,6 +70,36 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
   return (
     <Flex flexDirection="column" h="100%">
+      <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} mb={3}>
+        {t('app:publish.playground_link')}
+      </Box>
+
+      <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'} mb={6}>
+        <Flex
+          p={3}
+          bg={'myWhite.500'}
+          border="base"
+          borderTopLeftRadius={'md'}
+          borderTopRightRadius={'md'}
+          alignItems={'center'}
+        >
+          <Box flex={1} fontSize={'xs'} color={'myGray.600'}>
+            {t('common:core.app.outLink.Link block title')}
+          </Box>
+          <MyIcon
+            name={'copy'}
+            w={'16px'}
+            color={'myGray.600'}
+            cursor={'pointer'}
+            _hover={{ color: 'primary.500' }}
+            onClick={() => copyData(playgroundLink)}
+          />
+        </Flex>
+        <Box whiteSpace={'nowrap'} p={3} overflowX={'auto'}>
+          {playgroundLink}
+        </Box>
+      </Box>
+
       <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
         {t('publish:private_config')}
       </Box>
