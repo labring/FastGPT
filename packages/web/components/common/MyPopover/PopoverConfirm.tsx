@@ -90,7 +90,14 @@ const PopoverConfirm = ({
         </HStack>
         <HStack mt={2} justifyContent={'flex-end'}>
           {showCancel && (
-            <Button variant={'whiteBase'} size="sm" onClick={onClose}>
+            <Button
+              variant={'whiteBase'}
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+            >
               {cancelText || t('common:Cancel')}
             </Button>
           )}

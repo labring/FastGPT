@@ -41,6 +41,7 @@ async function handler(
       return {
         shareId,
         outLinkUid: uid,
+        deleteTime: null,
         updateTime: {
           $gte: addMonths(new Date(), -1)
         }
@@ -52,7 +53,8 @@ async function handler(
         teamId,
         appId,
         outLinkUid: uid,
-        source: ChatSourceEnum.team
+        source: ChatSourceEnum.team,
+        deleteTime: null
       };
     }
     if (appId) {
@@ -60,6 +62,7 @@ async function handler(
       return {
         tmbId,
         appId,
+        deleteTime: null,
         ...(source && { source })
       };
     }

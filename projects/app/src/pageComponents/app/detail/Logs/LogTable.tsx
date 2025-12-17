@@ -10,7 +10,8 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  Checkbox
 } from '@chakra-ui/react';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
@@ -53,6 +54,9 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { permanentlyDelChatHistoryById, batchDeleteChatHistories } from '@/web/core/chat/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -69,6 +73,7 @@ const LogTable = ({
 }: HeaderControlProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { toast } = useToast();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
@@ -212,6 +217,53 @@ const LogTable = ({
     params,
     refreshDeps: [params]
   });
+
+  const {
+    selectedItems,
+    toggleSelect,
+    isSelected,
+    setSelectedItems,
+    FloatingActionBar,
+    isSelecteAll,
+    selectAllTrigger
+  } = useTableMultipleSelect({
+    list: logs,
+    getItemId: (item) => item._id
+  });
+
+  const handleDelete = async (item: AppLogsListItemType) => {
+    try {
+      await permanentlyDelChatHistoryById({ appId, chatId: item.chatId });
+      toast({
+        title: t('common:delete_success'),
+        status: 'success'
+      });
+      getData(pageNum);
+    } catch (error) {
+      toast({
+        title: t('common:delete_failed'),
+        status: 'error'
+      });
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    const chatIds = selectedItems.map((item) => item.chatId);
+    try {
+      await batchDeleteChatHistories({ appId, chatIds });
+      toast({
+        title: t('common:delete_success'),
+        status: 'success'
+      });
+      setSelectedItems([]);
+      getData(pageNum);
+    } catch (error) {
+      toast({
+        title: t('common:delete_failed'),
+        status: 'error'
+      });
+    }
+  };
 
   const HeaderRenderMap = useMemo(
     () => ({
@@ -366,7 +418,7 @@ const LogTable = ({
         <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
       )
     }),
-    [t]
+    [t, selectAllTrigger]
   );
 
   return (
@@ -503,9 +555,13 @@ const LogTable = ({
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
+              <Th>
+                <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+              </Th>
               {logKeys
                 .filter((logKey) => logKey.enable)
                 .map((logKey) => HeaderRenderMap[logKey.key])}
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -519,9 +575,38 @@ const LogTable = ({
                   title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.chatId)}
                 >
+                  <Td>
+                    <HStack onClick={(e) => e.stopPropagation()}>
+                      <Checkbox isChecked={isSelected(item)} onChange={() => toggleSelect(item)} />
+                    </HStack>
+                  </Td>
                   {logKeys
                     .filter((logKey) => logKey.enable)
                     .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
+                  <Td>
+                    <PopoverConfirm
+                      content={t('app:confirm_delete_chat_content')}
+                      type="delete"
+                      onConfirm={() => handleDelete(item)}
+                      Trigger={
+                        <Box
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          cursor="pointer"
+                          borderRadius="sm"
+                          w={6}
+                          h={6}
+                          _hover={{ bg: 'myGray.200', color: 'red.500' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          <MyIcon name={'delete'} w={4} />
+                        </Box>
+                      }
+                    />
+                  </Td>
                 </Tr>
               );
             })}
@@ -530,7 +615,25 @@ const LogTable = ({
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
       </TableContainer>
 
-      {total >= pageSize && (
+      {selectedItems.length > 0 && (
+        <FloatingActionBar
+          Controler={
+            <HStack>
+              <Button colorScheme="red" onClick={handleBatchDelete}>
+                {t('common:Delete')} ({selectedItems.length})
+              </Button>
+            </HStack>
+          }
+        >
+          {total >= pageSize && (
+            <Flex justifyContent={'center'}>
+              <Pagination />
+            </Flex>
+          )}
+        </FloatingActionBar>
+      )}
+
+      {!selectedItems.length && total >= pageSize && (
         <Flex mt={3} justifyContent={'center'}>
           <Pagination />
         </Flex>

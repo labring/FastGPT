@@ -71,6 +71,7 @@
   "confirm_copy_app_tip": "系統將為您建立一個相同設定的應用程式，但權限不會複製，請確認！",
   "confirm_del_app_tip": "確認刪除該 Agent？\n刪除 Agent 會將其關聯的對話記錄一併刪除。",
   "confirm_del_tool_tip": "確認刪除該工具？\n刪除工具會將其關聯的對話記錄一併刪除，並且使用到該工具的 Agent 可能無法正常運行。",
+  "confirm_delete_chat_content": "確定要刪除這個對話嗎？\n此操作不可恢復！",
   "confirm_delete_folder_tip": "刪除該文件夾時，將會刪除它下面所有應用及對應的聊天記錄。",
   "confirm_delete_tool": "確認刪除該工具？",
   "copilot_config_message": "當前節點配置信息： \n代碼類型：{{codeType}} \n當前代碼： \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n輸入參數： {{inputs}} \n輸出參數： {{outputs}}",

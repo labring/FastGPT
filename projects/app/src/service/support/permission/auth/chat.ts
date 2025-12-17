@@ -264,3 +264,52 @@ export const authCollectionInChat = async ({
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
+
+export async function authBatchChatCrud({
+  req,
+  authToken = true,
+  authApiKey = true,
+  appId,
+  chatIds
+}: {
+  req: any;
+  authToken?: boolean;
+  authApiKey?: boolean;
+  appId: string;
+  chatIds: string[];
+}): Promise<{ uid: string; teamId: string; tmbId: string; validatedChatIds: string[] }> {
+  if (!appId || !Array.isArray(chatIds) || chatIds.length === 0) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  const { teamId, tmbId, permission } = await authApp({
+    req,
+    authToken,
+    authApiKey,
+    appId,
+    per: ReadPermissionVal
+  });
+  if (!permission.hasReadChatLogPer && !permission.hasManagePer) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  const chats = await MongoChat.find({
+    teamId,
+    appId,
+    chatId: { $in: chatIds }
+  })
+    .select('chatId')
+    .lean();
+
+  const validChatIds = chats.map((chat) => chat.chatId);
+  if (!chatIds.every((id) => validChatIds.includes(id))) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  return {
+    uid: tmbId,
+    teamId,
+    tmbId,
+    validatedChatIds: validChatIds
+  };
+}

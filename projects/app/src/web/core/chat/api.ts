@@ -59,9 +59,21 @@ export const getChatRecords = (data: getChatRecordsBody) =>
   POST<getChatRecordsResponse>('/core/chat/getRecords_v2', data);
 
 /**
- * delete one history
+ * delete one history (soft delete)
  */
 export const delChatHistoryById = (data: DelHistoryProps) => DELETE(`/core/chat/delHistory`, data);
+
+/**
+ * permanently delete one history
+ */
+export const permanentlyDelChatHistoryById = (data: DelHistoryProps) =>
+  DELETE(`/core/chat/permanentlyDeleteHistory`, data);
+
+/**
+ * batch permanently delete chat histories
+ */
+export const batchDeleteChatHistories = (data: { appId: string; chatIds: string[] }) =>
+  POST<{ deletedCount: number }>(`/core/chat/batchDelete`, data);
 /**
  * clear all history by appid
  */

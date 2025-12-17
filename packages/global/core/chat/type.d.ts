@@ -51,6 +51,8 @@ export type ChatSchemaType = {
   hasBadFeedback?: boolean;
   hasUnreadGoodFeedback?: boolean;
   hasUnreadBadFeedback?: boolean;
+
+  deleteTime?: Date | null;
 };
 
 export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
