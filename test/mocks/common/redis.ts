@@ -56,7 +56,7 @@ const createMockRedisClient = () => ({
   smembers: vi.fn().mockResolvedValue([]),
   sismember: vi.fn().mockResolvedValue(0),
 
-  // pipline
+  // pipeline
   pipeline: vi.fn(() => ({
     del: vi.fn().mockReturnThis(),
     unlink: vi.fn().mockReturnThis(),
