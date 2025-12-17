@@ -9,12 +9,19 @@ import { getChatRecords } from '../api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type BoxProps } from '@chakra-ui/react';
+import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 
 type ChatRecordContextType = {
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   isChatRecordsLoaded: boolean;
   totalRecordsCount: number;
+  goodTotal?: number;
+  badTotal?: number;
+  notFoundTotal?: number;
+  chatLogsFilter?: ChatLogsFilterEnum;
+  isLoading: boolean;
+  setChatLogsFilter?: (filter: ChatLogsFilterEnum) => void;
   ScrollData: ({
     children,
     ...props
@@ -30,8 +37,15 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
     throw new Error('Function not implemented.');
   },
   isChatRecordsLoaded: false,
-
   totalRecordsCount: 0,
+  goodTotal: 0,
+  badTotal: 0,
+  notFoundTotal: 0,
+  chatLogsFilter: ChatLogsFilterEnum.all,
+  setChatLogsFilter: function (filter: ChatLogsFilterEnum): void {
+    throw new Error('Function not implemented.');
+  },
+  isLoading: false,
   ScrollData: function ({
     children,
     ...props
@@ -55,17 +69,41 @@ const ChatRecordContextProvider = ({
 }) => {
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
+  const [chatLogsFilter, setChatLogsFilter] = useState<ChatLogsFilterEnum>(ChatLogsFilterEnum.all);
+  const [goodTotal, setGoodTotal] = useState(0);
+  const [badTotal, setBadTotal] = useState(0);
+  const [notFoundTotal, setNotFoundTotal] = useState(0);
+  const [lastTotalCount, setLastTotalCount] = useState(0);
+
+  const requestParams = useMemo(
+    () => ({
+      ...params,
+      chatLogsFilter
+    }),
+    [params, chatLogsFilter]
+  );
 
   const {
     data: chatRecords,
     ScrollData,
     setData: setChatRecords,
-    total: totalRecordsCount
+    total: totalRecordsCount,
+    isLoading
   } = useScrollPagination(
     async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
       setIsChatRecordsLoaded(false);
 
       const res = await getChatRecords(data);
+
+      // Update statistics when filter changes
+      if (res.goodTotal !== undefined) setGoodTotal(res.goodTotal);
+      if (res.badTotal !== undefined) setBadTotal(res.badTotal);
+      if (res.notFoundTotal !== undefined) setNotFoundTotal(res.notFoundTotal);
+
+      // Save the latest total count to avoid showing 0 during reload
+      if (res.total !== undefined && res.total > 0) {
+        setLastTotalCount(res.total);
+      }
 
       // First load scroll to bottom
       if (Number(data.offset) === 0) {
@@ -88,8 +126,8 @@ const ChatRecordContextProvider = ({
     },
     {
       pageSize: 10,
-      refreshDeps: [params],
-      params,
+      refreshDeps: [requestParams],
+      params: requestParams,
       scrollLoadType: 'top',
       showErrorToast: false,
       onFinally() {
@@ -102,11 +140,30 @@ const ChatRecordContextProvider = ({
     return {
       chatRecords,
       setChatRecords,
-      totalRecordsCount,
+      totalRecordsCount: totalRecordsCount > 0 ? totalRecordsCount : lastTotalCount,
+      goodTotal,
+      badTotal,
+      notFoundTotal,
+      chatLogsFilter,
+      setChatLogsFilter,
       ScrollData,
-      isChatRecordsLoaded
+      isChatRecordsLoaded,
+      isLoading
     };
-  }, [ScrollData, chatRecords, setChatRecords, totalRecordsCount, isChatRecordsLoaded]);
+  }, [
+    ScrollData,
+    chatRecords,
+    setChatRecords,
+    totalRecordsCount,
+    lastTotalCount,
+    goodTotal,
+    badTotal,
+    notFoundTotal,
+    chatLogsFilter,
+    isLoading,
+    setChatLogsFilter,
+    isChatRecordsLoaded
+  ]);
   return <ChatRecordContext.Provider value={contextValue}>{children}</ChatRecordContext.Provider>;
 };
 

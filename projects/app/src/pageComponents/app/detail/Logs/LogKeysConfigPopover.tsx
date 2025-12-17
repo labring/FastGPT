@@ -1,7 +1,10 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useTranslation } from 'next-i18next';
-import { AppLogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
+import {
+  AppLogKeysEnumMap,
+  AssistantAppLogKeysEnumMap
+} from '@fastgpt/global/core/app/logs/constants';
 import type {
   DraggableProvided,
   DraggableStateSnapshot
@@ -13,10 +16,12 @@ import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 
 const LogKeysConfigPopover = ({
   logKeysList,
-  setLogKeysList
+  setLogKeysList,
+  isAssistant = false
 }: {
   logKeysList: AppLogKeysType[];
   setLogKeysList: (logKeysList: AppLogKeysType[] | undefined) => void;
+  isAssistant?: boolean;
 }) => {
   const { t } = useTranslation();
   return (
@@ -29,7 +34,7 @@ const LogKeysConfigPopover = ({
         <Button
           size={'md'}
           variant={'whiteBase'}
-          leftIcon={<MyIcon name={'common/setting'} w={'18px'} />}
+          leftIcon={!isAssistant ? <MyIcon name={'common/setting'} w={'18px'} /> : undefined}
         >
           {t('app:logs_key_config')}
         </Button>
@@ -48,6 +53,7 @@ const LogKeysConfigPopover = ({
                   snapshot={snapshot}
                   logKeys={logKeysList}
                   setLogKeys={setLogKeysList}
+                  isAssistant={isAssistant}
                 />
               )}
             >
@@ -63,6 +69,7 @@ const LogKeysConfigPopover = ({
                             snapshot={snapshot}
                             logKeys={logKeysList}
                             setLogKeys={setLogKeysList}
+                            isAssistant={isAssistant}
                           />
                           {index !== logKeysList.length - 1 && <Box h={'1px'} bg={'myGray.200'} />}
                         </>
@@ -86,13 +93,15 @@ const DragItem = ({
   provided,
   snapshot,
   logKeys,
-  setLogKeys
+  setLogKeys,
+  isAssistant = false
 }: {
   item: AppLogKeysType;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
   logKeys: AppLogKeysType[];
   setLogKeys: (logKeys: AppLogKeysType[]) => void;
+  isAssistant?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -118,7 +127,7 @@ const DragItem = ({
         />
       </Box>
       <Box fontSize={'14px'} color={'myGray.900'}>
-        {t(AppLogKeysEnumMap[item.key])}
+        {t((isAssistant ? AssistantAppLogKeysEnumMap : AppLogKeysEnumMap)[item.key] as string)}
       </Box>
       <Box flex={1} />
       {item.enable ? (

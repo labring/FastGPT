@@ -152,6 +152,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   responseData?: ChatHistoryItemResType[];
   time?: Date;
   durationSeconds?: number;
+  rewriteStandardizedQuery?: string;
   errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;

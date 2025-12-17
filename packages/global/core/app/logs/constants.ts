@@ -28,10 +28,10 @@ export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.FEEDBACK]: i18nT('app:logs_keys_feedback'),
   [AppLogKeysEnum.CUSTOM_FEEDBACK]: i18nT('app:logs_keys_customFeedback'),
   [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
-  [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount'),
   [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
   [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
-  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
+  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount'),
+  [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount')
 };
 
 export const DefaultAppLogKeys = [
@@ -45,11 +45,40 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.FEEDBACK, enable: true },
   { key: AppLogKeysEnum.CUSTOM_FEEDBACK, enable: false },
   { key: AppLogKeysEnum.ANNOTATED_COUNT, enable: false },
-  { key: AppLogKeysEnum.OPTIMIZED_COUNT, enable: true },
   { key: AppLogKeysEnum.POINTS, enable: false },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
   { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
 ];
+
+export const DefaultAssistantLogKey = [
+  { key: AppLogKeysEnum.TITLE, enable: true },
+  { key: AppLogKeysEnum.SOURCE, enable: true },
+  { key: AppLogKeysEnum.USER, enable: true },
+  { key: AppLogKeysEnum.CREATED_TIME, enable: false },
+  { key: AppLogKeysEnum.LAST_CONVERSATION_TIME, enable: true },
+  { key: AppLogKeysEnum.MESSAGE_COUNT, enable: true },
+  { key: AppLogKeysEnum.FEEDBACK, enable: true },
+  { key: AppLogKeysEnum.OPTIMIZED_COUNT, enable: true },
+  { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
+  { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
+];
+
+export const AssistantAppLogKeysEnumMap = {
+  [AppLogKeysEnum.SOURCE]: i18nT('app:logs_keys_source'),
+  [AppLogKeysEnum.USER]: i18nT('app:logs_keys_user'),
+  [AppLogKeysEnum.TITLE]: i18nT('app:logs_keys_title'),
+  [AppLogKeysEnum.SESSION_ID]: i18nT('app:logs_keys_sessionId'),
+  [AppLogKeysEnum.CREATED_TIME]: i18nT('app:logs_keys_createdTime'),
+  [AppLogKeysEnum.LAST_CONVERSATION_TIME]: i18nT('app:logs_keys_lastConversationTime'),
+  [AppLogKeysEnum.MESSAGE_COUNT]: i18nT('app:logs_keys_messageCount'),
+  [AppLogKeysEnum.FEEDBACK]: i18nT('app:logs_keys_feedback_all'),
+  [AppLogKeysEnum.CUSTOM_FEEDBACK]: i18nT('app:logs_keys_customFeedback'),
+  [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
+  [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount'),
+  [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
+  [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
+  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
+};
 
 export enum AppLogTimespanEnum {
   day = 'day',
