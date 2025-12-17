@@ -17,7 +17,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     per: WritePermissionVal
   });
 
-  await MongoChat.findOneAndUpdate(
+  await MongoChat.updateOne(
     { appId, chatId },
     {
       updateTime: new Date(),

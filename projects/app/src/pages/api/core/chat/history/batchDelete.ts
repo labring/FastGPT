@@ -9,12 +9,13 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);
 
   if (!Array.isArray(chatIds) || chatIds.length === 0) {
-    return Promise.reject(new Error('chatIds is required and must be an array'));
+    return Promise.reject(new UserError('chatIds is required and must be an array'));
   }
 
   await authApp({
@@ -25,6 +26,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     per: AppReadChatLogPerVal
   });
 
+  await MongoChatItemResponse.deleteMany({
+    appId,
+    chatId: { $in: chatIds }
+  });
   await mongoSessionRun(async (session) => {
     const chatList = await MongoChat.find(
       {
@@ -36,10 +41,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       .lean()
       .session(session);
 
-    await MongoChatItemResponse.deleteMany({
-      appId,
-      chatId: { $in: chatIds }
-    });
     await MongoChatItem.deleteMany(
       {
         appId,

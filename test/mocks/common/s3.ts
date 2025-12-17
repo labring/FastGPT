@@ -151,7 +151,16 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset/index', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat/index', () => ({
-  S3ChatSource: vi.fn()
+  S3ChatSource: vi.fn(),
+  getS3ChatSource: vi.fn(() => ({
+    createUploadChatFileURL: vi.fn().mockResolvedValue({
+      url: 'http://localhost:9000/mock-bucket',
+      fields: { key: 'mock-key' },
+      maxSize: 5 * 1024 * 1024
+    }),
+    deleteChatFilesByPrefix: vi.fn().mockResolvedValue(undefined),
+    deleteChatFile: vi.fn().mockResolvedValue(undefined)
+  }))
 }));
 
 // Mock S3 initialization

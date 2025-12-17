@@ -402,13 +402,7 @@ const LogTable = ({
   );
 
   return (
-    <MyBox
-      isLoading={isLoading && logs.length === 0}
-      display={'flex'}
-      flexDir={'column'}
-      h={'full'}
-      px={px}
-    >
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
       <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         {showSourceSelector && (
           <Flex>
@@ -588,33 +582,32 @@ const LogTable = ({
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
       </TableContainer>
 
-      {selectedItems.length > 0 && (
-        <FloatingActionBar
-          Controler={
-            <HStack>
-              <Button
-                variant={'whiteDanger'}
-                onClick={() =>
-                  openConfirmDelete({
-                    onConfirm: () => handleDelete(chatIds),
-                    customContent: t('app:confirm_delete_chats', {
-                      n: chatIds.length
-                    })
-                  })()
-                }
-              >
-                {t('common:Delete')} ({chatIds.length})
-              </Button>
-            </HStack>
-          }
-        ></FloatingActionBar>
-      )}
-
-      {!selectedItems.length && total >= pageSize && (
-        <Flex mt={3} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
+      <FloatingActionBar
+        pb={0}
+        Controler={
+          <HStack>
+            <Button
+              variant={'whiteDanger'}
+              onClick={() =>
+                openConfirmDelete({
+                  onConfirm: () => handleDelete(chatIds),
+                  customContent: t('app:confirm_delete_chats', {
+                    n: chatIds.length
+                  })
+                })()
+              }
+            >
+              {t('common:Delete')} ({chatIds.length})
+            </Button>
+          </HStack>
+        }
+      >
+        {total > pageSize && (
+          <Flex justifyContent={'center'}>
+            <Pagination />
+          </Flex>
+        )}
+      </FloatingActionBar>
 
       {!!detailLogsId && (
         <DetailLogsModal
