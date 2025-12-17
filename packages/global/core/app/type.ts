@@ -11,20 +11,7 @@ import type { WorkflowTemplateBasicType } from '../workflow/type';
 import type { SourceMemberType } from '../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
-
-/* app chat config type */
-// File
-export const AppFileSelectConfigTypeSchema = z.object({
-  maxFiles: z.number().optional(),
-  canSelectFile: z.boolean().optional(),
-  customPdfParse: z.boolean().optional(),
-  canSelectImg: z.boolean().optional(),
-  canSelectVideo: z.boolean().optional(),
-  canSelectAudio: z.boolean().optional(),
-  canSelectCustomFileExtension: z.boolean().optional(),
-  customFileExtensionList: z.array(z.string()).optional()
-});
-export type AppFileSelectConfigType = z.infer<typeof AppFileSelectConfigTypeSchema>;
+import { AppFileSelectConfigTypeSchema } from './type/config';
 
 // variable
 export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.and(

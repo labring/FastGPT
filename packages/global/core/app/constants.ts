@@ -1,10 +1,10 @@
 import {
   type AppTTSConfigType,
-  type AppFileSelectConfigType,
   type AppWhisperConfigType,
   type AppAutoExecuteConfigType,
   type AppQGConfigType
 } from './type';
+import type { AppFileSelectConfigType } from './type/config';
 
 export enum AppTypeEnum {
   folder = 'folder',
