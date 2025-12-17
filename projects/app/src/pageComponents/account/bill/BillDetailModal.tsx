@@ -71,7 +71,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
       items.push({
         key: i18nT('account:max_dataset_size'),
         value: config.maxDatasetSize,
-        unit: 'GB'
+        unit: ''
       });
     }
     if (config.chatHistoryStoreDuration !== undefined) {
