@@ -399,6 +399,7 @@
   "smart_customer_service_welcome_text_placeholder": "您好，请问有什么可以帮您？",
   "logs_keys_feedback_none": "无反馈",
   "logs_keys_feedback_column": "反馈",
+  "logs_keys_feedback_all": "全部反馈",
   "logs_search_title": "搜索标题",
   "auto_learn.learning_records": "学习记录（{{total}}）",
   "auto_learn.description": "知识库更新时,可使用该方式,自动分析文档,生成评测数据,实现自监督学习,微调模型并检验学习效果,增强应用检索召回的准确率。",
@@ -419,5 +420,15 @@
   "optimize_records": "优化记录",
   "knowledge_select_search_placeholder": "搜索选择知识",
   "knowledge_search_input_tip": "请先输入关键词",
-  "knowledge_search_no_results": "未搜索到相关知识"
+  "knowledge_search_no_results": "未搜索到相关知识",
+  "chat_item_citation_source": "引用来源",
+  "chat_item_cost_time": "耗时",
+  "chat_item_rewrite": "改写",
+  "chat_item_correct_error": "纠错",
+  "chat_item_optimized": "已优化",
+  "chat_item_liked": "已点赞",
+  "logs_filter_all": "全部",
+  "logs_filter_bad": "点踩",
+  "logs_filter_good": "点赞",
+  "logs_filter_not_found_knowledge": "未找到知识"
 }

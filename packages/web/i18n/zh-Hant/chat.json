@@ -136,5 +136,6 @@
   "search_result": "檢索結果",
   "database_search_results": "數據庫搜索結果",
   "other_knowledge_base_search_results": "其他知識庫搜索結果",
-  "no_auth_to_chat": "您沒有權限存取該應用"
+  "no_auth_to_chat": "您沒有權限存取該應用",
+  "chat_response_complete": "查看完整響應"
 }

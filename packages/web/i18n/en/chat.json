@@ -136,5 +136,6 @@
   "search_result": "Search result",
   "database_search_results": "Database search results",
   "other_knowledge_base_search_results": "Search results from other knowledge bases",
-  "no_auth_to_chat": "您没有权限访问该应用"
+  "no_auth_to_chat": "您没有权限访问该应用",
+  "chat_response_complete": "查看完整响应"
 }

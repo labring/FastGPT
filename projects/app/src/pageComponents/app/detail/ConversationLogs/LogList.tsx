@@ -30,37 +30,25 @@ import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  AppLogKeysEnum,
-  AppLogKeysEnumMap,
-  DefaultAppLogKeys
-} from '@fastgpt/global/core/app/logs/constants';
+import { AppLogKeysEnum, DefaultAssistantLogKey } from '@fastgpt/global/core/app/logs/constants';
 import { isEqual } from 'lodash';
 import SyncLogKeysPopover from '../Logs/SyncLogKeysPopover';
 import LogKeysConfigPopover from '../Logs/LogKeysConfigPopover';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api/log';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { AppLogsListItemType } from '@/types/app';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
-import type { HeaderControlProps } from '../Logs/LogChart';
+import { FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 
-const DetailLogsModal = dynamic(() => import('../Logs/DetailLogsModal'));
-
-// 反馈筛选枚举
-export enum FeedbackFilterEnum {
-  like = 'like',
-  dislike = 'dislike',
-  none = 'none'
-}
+const DetailLogsModal = dynamic(() => import('./DetailLogs'));
 
 // 反馈筛选组件
 const FeedbackSelect = ({
@@ -77,9 +65,9 @@ const FeedbackSelect = ({
   const { t } = useTranslation();
   // 反馈筛选选项列表
   const feedbackList = [
-    { label: t('app:logs_good_feedback'), value: FeedbackFilterEnum.like },
-    { label: t('app:logs_bad_feedback'), value: FeedbackFilterEnum.dislike },
-    { label: t('app:logs_keys_feedback_none'), value: FeedbackFilterEnum.none }
+    { label: t('app:logs_good_feedback'), value: FeedbackFilterEnum.good },
+    { label: t('app:logs_bad_feedback'), value: FeedbackFilterEnum.bad },
+    { label: t('app:logs_keys_feedback_none'), value: FeedbackFilterEnum.noFeedback }
   ];
 
   return (
@@ -132,7 +120,7 @@ const LogList = () => {
 
   // member
   const [tmbInputValue, setTmbInputValue] = useState('');
-  const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
+  const { data: members } = useScrollPagination(getTeamMembers, {
     params: { searchKey: tmbInputValue },
     disabled: !feConfigs?.isPlus
   });
@@ -175,7 +163,7 @@ const LogList = () => {
   });
 
   // log keys
-  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+  const [logKeys = DefaultAssistantLogKey, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
     `app_assistant_log_keys_${appId}`
   );
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
@@ -190,14 +178,14 @@ const LogList = () => {
         if (res.logKeys.length > 0) {
           setLogKeys(res.logKeys);
         } else if (res.logKeys.length === 0) {
-          setLogKeys(DefaultAppLogKeys);
+          setLogKeys(DefaultAssistantLogKey);
         }
       }
     }
   );
   const showSyncPopover = useMemo(() => {
     const teamLogKeysList = (
-      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
+      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAssistantLogKey
     ).filter((item) => item.enable);
     const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
@@ -253,11 +241,17 @@ const LogList = () => {
         </Th>
       ),
       [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
-      [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
+      [AppLogKeysEnum.TITLE]: (
+        <Th w={'336px'} key={AppLogKeysEnum.TITLE}>
+          {t('app:logs_title')}
+        </Th>
+      ),
       [AppLogKeysEnum.MESSAGE_COUNT]: (
         <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
       ),
-      [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
+      [AppLogKeysEnum.FEEDBACK]: (
+        <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:logs_keys_feedback_all')}</Th>
+      ),
       [AppLogKeysEnum.OPTIMIZED_COUNT]: (
         <Th key={AppLogKeysEnum.OPTIMIZED_COUNT}>{t('app:logs_keys_optimizedCount')}</Th>
       ),
@@ -296,52 +290,52 @@ const LogList = () => {
       </Td>
     ),
     [AppLogKeysEnum.TITLE]: (
-      <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
+      <Td w={'336px'} key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'336px'}>
         {item.customTitle || item.title}
       </Td>
     ),
     [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
     [AppLogKeysEnum.FEEDBACK]: (
       <Td key={AppLogKeysEnum.FEEDBACK} w={'100px'}>
-        {!!item?.userGoodFeedbackCount && (
-          <Flex
-            mb={item?.userGoodFeedbackCount ? 1 : 0}
-            bg={'green.100'}
-            color={'green.600'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.600'} w={'14px'} />
-            {item.userGoodFeedbackCount}
-          </Flex>
-        )}
-        {!!item?.userBadFeedbackCount && (
-          <Flex
-            bg={'#FFF2EC'}
-            color={'#C96330'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'#C96330'} w={'14px'} />
-            {item.userBadFeedbackCount}
-          </Flex>
-        )}
-        {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+        <Flex>
+          {!!item?.userGoodFeedbackCount && (
+            <Flex
+              mb={item?.userGoodFeedbackCount ? 1 : 0}
+              px={2}
+              py={1}
+              alignItems={'center'}
+              justifyContent={'center'}
+              borderRadius={'md'}
+              fontWeight={'bold'}
+            >
+              <MyIcon
+                mr={1}
+                name={'core/chat/feedback/goodLight'}
+                color={'yellow.500'}
+                w={'16px'}
+              />
+              {item.userGoodFeedbackCount}
+            </Flex>
+          )}
+          {!!item?.userBadFeedbackCount && (
+            <Flex
+              px={2}
+              py={1}
+              alignItems={'center'}
+              justifyContent={'center'}
+              borderRadius={'md'}
+              fontWeight={'bold'}
+            >
+              <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'green.500'} w={'16px'} />
+              {item.userBadFeedbackCount}
+            </Flex>
+          )}
+          {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
+        </Flex>
       </Td>
     ),
     [AppLogKeysEnum.OPTIMIZED_COUNT]: (
-      <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}>
-        {/* @ts-ignore */}
-        {item.optimizedCount || 0}
-      </Td>
+      <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}>{item.correctionCount || 0}</Td>
     ),
     [AppLogKeysEnum.RESPONSE_TIME]: (
       <Td key={AppLogKeysEnum.RESPONSE_TIME}>
@@ -445,22 +439,16 @@ const LogList = () => {
           <SyncLogKeysPopover
             logKeys={logKeys}
             setLogKeys={setLogKeys}
-            teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys}
+            teamLogKeys={
+              teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAssistantLogKey
+            }
             fetchLogKeys={fetchLogKeys}
           />
         )}
         <LogKeysConfigPopover
-          logKeysList={logKeys.filter((item) => {
-            // 智能客服场景隐藏的列：会话ID、自定义反馈、标注答案数量、积分消耗
-            const hiddenKeys = [
-              AppLogKeysEnum.SESSION_ID,
-              AppLogKeysEnum.CUSTOM_FEEDBACK,
-              AppLogKeysEnum.ANNOTATED_COUNT,
-              AppLogKeysEnum.POINTS
-            ];
-            return !hiddenKeys.includes(item.key);
-          })}
+          logKeysList={logKeys}
           setLogKeysList={setLogKeys}
+          isAssistant={true}
         />
       </Flex>
 
@@ -507,7 +495,6 @@ const LogList = () => {
           chatId={detailLogsId}
           onClose={() => {
             setDetailLogsId(undefined);
-            getData(pageNum);
           }}
         />
       )}

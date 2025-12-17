@@ -33,7 +33,8 @@ const ListItem = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
             AppTypeEnum.folder,
             AppTypeEnum.simple,
             AppTypeEnum.workflow,
-            AppTypeEnum.plugin
+            AppTypeEnum.plugin,
+            AppTypeEnum.assistant
           ].includes(app.type))
     )
   );

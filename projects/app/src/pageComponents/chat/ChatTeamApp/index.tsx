@@ -48,7 +48,13 @@ const MyApps = () => {
   );
 
   const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
+  const tabs = [
+    'all' as const,
+    AppTypeEnum.simple,
+    AppTypeEnum.workflow,
+    AppTypeEnum.plugin,
+    AppTypeEnum.assistant
+  ];
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
