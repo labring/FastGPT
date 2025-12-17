@@ -3,7 +3,7 @@ import React, { type ReactNode } from 'react';
 import { createContext } from 'use-context-selector';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type {
   GeneratedSkillResultType,
