@@ -19,6 +19,11 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { getPaginationChatItems } from '@fastgpt/service/core/chat/controller';
 
+// Type for chat item with rewriteStandardizedQuery property using intersection type
+type ChatItemWithRewrite = ChatItemType & {
+  rewriteStandardizedQuery?: string;
+};
+
 export type getPaginationRecordsQuery = {};
 
 export type getPaginationRecordsBody = PaginationProps &
@@ -90,7 +95,7 @@ async function handler(
     chatLogsFilter
   });
 
-  let filteredHistories = histories;
+  let filteredHistories: ChatItemWithRewrite[] = histories as ChatItemWithRewrite[];
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.plugin) {
@@ -114,6 +119,32 @@ async function handler(
       }
     });
   }
+
+  // Add rewriteStandardizedQuery to Human messages
+  filteredHistories.forEach((item, index) => {
+    if (item.obj === ChatRoleEnum.Human) {
+      const nextIndex = index + 1;
+      if (nextIndex < filteredHistories.length) {
+        const nextMessage = filteredHistories[nextIndex];
+
+        if (nextMessage.obj === ChatRoleEnum.AI && nextMessage.responseData) {
+          const findStandardizedQuery = (responses: any[]): string | undefined => {
+            for (const response of responses) {
+              if (response.queryExtensionResult?.synonymRewriteResult?.standardizedQuery) {
+                return response.queryExtensionResult.synonymRewriteResult.standardizedQuery;
+              }
+            }
+            return undefined;
+          };
+
+          const standardizedQuery = findStandardizedQuery(nextMessage.responseData);
+          if (standardizedQuery) {
+            item.rewriteStandardizedQuery = standardizedQuery;
+          }
+        }
+      }
+    }
+  });
 
   return {
     list: isPlugin
