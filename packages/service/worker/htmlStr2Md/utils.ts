@@ -1,6 +1,7 @@
 import TurndownService from 'turndown';
 import { type ImageType } from '../readFile/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
@@ -78,7 +79,7 @@ export const html2md = (
     // const { text, imageList } = matchMdImg(md);
 
     return {
-      rawText: md,
+      rawText: simpleMarkdownText(md),
       imageList: images
     };
   } catch (error) {
