@@ -63,7 +63,7 @@ export const teamFrequencyLimit = async ({
 
   if (currentCount > limit) {
     const remainingTime = await redis.ttl(key);
-    addLog.info(`[Completion Limit] Over qpm limit`, { limit });
+    addLog.info(`[Completion Limit] Over qpm limit`, { teamId, currentCount, limit });
     jsonRes(res, {
       code: 429,
       error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`

@@ -150,6 +150,7 @@ export const addLog = {
   },
   error(msg: string, error?: any) {
     this.log(LogLevelEnum.error, msg, {
+      ...(error?.data && { data: error?.data }),
       message: error?.message || error,
       stack: error?.stack,
       ...(error?.config && {
