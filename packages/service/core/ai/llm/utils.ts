@@ -171,10 +171,12 @@ export const loadRequestMessages = async ({
                   const url = await (async () => {
                     if (item.key) {
                       try {
-                        return await getS3ChatSource().createGetChatFileURL({
-                          key: item.key,
-                          external: false
-                        });
+                        return (
+                          await getS3ChatSource().createGetChatFileURL({
+                            key: item.key,
+                            external: false
+                          })
+                        ).getUrl;
                       } catch (error) {}
                     }
                     return imgUrl;

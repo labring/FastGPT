@@ -38,7 +38,7 @@ async function handler(
   const bucket = new S3PrivateBucket();
   const { fileKey } = getFileS3Key.temp({ teamId, filename });
 
-  return await bucket.createPostPresignedUrl({ rawKey: fileKey, filename }, { expiredHours: 1 });
+  return await bucket.createPresignedPutUrl({ rawKey: fileKey, filename }, { expiredHours: 1 });
 }
 
 export default NextAPI(handler);

@@ -20,7 +20,7 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateDatasetWithFiles, getDatasetById } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
-import { POST } from '@/web/common/api/request';
+import { PUT } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -82,15 +82,18 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const { url, fields, maxSize } = await getUploadTempFilePresignedUrl({
+            const {
+              url,
+              fields: { key, ...headers },
+              maxSize
+            } = await getUploadTempFilePresignedUrl({
               filename: file.name
             });
 
-            const formData = new FormData();
-            Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-            formData.set('file', file);
-
-            await POST(url, formData, {
+            await PUT(url, file, {
+              headers: {
+                ...headers
+              },
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
@@ -115,7 +118,7 @@ const QuickCreateDatasetModal = ({
                     item.id === fileId
                       ? {
                           ...item,
-                          dbFileId: fields.key,
+                          dbFileId: key,
                           isUploading: false,
                           uploadedFileRate: 100
                         }

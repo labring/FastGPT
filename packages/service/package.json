@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@maxmind/geoip2-node": "^6.3.4",
     "@modelcontextprotocol/sdk": "^1.24.0",
@@ -38,6 +39,7 @@
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mammoth": "^1.11.0",
+    "mime": "^4.1.0",
     "minio": "^8.0.5",
     "mongoose": "^8.10.1",
     "multer": "2.0.2",
@@ -52,6 +54,7 @@
     "pg": "^8.10.0",
     "pino": "^9.7.0",
     "pino-opentelemetry-transport": "^1.0.1",
+    "proxy-agent": "^6.5.0",
     "request-ip": "^3.3.0",
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",

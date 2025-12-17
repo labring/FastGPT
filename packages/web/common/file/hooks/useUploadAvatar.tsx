@@ -48,13 +48,19 @@ export const useUploadAvatar = (
           }),
           file.name
         );
-        const { url, fields } = await api({ filename: file.name });
-        const formData = new FormData();
-        Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-        formData.set('file', compressed);
-        const res = await fetch(url, { method: 'POST', body: formData }); // 204
-        if (res.ok && res.status === 204) {
-          onSuccess?.(`${imageBaseUrl}${fields.key}`);
+        const {
+          url,
+          fields: { key, ...headers }
+        } = await api({ filename: file.name });
+        const res = await fetch(url, {
+          method: 'PUT',
+          body: compressed,
+          headers: {
+            ...headers
+          }
+        });
+        if (res.ok && res.status === 200) {
+          onSuccess?.(`${imageBaseUrl}${key}`);
         }
       });
     },
