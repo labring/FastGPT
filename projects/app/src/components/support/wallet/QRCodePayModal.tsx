@@ -1,7 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import { Box, ModalBody, Flex, Button } from '@chakra-ui/react';
+import { useTranslation, Trans } from 'next-i18next';
+import { Box, ModalBody, Flex, Button, Text, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
@@ -241,6 +241,17 @@ const QRCodePayModal = ({
             </Button>
           )}
         </Flex>
+
+        {feConfigs.payFormUrl && (
+          <Box mt={4} textAlign="center" fontSize="sm">
+            <Trans
+              i18nKey="common:pay.payment_form_tip"
+              components={{
+                payLink: <Link href={feConfigs.payFormUrl} target="_blank" color="primary.600" />
+              }}
+            />
+          </Box>
+        )}
       </ModalBody>
     </MyModal>
   );
