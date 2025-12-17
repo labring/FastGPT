@@ -67,7 +67,7 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
             const msg = res.data?.err?.message || 'Embedding API Error';
             addLog.error('[Embedding] API Error', {
               message: msg,
-              response: res
+              data: res
             });
             return Promise.reject(msg);
           }
