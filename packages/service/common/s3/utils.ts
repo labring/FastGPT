@@ -121,10 +121,14 @@ export async function uploadImage2S3Bucket(
   const base64Data = base64Img.split(',')[1] || base64Img;
   const buffer = Buffer.from(base64Data, 'base64');
 
-  await bucket.putObject(uploadKey, buffer, buffer.length, {
-    'content-type': mimetype,
-    'upload-time': new Date().toISOString(),
-    'origin-filename': encodeURIComponent(filename)
+  await bucket.client.uploadObject({
+    key: uploadKey,
+    body: buffer,
+    contentType: mimetype,
+    metadata: {
+      uploadTime: new Date().toISOString(),
+      originFilename: encodeURIComponent(filename)
+    }
   });
 
   const now = new Date();
@@ -189,15 +193,24 @@ export const getFileS3Key = {
     appId,
     chatId,
     uId,
-    filename
+    filename,
+    isTool = false
   }: {
     chatId: string;
     uId: string;
     appId: string;
-    filename: string;
+    filename?: string;
+    isTool?: boolean;
   }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
     const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
+
+    if (isTool) {
+      return {
+        fileKey: basePrefix,
+        fileParsedPrefix: ''
+      };
+    }
 
     return {
       fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),

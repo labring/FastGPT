@@ -1,11 +1,11 @@
 const systemWhiteList = (() => {
   const list: string[] = [];
-  if (process.env.S3_ENDPOINT) {
-    list.push(process.env.S3_ENDPOINT);
+  if (process.env.STORAGE_S3_ENDPOINT) {
+    list.push(process.env.STORAGE_S3_ENDPOINT);
   }
-  if (process.env.S3_EXTERNAL_BASE_URL) {
+  if (process.env.STORAGE_EXTERNAL_BASE_URL) {
     try {
-      const urlData = new URL(process.env.S3_EXTERNAL_BASE_URL);
+      const urlData = new URL(process.env.STORAGE_EXTERNAL_BASE_URL);
       list.push(urlData.hostname);
     } catch (error) {}
   }

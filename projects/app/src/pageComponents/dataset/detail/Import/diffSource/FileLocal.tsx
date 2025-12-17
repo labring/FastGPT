@@ -14,7 +14,7 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
-import { POST } from '@/web/common/api/request';
+import { PUT } from '@/web/common/api/request';
 import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
@@ -68,16 +68,20 @@ const SelectFile = React.memo(function SelectFile() {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
             try {
-              const { url, fields, maxSize } = await getUploadDatasetFilePresignedUrl({
+              const {
+                url,
+                fields: { key, ...headers },
+                maxSize
+              } = await getUploadDatasetFilePresignedUrl({
                 filename: file.name,
                 datasetId
               });
 
               // Upload File to S3
-              const formData = new FormData();
-              Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-              formData.set('file', file);
-              await POST(url, formData, {
+              await PUT(url, file, {
+                headers: {
+                  ...headers
+                },
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);
@@ -102,7 +106,7 @@ const SelectFile = React.memo(function SelectFile() {
                       item.id === fileId
                         ? {
                             ...item,
-                            dbFileId: fields.key,
+                            dbFileId: key,
                             isUploading: false,
                             uploadedFileRate: 100
                           }

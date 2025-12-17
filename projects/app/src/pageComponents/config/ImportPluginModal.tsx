@@ -55,21 +55,17 @@ const ImportPluginModal = ({
         )
       );
 
-      const presignedData = await getPkgPluginUploadURL({ filename: file.name });
-
-      const formData = new FormData();
-      Object.entries(presignedData.formData).forEach(([key, value]) => {
-        formData.append(key, value);
+      const { formData, objectName, postURL } = await getPkgPluginUploadURL({
+        filename: file.name
       });
-      formData.append('file', file.file);
 
-      await postS3UploadFile(presignedData.postURL, formData);
+      await postS3UploadFile(postURL, file.file, { ...formData });
 
       setUploadedFiles((prev) =>
         prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
       );
 
-      const parseResult = await parseUploadedPkgPlugin({ objectName: presignedData.objectName });
+      const parseResult = await parseUploadedPkgPlugin({ objectName });
 
       const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {

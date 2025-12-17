@@ -26,7 +26,7 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { z } from 'zod';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
-import { POST } from '@/web/common/api/request';
+import { PUT } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
@@ -111,7 +111,10 @@ const FileSelector = ({
 
           try {
             // Get Upload Post Presigned URL
-            const { url, fields } = await getUploadChatFilePresignedUrl({
+            const {
+              url,
+              fields: { key, ...headers }
+            } = await getUploadChatFilePresignedUrl({
               filename: file.rawFile.name,
               appId,
               chatId,
@@ -119,10 +122,10 @@ const FileSelector = ({
             });
 
             // Upload File to S3
-            const formData = new FormData();
-            Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-            formData.set('file', file.rawFile);
-            await POST(url, formData, {
+            await PUT(url, file.rawFile, {
+              headers: {
+                ...headers
+              },
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
@@ -136,7 +139,7 @@ const FileSelector = ({
               timeout: 5 * 60 * 1000 // 5 minutes
             });
             const previewUrl = await getPresignedChatFileGetUrl({
-              key: fields.key,
+              key: key,
               appId,
               outLinkAuthData
             });
@@ -145,7 +148,7 @@ const FileSelector = ({
             files.forEach((item) => {
               if (item.id === file.id) {
                 item.url = previewUrl;
-                item.key = fields.key;
+                item.key = key;
                 item.process = 100;
               }
             });

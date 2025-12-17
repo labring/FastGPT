@@ -4,8 +4,8 @@ import { addLog } from '../system/log';
 import { startS3DelWorker } from './mq';
 
 export function initS3Buckets() {
-  const publicBucket = new S3PublicBucket({ init: true });
-  const privateBucket = new S3PrivateBucket({ init: true });
+  const publicBucket = new S3PublicBucket();
+  const privateBucket = new S3PrivateBucket();
 
   global.s3BucketMap = {
     [publicBucket.bucketName]: publicBucket,

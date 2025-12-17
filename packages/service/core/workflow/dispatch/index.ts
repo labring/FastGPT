@@ -139,10 +139,11 @@ export async function dispatchWorkFlow({
     // Add preview url to query
     ...query.map(async (item) => {
       if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) return;
-      item.file.url = await getS3ChatSource().createGetChatFileURL({
+      const { getUrl: url } = await getS3ChatSource().createGetChatFileURL({
         key: item.file.key,
         external: true
       });
+      item.file.url = url;
     }),
     // Remove stopping sign
     delAgentRuntimeStopSign({
