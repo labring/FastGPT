@@ -1,13 +1,19 @@
 import { Jieba } from '@node-rs/jieba';
+import { addLog } from '../../system/log';
 
 let jieba: Jieba | undefined;
 
 (async () => {
   const dictData = await import('./dict.json');
   // @ts-ignore
-  const dictBuffer = Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8');
+  const dictBuffer = new Uint8Array(Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8'));
   jieba = Jieba.withDict(dictBuffer);
 })();
+
+// jieba 实例缓存，使用词汇的 hash 作为 key
+// 最多缓存 10 个自定义词典的 jieba 实例
+const jiebaCache = new Map<string, Jieba>();
+const MAX_CACHE_SIZE = 10;
 
 const stopWords = new Set([
   '\n',
@@ -1522,6 +1528,173 @@ const stopWords = new Set([
 export async function jiebaSplit({ text }: { text: string }) {
   text = text.replace(/[#*`_~>[\](){}|]|\S*https?\S*/g, '').trim();
   const tokens = (await jieba!.cutAsync(text, true)) as string[];
+
+  return (
+    tokens
+      .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+      .filter((item) => item && !stopWords.has(item))
+      .join(' ') || ''
+  );
+}
+
+/**
+ * 生成词汇列表的缓存 key
+ * 使用简单的哈希算法，避免引入额外依赖
+ */
+function generateCacheKey(words: string[]): string {
+  // 排序后连接，确保相同词汇列表生成相同 key
+  const sortedWords = [...words].sort().join('|');
+  // 简单哈希
+  let hash = 0;
+  for (let i = 0; i < sortedWords.length; i++) {
+    const char = sortedWords.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & 0xffffffff; // Convert to 32bit unsigned integer
+  }
+  return `jieba_${hash}_${words.length}`;
+}
+
+/**
+ * 使用自定义词典进行分词（带缓存）
+ * @param text - 待分词文本
+ * @param customWords - 自定义词汇列表，这些词会被优先识别为完整词
+ * @returns 分词后的文本（空格分隔）
+ */
+export async function jiebaSplitWithCustomDict({
+  text,
+  customWords = []
+}: {
+  text: string;
+  customWords?: string[];
+}) {
+  text = text.replace(/[#*`_~>[\](){}|]|\S*https?\S*/g, '').trim();
+
+  // 如果没有自定义词汇，直接使用默认分词
+  if (customWords.length === 0) {
+    const tokens = (await jieba!.cutAsync(text, true)) as string[];
+    return (
+      tokens
+        .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+        .filter((item) => item && !stopWords.has(item))
+        .join(' ') || ''
+    );
+  }
+
+  // 生成缓存 key
+  const cacheKey = generateCacheKey(customWords);
+
+  // 尝试从缓存获取 jieba 实例
+  // let cachedJieba = jiebaCache.get(cacheKey);
+  let cachedJieba = null;
+
+  if (!cachedJieba) {
+    try {
+      // 过滤并格式化自定义词汇
+      const validWords = customWords
+        .filter((word) => word && word.trim().length > 0)
+        .map((word) => word.trim());
+
+      if (validWords.length === 0) {
+        const tokens = (await jieba!.cutAsync(text, true)) as string[];
+        return (
+          tokens
+            .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+            .filter((item) => item && !stopWords.has(item))
+            .join(' ') || ''
+        );
+      }
+
+      // 创建自定义词典字符串
+      // jieba 词典格式: 每行 "词语 词频 词性"
+      // 参考: https://github.com/fxsjy/jieba
+      addLog.info('有效词汇检查:', {
+        totalWords: validWords.length
+      });
+
+      // 过滤掉无效词汇（空字符串、特殊字符等）
+      const filteredWords = validWords.filter(
+        (word) => word && word.trim().length > 0 && !/[\n\r\t]/.test(word) && !word.includes(' ')
+      );
+
+      addLog.info('过滤后词汇:', {
+        originalCount: validWords.length,
+        filteredCount: filteredWords.length
+      });
+
+      // 只有在有有效词汇时才创建自定义词典
+      let customDictBuffer: Uint8Array;
+      if (filteredWords.length > 0) {
+        const customDictLines = filteredWords.map((word) => `${word} 999999 n`).join('\n');
+        customDictBuffer = new Uint8Array(Buffer.from(customDictLines + '\n', 'utf-8'));
+        addLog.info('自定义词典内容预览:', {
+          lineCount: customDictLines.split('\n').length,
+          preview: customDictLines.substring(0, 200)
+        });
+      } else {
+        // 如果没有有效词汇，创建空词典
+        customDictBuffer = new Uint8Array(Buffer.from('', 'utf-8'));
+        addLog.info('没有有效词汇，使用空词典');
+      }
+
+      // 创建新的 jieba 实例
+      const dictData = await import('./dict.json');
+      // @ts-ignore
+      const dictBuffer = new Uint8Array(Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8'));
+      cachedJieba = Jieba.withDict(dictBuffer);
+
+      // 尝试加载自定义词典
+      try {
+        addLog.info('准备加载自定义词典:', {
+          totalWords: filteredWords.length,
+          bufferSize: customDictBuffer.length
+        });
+
+        // 只有在字典不为空时才尝试加载
+        if (filteredWords.length > 0) {
+          cachedJieba.loadDict(customDictBuffer);
+        }
+        addLog.info('自定义词典加载成功');
+      } catch (loadError) {
+        addLog.error('加载自定义词典失败，将使用默认分词:', {
+          error: loadError instanceof Error ? loadError.message : String(loadError),
+          errorStack: loadError instanceof Error ? loadError.stack : undefined,
+          wordsCount: filteredWords.length,
+          bufferSize: customDictBuffer.length
+        });
+        // 加载失败，使用默认 jieba 实例
+        cachedJieba = jieba!;
+      }
+
+      // 限制缓存大小，使用 LRU 策略
+      if (jiebaCache.size >= MAX_CACHE_SIZE) {
+        // 删除第一个（最早添加的）
+        const firstKey = jiebaCache.keys().next().value;
+        if (firstKey !== undefined) {
+          jiebaCache.delete(firstKey);
+        }
+      }
+
+      // 存入缓存,先不存进去，看效果会不会很慢
+      // jiebaCache.set(cacheKey, cachedJieba);
+    } catch (error) {
+      addLog.error('创建自定义 jieba 实例失败，使用默认分词:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        customWordsCount: customWords.length
+      });
+      // 创建失败时使用默认分词
+      const tokens = (await jieba!.cutAsync(text, true)) as string[];
+      return (
+        tokens
+          .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+          .filter((item) => item && !stopWords.has(item))
+          .join(' ') || ''
+      );
+    }
+  }
+
+  // 使用缓存的实例进行分词
+  const tokens = (await cachedJieba.cutAsync(text, true)) as string[];
 
   return (
     tokens

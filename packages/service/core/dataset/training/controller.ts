@@ -41,6 +41,21 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+  // ✅ 双向互斥检查 (1/2): 训练入口检查是否有同义词处理任务
+  // 说明: 此检查确保 chunk/qa/auto 等训练任务不会与 synonymStandardize/synonymRestore 并发
+  // 配合 uploadSynonymFile/deleteSynonymFile 中的反向检查，保证同一知识库同一时刻只有一种操作
+  const hasSynonymTask = await MongoDatasetTraining.exists({
+    teamId: teamId,
+    datasetId: datasetId,
+    mode: {
+      $in: [TrainingModeEnum.synonymStandardize, TrainingModeEnum.synonymRestore]
+    }
+  });
+
+  if (hasSynonymTask) {
+    throw new Error('知识库正在进行同义词处理,请等待处理完成后再训练');
+  }
+
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));

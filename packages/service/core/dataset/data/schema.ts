@@ -70,10 +70,24 @@ const DatasetDataSchema = new Schema({
         text: {
           type: String,
           required: true
+        },
+        // 同义词转换元数据
+        synonymMetadata: {
+          type: Object
         }
       }
     ],
     default: []
+  },
+
+  // 同义词处理状态
+  synonymProcessing: {
+    type: String,
+    enum: ['standardize', 'restore']
+  },
+  // 需要应用的同义词文件ID数组
+  synonymFileIds: {
+    type: [String]
   },
 
   updateTime: {

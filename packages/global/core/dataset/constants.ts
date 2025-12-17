@@ -294,7 +294,9 @@ export enum TrainingModeEnum {
   imageParse = 'imageParse',
   databaseSchema = 'databaseSchema',
   hype = 'hype',
-  small2Big = 'small2Big'
+  small2Big = 'small2Big',
+  synonymStandardize = 'synonymStandardize',
+  synonymRestore = 'synonymRestore'
 }
 
 /* ------------ search -------------- */

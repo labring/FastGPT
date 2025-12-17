@@ -334,7 +334,9 @@ const ErrorView = ({
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index'),
     [TrainingModeEnum.hype]: t('dataset:process.Hype_Index'),
     [TrainingModeEnum.databaseSchema]: t('dataset:process.databaseSchema'),
-    [TrainingModeEnum.small2Big]: t('dataset:process.segment_enhanced_index')
+    [TrainingModeEnum.small2Big]: t('dataset:process.segment_enhanced_index'),
+    [TrainingModeEnum.synonymStandardize]: t('dataset:process.Synonym_Standardize'),
+    [TrainingModeEnum.synonymRestore]: t('dataset:process.Synonym_Restore')
   };
 
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();

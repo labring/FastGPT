@@ -81,6 +81,7 @@ async function handler(
     // 5. 上传同义词文件并创建映射
     const synonymFile = await uploadSynonymFile({
       teamId: String(teamId),
+      tmbId: String(tmbId),
       datasetId: String(datasetId),
       uploaderId: String(tmbId),
       filePath: file.path,

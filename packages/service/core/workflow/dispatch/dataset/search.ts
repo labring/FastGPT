@@ -39,6 +39,8 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
+import { MongoApp } from '../../../app/schema';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -75,7 +77,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
-    runningAppInfo: { teamId },
+    runningAppInfo,
     runningUserInfo: { tmbId },
     histories,
     node,
@@ -111,6 +113,15 @@ export async function dispatchDatasetSearch(
   if (datasets.length === 0) {
     return getNodeErrResponse({ error: i18nT('common:core.chat.error.Select dataset empty') });
   }
+
+  const { teamId, id: appId } = runningAppInfo;
+
+  // 获取应用类型，判断是否为智能客服
+  const app = await MongoApp.findById(appId).select('type').lean();
+  const isAssistant = app?.type === AppTypeEnum.assistant;
+
+  // 获取所有知识库ID（用于同义词检索）
+  const datasetIds = datasets.map((d) => d.datasetId);
 
   const emptyResult: DatasetSearchResponse = {
     data: {
@@ -348,7 +359,9 @@ export async function dispatchDatasetSearch(
             ...searchData,
             datasetSearchUsingExtensionQuery,
             datasetSearchExtensionModel,
-            datasetSearchExtensionBg
+            datasetSearchExtensionBg,
+            isAssistant,
+            datasetIds: datasetIds
           });
     }
 

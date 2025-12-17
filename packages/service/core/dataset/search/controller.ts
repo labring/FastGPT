@@ -114,6 +114,10 @@ export type SearchDatasetDataResponse = {
     inputTokens: number;
     outputTokens: number;
     query: string;
+    synonymRewriteResult?: {
+      standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
+      coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
+    };
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
 };
@@ -987,11 +991,15 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  isAssistant?: boolean;
+  datasetIds?: string[];
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
+  isAssistant,
+  datasetIds,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
@@ -1006,13 +1014,17 @@ export const defaultSearchDatasetData = async ({
       query,
       extensionModel,
       extensionBg: datasetSearchExtensionBg,
-      histories
+      histories,
+      isAssistant,
+      teamId: props.teamId,
+      datasetIds
     });
 
   const result = await searchDatasetData({
     ...props,
     reRankQuery: rewriteQuery,
-    queries: concatQueries
+    queries: concatQueries,
+    datasetIds
   });
 
   return {
@@ -1022,7 +1034,8 @@ export const defaultSearchDatasetData = async ({
           model: aiExtensionResult.model,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: extensionQueries.join('\n')
+          query: extensionQueries.join('\n'),
+          synonymRewriteResult: aiExtensionResult.synonymRewriteResult
         }
       : undefined
   };
