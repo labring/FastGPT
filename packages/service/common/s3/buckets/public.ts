@@ -31,20 +31,28 @@ export class S3PublicBucket extends S3BaseBucket {
   }
 
   createPublicUrl(objectKey: string): string {
+    // 解析基础协议/host/端口，支持内部 endpoint 或外部暴露域名
     const protocol = this.options.useSSL ? 'https' : 'http';
     const hostname = this.options.endPoint;
     const port = this.options.port;
     const bucket = this.bucketName;
 
-    const url = new URL(`${protocol}://${hostname}:${port}/${bucket}/${objectKey}`);
+    // path style（默认） -> http(s)://endpoint/bucket/key
+    // virtual host style (pathStyle=false) -> http(s)://bucket.endpoint/key
+    const usePathStyle = this.options.pathStyle !== false;
 
-    if (this.options.externalBaseURL) {
-      const externalBaseURL = new URL(this.options.externalBaseURL);
+    const baseUrl = this.options.externalBaseURL
+      ? new URL(this.options.externalBaseURL)
+      : new URL(`${protocol}://${hostname}${port ? `:${port}` : ''}`);
 
-      url.port = externalBaseURL.port;
-      url.hostname = externalBaseURL.hostname;
-      url.protocol = externalBaseURL.protocol;
-    }
+    // host 部分：pathStyle 用原 host；虚拟主机风格将 bucket 前缀到 host
+    const hostPart = usePathStyle ? baseUrl.host : `${bucket}.${baseUrl.host}`;
+    // path 部分：仅 path style 需要显式带 bucket
+    const pathPrefix = usePathStyle ? `${bucket}/` : '';
+
+    const url = new URL(`${protocol}://${hostPart}/${pathPrefix}${objectKey}`);
+    url.protocol = baseUrl.protocol;
+    url.port = baseUrl.port;
 
     return url.toString();
   }
