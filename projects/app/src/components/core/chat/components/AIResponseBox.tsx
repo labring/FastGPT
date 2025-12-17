@@ -91,12 +91,14 @@ const RenderText = React.memo(function RenderText({
   showAnimation,
   text,
   chatItemDataId,
-  onOpenCiteModal
+  onOpenCiteModal,
+  hideCiteIcon
 }: {
   showAnimation: boolean;
   text: string;
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  hideCiteIcon?: boolean;
 }) {
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
@@ -119,6 +121,7 @@ const RenderText = React.memo(function RenderText({
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
+      hideCiteIcon={hideCiteIcon}
     />
   );
 });
@@ -250,14 +253,17 @@ const AIResponseBox = ({
   value,
   isLastResponseValue,
   isChatting,
-  onOpenCiteModal
+  onOpenCiteModal,
+  hideCiteIcon
 }: {
   chatItemDataId: string;
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  hideCiteIcon?: boolean;
 }) => {
+  console.log(value);
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
       <RenderText
@@ -265,6 +271,7 @@ const AIResponseBox = ({
         showAnimation={isChatting && isLastResponseValue}
         text={value.text.content}
         onOpenCiteModal={onOpenCiteModal}
+        hideCiteIcon={hideCiteIcon}
       />
     );
   }

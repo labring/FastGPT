@@ -322,6 +322,7 @@ const LogList = () => {
               px={2}
               py={1}
               alignItems={'center'}
+              alignSelf={'baseline'}
               justifyContent={'center'}
               borderRadius={'md'}
               fontWeight={'bold'}

@@ -101,7 +101,15 @@ const SimpleCitationDisplay = React.memo(
 
     return (
       <>
-        <Flex py={2} px={3} mt={3} bg={'rgba(245, 249, 255, 0.6)'} w={'100%'} borderRadius={'4px'}>
+        <Flex
+          py={2}
+          px={3}
+          mt={3}
+          bg={'rgba(245, 249, 255, 0.6)'}
+          w={'100%'}
+          borderRadius={'4px'}
+          position={'relative'}
+        >
           <Box mr={2.5}>
             <MyIcon mt={1} name="core/chat/quoteFill" w={'14px'} color={'#C9CBFFCC'} />
           </Box>
@@ -116,6 +124,15 @@ const SimpleCitationDisplay = React.memo(
                 </Box>
               ))}
             </Box>
+          </Box>
+          <Box
+            position={'absolute'}
+            right={'20px'}
+            top={'50%'}
+            transform={'translateY(-50%)'}
+            h={'calc(100% - 40px)'}
+          >
+            <MyIcon name="core/chat/quoteBg" h={'100%'} />
           </Box>
         </Flex>
       </>
@@ -159,6 +176,7 @@ const AIContentCard = React.memo(function AIContentCard({
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
+            hideCiteIcon={true}
           />
         );
       })}
@@ -366,20 +384,22 @@ const ChatItem = (props: Props) => {
               </>
             )}
           </Card>
-          {type === ChatRoleEnum.Human && chat.rewriteStandardizedQuery && (
-            <Box
-              color="myGray.500"
-              fontSize={'0.8rem'}
-              mt={2}
-              bg={'primary.50'}
-              p={[2, 3]}
-              w={'fit-content'}
-              maxW={'100%'}
-              borderRadius={'0px 8px 8px 8px;'}
-            >
-              {t('app:chat_item_rewrite')}：{chat.rewriteStandardizedQuery}
-            </Box>
-          )}
+          {type === ChatRoleEnum.Human &&
+            chat.rewriteStandardizedQuery &&
+            formatChatValue2InputType(chat.value).text !== chat.rewriteStandardizedQuery && (
+              <Box
+                color="myGray.500"
+                fontSize={'0.8rem'}
+                mt={2}
+                bg={'primary.50'}
+                p={[2, 3]}
+                w={'fit-content'}
+                maxW={'100%'}
+                borderRadius={'0px 8px 8px 8px;'}
+              >
+                {t('app:chat_item_rewrite')}：{chat.rewriteStandardizedQuery}
+              </Box>
+            )}
         </Box>
       ))}
     </Box>

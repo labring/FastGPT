@@ -40,7 +40,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
           <Box id={'history'}>
             {chatRecords.map((item, index) => (
               <Box key={item.dataId}>
-                <Box py={item.hideInUI ? 0 : 6}>
+                <Box py={item.hideInUI ? 0 : 5}>
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       type={item.obj}

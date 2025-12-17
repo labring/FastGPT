@@ -38,6 +38,7 @@ export type AProps = {
     datasetId?: string;
     quoteId?: string;
   }) => void;
+  hideCiteIcon?: boolean;
 };
 
 const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
@@ -175,6 +176,7 @@ const A = ({
   chatAuthData,
   onOpenCiteModal,
   showAnimation,
+  hideCiteIcon,
   ...props
 }: AProps & {
   children: any;
@@ -193,7 +195,7 @@ const A = ({
     (props.href?.startsWith('CITE') || props.href?.startsWith('QUOTE')) &&
     typeof content === 'string'
   ) {
-    return (
+    return hideCiteIcon ? null : (
       <CiteLink
         id={content}
         chatAuthData={chatAuthData}

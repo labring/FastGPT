@@ -210,6 +210,7 @@ export const iconPaths = {
   'core/chat/finishSpeak': () => import('./icons/core/chat/finishSpeak.svg'),
   'core/chat/imgSelect': () => import('./icons/core/chat/imgSelect.svg'),
   'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
+  'core/chat/quoteBg': () => import('./icons/core/chat/quoteBg.svg'),
   'core/chat/quoteSign': () => import('./icons/core/chat/quoteSign.svg'),
   'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
   'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg'),
