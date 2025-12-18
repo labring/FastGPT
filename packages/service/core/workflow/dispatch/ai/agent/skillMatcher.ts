@@ -8,7 +8,7 @@ import { getLLMModel } from '../../../../ai/model';
  * 生成唯一函数名
  * 参考 MatcherService.ts 的 _generateUniqueFunctionName
  */
-const generateUniqueFunctionName = (skill: HelperBotGeneratedSkillType): string => {
+const generateUniqueFunctionName = (skill: AiSkillSchemaType): string => {
   let baseName = skill.name || skill._id.toString();
 
   // 清理名称
@@ -30,13 +30,13 @@ const generateUniqueFunctionName = (skill: HelperBotGeneratedSkillType): string 
  * 参考 MatcherService.ts 的 match 函数
  */
 export const buildSkillTools = (
-  skills: HelperBotGeneratedSkillType[]
+  skills: AiSkillSchemaType[]
 ): {
   tools: ChatCompletionTool[];
-  skillsMap: Record<string, HelperBotGeneratedSkillType>;
+  skillsMap: Record<string, AiSkillSchemaType>;
 } => {
   const tools: ChatCompletionTool[] = [];
-  const skillsMap: Record<string, HelperBotGeneratedSkillType> = {};
+  const skillsMap: Record<string, AiSkillSchemaType> = {};
 
   for (const skill of skills) {
     // 生成唯一函数名
@@ -67,26 +67,28 @@ export const buildSkillTools = (
  * 格式化 Skill 为 SystemPrompt
  * 将匹配到的 skill 格式化为 XML 提示词
  */
-export const formatSkillAsSystemPrompt = (skill: HelperBotGeneratedSkillType): string => {
-  let prompt = '<reference_skill>\n';
-  prompt += `**参考技能**: ${skill.name}\n\n`;
+export const formatSkillAsSystemPrompt = (skill: AiSkillSchemaType): string => {
+  const lines = ['<reference_skill>', `**参考技能**: ${skill.name}`, ''];
 
   if (skill.description) {
-    prompt += `**描述**: ${skill.description}\n\n`;
+    lines.push(`**描述**: ${skill.description}`, '');
   }
 
   if (skill.steps && skill.steps.trim()) {
-    prompt += `**步骤信息**:\n${skill.steps}\n\n`;
+    lines.push(`**步骤信息**:`, skill.steps, '');
   }
 
-  prompt += '**说明**:\n';
-  prompt += '1. 以上是用户之前保存的类似任务的执行计划\n';
-  prompt += '2. 请参考该技能的步骤流程和工具选择\n';
-  prompt += '3. 根据当前用户的具体需求，调整和优化计划\n';
-  prompt += '4. 保持步骤的逻辑性和完整性\n';
-  prompt += '</reference_skill>\n';
+  lines.push(
+    '**说明**:',
+    '1. 以上是用户之前保存的类似任务的执行框架',
+    '2. 请参考该技能的宏观阶段划分和资源方向',
+    '3. 根据当前用户的具体需求，调整和优化框架',
+    '4. 保持阶段的逻辑性和方向的清晰性',
+    '',
+    '</reference_skill>'
+  );
 
-  return prompt;
+  return lines.join('\n');
 };
 
 /**
@@ -97,45 +99,42 @@ export const matchSkillForPlan = async ({
   teamId,
   appId,
   userInput,
+  messages,
   model
 }: {
   teamId: string;
   appId: string;
   userInput: string;
+  messages?: ChatCompletionMessageParam[];
   model: string;
 }): Promise<{
   matched: boolean;
-  skill?: HelperBotGeneratedSkillType;
+  skill?: AiSkillSchemaType;
   systemPrompt?: string;
   reason?: string;
 }> => {
   try {
-    // 1. 查询用户的 skills (使用 teamId 和 appId)
     const skills = await MongoAiSkill.find({
       teamId,
-      appId,
-      status: { $in: ['active', 'draft'] }
+      appId
     })
       .sort({ createTime: -1 })
-      .limit(50) // 限制数量，避免 tools 过多
+      .limit(50)
       .lean();
-    console.log('skill list length', skills.length);
-    console.log('skill', skills);
+
     if (!skills || skills.length === 0) {
       return { matched: false, reason: 'No skills available' };
     }
 
-    // 2. 构建 tools 数组
     const { tools, skillsMap } = buildSkillTools(skills);
 
-    console.log('tools', tools);
+    console.debug('tools', tools);
 
-    // 3. 获取模型配置
     const modelData = getLLMModel(model);
 
     // 4. 调用 LLM Tool Calling 进行匹配
     // 构建系统提示词，指导 LLM 选择相似的任务
-    const systemPrompt = `你是一个智能任务匹配助手。请根据用户的当前需求，从提供的技能工具集中选择最相似的任务。
+    const skillMatchSystemPrompt = `你是一个智能任务匹配助手。请根据用户的当前需求，从提供的技能工具集中选择最相似的任务。
 
       **匹配原则**：
       1. **任务目标相似性**：选择与用户目标最匹配的技能
@@ -148,22 +147,34 @@ export const matchSkillForPlan = async ({
       - 如果有多个相似技能，选择最符合主要目标的那个
       - 如果没有找到完全匹配的技能，选择功能最相近的
       
-      请从以下工具中选择一个最匹配的：`;
+      请从以下工具中选择一个最匹配的：
+      
+      工具匹配上直接使用工具调用的形式而不是文本描述的形式来进行返回`;
 
-    // 构建简化的消息，只包含系统提示词和用户输入
-    const allMessages = [
+    const allMessages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: systemPrompt
-      },
-      {
-        role: 'user' as const,
-        content: userInput
+        content: skillMatchSystemPrompt
       }
     ];
-    console.log('match request', { userInput, skillCount: skills.length });
 
-    const { toolCalls } = await createLLMResponse({
+    if (messages && messages.length > 0) {
+      allMessages.push(...messages);
+    }
+
+    allMessages.push({
+      role: 'user' as const,
+      content: userInput
+    });
+
+    console.debug('match request', {
+      hasHistory: !!(messages && messages.length > 0),
+      historyCount: messages?.length || 0,
+      currentInput: userInput.substring(0, 100), // 只显示前100个字符
+      skillCount: skills.length
+    });
+
+    const llmResponse = await createLLMResponse({
       body: {
         model: modelData.model,
         messages: allMessages,
@@ -173,6 +184,17 @@ export const matchSkillForPlan = async ({
         stream: false
       }
     });
+
+    console.log('=== LLM 完整返回 ===');
+    console.log('完整响应 keys:', Object.keys(llmResponse));
+    console.log('toolCalls:', llmResponse.toolCalls);
+    console.log('assistantMessage:', llmResponse.assistantMessage);
+
+    // 打印完整对象（过滤掉可能很长的字段）
+    const { assistantMessage, ...otherFields } = llmResponse;
+    console.log('其他返回字段:', JSON.stringify(otherFields, null, 2));
+
+    const { toolCalls } = llmResponse;
 
     // 5. 解析匹配结果
     if (toolCalls && toolCalls.length > 0) {

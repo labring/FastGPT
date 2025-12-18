@@ -33,6 +33,7 @@ import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAiSkillDetail } from '@/web/core/ai/skill/api';
+import { validateToolConfiguration, getToolConfigStatus } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -103,19 +104,36 @@ const EditForm = ({
     }
   }, [selectedModel, setAppForm]);
 
-  // 打开编辑器
+  // 打开skill编辑器
   const handleEditSkill = useCallback(
     async (skill: SkillEditType) => {
       // If skill has dbId, load full details from server
       if (skill.id) {
         const detail = await getAiSkillDetail({ id: skill.id });
+
+        // Validate tools and determine their configuration status
+        const toolsWithStatus = (detail.tools || [])
+          .filter((tool) => {
+            // First, validate tool compatibility with current config
+            const isValid = validateToolConfiguration({
+              toolTemplate: tool,
+              canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
+              canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
+            });
+            return isValid;
+          })
+          .map((tool) => ({
+            ...tool,
+            configStatus: getToolConfigStatus(tool)
+          }));
+
         // Merge server data with local data
         onEditSkill({
           id: detail._id,
           name: detail.name,
           description: detail.description || '',
           stepsText: detail.steps,
-          selectedTools: detail.tools || [],
+          selectedTools: toolsWithStatus,
           dataset: { list: detail.datasets || [] }
         });
       } else {
@@ -123,7 +141,7 @@ const EditForm = ({
         onEditSkill(skill);
       }
     },
-    [onEditSkill]
+    [onEditSkill, appForm.chatConfig.fileSelectConfig]
   );
 
   return (

@@ -308,3 +308,51 @@ export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType):
     false
   );
 };
+
+/**
+ * Get the configuration status of a tool
+ * Checks if tool needs configuration and whether all required fields are filled
+ * @param toolTemplate - The tool template to check
+ * @returns 'active' if tool is ready to use, 'waitingForConfig' if configuration needed
+ */
+export const getToolConfigStatus = (
+  toolTemplate: FlowNodeTemplateType
+): 'active' | 'waitingForConfig' => {
+  // Check if tool needs configuration
+  const needsConfig = checkNeedsUserConfiguration(toolTemplate);
+  if (!needsConfig) {
+    return 'active';
+  }
+
+  // For tools that need config, check if all required fields have values
+  const formRenderTypesMap: Record<string, boolean> = {
+    [FlowNodeInputTypeEnum.input]: true,
+    [FlowNodeInputTypeEnum.textarea]: true,
+    [FlowNodeInputTypeEnum.numberInput]: true,
+    [FlowNodeInputTypeEnum.password]: true,
+    [FlowNodeInputTypeEnum.switch]: true,
+    [FlowNodeInputTypeEnum.select]: true,
+    [FlowNodeInputTypeEnum.JSONEditor]: true,
+    [FlowNodeInputTypeEnum.timePointSelect]: true,
+    [FlowNodeInputTypeEnum.timeRangeSelect]: true
+  };
+
+  // Find all inputs that need configuration
+  const configInputs = toolTemplate.inputs.filter((input) => {
+    if (input.toolDescription) return false;
+    if (input.key === NodeInputKeyEnum.forbidStream) return false;
+    if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+    return input.renderTypeList.some((type) => formRenderTypesMap[type]);
+  });
+
+  // Check if all required fields are filled
+  const allConfigured = configInputs.every((input) => {
+    const value = input.value;
+    if (value === undefined || value === null || value === '') return false;
+    if (Array.isArray(value) && value.length === 0) return false;
+    if (typeof value === 'object' && Object.keys(value).length === 0) return false;
+    return true;
+  });
+
+  return allConfigured ? 'active' : 'waitingForConfig';
+};

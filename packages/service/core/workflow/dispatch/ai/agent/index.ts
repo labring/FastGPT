@@ -228,6 +228,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             });
           }
           if (plan) {
+            console.log('plan output', plan);
             workflowStreamResponse?.({
               event: SseResponseEventEnum.agentPlan,
               data: { agentPlan: plan }
@@ -362,6 +363,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           teamId: runningUserInfo.teamId,
           appId: runningAppInfo.id,
           userInput: lastInteractive ? interactiveInput : userChatInput,
+          messages: historiesMessages, // 传入完整的对话历史
           model
         });
         if (matchResult.matched && matchResult.systemPrompt) {
