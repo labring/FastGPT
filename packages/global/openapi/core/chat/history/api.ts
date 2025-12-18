@@ -5,18 +5,14 @@ import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 
 // Get chat histories schema
-export const GetHistoriesBodySchema = PaginationSchema.and(
-  OutLinkChatAuthSchema.and(
-    z.object({
-      appId: z.string().optional().describe('应用ID'),
-      source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
-      startCreateTime: z.string().optional().describe('创建时间开始'),
-      endCreateTime: z.string().optional().describe('创建时间结束'),
-      startUpdateTime: z.string().optional().describe('更新时间开始'),
-      endUpdateTime: z.string().optional().describe('更新时间结束')
-    })
-  )
-);
+export const GetHistoriesBodySchema = PaginationSchema.extend(OutLinkChatAuthSchema.shape).extend({
+  appId: z.string().optional().describe('应用ID'),
+  source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
+  startCreateTime: z.string().optional().describe('创建时间开始'),
+  endCreateTime: z.string().optional().describe('创建时间结束'),
+  startUpdateTime: z.string().optional().describe('更新时间开始'),
+  endUpdateTime: z.string().optional().describe('更新时间结束')
+});
 export type GetHistoriesBodyType = z.infer<typeof GetHistoriesBodySchema>;
 export const GetHistoriesResponseSchema = PaginationResponseSchema(
   z.object({
@@ -43,20 +39,16 @@ export const UpdateHistoryBodySchema = OutLinkChatAuthSchema.and(
 export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodySchema>;
 
 // Delete single chat history schema
-export const DelChatHistorySchema = OutLinkChatAuthSchema.and(
-  z.object({
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('对话ID')
-  })
-);
+export const DelChatHistorySchema = OutLinkChatAuthSchema.extend({
+  appId: ObjectIdSchema.describe('应用ID'),
+  chatId: z.string().min(1).describe('对话ID')
+});
 export type DelChatHistoryType = z.infer<typeof DelChatHistorySchema>;
 
 // Clear all chat histories schema
-export const ClearChatHistoriesSchema = OutLinkChatAuthSchema.and(
-  z.object({
-    appId: ObjectIdSchema.describe('应用ID')
-  })
-);
+export const ClearChatHistoriesSchema = OutLinkChatAuthSchema.extend({
+  appId: ObjectIdSchema.describe('应用ID')
+});
 export type ClearChatHistoriesType = z.infer<typeof ClearChatHistoriesSchema>;
 
 // Batch delete chat histories schema (for log manager)

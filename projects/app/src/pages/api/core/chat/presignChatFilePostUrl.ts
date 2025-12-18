@@ -5,7 +5,7 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
-import type { PresignChatFilePostUrlParams } from '@fastgpt/global/core/chat/api';
+import type { PresignChatFilePostUrlParams } from '@fastgpt/global/openapi/core/chat/api';
 
 const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
