@@ -616,7 +616,7 @@ event取值：
   <Tab value="请求示例">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories' \
+curl --location --request POST 'http://localhost:3000/api/core/chat/history/getHistories' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -679,7 +679,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
   <Tab value="请求示例">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
+curl --location --request POST 'http://localhost:3000/api/core/chat/history/updateHistory' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -721,7 +721,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
   <Tab value="请求示例">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
+curl --location --request POST 'http://localhost:3000/api/core/chat/history/updateHistory' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -763,7 +763,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistor
   <Tab value="请求示例">
 
 ```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory?chatId=[chatId]&appId=[appId]' \
+curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/delHistory?chatId=[chatId]&appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
@@ -800,7 +800,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
   <Tab value="请求示例">
 
 ```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHistories?appId=[appId]' \
+curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/clearHistories?appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 

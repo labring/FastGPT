@@ -9,7 +9,6 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
-import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);

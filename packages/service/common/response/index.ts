@@ -17,8 +17,9 @@ export interface ProcessedError {
   code: number;
   statusText: string;
   message: string;
-  data?: any;
   shouldClearCookie: boolean;
+  data?: any;
+  zodError?: any;
 }
 
 /**
@@ -32,6 +33,7 @@ export function processError(params: {
   defaultCode?: number;
 }): ProcessedError {
   const { error, url, defaultCode = 500 } = params;
+  let zodError;
 
   const errResponseKey = typeof error === 'string' ? error : error?.message;
 
@@ -67,7 +69,14 @@ export function processError(params: {
   if (error instanceof UserError) {
     addLog.info(`Request error: ${url}, ${msg}`);
   } else if (error instanceof ZodError) {
-    addLog.error(`[Zod] Error in ${url}`, error.message);
+    zodError = (() => {
+      try {
+        return JSON.parse(error.message);
+      } catch (error) {}
+    })();
+    addLog.error(`[Zod] Error in ${url}`, {
+      data: zodError
+    });
     msg = error.message;
   } else {
     addLog.error(`System unexpected error: ${url}, ${msg}`, error);
@@ -78,7 +87,8 @@ export function processError(params: {
     code: defaultCode,
     statusText: 'error',
     message: replaceSensitiveText(msg),
-    shouldClearCookie: false
+    shouldClearCookie: false,
+    zodError
   };
 }
 
@@ -107,7 +117,8 @@ export const jsonRes = <T = any>(
       code: processedError.code,
       statusText: processedError.statusText,
       message: message || processedError.message,
-      data: processedError.data !== undefined ? processedError.data : null
+      data: processedError.data !== undefined ? processedError.data : null,
+      zodError: processedError.zodError
     });
 
     return;
