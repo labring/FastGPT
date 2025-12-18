@@ -71,6 +71,8 @@
   "confirm_copy_app_tip": "The system will create an app with the same configuration for you, but permissions will not be copied. Please confirm!",
   "confirm_del_app_tip": "Confirm to delete this Agent? \nDeleting an Agent will delete its associated conversation records as well.",
   "confirm_del_tool_tip": "Confirm to delete this tool? \nDeleting a tool will delete its associated conversation records, and the Agent that uses the tool may not function properly.",
+  "confirm_delete_chat_content": "Are you sure you want to delete this chat? This action cannot be undone!",
+  "confirm_delete_chats": "Are you sure you want to delete {{n}} conversation records? \nThe records will be permanently deleted!",
   "confirm_delete_folder_tip": "When you delete this folder, all applications and corresponding chat records under it will be deleted.",
   "confirm_delete_tool": "Confirm to delete this tool?",
   "copilot_config_message": "Current Node Configuration Information: \n Code Type: {{codeType}} \n Current Code: \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n Input Parameters: {{inputs}} \n Output Parameters: {{outputs}}",

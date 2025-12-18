@@ -233,7 +233,6 @@ export const onDelOneApp = async ({
     await MongoChat.deleteMany({
       appId
     });
-    await getS3ChatSource().deleteChatFilesByPrefix({ appId });
   }
 
   for await (const app of apps) {

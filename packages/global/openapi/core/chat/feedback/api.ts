@@ -105,11 +105,11 @@ export const UpdateUserFeedbackBodySchema = z.object({
     example: 'data123',
     description: '消息数据 ID'
   }),
-  userGoodFeedback: z.string().optional().nullable().meta({
+  userGoodFeedback: z.string().nullish().meta({
     example: '回答很好',
     description: '用户好评反馈内容'
   }),
-  userBadFeedback: z.string().optional().nullable().meta({
+  userBadFeedback: z.string().nullish().meta({
     example: '回答不准确',
     description: '用户差评反馈内容'
   })

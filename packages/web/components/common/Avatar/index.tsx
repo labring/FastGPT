@@ -6,7 +6,11 @@ import MyIcon from '../Icon';
 import { iconPaths } from '../Icon/constants';
 import MyImage from '../Image/MyImage';
 
-const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
+const Avatar = ({
+  w = '30px',
+  src,
+  ...props
+}: Omit<ImageProps, 'src'> & { src?: string | null }) => {
   // @ts-ignore
   const isIcon = !!iconPaths[src as any];
 

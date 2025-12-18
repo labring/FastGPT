@@ -1,17 +1,16 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { type ClearHistoriesProps } from '@/global/core/chat/api';
+import { ClearChatHistoriesSchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 
-/* clear chat history */
-async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextApiResponse) {
-  const { appId, shareId, outLinkUid, teamId, teamToken } = req.query;
+/* clear all chat histories of an app */
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  const { appId, shareId, outLinkUid, teamId, teamToken } = ClearChatHistoriesSchema.parse(
+    req.query
+  );
 
   const {
     teamId: chatTeamId,
@@ -61,22 +60,18 @@ async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextA
 
   // find chatIds
   const list = await MongoChat.find(match, 'chatId').lean();
-  const idList = list.map((item) => item.chatId);
 
-  await getS3ChatSource().deleteChatFilesByPrefix({ appId, uId: uid });
-
-  await MongoChatItemResponse.deleteMany({
-    appId,
-    chatId: { $in: idList }
-  });
-  await MongoChatItem.deleteMany({
-    appId,
-    chatId: { $in: idList }
-  });
-  await MongoChat.deleteMany({
-    appId,
-    chatId: { $in: idList }
-  });
+  await MongoChat.updateMany(
+    {
+      appId,
+      chatId: { $in: list.map((item) => item.chatId) }
+    },
+    {
+      $set: {
+        deleteTime: new Date()
+      }
+    }
+  );
 }
 
 export default NextAPI(handler);

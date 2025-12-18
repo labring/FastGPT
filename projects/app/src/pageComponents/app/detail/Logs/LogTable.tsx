@@ -10,7 +10,8 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  Checkbox
 } from '@chakra-ui/react';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
@@ -53,6 +54,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -213,7 +218,34 @@ const LogTable = ({
     refreshDeps: [params]
   });
 
-  const HeaderRenderMap = useMemo(
+  const {
+    selectedItems,
+    toggleSelect,
+    isSelected,
+    FloatingActionBar,
+    isSelecteAll,
+    selectAllTrigger
+  } = useTableMultipleSelect({
+    list: logs,
+    getItemId: (item) => item._id
+  });
+  const chatIds = useMemoEnhance(() => selectedItems.map((item) => item.chatId), [selectedItems]);
+
+  const { openConfirm: openConfirmDelete, ConfirmModal: ConfirmDeleteModal } = useConfirm({
+    type: 'delete'
+  });
+
+  const { runAsync: handleDelete } = useRequest2(
+    async (chatIds: string[]) => {
+      await batchDeleteChatHistories({ appId, chatIds });
+      await getData(pageNum);
+    },
+    {
+      successToast: t('common:delete_success')
+    }
+  );
+
+  const HeaderRenderMap = useMemoEnhance(
     () => ({
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -503,9 +535,13 @@ const LogTable = ({
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
+              <Th>
+                <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+              </Th>
               {logKeys
                 .filter((logKey) => logKey.enable)
                 .map((logKey) => HeaderRenderMap[logKey.key])}
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -516,12 +552,28 @@ const LogTable = ({
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
-                  title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.chatId)}
                 >
+                  <Td>
+                    <HStack onClick={(e) => e.stopPropagation()}>
+                      <Checkbox isChecked={isSelected(item)} onChange={() => toggleSelect(item)} />
+                    </HStack>
+                  </Td>
                   {logKeys
                     .filter((logKey) => logKey.enable)
                     .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
+                  <Td onClick={(e) => e.stopPropagation()}>
+                    <PopoverConfirm
+                      content={t('app:confirm_delete_chat_content')}
+                      type="delete"
+                      onConfirm={() => handleDelete([item.chatId])}
+                      Trigger={
+                        <Flex>
+                          <MyIconButton icon={'delete'} hoverColor={'red.600'} hoverBg="red.100" />
+                        </Flex>
+                      }
+                    />
+                  </Td>
                 </Tr>
               );
             })}
@@ -530,11 +582,32 @@ const LogTable = ({
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
       </TableContainer>
 
-      {total >= pageSize && (
-        <Flex mt={3} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
+      <FloatingActionBar
+        pb={0}
+        Controler={
+          <HStack>
+            <Button
+              variant={'whiteDanger'}
+              onClick={() =>
+                openConfirmDelete({
+                  onConfirm: () => handleDelete(chatIds),
+                  customContent: t('app:confirm_delete_chats', {
+                    n: chatIds.length
+                  })
+                })()
+              }
+            >
+              {t('common:Delete')} ({chatIds.length})
+            </Button>
+          </HStack>
+        }
+      >
+        {total > pageSize && (
+          <Flex justifyContent={'center'}>
+            <Pagination />
+          </Flex>
+        )}
+      </FloatingActionBar>
 
       {!!detailLogsId && (
         <DetailLogsModal
@@ -546,6 +619,8 @@ const LogTable = ({
           }}
         />
       )}
+
+      <ConfirmDeleteModal />
     </MyBox>
   );
 };

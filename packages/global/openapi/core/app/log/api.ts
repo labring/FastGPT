@@ -34,7 +34,7 @@ export const ChatLogItemSchema = z.object({
   title: z.string().optional().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
   source: z.enum(ChatSourceEnum).meta({ example: ChatSourceEnum.api, description: '对话来源' }),
-  sourceName: z.string().optional().meta({ example: 'API调用', description: '来源名称' }),
+  sourceName: z.string().nullish().meta({ example: 'API调用', description: '来源名称' }),
   updateTime: z.date().meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),
   createTime: z.date().meta({ example: '2024-01-01T00:00:00.000Z', description: '创建时间' }),
   messageCount: z.int().nullish().meta({ example: 10, description: '消息数量' }),
@@ -50,7 +50,7 @@ export const ChatLogItemSchema = z.object({
   totalPoints: z.number().nullish().meta({ example: 150.5, description: '总积分消耗' }),
   outLinkUid: z.string().nullish().meta({ example: 'outLink123', description: '外链用户 ID' }),
   tmbId: z.string().nullish().meta({ example: 'tmb123', description: '团队成员 ID' }),
-  sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员信息' }),
+  sourceMember: SourceMemberSchema.nullish().meta({ description: '来源成员信息' }),
   versionName: z.string().nullish().meta({ example: 'v1.0.0', description: '版本名称' }),
   region: z.string().nullish().meta({ example: '中国', description: '区域' })
 });

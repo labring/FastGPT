@@ -5,6 +5,7 @@ import { addLog } from '../system/log';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
+import { ZodError } from 'zod';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -65,6 +66,9 @@ export function processError(params: {
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
     addLog.info(`Request error: ${url}, ${msg}`);
+  } else if (error instanceof ZodError) {
+    addLog.error(`[Zod] Error in ${url}`, error.message);
+    msg = error.message;
   } else {
     addLog.error(`System unexpected error: ${url}, ${msg}`, error);
   }
