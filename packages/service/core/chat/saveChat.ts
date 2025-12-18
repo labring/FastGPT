@@ -313,6 +313,7 @@ export async function saveChat(props: Props) {
             shareId,
             outLinkUid,
             metadata: metadataUpdate,
+            createTime: new Date(),
             updateTime: new Date()
           }
         },
