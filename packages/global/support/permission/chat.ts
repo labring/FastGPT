@@ -12,5 +12,5 @@ export const TeamChatAuthSchema = z.object({
 });
 export type TeamChatAuthProps = z.infer<typeof TeamChatAuthSchema>;
 
-export const OutLinkChatAuthSchema = ShareChatAuthSchema.and(TeamChatAuthSchema);
+export const OutLinkChatAuthSchema = ShareChatAuthSchema.extend(TeamChatAuthSchema.shape);
 export type OutLinkChatAuthProps = z.infer<typeof OutLinkChatAuthSchema>;

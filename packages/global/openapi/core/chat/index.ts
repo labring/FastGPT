@@ -5,7 +5,7 @@ import { ChatFeedbackPath } from './feedback/index';
 import { ChatHistoryPath } from './history/index';
 import { z } from 'zod';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
-import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from '../../../core/chat/api';
+import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from './api';
 import { TagsMap } from '../../tag';
 
 export const ChatPath: OpenAPIPath = {
@@ -14,34 +14,10 @@ export const ChatPath: OpenAPIPath = {
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
 
-  '/core/chat/presignChatFileGetUrl': {
-    post: {
-      summary: '获取对话文件预签名 URL',
-      description: '获取对话文件的预签名 URL',
-      tags: [TagsMap.chatPage],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: PresignChatFileGetUrlSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功获取对话文件预签名 URL',
-          content: {
-            'application/json': {
-              schema: z.string()
-            }
-          }
-        }
-      }
-    }
-  },
   '/core/chat/presignChatFilePostUrl': {
     post: {
-      summary: '上传对话文件预签名 URL',
-      description: '上传对话文件的预签名 URL',
+      summary: '获取文件上传 URL',
+      description: '获取文件上传 URL',
       tags: [TagsMap.chatPage],
       requestBody: {
         content: {
@@ -56,6 +32,30 @@ export const ChatPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: CreatePostPresignedUrlResultSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/presignChatFileGetUrl': {
+    post: {
+      summary: '获取文件预览地址',
+      description: '获取文件预览地址',
+      tags: [TagsMap.chatPage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: PresignChatFileGetUrlSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取对话文件预签名 URL',
+          content: {
+            'application/json': {
+              schema: z.string()
             }
           }
         }
