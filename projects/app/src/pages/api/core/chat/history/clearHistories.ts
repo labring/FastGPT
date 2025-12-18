@@ -7,7 +7,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 
 /* clear all chat histories of an app */
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
+export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, shareId, outLinkUid, teamId, teamToken } = ClearChatHistoriesSchema.parse(
     req.query
   );

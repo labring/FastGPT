@@ -7,7 +7,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* update chat history: title, customTitle, top */
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
+export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatId, title, customTitle, top } = UpdateHistoryBodySchema.parse(req.body);
   await authChatCrud({
     req,

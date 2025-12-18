@@ -31,12 +31,15 @@ export type updateLogKeysBody = z.infer<typeof UpdateLogKeysBodySchema>;
 export const ChatLogItemSchema = z.object({
   _id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '对话日志 ID' }),
   chatId: z.string().meta({ example: 'chat123', description: '对话 ID' }),
-  title: z.string().optional().meta({ example: '用户对话', description: '对话标题' }),
+  title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
   source: z.enum(ChatSourceEnum).meta({ example: ChatSourceEnum.api, description: '对话来源' }),
   sourceName: z.string().nullish().meta({ example: 'API调用', description: '来源名称' }),
   updateTime: z.date().meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),
-  createTime: z.date().meta({ example: '2024-01-01T00:00:00.000Z', description: '创建时间' }),
+  createTime: z
+    .date()
+    .nullish()
+    .meta({ example: '2024-01-01T00:00:00.000Z', description: '创建时间' }),
   messageCount: z.int().nullish().meta({ example: 10, description: '消息数量' }),
   userGoodFeedbackCount: z.int().nullish().meta({ example: 3, description: '好评反馈数量' }),
   userBadFeedbackCount: z.int().nullish().meta({ example: 1, description: '差评反馈数量' }),
