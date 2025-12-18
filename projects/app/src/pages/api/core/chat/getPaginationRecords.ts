@@ -75,7 +75,7 @@ async function handler(
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
   const commonField =
-    'dataId obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg correctionStatus correctionId';
+    'dataId obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg correctionId';
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${
       DispatchNodeResponseKeyEnum.nodeResponse

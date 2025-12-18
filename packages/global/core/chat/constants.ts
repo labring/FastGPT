@@ -97,7 +97,6 @@ export enum ChatStatusEnum {
 }
 
 export enum FeedbackFilterEnum {
-  all = 'all',
   good = 'good',
   bad = 'bad',
   noFeedback = 'noFeedback'

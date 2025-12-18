@@ -48,20 +48,6 @@ type PopulateType = {
 };
 
 export async function generateSynthesis(): Promise<any> {
-  if (global.licenseData?.functions?.datasetEnhance === false) {
-    await MongoDatasetTraining.updateMany(
-      {
-        mode: TrainingModeEnum.synthesis
-      },
-      {
-        $set: {
-          mode: TrainingModeEnum.chunk
-        }
-      }
-    );
-    return;
-  }
-
   addLog.debug(`[Synthesis Queue] Size: ${global.synthesisQueueLen}`);
 
   const max = global.systemEnv?.qaMaxProcess || 10;
@@ -184,10 +170,6 @@ export async function generateSynthesis(): Promise<any> {
         }
 
         const questions = result.data.questions;
-
-        if (questions.length !== 10) {
-          throw new Error(`Expected 10 questions, got ${questions.length}`);
-        }
 
         // Extract usage information
         const usage = result.usages?.[0];

@@ -138,7 +138,6 @@ export type ResponseTagItemType = {
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId?: string;
-  correctionStatus?: boolean;
   correctionId?: string;
 } & ResponseTagItemType;
 

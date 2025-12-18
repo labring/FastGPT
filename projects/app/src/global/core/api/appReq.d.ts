@@ -9,7 +9,7 @@ export type GetAppChatLogsProps = {
   sources?: ChatSourceEnum[];
   tmbIds?: string[];
   chatSearch?: string;
-  feedbackFilter?: `${FeedbackFilterEnum}`;
+  feedbackFilter?: FeedbackFilterEnum[];
 };
 
 export type GetAppChatLogsParams = PaginationProps<GetAppChatLogsProps>;
