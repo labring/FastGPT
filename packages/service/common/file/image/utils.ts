@@ -66,7 +66,7 @@ export const isValidImageContentType = (contentType: string): boolean => {
 };
 
 export const detectImageTypeFromBuffer = (buffer: Buffer): string | undefined => {
-  if (!buffer || buffer.length < 8) return;
+  if (!buffer || buffer.length === 0) return;
 
   for (const { type, magic, check } of IMAGE_SIGNATURES) {
     if (buffer.length < magic.length) continue;
