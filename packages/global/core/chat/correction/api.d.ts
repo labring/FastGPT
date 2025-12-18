@@ -1,35 +1,35 @@
 import type { CorrectionDataType, ChatCorrectionSchemaType } from './type';
-import type { PaginationProps } from '../../../../web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../../../web/common/fetch/type';
 // Correction API Types
 export type SubmitChatCorrectionParams = {
   appId: string;
   chatId: string;
   dataId: string;
   correctionData: CorrectionDataType;
-  modelName: string;
 };
 
 export type SubmitChatCorrectionResponse = {
   correctionId: string;
 };
 
-export type ListChatCorrectionParams = {
+export type ListChatCorrectionParams = PaginationProps<{
   appId: string;
   chatId?: string;
   dataId?: string;
   correctionId?: string;
-};
+  startTime?: string | Date;
+  endTime?: string | Date;
+}>;
 
-export type ListChatCorrectionResponse = {
+export type ListChatCorrectionResponse = PaginationResponse<{
   _id: string;
   dataId: string;
   chatId: string;
   appId: string;
   correctionData: CorrectionDataType;
-  createTime: Date;
   updateTime: Date;
   userName?: string;
-}[];
+}>;
 
 export type DeleteChatCorrectionParams = {
   appId: string;
@@ -61,6 +61,7 @@ export type GetKeywordQuoteResponse = {
     q: string;
     a?: string;
     sourceName?: string;
+    extractiveText?: string;
   }>;
   total: number; // 总条数，用于分页
 };

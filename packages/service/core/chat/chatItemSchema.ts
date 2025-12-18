@@ -81,7 +81,6 @@ const ChatItemSchema = new Schema({
     default: []
   },
   durationSeconds: Number,
-  correctionStatus: Boolean,
   correctionId: {
     type: Schema.Types.ObjectId,
     ref: ChatCorrectionCollectionName
@@ -90,6 +89,7 @@ const ChatItemSchema = new Schema({
 
 try {
   ChatItemSchema.index({ dataId: 1 });
+  ChatItemSchema.index({ correctionId: 1 });
   /* delete by app; 
      delete by chat id;
      get chat list; 

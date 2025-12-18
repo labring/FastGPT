@@ -27,7 +27,7 @@ async function handler(
     sources,
     tmbIds,
     chatSearch,
-    feedbackFilter = FeedbackFilterEnum.all
+    feedbackFilter = []
   } = req.body as GetAppChatLogsParams;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
@@ -129,7 +129,7 @@ async function handler(
                   },
                   correctedCount: {
                     $sum: {
-                      $cond: [{ $ifNull: ['$correctionStatus', false] }, 1, 0]
+                      $cond: [{ $ne: ['$correctionId', null] }, 1, 0]
                     }
                   },
                   totalResponseTime: {
@@ -216,20 +216,24 @@ async function handler(
           }
         },
         // Filter by feedback type
-        ...(feedbackFilter !== FeedbackFilterEnum.all
+        ...(feedbackFilter && feedbackFilter.length > 0
           ? [
               {
-                $match:
-                  feedbackFilter === FeedbackFilterEnum.good
-                    ? { userGoodFeedbackCount: { $gt: 0 } }
-                    : feedbackFilter === FeedbackFilterEnum.bad
-                      ? { userBadFeedbackCount: { $gt: 0 } }
-                      : feedbackFilter === FeedbackFilterEnum.noFeedback
-                        ? {
-                            userGoodFeedbackCount: { $eq: 0 },
-                            userBadFeedbackCount: { $eq: 0 }
-                          }
-                        : {}
+                $match: {
+                  $or: feedbackFilter.map((filter) => {
+                    if (filter === FeedbackFilterEnum.good) {
+                      return { userGoodFeedbackCount: { $gt: 0 } };
+                    } else if (filter === FeedbackFilterEnum.bad) {
+                      return { userBadFeedbackCount: { $gt: 0 } };
+                    } else if (filter === FeedbackFilterEnum.noFeedback) {
+                      return {
+                        userGoodFeedbackCount: { $eq: 0 },
+                        userBadFeedbackCount: { $eq: 0 }
+                      };
+                    }
+                    return {};
+                  })
+                }
               }
             ]
           : []),

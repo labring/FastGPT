@@ -98,7 +98,6 @@ export async function submitChatCorrection({
     await MongoChatItem.updateOne(
       { dataId },
       {
-        correctionStatus: true,
         correctionId: new Types.ObjectId(correctionId)
       },
       { session }
@@ -214,7 +213,7 @@ export async function deleteChatCorrection({
     // 2. Update ChatItem to remove correction reference
     await MongoChatItem.updateOne(
       { correctionId: new Types.ObjectId(correctionId) },
-      { $unset: { correctionStatus: 1, correctionId: 1 } },
+      { $unset: { correctionId: 1 } },
       { session }
     );
 

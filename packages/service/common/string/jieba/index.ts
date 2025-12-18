@@ -15,7 +15,7 @@ let jieba: Jieba | undefined;
 const jiebaCache = new Map<string, Jieba>();
 const MAX_CACHE_SIZE = 10;
 
-const stopWords = new Set([
+export const stopWords = new Set([
   '\n',
   '--',
   '?',

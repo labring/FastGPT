@@ -10,6 +10,8 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { extractiveText } from '@fastgpt/service/common/string/extractive';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 
 async function handler(
   req: ApiRequestProps<GetKeywordQuoteParams>
@@ -37,7 +39,7 @@ async function handler(
     teamToken
   });
 
-  if (!keyword?.trim() || keyword.trim().length < 2) {
+  if (!keyword?.trim()) {
     return { list: [], total: 0 };
   }
 
@@ -53,11 +55,26 @@ async function handler(
   const { offset, pageSize: rawPageSize } = parsePaginationRequest(req);
   const pageSize = Math.min(rawPageSize, 50);
 
-  const queryReg = new RegExp(`${replaceRegChars(keyword.trim())}`, 'i');
+  // Use jieba to segment keywords for multi-word search support
+  // Handles Chinese text segmentation and removes stop words
+  const segmentedText = await jiebaSplit({ text: keyword.trim() });
+  const keywordsArray = segmentedText ? segmentedText.split(' ').filter((k) => k.trim()) : [];
+
+  // Fallback to original keyword if jieba returns nothing (all stop words)
+  const keywords = keywordsArray.length > 0 ? keywordsArray : [keyword.trim()];
+
+  // Create regex patterns with UCP option for Unicode-aware word boundaries
+  // (*UCP) enables proper word boundary detection for non-ASCII characters
+  const regexPatterns = keywords.map((kw) => {
+    const escaped = replaceRegChars(kw);
+    return { $regex: `(*UCP)\\b${escaped}\\b`, $options: 'i' };
+  });
+
+  // Build match query: search for any keyword in either q or a fields
   const match = {
     teamId,
     datasetId: { $in: datasetIds },
-    $or: [{ q: queryReg }, { a: queryReg }]
+    $or: regexPatterns.flatMap((pattern) => [{ q: pattern }, { a: pattern }])
   };
 
   if (collectionIds && collectionIds.length > 0) {
@@ -77,7 +94,15 @@ async function handler(
     datasetDataId: String(item._id),
     q: item.q || '',
     a: item.a || undefined,
-    sourceName: item.collectionId?.name || ''
+    sourceName: item.collectionId?.name || '',
+    extractiveText: item.q
+      ? extractiveText({
+          text: item.q,
+          keyword: keyword,
+          maxLength: 200,
+          minLength: 50
+        })
+      : ''
   }));
 
   return { list: formatList, total };
