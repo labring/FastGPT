@@ -50,6 +50,15 @@ export const getPlanAgentSystemPrompt = ({
     ${subAppPrompt}
   「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
     - [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
+
+  **工具选择限制**：
+  1. **同类工具去重**：如果有多个功能相似的工具（如多个搜索工具、多个翻译工具等），只选择一个最合适的
+  2. **避免功能重叠**：不要在同一个计划中使用多个功能重叠的工具
+  3. **优先使用参考工具**：如果用户提供了背景信息/前置规划信息，优先使用其中已经使用的工具
+
+  示例：
+  - 如果有 bing/webSearch、google/search、metaso/metasoSearch 等多个搜索工具，只选择一个
+  - 如果背景信息中使用了 @tavily_search，则优先继续使用 @tavily_search 而不是切换到其他搜索工具
 </toolset>
 <process>
   1. **前置信息检查**：
@@ -252,7 +261,10 @@ export const getUserContent = ({
 }) => {
   let userContent = `用户输入：${userInput}`;
   if (systemPrompt) {
-    userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。`;
+    userContent += `\n\n背景信息：${parseSystemPrompt({ systemPrompt, getSubAppInfo })}\n
+    请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。\n
+
+    **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
   }
   return userContent;
 };
@@ -297,6 +309,11 @@ export const getReplanAgentSystemPrompt = ({
 ${subAppPrompt}
 「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
 - [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
+
+**工具选择限制**：
+1. **工具一致性**：在追加优化步骤时，应优先使用已完成步骤中使用过的工具
+2. **同类工具去重**：避免引入新的同类工具，保持工具选择的一致性
+3. **功能不重叠**：不要选择与已使用工具功能重叠的其他工具
 </tools>
 
 <process>
@@ -494,6 +511,14 @@ export const getReplanAgentUserPrompt = ({
       
       ${stepsResponsePrompt}
       
-      请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤,如果有「用户前置规划」请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。。
-      如果「关键步骤执行结果」已经满足了当前的「任务目标」，请直接返回一个总结的步骤来提取最终的答案，而不需要进行其他的讨论`;
+      请基于上述关键步骤 ${stepsIdPrompt} 的执行结果，生成能够进一步优化和完善整个任务目标的追加步骤。
+
+      如果有「用户前置规划」，请按照用户的前置规划来重新生成计划，优先遵循用户的步骤安排和偏好。
+
+      **工具选择原则**：
+      - 如果前面的步骤或「用户前置规划」中使用了某个工具，后续步骤应优先继续使用相同的工具
+      - 避免在后续步骤中切换到功能相似的其他工具
+      - 同类工具只选择一个，避免功能重叠
+
+      如果「关键步骤执行结果」已经满足了当前的「任务目标」，请直接返回一个总结的步骤来提取最终的答案，而不需要进行其他的讨论。`;
 };
