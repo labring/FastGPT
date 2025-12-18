@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
-import { getFileContentTypeFromHeader, guessBase64ImageType } from '../utils';
+import {
+  getFileContentTypeFromHeader,
+  guessBase64ImageType,
+  detectImageTypeFromBuffer,
+  isValidImageContentType
+} from '../utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const getImageBase64 = async (url: string) => {
@@ -16,10 +21,28 @@ export const getImageBase64 = async (url: string) => {
       })
     );
 
-    const base64 = Buffer.from(response.data, 'binary').toString('base64');
-    const imageType =
-      getFileContentTypeFromHeader(response.headers['content-type']) ||
-      guessBase64ImageType(base64);
+    const buffer = Buffer.from(response.data);
+    const base64 = buffer.toString('base64');
+    const headerContentType = getFileContentTypeFromHeader(response.headers['content-type']);
+
+    // 检测图片类型的优先级策略
+    const detectImageType = (): string => {
+      // 1. 如果 Header 是有效的图片类型，直接使用
+      if (headerContentType && isValidImageContentType(headerContentType)) {
+        return headerContentType;
+      }
+
+      // 2. 使用文件头检测（适用于通用二进制类型或无效类型）
+      const detectedType = detectImageTypeFromBuffer(buffer);
+      if (detectedType) {
+        return detectedType;
+      }
+
+      // 3. 回退到 base64 推断
+      return guessBase64ImageType(base64);
+    };
+
+    const imageType = detectImageType();
 
     return {
       completeBase64: `data:${imageType};base64,${base64}`,
