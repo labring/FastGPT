@@ -59,7 +59,7 @@ export const getAllKeysByPrefix = async (key: string) => {
     cursor = nextCursor;
 
     for (const k of keys) {
-      results.push(key.replace(FASTGPT_REDIS_PREFIX, ''));
+      results.push(k.replace(FASTGPT_REDIS_PREFIX, ''));
     }
   } while (cursor !== '0');
 

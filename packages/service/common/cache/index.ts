@@ -23,7 +23,11 @@ export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: strin
     const pattern = `${cachePrefix}${key}`;
     const keys = await getAllKeysByPrefix(pattern);
     if (keys.length > 0) {
-      await redis.del(keys);
+      const pipeline = redis.pipeline();
+      for (const k of keys) {
+        pipeline.del(k);
+      }
+      await pipeline.exec();
     }
   } else {
     await redis.set(versionKey, val);
