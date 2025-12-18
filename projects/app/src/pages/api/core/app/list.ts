@@ -11,7 +11,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -97,9 +96,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   const findAppsQuery = (() => {
     if (getRecentlyChat) {
       return {
-        // get all chat app, excluding hidden apps
+        // get all chat app, excluding hidden apps and deleted apps
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] }
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] },
+        deleteTime: null
       };
     }
 
@@ -137,6 +137,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       const data = {
         ...appPerQuery,
         teamId,
+        deleteTime: null,
         ...searchMatch,
         type: _type
       };
@@ -150,6 +151,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ...appPerQuery,
       teamId,
       type: _type,
+      deleteTime: null,
       ...parseParentIdInMongo(parentId)
     };
   })();

@@ -119,6 +119,12 @@ const AppSchema = new Schema(
     inited: Boolean,
     teamTags: {
       type: [String]
+    },
+
+    // 软删除标记字段
+    deleteTime: {
+      type: Date,
+      default: null // null表示未删除，有值表示删除时间
     }
   },
   {
@@ -138,5 +144,6 @@ AppSchema.index(
 );
 // Admin count
 AppSchema.index({ type: 1 });
+AppSchema.index({ deleteTime: 1 });
 
 export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

@@ -136,6 +136,56 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
+export const deleteAppData = async ({
+  app,
+  teamId,
+  session
+}: {
+  app: AppSchema;
+  teamId: string;
+  session?: ClientSession;
+}) => {
+  const appId = String(app._id);
+
+  // 1. 删除聊天记录和S3文件
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId });
+  await MongoChatItemResponse.deleteMany({ appId });
+  await MongoChatItem.deleteMany({ appId });
+  await MongoChat.deleteMany({ appId });
+
+  // 2. 删除应用相关数据（使用事务）
+  await mongoSessionRun(async (session) => {
+    // 删除分享链接
+    await MongoOutLink.deleteMany({ appId }).session(session);
+    // 删除 OpenAPI 配置
+    await MongoOpenApi.deleteMany({ appId }).session(session);
+    // 删除应用版本
+    await MongoAppVersion.deleteMany({ appId }).session(session);
+    // 删除聊天输入引导
+    await MongoChatInputGuide.deleteMany({ appId }).session(session);
+    // 删除精选应用记录
+    await MongoChatFavouriteApp.deleteMany({ teamId, appId }).session(session);
+    // 从快捷应用中移除对应应用
+    await MongoChatSetting.updateMany(
+      { teamId },
+      { $pull: { quickAppIds: { $in: [appId] } } }
+    ).session(session);
+    // 删除权限记录
+    await MongoResourcePermission.deleteMany({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceId: appId
+    }).session(session);
+    // 删除日志密钥
+    await MongoAppLogKeys.deleteMany({ appId }).session(session);
+    // 删除应用本身
+    await MongoApp.deleteOne({ _id: appId }, { session });
+  });
+
+  // 3. 删除应用头像（事务外执行）
+  await removeImageByPath(app.avatar);
+};
+
 export const onDelOneApp = async ({
   teamId,
   appId,
@@ -165,74 +215,12 @@ export const onDelOneApp = async ({
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 
   const del = async (app: AppSchema, session: ClientSession) => {
-    const appId = String(app._id);
-
-    // 删除分享链接
-    await MongoOutLink.deleteMany({
-      appId
-    }).session(session);
-    // Openapi
-    await MongoOpenApi.deleteMany({
-      appId
-    }).session(session);
-
-    // delete version
-    await MongoAppVersion.deleteMany({
-      appId
-    }).session(session);
-
-    await MongoChatInputGuide.deleteMany({
-      appId
-    }).session(session);
-
-    // 删除精选应用记录
-    await MongoChatFavouriteApp.deleteMany({
-      teamId,
-      appId
-    }).session(session);
-
-    // 从快捷应用中移除对应应用
-    await MongoChatSetting.updateMany(
-      { teamId },
-      { $pull: { quickAppIds: { id: String(appId) } } }
-    ).session(session);
-
-    // Del permission
-    await MongoResourcePermission.deleteMany({
-      resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: appId
-    }).session(session);
-
-    await MongoAppLogKeys.deleteMany({
-      appId
-    }).session(session);
-
-    // delete app
-    await MongoApp.deleteOne(
-      {
-        _id: appId
-      },
-      { session }
-    );
-
-    // Delete avatar
-    await removeImageByPath(app.avatar, session);
+    await deleteAppData({ app, teamId, session });
   };
 
   // Delete chats
   for await (const app of apps) {
-    const appId = String(app._id);
-    await getS3ChatSource().deleteChatFilesByPrefix({ appId });
-    await MongoChatItemResponse.deleteMany({
-      appId
-    });
-    await MongoChatItem.deleteMany({
-      appId
-    });
-    await MongoChat.deleteMany({
-      appId
-    });
+    await deleteAppData({ app, teamId });
   }
 
   for await (const app of apps) {

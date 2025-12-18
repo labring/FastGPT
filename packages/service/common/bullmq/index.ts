@@ -25,6 +25,7 @@ export enum QueueNames {
 
   // Delete Queue
   datasetDelete = 'datasetDelete',
+  appDelete = 'appDelete',
   // @deprecated
   websiteSync = 'websiteSync'
 }
