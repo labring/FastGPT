@@ -44,22 +44,18 @@ export const getGlobalRedisConnection = () => {
 };
 
 export const getAllKeysByPrefix = async (key: string) => {
+  if (!key) return [];
+
   const redis = getGlobalRedisConnection();
   const prefix = FASTGPT_REDIS_PREFIX;
   const pattern = `${prefix}${key}:*`;
 
   let cursor = '0';
-  const batchSize = 1000;   // SCAN 每次取多少
+  const batchSize = 1000; // SCAN 每次取多少
   const results: string[] = [];
 
   do {
-    const [nextCursor, keys] = await redis.scan(
-      cursor,
-      'MATCH',
-      pattern,
-      'COUNT',
-      batchSize
-    );
+    const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', batchSize);
     cursor = nextCursor;
 
     for (const k of keys) {
