@@ -3,12 +3,14 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SkillEditType, SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import HelperBot from '@/components/core/chat/HelperBot';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { validateToolConfiguration, checkNeedsUserConfiguration } from '../utils';
 
 type Props = {
   skill: SkillEditType;
@@ -59,26 +61,85 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
         <HelperBot
           type={HelperBotTypeEnum.skillAgent}
           metadata={skillAgentMetadata}
-          onApply={(generatedSkillData) => {
+          onApply={async (generatedSkillData) => {
             console.log(generatedSkillData, 222);
-            // const stepsText = generatedSkillData.execution_plan.steps
-            //   .map((step, index) => {
-            //     let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
-            //     if (step.expectedTools && step.expectedTools.length > 0) {
-            //       const tools = step.expectedTools
-            //         .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
-            //         .join(', ');
-            //       stepText += `\n使用工具: ${tools}`;
-            //     }
-            //     return stepText;
-            //   })
-            //   .join('\n\n');
 
-            // onAIGenerate({
-            //   name: generatedSkillData.plan_analysis.name || skill.name,
-            //   description: generatedSkillData.plan_analysis.description || skill.description,
-            //   stepsText: stepsText
-            // });
+            // 1. 提取所有步骤中的工具 ID（去重，仅保留 type='tool'）
+            const allToolIds = new Set<string>();
+            generatedSkillData.execution_plan.steps.forEach((step) => {
+              step.expectedTools?.forEach((tool) => {
+                if (tool.type === 'tool') {
+                  allToolIds.add(tool.id);
+                }
+              });
+            });
+
+            // 2. 并行获取工具详情
+            const targetToolIds = Array.from(allToolIds);
+            const newTools: SelectedToolItemType[] = [];
+            const failedToolIds: string[] = [];
+
+            if (targetToolIds.length > 0) {
+              const results = await Promise.all(
+                targetToolIds.map((toolId: string) =>
+                  getToolPreviewNode({ appId: toolId })
+                    .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
+                    .catch((error) => ({ status: 'rejected' as const, toolId, error }))
+                )
+              );
+
+              results.forEach((result) => {
+                if (result.status === 'fulfilled') {
+                  // 验证工具配置
+                  const toolValid = validateToolConfiguration({
+                    toolTemplate: result.tool,
+                    canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
+                    canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
+                  });
+
+                  if (toolValid) {
+                    // 判断是否需要用户配置，设置 configStatus
+                    const needsConfig = checkNeedsUserConfiguration(result.tool);
+                    newTools.push({
+                      ...result.tool,
+                      configStatus: needsConfig ? 'waitingForConfig' : 'active'
+                    });
+                  } else {
+                    // 工具验证失败，记录失败
+                    failedToolIds.push(result.toolId);
+                  }
+                } else if (result.status === 'rejected') {
+                  failedToolIds.push(result.toolId);
+                }
+              });
+
+              // 可选：提示用户哪些工具获取失败
+              if (failedToolIds.length > 0) {
+                console.warn('部分工具获取失败:', failedToolIds);
+              }
+            }
+
+            // 3. 构建 stepsText（保持原有逻辑）
+            const stepsText = generatedSkillData.execution_plan.steps
+              .map((step, index) => {
+                let stepText = `步骤 ${index + 1}: ${step.title}\n${step.description}`;
+                if (step.expectedTools && step.expectedTools.length > 0) {
+                  const tools = step.expectedTools
+                    .map((tool) => `${tool.type === 'tool' ? '🔧' : '📚'} ${tool.id}`)
+                    .join(', ');
+                  stepText += `\n使用工具: ${tools}`;
+                }
+                return stepText;
+              })
+              .join('\n\n');
+
+            // 4. 应用生成的数据，包含 selectedTools
+            onAIGenerate({
+              name: generatedSkillData.plan_analysis.name || skill.name,
+              description: generatedSkillData.plan_analysis.description || skill.description,
+              stepsText: stepsText,
+              selectedTools: newTools
+            });
           }}
         />
       </Box>
