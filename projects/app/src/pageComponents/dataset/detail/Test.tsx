@@ -433,7 +433,7 @@ const TestResults = React.memo(function TestResults({
               similarity={datasetTestItem.similarity}
               limit={datasetTestItem.limit}
               usingReRank={datasetTestItem.usingReRank}
-              datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
+              usingExtensionQuery={!!datasetTestItem.queryExtensionModel}
               queryExtensionModel={datasetTestItem.queryExtensionModel}
             />
           </Box>

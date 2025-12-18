@@ -20,7 +20,7 @@ describe('closeCustom api test', () => {
   let dataId: string;
 
   beforeEach(async () => {
-    testUser = await getUser('test-user-close-custom');
+    testUser = await getUser(`test-user-close-custom-${Math.random()}`);
 
     // Create test app
     const app = await MongoApp.create({
@@ -94,7 +94,7 @@ describe('closeCustom api test', () => {
   });
 
   it('should fail when user does not have permission', async () => {
-    const unauthorizedUser = await getUser('unauthorized-user-close');
+    const unauthorizedUser = await getUser(`unauthorized-user-close-${Math.random()}`);
 
     const res = await Call<CloseCustomFeedbackBodyType, {}, CloseCustomFeedbackResponseType>(
       handler,

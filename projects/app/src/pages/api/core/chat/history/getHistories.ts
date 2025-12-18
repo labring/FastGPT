@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/openapi/core/chat/history/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 
 /* get chat histories list */
 export async function handler(
@@ -64,6 +65,13 @@ export async function handler(
   })();
 
   if (!match) {
+    return {
+      list: [],
+      total: 0
+    };
+  }
+
+  if (match.appId && !ObjectIdSchema.safeParse(match.appId).success) {
     return {
       list: [],
       total: 0
