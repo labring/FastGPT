@@ -296,7 +296,8 @@ export enum TrainingModeEnum {
   hype = 'hype',
   small2Big = 'small2Big',
   synonymStandardize = 'synonymStandardize',
-  synonymRestore = 'synonymRestore'
+  synonymRestore = 'synonymRestore',
+  synthesis = 'synthesis'
 }
 
 /* ------------ search -------------- */

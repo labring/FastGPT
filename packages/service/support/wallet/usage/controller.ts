@@ -77,16 +77,18 @@ export type DatasetTrainingMode =
   | 'imageParse'
   | 'hype_embed'
   | 'hype_llm'
-  | 'hype_rerank';
+  | 'hype_rerank'
+  | 'synthesis';
 export const datasetTrainingUsageIndexMap: Record<DatasetTrainingMode, number> = {
   paragraph: 1,
   qa: 2,
   autoIndex: 3,
-  imageIndex: 4,
-  imageParse: 5,
-  hype_embed: 6,
-  hype_llm: 7,
-  hype_rerank: 8
+  synthesis: 4,
+  imageIndex: 5,
+  imageParse: 6,
+  hype_embed: 7,
+  hype_llm: 8,
+  hype_rerank: 9
 };
 export const createTrainingUsage = async ({
   teamId,
@@ -147,6 +149,13 @@ export const createTrainingUsage = async ({
                 },
                 {
                   moduleName: i18nT('account_usage:auto_index'),
+                  model: agentModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
+                {
+                  moduleName: i18nT('account_usage:synthesis'),
                   model: agentModel,
                   amount: 0,
                   inputTokens: 0,

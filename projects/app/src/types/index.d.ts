@@ -15,6 +15,7 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var small2bigQueueLen: number;
+  var synthesisQueueLen: number;
 
   interface Window {
     grecaptcha: any;

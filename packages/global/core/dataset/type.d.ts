@@ -46,6 +46,7 @@ export type ChunkSettingsType = {
   indexPrefixTitle?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
+  syntheticIndex?: boolean;
   hypeIndexPrompt?: string;
   small2bigConfig?: small2bigConfigType;
   autoIndexesPrompt?: string;
@@ -214,6 +215,7 @@ export type DatasetDataIndexItemType = {
   type: `${DatasetDataIndexTypeEnum}`;
   dataId: string; // pg data id
   text: string; // ⚠️ 存储标准化后的文本
+  synId?: number; // synthesis pair id (0-4) for pairwise positive samples
 
   // 该 index 的同义词转换元数据
   synonymMetadata?: {

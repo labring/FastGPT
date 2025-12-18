@@ -347,6 +347,7 @@
   "remove_warning": "移除警告",
   "data_index_hype": "假设提示索引",
   "data_index_small2big": "分段增强索引",
+  "data_index_synthesis": "合成索引",
   "config_prompt": "配置提示词",
   "hype_enhanced_index": "HyPE增强索引",
   "process.Hype_Index": "假设问题索引生成",
