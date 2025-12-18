@@ -19,7 +19,7 @@ describe('getFeedbackRecordIds api test', () => {
   let chatId: string;
 
   beforeEach(async () => {
-    testUser = await getUser('test-user-get-feedback-ids');
+    testUser = await getUser(`test-user-get-feedback-ids-${Math.random()}`);
 
     // Create test app
     const app = await MongoApp.create({
@@ -270,7 +270,7 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should fail when user does not have permission', async () => {
-    const unauthorizedUser = await getUser('unauthorized-user-get-ids');
+    const unauthorizedUser = await getUser(`unauthorized-user-get-ids-${Math.random()}`);
 
     const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
       handler,

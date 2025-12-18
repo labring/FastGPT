@@ -628,12 +628,17 @@ const createChatCompletion = async ({
       ('iterator' in response || 'controller' in response);
 
     const getEmptyResponseTip = () => {
-      addLog.warn(`LLM response empty`, {
-        baseUrl: userKey?.baseUrl,
-        requestBody: body
-      });
       if (userKey?.baseUrl) {
+        addLog.warn(`User LLM response empty`, {
+          baseUrl: userKey?.baseUrl,
+          requestBody: body
+        });
         return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
+      } else {
+        addLog.error(`LLM response empty`, {
+          message: '',
+          data: body
+        });
       }
       return i18nT('chat:LLM_model_response_empty');
     };
@@ -652,13 +657,18 @@ const createChatCompletion = async ({
       getEmptyResponseTip
     };
   } catch (error) {
-    addLog.error(`LLM response error`, error);
-    addLog.warn(`LLM response error`, {
-      baseUrl: userKey?.baseUrl,
-      requestBody: body
-    });
     if (userKey?.baseUrl) {
+      addLog.warn(`User ai api error`, {
+        message: getErrText(error),
+        baseUrl: userKey?.baseUrl,
+        data: body
+      });
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
+    } else {
+      addLog.error(`LLM response error`, {
+        message: getErrText(error),
+        data: body
+      });
     }
     return Promise.reject(error);
   }

@@ -20,7 +20,8 @@ describe('updateFeedbackReadStatus api test', () => {
   let dataId: string;
 
   beforeEach(async () => {
-    testUser = await getUser('test-user-update-read-status');
+    // Use unique username for each test to avoid concurrency issues
+    testUser = await getUser(`test-user-update-read-status-${Math.random()}`);
 
     // Create test app
     const app = await MongoApp.create({
@@ -127,7 +128,7 @@ describe('updateFeedbackReadStatus api test', () => {
   });
 
   it('should fail when user does not have permission', async () => {
-    const unauthorizedUser = await getUser('unauthorized-user-read-status');
+    const unauthorizedUser = await getUser(`unauthorized-user-read-status-${Math.random()}`);
 
     const res = await Call<
       UpdateFeedbackReadStatusBodyType,

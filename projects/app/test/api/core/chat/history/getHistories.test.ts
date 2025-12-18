@@ -263,7 +263,7 @@ describe('getHistories api test', () => {
   });
 
   it('should return empty list when appId does not exist', async () => {
-    const nonExistentAppId = getNanoid(24);
+    const nonExistentAppId = '507f1f77bcf86cd799439011'; // Valid ObjectId format but non-existent
 
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
       auth: testUser,
@@ -276,9 +276,9 @@ describe('getHistories api test', () => {
       }
     });
 
-    expect(res.code).toBe(500);
-    expect(res.error).toBeDefined();
-    expect(res.error?.name).toBe('ZodError');
+    expect(res.code).toBe(200);
+    expect(res.data.list).toHaveLength(0);
+    expect(res.data.total).toBe(0);
   });
 
   it('should fail when appId is missing', async () => {
@@ -340,5 +340,41 @@ describe('getHistories api test', () => {
 
     // Second should be the most recently updated non-top chat
     expect(res.data.list[1].chatId).toBe(chatIds[2]);
+  });
+
+  it('should return empty list when appId format is invalid', async () => {
+    const invalidAppId = 'invalid-app-id'; // Not a valid ObjectId format
+
+    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+      auth: testUser,
+      body: {
+        appId: invalidAppId
+      },
+      query: {
+        offset: 0,
+        pageSize: 10
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toHaveLength(0);
+    expect(res.data.total).toBe(0);
+  });
+
+  it('should accept empty string for appId and return empty list', async () => {
+    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+      auth: testUser,
+      body: {
+        appId: ''
+      },
+      query: {
+        offset: 0,
+        pageSize: 10
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toHaveLength(0);
+    expect(res.data.total).toBe(0);
   });
 });

@@ -8,7 +8,7 @@ import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 export const GetHistoriesBodySchema = PaginationSchema.and(
   OutLinkChatAuthSchema.and(
     z.object({
-      appId: ObjectIdSchema.optional().describe('应用ID'),
+      appId: z.string().optional().describe('应用ID'),
       source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
       startCreateTime: z.string().optional().describe('创建时间开始'),
       endCreateTime: z.string().optional().describe('创建时间结束'),

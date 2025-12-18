@@ -21,7 +21,7 @@ describe('updateUserFeedback api test', () => {
   let dataId: string;
 
   beforeEach(async () => {
-    testUser = await getUser('test-user-update-feedback');
+    testUser = await getUser(`test-user-update-feedback-${Math.random()}`);
 
     // Create test app
     const app = await MongoApp.create({
@@ -383,7 +383,7 @@ describe('updateUserFeedback api test', () => {
   });
 
   it('should fail when user does not have permission', async () => {
-    const unauthorizedUser = await getUser('unauthorized-user-feedback');
+    const unauthorizedUser = await getUser(`unauthorized-user-feedback-${Math.random()}`);
 
     const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
       handler,

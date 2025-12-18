@@ -193,9 +193,6 @@ describe('loginByPassword API', () => {
   });
 
   it('should accept language parameter on successful login', async () => {
-    // Spy on findByIdAndUpdate to verify it's called with the language
-    const findByIdAndUpdateSpy = vi.spyOn(MongoUser, 'findByIdAndUpdate');
-
     const res = await Call<PostLoginProps, {}, any>(loginApi.default, {
       body: {
         username: 'testuser',
@@ -208,15 +205,10 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
 
-    // Verify findByIdAndUpdate was called with the language
-    expect(findByIdAndUpdateSpy).toHaveBeenCalledWith(
-      testUser._id,
-      expect.objectContaining({
-        language: 'en'
-      })
-    );
-
-    findByIdAndUpdateSpy.mockRestore();
+    // Verify user was updated with the language
+    const updatedUser = await MongoUser.findById(testUser._id);
+    expect(updatedUser?.language).toBe('en');
+    expect(updatedUser?.lastLoginTmbId).toEqual(testTmb._id);
   });
 
   it('should handle root user login correctly', async () => {
@@ -260,5 +252,75 @@ describe('loginByPassword API', () => {
     expect(res.data).toBeDefined();
     expect(res.data.token).toBeDefined();
     expect(typeof res.data.token).toBe('string');
+  });
+
+  it('should use default language when language is not provided', async () => {
+    const res = await Call<PostLoginProps, {}, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+
+    // Verify user was updated with the default language 'zh-CN'
+    const updatedUser = await MongoUser.findById(testUser._id);
+    expect(updatedUser?.language).toBe('zh-CN');
+  });
+
+  it('should update lastLoginTmbId on successful login', async () => {
+    const updateOneSpy = vi.spyOn(MongoUser, 'updateOne');
+
+    const res = await Call<PostLoginProps, {}, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+
+    // Verify user was updated with lastLoginTmbId
+    const updatedUser = await MongoUser.findById(testUser._id);
+    expect(updatedUser?.lastLoginTmbId).toEqual(testTmb._id);
+  });
+
+  it('should verify user authentication flow', async () => {
+    const res = await Call<PostLoginProps, {}, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456'
+      }
+    });
+
+    expect(res.code).toBe(200);
+
+    // Verify the full authentication flow
+    expect(authCode).toHaveBeenCalled();
+    expect(setCookie).toHaveBeenCalled();
+    expect(pushTrack.login).toHaveBeenCalled();
+    expect(addAuditLog).toHaveBeenCalled();
+  });
+
+  it('should return user details with correct structure', async () => {
+    const res = await Call<PostLoginProps, {}, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user).toBeDefined();
+    expect(res.data.user.team).toBeDefined();
+    expect(res.data.user.team.teamId).toBe(String(testTeam._id));
+    expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
   });
 });
