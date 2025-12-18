@@ -50,6 +50,15 @@ const nextConfig = {
   },
 
   webpack(config, { isServer, nextRuntime }) {
+    // Ignore autoprefixer warnings from third-party libraries
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /@scalar\/api-reference-react/,
+        message: /autoprefixer/,
+      },
+    ];
+
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
