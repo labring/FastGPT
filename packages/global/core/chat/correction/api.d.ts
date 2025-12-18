@@ -21,7 +21,7 @@ export type ListChatCorrectionParams = PaginationProps<{
   endTime?: string | Date;
 }>;
 
-export type ListChatCorrectionResponse = PaginationResponse<{
+export type ChatCorrectionListItem = {
   _id: string;
   dataId: string;
   chatId: string;
@@ -29,7 +29,9 @@ export type ListChatCorrectionResponse = PaginationResponse<{
   correctionData: CorrectionDataType;
   updateTime: Date;
   userName?: string;
-}>;
+};
+
+export type ListChatCorrectionResponse = PaginationResponse<ChatCorrectionListItem>;
 
 export type DeleteChatCorrectionParams = {
   appId: string;

@@ -35,9 +35,12 @@ const DateRangePicker = ({
   formLabel?: string;
 } & BoxProps) => {
   const { t, i18n } = useTranslation();
-  const OutRangeRef = useRef(null);
+  const OutRangeRef = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<DateRangeType>(defaultDate);
   const [showSelected, setShowSelected] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState<{ left: number | string; right?: number }>({
+    left: 0
+  });
 
   // 根据当前语言配置获取对应的 locale
   const getLocale = () => {
@@ -72,6 +75,28 @@ const DateRangePicker = ({
       setShowSelected(false);
     }
   });
+
+  // 计算选择器位置
+  useEffect(() => {
+    if (showSelected && OutRangeRef.current) {
+      const rect = OutRangeRef.current.getBoundingClientRect();
+      const pickerWidth = 600; // DayPicker 大概宽度
+      const viewportWidth = window.innerWidth;
+      const scrollbarWidth = 16; // 滚动条宽度
+
+      // 智能对齐：如果右侧会溢出，则右对齐
+      if (rect.left + pickerWidth > viewportWidth - scrollbarWidth) {
+        // 右侧对齐
+        setPickerPosition({
+          left: 'auto',
+          right: 0
+        });
+      } else {
+        // 左侧对齐
+        setPickerPosition({ left: 0 });
+      }
+    }
+  }, [showSelected]);
 
   return (
     <Box position={'relative'} ref={OutRangeRef}>
@@ -113,7 +138,12 @@ const DateRangePicker = ({
             ? {
                 bottom: '40px'
               }
-            : {})}
+            : {
+                top: '40px'
+              })}
+          {...(pickerPosition.right !== undefined
+            ? { right: pickerPosition.right, left: 'auto' }
+            : { left: pickerPosition.left })}
         >
           <DayPicker
             locale={getLocale()}

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -11,11 +11,17 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import type { SubmitChatCorrectionParams } from './type';
-import { CorrectionModeEnum } from './type';
+import type { SubmitChatCorrectionParams } from '@fastgpt/global/core/chat/correction/api';
+import type {
+  CorrectedQuoteItem,
+  CorrectionDataType
+} from '@fastgpt/global/core/chat/correction/type';
+import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
+import { getAppDatasetCollection, submitChatCorrection } from '@/web/core/app/api/log';
 import KnowledgeSelect from './KnowledgeSelect';
 
 /**
@@ -27,9 +33,7 @@ interface CorrectionModalProps {
   appId: string;
   chatId: string;
   dataId: string;
-  modelName: string;
-  defaultQuestion?: string;
-  defaultAnswer?: string;
+  defaultCorrectionData?: Partial<CorrectionDataType>;
   onSubmit: (params: SubmitChatCorrectionParams) => Promise<void>;
 }
 
@@ -43,75 +47,103 @@ const CorrectionModal = ({
   appId,
   chatId,
   dataId,
-  modelName,
-  defaultQuestion = '',
-  defaultAnswer = '',
+  defaultCorrectionData,
   onSubmit
 }: CorrectionModalProps) => {
   const { t } = useTranslation();
-  const [question, setQuestion] = useState(defaultQuestion);
-  const [correctionMode, setCorrectionMode] = useState<CorrectionModeEnum>(CorrectionModeEnum.edit);
-  const [correctedAnswer, setCorrectedAnswer] = useState(defaultAnswer);
-  const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 从 defaultCorrectionData 中提取初始值，提供默认值
+  const initialQuestion = defaultCorrectionData?.question ?? '';
+  const initialRawAnswer = defaultCorrectionData?.rawAnswer ?? '';
+  const initialCorrectedAnswer = defaultCorrectionData?.correctedAnswer ?? initialRawAnswer;
+  const initialCorrectionMode = defaultCorrectionData?.correctionMode ?? CorrectionModeEnum.edit;
+
+  const [question, setQuestion] = useState(initialQuestion);
+  const [correctionMode, setCorrectionMode] = useState<CorrectionModeEnum>(initialCorrectionMode);
+  const [correctedAnswer, setCorrectedAnswer] = useState(initialCorrectedAnswer);
+  const [correctedQuoteList, setCorrectedQuoteList] = useState<CorrectedQuoteItem[]>(
+    defaultCorrectionData?.correctedQuoteList ?? []
+  );
+  const [datasetIds, setDatasetIds] = useState<string[]>([]);
+
+  // 使用 useRequest2 获取应用数据集集合
+  const { runAsync: fetchAppDatasets } = useRequest2(
+    async (appId: string) => {
+      const response = await getAppDatasetCollection({ appId });
+      const ids = response.datasets.map((dataset) => dataset.datasetId);
+      setDatasetIds(ids);
+      return response;
+    },
+    {
+      manual: true,
+      errorToast: t('app:fetch_app_datasets_error')
+    }
+  );
+
+  // 当弹窗打开时获取数据集
+  useEffect(() => {
+    if (isOpen && appId) {
+      fetchAppDatasets(appId).catch(() => {
+        setDatasetIds([]);
+      });
+    }
+  }, [isOpen, appId, fetchAppDatasets]);
 
   // 处理取消
   const handleCancel = useCallback(() => {
     onClose();
   }, [onClose]);
 
-  // 处理确认提交
-  const handleConfirm = useCallback(async () => {
-    if (!question.trim()) {
-      return;
-    }
+  // 使用 useRequest2 处理提交纠错
+  const { runAsync: submitCorrection, loading: isSubmitting } = useRequest2(
+    async () => {
+      if (!question.trim()) {
+        return;
+      }
 
-    if (correctionMode === CorrectionModeEnum.edit && !correctedAnswer.trim()) {
-      return;
-    }
+      if (correctionMode === CorrectionModeEnum.edit && !correctedAnswer.trim()) {
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
       const params: SubmitChatCorrectionParams = {
         appId,
         chatId,
         dataId,
-        modelName,
         correctionData: {
           correctionMode,
           question: question.trim(),
-          rawAnswer: defaultAnswer,
+          rawAnswer: initialRawAnswer,
           ...(correctionMode === CorrectionModeEnum.edit
             ? { correctedAnswer: correctedAnswer.trim() }
-            : { correctedQuoteList: [] })
+            : {
+                correctedQuoteList: correctedQuoteList
+              })
         }
       };
 
+      // 调用 submitChatCorrection 接口
+      await submitChatCorrection(params);
+
+      // 接口成功后，调用外部传入的回调
       await onSubmit(params);
-      onClose();
-    } catch (error) {
-      console.error('提交纠错失败:', error);
-    } finally {
-      setIsSubmitting(false);
+    },
+    {
+      manual: true,
+      errorToast: t('app:submit_correction_failed'),
+      successToast: t('app:submit_correction_success')
     }
-  }, [
-    question,
-    correctionMode,
-    correctedAnswer,
-    appId,
-    chatId,
-    dataId,
-    modelName,
-    defaultAnswer,
-    onSubmit,
-    onClose
-  ]);
+  );
+
+  // 处理确认提交
+  const handleConfirm = useCallback(async () => {
+    await submitCorrection();
+  }, [submitCorrection]);
 
   // 判断是否可以提交
   const canSubmit =
     question.trim() !== '' &&
     (correctionMode === CorrectionModeEnum.annotate
-      ? selectedKnowledgeIds.length > 0
+      ? correctedQuoteList.length > 0
       : correctedAnswer.trim() !== '');
 
   return (
@@ -215,8 +247,11 @@ const CorrectionModal = ({
         {correctionMode === CorrectionModeEnum.annotate && (
           <Box>
             <KnowledgeSelect
-              selectedKnowledgeIds={selectedKnowledgeIds}
-              onKnowledgeSelect={setSelectedKnowledgeIds}
+              correctedQuoteList={correctedQuoteList}
+              onCorrectedQuoteListChange={setCorrectedQuoteList}
+              appId={appId}
+              chatId={chatId}
+              datasetIds={datasetIds}
             />
           </Box>
         )}

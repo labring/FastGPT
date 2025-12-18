@@ -6,6 +6,9 @@
   "Correction_Edit_Answer_Desc": "用戶提問該問題時，將直接使用該答案進行回答",
   "Correction_Annotate_Knowledge": "標註答案引用的知識",
   "Correction_Annotate_Knowledge_Desc": "將該問題加入所選知識的索引中，再次提問時輔助檢索，標註全面效果更佳",
+  "fetch_app_datasets_error": "獲取應用關聯知識庫異常",
+  "submit_correction_failed": "提交失敗",
+  "submit_correction_success": "提交成功",
   "AutoOptimize": "自動優化",
   "Click_to_delete_this_field": "點擊刪除該字段",
   "Filed_is_deprecated": "該字段已棄用",
@@ -430,5 +433,7 @@
   "logs_filter_all": "全部",
   "logs_filter_bad": "點踩",
   "logs_filter_good": "點讚",
-  "logs_filter_not_found_knowledge": "未找到知識"
+  "logs_filter_not_found_knowledge": "未找到知識",
+  "fetch_optimize_records_error": "獲取優化記錄異常",
+  "answer_quote_knowledge_count": "答案引用知識（{{count}}）"
 }

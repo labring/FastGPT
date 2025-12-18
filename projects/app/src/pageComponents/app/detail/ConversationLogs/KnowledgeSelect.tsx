@@ -20,15 +20,25 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { optimizeRecordsService } from './mock';
-import type { GetKeywordQuoteResponse } from './type';
+import { getKeywordQuote } from '@/web/core/app/api/log';
+import type { GetKeywordQuoteResponse } from '@fastgpt/global/core/chat/correction/api';
+import type { CorrectedQuoteItem } from '@fastgpt/global/core/chat/correction/type';
 
 interface KnowledgeSelectProps {
-  selectedKnowledgeIds: string[];
-  onKnowledgeSelect: (knowledgeIds: string[]) => void;
+  correctedQuoteList: CorrectedQuoteItem[];
+  onCorrectedQuoteListChange: (correctedQuoteList: CorrectedQuoteItem[]) => void;
+  appId: string;
+  chatId: string;
+  datasetIds: string[];
 }
 
-const KnowledgeSelect = ({ selectedKnowledgeIds, onKnowledgeSelect }: KnowledgeSelectProps) => {
+const KnowledgeSelect = ({
+  correctedQuoteList,
+  onCorrectedQuoteListChange,
+  appId,
+  chatId,
+  datasetIds
+}: KnowledgeSelectProps) => {
   const { t } = useTranslation();
   const [searchKeyword, setSearchKeyword] = useState('');
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -71,8 +81,15 @@ const KnowledgeSelect = ({ selectedKnowledgeIds, onKnowledgeSelect }: KnowledgeS
     GetKeywordQuoteResponse
   >(
     async ({ offset, pageSize }) => {
-      const result = await optimizeRecordsService.getKeywordQuote({
+      if (!searchKeyword?.trim() || searchKeyword.trim().length < 2) {
+        return { list: [], total: 0 };
+      }
+
+      const result = await getKeywordQuote({
+        appId,
+        chatId,
         keyword: searchKeyword,
+        datasetIds,
         offset: Number(offset),
         pageSize: Number(pageSize)
       });
@@ -80,34 +97,53 @@ const KnowledgeSelect = ({ selectedKnowledgeIds, onKnowledgeSelect }: KnowledgeS
     },
     {
       pageSize: 20,
-      refreshDeps: [searchKeyword]
+      refreshDeps: [searchKeyword, appId, chatId, datasetIds]
     }
   );
 
   // 处理知识选择
   const handleKnowledgeToggle = useCallback(
-    (knowledgeId: string) => {
-      const newSelectedIds = selectedKnowledgeIds.includes(knowledgeId)
-        ? selectedKnowledgeIds.filter((id) => id !== knowledgeId)
-        : [...selectedKnowledgeIds, knowledgeId];
-      onKnowledgeSelect(newSelectedIds);
+    (knowledge: GetKeywordQuoteResponse['list'][0]) => {
+      const existingIndex = correctedQuoteList.findIndex(
+        (item) => item.datasetDataId === knowledge.datasetDataId
+      );
+
+      let newCorrectedQuoteList: CorrectedQuoteItem[];
+
+      if (existingIndex >= 0) {
+        // 如果已存在，则移除
+        newCorrectedQuoteList = correctedQuoteList.filter(
+          (item) => item.datasetDataId !== knowledge.datasetDataId
+        );
+      } else {
+        // 如果不存在，则添加
+        const newQuoteItem: CorrectedQuoteItem = {
+          datasetDataId: knowledge.datasetDataId,
+          q: knowledge.q,
+          a: knowledge.a || '',
+          sourceName: knowledge.sourceName || ''
+        };
+        newCorrectedQuoteList = [...correctedQuoteList, newQuoteItem];
+      }
+
+      onCorrectedQuoteListChange(newCorrectedQuoteList);
     },
-    [selectedKnowledgeIds, onKnowledgeSelect]
+    [correctedQuoteList, onCorrectedQuoteListChange]
   );
 
   // 处理删除已选知识
   const handleRemoveKnowledge = useCallback(
     (knowledgeId: string) => {
-      const newSelectedIds = selectedKnowledgeIds.filter((id) => id !== knowledgeId);
-      onKnowledgeSelect(newSelectedIds);
+      const newCorrectedQuoteList = correctedQuoteList.filter(
+        (item) => item.datasetDataId !== knowledgeId
+      );
+      onCorrectedQuoteListChange(newCorrectedQuoteList);
     },
-    [selectedKnowledgeIds, onKnowledgeSelect]
+    [correctedQuoteList, onCorrectedQuoteListChange]
   );
 
-  // 获取已选中的知识项
-  const selectedKnowledgeItems = knowledgeList.filter((item) =>
-    selectedKnowledgeIds.includes(item.datasetDataId)
-  );
+  // 获取已选中的知识项 ID 列表用于判断选中状态
+  const selectedKnowledgeIds = correctedQuoteList.map((item) => item.datasetDataId);
 
   return (
     <Box
@@ -196,13 +232,13 @@ const KnowledgeSelect = ({ selectedKnowledgeIds, onKnowledgeSelect }: KnowledgeS
                           ? 'primary.600'
                           : 'myGray.300'
                       }}
-                      onClick={() => handleKnowledgeToggle(knowledge.datasetDataId)}
+                      onClick={() => handleKnowledgeToggle(knowledge)}
                     >
                       <Flex align={'flex-start'} gap={3}>
                         <Box onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             isChecked={selectedKnowledgeIds.includes(knowledge.datasetDataId)}
-                            onChange={() => handleKnowledgeToggle(knowledge.datasetDataId)}
+                            onChange={() => handleKnowledgeToggle(knowledge)}
                             mt={0.5}
                           />
                         </Box>
@@ -236,10 +272,10 @@ const KnowledgeSelect = ({ selectedKnowledgeIds, onKnowledgeSelect }: KnowledgeS
       </Popover>
 
       {/* 已选中的知识项列表 */}
-      {selectedKnowledgeItems.length > 0 && (
+      {correctedQuoteList.length > 0 && (
         <Box flex={1} overflowY="auto" mt={4}>
           <VStack spacing={2} align="stretch">
-            {selectedKnowledgeItems.map((knowledge) => (
+            {correctedQuoteList.map((knowledge) => (
               <Box
                 key={knowledge.datasetDataId}
                 px={3}
