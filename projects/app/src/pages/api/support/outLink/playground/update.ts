@@ -1,7 +1,7 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import {
@@ -17,7 +17,7 @@ async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody
     req,
     authToken: true,
     appId,
-    per: ManagePermissionVal
+    per: WritePermissionVal
   });
 
   await MongoOutLink.updateOne(

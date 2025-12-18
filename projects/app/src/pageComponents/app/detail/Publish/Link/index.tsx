@@ -184,7 +184,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 name: item.name,
                                 responseDetail: item.responseDetail ?? false,
                                 showRawSource: item.showRawSource ?? false,
-                                showFullText: item.showFullText ?? item.showRawSource ?? false,
+                                showFullText: item.showFullText ?? true,
                                 showNodeStatus: item.showNodeStatus ?? false,
                                 limit: item.limit
                               })

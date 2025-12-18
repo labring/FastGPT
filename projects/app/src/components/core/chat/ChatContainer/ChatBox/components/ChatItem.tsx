@@ -259,7 +259,7 @@ const ChatItem = (props: Props) => {
       setCiteModalData({
         rawSearch: quoteList,
         metadata:
-          item?.collectionId && (isShowReadRawSource || isShowFullText)
+          item?.collectionId && isShowFullText
             ? {
                 appId: appId,
                 chatId: chatId,

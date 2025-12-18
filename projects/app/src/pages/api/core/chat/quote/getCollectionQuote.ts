@@ -73,7 +73,7 @@ async function handler(
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
 
-  if ((!showRawSource && !showFullText) || !chat || !chatItem || initialAnchor === undefined) {
+  if (!showFullText || !chat || !chatItem || initialAnchor === undefined) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

@@ -108,16 +108,11 @@ export type OutLinkEditType<T = undefined> = {
   app?: T;
 };
 
-export type PlaygroundVisibilityConfigType = {
-  showNodeStatus: boolean;
-  responseDetail: boolean;
-  showFullText: boolean;
-  showRawSource: boolean;
-};
-
 export const PlaygroundVisibilityConfigSchema = z.object({
   showNodeStatus: z.boolean(),
   responseDetail: z.boolean(),
   showFullText: z.boolean(),
   showRawSource: z.boolean()
 });
+
+export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;
