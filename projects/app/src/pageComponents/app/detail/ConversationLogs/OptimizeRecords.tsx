@@ -4,18 +4,7 @@
  */
 import React, { useState, useCallback, useMemo } from 'react';
 import styles from './styles.module.scss';
-import {
-  Flex,
-  Box,
-  Text,
-  Card,
-  useDisclosure,
-  VStack,
-  Divider,
-  useToast,
-  IconButton,
-  Tag
-} from '@chakra-ui/react';
+import { Flex, Box, Text, Card, VStack, Divider, IconButton, Tag } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { format } from 'date-fns';
 import { useContextSelector } from 'use-context-selector';
@@ -23,12 +12,22 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
-import type { ChatCorrectionSchemaType, SubmitChatCorrectionParams } from './type';
+import type {
+  CorrectionDataType,
+  CorrectedQuoteItem
+} from '@fastgpt/global/core/chat/correction/type';
+import type {
+  SubmitChatCorrectionParams,
+  ChatCorrectionListItem,
+  ListChatCorrectionParams
+} from '@fastgpt/global/core/chat/correction/api';
+import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { AppContext } from '../context';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { optimizeRecordsService } from './mock';
-import type { GetOptimizeRecordsParams } from './mock';
+import { getChatCorrectionList, deleteChatCorrection } from '@/web/core/app/api/log';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import CorrectionModal from './CorrectionModal';
 
 interface OptimizeRecordsProps {
@@ -41,55 +40,44 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   // 从 useChatStore 获取 chatId
   const { chatId } = useChatStore();
   const { t } = useTranslation();
-  const toast = useToast();
-
-  // 状态管理
-  const [optimzeRecords, setOptimizeRecords] = useState<ChatCorrectionSchemaType[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // 模态框状态
-  const [selectedRecord, setSelectedRecord] = useState<ChatCorrectionSchemaType | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<ChatCorrectionListItem | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  // 获取优化记录数据
-  const fetchOptimizeRecords = useCallback(async () => {
-    if (!appId) return;
+  // 空状态组件
+  const EmptyTipDom = useMemo(() => <EmptyTip mt={0} text={t('app:logs_empty')} />, [t]);
 
-    setLoading(true);
-    try {
-      const params: GetOptimizeRecordsParams = {
-        appId,
-        chatId: chatId || undefined, // 如果 chatId 为空字符串，则传递 undefined
-        startTime: dateRange.from,
-        endTime: dateRange.to,
-        page: 1,
-        pageSize: 100
-      };
+  // 构建请求参数
+  const requestParams = useMemo(() => {
+    if (!appId) return {};
 
-      console.log('获取优化记录参数:', params); // 调试日志
-      const response = await optimizeRecordsService.getOptimizeRecords(params);
-      console.log('获取优化记录结果:', response); // 调试日志
-      setOptimizeRecords(response.data);
-    } catch (error) {
-      console.error('获取优化记录失败:', error);
-      toast({
-        title: t('获取数据失败'),
-        status: 'error',
-        duration: 3000,
-        isClosable: true
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [appId, chatId, dateRange, toast, t]);
+    const params: Partial<ListChatCorrectionParams> = {
+      appId,
+      chatId,
+      startTime: dateRange.from,
+      endTime: dateRange.to
+    };
+    return params;
+  }, [appId, chatId, dateRange]);
 
-  // 组件挂载时获取数据，以及dateRange变化时重新获取数据
-  React.useEffect(() => {
-    fetchOptimizeRecords();
-  }, [fetchOptimizeRecords, dateRange]);
+  // 使用滚动分页获取优化记录数据
+  const {
+    data: optimizeRecords,
+    total,
+    isLoading,
+    ScrollData,
+    refreshList
+  } = useScrollPagination(getChatCorrectionList, {
+    pageSize: 20,
+    params: requestParams as Omit<ListChatCorrectionParams, 'offset' | 'pageSize'>,
+    EmptyTip: EmptyTipDom,
+    refreshDeps: [appId, chatId, dateRange],
+    errorToast: t('app:fetch_optimize_records_error')
+  });
 
   // 处理编辑
-  const handleEdit = useCallback((record: ChatCorrectionSchemaType) => {
+  const handleEdit = useCallback((record: ChatCorrectionListItem) => {
     setSelectedRecord(record);
     setIsEditOpen(true);
   }, []);
@@ -103,73 +91,41 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   // 处理编辑提交
   const handleEditSubmit = useCallback(
     async (params: SubmitChatCorrectionParams) => {
-      try {
-        // 这里调用更新优化记录的API
-        await optimizeRecordsService.updateOptimizeRecord(selectedRecord?._id || '', {
-          correctionData: params.correctionData,
-          updateTime: new Date()
-        });
-
-        // 更新本地状态
-        setOptimizeRecords((prev) =>
-          prev.map((record) =>
-            record._id === selectedRecord?._id
-              ? { ...record, correctionData: params.correctionData, updateTime: new Date() }
-              : record
-          )
-        );
-
-        toast({
-          title: t('更新成功'),
-          status: 'success',
-          duration: 3000,
-          isClosable: true
-        });
-        handleEditClose();
-      } catch (error) {
-        console.error('更新优化记录失败:', error);
-        toast({
-          title: t('更新失败'),
-          status: 'error',
-          duration: 3000,
-          isClosable: true
-        });
-      }
+      // 关闭弹窗
+      handleEditClose();
+      // 重新获取数据
+      refreshList();
     },
-    [selectedRecord, toast, t, handleEditClose]
+    [handleEditClose, refreshList]
   );
 
   // 确认删除
-  const confirmDelete = useCallback(
-    async (record: ChatCorrectionSchemaType) => {
+  const { runAsync: onDeleteRecord } = useRequest2(
+    async (record: ChatCorrectionListItem) => {
       if (!appId) return;
 
-      try {
-        await optimizeRecordsService.deleteOptimizeRecord({
-          recordId: record._id,
-          appId
-        });
-
-        // 从本地状态中移除记录
-        setOptimizeRecords((prev) => prev.filter((r) => r._id !== record._id));
-
-        toast({
-          title: t('删除成功'),
-          status: 'success',
-          duration: 3000,
-          isClosable: true
-        });
-      } catch (error) {
-        console.error('删除优化记录失败:', error);
-        toast({
-          title: t('删除失败'),
-          status: 'error',
-          duration: 3000,
-          isClosable: true
-        });
-      }
+      // 调用删除接口
+      await deleteChatCorrection({
+        appId,
+        chatId: record.chatId,
+        correctionId: record._id
+      });
     },
-    [appId, toast, t]
+    {
+      errorToast: t('app:logs_delete_error'),
+      successToast: t('app:logs_delete_success'),
+      onSuccess: () => {
+        // 重新获取数据
+        refreshList();
+      }
+    }
+  );
+
+  const confirmDelete = useCallback(
+    (record: ChatCorrectionListItem) => {
+      onDeleteRecord(record);
+    },
+    [onDeleteRecord]
   );
 
   // 格式化时间显示
@@ -178,7 +134,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   }, []);
 
   // 渲染edit类型的记录
-  const renderEditRecord = useCallback((correctionData: any) => {
+  const renderEditRecord = useCallback((correctionData: CorrectionDataType) => {
     return (
       <>
         <Divider my={3} borderColor="myGray.200" />
@@ -191,18 +147,18 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
 
   // 渲染annotate类型的记录
   const renderAnnotateRecord = useCallback(
-    (correctionData: any) => {
+    (correctionData: CorrectionDataType) => {
       const quoteCount = correctionData.correctedQuoteList?.length || 0;
       return (
         <>
           <Divider my={3} borderColor="myGray.200" />
           <Text fontSize="xs" color="#667085" mb={3}>
-            {t('答案引用知识（{{count}}）', { count: quoteCount })}
+            {t('app:answer_quote_knowledge_count', { count: quoteCount })}
           </Text>
           <Flex className={styles.quoteTagContainer} overflowX="hidden" gap={3} flexWrap="nowrap">
-            {correctionData.correctedQuoteList?.map((quote: any, index: number) => (
+            {correctionData.correctedQuoteList?.map((quote: CorrectedQuoteItem, index: number) => (
               <Box
-                key={index}
+                key={quote.datasetDataId}
                 position="relative"
                 w="400px"
                 minW="200px"
@@ -259,12 +215,10 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   return (
     <Flex flexDirection="column" h="full">
       {/* 列表内容 */}
-      <Box flex={1} overflow="auto" px={6}>
-        {optimzeRecords.length === 0 ? (
-          <EmptyTip text={t('还没有记录噢~')} />
-        ) : (
+      <Box flex={1} px={6}>
+        <ScrollData>
           <VStack align="stretch" spacing={3}>
-            {optimzeRecords.map((record, index) => (
+            {optimizeRecords.map((record, index) => (
               <Card
                 key={record._id}
                 px={3}
@@ -303,7 +257,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
                   </Text>
                   <Flex alignItems={'center'} gap={2} flexShrink={0}>
                     <MyTag colorSchema="gray" type="borderFill">
-                      {record.userName}
+                      {record.userName || '-'}
                     </MyTag>
                     <MyTag colorSchema="gray" type="borderFill">
                       {formatTime(record.updateTime)}
@@ -313,7 +267,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
 
                 {/* 记录内容 */}
                 <Box wordBreak={'break-all'}>
-                  {record.correctionData.correctionMode === 'edit'
+                  {record.correctionData.correctionMode === CorrectionModeEnum.edit
                     ? renderEditRecord(record.correctionData)
                     : renderAnnotateRecord(record.correctionData)}
                 </Box>
@@ -366,7 +320,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
               </Card>
             ))}
           </VStack>
-        )}
+        </ScrollData>
       </Box>
 
       {/* 编辑模态框 */}
@@ -377,9 +331,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
           appId={appId}
           chatId={selectedRecord.chatId}
           dataId={selectedRecord.dataId}
-          modelName={''} // 根据实际需要设置模型名称
-          defaultQuestion={selectedRecord.correctionData.question}
-          defaultAnswer={selectedRecord.correctionData.rawAnswer}
+          defaultCorrectionData={selectedRecord.correctionData}
           onSubmit={handleEditSubmit}
         />
       )}

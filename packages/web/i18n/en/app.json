@@ -6,6 +6,9 @@
   "Correction_Edit_Answer_Desc": "用户提问该问题时，将直接使用该答案进行回答",
   "Correction_Annotate_Knowledge": "标注答案引用的知识",
   "Correction_Annotate_Knowledge_Desc": "将该问题加入所选知识的索引中，再次提问时辅助检索，标注全面效果更佳",
+  "fetch_app_datasets_error": "获取应用关联知识库异常",
+  "submit_correction_failed": "提交失败",
+  "submit_correction_success": "提交成功",
   "AutoOptimize": "Auto optimize",
   "Click_to_delete_this_field": "Click to delete",
   "Filed_is_deprecated": "The field has been deprecated.",
@@ -430,5 +433,7 @@
   "logs_filter_all": "全部",
   "logs_filter_bad": "点踩",
   "logs_filter_good": "点赞",
-  "logs_filter_not_found_knowledge": "未找到知识"
+  "logs_filter_not_found_knowledge": "未找到知识",
+  "fetch_optimize_records_error": "获取优化记录异常",
+  "answer_quote_knowledge_count": "答案引用知识（{{count}}）"
 }
