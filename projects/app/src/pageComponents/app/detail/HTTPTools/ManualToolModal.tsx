@@ -664,7 +664,9 @@ const CustomParamsTable = ({
             {list.map((item, index) => (
               <Tr key={index} h={8}>
                 <Td px={2}>{item.key}</Td>
-                <Td px={2}>{item.description}</Td>
+                <Td px={2} maxW={40} textOverflow={'ellipsis'} overflow={'hidden'}>
+                  {item.description}
+                </Td>
                 <Td px={2}>{item.type}</Td>
                 <Td px={2}>{item.isTool ? t('common:yes') : t('common:no')}</Td>
                 <Td px={2}>
