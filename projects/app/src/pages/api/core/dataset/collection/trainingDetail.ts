@@ -40,7 +40,8 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   hype: 0,
   small2Big: 0,
   synonymStandardize: 0,
-  synonymRestore: 0
+  synonymRestore: 0,
+  synthesis: 0
 };
 
 async function handler(

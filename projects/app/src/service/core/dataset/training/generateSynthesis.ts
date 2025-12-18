@@ -12,7 +12,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { t } from 'i18next';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 // Diting API response type
 type DitingResponse = {
@@ -189,10 +189,14 @@ export async function generateSynthesis(): Promise<any> {
           throw new Error(`Expected 10 questions, got ${questions.length}`);
         }
 
+        // Extract usage information
+        const usage = result.usages?.[0];
+        const inputTokens = usage?.promptTokens || 0;
+        const outputTokens = usage?.completionTokens || 0;
+
         // Format to synthesis indexes
         const synthesisIndexes = formatQuestionsToSynthesisIndexes({ questions });
-        const originalIndexes = data.indexes || [];
-        const allIndexes = [...originalIndexes, ...synthesisIndexes];
+        const allIndexes = [...(data.indexes ?? []), ...synthesisIndexes];
 
         // Delete current task and create next stage task
         await mongoSessionRun(async (session) => {
@@ -230,14 +234,15 @@ export async function generateSynthesis(): Promise<any> {
           });
         });
 
-        const usage = result.usages?.[0];
-        addLog.info(`[Synthesis Queue] Finish`, {
-          time: `${(Date.now() - startTime) / 1000}s`,
-          originalIndexes: originalIndexes.length,
-          synthesisIndexes: synthesisIndexes.length,
-          totalIndexes: allIndexes.length,
-          questionsGenerated: questions.length,
-          tokens: usage?.totalTokens || 0
+        // Push usage after successful processing
+        pushLLMTrainingUsage({
+          teamId: data.teamId,
+          tmbId: data.tmbId,
+          inputTokens,
+          outputTokens,
+          billId: data.billId,
+          model: agentModel.model,
+          mode: 'synthesis'
         });
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
@@ -281,11 +286,6 @@ export const formatQuestionsToSynthesisIndexes = ({
 }: {
   questions: string[];
 }): Omit<DatasetDataIndexItemType, 'dataId'>[] => {
-  if (questions.length !== 10) {
-    addLog.warn(`[Synthesis] Expected 10 questions, got ${questions.length}`);
-    return [];
-  }
-
   return questions.map((text, i) => ({
     type: DatasetDataIndexTypeEnum.synthesis,
     text,
