@@ -6,7 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* delete single chat history (soft delete) */
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
+export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatId } = DelChatHistorySchema.parse(req.query);
 
   await authChatCrud({

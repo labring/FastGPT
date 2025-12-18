@@ -14,7 +14,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 
 /* get chat histories list */
-async function handler(
+export async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType
 ): Promise<GetHistoriesResponseType> {
