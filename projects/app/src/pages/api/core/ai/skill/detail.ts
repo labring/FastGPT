@@ -48,9 +48,19 @@ async function handler(
           appId: tool.id,
           lang: getLocale(req)
         });
+
+        // Merge saved config back into inputs
+        const mergedInputs = toolNode.inputs.map((input) => ({
+          ...input,
+          value:
+            tool.config && tool.config[input.key] !== undefined
+              ? tool.config[input.key] // Use saved config value
+              : input.value // Keep default value
+        }));
+
         return {
           ...toolNode,
-          configStatus: 'active' as const
+          inputs: mergedInputs
         };
       } catch (error) {
         // If tool not found or error, mark as invalid
