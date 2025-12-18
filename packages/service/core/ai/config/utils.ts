@@ -146,7 +146,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
           ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
             ? {
-                maxResponse: dbModel?.metadata?.maxResponse || model.maxTokens || 4000,
+                maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
                 defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
                 fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
                 maxTokens: undefined
