@@ -38,9 +38,7 @@ export type UserType = {
 
 export const SourceMemberSchema = z.object({
   name: z.string().meta({ example: '张三', description: '成员名称' }),
-  avatar: z
-    .string()
-    .meta({ example: 'https://cloud.fastgpt.cn/avatar.png', description: '成员头像' }),
+  avatar: z.string().nullish().meta({ description: '成员头像' }),
   status: z
     .enum(TeamMemberStatusEnum)
     .meta({ example: TeamMemberStatusEnum.active, description: '成员状态' })

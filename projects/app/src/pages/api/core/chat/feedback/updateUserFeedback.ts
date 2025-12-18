@@ -20,10 +20,6 @@ async function handler(
   const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } =
     UpdateUserFeedbackBodySchema.parse(req.body);
 
-  if (!chatId || !dataId) {
-    return Promise.reject('chatId or dataId is empty');
-  }
-
   const { teamId } = await authChatCrud({
     req,
     authToken: true,

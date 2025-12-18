@@ -95,7 +95,13 @@ const ChatSchema = new Schema({
   hasGoodFeedback: Boolean,
   hasBadFeedback: Boolean,
   hasUnreadGoodFeedback: Boolean,
-  hasUnreadBadFeedback: Boolean
+  hasUnreadBadFeedback: Boolean,
+
+  deleteTime: {
+    type: Date,
+    default: null,
+    select: false
+  }
 });
 
 try {
@@ -103,13 +109,13 @@ try {
 
   ChatSchema.index({ chatId: 1 });
   // get user history
-  ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 });
+  ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
   // delete by appid; clear history; init chat; update chat; auth chat; get chat;
   ChatSchema.index({ appId: 1, chatId: 1 });
 
   /* get chat logs */
   // 1. No feedback filter
-  ChatSchema.index({ teamId: 1, appId: 1, source: 1, tmbId: 1, updateTime: -1 });
+  ChatSchema.index({ teamId: 1, appId: 1, source: 1, tmbId: 1, deleteTime: 1, updateTime: -1 });
 
   /* 反馈过滤的索引 */
   // 2. Has good feedback filter
@@ -120,11 +126,13 @@ try {
       source: 1,
       tmbId: 1,
       hasGoodFeedback: 1,
+      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasGoodFeedback: true
+        hasGoodFeedback: true,
+        deleteTime: null
       }
     }
   );
@@ -136,11 +144,13 @@ try {
       source: 1,
       tmbId: 1,
       hasBadFeedback: 1,
+      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasBadFeedback: true
+        hasBadFeedback: true,
+        deleteTime: null
       }
     }
   );
@@ -152,11 +162,13 @@ try {
       source: 1,
       tmbId: 1,
       hasUnreadGoodFeedback: 1,
+      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasUnreadGoodFeedback: true
+        hasUnreadGoodFeedback: true,
+        deleteTime: null
       }
     }
   );
@@ -168,11 +180,13 @@ try {
       source: 1,
       tmbId: 1,
       hasUnreadBadFeedback: 1,
+      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasUnreadBadFeedback: true
+        hasUnreadBadFeedback: true,
+        deleteTime: null
       }
     }
   );

@@ -1,15 +1,14 @@
 import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { type UpdateHistoryProps } from '@/global/core/chat/api.d';
+import { UpdateHistoryBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-/* update chat top, custom title */
-async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiResponse) {
-  const { appId, chatId, title, customTitle, top } = req.body;
+/* update chat history: title, customTitle, top */
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  const { appId, chatId, title, customTitle, top } = UpdateHistoryBodySchema.parse(req.body);
   await authChatCrud({
     req,
     authToken: true,
@@ -18,7 +17,7 @@ async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiRes
     per: WritePermissionVal
   });
 
-  await MongoChat.findOneAndUpdate(
+  await MongoChat.updateOne(
     { appId, chatId },
     {
       updateTime: new Date(),
@@ -27,7 +26,6 @@ async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiRes
       ...(top !== undefined && { top })
     }
   );
-  jsonRes(res);
 }
 
 export default NextAPI(handler);
