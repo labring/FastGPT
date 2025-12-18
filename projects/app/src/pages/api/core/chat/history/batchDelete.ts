@@ -14,10 +14,6 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);
 
-  if (!Array.isArray(chatIds) || chatIds.length === 0) {
-    return Promise.reject(new UserError('chatIds is required and must be an array'));
-  }
-
   await authApp({
     req,
     authToken: true,

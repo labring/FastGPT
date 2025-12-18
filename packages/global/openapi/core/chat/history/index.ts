@@ -77,12 +77,8 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '清空应用对话历史',
       description: '清空指定应用的所有对话记录(软删除)',
       tags: [TagsMap.chatHistory],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: ClearChatHistoriesSchema
-          }
-        }
+      requestParams: {
+        query: ClearChatHistoriesSchema
       },
       responses: {
         200: {

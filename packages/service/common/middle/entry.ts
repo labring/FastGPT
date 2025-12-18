@@ -54,10 +54,8 @@ export const NextEntry = ({
         if (error instanceof ZodError) {
           return jsonRes(res, {
             code: 400,
-            error: {
-              message: 'Validation error',
-              details: error.message
-            },
+            message: 'Data validation error',
+            error,
             url: req.url
           });
         }
