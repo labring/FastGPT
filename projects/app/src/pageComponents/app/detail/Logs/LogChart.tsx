@@ -778,7 +778,6 @@ const HeaderControl = ({
     [t]
   );
 
-  console.log(showSourceSelector);
   return (
     <Flex
       flexDir={['column', 'row']}

@@ -28,6 +28,7 @@ type ChatRecordContextType = {
   }: {
     children: React.ReactNode;
     ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    dataScrollContainer?: string;
   } & BoxProps) => React.JSX.Element;
 };
 
@@ -52,6 +53,7 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
   }: {
     children: React.ReactNode;
     ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    dataScrollContainer?: string;
   } & BoxProps): React.JSX.Element {
     throw new Error('Function not implemented.');
   }
@@ -108,9 +110,21 @@ const ChatRecordContextProvider = ({
       // First load scroll to bottom
       if (Number(data.offset) === 0) {
         function scrollToBottom() {
-          requestAnimationFrame(
-            ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
-          );
+          requestAnimationFrame(() => {
+            // Try ChatBoxRef first (for normal ChatBox)
+            if (ChatBoxRef?.current?.scrollToBottom) {
+              ChatBoxRef.current.scrollToBottom('auto');
+            } else {
+              // Fallback: try to find the scroll container and scroll to bottom
+              const scrollContainer = document.querySelector(
+                '[dataScrollContainer="true"]'
+              ) as HTMLElement;
+              console.log(scrollContainer);
+              if (scrollContainer) {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+              }
+            }
+          });
         }
         scrollToBottom();
       }

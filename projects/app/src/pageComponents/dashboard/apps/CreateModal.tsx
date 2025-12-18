@@ -36,6 +36,7 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { appTypeMap } from '@/pageComponents/app/constants';
+import { TabEnum } from '@/pageComponents/app/detail/context';
 import SmartCustomerServiceForm from './SmartCustomerServiceForm';
 import type { SmartCustomerServiceFormType } from './SmartCustomerServiceForm';
 
@@ -178,7 +179,12 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     },
     {
       onSuccess(id: string) {
-        router.push(`/app/detail?appId=${id}`);
+        // 如果是智能客服类型，跳转到应用编辑页面
+        if (type === AppTypeEnum.assistant) {
+          router.push(`/app/detail?appId=${id}&currentTab=${TabEnum.appEdit}`);
+        } else {
+          router.push(`/app/detail?appId=${id}`);
+        }
         loadMyApps();
         onClose();
       },
