@@ -17,6 +17,12 @@ const createMockRedisClient = () => ({
   del: vi.fn().mockResolvedValue(1),
   exists: vi.fn().mockResolvedValue(0),
   keys: vi.fn().mockResolvedValue([]),
+  scan: vi.fn().mockImplementation((cursor) => {
+    // 模拟多次迭代的场景
+    if (cursor === '0') return ['100', ['key1', 'key2']];
+    if (cursor === '100') return ['0', ['key3']];
+    return ['0', []];
+  }),
 
   // Hash operations
   hget: vi.fn().mockResolvedValue(null),
@@ -53,7 +59,14 @@ const createMockRedisClient = () => ({
   sadd: vi.fn().mockResolvedValue(1),
   srem: vi.fn().mockResolvedValue(1),
   smembers: vi.fn().mockResolvedValue([]),
-  sismember: vi.fn().mockResolvedValue(0)
+  sismember: vi.fn().mockResolvedValue(0),
+
+  // pipeline
+  pipeline: vi.fn(() => ({
+    del: vi.fn().mockReturnThis(),
+    unlink: vi.fn().mockReturnThis(),
+    exec: vi.fn().mockResolvedValue([])
+  }))
 });
 
 // Mock Redis connections to prevent connection errors in tests
