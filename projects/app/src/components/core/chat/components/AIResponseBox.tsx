@@ -263,7 +263,6 @@ const AIResponseBox = ({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
 }) => {
-  console.log(value);
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
       <RenderText

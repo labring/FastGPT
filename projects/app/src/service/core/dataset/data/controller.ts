@@ -98,7 +98,7 @@ const formatIndexes = async ({
       text: originalText,
       type: item.type || DatasetDataIndexTypeEnum.custom,
       dataId: item.dataId,
-      ...(item.synId !== undefined && {synId: item.synId}) 
+      ...(item.synId !== undefined && { synId: item.synId })
     };
   });
 
@@ -160,7 +160,7 @@ const formatIndexes = async ({
           return splitText.map((chunkText) => ({
             text: chunkText,
             type: item.type,
-            ...(item.synId !== undefined && {synId: item.synId})
+            ...(item.synId !== undefined && { synId: item.synId })
           }));
         }
 
@@ -169,7 +169,7 @@ const formatIndexes = async ({
           text: item.text,
           type: item.type,
           dataId: item.dataId,
-          ...(item.synId !== undefined && {synId: item.synId}) 
+          ...(item.synId !== undefined && { synId: item.synId })
         };
       })
     )
@@ -395,7 +395,7 @@ export async function insertData2Dataset({
       type: item.type,
       text: item.text,
       dataId: insertIds[indexPos],
-      ...(item.synId !== undefined && {synId: item.synId})
+      ...(item.synId !== undefined && { synId: item.synId })
     };
 
     // 从原始的 normalizedIndexes 或 item 中获取转换信息

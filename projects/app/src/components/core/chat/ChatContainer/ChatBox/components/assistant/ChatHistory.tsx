@@ -109,7 +109,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
   // 提交纠错
   const handleSubmitCorrection = useCallback(
     async (params: SubmitChatCorrectionParams) => {
-      await submitChatCorrection(params);
+      const data = await submitChatCorrection(params);
       handleCloseCorrectionModal();
 
       // 更新对应的聊天记录项，标记为已纠错
@@ -118,7 +118,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
           if (record.dataId === params.dataId) {
             return {
               ...record,
-              correctionData: params.correctionData
+              correctionId: data.correctionId
             };
           }
           return record;
