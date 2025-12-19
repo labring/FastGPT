@@ -5,16 +5,16 @@ const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
 // Base Redis options for connection reliability
 const REDIS_BASE_OPTION = {
-  // Retry strategy: exponential backoff with max retries
+  // Retry strategy: exponential backoff with unlimited retries for stability
   retryStrategy: (times: number) => {
+    // Never give up retrying to ensure worker keeps running
+    const delay = Math.min(times * 50, 2000); // Max 2s between retries
     if (times > 10) {
-      // Stop retrying after 10 attempts
-      addLog.error(`[Redis connection failed] after ${times} attempts`);
-      return null; // Stop retrying
+      addLog.error(`[Redis connection failed] attempt ${times}, will keep retrying...`);
+    } else {
+      addLog.warn(`Redis reconnecting... attempt ${times}, delay ${delay}ms`);
     }
-    const delay = Math.min(times * 50, 2000);
-    addLog.warn(`Redis reconnecting... attempt ${times}, delay ${delay}ms`);
-    return delay;
+    return delay; // Always return a delay to keep retrying
   },
   // Reconnect on specific errors (Redis master-slave switch, network issues)
   reconnectOnError: (err: any) => {

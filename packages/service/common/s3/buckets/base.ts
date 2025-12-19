@@ -32,6 +32,8 @@ export const isFileNotFoundError = (error: any): boolean => {
       error.code === 'NoSuchKey' ||
       error.code === 'InvalidObjectName' ||
       error.message === 'Not Found' ||
+      error.message ===
+        'The request signature we calculated does not match the signature you provided. Check your key and signing method.' ||
       error.message.includes('Object name contains unsupported characters.')
     );
   }
@@ -100,21 +102,6 @@ export class S3BaseBucket {
     return this._externalClient ?? this._client;
   }
 
-  async isValidKey(key: string): Promise<boolean> {
-    // Check if key is empty or too long
-    if (!key || key.length === 0 || key.length > 1024) {
-      return false;
-    }
-
-    // Check first character: cannot be '.', '/', or whitespace
-    const firstChar = key[0];
-    if (firstChar === '.' || firstChar === '/' || firstChar === ' ') {
-      return false;
-    }
-
-    return true;
-  }
-
   // TODO: 加到 MQ 里保障幂等
   async move({
     from,
@@ -160,11 +147,6 @@ export class S3BaseBucket {
   }
 
   async removeObject(objectKey: string, options?: RemoveOptions): Promise<void> {
-    // 检查 key 是否合规
-    if (!this.isValidKey(objectKey)) {
-      addLog.info(`${objectKey} is not a valid key`);
-      return;
-    }
     return this.client.removeObject(this.bucketName, objectKey, options).catch((err) => {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
