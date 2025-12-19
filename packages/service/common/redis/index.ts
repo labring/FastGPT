@@ -3,26 +3,54 @@ import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
+// Base Redis options for connection reliability
+const REDIS_BASE_OPTION = {
+  // Retry strategy: exponential backoff with max retries
+  retryStrategy: (times: number) => {
+    if (times > 10) {
+      // Stop retrying after 10 attempts
+      addLog.error(`[Redis connection failed] after ${times} attempts`);
+      return null; // Stop retrying
+    }
+    const delay = Math.min(times * 50, 2000);
+    addLog.warn(`Redis reconnecting... attempt ${times}, delay ${delay}ms`);
+    return delay;
+  },
+  // Reconnect on specific errors (Redis master-slave switch, network issues)
+  reconnectOnError: (err: any) => {
+    const reconnectErrors = ['READONLY', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'];
+    const shouldReconnect = reconnectErrors.some((errType) => err.message.includes(errType));
+    if (shouldReconnect) {
+      addLog.warn(`Redis reconnecting due to error: ${err.message}`);
+    }
+    return shouldReconnect;
+  },
+  // Connection timeout
+  connectTimeout: 10000, // 10 seconds
+  // Enable offline queue to buffer commands when disconnected
+  enableOfflineQueue: true
+};
+
 export const newQueueRedisConnection = () => {
-  const redis = new Redis(REDIS_URL);
-  redis.on('connect', () => {
-    console.log('Redis connected');
+  const redis = new Redis(REDIS_URL, {
+    ...REDIS_BASE_OPTION,
+    // Limit retries for queue operations
+    maxRetriesPerRequest: 3
   });
   redis.on('error', (error) => {
-    console.error('Redis connection error', error);
+    addLog.error('[Redis Queue connection error]', error);
   });
   return redis;
 };
 
 export const newWorkerRedisConnection = () => {
   const redis = new Redis(REDIS_URL, {
+    ...REDIS_BASE_OPTION,
+    // BullMQ requires maxRetriesPerRequest: null for blocking operations
     maxRetriesPerRequest: null
   });
-  redis.on('connect', () => {
-    console.log('Redis connected');
-  });
   redis.on('error', (error) => {
-    console.error('Redis connection error', error);
+    addLog.error('[Redis Worker connection error]', error);
   });
   return redis;
 };
@@ -31,13 +59,17 @@ export const FASTGPT_REDIS_PREFIX = 'fastgpt:';
 export const getGlobalRedisConnection = () => {
   if (global.redisClient) return global.redisClient;
 
-  global.redisClient = new Redis(REDIS_URL, { keyPrefix: FASTGPT_REDIS_PREFIX });
-
-  global.redisClient.on('connect', () => {
-    addLog.info('Redis connected');
+  global.redisClient = new Redis(REDIS_URL, {
+    ...REDIS_BASE_OPTION,
+    keyPrefix: FASTGPT_REDIS_PREFIX,
+    maxRetriesPerRequest: 3
   });
+
   global.redisClient.on('error', (error) => {
-    addLog.error('Redis connection error', error);
+    addLog.error('[Redis Global connection error]', error);
+  });
+  global.redisClient.on('close', () => {
+    addLog.warn('[Redis Global connection closed]');
   });
 
   return global.redisClient;

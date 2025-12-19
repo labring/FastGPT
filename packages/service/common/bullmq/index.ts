@@ -78,6 +78,10 @@ export function getWorker<DataType, ReturnType = void>(
   const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
     connection: newWorkerRedisConnection(),
     ...defaultWorkerOpts,
+    // BullMQ Worker important settings
+    lockDuration: 600000, // 10 minutes for large file operations
+    stalledInterval: 30000, // Check for stalled jobs every 30s
+    maxStalledCount: 3, // Move job to failed after 1 stall (default behavior)
     ...opts
   });
   // default error handler, to avoid unhandled exceptions
@@ -85,8 +89,9 @@ export function getWorker<DataType, ReturnType = void>(
     addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
   });
   newWorker.on('failed', (jobId, error) => {
-    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
+    addLog.error(`MQ Worker [${name}] Job failed [${jobId}]: ${error.message}`, error);
   });
+
   workers.set(name, newWorker);
   return newWorker;
 }
