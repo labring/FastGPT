@@ -18,9 +18,19 @@ type SubTabType = 'list' | 'optimize';
 const ConversationLogs = () => {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTabType>('list');
-  const [dateRange, setDateRange] = useState<DateRangeType>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
-    to: new Date()
+  const [dateRange, setDateRange] = useState<DateRangeType>(() => {
+    const now = new Date();
+    const fromDate = new Date(now);
+    fromDate.setDate(now.getDate() - 30);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const toDate = new Date(now);
+    toDate.setHours(23, 59, 59, 999);
+
+    return {
+      from: fromDate,
+      to: toDate
+    };
   });
   const appId = useContextSelector(AppContext, (v) => v.appId);
 

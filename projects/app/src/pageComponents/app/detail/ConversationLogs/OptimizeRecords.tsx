@@ -19,7 +19,6 @@ import type {
   CorrectedQuoteItem
 } from '@fastgpt/global/core/chat/correction/type';
 import type {
-  SubmitChatCorrectionParams,
   ChatCorrectionListItem,
   ListChatCorrectionParams
 } from '@fastgpt/global/core/chat/correction/api';
@@ -85,15 +84,12 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   }, []);
 
   // 处理编辑提交
-  const handleEditSubmit = useCallback(
-    async (params: SubmitChatCorrectionParams) => {
-      // 关闭弹窗
-      handleEditClose();
-      // 重新获取数据
-      refreshList();
-    },
-    [handleEditClose, refreshList]
-  );
+  const handleEditSubmit = useCallback(async () => {
+    // 关闭弹窗
+    handleEditClose();
+    // 重新获取数据
+    refreshList();
+  }, [handleEditClose, refreshList]);
 
   // 确认删除
   const { runAsync: onDeleteRecord } = useRequest2(
@@ -126,7 +122,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
 
   // 格式化时间显示
   const formatTime = useCallback((date: Date) => {
-    return format(date, 'MM-dd HH:mm:ss');
+    return format(new Date(date), 'MM-dd HH:mm:ss');
   }, []);
 
   // 渲染edit类型的记录
