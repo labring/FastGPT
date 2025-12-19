@@ -98,8 +98,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         // get all chat app, excluding hidden apps and deleted apps
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] },
-        deleteTime: null
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] }
       };
     }
 
@@ -137,7 +136,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       const data = {
         ...appPerQuery,
         teamId,
-        deleteTime: null,
         ...searchMatch,
         type: _type
       };
@@ -151,7 +149,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ...appPerQuery,
       teamId,
       type: _type,
-      deleteTime: null,
       ...parseParentIdInMongo(parentId)
     };
   })();
@@ -162,7 +159,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   })();
 
   const myApps = await MongoApp.find(
-    findAppsQuery,
+    { ...findAppsQuery, deleteTime: null },
     '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
     {
       limit: limit
