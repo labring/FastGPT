@@ -1,38 +1,16 @@
 import type { Processor } from 'bullmq';
 import type { AppDeleteJobData } from './index';
-import { findAppAndAllChildren, deleteAppData } from '../controller';
+import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
 import { addLog } from '../../../common/system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
-import { MongoEvaluation } from '../evaluation/evalSchema';
-import { removeEvaluationJob } from '../evaluation/mq';
 
-export const deleteAppsImmediate = async ({
-  teamId,
-  apps
-}: {
-  teamId: string;
-  apps: AppSchema[];
-}) => {
-  const appIds = apps.map((app) => app._id);
-
-  // Remove eval job
-  const evalJobs = await MongoEvaluation.find(
-    {
-      teamId,
-      appId: { $in: appIds }
-    },
-    '_id'
-  ).lean();
-  await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
-};
-
-export const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchema[] }) => {
+const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchema[] }) => {
   const results = await batchRun(
     apps,
     async (app) => {
-      await deleteAppData({ app, teamId });
+      await deleteAppDataProcessor({ app, teamId });
       return [String(app._id)];
     },
     3

@@ -6,7 +6,7 @@ import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAppDeleteJob } from '@fastgpt/service/core/app/delete';
-import { deleteAppsImmediate } from '@fastgpt/service/core/app/delete/processor';
+import { deleteAppsImmediate } from '@fastgpt/service/core/app/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -43,7 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
     // Stop background tasks immediately
     await deleteAppsImmediate({
       teamId,
-      apps: deleteAppsList
+      appIds: deleteAppsList.map((app) => app._id)
     });
 
     // Add to delete queue for async cleanup

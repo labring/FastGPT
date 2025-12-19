@@ -31,7 +31,7 @@ export const addAppDeleteJob = (data: AppDeleteJobData) => {
     }
   });
 
-  const jobId = `${data.teamId}:${data.appId}`;
+  const jobId = `deleteapp:${data.teamId}:${data.appId}`;
 
   // 使用去重机制，避免重复删除
   return appDeleteQueue.add(jobId, data, {
