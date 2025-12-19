@@ -31,11 +31,11 @@ export const addAppDeleteJob = (data: AppDeleteJobData) => {
     }
   });
 
-  const jobId = `deleteapp:${data.teamId}:${data.appId}`;
+  const jobId = `${data.teamId}:${data.appId}`;
 
-  // 使用去重机制，避免重复删除
-  return appDeleteQueue.add(jobId, data, {
-    deduplication: { id: jobId },
-    delay: 1000 // 延迟1秒执行，确保API响应完成
+  // Use jobId to automatically prevent duplicate deletion tasks (BullMQ feature)
+  return appDeleteQueue.add('deleteapp', data, {
+    jobId,
+    delay: 1000 // Delay 1 second to ensure API response completes
   });
 };

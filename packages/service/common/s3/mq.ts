@@ -11,25 +11,33 @@ export type S3MQJobData = {
   bucketName: string;
 };
 
+const jobOption = {
+  attempts: 10,
+  removeOnFail: {
+    count: 10000, // 保留10000个失败任务
+    age: 14 * 24 * 60 * 60 // 14 days
+  },
+  removeOnComplete: true,
+  backoff: {
+    delay: 2000,
+    type: 'exponential'
+  }
+};
 export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
   const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
-
-  await queue.add(
-    'delete-s3-files',
-    { ...data },
-    {
-      attempts: 10,
-      removeOnFail: {
-        count: 10000, // 保留10000个失败任务
-        age: 14 * 24 * 60 * 60 // 14 days
-      },
-      removeOnComplete: true,
-      backoff: {
-        delay: 2000,
-        type: 'exponential'
-      }
+  const jobId = (() => {
+    if (data.key) {
+      return data.key;
     }
-  );
+    if (data.keys) {
+      return undefined;
+    }
+    if (data.prefix) {
+      return data.prefix;
+    }
+    throw new Error('Invalid s3 delete job data');
+  })();
+  await queue.add('delete-s3-files', data, { jobId, ...jobOption });
 };
 
 const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
@@ -50,7 +58,7 @@ const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
       const results = await Promise.allSettled(tasks);
       const failed = results.some((r) => r.status === 'rejected');
       if (failed) {
-        addLog.error(`[S3 delete] delete prefix: ${prefix} failed`);
+        addLog.error(`[S3 delete] delete prefix failed: ${prefix}`);
         reject('Some deletes failed');
       }
       resolve();

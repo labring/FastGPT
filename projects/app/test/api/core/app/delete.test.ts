@@ -84,15 +84,15 @@ describe('App Delete Queue', () => {
         }
       });
 
-      expect(mockQueue.add).toHaveBeenCalledWith('deleteapp:team-123:app-123', jobData, {
-        deduplication: { id: 'deleteapp:team-123:app-123' },
+      expect(mockQueue.add).toHaveBeenCalledWith('deleteapp', jobData, {
+        jobId: 'team-123:app-123',
         delay: 1000
       });
 
       expect(result).toEqual({ id: 'job-123' });
     });
 
-    it('should use correct jobId format for deduplication', async () => {
+    it('should use correct jobId format for preventing duplicates', async () => {
       const mockQueue = {
         add: vi.fn().mockResolvedValue({ id: 'job-456' })
       };
@@ -106,10 +106,10 @@ describe('App Delete Queue', () => {
       await addAppDeleteJob(jobData);
 
       expect(mockQueue.add).toHaveBeenCalledWith(
-        'deleteapp:team-xyz:app-abc',
+        'deleteapp',
         jobData,
         expect.objectContaining({
-          deduplication: { id: 'deleteapp:team-xyz:app-abc' }
+          jobId: 'team-xyz:app-abc'
         })
       );
     });
@@ -155,13 +155,13 @@ describe('App Delete API Integration', () => {
 
     // Verify queue job was added
     expect(mockQueue.add).toHaveBeenCalledWith(
-      `deleteapp:${rootUser.teamId}:${testApp._id}`,
+      'deleteapp',
       {
         teamId: rootUser.teamId,
         appId: String(testApp._id)
       },
       {
-        deduplication: { id: `deleteapp:${rootUser.teamId}:${testApp._id}` },
+        jobId: `${rootUser.teamId}:${testApp._id}`,
         delay: 1000
       }
     );
