@@ -158,6 +158,8 @@ export const pushTrack = {
       }
     });
   },
+
+  // Admin cron job tracks
   subscriptionDeleted: (data: {
     teamId: string;
     subscriptionType: string;
@@ -183,6 +185,24 @@ export const pushTrack = {
       data: {
         teamId: data.teamId,
         expiredTime: data.expiredTime
+      }
+    });
+  },
+  auditLogCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.auditLogCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
+      }
+    });
+  },
+  chatHistoryCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.chatHistoryCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
       }
     });
   }
