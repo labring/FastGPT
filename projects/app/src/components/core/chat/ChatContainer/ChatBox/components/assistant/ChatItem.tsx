@@ -50,7 +50,9 @@ type BasicProps = {
   };
   questionGuides?: string[];
   children?: React.ReactNode;
-} & ChatItemControllerProps;
+} & Omit<ChatItemControllerProps, 'onCorrectError'> & {
+    onCorrectError?: (dataId: string, defaultCorrectionData?: any) => void;
+  };
 
 type Props = BasicProps & {
   type: ChatRoleEnum.Human | ChatRoleEnum.AI;
@@ -185,7 +187,7 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = (props: Props) => {
-  const { type, statusBoxData, children, isLastChild, chat } = props;
+  const { type, statusBoxData, children, isLastChild, chat, onCorrectError } = props;
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -301,7 +303,11 @@ const ChatItem = (props: Props) => {
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Flex w={'100%'} order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            <ChatItemController {...props} isLastChild={isLastChild} />
+            <ChatItemController
+              chat={chat}
+              isLastChild={isLastChild}
+              onCorrectError={onCorrectError ? () => onCorrectError(chat.dataId) : undefined}
+            />
           </Flex>
         )}
 
@@ -395,7 +401,7 @@ const ChatItem = (props: Props) => {
                 p={[2, 3]}
                 w={'fit-content'}
                 maxW={'100%'}
-                borderRadius={'0px 8px 8px 8px;'}
+                borderRadius={'0px 8px 8px 8px'}
               >
                 {t('app:chat_item_rewrite')}：{chat.rewriteStandardizedQuery}
               </Box>

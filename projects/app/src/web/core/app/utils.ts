@@ -380,48 +380,6 @@ export function form2AppWorkflow(
       ]
     };
   }
-  // Assistant workflow node templates
-  function createVariableUpdateNode(
-    nodeId: string,
-    position: { x: number; y: number },
-    formData: AppSimpleEditFormType
-  ): StoreNodeItemType {
-    return {
-      nodeId,
-      name: t('workflow:variable_update'),
-      avatar: 'core/workflow/template/variableUpdate',
-      flowNodeType: FlowNodeTypeEnum.variableUpdate,
-      showStatus: false,
-      position,
-      inputs: [
-        {
-          key: 'updateList',
-          valueType: WorkflowIOValueTypeEnum.any,
-          label: '',
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          value: [
-            {
-              variable: ['VARIABLE_NODE_ID', 'byG7WNk4'],
-              value: [
-                '',
-                formData.chatConfig.fallbackReply ||
-                  '抱歉,我没有找到答案,您可以尝试重新提问,我也会帮您反馈给相关团队。'
-              ],
-              valueType: 'string',
-              renderType: 'input'
-            },
-            {
-              variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
-              value: ['', 'llm-summary'],
-              renderType: 'input',
-              valueType: 'string'
-            }
-          ]
-        }
-      ],
-      outputs: []
-    };
-  }
 
   function createConditionCheckerNode(
     nodeId: string,
@@ -572,30 +530,165 @@ export function form2AppWorkflow(
       variableUpdate: 'variableUpdateNodeId',
       conditionChecker: 'qaFDoVSH4WcXMZPO',
       fallbackReply: 'vprtN0xvK1dV0c6M',
-      aiChat: aiChatNodeId
+      aiChat: aiChatNodeId,
+      correctionChecker: 'lb9O8Jqhq5RMomsX',
+      correctionReply: 'm8xjpNzwcx2yE3Ar'
     };
 
+    // 创建校正数据检查节点
+    function createCorrectionCheckerNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('workflow:correction_data_hit_check'),
+        intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
+        avatar: 'core/workflow/template/ifelse',
+        flowNodeType: FlowNodeTypeEnum.ifElseNode,
+        showStatus: true,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'ifElseList',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['VARIABLE_NODE_ID', 'hTRJXdb1'],
+                    condition: 'isNotEmpty',
+                    valueType: 'input'
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        outputs: [
+          {
+            id: 'ifElseResult',
+            key: 'ifElseResult',
+            label: 'workflow:judgment_result',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      };
+    }
+
+    // 创建校正数据回复节点
+    function createCorrectionReplyNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('workflow:use_correction_data_reply'),
+        intro: i18nT('workflow:intro_assigned_reply'),
+        avatar: 'core/workflow/template/reply',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'text',
+            renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+            valueType: WorkflowIOValueTypeEnum.any,
+            required: true,
+            label: i18nT('common:core.module.input.label.Response content'),
+            description: i18nT('common:core.module.input.description.Response content'),
+            placeholder: i18nT('common:core.module.input.description.Response content'),
+            value: ['VARIABLE_NODE_ID', 'hTRJXdb1'],
+            selectedTypeIndex: 1
+          }
+        ],
+        outputs: []
+      };
+    }
+
+    // 更新变量更新节点，添加校正数据变量
+    function createUpdatedVariableUpdateNode(
+      nodeId: string,
+      position: { x: number; y: number },
+      formData: AppSimpleEditFormType
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: t('workflow:variable_update'),
+        avatar: 'core/workflow/template/variableUpdate',
+        flowNodeType: FlowNodeTypeEnum.variableUpdate,
+        showStatus: false,
+        position,
+        inputs: [
+          {
+            key: 'updateList',
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            value: [
+              {
+                variable: ['VARIABLE_NODE_ID', 'byG7WNk4'],
+                value: [
+                  '',
+                  formData.chatConfig.fallbackReply ||
+                    i18nT('workflow:customer_service.fallback_reply_default')
+                ],
+                valueType: 'string',
+                renderType: 'input'
+              },
+              {
+                variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
+                value: ['', 'llm-summary'],
+                renderType: 'input',
+                valueType: 'string'
+              },
+              {
+                variable: ['VARIABLE_NODE_ID', 'hTRJXdb1'],
+                value: ['', ''],
+                renderType: 'input',
+                valueType: 'string'
+              }
+            ]
+          }
+        ],
+        outputs: []
+      };
+    }
+
     const nodes = [
-      createVariableUpdateNode(
+      createUpdatedVariableUpdateNode(
         nodeIds.variableUpdate,
         {
           x: 494.7192302293264,
-          y: -1192.140341718712
+          y: -1212.140341718712
         },
         formData
       ),
       datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput']),
       createConditionCheckerNode(nodeIds.conditionChecker, {
         x: 1846.7192302293263,
-        y: -1165.140341718712
+        y: -1185.140341718712
       }),
       createFallbackReplyNode(nodeIds.fallbackReply, {
-        x: 2683.7192302293265,
-        y: -1426.390341718712
+        x: 2709.2192302293265,
+        y: -1297.390341718712
       }),
       createAssistantAiChatNode(formData, nodeIds.aiChat, {
-        x: 2754.7192302293265,
-        y: -1123.390341718712
+        x: 3591.7192302293265,
+        y: -1632.140341718712
+      }),
+      createCorrectionCheckerNode(nodeIds.correctionChecker, {
+        x: 2683.7192302293265,
+        y: -994.3903417187121
+      }),
+      createCorrectionReplyNode(nodeIds.correctionReply, {
+        x: 3520.7192302293265,
+        y: -576.1403417187121
       })
     ];
 
@@ -626,9 +719,21 @@ export function form2AppWorkflow(
       },
       {
         source: nodeIds.conditionChecker,
-        target: nodeIds.aiChat,
+        target: nodeIds.correctionChecker,
         sourceHandle: `${nodeIds.conditionChecker}-source-ELSE`,
+        targetHandle: `${nodeIds.correctionChecker}-target-left`
+      },
+      {
+        source: nodeIds.correctionChecker,
+        target: nodeIds.aiChat,
+        sourceHandle: `${nodeIds.correctionChecker}-source-ELSE`,
         targetHandle: `${nodeIds.aiChat}-target-left`
+      },
+      {
+        source: nodeIds.correctionChecker,
+        target: nodeIds.correctionReply,
+        sourceHandle: `${nodeIds.correctionChecker}-source-IF`,
+        targetHandle: `${nodeIds.correctionReply}-target-left`
       }
     ];
 

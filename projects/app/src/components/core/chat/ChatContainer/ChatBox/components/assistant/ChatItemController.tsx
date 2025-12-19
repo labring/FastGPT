@@ -134,7 +134,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
           key="correct"
           {...correctButtonStyle}
           _hover={{ color: 'primary.600' }}
-          onClick={onCorrectError}
+          onClick={() => onCorrectError?.()}
         >
           <MyIcon {...iconStyle} p={0} mr={1} name={'kbTest'} />
           <Text lineHeight={'16px'} h="16px" fontSize={'0.85rem'}>

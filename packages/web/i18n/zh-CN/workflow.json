@@ -233,5 +233,7 @@
   "customer_service.answer_mode_desc": "知识库有相关内容时的回答方式",
   "customer_service.answer_mode_quote": "原文引用",
   "customer_service.answer_mode_summary": "模型总结",
-  "customer_service.welcome_text_default": "您好，请问有什么可以帮您？"
+  "customer_service.welcome_text_default": "您好，请问有什么可以帮您？",
+  "correction_data_hit_check": "是否命中校正数据",
+  "use_correction_data_reply": "使用校正数据回复"
 }

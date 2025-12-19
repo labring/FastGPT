@@ -233,5 +233,7 @@
   "customer_service.answer_mode_desc": "How to respond when knowledge base has relevant content",
   "customer_service.answer_mode_quote": "Quote",
   "customer_service.answer_mode_summary": "LLM Summary",
-  "customer_service.welcome_text_default": "Hello! How can I help you?"
+  "customer_service.welcome_text_default": "Hello! How can I help you?",
+  "correction_data_hit_check": "是否命中校正数据",
+  "use_correction_data_reply": "使用校正数据回复"
 }

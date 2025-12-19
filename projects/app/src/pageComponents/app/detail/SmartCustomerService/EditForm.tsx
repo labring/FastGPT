@@ -81,7 +81,7 @@ const AccordionSection: React.FC<{
   iconColor?: string;
   children: React.ReactNode;
   defaultIndex?: number[];
-}> = ({ title, icon, iconColor = 'primary.600', children, defaultIndex = [0] }) => (
+}> = ({ title, icon, iconColor = 'primary.600', children, defaultIndex = [] }) => (
   <Accordion allowToggle defaultIndex={defaultIndex}>
     <AccordionItem border="none">
       <AccordionButton _hover={{}} px={0}>
@@ -111,7 +111,6 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const { llmModelList, defaultModels } = useSystemStore();
@@ -177,6 +176,11 @@ const EditForm = ({
     return selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT;
   }, [selectedModel?.quoteMaxToken]);
 
+  // 检查当前选择的模型是否支持深度思考
+  const isReasoningSupported = useMemo(() => {
+    return selectedModel?.reasoning ?? false;
+  }, [selectedModel?.reasoning]);
+
   // Force close image select when model not support vision
   useEffect(() => {
     if (!selectedModel.vision) {
@@ -196,6 +200,19 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
+
+  // Force close deep thinking when model not support reasoning
+  useEffect(() => {
+    if (!isReasoningSupported) {
+      setAppForm((state) => ({
+        ...state,
+        aiSettings: {
+          ...state.aiSettings,
+          aiChatReasoning: false
+        }
+      }));
+    }
+  }, [isReasoningSupported, setAppForm]);
 
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
@@ -425,10 +442,13 @@ const EditForm = ({
               <FormLabel minW={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}>
                 {t('app:smart_customer_service_deep_thinking')}
               </FormLabel>
-              <Switch
-                isChecked={appForm.aiSettings.aiChatReasoning ?? false}
-                onChange={(e) => updateAISettings({ aiChatReasoning: e.target.checked })}
-              />
+              <MyTooltip label={!isReasoningSupported ? t('所选 AI 模型不支持深度思考') : ''}>
+                <Switch
+                  isChecked={appForm.aiSettings.aiChatReasoning ?? false}
+                  onChange={(e) => updateAISettings({ aiChatReasoning: e.target.checked })}
+                  isDisabled={!isReasoningSupported}
+                />
+              </MyTooltip>
             </Flex>
 
             <Flex flexDirection={'column'}>

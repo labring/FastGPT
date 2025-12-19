@@ -31,9 +31,10 @@ type Props = {
   appId: string;
   chatId: string;
   onClose: () => void;
+  title?: string;
 };
 
-const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
+const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const [activeTab, setActiveTab] = useState<ChatLogsFilterEnum>(ChatLogsFilterEnum.all);
@@ -74,7 +75,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
     }
   );
 
-  const title = chat?.title;
+  const displayTitle = title || chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
 
@@ -141,7 +142,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
                 setChatLogsFilter?.(tab);
               }}
               onClose={onClose}
-              title={title || ''}
+              title={displayTitle || ''}
               totalCount={totalRecordsCount}
               goodTotal={goodTotal}
               badTotal={badTotal}
