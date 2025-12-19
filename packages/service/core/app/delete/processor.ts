@@ -11,7 +11,6 @@ const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchema[] 
     apps,
     async (app) => {
       await deleteAppDataProcessor({ app, teamId });
-      return [String(app._id)];
     },
     3
   );
@@ -57,17 +56,19 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
       );
     }
 
+    const childrenLen = apps.length - 1;
+    const appIds = apps.map((app) => app._id);
+
     // 3. 执行真正的删除操作（只删除已经标记为 deleteTime 的数据）
-    const deletedAppIds = await deleteApps({
+    await deleteApps({
       teamId,
       apps
     });
 
-    addLog.info(`[App Delete] Successfully deleted app: ${appId} and ${apps.length - 1} children`, {
+    addLog.info(`[App Delete] Successfully deleted app: ${appId} and ${childrenLen} children`, {
       duration: Date.now() - startTime,
-      totalApps: apps.length,
-      appIds: apps.map((app) => app._id),
-      deletedAppIds
+      totalApps: appIds.length,
+      appIds
     });
   } catch (error: any) {
     addLog.error(`[App Delete] Failed to delete app: ${appId}`, error);
