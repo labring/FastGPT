@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import {
+  type Props,
+  pushChatRecords,
+  updateInteractiveChat
+} from '@fastgpt/service/core/chat/saveChat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -7,7 +11,6 @@ import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { Props } from '@fastgpt/service/core/chat/saveChat';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -61,7 +64,7 @@ const createMockProps = (
   ...overrides
 });
 
-describe('saveChat', () => {
+describe('pushChatRecords', () => {
   let testAppId: string;
   let testTeamId: string;
   let testTmbId: string;
@@ -110,13 +113,13 @@ describe('saveChat', () => {
     testAppId = String(app._id);
   });
 
-  describe('saveChat function', () => {
+  describe('pushChatRecords function', () => {
     it('should skip saving if chatId is empty', async () => {
       const props = createMockProps(
         { chatId: '' },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const chatItems = await MongoChatItem.find({ appId: testAppId });
       expect(chatItems).toHaveLength(0);
@@ -127,7 +130,7 @@ describe('saveChat', () => {
         { chatId: 'NO_RECORD_HISTORIES' },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const chatItems = await MongoChatItem.find({ appId: testAppId });
       expect(chatItems).toHaveLength(0);
@@ -151,7 +154,7 @@ describe('saveChat', () => {
         }
       });
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       // Verify that the URL was removed
       expect(props.userContent.value[0].file?.url).toBe('');
@@ -160,7 +163,7 @@ describe('saveChat', () => {
     it('should create chat items and update chat record', async () => {
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       // Check chat items were created
       const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
@@ -206,7 +209,7 @@ describe('saveChat', () => {
         }
       });
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const responses = await MongoChatItemResponse.find({
         appId: testAppId,
@@ -259,7 +262,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const responses = await MongoChatItemResponse.find({
         appId: testAppId,
@@ -291,7 +294,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const app = await MongoApp.findById(testAppId);
       expect(app?.updateTime).toBeDefined();
@@ -307,7 +310,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const updatedApp = await MongoApp.findById(testAppId);
       expect(updatedApp!.updateTime.getTime()).toBe(originalUpdateTime.getTime());
@@ -336,7 +339,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const logs = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId });
       expect(logs).toHaveLength(1);
@@ -372,7 +375,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const logs = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId });
       expect(logs).toHaveLength(1);
@@ -387,7 +390,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props1);
+      await pushChatRecords(props1);
 
       const props2 = createMockProps(
         {
@@ -397,7 +400,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props2);
+      await pushChatRecords(props2);
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props1.chatId });
       expect(chat?.metadata).toMatchObject({
@@ -415,7 +418,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const aiItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -478,7 +481,7 @@ describe('saveChat', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await saveChat(props);
+      await pushChatRecords(props);
 
       const aiItem = await MongoChatItem.findOne({
         appId: testAppId,

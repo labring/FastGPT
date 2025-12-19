@@ -18,7 +18,7 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -29,7 +29,6 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
-import { workflowStartNodeId } from '@/web/core/app/constants';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -37,9 +36,13 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { checkNeedsUserConfiguration, validateToolConfiguration } from '../../ChatAgent/utils';
+import {
+  getToolConfigStatus,
+  validateToolConfiguration
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 type Props = {
+  topAgentSelectedTools?: SelectedToolItemType[];
   selectedTools: FlowNodeTemplateType[];
   fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
   selectedModel: LLMModelItemType;
@@ -239,6 +242,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 export default React.memo(ToolSelectModal);
 
 const RenderList = React.memo(function RenderList({
+  topAgentSelectedTools = [],
   templates,
   type,
   onAddTool,
@@ -273,9 +277,20 @@ const RenderList = React.memo(function RenderList({
         });
       }
 
+      // 添加与 top 相同工具的配置
+      const topTool = topAgentSelectedTools.find((tool) => tool.pluginId === res.pluginId);
+      if (topTool) {
+        res.inputs.forEach((input) => {
+          const topInput = topTool.inputs.find((input) => input.key === input.key);
+          if (topInput) {
+            input.value = topInput.value;
+          }
+        });
+      }
+
       onAddTool({
         ...res,
-        configStatus: checkNeedsUserConfiguration(res) ? 'waitingForConfig' : 'active'
+        configStatus: getToolConfigStatus(res).status
       });
     }
   );

@@ -12,7 +12,7 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
-import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType, SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -35,6 +35,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
 type EditFormProps = {
+  topAgentSelectedTools: SelectedToolItemType[];
   model: string;
   fileSelectConfig?: AppFileSelectConfigType;
   skill: SkillEditType;
@@ -42,7 +43,14 @@ type EditFormProps = {
   onSave: (skill: SkillEditType) => void;
 };
 
-const EditForm = ({ model, fileSelectConfig, skill, onClose, onSave }: EditFormProps) => {
+const EditForm = ({
+  topAgentSelectedTools,
+  model,
+  fileSelectConfig,
+  skill,
+  onClose,
+  onSave
+}: EditFormProps) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
@@ -211,6 +219,7 @@ const EditForm = ({ model, fileSelectConfig, skill, onClose, onSave }: EditFormP
         {/* Tool select */}
         <Box mt={5} px={3} py={4} borderTop={'base'}>
           <ToolSelect
+            topAgentSelectedTools={topAgentSelectedTools}
             selectedModel={selectedModel}
             selectedTools={selectedTools}
             fileSelectConfig={fileSelectConfig}
@@ -225,9 +234,13 @@ const EditForm = ({ model, fileSelectConfig, skill, onClose, onSave }: EditFormP
               );
             }}
             onRemoveTool={(id) => {
-              setValue('selectedTools', selectedTools?.filter((item) => item.id !== id) || [], {
-                shouldDirty: true
-              });
+              setValue(
+                'selectedTools',
+                selectedTools?.filter((item) => item.pluginId !== id) || [],
+                {
+                  shouldDirty: true
+                }
+              );
             }}
           />
         </Box>

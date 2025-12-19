@@ -38,7 +38,7 @@ const Row = ({
   const { runAsync: handleEditSkill, loading: isEditingSkill } = useRequest2(onEditSkill, {
     manual: true
   });
-  const { runAsync: handleDeleteSkill, loading: isDeletingSkill } = useRequest2(
+  const { runAsync: handleDeleteSkill } = useRequest2(
     async (skill: SkillEditType) => {
       await deleteAiSkill({ id: skill.id });
       // Remove from local state

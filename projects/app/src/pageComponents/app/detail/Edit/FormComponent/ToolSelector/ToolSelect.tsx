@@ -8,21 +8,20 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import ToolSelectModal from './ToolSelectModal';
 
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { checkNeedsUserConfiguration } from '../../ChatAgent/utils';
+import { checkNeedsUserConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 
 const ToolSelect = ({
+  topAgentSelectedTools,
   selectedModel,
   selectedTools = [],
   fileSelectConfig = {},
@@ -30,6 +29,7 @@ const ToolSelect = ({
   onUpdateTool,
   onRemoveTool
 }: {
+  topAgentSelectedTools?: SelectedToolItemType[];
   selectedModel: LLMModelItemType;
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
@@ -164,7 +164,7 @@ const ToolSelect = ({
                     hoverColor="red.600"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onRemoveTool(item.id);
+                      onRemoveTool(item.pluginId!);
                     }}
                   />
                 </Box>
@@ -176,6 +176,7 @@ const ToolSelect = ({
 
       {isOpenToolsSelect && (
         <ToolSelectModal
+          topAgentSelectedTools={topAgentSelectedTools}
           selectedTools={selectedTools}
           fileSelectConfig={fileSelectConfig}
           selectedModel={selectedModel}
