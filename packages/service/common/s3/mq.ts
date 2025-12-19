@@ -41,7 +41,7 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
 };
 
 const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
-  addLog.info(`[S3 delete] delete prefix: ${prefix}`);
+  addLog.debug(`[S3 delete] delete prefix: ${prefix}`);
   let tasks: Promise<any>[] = [];
   return new Promise<void>(async (resolve, reject) => {
     const stream = bucket.listObjectsV2(prefix, true);
@@ -88,7 +88,7 @@ export const startS3DelWorker = async () => {
         keys = [key];
       }
       if (keys) {
-        addLog.info(`[S3 delete] delete keys: ${keys.length}`);
+        addLog.debug(`[S3 delete] delete keys: ${keys.length}`);
         await batchRun(keys, async (key) => {
           await bucket.removeObject(key);
           // Delete parsed
