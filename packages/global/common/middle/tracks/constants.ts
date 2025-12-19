@@ -11,8 +11,12 @@ export enum TrackEnum {
   clickOperationalAd = 'clickOperationalAd',
   closeOperationalAd = 'closeOperationalAd',
   teamChatQPM = 'teamChatQPM',
+
+  // Admin cron job tracks
   subscriptionDeleted = 'subscriptionDeleted',
   freeAccountCleanup = 'freeAccountCleanup',
+  auditLogCleanup = 'auditLogCleanup',
+  chatHistoryCleanup = 'chatHistoryCleanup',
 
   // web tracks
   clientError = 'clientError'
