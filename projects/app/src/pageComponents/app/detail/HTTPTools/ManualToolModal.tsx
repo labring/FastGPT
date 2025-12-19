@@ -663,8 +663,10 @@ const CustomParamsTable = ({
           <Tbody>
             {list.map((item, index) => (
               <Tr key={index} h={8}>
-                <Td px={2}>{item.key}</Td>
-                <Td px={2} maxW={40} textOverflow={'ellipsis'} overflow={'hidden'}>
+                <Td px={2} maxW={20} textOverflow={'ellipsis'} overflow={'hidden'}>
+                  {item.key}
+                </Td>
+                <Td px={2} maxW={'120px'} textOverflow={'ellipsis'} overflow={'hidden'}>
                   {item.description}
                 </Td>
                 <Td px={2}>{item.type}</Td>
