@@ -244,7 +244,8 @@ export const runAgentCall = async ({
     // 推送 AI 生成后的 assistantMessages
     assistantMessages.push(...llmAssistantMessage);
     requestMessages.push(...llmAssistantMessage);
-
+    console.log('Master Running tools', tools);
+    console.log('Master Running toolCalls', toolCalls);
     // 4. Call tools
     let toolCallStep = false;
     for await (const tool of toolCalls) {

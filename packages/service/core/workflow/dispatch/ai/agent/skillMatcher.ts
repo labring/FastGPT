@@ -162,12 +162,12 @@ export const matchSkillForPlan = async ({
       content: userInput
     });
 
-    console.debug('match request', {
-      hasHistory: !!(messages && messages.length > 0),
-      historyCount: messages?.length || 0,
-      currentInput: userInput.substring(0, 100), // 只显示前100个字符
-      skillCount: skills.length
-    });
+    // console.debug('match request', {
+    //   hasHistory: !!(messages && messages.length > 0),
+    //   historyCount: messages?.length || 0,
+    //   currentInput: userInput.substring(0, 100), // 只显示前100个字符
+    //   skillCount: skills.length
+    // });
 
     const llmResponse = await createLLMResponse({
       body: {
@@ -180,14 +180,8 @@ export const matchSkillForPlan = async ({
       }
     });
 
-    console.log('=== LLM 完整返回 ===');
-    console.log('完整响应 keys:', Object.keys(llmResponse));
-    console.log('toolCalls:', llmResponse.toolCalls);
-    console.log('assistantMessage:', llmResponse.assistantMessage);
-
     // 打印完整对象（过滤掉可能很长的字段）
     const { assistantMessage, ...otherFields } = llmResponse;
-    console.log('其他返回字段:', JSON.stringify(otherFields, null, 2));
 
     const { toolCalls } = llmResponse;
 
@@ -198,6 +192,7 @@ export const matchSkillForPlan = async ({
 
       if (skillsMap[functionName]) {
         const matchedSkill = skillsMap[functionName];
+        console.log('matchedSkill', matchedSkill);
         const systemPrompt = formatSkillAsSystemPrompt(matchedSkill);
 
         // Get tools
