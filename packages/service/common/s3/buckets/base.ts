@@ -1,4 +1,11 @@
-import { Client, type RemoveOptions, type CopyConditions, S3Error } from 'minio';
+import {
+  Client,
+  type RemoveOptions,
+  type CopyConditions,
+  S3Error,
+  InvalidObjectNameError,
+  InvalidXMLError
+} from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -27,6 +34,9 @@ export const isFileNotFoundError = (error: any): boolean => {
       error.message === 'Not Found' ||
       error.message.includes('Object name contains unsupported characters.')
     );
+  }
+  if (error instanceof InvalidObjectNameError || error instanceof InvalidXMLError) {
+    return true;
   }
   return false;
 };
@@ -159,7 +169,10 @@ export class S3BaseBucket {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
       }
-      addLog.error(`[S3 delete error]: ${objectKey}`, err);
+      addLog.error(`[S3 delete error]`, {
+        message: err.message,
+        data: { code: err.code, key: objectKey }
+      });
       throw err;
     });
   }
