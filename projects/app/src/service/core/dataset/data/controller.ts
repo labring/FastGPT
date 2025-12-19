@@ -46,6 +46,7 @@ const formatIndexes = async ({
     type: `${DatasetDataIndexTypeEnum}`;
     text: string;
     dataId?: string;
+    synId?: number;
     synonymTransformations?: any[]; // 添加转换信息字段
   }[]
 > => {
@@ -90,13 +91,14 @@ const formatIndexes = async ({
     return [...qChunks.map(processChunk), ...aChunks.map(processChunk)];
   };
 
-  // 处理自定义索引（保持原始文本，稍后统一处理）
+  // If index not type, set it to custom
   indexes = indexes.map((item) => {
     const originalText = typeof item.text === 'string' ? item.text : String(item.text);
     return {
       text: originalText,
       type: item.type || DatasetDataIndexTypeEnum.custom,
-      dataId: item.dataId
+      dataId: item.dataId,
+      ...(item.synId !== undefined && {synId: item.synId}) 
     };
   });
 
@@ -157,7 +159,8 @@ const formatIndexes = async ({
           // 返回切分后的片段，暂不进行同义词转换
           return splitText.map((chunkText) => ({
             text: chunkText,
-            type: item.type
+            type: item.type,
+            ...(item.synId !== undefined && {synId: item.synId})
           }));
         }
 
@@ -165,7 +168,8 @@ const formatIndexes = async ({
         return {
           text: item.text,
           type: item.type,
-          dataId: item.dataId
+          dataId: item.dataId,
+          ...(item.synId !== undefined && {synId: item.synId}) 
         };
       })
     )
@@ -390,7 +394,8 @@ export async function insertData2Dataset({
     const result: any = {
       type: item.type,
       text: item.text,
-      dataId: insertIds[indexPos]
+      dataId: insertIds[indexPos],
+      ...(item.synId !== undefined && {synId: item.synId})
     };
 
     // 从原始的 normalizedIndexes 或 item 中获取转换信息
