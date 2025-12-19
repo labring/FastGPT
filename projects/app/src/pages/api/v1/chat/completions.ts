@@ -27,6 +27,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import { recordAppUsage } from '@fastgpt/service/core/app/usage/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -380,6 +381,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       await saveChat(params);
     }
+
+    setImmediate(async () => {
+      await recordAppUsage({
+        appId: String(app._id),
+        tmbId: String(tmbId),
+        teamId: String(teamId)
+      });
+    });
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
