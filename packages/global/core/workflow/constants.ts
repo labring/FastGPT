@@ -171,7 +171,7 @@ export enum NodeInputKeyEnum {
   aiTaskObject = 'aiTaskObject',
 
   // agent
-  subApps = 'subApps',
+  selectedTools = 'agent_selectedTools',
   skills = 'skills',
   isAskAgent = 'isAskAgent',
   isPlanAgent = 'isPlanAgent',

@@ -7,13 +7,15 @@ import {
   type GetAiSkillDetailResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { MongoAiSkill } from '@fastgpt/service/core/ai/skill/schema';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 async function handler(
   req: ApiRequestProps<{}, GetAiSkillDetailQueryType>,
@@ -28,7 +30,7 @@ async function handler(
   }
 
   // Auth app with read permission
-  const { teamId } = await authApp({
+  const { teamId, app } = await authApp({
     req,
     appId: String(skill.appId),
     per: ReadPermissionVal,
@@ -44,10 +46,23 @@ async function handler(
   const expandedTools: SelectedToolItemType[] = await Promise.all(
     (skill.tools || []).map(async (tool) => {
       try {
-        const toolNode = await getChildAppPreviewNode({
-          appId: tool.id,
-          lang: getLocale(req)
-        });
+        const { source, pluginId } = splitCombineToolId(tool.id);
+
+        const [toolNode] = await Promise.all([
+          getChildAppPreviewNode({
+            appId: pluginId,
+            lang: getLocale(req)
+          }),
+          ...(source === AppToolSourceEnum.personal
+            ? [
+                authAppByTmbId({
+                  tmbId: app.tmbId,
+                  appId: pluginId,
+                  per: ReadPermissionVal
+                })
+              ]
+            : [])
+        ]);
 
         // Merge saved config back into inputs
         const mergedInputs = toolNode.inputs.map((input) => ({
@@ -68,7 +83,7 @@ async function handler(
           id: tool.id,
           templateType: 'personalTool' as const,
           flowNodeType: FlowNodeTypeEnum.tool,
-          name: 'Invalid Tool',
+          name: 'Invalid',
           avatar: '',
           intro: '',
           showStatus: false,
@@ -77,7 +92,10 @@ async function handler(
           version: 'v1',
           inputs: [],
           outputs: [],
-          configStatus: 'invalid' as const
+          configStatus: 'invalid' as const,
+          pluginData: {
+            error: getErrText(error)
+          }
         };
       }
     })

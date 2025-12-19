@@ -3,64 +3,45 @@ import type { AiSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from '../../../../ai/model';
-
-/**
- * 生成唯一函数名
- * 参考 MatcherService.ts 的 _generateUniqueFunctionName
- */
-const generateUniqueFunctionName = (skill: AiSkillSchemaType): string => {
-  let baseName = skill.name || skill._id.toString();
-
-  // 清理名称
-  let cleanName = baseName.replace(/[^a-zA-Z0-9_]/g, '_');
-
-  if (cleanName && !/^[a-zA-Z_]/.test(cleanName)) {
-    cleanName = 'skill_' + cleanName;
-  } else if (!cleanName) {
-    cleanName = 'skill_unknown';
-  }
-
-  const timestampSuffix = Date.now().toString().slice(-6);
-  // return `${cleanName}_${timestampSuffix}`;
-  return `${cleanName}`;
-};
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { agentSkillToToolRuntime } from './sub/tool/utils';
+import type { SubAppRuntimeType } from './type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { getSubapps } from './utils';
+import { addLog } from '../../../../../common/system/log';
 
 /**
  * 构建 Skill Tools 数组
  * 参考 MatcherService.ts 的 match 函数
  */
-export const buildSkillTools = (
-  skills: AiSkillSchemaType[]
-): {
-  tools: ChatCompletionTool[];
-  skillsMap: Record<string, AiSkillSchemaType>;
-} => {
-  const tools: ChatCompletionTool[] = [];
+export const buildSkillTools = (skills: AiSkillSchemaType[]) => {
+  const skillCompletionTools: ChatCompletionTool[] = [];
   const skillsMap: Record<string, AiSkillSchemaType> = {};
 
   for (const skill of skills) {
     // 生成唯一函数名
-    const functionName = generateUniqueFunctionName(skill);
+    const functionName = getNanoid(6);
+    skill.name = functionName;
     skillsMap[functionName] = skill;
 
-    // 构建 description
-    let description = skill.description || 'No description available';
-
-    tools.push({
-      type: 'function',
-      function: {
-        name: functionName,
-        description: description,
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: []
+    if (skill.description) {
+      skillCompletionTools.push({
+        type: 'function',
+        function: {
+          name: functionName,
+          description: skill.description,
+          parameters: {
+            type: 'object',
+            properties: {},
+            required: []
+          }
         }
-      }
-    });
+      });
+    }
   }
 
-  return { tools, skillsMap };
+  return { skillCompletionTools, skillsMap };
 };
 
 /**
@@ -100,19 +81,35 @@ export const matchSkillForPlan = async ({
   appId,
   userInput,
   messages,
-  model
+  model,
+  tmbId,
+  lang
 }: {
   teamId: string;
   appId: string;
   userInput: string;
   messages?: ChatCompletionMessageParam[];
   model: string;
-}): Promise<{
-  matched: boolean;
-  skill?: AiSkillSchemaType;
-  systemPrompt?: string;
-  reason?: string;
-}> => {
+
+  tmbId: string;
+  lang?: localeType;
+}): Promise<
+  | {
+      matched: false;
+      reason: string;
+    }
+  | {
+      matched: true;
+      reason?: string;
+      skill: AiSkillSchemaType;
+      systemPrompt: string;
+      completionTools: ChatCompletionTool[];
+      subAppsMap: Map<string, SubAppRuntimeType>;
+    }
+> => {
+  addLog.debug('matchSkillForPlan start');
+  const modelData = getLLMModel(model);
+
   try {
     const skills = await MongoAiSkill.find({
       teamId,
@@ -126,11 +123,9 @@ export const matchSkillForPlan = async ({
       return { matched: false, reason: 'No skills available' };
     }
 
-    const { tools, skillsMap } = buildSkillTools(skills);
+    const { skillCompletionTools, skillsMap } = buildSkillTools(skills);
 
-    console.debug('tools', tools);
-
-    const modelData = getLLMModel(model);
+    console.debug('skill tools', skillCompletionTools);
 
     // 4. 调用 LLM Tool Calling 进行匹配
     // 构建系统提示词，指导 LLM 选择相似的任务
@@ -178,7 +173,7 @@ export const matchSkillForPlan = async ({
       body: {
         model: modelData.model,
         messages: allMessages,
-        tools,
+        tools: skillCompletionTools,
         tool_choice: 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         stream: false
@@ -205,10 +200,19 @@ export const matchSkillForPlan = async ({
         const matchedSkill = skillsMap[functionName];
         const systemPrompt = formatSkillAsSystemPrompt(matchedSkill);
 
+        // Get tools
+        const { completionTools, subAppsMap } = await getSubapps({
+          tools: matchedSkill.tools,
+          tmbId,
+          lang
+        });
+
         return {
           matched: true,
           skill: matchedSkill,
-          systemPrompt
+          systemPrompt,
+          completionTools,
+          subAppsMap
         };
       }
     }
@@ -221,7 +225,7 @@ export const matchSkillForPlan = async ({
     console.error('Error during skill matching:', error);
     return {
       matched: false,
-      reason: error.message || 'Unknown error'
+      reason: getErrText(error)
     };
   }
 };

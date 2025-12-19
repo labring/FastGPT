@@ -7,8 +7,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   DispatchNodeResultType,
-  ModuleDispatchProps,
-  RuntimeNodeItemType
+  ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
 import { getNodeErrResponse, getHistories } from '../../utils';
@@ -19,24 +18,22 @@ import {
   chatValue2RuntimePrompt,
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
-import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { filterMemoryMessages } from '../utils';
 import { systemSubInfo } from './sub/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { dispatchPlanAgent, dispatchReplanAgent } from './sub/plan';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { getSubApps, rewriteSubAppsToolset } from './sub';
 
-import { getFileInputPrompt } from './sub/file/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { getFileInputPrompt, readFileTool } from './sub/file/utils';
+import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { AgentPlanType } from './sub/plan/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { stepCall } from './master/call';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../../../common/system/log';
-import { checkTaskComplexity } from './master/taskComplexity';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { matchSkillForPlan } from './skillMatcher';
+import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { GetSubAppInfoFnType, SubAppRuntimeType } from './type';
+import { agentSkillToToolRuntime } from './sub/tool/utils';
+import { getSubapps } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -48,7 +45,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTemperature]?: number;
   [NodeInputKeyEnum.aiChatTopP]?: number;
 
-  [NodeInputKeyEnum.subApps]?: FlowNodeTemplateType[];
+  [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
   [NodeInputKeyEnum.isAskAgent]?: boolean;
   [NodeInputKeyEnum.isPlanAgent]?: boolean;
 }>;
@@ -82,7 +79,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       temperature,
       aiChatTopP,
-      subApps = [],
+      agent_selectedTools: selectedTools = [],
       isPlanAgent = true,
       isAskAgent = true
     }
@@ -135,11 +132,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // Get sub apps
-    const { subAppList, subAppsMap, getSubAppInfo } = await useSubApps({
-      subApps,
+    let { completionTools, subAppsMap } = await getSubapps({
+      tools: selectedTools,
+      tmbId: runningAppInfo.tmbId,
       lang,
       filesMap
     });
+    const getSubAppInfo = (id: string) => {
+      const toolNode = subAppsMap.get(id) || systemSubInfo[id];
+      return {
+        name: toolNode?.name || '',
+        avatar: toolNode?.avatar || '',
+        toolDescription: toolNode?.toolDescription || toolNode?.name || ''
+      };
+    };
+    console.log(JSON.stringify(completionTools, null, 2), 'topAgent completionTools');
+    console.log(subAppsMap, 'topAgent subAppsMap');
 
     /* ===== AI Start ===== */
 
@@ -164,7 +172,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     if (taskIsComplexity) {
       /* ===== Plan Agent ===== */
-      const planCallFn = async (referencePlanSystemPrompt?: string) => {
+      const planCallFn = async (skillSystemPrompt?: string) => {
         // 点了确认。此时肯定有 agentPlans
         if (
           lastInteractive?.type === 'agentPlanCheck' &&
@@ -178,9 +186,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               historyMessages: planHistoryMessages || historiesMessages,
               userInput: lastInteractive ? interactiveInput : userChatInput,
               interactive: lastInteractive,
-              subAppList,
+              completionTools,
               getSubAppInfo,
-              systemPrompt: referencePlanSystemPrompt || systemPrompt,
+              // TODO: 需要区分？systemprompt 需要替换成 role 和 target 么？
+              systemPrompt: skillSystemPrompt || systemPrompt,
               model,
               temperature,
               top_p: aiChatTopP,
@@ -269,7 +278,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           userInput: lastInteractive ? interactiveInput : userChatInput,
           plan,
           interactive: lastInteractive,
-          subAppList,
+          completionTools,
           getSubAppInfo,
           systemPrompt,
           model,
@@ -351,24 +360,39 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // Replan step: 已有 plan，且有 replan 历史消息
       const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
-      // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
-      let matchedSkillSystemPrompt: string | undefined;
-
       console.log('planHistoryMessages', planHistoryMessages);
       // 执行 Plan/replan
       if (isPlanStep) {
+        // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
+        let skillSystemPrompt: string | undefined;
         // match skill
-        addLog.debug('尝试匹配用户的历史 skills');
         const matchResult = await matchSkillForPlan({
           teamId: runningUserInfo.teamId,
+          tmbId: runningAppInfo.tmbId,
           appId: runningAppInfo.id,
           userInput: lastInteractive ? interactiveInput : userChatInput,
           messages: historiesMessages, // 传入完整的对话历史
-          model
+          model,
+          lang
         });
-        if (matchResult.matched && matchResult.systemPrompt) {
-          addLog.debug(`匹配到 skill: ${matchResult.skill?.name}`);
-          matchedSkillSystemPrompt = matchResult.systemPrompt;
+
+        if (matchResult.matched) {
+          skillSystemPrompt = matchResult.systemPrompt;
+
+          // 将 skill 的 completionTools 和 subAppsMap 合并到topAgent，如果重复，则以 skill 的为准。
+          completionTools = matchResult.completionTools.concat(
+            completionTools.filter(
+              (item) =>
+                !matchResult.completionTools.some(
+                  (item2) => item2.function.name === item.function.name
+                )
+            )
+          );
+          [...matchResult.subAppsMap].forEach(([id, item]) => {
+            subAppsMap.set(id, item);
+          });
+          console.log(JSON.stringify(completionTools, null, 2), 'merge completionTools');
+          console.log(subAppsMap, 'merge subAppsMap');
 
           // 可选: 推送匹配信息给前端
           workflowStreamResponse?.({
@@ -381,7 +405,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
         }
 
-        const result = await planCallFn(matchedSkillSystemPrompt);
+        const result = await planCallFn(skillSystemPrompt);
         // 有 result 代表 plan 有交互响应（check/ask）
         if (result) return result;
       } else if (isReplanStep) {
@@ -410,7 +434,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             ...props,
             getSubAppInfo,
             steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
-            subAppList,
+            completionTools,
             step,
             filesMap,
             subAppsMap
@@ -474,58 +498,4 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } catch (error) {
     return getNodeErrResponse({ error });
   }
-};
-
-export const useSubApps = async ({
-  subApps,
-  lang,
-  filesMap
-}: {
-  subApps: FlowNodeTemplateType[];
-  lang?: localeType;
-  filesMap: Record<string, string>;
-}) => {
-  // Get sub apps
-  const runtimeSubApps = await rewriteSubAppsToolset({
-    subApps: subApps.map<RuntimeNodeItemType>((node) => {
-      return {
-        nodeId: node.id,
-        name: node.name,
-        avatar: node.avatar,
-        intro: node.intro,
-        toolDescription: node.toolDescription,
-        flowNodeType: node.flowNodeType,
-        showStatus: node.showStatus,
-        isEntry: false,
-        inputs: node.inputs,
-        outputs: node.outputs,
-        pluginId: node.pluginId,
-        version: node.version,
-        toolConfig: node.toolConfig,
-        catchError: node.catchError
-      };
-    }),
-    lang
-  });
-
-  const subAppList = getSubApps({
-    subApps: runtimeSubApps,
-    addReadFileTool: Object.keys(filesMap).length > 0
-  });
-
-  const subAppsMap = new Map(runtimeSubApps.map((item) => [item.nodeId, item]));
-  const getSubAppInfo = (id: string) => {
-    const toolNode = subAppsMap.get(id) || systemSubInfo[id];
-    return {
-      name: toolNode?.name || '',
-      avatar: toolNode?.avatar || '',
-      toolDescription: toolNode?.toolDescription || toolNode?.name || ''
-    };
-  };
-
-  return {
-    subAppList,
-    subAppsMap,
-    getSubAppInfo
-  };
 };

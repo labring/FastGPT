@@ -18,7 +18,6 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
@@ -31,9 +30,8 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAiSkillDetail } from '@/web/core/ai/skill/api';
-import { validateToolConfiguration, getToolConfigStatus } from './utils';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -111,29 +109,18 @@ const EditForm = ({
       if (skill.id) {
         const detail = await getAiSkillDetail({ id: skill.id });
 
-        // Validate tools and determine their configuration status
-        const toolsWithStatus = (detail.tools || [])
-          .filter((tool) => {
-            // First, validate tool compatibility with current config
-            const isValid = validateToolConfiguration({
-              toolTemplate: tool,
-              canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
-              canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
-            });
-            return isValid;
-          })
-          .map((tool) => ({
-            ...tool,
-            configStatus: getToolConfigStatus(tool)
-          }));
-
         // Merge server data with local data
         onEditSkill({
           id: detail._id,
           name: detail.name,
           description: detail.description || '',
           stepsText: detail.steps,
-          selectedTools: toolsWithStatus,
+          selectedTools: (detail.tools || []).map((tool) => {
+            return {
+              ...tool,
+              configStatus: getToolConfigStatus(tool).status
+            };
+          }),
           dataset: { list: detail.datasets || [] }
         });
       } else {
@@ -141,7 +128,7 @@ const EditForm = ({
         onEditSkill(skill);
       }
     },
-    [onEditSkill, appForm.chatConfig.fileSelectConfig]
+    [onEditSkill]
   );
 
   return (
@@ -269,7 +256,7 @@ const EditForm = ({
             onRemoveTool={(id) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.id !== id) || []
+                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
               }));
             }}
           />

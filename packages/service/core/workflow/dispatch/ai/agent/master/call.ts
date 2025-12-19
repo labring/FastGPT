@@ -4,7 +4,7 @@ import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/cor
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { addFilePrompt2Input } from '../sub/file/utils';
 import type { AgentPlanStepType } from '../sub/plan/type';
-import type { GetSubAppInfoFnType } from '../type';
+import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getMasterAgentSystemPrompt } from '../constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -30,7 +30,7 @@ import { getResponseSummary } from './responseSummary';
 
 export const stepCall = async ({
   getSubAppInfo,
-  subAppList,
+  completionTools,
   steps,
   step,
   filesMap,
@@ -38,11 +38,11 @@ export const stepCall = async ({
   ...props
 }: DispatchAgentModuleProps & {
   getSubAppInfo: GetSubAppInfoFnType;
-  subAppList: ChatCompletionTool[];
+  completionTools: ChatCompletionTool[];
   steps: AgentPlanStepType[];
   step: AgentPlanStepType;
   filesMap: Record<string, string>;
-  subAppsMap: Map<string, RuntimeNodeItemType>;
+  subAppsMap: Map<string, SubAppRuntimeType>;
 }) => {
   const {
     res,
@@ -107,7 +107,7 @@ export const stepCall = async ({
   });
   // console.log(
   //   'Step call requestMessages',
-  //   JSON.stringify({ requestMessages, subAppList }, null, 2)
+  //   JSON.stringify({ requestMessages, completionTools }, null, 2)
   // );
 
   const { assistantMessages, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
@@ -119,7 +119,7 @@ export const stepCall = async ({
         temperature,
         stream,
         top_p: aiChatTopP,
-        tools: subAppList
+        tools: completionTools
       },
 
       userKey: externalProvider.openaiAccount,
@@ -219,8 +219,8 @@ export const stepCall = async ({
             }
             // User Sub App
             else {
-              const node = subAppsMap.get(toolId);
-              if (!node) {
+              const tool = subAppsMap.get(toolId);
+              if (!tool) {
                 return {
                   response: 'Can not find the tool',
                   usages: []
@@ -237,47 +237,18 @@ export const stepCall = async ({
               }
 
               // Get params
-              const requestParams = (() => {
-                const params: Record<string, any> = toolCallParams;
+              const requestParams = {
+                ...tool.params,
+                ...toolCallParams
+              };
 
-                node.inputs.forEach((input) => {
-                  if (input.key in toolCallParams) {
-                    return;
-                  }
-                  // Skip some special key
-                  if (
-                    [
-                      NodeInputKeyEnum.childrenNodeIdList,
-                      NodeInputKeyEnum.systemInputConfig
-                    ].includes(input.key as NodeInputKeyEnum)
-                  ) {
-                    params[input.key] = input.value;
-                    return;
-                  }
-
-                  // replace {{$xx.xx$}} and {{xx}} variables
-                  let value = replaceEditorVariable({
-                    text: input.value,
-                    nodes: runtimeNodes,
-                    variables
-                  });
-
-                  // replace reference variables
-                  value = getReferenceVariableValue({
-                    value,
-                    nodes: runtimeNodes,
-                    variables
-                  });
-
-                  params[input.key] = valueTypeFormat(value, input.valueType);
-                });
-
-                return params;
-              })();
-
-              if (node.flowNodeType === FlowNodeTypeEnum.tool) {
+              if (tool.type === 'tool') {
                 const { response, usages } = await dispatchTool({
-                  node,
+                  tool: {
+                    name: tool.name,
+                    version: tool.version,
+                    toolConfig: tool.toolConfig
+                  },
                   params: requestParams,
                   runningUserInfo,
                   runningAppInfo,
@@ -288,12 +259,8 @@ export const stepCall = async ({
                   response,
                   usages
                 };
-              } else if (
-                node.flowNodeType === FlowNodeTypeEnum.appModule ||
-                node.flowNodeType === FlowNodeTypeEnum.pluginModule
-              ) {
-                const fn =
-                  node.flowNodeType === FlowNodeTypeEnum.appModule ? dispatchApp : dispatchPlugin;
+              } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
+                const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
 
                 const { response, usages } = await fn({
                   ...props,
