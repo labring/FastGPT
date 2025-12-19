@@ -9,7 +9,7 @@ import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/con
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { isDatabaseSource, isCorrectionSource } from '@fastgpt/global/core/dataset/utils';
 export type GetQuoteProps = {
   datasetDataIdList: string[];
 
@@ -39,8 +39,12 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     collectionIdList,
     datasetDataIdList
   } = req.body;
-  let filterCollectionIdList = collectionIdList.filter((id) => id?.trim());
-  let filterdatasetDataIdList = datasetDataIdList.filter((id) => !isDatabaseSource(id));
+  let filterCollectionIdList = collectionIdList.filter(
+    (id) => id?.trim() && !isDatabaseSource(id) && !isCorrectionSource(id)
+  );
+  let filterdatasetDataIdList = datasetDataIdList.filter(
+    (id) => !isDatabaseSource(id) && !isCorrectionSource(id)
+  );
   const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
     authChatCrud({
       req,
@@ -68,6 +72,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
   const Items = chatItem.responseData?.filter(
     (e) => e.moduleType === FlowNodeTypeEnum.datasetSearchNode
   );
+
   const sqlQuoteLists = Items?.map((item) => item.quoteList).flat();
 
   const updateInfo = await MongoDataset.find(
@@ -77,17 +82,32 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
 
   const sqlFormatQuoteLists = Items?.map((item) => item.sqlResult)
     ?.flat()
+    .filter((res): res is NonNullable<typeof res> => !!res && !!res.datasetId) // 确保 SQL 结果和 datasetId 不为空
     .map((res) => {
-      const qInfo = sqlQuoteLists?.find((e) => e?.datasetId === res?.datasetId);
-      const uInfo = updateInfo.find((d) => d._id === res?.datasetId);
+      const qInfo = sqlQuoteLists?.find((e) => e?.datasetId === res.datasetId);
+      const uInfo = updateInfo.find((d) => d._id === res.datasetId);
       return {
-        _id: qInfo?.id || `sql_quote_${res?.datasetId}`,
-        q: res?.answer || '',
-        a: res?.sql || '',
+        _id: qInfo?.id || `sql_quote_${res.datasetId}`,
+        q: res.answer || '',
+        a: res.sql || '',
         updateTime: uInfo?.updateTime || chatItem.time
       } as DatasetCiteItemType;
     });
   formatPreviewUrlList.push(...(sqlFormatQuoteLists || []));
+
+  // Get correction search results
+  const correctionFormatQuoteLists = Items?.map((item) => item.correctSearchResult)
+    ?.flat()
+    .filter((res): res is NonNullable<typeof res> => !!res && !!res.correctedAnswer) // 确保校正答案不为空
+    .map((res) => {
+      return {
+        _id: `correction_quote_${res.correctionId}`,
+        q: res.question || '',
+        a: res.correctedAnswer,
+        updateTime: chatItem.time
+      } as DatasetCiteItemType;
+    });
+  formatPreviewUrlList.push(...(correctionFormatQuoteLists || []));
   const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
   return quoteList;
 }

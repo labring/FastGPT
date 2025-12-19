@@ -1,6 +1,6 @@
 {
-  "name": "Customer Service Assistant",
-  "intro": "Intelligent assistant designed for customer service, combining knowledge base retrieval and AI conversation capabilities",
+  "name": "Simple Chat Agent",
+  "intro": "Simple conversational agent combining knowledge base retrieval and intelligent dialogue capabilities",
   "author": "FastGPT",
   "avatar": "core/workflow/template/customerService",
   "tags": ["customer-service"],
@@ -81,7 +81,7 @@
         "flowNodeType": "workflowStart",
         "position": {
           "x": 3.719230229326385,
-          "y": -1272.140341718712
+          "y": -1312.140341718712
         },
         "version": "481",
         "inputs": [
@@ -115,7 +115,7 @@
         "showStatus": false,
         "position": {
           "x": 494.7192302293264,
-          "y": -1192.140341718712
+          "y": -1212.140341718712
         },
         "inputs": [
           {
@@ -152,7 +152,7 @@
         "showStatus": true,
         "position": {
           "x": 1060.7192302293263,
-          "y": -1315.640341718712
+          "y": -1335.640341718712
         },
         "version": "4.9.2",
         "inputs": [
@@ -337,7 +337,7 @@
         "showStatus": true,
         "position": {
           "x": 1846.7192302293263,
-          "y": -1165.140341718712
+          "y": -1185.140341718712
         },
         "inputs": [
           {
@@ -380,8 +380,8 @@
         "avatar": "core/workflow/template/reply",
         "flowNodeType": "answerNode",
         "position": {
-          "x": 2683.7192302293265,
-          "y": -1426.390341718712
+          "x": 2709.2192302293265,
+          "y": -1297.390341718712
         },
         "inputs": [
           {
@@ -408,8 +408,8 @@
         "flowNodeType": "chatNode",
         "showStatus": true,
         "position": {
-          "x": 2754.7192302293265,
-          "y": -1123.390341718712
+          "x": 3591.7192302293265,
+          "y": -1632.140341718712
         },
         "version": "4.9.7",
         "inputs": [
@@ -620,20 +620,97 @@
           }
         ],
         "catchError": false
+      },
+      {
+        "nodeId": "lb9O8Jqhq5RMomsX",
+        "name": "Check Correction Data Match",
+        "intro": "Execute different branches based on conditions.",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 2683.7192302293265,
+          "y": -994.3903417187121
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "valueType": "input",
+                    "variable": [
+                      "VARIABLE_NODE_ID",
+                      "hTRJXdb1"
+                    ],
+                    "condition": "isNotEmpty"
+                  }
+                ]
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "m8xjpNzwcx2yE3Ar",
+        "name": "Use Correction Data Reply",
+        "intro": "This module can directly reply with specified content. Commonly used for guidance and prompts. Non-string content will be converted to string for output.",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 3520.7192302293265,
+          "y": -576.1403417187121
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "common:core.module.input.label.Response content",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": [
+              "VARIABLE_NODE_ID",
+              "hTRJXdb1"
+            ],
+            "selectedTypeIndex": 1,
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
       }
     ],
     "edges": [
       {
-        "source": "workflowStartNodeId",
-        "target": "variableUpdateNodeId",
-        "sourceHandle": "workflowStartNodeId-source-right",
-        "targetHandle": "variableUpdateNodeId-target-left"
-      },
-      {
-        "source": "variableUpdateNodeId",
-        "target": "iKBoX2vIzETU",
-        "sourceHandle": "variableUpdateNodeId-source-right",
-        "targetHandle": "iKBoX2vIzETU-target-left"
+        "source": "qaFDoVSH4WcXMZPO",
+        "target": "vprtN0xvK1dV0c6M",
+        "sourceHandle": "qaFDoVSH4WcXMZPO-source-IF",
+        "targetHandle": "vprtN0xvK1dV0c6M-target-left"
       },
       {
         "source": "iKBoX2vIzETU",
@@ -642,16 +719,34 @@
         "targetHandle": "qaFDoVSH4WcXMZPO-target-left"
       },
       {
-        "source": "qaFDoVSH4WcXMZPO",
-        "target": "vprtN0xvK1dV0c6M",
-        "sourceHandle": "qaFDoVSH4WcXMZPO-source-IF",
-        "targetHandle": "vprtN0xvK1dV0c6M-target-left"
+        "source": "variableUpdateNodeId",
+        "target": "iKBoX2vIzETU",
+        "sourceHandle": "variableUpdateNodeId-source-right",
+        "targetHandle": "iKBoX2vIzETU-target-left"
+      },
+      {
+        "source": "workflowStartNodeId",
+        "target": "variableUpdateNodeId",
+        "sourceHandle": "workflowStartNodeId-source-right",
+        "targetHandle": "variableUpdateNodeId-target-left"
       },
       {
         "source": "qaFDoVSH4WcXMZPO",
-        "target": "7BdojPlukIQw",
+        "target": "lb9O8Jqhq5RMomsX",
         "sourceHandle": "qaFDoVSH4WcXMZPO-source-ELSE",
+        "targetHandle": "lb9O8Jqhq5RMomsX-target-left"
+      },
+      {
+        "source": "lb9O8Jqhq5RMomsX",
+        "target": "7BdojPlukIQw",
+        "sourceHandle": "lb9O8Jqhq5RMomsX-source-ELSE",
         "targetHandle": "7BdojPlukIQw-target-left"
+      },
+      {
+        "source": "lb9O8Jqhq5RMomsX",
+        "target": "m8xjpNzwcx2yE3Ar",
+        "sourceHandle": "lb9O8Jqhq5RMomsX-source-IF",
+        "targetHandle": "m8xjpNzwcx2yE3Ar-target-left"
       }
     ],
     "chatConfig": {
@@ -686,6 +781,16 @@
           ],
           "defaultValue": "",
           "icon": "core/workflow/inputType/option"
+        },
+        {
+          "key": "hTRJXdb1",
+          "label": "correct_mapping_answer",
+          "type": "custom",
+          "description": "Correction data matching result",
+          "required": false,
+          "valueType": "string",
+          "defaultValue": "",
+          "icon": "core/workflow/inputType/customVariable"
         }
       ],
       "scheduledTriggerConfig": {

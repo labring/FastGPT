@@ -6,6 +6,10 @@ export function isDatabaseSource(sourceId?: string) {
   return sourceId?.startsWith('sql');
 }
 
+export function isCorrectionSource(sourceId?: string) {
+  return sourceId?.startsWith('correction_quote');
+}
+
 export function getCollectionIcon({
   type = DatasetCollectionTypeEnum.file,
   name = '',
