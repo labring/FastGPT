@@ -1,7 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '../../../../web/i18n/utils';
-import { MongoOperationLog } from './schema';
+import { MongoTeamAudit } from './schema';
 import type {
   AdminAuditEventEnum,
   AuditEventEnum,
@@ -86,7 +86,7 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
   params?: any;
 }) {
   retryFn(() =>
-    MongoOperationLog.create({
+    MongoTeamAudit.create({
       tmbId: tmbId,
       teamId: teamId,
       event,

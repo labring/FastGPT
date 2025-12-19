@@ -110,6 +110,9 @@ try {
   ChatSchema.index({ chatId: 1 });
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
+  // get share chat history
+  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
+
   // delete by appid; clear history; init chat; update chat; auth chat; get chat;
   ChatSchema.index({ appId: 1, chatId: 1 });
 
@@ -191,11 +194,8 @@ try {
     }
   );
 
-  // get share chat history
-  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
-
   // timer, clear history
-  ChatSchema.index({ teamId: 1, updateTime: -1 });
+  ChatSchema.index({ updateTime: -1, teamId: 1 });
 } catch (error) {
   console.log(error);
 }

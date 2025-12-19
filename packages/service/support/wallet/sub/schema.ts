@@ -67,18 +67,12 @@ const SubSchema = new Schema({
   customDomain: Number,
 
   // stand sub and extra points sub. Plan total points
-  totalPoints: {
-    type: Number
-  },
-  surplusPoints: {
-    // plan surplus points
-    type: Number
-  },
+  totalPoints: Number,
+  // plan surplus points
+  surplusPoints: Number,
 
   // extra dataset size
-  currentExtraDatasetSize: {
-    type: Number
-  }
+  currentExtraDatasetSize: Number
 });
 
 try {
