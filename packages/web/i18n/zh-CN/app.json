@@ -435,5 +435,7 @@
   "logs_filter_good": "点赞",
   "logs_filter_not_found_knowledge": "未找到知识",
   "fetch_optimize_records_error": "获取优化记录异常",
-  "answer_quote_knowledge_count": "答案引用知识（{{count}}）"
+  "answer_quote_knowledge_count": "答案引用知识（{{count}}）",
+  "delete_failed": "删除失败",
+  "delete_success": "删除成功"
 }

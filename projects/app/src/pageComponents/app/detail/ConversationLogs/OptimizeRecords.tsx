@@ -25,7 +25,6 @@ import type {
 } from '@fastgpt/global/core/chat/correction/api';
 import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { AppContext } from '../context';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getChatCorrectionList, deleteChatCorrection } from '@/web/core/app/api/log';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import CorrectionModal from './CorrectionModal';
@@ -37,8 +36,6 @@ interface OptimizeRecordsProps {
 const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   // 从 AppContext 获取 appId
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  // 从 useChatStore 获取 chatId
-  const { chatId } = useChatStore();
   const { t } = useTranslation();
 
   // 模态框状态
@@ -54,12 +51,11 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
 
     const params: Partial<ListChatCorrectionParams> = {
       appId,
-      chatId,
       startTime: dateRange.from,
       endTime: dateRange.to
     };
     return params;
-  }, [appId, chatId, dateRange]);
+  }, [appId, dateRange]);
 
   // 使用滚动分页获取优化记录数据
   const {
@@ -72,7 +68,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
     pageSize: 20,
     params: requestParams as Omit<ListChatCorrectionParams, 'offset' | 'pageSize'>,
     EmptyTip: EmptyTipDom,
-    refreshDeps: [appId, chatId, dateRange],
+    refreshDeps: [appId, dateRange],
     errorToast: t('app:fetch_optimize_records_error')
   });
 
@@ -112,8 +108,8 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
       });
     },
     {
-      errorToast: t('app:logs_delete_error'),
-      successToast: t('app:logs_delete_success'),
+      errorToast: t('app:delete_failed'),
+      successToast: t('app:delete_success'),
       onSuccess: () => {
         // 重新获取数据
         refreshList();
