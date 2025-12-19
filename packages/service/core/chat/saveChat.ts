@@ -35,7 +35,6 @@ export type Props = {
   nodes: StoreNodeItemType[];
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
-  isUpdateUseTime: boolean;
   newTitle: string;
   source: `${ChatSourceEnum}`;
   sourceName?: string;
@@ -219,7 +218,6 @@ export async function saveChat(props: Props) {
     nodes,
     appChatConfig,
     variables,
-    isUpdateUseTime,
     newTitle,
     source,
     sourceName,
@@ -392,18 +390,6 @@ export async function saveChat(props: Props) {
       );
     } catch (error) {
       addLog.error('Push chat log error', error);
-    }
-
-    if (isUpdateUseTime) {
-      await MongoApp.updateOne(
-        { _id: appId },
-        {
-          updateTime: new Date()
-        },
-        {
-          ...writePrimary
-        }
-      ).catch();
     }
   } catch (error) {
     addLog.error(`update chat history error`, error);

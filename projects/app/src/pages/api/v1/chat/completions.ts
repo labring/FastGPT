@@ -326,7 +326,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
     const source = (() => {
       if (shareId) {
         return ChatSourceEnum.share;
@@ -363,7 +362,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
       newTitle,
       shareId,
       outLinkUid: outLinkUserId,

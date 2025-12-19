@@ -10,6 +10,7 @@ import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type updateMCPToolsQuery = {};
 
@@ -51,6 +52,12 @@ async function handler(
       },
       { session }
     );
+
+    await updateParentFoldersUpdateTime({
+      parentId: app.parentId,
+      session
+    });
+
     await MongoAppVersion.updateOne(
       { appId },
       {

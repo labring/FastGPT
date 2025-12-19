@@ -204,3 +204,27 @@ export const deleteAppsImmediate = async ({
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 };
+
+export async function updateParentFoldersUpdateTime({
+  parentId,
+  session
+}: {
+  parentId?: string | null;
+  session?: ClientSession;
+}): Promise<void> {
+  if (!parentId) return;
+
+  const parentApp = await MongoApp.findById(parentId).lean();
+  if (!parentApp) return;
+
+  // Only update if parent is a folder
+  if (AppFolderTypeList.includes(parentApp.type)) {
+    await MongoApp.findByIdAndUpdate(parentId, { updateTime: new Date() }, { session });
+  }
+
+  // Recursively update parent folders
+  await updateParentFoldersUpdateTime({
+    parentId: parentApp.parentId,
+    session
+  });
+}

@@ -13,6 +13,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -61,6 +62,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
           session
         }
       );
+
+      await updateParentFoldersUpdateTime({
+        parentId: app.parentId,
+        session
+      });
     });
 
     addAuditLog({
@@ -122,6 +128,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
         session
       }
     );
+
+    await updateParentFoldersUpdateTime({
+      parentId: app.parentId,
+      session
+    });
   });
 
   (async () => {

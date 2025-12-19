@@ -248,7 +248,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: false, // owner update use time
       newTitle,
       source: ChatSourceEnum.test,
       userContent: userQuestion,

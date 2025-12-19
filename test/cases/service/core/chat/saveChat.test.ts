@@ -31,7 +31,6 @@ const createMockProps = (
       outputs: []
     }
   ],
-  isUpdateUseTime: true,
   newTitle: 'Test Chat',
   source: 'online' as any,
   userContent: {
@@ -228,7 +227,7 @@ describe('saveChat', () => {
         collectionId: 'collection-1',
         sourceId: 'source-1',
         sourceName: 'doc.pdf',
-        score: [{ type: 'embedding', value: 0.95, index: 0 }],
+        score: [{ type: 'embedding' as const, value: 0.95, index: 0 }],
         q: 'What is AI?',
         a: 'AI stands for Artificial Intelligence...',
         updateTime: new Date()
@@ -281,36 +280,6 @@ describe('saveChat', () => {
         expect(responses[0].data.quoteList?.[0]?.q).toBeUndefined();
         expect(responses[0].data.quoteList?.[0]?.a).toBeUndefined();
       }
-    });
-
-    it('should update app use time when isUpdateUseTime is true', async () => {
-      const beforeTime = new Date();
-
-      const props = createMockProps(
-        { isUpdateUseTime: true },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
-
-      await saveChat(props);
-
-      const app = await MongoApp.findById(testAppId);
-      expect(app?.updateTime).toBeDefined();
-      expect(app!.updateTime.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
-    });
-
-    it('should not update app use time when isUpdateUseTime is false', async () => {
-      const app = await MongoApp.findById(testAppId);
-      const originalUpdateTime = app!.updateTime;
-
-      const props = createMockProps(
-        { isUpdateUseTime: false },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
-
-      await saveChat(props);
-
-      const updatedApp = await MongoApp.findById(testAppId);
-      expect(updatedApp!.updateTime.getTime()).toBe(originalUpdateTime.getTime());
     });
 
     it('should create chat data log with error count when response has error', async () => {

@@ -27,6 +27,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -117,7 +118,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
 
     await getS3AvatarSource().refreshAvatar(avatar, app.avatar, session);
 
-    return MongoApp.findByIdAndUpdate(
+    const result = await MongoApp.findByIdAndUpdate(
       appId,
       {
         ...parseParentIdInMongo(parentId),
@@ -137,6 +138,26 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       },
       { session }
     );
+
+    if (isMove) {
+      // Update both old and new parent folders
+      await updateParentFoldersUpdateTime({
+        parentId: app.parentId,
+        session
+      });
+      await updateParentFoldersUpdateTime({
+        parentId,
+        session
+      });
+    } else {
+      // Update current parent folder
+      await updateParentFoldersUpdateTime({
+        parentId: parentId || app.parentId,
+        session
+      });
+    }
+
+    return result;
   };
 
   // Move
