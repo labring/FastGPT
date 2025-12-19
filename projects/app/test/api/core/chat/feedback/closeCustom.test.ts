@@ -13,7 +13,7 @@ import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 
-describe('closeCustom api test', () => {
+describe.sequential('closeCustom api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let appId: string;
   let chatId: string;
