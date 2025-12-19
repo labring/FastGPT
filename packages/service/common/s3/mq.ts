@@ -1,6 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../bullmq';
 import pLimit from 'p-limit';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { addLog } from '../system/log';
 
 export type S3MQJobData = {
   key?: string;
@@ -38,17 +39,22 @@ export const startS3DelWorker = async () => {
       }
 
       if (key) {
+        addLog.info(`[S3 delete] delete key: ${key}`);
         await bucket.delete(key);
+        addLog.info(`[S3 delete] delete key: ${key} success`);
       }
       if (keys) {
+        addLog.info(`[S3 delete] delete keys: ${keys.length}`);
         const tasks: Promise<void>[] = [];
         for (const key of keys) {
           const p = limit(() => retryFn(() => bucket.delete(key)));
           tasks.push(p);
         }
         await Promise.all(tasks);
+        addLog.info(`[S3 delete] delete keys: ${keys.length} success`);
       }
       if (prefix) {
+        addLog.info(`[S3 delete] delete prefix: ${prefix}`);
         const tasks: Promise<void>[] = [];
         return new Promise<void>(async (resolve, reject) => {
           const stream = bucket.listObjectsV2(prefix, true);
@@ -67,16 +73,19 @@ export const startS3DelWorker = async () => {
               const results = await Promise.allSettled(tasks);
               const failed = results.filter((r) => r.status === 'rejected');
               if (failed.length > 0) {
+                addLog.error(`[S3 delete] delete prefix: ${prefix} failed`);
                 reject('Some deletes failed');
               }
+              addLog.info(`[S3 delete] delete prefix: ${prefix} success`);
               resolve();
             } catch (err) {
+              addLog.error(`[S3 delete] delete prefix: ${prefix} error`, err);
               reject(err);
             }
           });
 
           stream.on('error', (err) => {
-            console.error('listObjects stream error', err);
+            addLog.error(`[S3 delete] delete prefix: ${prefix} error`, err);
             reject(err);
           });
         });
