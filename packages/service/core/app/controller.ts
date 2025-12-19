@@ -136,15 +136,7 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
-export const deleteAppData = async ({
-  app,
-  teamId,
-  session
-}: {
-  app: AppSchema;
-  teamId: string;
-  session?: ClientSession;
-}) => {
+export const deleteAppData = async ({ app, teamId }: { app: AppSchema; teamId: string }) => {
   const appId = String(app._id);
 
   // 1. 删除聊天记录和S3文件
@@ -186,15 +178,7 @@ export const deleteAppData = async ({
   await removeImageByPath(app.avatar);
 };
 
-export const onDelOneApp = async ({
-  teamId,
-  appId,
-  session
-}: {
-  teamId: string;
-  appId: string;
-  session?: ClientSession;
-}) => {
+export const onDelOneApp = async ({ teamId, appId }: { teamId: string; appId: string }) => {
   const apps = await findAppAndAllChildren({
     teamId,
     appId,
@@ -214,21 +198,9 @@ export const onDelOneApp = async ({
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 
-  const del = async (app: AppSchema, session: ClientSession) => {
-    await deleteAppData({ app, teamId, session });
-  };
-
   // Delete chats
   for await (const app of apps) {
     await deleteAppData({ app, teamId });
-  }
-
-  for await (const app of apps) {
-    if (session) {
-      await del(app, session);
-    }
-
-    await mongoSessionRun((session) => del(app, session));
   }
 
   return deletedAppIds;

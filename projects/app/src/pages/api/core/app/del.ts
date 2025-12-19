@@ -27,34 +27,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
     per: OwnerPermissionVal
   });
 
-  // 查找要删除的应用及其所有子应用
   const deleteAppsList = await findAppAndAllChildren({
     teamId,
     appId
   });
 
   await mongoSessionRun(async (session) => {
-    // 1. 标记为删除（软删除）
+    // Mark app as deleted
     await MongoApp.updateMany(
-      {
-        _id: deleteAppsList.map((app) => app._id),
-        teamId
-      },
-      {
-        deleteTime: new Date()
-      },
-      {
-        session
-      }
+      { _id: deleteAppsList.map((app) => app._id), teamId },
+      { deleteTime: new Date() },
+      { session }
     );
 
-    // 2. 立即删除需要停止的后台任务
+    // Stop background tasks immediately
     await deleteAppsImmediate({
       teamId,
       apps: deleteAppsList
     });
 
-    // 3. 添加到删除队列，异步清理剩余数据
+    // Add to delete queue for async cleanup
     await addAppDeleteJob({
       teamId,
       appId
@@ -76,9 +68,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
   // Tracks
   pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
 
-  // 返回被删除的应用ID列表（保持与原API一致的响应格式）
   return deleteAppsList
-    .filter((app) => !['folder'].includes(app.type)) // 过滤掉文件夹类型
+    .filter((app) => !['folder'].includes(app.type))
     .map((app) => String(app._id));
 }
 
