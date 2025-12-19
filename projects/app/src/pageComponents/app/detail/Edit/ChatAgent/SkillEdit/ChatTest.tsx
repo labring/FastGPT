@@ -8,16 +8,19 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import HelperBot from '@/components/core/chat/HelperBot';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
-import { validateToolConfiguration, checkNeedsUserConfiguration } from '../utils';
+import {
+  validateToolConfiguration,
+  getToolConfigStatus
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 type Props = {
+  topAgentSelectedTools?: SelectedToolItemType[];
   skill: SkillEditType;
   appForm: AppFormEditFormType;
   onAIGenerate: (updates: Partial<SkillEditType>) => void;
 };
-const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
+const ChatTest = ({ topAgentSelectedTools = [], skill, appForm, onAIGenerate }: Props) => {
   const { t } = useTranslation();
 
   const skillAgentMetadata = useMemo(() => {
@@ -68,7 +71,10 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
             const allToolIds = new Set<string>();
             generatedSkillData.execution_plan.steps.forEach((step) => {
               step.expectedTools?.forEach((tool) => {
-                if (tool.type === 'tool') {
+                if (
+                  tool.type === 'tool' &&
+                  !skill.selectedTools.find((t) => t.pluginId === tool.id)
+                ) {
                   allToolIds.add(tool.id);
                 }
               });
@@ -77,7 +83,6 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
             // 2. 并行获取工具详情
             const targetToolIds = Array.from(allToolIds);
             const newTools: SelectedToolItemType[] = [];
-            const failedToolIds: string[] = [];
 
             if (targetToolIds.length > 0) {
               const results = await Promise.all(
@@ -89,34 +94,35 @@ const ChatTest = ({ skill, appForm, onAIGenerate }: Props) => {
               );
 
               results.forEach((result) => {
-                if (result.status === 'fulfilled') {
-                  // 验证工具配置
-                  const toolValid = validateToolConfiguration({
-                    toolTemplate: result.tool,
-                    canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
-                    canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
-                  });
+                if (result.status !== 'fulfilled') return;
+                const tool = result.tool;
+                // 验证工具配置
+                const toolValid = validateToolConfiguration({
+                  toolTemplate: tool,
+                  canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
+                  canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
+                });
 
-                  if (toolValid) {
-                    // 判断是否需要用户配置，设置 configStatus
-                    const needsConfig = checkNeedsUserConfiguration(result.tool);
-                    newTools.push({
-                      ...result.tool,
-                      configStatus: needsConfig ? 'waitingForConfig' : 'active'
+                if (toolValid) {
+                  // 添加与 top 相同工具的配置
+                  const topTool = topAgentSelectedTools.find(
+                    (item) => item.pluginId === tool.pluginId
+                  );
+                  if (topTool) {
+                    tool.inputs.forEach((input) => {
+                      const topInput = topTool.inputs.find((input) => input.key === input.key);
+                      if (topInput) {
+                        input.value = topInput.value;
+                      }
                     });
-                  } else {
-                    // 工具验证失败，记录失败
-                    failedToolIds.push(result.toolId);
                   }
-                } else if (result.status === 'rejected') {
-                  failedToolIds.push(result.toolId);
+
+                  newTools.push({
+                    ...tool,
+                    configStatus: getToolConfigStatus(tool).status
+                  });
                 }
               });
-
-              // 可选：提示用户哪些工具获取失败
-              if (failedToolIds.length > 0) {
-                console.warn('部分工具获取失败:', failedToolIds);
-              }
             }
 
             // 3. 构建 stepsText（保持原有逻辑）

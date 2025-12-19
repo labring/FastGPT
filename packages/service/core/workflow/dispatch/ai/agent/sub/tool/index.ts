@@ -24,10 +24,13 @@ type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
   value: StoreSecretValueType;
 };
-type Props = {
-  node: RuntimeNodeItemType;
+export type Props = {
+  tool: {
+    name: string;
+    version?: string;
+    toolConfig: RuntimeNodeItemType['toolConfig'];
+  };
   params: {
-    [NodeInputKeyEnum.toolData]?: McpToolDataType;
     [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
     [key: string]: any;
   };
@@ -38,8 +41,8 @@ type Props = {
 };
 
 export const dispatchTool = async ({
-  node: { name, version, toolConfig },
-  params: { system_input_config, system_toolData, ...params },
+  tool: { name, version, toolConfig },
+  params: { system_input_config, ...params },
   runningUserInfo,
   runningAppInfo,
   variables,

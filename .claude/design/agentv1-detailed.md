@@ -146,7 +146,7 @@ type AgentNodeInputType = {
   [NodeInputKeyEnum.fileUrlList]?: string[];
 
   // 工具配置
-  [NodeInputKeyEnum.subApps]?: FlowNodeTemplateType[];
+  [NodeInputKeyEnum.selectedTools]?: FlowNodeTemplateType[];
 
   // 模式配置
   [NodeInputKeyEnum.isPlanAgent]?: boolean;
@@ -370,7 +370,7 @@ async function executePlanStep(params: {
       temperature: params.temperature,
       stream: params.stream,
       top_p: params.top_p,
-      subApps: buildSubAppTools(params.toolNodes)
+      agent_selectedTools: buildSubAppTools(params.toolNodes)
     },
 
     // 工具调用处理器
@@ -1711,7 +1711,7 @@ describe('Agent End-to-End Flow', () => {
         systemPrompt: '你是一个智能助手',
         userChatInput: '帮我查找最新的 AI 新闻并总结',
         isPlanAgent: true,
-        subApps: [/* mock sub apps */]
+        agent_selectedTools: [/* mock sub apps */]
       },
       // ... 其他参数
     });
@@ -1746,7 +1746,7 @@ describe('Agent End-to-End Flow', () => {
         userChatInput: '帮我制定旅行计划',
         isPlanAgent: true,
         isAskAgent: true,
-        subApps: []
+        agent_selectedTools: []
       },
       // ...
     });
@@ -1780,7 +1780,7 @@ describe('Agent Performance', () => {
         model: 'gpt-4',
         userChatInput: '执行一个包含 5 个步骤的复杂任务',
         isPlanAgent: true,
-        subApps: [/* 5 个 sub apps */]
+        agent_selectedTools: [/* 5 个 sub apps */]
       },
       // ...
     });

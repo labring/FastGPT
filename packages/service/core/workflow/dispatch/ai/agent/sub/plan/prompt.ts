@@ -7,12 +7,12 @@ import { parseSystemPrompt } from '../../utils';
 
 const getSubAppPrompt = ({
   getSubAppInfo,
-  subAppList
+  completionTools
 }: {
   getSubAppInfo: GetSubAppInfoFnType;
-  subAppList: ChatCompletionTool[];
+  completionTools: ChatCompletionTool[];
 }) => {
-  return subAppList
+  return completionTools
     .map((app) => {
       const info = getSubAppInfo(app.function.name);
       if (!info) return '';
@@ -24,12 +24,12 @@ const getSubAppPrompt = ({
 
 export const getPlanAgentSystemPrompt = ({
   getSubAppInfo,
-  subAppList
+  completionTools
 }: {
   getSubAppInfo: GetSubAppInfoFnType;
-  subAppList: ChatCompletionTool[];
+  completionTools: ChatCompletionTool[];
 }) => {
-  const subAppPrompt = getSubAppPrompt({ getSubAppInfo, subAppList });
+  const subAppPrompt = getSubAppPrompt({ getSubAppInfo, completionTools });
   return `
 <role>
   你是一个专业的主题计划构建专家，擅长将复杂的主题学习和探索过程转化为结构清晰、可执行的渐进式学习路径。你的规划方法强调：
@@ -271,12 +271,12 @@ export const getUserContent = ({
 
 export const getReplanAgentSystemPrompt = ({
   getSubAppInfo,
-  subAppList
+  completionTools
 }: {
   getSubAppInfo: GetSubAppInfoFnType;
-  subAppList: ChatCompletionTool[];
+  completionTools: ChatCompletionTool[];
 }) => {
-  const subAppPrompt = getSubAppPrompt({ getSubAppInfo, subAppList });
+  const subAppPrompt = getSubAppPrompt({ getSubAppInfo, completionTools });
 
   return `<role>
     你是一个智能流程优化专家，专门负责在已完成的任务步骤基础上，追加生成优化步骤来完善整个流程，确保任务目标的完美达成。

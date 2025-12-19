@@ -37,7 +37,7 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
   referencePlans?: string;
 
   isTopPlanAgent: boolean;
-  subAppList: ChatCompletionTool[];
+  completionTools: ChatCompletionTool[];
   getSubAppInfo: GetSubAppInfoFnType;
 };
 
@@ -53,7 +53,7 @@ export const dispatchPlanAgent = async ({
   historyMessages,
   userInput,
   interactive,
-  subAppList,
+  completionTools,
   getSubAppInfo,
   systemPrompt,
   model,
@@ -69,7 +69,7 @@ export const dispatchPlanAgent = async ({
       role: 'system',
       content: getPlanAgentSystemPrompt({
         getSubAppInfo,
-        subAppList
+        completionTools
       })
     },
     ...historyMessages
@@ -212,7 +212,7 @@ export const dispatchPlanAgent = async ({
 export const dispatchReplanAgent = async ({
   historyMessages,
   interactive,
-  subAppList,
+  completionTools,
   getSubAppInfo,
   userInput,
   plan,
@@ -234,7 +234,7 @@ export const dispatchReplanAgent = async ({
       role: 'system',
       content: getReplanAgentSystemPrompt({
         getSubAppInfo,
-        subAppList
+        completionTools
       })
     },
     ...historyMessages

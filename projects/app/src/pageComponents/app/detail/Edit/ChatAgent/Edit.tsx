@@ -12,8 +12,6 @@ import { type SimpleAppSnapshotType } from '../FormComponent/useSnapshots';
 import { agentForm2AppWorkflow } from './utils';
 import styles from '../FormComponent/styles.module.scss';
 import dynamic from 'next/dynamic';
-import { getAiSkillDetail } from '@/web/core/ai/skill/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const SkillEditForm = dynamic(() => import('./SkillEdit/EditForm'), { ssr: false });
 const SKillChatTest = dynamic(() => import('./SkillEdit/ChatTest'), { ssr: false });
@@ -128,6 +126,7 @@ const Edit = ({
           <>
             <Box overflowY={'auto'} minW={['auto', '580px']} flex={'1'} borderRight={'base'}>
               <SkillEditForm
+                topAgentSelectedTools={appForm.selectedTools}
                 model={appForm.aiSettings.model}
                 fileSelectConfig={appForm.chatConfig.fileSelectConfig}
                 skill={editingSkill}
@@ -137,6 +136,7 @@ const Edit = ({
             </Box>
             <Box flex={'2 0 0'} w={0} mb={3}>
               <SKillChatTest
+                topAgentSelectedTools={appForm.selectedTools}
                 skill={editingSkill}
                 appForm={appForm}
                 onAIGenerate={handleAIGenerate}

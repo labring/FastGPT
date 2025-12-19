@@ -7,7 +7,10 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useState } from 'react';
-import { checkNeedsUserConfiguration, validateToolConfiguration } from '../utils';
+import {
+  getToolConfigStatus,
+  validateToolConfiguration
+} from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   FlowNodeInputTypeEnum,
@@ -176,11 +179,10 @@ export const useSkillManager = ({
           return input;
         })
       };
-      const hasFormInput = checkNeedsUserConfiguration(tool);
 
       onUpdateOrAddTool({
         ...tool,
-        configStatus: hasFormInput ? 'waitingForConfig' : 'active'
+        configStatus: getToolConfigStatus(tool).status
       });
 
       return tool.id;
@@ -275,8 +277,8 @@ export const useSkillManager = ({
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        const hasFormInput = checkNeedsUserConfiguration(tool);
-        if (!hasFormInput) return;
+        const { needConfig } = getToolConfigStatus(tool);
+        if (!needConfig) return;
         setConfigTool(tool);
       } else {
         console.log('onClickSkill', id);
