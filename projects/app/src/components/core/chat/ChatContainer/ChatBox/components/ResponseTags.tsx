@@ -14,6 +14,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -48,18 +49,31 @@ const ResponseTags = ({
 
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
     toolCiteLinks = []
-  } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
+  } = useMemo(() => {
+    if (!isResponseDetail)
+      return {
+        totalQuoteList: [],
+        llmModuleAccount: 0,
+        historyPreviewLength: 0,
+        toolCiteLinks: []
+      };
+    return addStatisticalDataToHistoryItem(historyItem);
+  }, [historyItem, isResponseDetail]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
-  const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
+  const notSharePage = useMemo(
+    () => chatType !== 'share' && isResponseDetail,
+    [chatType, isResponseDetail]
+  );
 
   const {
     isOpen: isOpenWholeModal,
@@ -78,6 +92,7 @@ const ResponseTags = ({
     : true;
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
+    if (!isResponseDetail) return [];
     // Dataset citations
     const datasetItems = Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -116,7 +131,7 @@ const ResponseTags = ({
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal, isResponseDetail]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 

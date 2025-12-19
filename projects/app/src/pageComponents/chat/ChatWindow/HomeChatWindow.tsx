@@ -84,6 +84,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
 
   const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
@@ -216,7 +217,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
             variables,
             responseChatItemId,
             appId,
-            chatId
+            chatId,
+            retainDatasetCite: showNodeStatus
           },
           abortCtrl: controller,
           onMessage: generatingMessage
@@ -264,6 +266,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           appId,
           appName: t('chat:home.chat_app'),
           chatId,
+          retainDatasetCite: showNodeStatus,
           ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,

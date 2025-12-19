@@ -31,9 +31,13 @@ import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
-import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
+import {
+  type OnOpenCiteModalProps,
+  ChatItemContext
+} from '@/web/core/chat/context/chatItemContext';
 import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useCreation } from 'ahooks';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -102,13 +106,13 @@ const RenderText = React.memo(function RenderText({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
   const source = useMemo(() => {
     if (!text) return '';
 
-    // Remove quote references if not showing response detail
-    return text;
-  }, [text]);
+    return removeDatasetCiteText(text, isResponseDetail);
+  }, [text, isResponseDetail]);
 
   const chatAuthData = useCreation(() => {
     return { appId, chatId, chatItemDataId, ...outLinkAuthData };
@@ -329,6 +333,8 @@ const AIResponseBox = ({
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
       <RenderText
@@ -348,7 +354,7 @@ const AIResponseBox = ({
       />
     );
   }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools && isResponseDetail) {
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {

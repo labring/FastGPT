@@ -45,6 +45,7 @@ const AppChatWindow = ({ myApps }: Props) => {
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
+  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -106,7 +107,8 @@ const AppChatWindow = ({ myApps }: Props) => {
           variables,
           responseChatItemId,
           appId,
-          chatId
+          chatId,
+          retainDatasetCite: showNodeStatus
         },
         abortCtrl: controller,
         onMessage: generatingMessage
@@ -122,7 +124,7 @@ const AppChatWindow = ({ myApps }: Props) => {
 
       return { responseText, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
+    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat, showNodeStatus]
   );
 
   return (
