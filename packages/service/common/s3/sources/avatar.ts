@@ -42,7 +42,7 @@ class S3AvatarSource extends S3PublicBucket {
   async deleteAvatar(avatar: string, session?: ClientSession): Promise<void> {
     const key = avatar.slice(this.prefix.length);
     await MongoS3TTL.deleteOne({ minioKey: key, bucketName: this.bucketName }, session);
-    await this.delete(key);
+    await this.removeObject(key);
   }
 
   async refreshAvatar(newAvatar?: string, oldAvatar?: string, session?: ClientSession) {
