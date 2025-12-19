@@ -88,6 +88,9 @@ const TrainingDataSchema = new Schema({
         },
         text: {
           type: String
+        },
+        synId: {
+          type: Number
         }
       }
     ],

@@ -129,7 +129,7 @@ async function handler(
                   },
                   correctedCount: {
                     $sum: {
-                      $cond: [{ $ne: ['$correctionId', null] }, 1, 0]
+                      $cond: [{ $ifNull: ['$correctionId', false] }, 1, 0]
                     }
                   },
                   totalResponseTime: {

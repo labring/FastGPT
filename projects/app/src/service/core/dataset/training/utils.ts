@@ -6,7 +6,7 @@ import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/typ
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { datasetParseQueue } from '../queues/datasetParse';
 import { generateSmall2Big } from '../queues/generateSmall2Big';
-import { generateSynthesis } from './generateSynthesis';
+import { generateSynthesis } from '../queues/generateSynthesis';
 
 export const createDatasetTrainingMongoWatch = () => {
   const changeStream = MongoDatasetTraining.watch();
