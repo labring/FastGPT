@@ -2,7 +2,6 @@ import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { queryExtension, queryExtensionForAssistant } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../../ai/model';
 
 export const datasetSearchQueryExtension = async ({
@@ -36,18 +35,6 @@ export const datasetSearchQueryExtension = async ({
   };
 
   let { queries, rewriteQuery, alreadyExtension } = (() => {
-    // concat query
-    let rewriteQuery =
-      histories.length > 0
-        ? `${histories
-            .map((item) => {
-              return `${item.obj}: ${chatValue2RuntimePrompt(item.value).text}`;
-            })
-            .join('\n')}
-Human: ${query}
-`
-        : query;
-
     /* if query already extension, direct parse */
     try {
       const jsonParse = JSON.parse(query);
@@ -55,13 +42,13 @@ Human: ${query}
       const alreadyExtension = Array.isArray(jsonParse);
       return {
         queries,
-        rewriteQuery: alreadyExtension ? queries.join('\n') : rewriteQuery,
+        rewriteQuery: alreadyExtension ? queries.join('\n') : query,
         alreadyExtension: alreadyExtension
       };
     } catch (error) {
       return {
         queries: [query],
-        rewriteQuery,
+        rewriteQuery: query,
         alreadyExtension: false
       };
     }
