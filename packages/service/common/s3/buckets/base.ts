@@ -1,4 +1,11 @@
-import { Client, type RemoveOptions, type CopyConditions, S3Error } from 'minio';
+import {
+  Client,
+  type RemoveOptions,
+  type CopyConditions,
+  S3Error,
+  InvalidObjectNameError,
+  InvalidXMLError
+} from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -16,6 +23,25 @@ import { addS3DelJob } from '../mq';
 import { type Readable } from 'node:stream';
 import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+
+// Check if the error is a "file not found" type error, which should be treated as success
+export const isFileNotFoundError = (error: any): boolean => {
+  if (error instanceof S3Error) {
+    // Handle various "not found" error codes
+    return (
+      error.code === 'NoSuchKey' ||
+      error.code === 'InvalidObjectName' ||
+      error.message === 'Not Found' ||
+      error.message ===
+        'The request signature we calculated does not match the signature you provided. Check your key and signing method.' ||
+      error.message.includes('Object name contains unsupported characters.')
+    );
+  }
+  if (error instanceof InvalidObjectNameError || error instanceof InvalidXMLError) {
+    return true;
+  }
+  return false;
+};
 
 export class S3BaseBucket {
   private _client: Client;
@@ -94,7 +120,7 @@ export class S3BaseBucket {
         temporary: false
       }
     });
-    await this.delete(from);
+    await this.removeObject(from);
   }
 
   async copy({
@@ -120,24 +146,17 @@ export class S3BaseBucket {
     return this.client.copyObject(bucket, to, `${bucket}/${from}`, options?.copyConditions);
   }
 
-  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
-    try {
-      if (!objectKey) return Promise.resolve();
-
-      // 把连带的 parsed 数据一起删除
-      const fileParsedPrefix = `${path.dirname(objectKey)}/${path.basename(objectKey, path.extname(objectKey))}-parsed`;
-      await this.addDeleteJob({ prefix: fileParsedPrefix });
-
-      return await this.client.removeObject(this.bucketName, objectKey, options);
-    } catch (error) {
-      if (error instanceof S3Error) {
-        if (error.code === 'InvalidObjectName') {
-          addLog.warn(`${this.bucketName} delete object not found: ${objectKey}`, error);
-          return Promise.resolve();
-        }
+  async removeObject(objectKey: string, options?: RemoveOptions): Promise<void> {
+    return this.client.removeObject(this.bucketName, objectKey, options).catch((err) => {
+      if (isFileNotFoundError(err)) {
+        return Promise.resolve();
       }
-      return Promise.reject(error);
-    }
+      addLog.error(`[S3 delete error]`, {
+        message: err.message,
+        data: { code: err.code, key: objectKey }
+      });
+      throw err;
+    });
   }
 
   // 列出文件

@@ -59,6 +59,9 @@ export type AppSchema = {
   inited?: boolean;
   /** @deprecated */
   teamTags: string[];
+
+  // 软删除字段
+  deleteTime?: Date | null;
 };
 
 export type AppListItemType = {
