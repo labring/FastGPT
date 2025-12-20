@@ -120,42 +120,40 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     ]);
 
     // Load system model from local
-    await Promise.all(
-      systemModels.map(async (model) => {
-        const mergeObject = (obj1: any, obj2: any) => {
-          if (!obj1 && !obj2) return undefined;
-          const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
-          const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
-          return { ...formatObj1, ...formatObj2 };
-        };
+    systemModels.forEach((model) => {
+      const mergeObject = (obj1: any, obj2: any) => {
+        if (!obj1 && !obj2) return undefined;
+        const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
+        const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
+        return { ...formatObj1, ...formatObj2 };
+      };
 
-        const dbModel = dbModels.find((item) => item.model === model.model);
-        const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
+      const dbModel = dbModels.find((item) => item.model === model.model);
+      const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
-        const modelData: any = {
-          ...model,
-          ...dbModel?.metadata,
-          provider: provider.id,
-          avatar: provider.avatar,
-          type: dbModel?.metadata?.type || model.type,
-          isCustom: false,
+      const modelData: any = {
+        ...model,
+        ...dbModel?.metadata,
+        provider: provider.id,
+        avatar: provider.avatar,
+        type: dbModel?.metadata?.type || model.type,
+        isCustom: false,
 
-          ...(model.type === ModelTypeEnum.llm && {
-            maxResponse: model.maxTokens || 4000
-          }),
+        ...(model.type === ModelTypeEnum.llm && {
+          maxResponse: model.maxTokens || 4000
+        }),
 
-          ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
-            ? {
-                maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
-                defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
-                fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
-                maxTokens: undefined
-              }
-            : {})
-        };
-        pushModel(modelData);
-      })
-    );
+        ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
+          ? {
+              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
+              defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
+              fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              maxTokens: undefined
+            }
+          : {})
+      };
+      pushModel(modelData);
+    });
 
     // Custom model(Not in system config)
     dbModels.forEach((dbModel) => {
@@ -240,8 +238,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     );
   } catch (error) {
     console.error('Load models error', error);
-    // @ts-ignore
-    global.systemModelList = undefined;
+
     return Promise.reject(error);
   }
 };

@@ -8,6 +8,7 @@ import {
 } from 'bullmq';
 import { addLog } from '../system/log';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   removeOnComplete: {
@@ -25,6 +26,7 @@ export enum QueueNames {
 
   // Delete Queue
   datasetDelete = 'datasetDelete',
+  appDelete = 'appDelete',
   // @deprecated
   websiteSync = 'websiteSync'
 }
@@ -77,15 +79,41 @@ export function getWorker<DataType, ReturnType = void>(
   const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
     connection: newWorkerRedisConnection(),
     ...defaultWorkerOpts,
+    // BullMQ Worker important settings
+    lockDuration: 600000, // 10 minutes for large file operations
+    stalledInterval: 30000, // Check for stalled jobs every 30s
+    maxStalledCount: 3, // Move job to failed after 1 stall (default behavior)
     ...opts
   });
   // default error handler, to avoid unhandled exceptions
-  newWorker.on('error', (error) => {
-    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
+  newWorker.on('error', async (error) => {
+    addLog.error(`MQ Worker error`, {
+      message: error.message,
+      data: { name }
+    });
+    await newWorker.close();
   });
-  newWorker.on('failed', (jobId, error) => {
-    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
+  // Critical: Worker has been closed - remove from pool
+  newWorker.on('closed', async () => {
+    addLog.error(`MQ Worker [${name}] closed unexpectedly`, {
+      data: {
+        name,
+        message: 'Worker will need to be manually restarted'
+      }
+    });
+    try {
+      await delay(1000);
+      workers.delete(name);
+      getWorker(name, processor, opts);
+    } catch (error) {}
   });
+
+  newWorker.on('paused', async () => {
+    addLog.warn(`MQ Worker [${name}] paused`);
+    await delay(1000);
+    newWorker.resume();
+  });
+
   workers.set(name, newWorker);
   return newWorker;
 }

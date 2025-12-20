@@ -14,7 +14,7 @@ import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 
-describe('updateUserFeedback api test', () => {
+describe.sequential('updateUserFeedback api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let appId: string;
   let chatId: string;
