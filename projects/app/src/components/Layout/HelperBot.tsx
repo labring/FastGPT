@@ -28,13 +28,21 @@ const HelperBot = () => {
   const [showChat, setShowChat] = useToggle(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { feConfigs, setNotSufficientModalType } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
   const hasTicketAccess = useMemo(() => {
-    const ticketResponseTime = teamPlanStatus?.standard?.ticketResponseTime;
-    return ticketResponseTime !== undefined && ticketResponseTime > 0;
-  }, [teamPlanStatus?.standard?.ticketResponseTime]);
+    const plan = teamPlanStatus?.standard?.currentSubLevel
+      ? subPlans?.standard?.[teamPlanStatus?.standard?.currentSubLevel]
+      : undefined;
+    const ticketResponseTime =
+      teamPlanStatus?.standard?.ticketResponseTime ?? plan?.ticketResponseTime;
+    return !!ticketResponseTime;
+  }, [
+    subPlans?.standard,
+    teamPlanStatus?.standard?.currentSubLevel,
+    teamPlanStatus?.standard?.ticketResponseTime
+  ]);
 
   const botIframeUrl = feConfigs?.botIframeUrl;
 
