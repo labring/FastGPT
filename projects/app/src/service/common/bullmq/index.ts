@@ -5,7 +5,5 @@ import { initAppDeleteWorker } from '@fastgpt/service/core/app/delete';
 
 export const initBullMQWorkers = () => {
   addLog.info('Init BullMQ Workers...');
-  initS3MQWorker();
-  initDatasetDeleteWorker();
-  initAppDeleteWorker();
+  return Promise.all([initS3MQWorker(), initDatasetDeleteWorker(), initAppDeleteWorker()]);
 };

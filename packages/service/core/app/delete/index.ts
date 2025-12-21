@@ -31,10 +31,10 @@ export const addAppDeleteJob = (data: AppDeleteJobData) => {
     }
   });
 
-  const jobId = `${data.teamId}:${data.appId}`;
+  const jobId = `${String(data.teamId)}:${String(data.appId)}`;
 
   // Use jobId to automatically prevent duplicate deletion tasks (BullMQ feature)
-  return appDeleteQueue.add('deleteapp', data, {
+  return appDeleteQueue.add('delete_app', data, {
     jobId,
     delay: 1000 // Delay 1 second to ensure API response completes
   });

@@ -1,8 +1,7 @@
 import type { Processor } from 'bullmq';
-import type { DatasetDeleteJobData } from './index';
+import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
 import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
 import { addLog } from '../../../common/system/log';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -12,36 +11,53 @@ import { MongoDatasetTraining } from '../training/schema';
 
 export const deleteDatasetsImmediate = async ({
   teamId,
-  datasets
+  datasetIds
 }: {
   teamId: string;
-  datasets: DatasetSchemaType[];
+  datasetIds: string[];
 }) => {
-  const datasetIds = datasets.map((d) => d._id);
-
   // delete training data
-  MongoDatasetTraining.deleteMany({
+  await MongoDatasetTraining.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
   });
 
   // Remove cron job
   await Promise.all(
+    datasetIds.map((id) => {
+      return removeDatasetSyncJobScheduler(id);
+    })
+  );
+};
+// Clear a team datasets
+export const deleteTeamAllDatasets = async (teamId: string) => {
+  const datasets = await MongoDataset.find(
+    {
+      teamId
+    },
+    { _id: 1, parentId: 1 }
+  );
+  await deleteDatasetsImmediate({
+    teamId,
+    datasetIds: datasets.map((d) => d._id)
+  });
+  await Promise.all(
     datasets.map((dataset) => {
-      // 只处理已标记删除的数据集
-      if (datasetIds.includes(dataset._id)) {
-        return removeDatasetSyncJobScheduler(dataset._id);
-      }
+      if (dataset.parentId) return;
+      return addDatasetDeleteJob({
+        teamId,
+        datasetId: dataset._id
+      });
     })
   );
 };
 
-export const deleteDatasets = async ({
+const deleteDatasets = async ({
   teamId,
   datasets
 }: {
   teamId: string;
-  datasets: DatasetSchemaType[];
+  datasets: { _id: string; avatar: string; teamId: string }[];
 }) => {
   const datasetIds = datasets.map((d) => d._id);
 
@@ -81,7 +97,8 @@ export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (jo
     // 1. 查找知识库及其所有子知识库
     const datasets = await findDatasetAndAllChildren({
       teamId,
-      datasetId
+      datasetId,
+      fields: '_id teamId avatar'
     });
 
     if (!datasets || datasets.length === 0) {
