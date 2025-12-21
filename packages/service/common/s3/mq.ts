@@ -43,33 +43,65 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
 export const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
   addLog.debug(`[S3 delete] delete prefix: ${prefix}`);
   let tasks: Promise<any>[] = [];
-  return new Promise<void>(async (resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
+    let timer: NodeJS.Timeout;
     const stream = bucket.listObjectsV2(prefix, true);
+
+    let settled = false;
+    const finish = (error?: any) => {
+      if (settled) return;
+      settled = true;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      stream?.removeAllListeners?.();
+      stream?.destroy?.();
+
+      if (error) {
+        addLog.error(`[S3 delete] delete prefix failed`, error);
+        reject(error);
+      } else {
+        resolve();
+      }
+    };
+
+    // stream 可能会中断，没有触发 end 和 error，导致 promise 不返回，需要增加定时器兜底。
+    timer = setTimeout(() => {
+      addLog.error(`[S3 delete] delete prefix timeout: ${prefix}`);
+      finish('Timeout');
+    }, 60000);
+
     stream.on('data', (file) => {
       if (!file.name) return;
       tasks.push(bucket.removeObject(file.name));
     });
-
     stream.on('end', async () => {
       if (tasks.length === 0) {
-        return resolve();
+        return finish();
       }
 
+      if (timer) {
+        clearTimeout(timer);
+      }
       const results = await Promise.allSettled(tasks);
       const failed = results.some((r) => r.status === 'rejected');
       if (failed) {
-        addLog.error(`[S3 delete] delete prefix failed: ${prefix}`);
-        reject('Some deletes failed');
+        return finish('Some deletes failed');
       }
-      resolve();
+      finish();
     });
-
     stream.on('error', (err) => {
       if (isFileNotFoundError(err)) {
-        return resolve();
+        return finish();
       }
       addLog.error(`[S3 delete] delete prefix: ${prefix} error`, err);
-      reject(err);
+      return finish(err);
+    });
+    stream.on('pause', () => {
+      addLog.warn(`[S3 delete] delete prefix: ${prefix} paused`);
+      stream.resume();
     });
   });
 };
