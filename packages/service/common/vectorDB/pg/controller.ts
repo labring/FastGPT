@@ -176,7 +176,7 @@ class PgClass {
       const time = Date.now() - start;
 
       if (time > 300) {
-        const safeSql = sql.replace(/'\[(?:[^\[\]]|\[[^\[\]]*\])*\]'/g, "'[x]'");
+        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
         addLog.warn(`pg query time: ${time}ms, sql: ${safeSql}`);
       }
 
