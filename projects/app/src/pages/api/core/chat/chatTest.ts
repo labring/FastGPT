@@ -181,6 +181,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* start process */
     const { flowResponses, assistantResponses, system_memories, newVariables, durationSeconds } =
       await dispatchWorkFlow({
+        apiVersion: 'v2',
         res,
         lang: getLocale(req),
         requestOrigin: req.headers.origin,
@@ -209,7 +210,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         stream: true,
         maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
         workflowStreamResponse: workflowResponseWrite,
-        version: 'v2',
         responseDetail: true
       });
 

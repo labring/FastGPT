@@ -19,9 +19,11 @@ const REDIS_BASE_OPTION = {
   // Reconnect on specific errors (Redis master-slave switch, network issues)
   reconnectOnError: (err: any) => {
     const reconnectErrors = ['READONLY', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'];
-    const shouldReconnect = reconnectErrors.some((errType) => err.message.includes(errType));
+    const message = typeof err?.message === 'string' ? err.message : String(err ?? '');
+
+    const shouldReconnect = reconnectErrors.some((errType) => message.includes(errType));
     if (shouldReconnect) {
-      addLog.warn(`Redis reconnecting due to error: ${err.message}`);
+      addLog.warn(`Redis reconnecting due to error: ${message}`);
     }
     return shouldReconnect;
   },
@@ -37,9 +39,6 @@ export const newQueueRedisConnection = () => {
     // Limit retries for queue operations
     maxRetriesPerRequest: 3
   });
-  redis.on('error', (error) => {
-    addLog.error('[Redis Queue connection error]', error);
-  });
   return redis;
 };
 
@@ -48,9 +47,6 @@ export const newWorkerRedisConnection = () => {
     ...REDIS_BASE_OPTION,
     // BullMQ requires maxRetriesPerRequest: null for blocking operations
     maxRetriesPerRequest: null
-  });
-  redis.on('error', (error) => {
-    addLog.error('[Redis Worker connection error]', error);
   });
   return redis;
 };
@@ -65,11 +61,14 @@ export const getGlobalRedisConnection = () => {
     maxRetriesPerRequest: 3
   });
 
+  global.redisClient.on('connect', () => {
+    addLog.info('[Global Redis] connected');
+  });
   global.redisClient.on('error', (error) => {
-    addLog.error('[Redis Global connection error]', error);
+    addLog.error('[Global Redis] connection error', error);
   });
   global.redisClient.on('close', () => {
-    addLog.warn('[Redis Global connection closed]');
+    addLog.warn('[Global Redis] connection closed');
   });
 
   return global.redisClient;

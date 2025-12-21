@@ -24,6 +24,7 @@ import type {
   UpdateFavouriteAppParamsType
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
+import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/api';
 
 /**
  * 获取初始化聊天内容
@@ -76,3 +77,6 @@ export const updateFavouriteAppTags = (data: { id: string; tags: string[] }[]) =
 
 export const deleteFavouriteApp = (data: { id: string }) =>
   DELETE<null>('/proApi/core/chat/setting/favourite/delete', data);
+
+/* Chat controller */
+export const postStopV2Chat = (data: StopV2ChatParams) => POST('/v2/chat/stop', data);

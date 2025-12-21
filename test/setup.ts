@@ -49,8 +49,6 @@ beforeEach(async () => {
 
   onTestFinished(async () => {
     clean();
-    // Wait for any ongoing transactions and operations to complete
-    await delay(500);
 
     // Ensure all sessions are closed before dropping database
     try {
@@ -62,9 +60,6 @@ beforeEach(async () => {
       // Ignore errors during cleanup
       console.warn('Error during test cleanup:', error);
     }
-
-    // Additional delay to prevent lock contention between tests
-    await delay(100);
   });
 });
 

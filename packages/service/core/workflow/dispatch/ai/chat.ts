@@ -64,6 +64,7 @@ export type ChatResponse = DispatchNodeResultType<
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
+    checkIsStopping,
     requestOrigin,
     stream = false,
     retainDatasetCite = true,
@@ -201,7 +202,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         requestOrigin
       },
       userKey: externalProvider.openaiAccount,
-      isAborted: () => res?.closed,
+      isAborted: checkIsStopping,
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
         workflowStreamResponse?.({

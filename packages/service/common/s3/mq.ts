@@ -40,7 +40,7 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
   await queue.add('delete-s3-files', data, { jobId, ...jobOption });
 };
 
-const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
+export const prefixDel = async (bucket: S3BaseBucket, prefix: string) => {
   addLog.debug(`[S3 delete] delete prefix: ${prefix}`);
   let tasks: Promise<any>[] = [];
   return new Promise<void>(async (resolve, reject) => {
@@ -103,7 +103,7 @@ export const startS3DelWorker = async () => {
       }
     },
     {
-      concurrency: 3
+      concurrency: 6
     }
   );
 };
