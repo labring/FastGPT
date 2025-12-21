@@ -37,7 +37,6 @@ const HelperBot = () => {
       : undefined;
     const ticketResponseTime =
       teamPlanStatus?.standard?.ticketResponseTime ?? plan?.ticketResponseTime;
-    console.log(ticketResponseTime, 2222);
     return !!ticketResponseTime;
   }, [
     subPlans?.standard,
