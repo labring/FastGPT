@@ -45,6 +45,7 @@ import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -717,19 +718,34 @@ const ButtonStyles = {
   fontSize: 'sm'
 };
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const { runAsync: onFeedback } = useRequest2(getWorkorderURL, {
-    manual: true,
-    onSuccess(data) {
+  const { runAsync: onFeedback } = useRequest2(
+    async () => {
+      const plan = teamPlanStatus?.standard?.currentSubLevel
+        ? subPlans?.standard?.[teamPlanStatus?.standard?.currentSubLevel]
+        : undefined;
+
+      const ticketResponseTime =
+        teamPlanStatus?.standard?.ticketResponseTime ?? plan?.ticketResponseTime;
+      const hasTicketAccess = !!ticketResponseTime;
+      if (!hasTicketAccess) {
+        setNotSufficientModalType(TeamErrEnum.ticketNotAvailable);
+        return;
+      }
+
+      const data = await getWorkorderURL();
       if (data) {
         window.open(data.redirectUrl);
       }
+    },
+    {
+      manual: true
     }
-  });
+  );
 
   return (
     <Box>

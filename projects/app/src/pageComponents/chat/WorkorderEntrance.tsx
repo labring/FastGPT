@@ -1,5 +1,4 @@
 import { Button } from '@chakra-ui/react';
-import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 
