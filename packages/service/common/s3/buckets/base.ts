@@ -34,6 +34,7 @@ export const isFileNotFoundError = (error: any): boolean => {
       error.message === 'Not Found' ||
       error.message ===
         'The request signature we calculated does not match the signature you provided. Check your key and signing method.' ||
+      error.message.includes('Resource name contains bad components') ||
       error.message.includes('Object name contains unsupported characters.')
     );
   }
