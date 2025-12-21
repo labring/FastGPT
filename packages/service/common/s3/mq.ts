@@ -103,7 +103,7 @@ export const startS3DelWorker = async () => {
       }
     },
     {
-      concurrency: 3
+      concurrency: 6
     }
   );
 };

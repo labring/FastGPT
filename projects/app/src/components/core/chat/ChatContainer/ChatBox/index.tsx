@@ -432,10 +432,10 @@ const ChatBox = ({
   }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useMemoizedFn((signal: string = 'stop') => {
-    chatController.current?.abort(signal);
-    questionGuideController.current?.abort(signal);
-    pluginController.current?.abort(signal);
+  const abortRequest = useMemoizedFn((reason: string = 'stop') => {
+    chatController.current?.abort(new Error(reason));
+    questionGuideController.current?.abort(new Error(reason));
+    pluginController.current?.abort(new Error(reason));
   });
 
   /**
@@ -463,8 +463,7 @@ const ChatBox = ({
           }
 
           // Abort the previous request
-          abortRequest();
-          questionGuideController.current?.abort('stop');
+          questionGuideController.current?.abort(new Error('stop'));
 
           text = text.trim();
 
@@ -605,16 +604,18 @@ const ChatBox = ({
               newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
 
-                // Check node response error
                 const responseData = mergeChatResponseData(item.responseData || []);
-                const err =
-                  responseData[responseData.length - 1]?.error ||
-                  responseData[responseData.length - 1]?.errorText;
-                if (err) {
-                  toast({
-                    title: t(getErrText(err)),
-                    status: 'warning'
-                  });
+                // Check node response error
+                if (!abortSignal?.signal?.aborted) {
+                  const err =
+                    responseData[responseData.length - 1]?.error ||
+                    responseData[responseData.length - 1]?.errorText;
+                  if (err) {
+                    toast({
+                      title: t(getErrText(err)),
+                      status: 'warning'
+                    });
+                  }
                 }
 
                 return {
@@ -1184,7 +1185,7 @@ const ChatBox = ({
             ) : (
               <ChatInput
                 onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
+                onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
@@ -1206,7 +1207,7 @@ const ChatBox = ({
 
               <ChatInput
                 onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
+                onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}

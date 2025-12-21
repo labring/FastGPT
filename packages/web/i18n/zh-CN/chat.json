@@ -17,7 +17,7 @@
   "clear_input_value": "清空输入",
   "click_contextual_preview": "点击查看上下文预览",
   "click_to_add_url": "输入文件链接",
-  "completion_finish_close": "连接断开",
+  "completion_finish_close": "请求关闭",
   "completion_finish_content_filter": "触发安全风控",
   "completion_finish_function_call": "函数调用",
   "completion_finish_length": "超出回复限制",

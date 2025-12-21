@@ -278,6 +278,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus
     });
 
+    const saveChatId = chatId || getNanoid(24);
+
     /* start flow controller */
     const {
       flowResponses,
@@ -289,6 +291,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
+          apiVersion: 'v2',
           res,
           lang: getLocale(req),
           requestOrigin: req.headers.origin,
@@ -304,7 +307,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
           uid: String(outLinkUserId || tmbId),
 
-          chatId,
+          chatId: saveChatId,
           responseChatItemId,
           runtimeNodes,
           runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
@@ -317,7 +320,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           retainDatasetCite,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
-          version: 'v2',
           responseAllData,
           responseDetail
         });
@@ -354,7 +356,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories
     };
 
-    const saveChatId = chatId || getNanoid(24);
     const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,

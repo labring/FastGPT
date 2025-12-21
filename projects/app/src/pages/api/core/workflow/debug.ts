@@ -11,7 +11,7 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
-import { clone } from 'lodash';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 async function handler(
   req: NextApiRequest,
@@ -73,6 +73,7 @@ async function handler(
       tmbId: app.tmbId
     },
     runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+    chatId: getNanoid(),
     runtimeNodes: nodes,
     runtimeEdges: edges,
     defaultSkipNodeQueue: skipNodeQueue,
