@@ -21,7 +21,7 @@ export const getRuntimeStatusKey = (params: WorkflowStatusParams): string => {
 export const setAgentRuntimeStop = async (params: WorkflowStatusParams): Promise<void> => {
   const redis = getGlobalRedisConnection();
   const key = getRuntimeStatusKey(params);
-  await redis.setex(key, TTL, 1);
+  await redis.set(key, 1, 'EX', TTL);
 };
 
 // 删除任务状态
