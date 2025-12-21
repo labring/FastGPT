@@ -5,7 +5,12 @@ import { ChatFeedbackPath } from './feedback/index';
 import { ChatHistoryPath } from './history/index';
 import { z } from 'zod';
 import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
-import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from './api';
+import {
+  PresignChatFileGetUrlSchema,
+  PresignChatFilePostUrlSchema,
+  StopV2ChatSchema,
+  StopV2ChatResponseSchema
+} from './api';
 import { TagsMap } from '../../tag';
 
 export const ChatPath: OpenAPIPath = {
@@ -14,6 +19,31 @@ export const ChatPath: OpenAPIPath = {
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
 
+  '/v2/chat/stop': {
+    post: {
+      summary: '停止 Agent 运行',
+      description: `优雅停止正在运行的 Agent, 会尝试等待当前节点结束后返回，最长 5s，超过 5s 仍未结束，则会返回成功。
+LLM 节点，流输出时会同时被终止，但 HTTP 请求节点这种可能长时间运行的，不会被终止。`,
+      tags: [TagsMap.chatPage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: StopV2ChatSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功停止工作流',
+          content: {
+            'application/json': {
+              schema: StopV2ChatResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/chat/presignChatFilePostUrl': {
     post: {
       summary: '获取文件上传 URL',
