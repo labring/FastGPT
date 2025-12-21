@@ -783,16 +783,14 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Box>
           </Flex>
         )}
-        {feConfigs?.show_workorder &&
-          teamPlanStatus &&
-          teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free && (
-            <Flex onClick={onFeedback} {...ButtonStyles}>
-              <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
-              <Box ml={2} flex={1}>
-                {t('common:question_feedback')}
-              </Box>
-            </Flex>
-          )}
+        {feConfigs?.show_workorder && (
+          <Flex onClick={onFeedback} {...ButtonStyles}>
+            <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
+            <Box ml={2} flex={1}>
+              {t('common:question_feedback')}
+            </Box>
+          </Flex>
+        )}
       </Grid>
     </Box>
   );
