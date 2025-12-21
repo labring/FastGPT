@@ -31,11 +31,11 @@ export const addDatasetDeleteJob = (data: DatasetDeleteJobData) => {
     }
   });
 
-  const jobId = `${data.teamId}:${data.datasetId}`;
+  const jobId = `${String(data.teamId)}:${String(data.datasetId)}`;
 
   // 使用去重机制，避免重复删除
-  return datasetDeleteQueue.add(jobId, data, {
-    deduplication: { id: jobId },
+  return datasetDeleteQueue.add('delete_dataset', data, {
+    jobId,
     delay: 1000 // 延迟1秒执行，确保API响应完成
   });
 };

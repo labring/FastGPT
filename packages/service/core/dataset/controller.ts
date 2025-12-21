@@ -68,7 +68,7 @@ export async function delDatasetRelevantData({
   datasets,
   session
 }: {
-  datasets: DatasetSchemaType[];
+  datasets: { _id: string; teamId: string }[];
   session: ClientSession;
 }) {
   if (!datasets.length) return;
@@ -111,24 +111,6 @@ export async function delDatasetRelevantData({
     }).maxTimeMS(300000);
   }
 
-  await delCollectionRelatedSource({ collections });
-  // Delete vector data
-  await deleteDatasetDataVector({ teamId, datasetIds });
-
-  for (const datasetId of datasetIds) {
-    // Delete dataset_data_texts in batches by datasetId
-    await MongoDatasetDataText.deleteMany({
-      teamId,
-      datasetId
-    }).maxTimeMS(300000); // Reduce timeout for single batch
-    // Delete dataset_datas in batches by datasetId
-    await MongoDatasetData.deleteMany({
-      teamId,
-      datasetId
-    }).maxTimeMS(300000);
-  }
-
-  // Delete source: 兼容旧版的图片
   await delCollectionRelatedSource({ collections });
   // Delete vector data
   await deleteDatasetDataVector({ teamId, datasetIds });

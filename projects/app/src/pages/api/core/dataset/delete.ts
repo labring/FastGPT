@@ -32,14 +32,16 @@ async function handler(req: NextApiRequest) {
 
   const deleteDatasets = await findDatasetAndAllChildren({
     teamId,
-    datasetId
+    datasetId,
+    fields: '_id'
   });
+  const datasetIds = deleteDatasets.map((d) => d._id);
 
   await mongoSessionRun(async (session) => {
     // 1. Mark as deleted
     await MongoDataset.updateMany(
       {
-        _id: deleteDatasets.map((d) => d._id),
+        _id: datasetIds,
         teamId
       },
       {
@@ -52,7 +54,7 @@ async function handler(req: NextApiRequest) {
 
     await deleteDatasetsImmediate({
       teamId,
-      datasets: deleteDatasets
+      datasetIds
     });
 
     // 2. Add to delete queue
