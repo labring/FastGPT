@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItem from './ChatItem';
@@ -13,9 +13,8 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import type { SubmitChatCorrectionParams } from '@fastgpt/global/core/chat/correction/api';
+import type { SubmitChatCorrectionResponse } from '@fastgpt/global/core/chat/correction/api';
 import type { CorrectionDataType } from '@fastgpt/global/core/chat/correction/type';
-import { submitChatCorrection } from '@/web/core/app/api/log';
 import { formatChatValue2InputType } from '../../utils';
 
 const CorrectionModal = dynamic(
@@ -52,14 +51,16 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
     isOpen: boolean;
     dataId: string;
     defaultCorrectionData?: Partial<CorrectionDataType>;
+    correctionId?: string;
   }>({
     isOpen: false,
-    dataId: ''
+    dataId: '',
+    correctionId: undefined
   });
 
   // 获取问题和答案的函数
   const getQuestionAndAnswer = useCallback(
-    (currentItem: ChatSiteItemType) => {
+    (currentItem: ChatItemType) => {
       const currentIndex = chatRecords.findIndex((item) => item.dataId === currentItem.dataId);
 
       if (currentItem.obj === ChatRoleEnum.AI && currentIndex > 0) {
@@ -80,7 +81,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
   // 处理纠错按钮点击
   const handleCorrectError = useCallback(
     (dataId: string) => {
-      const currentItem = chatRecords.find((item) => item.dataId === dataId);
+      const currentItem = chatRecords.find((item) => item.dataId === dataId) as ChatItemType;
       if (!currentItem) return;
 
       const { question, rawAnswer } = getQuestionAndAnswer(currentItem);
@@ -92,7 +93,8 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
           question,
           rawAnswer,
           correctedAnswer: rawAnswer
-        }
+        },
+        correctionId: currentItem.correctionId
       });
     },
     [chatRecords, getQuestionAndAnswer]
@@ -102,30 +104,30 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
   const handleCloseCorrectionModal = useCallback(() => {
     setCorrectionModalData({
       isOpen: false,
-      dataId: ''
+      dataId: '',
+      correctionId: undefined
     });
   }, []);
 
   // 提交纠错
   const handleSubmitCorrection = useCallback(
-    async (params: SubmitChatCorrectionParams) => {
-      const data = await submitChatCorrection(params);
-      handleCloseCorrectionModal();
-
+    async (response: SubmitChatCorrectionResponse) => {
       // 更新对应的聊天记录项，标记为已纠错
       setChatRecords((prevRecords) =>
         prevRecords.map((record) => {
-          if (record.dataId === params.dataId) {
+          if (record.dataId === correctionModalData.dataId) {
             return {
               ...record,
-              correctionId: data.correctionId
+              correctionId: response.correctionId
             };
           }
           return record;
         })
       );
+      // 关闭弹窗
+      handleCloseCorrectionModal();
     },
-    [handleCloseCorrectionModal, setChatRecords]
+    [correctionModalData.dataId, handleCloseCorrectionModal, setChatRecords]
   );
 
   return (
@@ -219,6 +221,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
           dataId={correctionModalData.dataId}
           defaultCorrectionData={correctionModalData.defaultCorrectionData}
           onSubmit={handleSubmitCorrection}
+          correctionId={correctionModalData.correctionId}
         />
       )}
     </ScrollData>

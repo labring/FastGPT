@@ -17,11 +17,19 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import type { SubmitChatCorrectionParams } from '@fastgpt/global/core/chat/correction/api';
 import type {
+  SubmitChatCorrectionResponse,
+  ListChatCorrectionParams
+} from '@fastgpt/global/core/chat/correction/api';
+import type {
   CorrectedQuoteItem,
   CorrectionDataType
 } from '@fastgpt/global/core/chat/correction/type';
 import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
-import { getAppDatasetCollection, submitChatCorrection } from '@/web/core/app/api/log';
+import {
+  getAppDatasetCollection,
+  submitChatCorrection,
+  getChatCorrectionList
+} from '@/web/core/app/api/log';
 import KnowledgeSelect from './KnowledgeSelect';
 
 /**
@@ -34,7 +42,8 @@ interface CorrectionModalProps {
   chatId: string;
   dataId: string;
   defaultCorrectionData?: Partial<CorrectionDataType>;
-  onSubmit: (params: SubmitChatCorrectionParams) => Promise<void>;
+  onSubmit: (response: SubmitChatCorrectionResponse) => Promise<void>;
+  correctionId?: string;
 }
 
 /**
@@ -48,7 +57,8 @@ const CorrectionModal = ({
   chatId,
   dataId,
   defaultCorrectionData,
-  onSubmit
+  onSubmit,
+  correctionId
 }: CorrectionModalProps) => {
   const { t } = useTranslation();
 
@@ -65,6 +75,12 @@ const CorrectionModal = ({
     defaultCorrectionData?.correctedQuoteList ?? []
   );
   const [datasetIds, setDatasetIds] = useState<string[]>([]);
+  const [currentCorrectionData, setCurrentCorrectionData] = useState<Partial<CorrectionDataType>>(
+    defaultCorrectionData ?? {}
+  );
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [datasetsLoading, setDatasetsLoading] = useState(false);
+  const [correctionDataLoading, setCorrectionDataLoading] = useState(false);
 
   // 使用 useRequest2 获取应用数据集集合
   const { runAsync: fetchAppDatasets } = useRequest2(
@@ -80,14 +96,79 @@ const CorrectionModal = ({
     }
   );
 
+  // 使用 useRequest2 获取已存在的纠错数据
+  const { runAsync: fetchCorrectionData } = useRequest2(
+    async (correctionId: string) => {
+      const params: ListChatCorrectionParams = {
+        appId,
+        chatId,
+        dataId,
+        correctionId,
+        pageSize: 1,
+        pageNum: 1
+      };
+      const response = await getChatCorrectionList(params);
+      if (response.list.length > 0) {
+        const correctionItem = response.list[0];
+        setCurrentCorrectionData(correctionItem.correctionData);
+        // 更新表单状态
+        setQuestion(correctionItem.correctionData.question);
+        setCorrectionMode(correctionItem.correctionData.correctionMode);
+        if (correctionItem.correctionData.correctedAnswer) {
+          setCorrectedAnswer(correctionItem.correctionData.correctedAnswer);
+        }
+        if (correctionItem.correctionData.correctedQuoteList) {
+          setCorrectedQuoteList(correctionItem.correctionData.correctedQuoteList);
+        }
+      }
+      return response;
+    },
+    {
+      manual: true,
+      errorToast: t('app:fetch_correction_data_failed')
+    }
+  );
+
   // 当弹窗打开时获取数据集
   useEffect(() => {
     if (isOpen && appId) {
-      fetchAppDatasets(appId).catch(() => {
-        setDatasetIds([]);
-      });
+      setDatasetsLoading(true);
+      fetchAppDatasets(appId)
+        .catch(() => {
+          setDatasetIds([]);
+        })
+        .finally(() => {
+          setDatasetsLoading(false);
+        });
     }
   }, [isOpen, appId, fetchAppDatasets]);
+
+  // 当弹窗打开且 correctionId 存在时，获取纠错数据
+  useEffect(() => {
+    if (isOpen && correctionId && appId && chatId && dataId) {
+      setCorrectionDataLoading(true);
+      fetchCorrectionData(correctionId)
+        .catch(() => {
+          // 如果获取失败，使用默认数据
+          setCurrentCorrectionData(defaultCorrectionData ?? {});
+        })
+        .finally(() => {
+          setCorrectionDataLoading(false);
+        });
+    }
+  }, [isOpen, correctionId, appId, chatId, dataId, fetchCorrectionData, defaultCorrectionData]);
+
+  // 综合管理初始化状态
+  useEffect(() => {
+    if (isOpen) {
+      setIsInitializing(datasetsLoading || correctionDataLoading);
+    } else {
+      // 弹窗关闭时重置所有状态
+      setIsInitializing(false);
+      setDatasetsLoading(false);
+      setCorrectionDataLoading(false);
+    }
+  }, [isOpen, datasetsLoading, correctionDataLoading]);
 
   // 处理取消
   const handleCancel = useCallback(() => {
@@ -122,10 +203,10 @@ const CorrectionModal = ({
       };
 
       // 调用 submitChatCorrection 接口
-      await submitChatCorrection(params);
+      const response = await submitChatCorrection(params);
 
-      // 接口成功后，调用外部传入的回调
-      await onSubmit(params);
+      // 接口成功后，调用外部传入的回调，传入响应结果
+      await onSubmit(response);
     },
     {
       manual: true,
@@ -156,6 +237,7 @@ const CorrectionModal = ({
       maxW="800px"
       w="90vw"
       closeOnOverlayClick={false}
+      isLoading={isInitializing}
     >
       <VStack spacing={4} align="stretch" px={6} py={4}>
         {/* 问题输入框 */}
