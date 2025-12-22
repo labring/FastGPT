@@ -29,7 +29,7 @@ ${tool}
   });
   const installedTools = tools
     .filter((tool) => {
-      return tool.installed && !tool.isFolder;
+      return tool.installed && !tool.parentId;
     })
     .map((tool) => {
       const toolId = tool.id;

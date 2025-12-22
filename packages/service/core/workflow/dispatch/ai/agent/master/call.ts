@@ -105,10 +105,10 @@ export const stepCall = async ({
     ],
     reserveId: false
   });
-  // console.log(
-  //   'Step call requestMessages',
-  //   JSON.stringify({ requestMessages, completionTools }, null, 2)
-  // );
+  console.log(
+    'Step call requestMessages',
+    JSON.stringify({ requestMessages, completionTools }, null, 2)
+  );
 
   const { assistantMessages, inputTokens, outputTokens, subAppUsages, interactiveResponse } =
     await runAgentCall({

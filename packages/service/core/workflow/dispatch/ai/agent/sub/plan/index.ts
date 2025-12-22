@@ -77,9 +77,9 @@ export const dispatchPlanAgent = async ({
 
   // 分类：query/user select/user form
   const lastMessages = requestMessages[requestMessages.length - 1];
-  console.log('--------------PLAN MODE--------------');
-  console.log('user input:', userInput);
-  console.log('systemPrompt:', systemPrompt);
+  // console.log('--------------PLAN MODE--------------');
+  // console.log('user input:', userInput);
+  // console.log('systemPrompt:', systemPrompt);
 
   // 上一轮是 Ask 模式，进行工具调用拼接
   if (
