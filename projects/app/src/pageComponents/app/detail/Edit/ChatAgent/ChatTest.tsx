@@ -1,11 +1,14 @@
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  AppFormEditFormType,
+  SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
@@ -20,10 +23,10 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import type { Form2WorkflowFnType } from '../FormComponent/type';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import HelperBot from '@/components/core/chat/HelperBot';
+import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { loadGeneratedTools } from './utils';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -36,6 +39,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('helper');
+  const HelperBotRef = useRef<HelperBotRefType>(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -126,7 +130,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               aria-label={'delete'}
               onClick={(e) => {
                 e.stopPropagation();
-                restartChat();
+                if (activeTab === 'helper') {
+                  HelperBotRef.current?.restartChat();
+                } else {
+                  restartChat();
+                }
               }}
             />
           </MyTooltip>
@@ -134,27 +142,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         <Box flex={1}>
           {activeTab === 'helper' && (
             <HelperBot
+              ChatBoxRef={HelperBotRef}
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
-                const targetToolIds = formData.tools || [];
-                const newTools: FlowNodeTemplateType[] = [];
-                const failedToolIds: string[] = [];
-
-                const results = await Promise.all(
-                  targetToolIds.map((toolId: string) =>
-                    getToolPreviewNode({ appId: toolId })
-                      .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
-                      .catch((error) => ({ status: 'rejected' as const, toolId, error }))
-                  )
-                );
-
-                results.forEach((result) => {
-                  if (result.status === 'fulfilled') {
-                    newTools.push(result.tool);
-                  } else if (result.status === 'rejected') {
-                    failedToolIds.push(result.toolId);
-                  }
+                const newTools = await loadGeneratedTools({
+                  newToolIds: formData.tools || [],
+                  existsTools: appForm.selectedTools,
+                  fileSelectConfig: appForm.chatConfig.fileSelectConfig
                 });
 
                 setAppForm((prev) => {

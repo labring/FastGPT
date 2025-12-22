@@ -5,72 +5,10 @@ import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/gl
 import { getLLMModel } from '../../../../ai/model';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { agentSkillToToolRuntime } from './sub/tool/utils';
 import type { SubAppRuntimeType } from './type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSubapps } from './utils';
 import { addLog } from '../../../../../common/system/log';
-
-/**
- * 构建 Skill Tools 数组
- * 参考 MatcherService.ts 的 match 函数
- */
-export const buildSkillTools = (skills: AiSkillSchemaType[]) => {
-  const skillCompletionTools: ChatCompletionTool[] = [];
-  const skillsMap: Record<string, AiSkillSchemaType> = {};
-
-  for (const skill of skills) {
-    // 生成唯一函数名
-    const functionName = getNanoid(6);
-    skill.name = functionName;
-    skillsMap[functionName] = skill;
-
-    if (skill.description) {
-      skillCompletionTools.push({
-        type: 'function',
-        function: {
-          name: functionName,
-          description: skill.description,
-          parameters: {
-            type: 'object',
-            properties: {},
-            required: []
-          }
-        }
-      });
-    }
-  }
-
-  return { skillCompletionTools, skillsMap };
-};
-
-/**
- * 格式化 Skill 为 SystemPrompt
- * 将匹配到的 skill 格式化为 XML 提示词
- */
-export const formatSkillAsSystemPrompt = (skill: AiSkillSchemaType): string => {
-  const lines = ['<reference_skill>', `**参考技能**: ${skill.name}`, ''];
-
-  if (skill.description) {
-    lines.push(`**描述**: ${skill.description}`, '');
-  }
-
-  if (skill.steps && skill.steps.trim()) {
-    lines.push(`**步骤信息**:`, skill.steps, '');
-  }
-
-  lines.push(
-    '**说明**:',
-    '1. 以上是用户之前保存的类似任务的执行框架',
-    '2. 请参考该技能的宏观阶段划分和资源方向',
-    '3. 根据当前用户的具体需求，调整和优化框架',
-    '4. 保持阶段的逻辑性和方向的清晰性',
-    '',
-    '</reference_skill>'
-  );
-
-  return lines.join('\n');
-};
 
 /**
  * 主匹配函数
@@ -107,6 +45,67 @@ export const matchSkillForPlan = async ({
       subAppsMap: Map<string, SubAppRuntimeType>;
     }
 > => {
+  /**
+   * 构建 Skill Tools 数组
+   * 参考 MatcherService.ts 的 match 函数
+   */
+  const buildSkillTools = (skills: AiSkillSchemaType[]) => {
+    const skillCompletionTools: ChatCompletionTool[] = [];
+    const skillsMap: Record<string, AiSkillSchemaType> = {};
+
+    for (const skill of skills) {
+      // 生成唯一函数名
+      const functionName = getNanoid(6);
+      skill.name = functionName;
+      skillsMap[functionName] = skill;
+
+      if (skill.description) {
+        skillCompletionTools.push({
+          type: 'function',
+          function: {
+            name: functionName,
+            description: skill.description,
+            parameters: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
+          }
+        });
+      }
+    }
+
+    return { skillCompletionTools, skillsMap };
+  };
+
+  /**
+   * 格式化 Skill 为 SystemPrompt
+   * 将匹配到的 skill 格式化为 XML 提示词
+   */
+  const formatSkillAsSystemPrompt = (skill: AiSkillSchemaType): string => {
+    const lines = ['<reference_skill>', `**参考技能**: ${skill.name}`, ''];
+
+    if (skill.description) {
+      lines.push(`**描述**: ${skill.description}`, '');
+    }
+
+    if (skill.steps && skill.steps.trim()) {
+      lines.push(`**步骤信息**:`, skill.steps, '');
+    }
+
+    lines.push(
+      '**说明**:',
+      '1. 以上是用户之前保存的类似任务的执行框架',
+      '2. 请参考该技能的宏观阶段划分和资源方向',
+      '3. 根据当前用户的具体需求，调整和优化框架',
+      '4. 保持阶段的逻辑性和方向的清晰性',
+      '',
+      '</reference_skill>'
+    );
+
+    return lines.join('\n');
+  };
+
   addLog.debug('matchSkillForPlan start');
   const modelData = getLLMModel(model);
 
@@ -223,4 +222,27 @@ export const matchSkillForPlan = async ({
       reason: getErrText(error)
     };
   }
+};
+
+export const matchSkillForId = async ({
+  id,
+  tmbId,
+  lang
+}: {
+  id: string;
+  tmbId: string;
+  lang?: localeType;
+}) => {
+  const skill = await MongoAiSkill.findById(id).lean();
+  if (!skill || !skill.tools) return;
+  const { completionTools: skillTools, subAppsMap: skillSubAppsMap } = await getSubapps({
+    tools: skill.tools,
+    tmbId,
+    lang
+  });
+
+  return {
+    skillTools,
+    skillSubAppsMap
+  };
 };

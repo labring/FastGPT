@@ -9,7 +9,6 @@ import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { getLLMModel } from '../../../../ai/model';
 import { getNodeErrResponse, getHistories } from '../../utils';
 import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -23,16 +22,14 @@ import { systemSubInfo } from './sub/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { dispatchPlanAgent, dispatchReplanAgent } from './sub/plan';
 
-import { getFileInputPrompt, readFileTool } from './sub/file/utils';
+import { getFileInputPrompt } from './sub/file/utils';
 import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { AgentPlanType } from './sub/plan/type';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { stepCall } from './master/call';
 import { addLog } from '../../../../../common/system/log';
-import { matchSkillForPlan } from './skillMatcher';
+import { matchSkillForId, matchSkillForPlan } from './skillMatcher';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import type { GetSubAppInfoFnType, SubAppRuntimeType } from './type';
-import { agentSkillToToolRuntime } from './sub/tool/utils';
+import type { SubAppRuntimeType } from './type';
 import { getSubapps } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -84,7 +81,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       isAskAgent = true
     }
   } = props;
-  const agentModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
   const historiesMessages = chats2GPTMessages({
     messages: chatHistories,
@@ -135,22 +131,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // Get sub apps
-    let { completionTools, subAppsMap } = await getSubapps({
+    let { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps({
       tools: selectedTools,
       tmbId: runningAppInfo.tmbId,
       lang,
       filesMap
     });
     const getSubAppInfo = (id: string) => {
-      const toolNode = subAppsMap.get(id) || systemSubInfo[id];
+      const toolNode = agentSubAppsMap.get(id) || systemSubInfo[id];
       return {
         name: toolNode?.name || '',
         avatar: toolNode?.avatar || '',
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
-    console.log(JSON.stringify(completionTools, null, 2), 'topAgent completionTools');
-    console.log(subAppsMap, 'topAgent subAppsMap');
+    // console.log(JSON.stringify(completionTools, null, 2), 'topAgent completionTools');
+    // console.log(subAppsMap, 'topAgent subAppsMap');
 
     /* ===== AI Start ===== */
 
@@ -175,7 +171,62 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     if (taskIsComplexity) {
       /* ===== Plan Agent ===== */
-      let currentSkillId: string | undefined = matchedSkillId;
+      const mergeSkill = ({
+        skillCompletionTools,
+        skillSubAppsMap
+      }: {
+        skillCompletionTools: ChatCompletionTool[];
+        skillSubAppsMap: Map<string, SubAppRuntimeType>;
+      }) => {
+        // 将 skill 的 completionTools 和 subAppsMap 合并到 topAgent，如果重复，则以 skill 的为准。
+        agentCompletionTools = skillCompletionTools.concat(
+          agentCompletionTools.filter(
+            (item) =>
+              !skillCompletionTools.some((item2) => item2.function.name === item.function.name)
+          )
+        );
+        [...skillSubAppsMap].forEach(([id, item]) => {
+          agentSubAppsMap.set(id, item);
+        });
+        console.log(JSON.stringify(agentCompletionTools, null, 2), 'merge completionTools');
+        console.log(agentSubAppsMap, 'merge subAppsMap');
+      };
+      const skillMatch = async () => {
+        const matchResult = await matchSkillForPlan({
+          teamId: runningUserInfo.teamId,
+          tmbId: runningAppInfo.tmbId,
+          appId: runningAppInfo.id,
+          userInput: lastInteractive ? interactiveInput : userChatInput,
+          messages: historiesMessages, // 传入完整的对话历史
+          model,
+          lang
+        });
+
+        if (matchResult.matched) {
+          matchedSkillId = String(matchResult.skill._id);
+          mergeSkill({
+            skillCompletionTools: matchResult.completionTools,
+            skillSubAppsMap: matchResult.subAppsMap
+          });
+
+          // 可选: 推送匹配信息给前端
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: `📋 找到参考技能: ${matchResult.systemPrompt}`
+            })
+          });
+
+          return {
+            skillPrompt: matchResult.systemPrompt
+          };
+        }
+        addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
+        return {
+          skillPrompt: ''
+        };
+      };
+
       const planCallFn = async () => {
         // 点了确认。此时肯定有 agentPlans
         if (
@@ -185,58 +236,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         ) {
           planHistoryMessages = undefined;
         } else {
-          // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
-          let skillSystemPrompt: string | undefined;
-          // match skill
-          const matchResult = await matchSkillForPlan({
-            teamId: runningUserInfo.teamId,
-            tmbId: runningAppInfo.tmbId,
-            appId: runningAppInfo.id,
-            userInput: lastInteractive ? interactiveInput : userChatInput,
-            messages: historiesMessages, // 传入完整的对话历史
-            model,
-            lang
-          });
-
-          if (matchResult.matched) {
-            skillSystemPrompt = matchResult.systemPrompt;
-            currentSkillId = String(matchResult.skill._id);
-
-            // 将 skill 的 completionTools 和 subAppsMap 合并到topAgent，如果重复，则以 skill 的为准。
-            completionTools = matchResult.completionTools.concat(
-              completionTools.filter(
-                (item) =>
-                  !matchResult.completionTools.some(
-                    (item2) => item2.function.name === item.function.name
-                  )
-              )
-            );
-            [...matchResult.subAppsMap].forEach(([id, item]) => {
-              subAppsMap.set(id, item);
-            });
-            console.log(JSON.stringify(completionTools, null, 2), 'merge completionTools');
-            console.log(subAppsMap, 'merge subAppsMap');
-
-            // 可选: 推送匹配信息给前端
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({
-                text: `📋 找到参考技能: ${matchResult.systemPrompt}`
-              })
-            });
-          } else {
-            addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
-          }
-
+          const { skillPrompt } = await skillMatch();
           const { answerText, plan, completeMessages, usages, interactiveResponse } =
             await dispatchPlanAgent({
               historyMessages: planHistoryMessages || historiesMessages,
               userInput: lastInteractive ? interactiveInput : userChatInput,
               interactive: lastInteractive,
-              completionTools,
+              completionTools: agentCompletionTools,
               getSubAppInfo,
               // TODO: 需要区分？systemprompt 需要替换成 role 和 target 么？
-              systemPrompt: skillSystemPrompt || systemPrompt,
+              systemPrompt: skillPrompt || systemPrompt,
               model,
               temperature,
               top_p: aiChatTopP,
@@ -301,7 +310,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               [DispatchNodeResponseKeyEnum.memories]: {
                 [planMessagesKey]: filterMemoryMessages(completeMessages),
                 [agentPlanKey]: agentPlan,
-                [skillMatchKey]: currentSkillId
+                [skillMatchKey]: matchedSkillId
               },
               [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
             };
@@ -326,7 +335,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           userInput: lastInteractive ? interactiveInput : userChatInput,
           plan,
           interactive: lastInteractive,
-          completionTools,
+          completionTools: agentCompletionTools,
           getSubAppInfo,
           systemPrompt,
           model,
@@ -420,40 +429,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
         if (result) return result;
       }
+      // 如果有保存的 skill id，恢复 skill 的 tools
+      else if (matchedSkillId) {
+        addLog.debug(`恢复 skill tools, skill id: ${matchedSkillId}`);
+        const skill = await matchSkillForId({
+          id: matchedSkillId,
+          tmbId: runningAppInfo.tmbId,
+          lang
+        });
+        if (skill) {
+          mergeSkill({
+            skillCompletionTools: skill.skillTools,
+            skillSubAppsMap: skill.skillSubAppsMap
+          });
+        }
+      }
 
       addLog.debug(`Start master agent`, {
         agentPlan: JSON.stringify(agentPlan, null, 2)
       });
-
-      // 如果有保存的 skill id，恢复 skill 的 tools
-      if (matchedSkillId) {
-        addLog.debug(`恢复 skill tools, skill id: ${matchedSkillId}`);
-        try {
-          const { MongoAiSkill } = await import('../../../../ai/skill/schema');
-          const skill = await MongoAiSkill.findById(matchedSkillId).lean();
-          if (skill && skill.tools) {
-            const { completionTools: skillTools, subAppsMap: skillSubAppsMap } = await getSubapps({
-              tools: skill.tools,
-              tmbId: runningAppInfo.tmbId,
-              lang
-            });
-
-            // 合并 skill 的 tools 到 completionTools
-            completionTools = skillTools.concat(
-              completionTools.filter(
-                (item) => !skillTools.some((item2) => item2.function.name === item.function.name)
-              )
-            );
-            [...skillSubAppsMap].forEach(([id, item]) => {
-              subAppsMap.set(id, item);
-            });
-
-            addLog.debug(`成功恢复 skill tools`);
-          }
-        } catch (error) {
-          addLog.error(`恢复 skill tools 失败:`, error);
-        }
-      }
 
       /* ===== Master agent, 逐步执行 plan ===== */
       if (!agentPlan) return Promise.reject('没有 plan');
@@ -470,10 +464,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             ...props,
             getSubAppInfo,
             steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
-            completionTools,
+            completionTools: agentCompletionTools,
             step,
             filesMap,
-            subAppsMap
+            subAppsMap: agentSubAppsMap
           });
 
           // Merge response
@@ -513,7 +507,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           [agentPlanKey]: agentPlan,
           [planMessagesKey]: undefined,
           [replanMessagesKey]: undefined,
-          [skillMatchKey]: currentSkillId
+          [skillMatchKey]: matchedSkillId
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {

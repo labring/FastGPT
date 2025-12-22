@@ -10,9 +10,13 @@ import type {
   SkillAgentParamsType
 } from '@fastgpt/global/core/chat/helperBot/skillAgent/type';
 
+export type HelperBotRefType = {
+  restartChat: () => void;
+};
 export type HelperBotProps = {
   emptyDom?: ReactNode;
   fileSelectConfig?: AppFileSelectConfigType;
+  ChatBoxRef: React.ForwardedRef<HelperBotRefType>;
 } & (
   | {
       type: typeof HelperBotTypeEnum.topAgent;
@@ -29,6 +33,7 @@ type HelperBotContextType = HelperBotProps & {};
 
 export const HelperBotContext = createContext<HelperBotContextType>({
   type: HelperBotTypeEnum.topAgent,
+  ChatBoxRef: null,
   metadata: {
     role: '',
     taskObject: '',

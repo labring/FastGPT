@@ -1,17 +1,11 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 
-import HelperBotContextProvider, { type HelperBotProps } from './context';
-import type {
-  AIChatItemValueItemType,
-  ChatItemType,
-  ChatSiteItemType
-} from '@fastgpt/global/core/chat/type';
+import HelperBotContextProvider, { type HelperBotRefType, type HelperBotProps } from './context';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import type { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRecords';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { Box } from '@chakra-ui/react';
 import HumanItem from './components/HumanItem';
 import AIItem from './components/AIItem';
@@ -37,7 +31,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
+const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -59,8 +53,7 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
   const requestParams = useMemoEnhance(() => {
     return {
       chatId,
-      type,
-      metadata
+      type
     };
   }, []);
 
@@ -367,6 +360,14 @@ const ChatBox = ({ type, metadata, onApply, ...props }: HelperBotProps) => {
     } catch (error) {}
     setIsChatting(false);
   });
+
+  useImperativeHandle(ChatBoxRef, () => ({
+    restartChat() {
+      abortRequest();
+      setChatRecords([]);
+      setChatId(getNanoid(12));
+    }
+  }));
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'100%'} position={'relative'}>

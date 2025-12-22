@@ -3,10 +3,10 @@ import type { AppDeleteJobData } from './index';
 import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
 import { addLog } from '../../../common/system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
 
-const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchema[] }) => {
+const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchemaType[] }) => {
   const results = await batchRun(
     apps,
     async (app) => {
