@@ -188,7 +188,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
                                 name: item.name,
                                 limit: item.limit,
                                 app: item.app,
-                                showQuote: item.showQuote,
+                                showCite: item.showCite,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });

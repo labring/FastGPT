@@ -7,7 +7,7 @@ const PlaygroundVisibilityConfigFieldsSchema = z.object({
     example: true,
     description: '是否显示运行状态'
   }),
-  showQuote: z.boolean().meta({
+  showCite: z.boolean().meta({
     example: true,
     description: '是否显示引用'
   }),

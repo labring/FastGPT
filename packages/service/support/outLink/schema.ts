@@ -43,7 +43,7 @@ const OutLinkSchema = new Schema({
     type: Date
   },
 
-  showQuote: {
+  showCite: {
     type: Boolean,
     default: false
   },

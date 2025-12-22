@@ -28,12 +28,12 @@ async function handler(
       appId,
       type: PublishChannelEnum.playground
     },
-    'showRunningStatus showQuote showFullText canDownloadSource'
+    'showRunningStatus showCite showFullText canDownloadSource'
   ).lean();
 
   return PlaygroundVisibilityConfigResponseSchema.parse({
     showRunningStatus: existingConfig?.showRunningStatus ?? true,
-    showQuote: existingConfig?.showQuote ?? true,
+    showCite: existingConfig?.showCite ?? true,
     showFullText: existingConfig?.showFullText ?? true,
     canDownloadSource: existingConfig?.canDownloadSource ?? true
   });

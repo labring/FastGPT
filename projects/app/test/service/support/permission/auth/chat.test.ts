@@ -80,7 +80,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -117,7 +117,7 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'user1',
         chat: mockChat,
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -147,7 +147,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -189,7 +189,7 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          showQuote: true,
+          showCite: true,
           showRunningStatus: true,
           canDownloadSource: true
         },
@@ -209,7 +209,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: false,
         canDownloadSource: true,
@@ -222,7 +222,7 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          showQuote: false,
+          showCite: false,
           shareId: 'share1',
           outLinkUid: 'user1'
         },
@@ -242,7 +242,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        showQuote: false,
+        showCite: false,
         showRunningStatus: true, // default
         canDownloadSource: false, // default
         authType: AuthUserTypeEnum.outLink
@@ -259,7 +259,7 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          showQuote: true,
+          showCite: true,
           showRunningStatus: true,
           canDownloadSource: true
         },
@@ -285,7 +285,7 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'user1',
         chat: mockChat,
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: false,
         canDownloadSource: true,
@@ -298,7 +298,7 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          showQuote: true,
+          showCite: true,
           showRunningStatus: false,
           canDownloadSource: true
         },
@@ -323,7 +323,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: false,
         showFullText: false,
         canDownloadSource: true,
@@ -341,7 +341,7 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          showQuote: true,
+          showCite: true,
           showFullText: true,
           showRunningStatus: true,
           canDownloadSource: true
@@ -437,7 +437,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'tmb1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -477,7 +477,7 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'tmb1',
         chat: mockChat,
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -518,7 +518,7 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'tmb1',
         chat: mockChat,
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,
@@ -551,7 +551,7 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'tmb1',
-        showQuote: true,
+        showCite: true,
         showRunningStatus: true,
         showFullText: true,
         canDownloadSource: true,

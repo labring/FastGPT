@@ -140,7 +140,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                       }`
                     : ''}
                 </Td>
-                <Td>{item.showQuote ? '✔' : '✖'}</Td>
+                <Td>{item.showCite ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -182,7 +182,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                               setEditLinkData({
                                 _id: item._id,
                                 name: item.name,
-                                showQuote: item.showQuote ?? false,
+                                showCite: item.showCite ?? false,
                                 canDownloadSource: item.canDownloadSource ?? false,
                                 showFullText: item.showFullText ?? true,
                                 showRunningStatus: item.showRunningStatus ?? false,
@@ -281,7 +281,7 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
-  const showQuote = watch('showQuote');
+  const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
 
@@ -424,7 +424,7 @@ function EditLinkModal({
               ></QuestionTip>
             </Flex>
             <Switch
-              {...register('showQuote', {
+              {...register('showCite', {
                 onChange(e) {
                   if (!e.target.checked) {
                     setValue('showFullText', false);
@@ -432,7 +432,7 @@ function EditLinkModal({
                   }
                 }
               })}
-              isChecked={showQuote}
+              isChecked={showCite}
             />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
@@ -449,7 +449,7 @@ function EditLinkModal({
                   if (!e.target.checked) {
                     setValue('canDownloadSource', false);
                   } else {
-                    setValue('showQuote', true);
+                    setValue('showCite', true);
                   }
                 }
               })}
@@ -469,7 +469,7 @@ function EditLinkModal({
                 onChange(e) {
                   if (e.target.checked) {
                     setValue('showFullText', true);
-                    setValue('showQuote', true);
+                    setValue('showCite', true);
                   }
                 }
               })}

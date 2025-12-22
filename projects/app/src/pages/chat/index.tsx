@@ -95,7 +95,7 @@ const Render = (props: {
   appId: string;
   isStandalone?: string;
   showRunningStatus: boolean;
-  showQuote: boolean;
+  showCite: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
 }) => {
@@ -150,7 +150,7 @@ const Render = (props: {
           showRouteToDatasetDetail={isStandalone !== '1'}
           showRunningStatus={props.showRunningStatus}
           canDownloadSource={props.canDownloadSource}
-          isShowQuote={props.showQuote}
+          isShowQuote={props.showCite}
           isShowFullText={props.showFullText}
         >
           <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -176,7 +176,7 @@ export async function getServerSideProps(context: any) {
           appId,
           type: PublishChannelEnum.playground
         },
-        'showRunningStatus showQuote showFullText canDownloadSource'
+        'showRunningStatus showCite showFullText canDownloadSource'
       ).lean();
 
       return config;
@@ -190,7 +190,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
-      showQuote: chatQuoteReaderConfig?.showQuote ?? true,
+      showCite: chatQuoteReaderConfig?.showCite ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))

@@ -40,7 +40,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
       showRunningStatus: false,
-      showQuote: false,
+      showCite: false,
       showFullText: false,
       canDownloadSource: false
     };
@@ -64,7 +64,7 @@ describe('Playground Visibility Update API', () => {
         expect(createdConfig.appId).toBe(testApp._id);
         expect(createdConfig.type).toBe(PublishChannelEnum.playground);
         expect(createdConfig.showRunningStatus).toBe(false);
-        expect(createdConfig.showQuote).toBe(false);
+        expect(createdConfig.showCite).toBe(false);
         expect(createdConfig.showFullText).toBe(false);
         expect(createdConfig.canDownloadSource).toBe(false);
       }
@@ -79,7 +79,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
       showRunningStatus: true,
-      showQuote: true,
+      showCite: true,
       showFullText: true,
       canDownloadSource: true
     };
@@ -101,7 +101,7 @@ describe('Playground Visibility Update API', () => {
 
       if (createdConfig) {
         expect(createdConfig.showRunningStatus).toBe(true);
-        expect(createdConfig.showQuote).toBe(true);
+        expect(createdConfig.showCite).toBe(true);
         expect(createdConfig.showFullText).toBe(true);
         expect(createdConfig.canDownloadSource).toBe(true);
       }
@@ -116,7 +116,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
       showRunningStatus: false,
-      showQuote: true,
+      showCite: true,
       showFullText: false,
       canDownloadSource: true
     };
@@ -138,7 +138,7 @@ describe('Playground Visibility Update API', () => {
 
       if (createdConfig) {
         expect(createdConfig.showRunningStatus).toBe(false);
-        expect(createdConfig.showQuote).toBe(true);
+        expect(createdConfig.showCite).toBe(true);
         expect(createdConfig.showFullText).toBe(false);
         expect(createdConfig.canDownloadSource).toBe(true);
       }
@@ -167,7 +167,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: '',
       showRunningStatus: false,
-      showQuote: false,
+      showCite: false,
       showFullText: false,
       canDownloadSource: false
     };
@@ -185,7 +185,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
       showRunningStatus: false,
-      showQuote: false,
+      showCite: false,
       showFullText: false,
       canDownloadSource: false
     };
@@ -233,7 +233,7 @@ describe('Playground Visibility Update API', () => {
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
       showRunningStatus: true,
-      showQuote: true,
+      showCite: true,
       showFullText: true,
       canDownloadSource: true,
       usagePoints: 0,
@@ -244,7 +244,7 @@ describe('Playground Visibility Update API', () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp2._id,
       showRunningStatus: false,
-      showQuote: false,
+      showCite: false,
       showFullText: true,
       canDownloadSource: true
     };
@@ -266,7 +266,7 @@ describe('Playground Visibility Update API', () => {
 
       if (config1) {
         expect(config1.showRunningStatus).toBe(true);
-        expect(config1.showQuote).toBe(true);
+        expect(config1.showCite).toBe(true);
       }
 
       // Verify second app config was created with new values
@@ -277,7 +277,7 @@ describe('Playground Visibility Update API', () => {
 
       if (config2) {
         expect(config2.showRunningStatus).toBe(false);
-        expect(config2.showQuote).toBe(false);
+        expect(config2.showCite).toBe(false);
         expect(config2.showFullText).toBe(true);
         expect(config2.canDownloadSource).toBe(true);
       }

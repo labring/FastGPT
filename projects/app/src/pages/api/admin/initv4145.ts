@@ -28,7 +28,7 @@ export type ResponseType = {
  * 2. 为所有 share 类型的 OutLink 记录添加 showFullText 字段
  * 3. 重命名字段：
  *    - showNodeStatus -> showRunningStatus
- *    - responseDetail -> showQuote
+ *    - responseDetail -> showCite
  *    - showRawSource -> canDownloadSource
  */
 
@@ -171,11 +171,11 @@ async function migrateOutLinkData(): Promise<{
     );
   }
 
-  // 3. 重命名字段：responseDetail -> showQuote
+  // 3. 重命名字段：responseDetail -> showCite
   const responseDetailLinks = await outLinkCollection
     .find({
       responseDetail: { $exists: true },
-      showQuote: { $exists: false }
+      showCite: { $exists: false }
     })
     .toArray();
 
@@ -185,7 +185,7 @@ async function migrateOutLinkData(): Promise<{
         filter: { _id: link._id },
         update: [
           {
-            $set: { showQuote: '$responseDetail' }
+            $set: { showCite: '$responseDetail' }
           },
           {
             $unset: 'responseDetail'
@@ -197,12 +197,12 @@ async function migrateOutLinkData(): Promise<{
     const renameResponseDetailResult = await outLinkCollection.bulkWrite(renameResponseDetailOps);
     totalUpdated += renameResponseDetailResult.modifiedCount;
     updateResults.push({
-      operation: 'Rename responseDetail to showQuote',
+      operation: 'Rename responseDetail to showCite',
       updated: renameResponseDetailResult.modifiedCount
     });
 
     console.log(
-      `Renamed responseDetail to showQuote for ${renameResponseDetailResult.modifiedCount} links`
+      `Renamed responseDetail to showCite for ${renameResponseDetailResult.modifiedCount} links`
     );
   }
 

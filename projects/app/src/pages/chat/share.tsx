@@ -416,7 +416,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId canDownloadSource showQuote showFullText showRunningStatus'
+        'appId canDownloadSource showCite showFullText showRunningStatus'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -433,7 +433,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       canDownloadSource: app?.canDownloadSource ?? false,
-      isShowQuote: app?.showQuote ?? false,
+      isShowQuote: app?.showCite ?? false,
       isShowFullText: app?.showFullText ?? false,
       showRunningStatus: app?.showRunningStatus ?? false,
       shareId: shareId ?? '',

@@ -49,7 +49,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: true,
-        showQuote: true,
+        showCite: true,
         showFullText: true,
         canDownloadSource: true
       });
@@ -70,7 +70,7 @@ describe('Playground Visibility Config API', () => {
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
       showRunningStatus: false,
-      showQuote: false,
+      showCite: false,
       showFullText: false,
       canDownloadSource: false,
       usagePoints: 0,
@@ -89,7 +89,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: false,
-        showQuote: false,
+        showCite: false,
         showFullText: false,
         canDownloadSource: false
       });
@@ -132,7 +132,7 @@ describe('Playground Visibility Config API', () => {
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
       showRunningStatus: true,
-      showQuote: false,
+      showCite: false,
       showFullText: true,
       canDownloadSource: false,
       usagePoints: 0,
@@ -151,7 +151,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: true,
-        showQuote: false,
+        showCite: false,
         showFullText: true,
         canDownloadSource: false
       });

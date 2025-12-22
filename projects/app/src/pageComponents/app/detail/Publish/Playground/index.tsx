@@ -15,7 +15,7 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showRunningStatus: true,
-  showQuote: true,
+  showCite: true,
   showFullText: true,
   canDownloadSource: true
 };
@@ -28,7 +28,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     defaultValues: defaultPlaygroundVisibilityForm
   });
 
-  const showQuote = watch('showQuote');
+  const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
 
@@ -43,7 +43,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     onSuccess: (data) => {
       reset({
         showRunningStatus: data.showRunningStatus,
-        showQuote: data.showQuote,
+        showCite: data.showCite,
         showFullText: data.showFullText,
         canDownloadSource: data.canDownloadSource
       });
@@ -123,7 +123,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             <QuestionTip ml={1} label={t('common:support.outlink.share.Response Quote tips')} />
           </Flex>
           <Switch
-            {...register('showQuote', {
+            {...register('showCite', {
               onChange(e) {
                 if (!e.target.checked) {
                   setValue('showFullText', false);
@@ -132,7 +132,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
                 autoSave();
               }
             })}
-            isChecked={showQuote}
+            isChecked={showCite}
           />
         </Flex>
       </Grid>
@@ -149,7 +149,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
                 if (!e.target.checked) {
                   setValue('canDownloadSource', false);
                 } else {
-                  setValue('showQuote', true);
+                  setValue('showCite', true);
                 }
                 autoSave();
               }
@@ -169,7 +169,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
               onChange(e) {
                 if (e.target.checked) {
                   setValue('showFullText', true);
-                  setValue('showQuote', true);
+                  setValue('showCite', true);
                 }
                 autoSave();
               }

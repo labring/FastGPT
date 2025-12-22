@@ -65,7 +65,7 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   type: PublishChannelEnum;
 
   // whether to show the quote
-  showQuote: boolean;
+  showCite: boolean;
   // whether to show the running status
   showRunningStatus?: boolean;
   // whether to show the full text reader
@@ -94,7 +94,7 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  showQuote?: OutLinkSchema<T>['showQuote'];
+  showCite?: OutLinkSchema<T>['showCite'];
   showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
   showFullText?: OutLinkSchema<T>['showFullText'];
   canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
@@ -110,7 +110,7 @@ export type OutLinkEditType<T = undefined> = {
 
 export const PlaygroundVisibilityConfigSchema = z.object({
   showRunningStatus: z.boolean(),
-  showQuote: z.boolean(),
+  showCite: z.boolean(),
   showFullText: z.boolean(),
   canDownloadSource: z.boolean()
 });

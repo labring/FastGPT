@@ -24,7 +24,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
 export const defaultResponseShow = {
-  showQuote: true,
+  showCite: true,
   showRunningStatus: true,
   showFullText: true,
   canDownloadSource: true
@@ -55,7 +55,7 @@ export async function authChatCrud({
   tmbId: string;
   uid: string;
   chat?: ChatSchemaType;
-  showQuote: boolean;
+  showCite: boolean;
   showRunningStatus: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
@@ -111,7 +111,7 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        showQuote: outLinkConfig.showQuote,
+        showCite: outLinkConfig.showCite,
         showRunningStatus: outLinkConfig.showRunningStatus ?? true,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
@@ -126,7 +126,7 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        showQuote: outLinkConfig.showQuote,
+        showCite: outLinkConfig.showCite,
         showRunningStatus: outLinkConfig.showRunningStatus ?? true,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
@@ -139,7 +139,7 @@ export async function authChatCrud({
       tmbId: String(outLinkConfig.tmbId),
       chat,
       uid,
-      showQuote: outLinkConfig.showQuote,
+      showCite: outLinkConfig.showCite,
       showRunningStatus: outLinkConfig.showRunningStatus ?? true,
       showFullText: outLinkConfig.showFullText ?? false,
       canDownloadSource: outLinkConfig.canDownloadSource ?? false,
