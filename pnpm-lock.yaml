@@ -134,7 +134,7 @@ importers:
     dependencies:
       '@fastgpt-sdk/storage':
         specifier: workspace:*
-        version: link:../storage
+        version: link:../../sdk/storage
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -343,40 +343,6 @@ importers:
       '@types/turndown':
         specifier: ^5.0.4
         version: 5.0.5
-
-  packages/storage:
-    dependencies:
-      '@aws-sdk/client-s3':
-        specifier: ^3.948.0
-        version: 3.948.0
-      '@aws-sdk/lib-storage':
-        specifier: ^3.948.0
-        version: 3.948.0(@aws-sdk/client-s3@3.948.0)
-      '@aws-sdk/s3-request-presigner':
-        specifier: ^3.952.0
-        version: 3.952.0
-      ali-oss:
-        specifier: ^6.23.0
-        version: 6.23.0
-      cos-nodejs-sdk-v5:
-        specifier: ^2.15.4
-        version: 2.15.4
-      es-toolkit:
-        specifier: ^1.43.0
-        version: 1.43.0
-    devDependencies:
-      '@types/ali-oss':
-        specifier: ^6.16.13
-        version: 6.16.13
-      '@types/node':
-        specifier: ^20
-        version: 20.17.24
-      tsdown:
-        specifier: ^0.17.4
-        version: 0.17.4(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
 
   packages/web:
     dependencies:
@@ -980,6 +946,40 @@ importers:
         specifier: ^4.22.0
         version: 4.22.0
 
+  sdk/storage:
+    dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.948.0
+        version: 3.948.0
+      '@aws-sdk/lib-storage':
+        specifier: ^3.948.0
+        version: 3.948.0(@aws-sdk/client-s3@3.948.0)
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.952.0
+        version: 3.952.0
+      ali-oss:
+        specifier: ^6.23.0
+        version: 6.23.0
+      cos-nodejs-sdk-v5:
+        specifier: ^2.15.4
+        version: 2.15.4
+      es-toolkit:
+        specifier: ^1.43.0
+        version: 1.43.0
+    devDependencies:
+      '@types/ali-oss':
+        specifier: ^6.16.13
+        version: 6.16.13
+      '@types/node':
+        specifier: ^20
+        version: 20.17.24
+      tsdown:
+        specifier: ^0.17.4
+        version: 0.17.4(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
@@ -1290,10 +1290,6 @@ packages:
 
   '@babel/helper-validator-identifier@7.25.9':
     resolution: {integrity: sha512-Ed61U6XJc3CVRfkERJWDz4dJwKe7iLmmJsbOGu9wSloNSFttHV0I8g6UAgb7qnK5ly5bGLPd4oXZlxCdANBOWQ==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/helper-validator-identifier@7.27.1':
-    resolution: {integrity: sha512-D2hP9eA+Sqx1kBZgzxZh0y1trbuU+JoDkiEwqhQ36nodYqJwyEIhPSdMNd7lOm/4io72luTPWH20Yda0xOuUow==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-validator-identifier@7.28.5':
@@ -1839,10 +1835,6 @@ packages:
 
   '@babel/types@7.26.10':
     resolution: {integrity: sha512-emqcG3vHrpxUKTrxcblR36dcrcoRDvKmnL/dCL6ZsHaShW80qxCAcNhzQZrpeM765VzEos+xOi4s+r4IXzTwdQ==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/types@7.28.4':
-    resolution: {integrity: sha512-bkFqkLhh3pMBUQQkpVgWDWq/lqzc2678eUyDlTBhRqhCHFguYYGM0Efga7tYk4TogG/3x0EEl66/OQ+WGbWB/Q==}
     engines: {node: '>=6.9.0'}
 
   '@babel/types@7.28.5':
@@ -13209,7 +13201,7 @@ snapshots:
   '@babel/helper-member-expression-to-functions@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
     transitivePeerDependencies:
       - supports-color
 
@@ -13231,7 +13223,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.25.9':
     dependencies:
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
 
   '@babel/helper-plugin-utils@7.26.5': {}
 
@@ -13266,8 +13258,6 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.25.9': {}
 
-  '@babel/helper-validator-identifier@7.27.1': {}
-
   '@babel/helper-validator-identifier@7.28.5': {}
 
   '@babel/helper-validator-option@7.25.9': {}
@@ -13276,7 +13266,7 @@ snapshots:
     dependencies:
       '@babel/template': 7.26.9
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
     transitivePeerDependencies:
       - supports-color
 
@@ -13291,7 +13281,7 @@ snapshots:
 
   '@babel/parser@7.28.4':
     dependencies:
-      '@babel/types': 7.28.4
+      '@babel/types': 7.28.5
 
   '@babel/parser@7.28.5':
     dependencies:
@@ -13927,11 +13917,6 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
-
-  '@babel/types@7.28.4':
-    dependencies:
-      '@babel/helper-string-parser': 7.27.1
-      '@babel/helper-validator-identifier': 7.27.1
 
   '@babel/types@7.28.5':
     dependencies:
@@ -15696,7 +15681,7 @@ snapshots:
 
   '@npmcli/fs@3.1.1':
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
 
   '@nuxtjs/opencollective@0.3.2(encoding@0.1.13)':
     dependencies:
@@ -17046,24 +17031,24 @@ snapshots:
 
   '@types/babel__core@7.20.5':
     dependencies:
-      '@babel/parser': 7.26.10
-      '@babel/types': 7.26.10
+      '@babel/parser': 7.28.5
+      '@babel/types': 7.28.5
       '@types/babel__generator': 7.6.8
       '@types/babel__template': 7.4.4
       '@types/babel__traverse': 7.20.6
 
   '@types/babel__generator@7.6.8':
     dependencies:
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
 
   '@types/babel__template@7.4.4':
     dependencies:
-      '@babel/parser': 7.26.10
-      '@babel/types': 7.26.10
+      '@babel/parser': 7.28.5
+      '@babel/types': 7.28.5
 
   '@types/babel__traverse@7.20.6':
     dependencies:
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
 
   '@types/body-parser@1.19.5':
     dependencies:
@@ -17672,6 +17657,14 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
+  '@vitest/mocker@3.1.1(vite@6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@vitest/spy': 3.1.1
+      estree-walker: 3.0.3
+      magic-string: 0.30.17
+    optionalDependencies:
+      vite: 6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+
   '@vitest/mocker@3.1.1(vite@6.2.2(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
       '@vitest/spy': 3.1.1
@@ -17730,7 +17723,7 @@ snapshots:
 
   '@vue/compiler-core@3.5.13':
     dependencies:
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.28.5
       '@vue/shared': 3.5.13
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -17738,7 +17731,7 @@ snapshots:
 
   '@vue/compiler-core@3.5.22':
     dependencies:
-      '@babel/parser': 7.28.4
+      '@babel/parser': 7.28.5
       '@vue/shared': 3.5.22
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -18360,7 +18353,7 @@ snapshots:
   babel-plugin-jest-hoist@29.6.3:
     dependencies:
       '@babel/template': 7.26.9
-      '@babel/types': 7.26.10
+      '@babel/types': 7.28.5
       '@types/babel__core': 7.20.5
       '@types/babel__traverse': 7.20.6
 
@@ -19863,7 +19856,7 @@ snapshots:
       '@typescript-eslint/parser': 6.21.0(eslint@8.56.0)(typescript@5.8.2)
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1))(eslint@8.56.0)
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.31.0)(eslint@8.56.0)
       eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.56.0)
       eslint-plugin-react: 7.37.4(eslint@8.56.0)
@@ -19923,7 +19916,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1))(eslint@8.56.0):
+  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0)(eslint@8.56.0):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.0
@@ -19934,7 +19927,7 @@ snapshots:
       stable-hash: 0.0.5
       tinyglobby: 0.2.12
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -19953,14 +19946,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1))(eslint@8.56.0))(eslint@8.56.0):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 6.21.0(eslint@8.56.0)(typescript@5.8.2)
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1))(eslint@8.56.0)
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.31.0)(eslint@8.56.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -19986,7 +19979,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -21606,7 +21599,7 @@ snapshots:
   istanbul-lib-instrument@5.2.1:
     dependencies:
       '@babel/core': 7.26.10
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.28.5
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
       semver: 6.3.1
@@ -21616,7 +21609,7 @@ snapshots:
   istanbul-lib-instrument@6.0.3:
     dependencies:
       '@babel/core': 7.26.10
-      '@babel/parser': 7.28.4
+      '@babel/parser': 7.28.5
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
       semver: 7.7.3
@@ -22452,7 +22445,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
 
   make-error@1.3.6: {}
 
@@ -25099,7 +25092,7 @@ snapshots:
 
   semver-diff@4.0.0:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
 
   semver@5.7.2: {}
 
@@ -26583,7 +26576,7 @@ snapshots:
   vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@vitest/expect': 3.1.1
-      '@vitest/mocker': 3.1.1(vite@6.2.2(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
+      '@vitest/mocker': 3.1.1(vite@6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
       '@vitest/pretty-format': 3.1.1
       '@vitest/runner': 3.1.1
       '@vitest/snapshot': 3.1.1
