@@ -71,22 +71,31 @@ const ChatTest = ({ topAgentSelectedTools = [], skill, appForm, onAIGenerate }: 
             const allToolIds = new Set<string>();
             generatedSkillData.execution_plan.steps.forEach((step) => {
               step.expectedTools?.forEach((tool) => {
-                if (
-                  tool.type === 'tool' &&
-                  !skill.selectedTools.find((t) => t.pluginId === tool.id)
-                ) {
+                if (tool.type === 'tool') {
                   allToolIds.add(tool.id);
                 }
               });
             });
 
-            // 2. 并行获取工具详情
-            const targetToolIds = Array.from(allToolIds);
+            // 2. 分类工具：已有的和新的
+            const existingTools: SelectedToolItemType[] = [];
+            const newToolIds: string[] = [];
+
+            Array.from(allToolIds).forEach((toolId) => {
+              const existingTool = skill.selectedTools.find((t) => t.pluginId === toolId);
+              if (existingTool) {
+                existingTools.push(existingTool);
+              } else {
+                newToolIds.push(toolId);
+              }
+            });
+
+            // 3. 并行获取新工具详情
             const newTools: SelectedToolItemType[] = [];
 
-            if (targetToolIds.length > 0) {
+            if (newToolIds.length > 0) {
               const results = await Promise.all(
-                targetToolIds.map((toolId: string) =>
+                newToolIds.map((toolId: string) =>
                   getToolPreviewNode({ appId: toolId })
                     .then((tool) => ({ status: 'fulfilled' as const, toolId, tool }))
                     .catch((error) => ({ status: 'rejected' as const, toolId, error }))
@@ -110,7 +119,7 @@ const ChatTest = ({ topAgentSelectedTools = [], skill, appForm, onAIGenerate }: 
                   );
                   if (topTool) {
                     tool.inputs.forEach((input) => {
-                      const topInput = topTool.inputs.find((input) => input.key === input.key);
+                      const topInput = topTool.inputs.find((topIn) => topIn.key === input.key);
                       if (topInput) {
                         input.value = topInput.value;
                       }
@@ -139,12 +148,12 @@ const ChatTest = ({ topAgentSelectedTools = [], skill, appForm, onAIGenerate }: 
               })
               .join('\n\n');
 
-            // 4. 应用生成的数据，包含 selectedTools
+            // 4. 应用生成的数据，以 AI 生成的工具列表为准
             onAIGenerate({
               name: generatedSkillData.plan_analysis.name || skill.name,
               description: generatedSkillData.plan_analysis.description || skill.description,
               stepsText: stepsText,
-              selectedTools: newTools
+              selectedTools: [...existingTools, ...newTools]
             });
           }}
         />

@@ -95,12 +95,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const planMessagesKey = `planMessages-${nodeId}`;
   const replanMessagesKey = `replanMessages-${nodeId}`;
   const agentPlanKey = `agentPlan-${nodeId}`;
+  const skillMatchKey = `skillMatch-${nodeId}`;
 
   // 交互模式进来的话，这个值才是交互输入的值
   const interactiveInput = lastInteractive ? chatValue2RuntimePrompt(query).text : '';
 
   // Get history messages
-  let { planHistoryMessages, replanMessages, agentPlan } = (() => {
+  let { planHistoryMessages, replanMessages, agentPlan, matchedSkillId } = (() => {
     const lastHistory = chatHistories[chatHistories.length - 1];
     if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
       return {
@@ -108,13 +109,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           []) as ChatCompletionMessageParam[],
         replanMessages: (lastHistory.memories?.[replanMessagesKey] ||
           []) as ChatCompletionMessageParam[],
-        agentPlan: (lastHistory.memories?.[agentPlanKey] || []) as AgentPlanType
+        agentPlan: (lastHistory.memories?.[agentPlanKey] || []) as AgentPlanType,
+        matchedSkillId: lastHistory.memories?.[skillMatchKey] as string | undefined
       };
     }
     return {
       planHistoryMessages: undefined,
       replanMessages: undefined,
-      agentPlan: undefined
+      agentPlan: undefined,
+      matchedSkillId: undefined
     };
   })();
 
@@ -172,7 +175,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     if (taskIsComplexity) {
       /* ===== Plan Agent ===== */
-      const planCallFn = async (skillSystemPrompt?: string) => {
+      let currentSkillId: string | undefined = matchedSkillId;
+      const planCallFn = async () => {
         // 点了确认。此时肯定有 agentPlans
         if (
           lastInteractive?.type === 'agentPlanCheck' &&
@@ -181,6 +185,49 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         ) {
           planHistoryMessages = undefined;
         } else {
+          // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
+          let skillSystemPrompt: string | undefined;
+          // match skill
+          const matchResult = await matchSkillForPlan({
+            teamId: runningUserInfo.teamId,
+            tmbId: runningAppInfo.tmbId,
+            appId: runningAppInfo.id,
+            userInput: lastInteractive ? interactiveInput : userChatInput,
+            messages: historiesMessages, // 传入完整的对话历史
+            model,
+            lang
+          });
+
+          if (matchResult.matched) {
+            skillSystemPrompt = matchResult.systemPrompt;
+            currentSkillId = String(matchResult.skill._id);
+
+            // 将 skill 的 completionTools 和 subAppsMap 合并到topAgent，如果重复，则以 skill 的为准。
+            completionTools = matchResult.completionTools.concat(
+              completionTools.filter(
+                (item) =>
+                  !matchResult.completionTools.some(
+                    (item2) => item2.function.name === item.function.name
+                  )
+              )
+            );
+            [...matchResult.subAppsMap].forEach(([id, item]) => {
+              subAppsMap.set(id, item);
+            });
+            console.log(JSON.stringify(completionTools, null, 2), 'merge completionTools');
+            console.log(subAppsMap, 'merge subAppsMap');
+
+            // 可选: 推送匹配信息给前端
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({
+                text: `📋 找到参考技能: ${matchResult.systemPrompt}`
+              })
+            });
+          } else {
+            addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
+          }
+
           const { answerText, plan, completeMessages, usages, interactiveResponse } =
             await dispatchPlanAgent({
               historyMessages: planHistoryMessages || historiesMessages,
@@ -253,7 +300,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
               [DispatchNodeResponseKeyEnum.memories]: {
                 [planMessagesKey]: filterMemoryMessages(completeMessages),
-                [agentPlanKey]: agentPlan
+                [agentPlanKey]: agentPlan,
+                [skillMatchKey]: currentSkillId
               },
               [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
             };
@@ -363,49 +411,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       console.log('planHistoryMessages', planHistoryMessages);
       // 执行 Plan/replan
       if (isPlanStep) {
-        // 🆕 执行 Skill 匹配（仅在 isPlanStep 且没有 planHistoryMessages 时）
-        let skillSystemPrompt: string | undefined;
-        // match skill
-        const matchResult = await matchSkillForPlan({
-          teamId: runningUserInfo.teamId,
-          tmbId: runningAppInfo.tmbId,
-          appId: runningAppInfo.id,
-          userInput: lastInteractive ? interactiveInput : userChatInput,
-          messages: historiesMessages, // 传入完整的对话历史
-          model,
-          lang
-        });
-
-        if (matchResult.matched) {
-          skillSystemPrompt = matchResult.systemPrompt;
-
-          // 将 skill 的 completionTools 和 subAppsMap 合并到topAgent，如果重复，则以 skill 的为准。
-          completionTools = matchResult.completionTools.concat(
-            completionTools.filter(
-              (item) =>
-                !matchResult.completionTools.some(
-                  (item2) => item2.function.name === item.function.name
-                )
-            )
-          );
-          [...matchResult.subAppsMap].forEach(([id, item]) => {
-            subAppsMap.set(id, item);
-          });
-          console.log(JSON.stringify(completionTools, null, 2), 'merge completionTools');
-          console.log(subAppsMap, 'merge subAppsMap');
-
-          // 可选: 推送匹配信息给前端
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text: `📋 找到参考技能: ${matchResult.systemPrompt}`
-            })
-          });
-        } else {
-          addLog.debug(`未匹配到 skill，原因: ${matchResult.reason}`);
-        }
-
-        const result = await planCallFn(skillSystemPrompt);
+        const result = await planCallFn();
         // 有 result 代表 plan 有交互响应（check/ask）
         if (result) return result;
       } else if (isReplanStep) {
@@ -418,6 +424,36 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       addLog.debug(`Start master agent`, {
         agentPlan: JSON.stringify(agentPlan, null, 2)
       });
+
+      // 如果有保存的 skill id，恢复 skill 的 tools
+      if (matchedSkillId) {
+        addLog.debug(`恢复 skill tools, skill id: ${matchedSkillId}`);
+        try {
+          const { MongoAiSkill } = await import('../../../../ai/skill/schema');
+          const skill = await MongoAiSkill.findById(matchedSkillId).lean();
+          if (skill && skill.tools) {
+            const { completionTools: skillTools, subAppsMap: skillSubAppsMap } = await getSubapps({
+              tools: skill.tools,
+              tmbId: runningAppInfo.tmbId,
+              lang
+            });
+
+            // 合并 skill 的 tools 到 completionTools
+            completionTools = skillTools.concat(
+              completionTools.filter(
+                (item) => !skillTools.some((item2) => item2.function.name === item.function.name)
+              )
+            );
+            [...skillSubAppsMap].forEach(([id, item]) => {
+              subAppsMap.set(id, item);
+            });
+
+            addLog.debug(`成功恢复 skill tools`);
+          }
+        } catch (error) {
+          addLog.error(`恢复 skill tools 失败:`, error);
+        }
+      }
 
       /* ===== Master agent, 逐步执行 plan ===== */
       if (!agentPlan) return Promise.reject('没有 plan');
@@ -476,7 +512,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         [DispatchNodeResponseKeyEnum.memories]: {
           [agentPlanKey]: agentPlan,
           [planMessagesKey]: undefined,
-          [replanMessagesKey]: undefined
+          [replanMessagesKey]: undefined,
+          [skillMatchKey]: currentSkillId
         },
         [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
