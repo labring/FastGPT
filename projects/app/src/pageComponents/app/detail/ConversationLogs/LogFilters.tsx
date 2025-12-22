@@ -22,7 +22,7 @@ import LogKeysConfigPopover from '../Logs/LogKeysConfigPopover';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
-import { AppLogKeysEnum, DefaultAssistantLogKey } from '@fastgpt/global/core/app/logs/constants';
+import { DefaultAssistantLogKey } from '@fastgpt/global/core/app/logs/constants';
 import { isEqual } from 'lodash';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 

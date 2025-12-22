@@ -27,6 +27,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import ChatBoxDivider from '../../../../Divider';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { isCorrectionRecord } from '@/global/core/chat/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -96,7 +97,7 @@ const SimpleCitationDisplay = React.memo(
         index: datasetItems.length + index + 1
       }));
 
-      return [...datasetItems, ...linkItems];
+      return [...datasetItems, ...linkItems].filter((v) => !isCorrectionRecord(v.id));
     }, [quoteList, toolCiteLinks]);
 
     if (citationList.length === 0) return null;

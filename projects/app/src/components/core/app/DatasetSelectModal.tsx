@@ -300,7 +300,7 @@ export const DatasetSelectModal = ({
                           ) : (
                             <>
                               {item.type !== DatasetTypeEnum.structureDocument &&
-                                t('app:Index') + ':' + item.vectorModel?.name}
+                                t('app:Index') + ': ' + item.vectorModel?.name}
                             </>
                           )}
                         </Box>

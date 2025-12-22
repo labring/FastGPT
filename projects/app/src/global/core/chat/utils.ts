@@ -83,7 +83,6 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
         linkDedupe: new Set<string>()
       }
     );
-
   return {
     ...historyItem,
     llmModuleAccount,
@@ -91,4 +90,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
     historyPreviewLength,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {})
   };
+}
+
+export function isCorrectionRecord(id?: string) {
+  return Boolean(id && id.startsWith('correction_'));
 }

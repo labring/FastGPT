@@ -23,6 +23,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { isEmpty } from 'lodash';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { isCorrectionRecord } from '@/global/core/chat/utils';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -149,7 +150,10 @@ export const WholeResponseContent = ({
   }, [activeModule.searchMode, activeModule.sqlResult, t]);
 
   const otherKnowledgeBaseDataList = useMemo(
-    () => (activeModule?.quoteList || []).filter((item) => !isDatabaseSource(item.id)),
+    () =>
+      (activeModule?.quoteList || []).filter(
+        (item) => !isDatabaseSource(item.id) && !isCorrectionRecord(item.id)
+      ),
     [activeModule.quoteList]
   );
   const hasOtherKnowledgeBase = useMemo(
@@ -162,6 +166,16 @@ export const WholeResponseContent = ({
     [activeModule.quoteList]
   );
   const hasDatabase = useMemo(() => databaseDataList.length > 0, [databaseDataList]);
+
+  const correctionRecordDataList = useMemo(
+    () => (activeModule?.quoteList || []).filter((item) => isCorrectionRecord(item.id)),
+    [activeModule.quoteList]
+  );
+
+  const hasCorrectionRecord = useMemo(
+    () => correctionRecordDataList.length > 0,
+    [correctionRecordDataList]
+  );
 
   return activeModule ? (
     <Box
@@ -346,7 +360,7 @@ export const WholeResponseContent = ({
             {hasDatabase && (
               <Row
                 label={
-                  hasDatabase && hasOtherKnowledgeBase
+                  hasDatabase && (hasOtherKnowledgeBase || hasCorrectionRecord)
                     ? t('chat:database_search_results')
                     : t('chat:search_results')
                 }
@@ -371,6 +385,19 @@ export const WholeResponseContent = ({
                   <QuoteList
                     chatItemDataId={dataId}
                     rawSearch={otherKnowledgeBaseDataList}
+                    applicationId={appId}
+                    chatId={chatId}
+                  />
+                }
+              />
+            )}
+            {hasCorrectionRecord && (
+              <Row
+                label={t('chat:search_results')}
+                rawDom={
+                  <QuoteList
+                    chatItemDataId={dataId}
+                    rawSearch={correctionRecordDataList}
                     applicationId={appId}
                     chatId={chatId}
                   />

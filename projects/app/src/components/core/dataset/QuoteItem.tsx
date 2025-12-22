@@ -11,6 +11,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { isCorrectionRecord } from '@/global/core/chat/utils';
 import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
@@ -105,6 +106,7 @@ const QuoteItem = ({
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
   const isDatabaseAnswer = useMemo(() => isDatabaseSource(quoteItem.id), [quoteItem.id]);
+  const isCorrectionRecordItem = useMemo(() => isCorrectionRecord(quoteItem.id), [quoteItem.id]);
   const datasetDetailUrl = useMemo(
     () =>
       isDatabaseAnswer
@@ -131,6 +133,20 @@ const QuoteItem = ({
       </Box>
     ),
     [t, quoteItem.q, quoteItem.a]
+  );
+
+  const correctionRecordContent = useMemo(
+    () => (
+      <Box pb={2} color={'myGray.600'}>
+        <Box>
+          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
+            <Text>{quoteItem.q || '-'}</Text>
+          </Text>
+          <Text>{quoteItem.a || '-'}</Text>
+        </Box>
+      </Box>
+    ),
+    [quoteItem.q, quoteItem.a]
   );
 
   return (
@@ -220,6 +236,8 @@ const QuoteItem = ({
         <Box flex={'1 0 0'}>
           {isDatabaseAnswer ? (
             databaseContent
+          ) : isCorrectionRecordItem ? (
+            correctionRecordContent
           ) : (
             <>
               <Markdown source={quoteItem.q} />
@@ -228,75 +246,77 @@ const QuoteItem = ({
           )}
         </Box>
 
-        <Flex
-          alignItems={'center'}
-          flexWrap={'wrap'}
-          mt={3}
-          gap={4}
-          color={'myGray.500'}
-          fontSize={'xs'}
-        >
-          <MyTooltip label={t('common:core.dataset.Quote Length')}>
-            <Flex alignItems={'center'}>
-              <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-              {quoteItem.q.length + (quoteItem.a?.length || 0)}
-            </Flex>
-          </MyTooltip>
-          {!isDatabaseAnswer && (
-            <RawSourceBox
-              fontWeight={'bold'}
-              color={'black'}
-              collectionId={quoteItem.collectionId}
-              sourceName={quoteItem.sourceName}
-              sourceId={quoteItem.sourceId}
-              canView={canViewSource}
-              {...RawSourceBoxProps}
-            />
-          )}
-          <Box flex={1} />
-          {quoteItem.id && !isDatabaseAnswer && canEditData && (
-            <MyTooltip label={t('common:core.dataset.data.Edit')}>
-              <Box
+        {!isCorrectionRecord(quoteItem.id) && (
+          <Flex
+            alignItems={'center'}
+            flexWrap={'wrap'}
+            mt={3}
+            gap={4}
+            color={'myGray.500'}
+            fontSize={'xs'}
+          >
+            <MyTooltip label={t('common:core.dataset.Quote Length')}>
+              <Flex alignItems={'center'}>
+                <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
+                {quoteItem.q.length + (quoteItem.a?.length || 0)}
+              </Flex>
+            </MyTooltip>
+            {!isDatabaseAnswer && !isCorrectionRecordItem && (
+              <RawSourceBox
+                fontWeight={'bold'}
+                color={'black'}
+                collectionId={quoteItem.collectionId}
+                sourceName={quoteItem.sourceName}
+                sourceId={quoteItem.sourceId}
+                canView={canViewSource}
+                {...RawSourceBoxProps}
+              />
+            )}
+            <Box flex={1} />
+            {quoteItem.id && !isDatabaseAnswer && !isCorrectionRecordItem && canEditData && (
+              <MyTooltip label={t('common:core.dataset.data.Edit')}>
+                <Box
+                  className="hover-data"
+                  visibility={'hidden'}
+                  display={'flex'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                >
+                  <MyIcon
+                    name={'edit'}
+                    w={['16px', '18px']}
+                    h={['16px', '18px']}
+                    cursor={'pointer'}
+                    color={'myGray.600'}
+                    _hover={{
+                      color: 'primary.600'
+                    }}
+                    onClick={() =>
+                      setEditInputData({
+                        dataId: quoteItem.id,
+                        collectionId: quoteItem.collectionId
+                      })
+                    }
+                  />
+                </Box>
+              </MyTooltip>
+            )}
+            {canEditDataset && !isCorrectionRecordItem && (
+              <Link
+                as={NextLink}
                 className="hover-data"
-                visibility={'hidden'}
                 display={'flex'}
                 alignItems={'center'}
-                justifyContent={'center'}
+                visibility={'hidden'}
+                color={'primary.500'}
+                href={datasetDetailUrl}
               >
-                <MyIcon
-                  name={'edit'}
-                  w={['16px', '18px']}
-                  h={['16px', '18px']}
-                  cursor={'pointer'}
-                  color={'myGray.600'}
-                  _hover={{
-                    color: 'primary.600'
-                  }}
-                  onClick={() =>
-                    setEditInputData({
-                      dataId: quoteItem.id,
-                      collectionId: quoteItem.collectionId
-                    })
-                  }
-                />
-              </Box>
-            </MyTooltip>
-          )}
-          {canEditDataset && (
-            <Link
-              as={NextLink}
-              className="hover-data"
-              display={'flex'}
-              alignItems={'center'}
-              visibility={'hidden'}
-              color={'primary.500'}
-              href={datasetDetailUrl}
-            >
-              {t('common:to_dataset')}
-              <MyIcon name={'common/rightArrowLight'} w={'10px'} />
-            </Link>
-          )}
-        </Flex>
+                {t('common:to_dataset')}
+                <MyIcon name={'common/rightArrowLight'} w={'10px'} />
+              </Link>
+            )}
+          </Flex>
+        )}
       </MyBox>
 
       {editInputData && (
