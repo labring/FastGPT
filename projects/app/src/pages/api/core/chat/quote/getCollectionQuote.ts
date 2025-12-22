@@ -57,7 +57,7 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [collection, { chat, showRawSource, showFullText }, chatItem] = await Promise.all([
+  const [collection, { chat, showFullText }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
     authChatCrud({
       req,

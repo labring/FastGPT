@@ -64,14 +64,14 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   lastTime: Date;
   type: PublishChannelEnum;
 
-  // whether the response content is detailed
-  responseDetail: boolean;
-  // whether to hide the node status
-  showNodeStatus?: boolean;
-  // wheter to show the full text reader
+  // whether to show the quote
+  showQuote: boolean;
+  // whether to show the running status
+  showRunningStatus?: boolean;
+  // whether to show the full text reader
   showFullText?: boolean;
-  // whether to show the complete quote
-  showRawSource?: boolean;
+  // whether can download source
+  canDownloadSource?: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -94,10 +94,10 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  responseDetail?: OutLinkSchema<T>['responseDetail'];
-  showNodeStatus?: OutLinkSchema<T>['showNodeStatus'];
+  showQuote?: OutLinkSchema<T>['showQuote'];
+  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
   showFullText?: OutLinkSchema<T>['showFullText'];
-  showRawSource?: OutLinkSchema<T>['showRawSource'];
+  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
@@ -109,10 +109,10 @@ export type OutLinkEditType<T = undefined> = {
 };
 
 export const PlaygroundVisibilityConfigSchema = z.object({
-  showNodeStatus: z.boolean(),
-  responseDetail: z.boolean(),
+  showRunningStatus: z.boolean(),
+  showQuote: z.boolean(),
   showFullText: z.boolean(),
-  showRawSource: z.boolean()
+  canDownloadSource: z.boolean()
 });
 
 export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

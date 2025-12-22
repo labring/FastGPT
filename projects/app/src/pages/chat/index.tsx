@@ -94,10 +94,10 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 const Render = (props: {
   appId: string;
   isStandalone?: string;
-  showNodeStatus: boolean;
-  responseDetail: boolean;
+  showRunningStatus: boolean;
+  showQuote: boolean;
   showFullText: boolean;
-  showRawSource: boolean;
+  canDownloadSource: boolean;
 }) => {
   const { appId, isStandalone } = props;
   const { chatId } = useChatStore();
@@ -148,9 +148,9 @@ const Render = (props: {
       <ChatContextProvider params={chatHistoryProviderParams}>
         <ChatItemContextProvider
           showRouteToDatasetDetail={isStandalone !== '1'}
-          showNodeStatus={props.showNodeStatus}
-          isShowReadRawSource={props.showRawSource}
-          isResponseDetail={props.responseDetail}
+          showRunningStatus={props.showRunningStatus}
+          canDownloadSource={props.canDownloadSource}
+          isShowQuote={props.showQuote}
           isShowFullText={props.showFullText}
         >
           <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -176,7 +176,7 @@ export async function getServerSideProps(context: any) {
           appId,
           type: PublishChannelEnum.playground
         },
-        'showNodeStatus responseDetail showFullText showRawSource'
+        'showRunningStatus showQuote showFullText canDownloadSource'
       ).lean();
 
       return config;
@@ -189,10 +189,10 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       appId,
-      showNodeStatus: chatQuoteReaderConfig?.showNodeStatus ?? true,
-      responseDetail: chatQuoteReaderConfig?.responseDetail ?? true,
+      showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
+      showQuote: chatQuoteReaderConfig?.showQuote ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
-      showRawSource: chatQuoteReaderConfig?.showRawSource ?? true,
+      canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };

@@ -13,10 +13,10 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
-  isShowReadRawSource: boolean;
-  isResponseDetail: boolean;
+  canDownloadSource: boolean;
+  isShowQuote: boolean;
   isShowFullText: boolean;
-  showNodeStatus: boolean;
+  showRunningStatus: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -120,10 +120,10 @@ export const ChatItemContext = createContext<ChatItemContextType>({
 const ChatItemContextProvider = ({
   children,
   showRouteToDatasetDetail,
-  isShowReadRawSource,
-  isResponseDetail,
+  canDownloadSource,
+  isShowQuote,
   isShowFullText,
-  showNodeStatus
+  showRunningStatus
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -196,10 +196,10 @@ const ChatItemContextProvider = ({
       resetVariables,
       clearChatRecords,
       showRouteToDatasetDetail,
-      isShowReadRawSource,
-      isResponseDetail,
+      canDownloadSource,
+      isShowQuote,
       isShowFullText,
-      showNodeStatus,
+      showRunningStatus,
 
       datasetCiteData,
       setCiteModalData,
@@ -214,10 +214,10 @@ const ChatItemContextProvider = ({
     resetVariables,
     clearChatRecords,
     showRouteToDatasetDetail,
-    isShowReadRawSource,
-    isResponseDetail,
+    canDownloadSource,
+    isShowQuote,
+    showRunningStatus,
     isShowFullText,
-    showNodeStatus,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

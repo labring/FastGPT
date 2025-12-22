@@ -39,7 +39,7 @@ const CollectionReader = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
 
-  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -179,7 +179,7 @@ const CollectionReader = ({
               {sourceName || t('common:unknow_source')}
             </Box>
             <Box ml={3}>
-              {isShowReadRawSource && (
+              {canDownloadSource && (
                 <DownloadButton
                   canAccessRawData={true}
                   onDownload={handleDownload}

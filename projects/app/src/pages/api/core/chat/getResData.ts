@@ -27,7 +27,7 @@ async function handler(
     return [];
   }
 
-  const [{ responseDetail }, chatData, nodeResponses] = await Promise.all([
+  const [{ showQuote }, chatData, nodeResponses] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -57,7 +57,7 @@ async function handler(
   const flowResponses = chatData.responseData?.length ? chatData.responseData : nodeResponses;
   return req.query.shareId
     ? filterPublicNodeResponseData({
-        responseDetail,
+        responseDetail: showQuote,
         nodeRespones: flowResponses
       })
     : flowResponses;

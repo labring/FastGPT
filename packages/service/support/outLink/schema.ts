@@ -43,18 +43,18 @@ const OutLinkSchema = new Schema({
     type: Date
   },
 
-  responseDetail: {
+  showQuote: {
     type: Boolean,
     default: false
   },
-  showNodeStatus: {
+  showRunningStatus: {
     type: Boolean,
     default: true
   },
   showFullText: {
     type: Boolean
   },
-  showRawSource: {
+  canDownloadSource: {
     type: Boolean
   },
   limit: {

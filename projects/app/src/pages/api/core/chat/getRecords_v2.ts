@@ -50,7 +50,7 @@ async function handler(
     };
   }
 
-  const [app, { responseDetail, showNodeStatus, authType }] = await Promise.all([
+  const [app, { showQuote, showRunningStatus, authType }] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
@@ -93,16 +93,16 @@ async function handler(
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
-          responseDetail
+          responseDetail: showQuote
         });
 
-        if (showNodeStatus === false) {
+        if (showRunningStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
         }
       }
     });
   }
-  if (!responseDetail) {
+  if (!showQuote) {
     result.histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
@@ -110,9 +110,7 @@ async function handler(
     });
   }
 
-  const list = isPlugin
-    ? result.histories
-    : transformPreviewHistories(result.histories, responseDetail);
+  const list = isPlugin ? result.histories : transformPreviewHistories(result.histories, showQuote);
 
   return {
     list: list.map((item) => ({

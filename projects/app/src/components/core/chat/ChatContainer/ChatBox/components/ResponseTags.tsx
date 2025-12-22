@@ -49,7 +49,8 @@ const ResponseTags = ({
 
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
-  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isShowQuote);
+  console.log('isResponseDetail', isResponseDetail);
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,

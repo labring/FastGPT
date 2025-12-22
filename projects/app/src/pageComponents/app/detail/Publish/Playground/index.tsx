@@ -14,10 +14,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
-  showNodeStatus: true,
-  responseDetail: true,
+  showRunningStatus: true,
+  showQuote: true,
   showFullText: true,
-  showRawSource: true
+  canDownloadSource: true
 };
 
 const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
@@ -28,9 +28,9 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     defaultValues: defaultPlaygroundVisibilityForm
   });
 
-  const responseDetail = watch('responseDetail');
+  const showQuote = watch('showQuote');
   const showFullText = watch('showFullText');
-  const showRawSource = watch('showRawSource');
+  const canDownloadSource = watch('canDownloadSource');
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -42,10 +42,10 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   useRequest2(() => getPlaygroundVisibilityConfig({ appId }), {
     onSuccess: (data) => {
       reset({
-        showNodeStatus: data.showNodeStatus,
-        responseDetail: data.responseDetail,
+        showRunningStatus: data.showRunningStatus,
+        showQuote: data.showQuote,
         showFullText: data.showFullText,
-        showRawSource: data.showRawSource
+        canDownloadSource: data.canDownloadSource
       });
     },
     manual: false
@@ -110,7 +110,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             {t('publish:show_node')}
           </FormLabel>
           <Switch
-            {...register('showNodeStatus', {
+            {...register('showRunningStatus', {
               onChange: autoSave
             })}
           />
@@ -123,16 +123,16 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             <QuestionTip ml={1} label={t('common:support.outlink.share.Response Quote tips')} />
           </Flex>
           <Switch
-            {...register('responseDetail', {
+            {...register('showQuote', {
               onChange(e) {
                 if (!e.target.checked) {
                   setValue('showFullText', false);
-                  setValue('showRawSource', false);
+                  setValue('canDownloadSource', false);
                 }
                 autoSave();
               }
             })}
-            isChecked={responseDetail}
+            isChecked={showQuote}
           />
         </Flex>
       </Grid>
@@ -147,9 +147,9 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             {...register('showFullText', {
               onChange(e) {
                 if (!e.target.checked) {
-                  setValue('showRawSource', false);
+                  setValue('canDownloadSource', false);
                 } else {
-                  setValue('responseDetail', true);
+                  setValue('showQuote', true);
                 }
                 autoSave();
               }
@@ -165,16 +165,16 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             <QuestionTip ml={1} label={t('common:support.outlink.share.Download source tips')} />
           </Flex>
           <Switch
-            {...register('showRawSource', {
+            {...register('canDownloadSource', {
               onChange(e) {
                 if (e.target.checked) {
                   setValue('showFullText', true);
-                  setValue('responseDetail', true);
+                  setValue('showQuote', true);
                 }
                 autoSave();
               }
             })}
-            isChecked={showRawSource}
+            isChecked={canDownloadSource}
           />
         </Flex>
       </Grid>

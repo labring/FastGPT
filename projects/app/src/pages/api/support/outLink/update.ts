@@ -26,7 +26,7 @@ export type OutLinkUpdateResponse = string;
 async function handler(
   req: ApiRequestProps<OutLinkUpdateBody, OutLinkUpdateQuery>
 ): Promise<OutLinkUpdateResponse> {
-  const { _id, name, responseDetail, limit, app, showRawSource, showNodeStatus, showFullText } =
+  const { _id, name, showQuote, limit, app, canDownloadSource, showRunningStatus, showFullText } =
     req.body;
 
   if (!_id) {
@@ -47,9 +47,9 @@ async function handler(
 
   const doc = await MongoOutLink.findByIdAndUpdate(_id, {
     name,
-    responseDetail,
-    showRawSource,
-    showNodeStatus,
+    showQuote,
+    canDownloadSource,
+    showRunningStatus,
     showFullText,
     limit,
     app

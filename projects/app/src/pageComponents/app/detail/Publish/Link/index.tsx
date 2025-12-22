@@ -140,7 +140,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                       }`
                     : ''}
                 </Td>
-                <Td>{item.responseDetail ? '✔' : '✖'}</Td>
+                <Td>{item.showQuote ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -182,10 +182,10 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                               setEditLinkData({
                                 _id: item._id,
                                 name: item.name,
-                                responseDetail: item.responseDetail ?? false,
-                                showRawSource: item.showRawSource ?? false,
+                                showQuote: item.showQuote ?? false,
+                                canDownloadSource: item.canDownloadSource ?? false,
                                 showFullText: item.showFullText ?? true,
-                                showNodeStatus: item.showNodeStatus ?? false,
+                                showRunningStatus: item.showRunningStatus ?? false,
                                 limit: item.limit
                               })
                           },
@@ -281,9 +281,9 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
-  const responseDetail = watch('responseDetail');
+  const showQuote = watch('showQuote');
   const showFullText = watch('showFullText');
-  const showRawSource = watch('showRawSource');
+  const canDownloadSource = watch('canDownloadSource');
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
@@ -413,7 +413,7 @@ function EditLinkModal({
           </Box>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <FormLabel>{t('publish:show_node')}</FormLabel>
-            <Switch {...register('showNodeStatus')} />
+            <Switch {...register('showRunningStatus')} />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
@@ -424,15 +424,15 @@ function EditLinkModal({
               ></QuestionTip>
             </Flex>
             <Switch
-              {...register('responseDetail', {
+              {...register('showQuote', {
                 onChange(e) {
                   if (!e.target.checked) {
                     setValue('showFullText', false);
-                    setValue('showRawSource', false);
+                    setValue('canDownloadSource', false);
                   }
                 }
               })}
-              isChecked={responseDetail}
+              isChecked={showQuote}
             />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
@@ -447,9 +447,9 @@ function EditLinkModal({
               {...register('showFullText', {
                 onChange(e) {
                   if (!e.target.checked) {
-                    setValue('showRawSource', false);
+                    setValue('canDownloadSource', false);
                   } else {
-                    setValue('responseDetail', true);
+                    setValue('showQuote', true);
                   }
                 }
               })}
@@ -465,15 +465,15 @@ function EditLinkModal({
               ></QuestionTip>
             </Flex>
             <Switch
-              {...register('showRawSource', {
+              {...register('canDownloadSource', {
                 onChange(e) {
                   if (e.target.checked) {
                     setValue('showFullText', true);
-                    setValue('responseDetail', true);
+                    setValue('showQuote', true);
                   }
                 }
               })}
-              isChecked={showRawSource}
+              isChecked={canDownloadSource}
             />
           </Flex>
         </Box>

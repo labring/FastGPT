@@ -163,12 +163,11 @@ const ChatItem = (props: Props) => {
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
+  const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
   const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
 
   const { totalQuoteList: quoteList = [] } = useMemo(
@@ -323,7 +322,7 @@ const ChatItem = (props: Props) => {
         <ChatAvatar src={avatar} type={type} />
 
         {/* Workflow status */}
-        {!!chatStatusMap && statusBoxData && isLastChild && showNodeStatus && (
+        {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
           <Flex
             alignItems={'center'}
             px={3}

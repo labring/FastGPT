@@ -92,8 +92,8 @@ type AuthResponseType = {
   teamId: string;
   tmbId: string;
   app: AppSchema;
-  responseDetail?: boolean;
-  showNodeStatus?: boolean;
+  showQuote?: boolean;
+  showRunningStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
   responseAllData: boolean;
@@ -158,13 +158,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId,
       app,
-      responseDetail,
+      showQuote,
       authType,
       sourceName,
       apikey,
       responseAllData,
       outLinkUserId = customUid,
-      showNodeStatus
+      showRunningStatus
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
@@ -206,7 +206,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     pushTrack.teamChatQPM({ teamId });
 
-    retainDatasetCite = retainDatasetCite && !!responseDetail;
+    retainDatasetCite = retainDatasetCite && !!showQuote;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
@@ -275,7 +275,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       streamResponse: stream,
       id: chatId,
-      showNodeStatus
+      showNodeStatus: showRunningStatus
     });
 
     const saveChatId = chatId || getNanoid(24);
@@ -321,7 +321,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
           responseAllData,
-          responseDetail
+          responseDetail: showQuote
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
@@ -390,7 +390,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* select fe response field */
     const feResponseData = responseAllData
       ? flowResponses
-      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail });
+      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showQuote });
 
     if (stream) {
       workflowResponseWrite({
@@ -503,7 +503,7 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, appId, authType, responseDetail, showNodeStatus, uid, sourceName } =
+  const { teamId, tmbId, appId, authType, showQuote, showRunningStatus, uid, sourceName } =
     await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
@@ -525,9 +525,9 @@ const authShareChat = async ({
     apikey: '',
     authType,
     responseAllData: false,
-    responseDetail,
+    showQuote,
     outLinkUserId: uid,
-    showNodeStatus
+    showRunningStatus
   };
 };
 const authTeamSpaceChat = async ({
@@ -564,7 +564,7 @@ const authTeamSpaceChat = async ({
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
     responseAllData: false,
-    responseDetail: true,
+    showQuote: true,
     outLinkUserId: uid
   };
 };
@@ -646,7 +646,7 @@ const authHeaderRequest = async ({
     authType,
     sourceName,
     responseAllData: true,
-    responseDetail: true
+    showQuote: true
   };
 };
 

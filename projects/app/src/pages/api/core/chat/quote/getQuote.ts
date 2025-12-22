@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     datasetDataIdList
   } = req.body;
 
-  const [{ chat, responseDetail }, chatItem] = await Promise.all([
+  const [{ chat, showQuote }, chatItem] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -53,7 +53,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
     MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
   ]);
-  if (!chat || !chatItem || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);
+  if (!chat || !chatItem || !showQuote) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const list = await MongoDatasetData.find(
     { _id: { $in: datasetDataIdList }, collectionId: { $in: collectionIdList } },
