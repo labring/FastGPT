@@ -1,4 +1,4 @@
-import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type {
@@ -28,7 +28,12 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  getToolConfigStatus,
+  validateToolConfiguration
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -232,3 +237,56 @@ export function agentForm2AppWorkflow(
     chatConfig: data.chatConfig
   };
 }
+
+export const loadGeneratedTools = async ({
+  newToolIds,
+  existsTools = [],
+  topAgentSelectedTools = [],
+  fileSelectConfig
+}: {
+  newToolIds: string[]; // 新的，完整的 toolId
+  existsTools?: SelectedToolItemType[];
+  topAgentSelectedTools?: SelectedToolItemType[];
+  fileSelectConfig?: AppFileSelectConfigType;
+}): Promise<SelectedToolItemType[]> => {
+  const results = (
+    await Promise.all(
+      newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolId: string) => {
+        // 已经存在的工具，直接返回
+        const existTool = existsTools.find((tool) => tool.pluginId === toolId);
+        if (existTool) {
+          return existTool;
+        }
+
+        // 新工具，需要与已配置的 tool 进行 input 合并
+        const tool = await getToolPreviewNode({ appId: toolId });
+        // 验证工具配置
+        const toolValid = validateToolConfiguration({
+          toolTemplate: tool,
+          canSelectFile: fileSelectConfig?.canSelectFile,
+          canSelectImg: fileSelectConfig?.canSelectImg
+        });
+        if (!toolValid) {
+          return;
+        }
+
+        const topTool = topAgentSelectedTools.find((item) => item.pluginId === toolId);
+        if (topTool) {
+          tool.inputs.forEach((input) => {
+            const topInput = topTool.inputs.find((topIn) => topIn.key === input.key);
+            if (topInput) {
+              input.value = topInput.value;
+            }
+          });
+        }
+
+        return {
+          ...tool,
+          configStatus: getToolConfigStatus(tool).status
+        };
+      })
+    )
+  ).filter((item) => item !== undefined);
+
+  return results;
+};

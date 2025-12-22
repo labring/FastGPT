@@ -11,6 +11,7 @@ import {
   IconButton,
   Textarea
 } from '@chakra-ui/react';
+import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 import type { SelectedToolItemType, SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
@@ -265,38 +266,57 @@ const EditForm = ({
           </Flex>
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
             {selectDatasets.map((item) => (
-              <MyTooltip key={item.datasetId} label={t('common:core.dataset.Read Dataset')}>
-                <Flex
-                  overflow={'hidden'}
-                  alignItems={'center'}
-                  p={2}
-                  bg={'white'}
-                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                  borderRadius={'md'}
-                  border={theme.borders.base}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    router.push({
-                      pathname: '/dataset/detail',
-                      query: {
-                        datasetId: item.datasetId
-                      }
-                    })
+              <Flex
+                key={item.datasetId}
+                overflow={'hidden'}
+                alignItems={'center'}
+                p={2}
+                bg={'white'}
+                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                borderRadius={'md'}
+                border={'base'}
+                _hover={{
+                  '& .controler': {
+                    display: 'flex'
                   }
+                }}
+              >
+                <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                <Box
+                  ml={2}
+                  flex={'1 0 0'}
+                  w={0}
+                  className={'textEllipsis'}
+                  fontSize={'sm'}
+                  color={'myGray.900'}
                 >
-                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
-                  <Box
-                    ml={2}
-                    flex={'1 0 0'}
-                    w={0}
-                    className={'textEllipsis'}
-                    fontSize={'sm'}
-                    color={'myGray.900'}
-                  >
-                    {item.name}
-                  </Box>
-                </Flex>
-              </MyTooltip>
+                  {item.name}
+                </Box>
+
+                {/* Icon */}
+                <Box className="controler" display={['flex', 'none']} alignItems={'center'}>
+                  <MyIconButton
+                    icon={'common/viewLight'}
+                    onClick={() =>
+                      router.push({
+                        pathname: '/dataset/detail',
+                        query: {
+                          datasetId: item.datasetId
+                        }
+                      })
+                    }
+                  />
+                  <MyDeleteIconButton
+                    onClick={() => {
+                      setValue(
+                        'dataset.list',
+                        selectDatasets?.filter((pre) => pre.datasetId !== item.datasetId) || [],
+                        { shouldDirty: true }
+                      );
+                    }}
+                  />
+                </Box>
+              </Flex>
             ))}
           </Grid>
         </Box>

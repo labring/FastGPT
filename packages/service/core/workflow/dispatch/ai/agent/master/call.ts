@@ -260,22 +260,26 @@ export const stepCall = async ({
                   usages
                 };
               } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
-                const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
+                // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
 
-                const { response, usages } = await fn({
-                  ...props,
-                  node,
-                  workflowStreamResponse: childWorkflowStreamResponse,
-                  callParams: {
-                    appId: node.pluginId,
-                    version: node.version,
-                    ...requestParams
-                  }
-                });
+                // const { response, usages } = await fn({
+                //   ...props,
+                //   node,
+                //   workflowStreamResponse: childWorkflowStreamResponse,
+                //   callParams: {
+                //     appId: node.pluginId,
+                //     version: node.version,
+                //     ...requestParams
+                //   }
+                // });
 
+                // return {
+                //   response,
+                //   usages
+                // };
                 return {
-                  response,
-                  usages
+                  response: 'Can not find the tool',
+                  usages: []
                 };
               } else {
                 return {

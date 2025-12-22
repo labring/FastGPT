@@ -9,13 +9,14 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 const createMockProps = (
   overrides?: Partial<Props>,
@@ -40,7 +41,6 @@ const createMockProps = (
     obj: ChatRoleEnum.Human,
     value: [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: 'Hello, how are you?'
         }
@@ -51,7 +51,6 @@ const createMockProps = (
     obj: ChatRoleEnum.AI,
     value: [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: 'I am doing well, thank you!'
         }
@@ -141,9 +140,8 @@ describe('pushChatRecords', () => {
           obj: ChatRoleEnum.Human,
           value: [
             {
-              type: ChatItemValueTypeEnum.file,
               file: {
-                type: 'image',
+                type: ChatFileTypeEnum.image,
                 name: 'test.jpg',
                 url: 'https://example.com/test.jpg',
                 key: 'file-key-123'
@@ -191,7 +189,6 @@ describe('pushChatRecords', () => {
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: { content: 'Response' }
             }
           ],
@@ -223,7 +220,7 @@ describe('pushChatRecords', () => {
     });
 
     it('should handle dataset search node with quoteList', async () => {
-      const quote = {
+      const quote: SearchDataResponseItemType = {
         id: 'quote-1',
         chunkIndex: 0,
         datasetId: 'dataset-1',
@@ -241,7 +238,6 @@ describe('pushChatRecords', () => {
             obj: ChatRoleEnum.AI,
             value: [
               {
-                type: ChatItemValueTypeEnum.text,
                 text: { content: 'Based on the search results...' }
               }
             ],
@@ -500,7 +496,6 @@ describe('pushChatRecords', () => {
         obj: ChatRoleEnum.Human,
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: { content: 'Hello' }
           }
         ]
@@ -524,7 +519,6 @@ describe('pushChatRecords', () => {
         obj: ChatRoleEnum.AI,
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: { content: 'Hello' }
           }
         ]
@@ -549,7 +543,6 @@ describe('pushChatRecords', () => {
         dataId: 'data-id-1',
         value: [
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'userSelect',
               params: {
@@ -568,7 +561,6 @@ describe('pushChatRecords', () => {
             obj: ChatRoleEnum.Human,
             value: [
               {
-                type: ChatItemValueTypeEnum.text,
                 text: { content: 'Option 1' }
               }
             ]
@@ -608,7 +600,6 @@ describe('pushChatRecords', () => {
         dataId: 'data-id-1',
         value: [
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'userInput',
               params: {
@@ -633,7 +624,6 @@ describe('pushChatRecords', () => {
             obj: ChatRoleEnum.Human,
             value: [
               {
-                type: ChatItemValueTypeEnum.text,
                 text: { content: JSON.stringify({ username: 'john_doe' }) }
               }
             ]
@@ -674,11 +664,9 @@ describe('pushChatRecords', () => {
         dataId: 'data-id-1',
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: { content: 'Payment required' }
           },
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'paymentPause',
               params: {}
@@ -698,8 +686,6 @@ describe('pushChatRecords', () => {
       });
       // PaymentPause is removed, and AI response is appended
       expect(chatItem?.value.length).toBeGreaterThan(0);
-      // The first value should be text, last one should be from AI response
-      expect(chatItem?.value[0].type).toBe(ChatItemValueTypeEnum.text);
     });
 
     it('should merge AI response values', async () => {
@@ -713,11 +699,9 @@ describe('pushChatRecords', () => {
         dataId: 'data-id-1',
         value: [
           {
-            type: ChatItemValueTypeEnum.text,
             text: { content: 'First response' }
           },
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'userSelect',
               params: { options: ['A', 'B'] }
@@ -732,7 +716,6 @@ describe('pushChatRecords', () => {
             obj: ChatRoleEnum.AI,
             value: [
               {
-                type: ChatItemValueTypeEnum.text,
                 text: { content: 'Second response' }
               }
             ],
@@ -766,7 +749,6 @@ describe('pushChatRecords', () => {
         durationSeconds: 1.5,
         value: [
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'userSelect',
               params: { options: ['A', 'B'] }
@@ -809,7 +791,6 @@ describe('pushChatRecords', () => {
         dataId: 'data-id-1',
         value: [
           {
-            type: ChatItemValueTypeEnum.interactive,
             interactive: {
               type: 'userSelect',
               params: { options: ['A', 'B'] }
