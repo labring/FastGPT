@@ -147,6 +147,9 @@ export type SystemEnvType = {
   // Evaluation configurations
   evalConfig?: EvaluationConfigType;
 
+  // Correction search similarity threshold
+  correctionSimilarityThreshold?: number;
+
   // Hype index parameters
   hypeParams?: HypeParamsType;
 };

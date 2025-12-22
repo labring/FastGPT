@@ -108,6 +108,7 @@ Human: ${query}
   }
 
   return {
+    // 知识库检索的问题优化处回显
     extensionQueries,
     concatQueries: queries,
     rewriteQuery,

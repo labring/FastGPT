@@ -188,6 +188,13 @@ export type DispatchNodeResponseType = {
   };
   // text2sql result
   sqlResult?: SqlResultWithDatasetId[];
+  // correction search result
+  correctSearchResult?: {
+    correctionId: string;
+    question: string;
+    correctedAnswer?: string; // Optional to match SearchCorrectionDataResult type
+    similarity: number;
+  }[];
 
   // dataset concat
   concatLength?: number;

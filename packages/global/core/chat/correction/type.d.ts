@@ -1,4 +1,5 @@
 import type { CorrectionModeEnum } from './constants';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export type CorrectionIndexItem = {
   type: 'q' | 'a' | 'c';
@@ -34,3 +35,21 @@ export type ChatCorrectionSchemaType = {
   createTime: Date;
   updateTime: Date;
 };
+
+// 校正数据搜索相关类型
+export type SearchCorrectionDataProps = {
+  appId: string;
+  userChatInput: string; // 传入的 userChatInput（已经是经过处理的标准化查询）
+  teamId: string;
+  vectorModel: EmbeddingModelItemType;
+};
+
+export type SearchCorrectionDataResult = {
+  correctionId: string;
+  correctedAnswer: string | undefined;
+  question: string;
+  similarity: number;
+  chatId: string;
+  dataId: string;
+  embeddingTokens: number; // 记录向量生成实际消耗的token数量
+} | null;
