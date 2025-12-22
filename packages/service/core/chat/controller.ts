@@ -183,14 +183,14 @@ export async function getPaginationChatItems({
 
           // Apply filter based on chatLogsFilter
           ...(chatLogsFilter === ChatLogsFilterEnum.good
-            ? [{ $match: { userGoodFeedback: { $exists: true, $ne: '' } } }]
+            ? [{ $match: { userGoodFeedback: { $exists: true } } }]
             : chatLogsFilter === ChatLogsFilterEnum.bad
-              ? [{ $match: { userBadFeedback: { $exists: true, $ne: '' } } }]
+              ? [{ $match: { userBadFeedback: { $exists: true } } }]
               : chatLogsFilter === ChatLogsFilterEnum.notFoundKnowledge
                 ? [{ $match: { hasNotFoundKnowledge: true } }]
                 : []),
 
-          { $sort: { _id: 1 } },
+          { $sort: { _id: -1 } },
           { $skip: Math.floor(offset / 2) },
           { $limit: Math.ceil(pageSize / 2) },
           { $project: { ...fieldProjection, _id: 1 } }
@@ -233,7 +233,7 @@ export async function getPaginationChatItems({
   if (aiMessages.length > 0) {
     // Get all AI _id values and find the maximum (latest in this page)
     const aiIds = aiMessages.map((msg) => msg._id);
-    const maxAiId = aiIds[aiIds.length - 1]; // AI messages are already sorted by _id ascending
+    const maxAiId = aiIds[0]; // AI messages are already sorted by _id ascending
 
     // Query Human messages with _id less than the maximum AI _id
     // Use descending sort + limit to get only the most recent Human messages
@@ -272,14 +272,14 @@ export async function getPaginationChatItems({
 
     // Pair messages in correct order (aiMessages are already sorted by _id ascending)
     const pairedMessages: any[] = [];
-    aiMessages.forEach((ai) => {
+    for (let i = aiMessages.length - 1; i >= 0; i--) {
+      const ai = aiMessages[i];
       const human = humanMap.get(ai._id.toString());
       if (human) {
         pairedMessages.push(human);
       }
       pairedMessages.push(ai);
-    });
-
+    }
     histories = pairedMessages;
   }
 

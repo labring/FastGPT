@@ -67,7 +67,7 @@ async function handler(
   // (*UCP) enables proper word boundary detection for non-ASCII characters
   const regexPatterns = keywords.map((kw) => {
     const escaped = replaceRegChars(kw);
-    return { $regex: `(*UCP)\\b${escaped}\\b`, $options: 'i' };
+    return { $regex: `(*UCP)${escaped}`, $options: 'i' };
   });
 
   // Build match query: search for any keyword in either q or a fields
