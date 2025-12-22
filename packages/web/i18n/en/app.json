@@ -9,6 +9,7 @@
   "fetch_app_datasets_error": "获取应用关联知识库异常",
   "submit_correction_failed": "提交失败",
   "submit_correction_success": "提交成功",
+  "fetch_correction_data_failed": "获取纠错数据失败",
   "AutoOptimize": "Auto optimize",
   "Click_to_delete_this_field": "Click to delete",
   "Filed_is_deprecated": "The field has been deprecated.",
