@@ -1,4 +1,5 @@
 packages:
   - packages/*
   - projects/*
+  - sdk/*
   - scripts/icon
