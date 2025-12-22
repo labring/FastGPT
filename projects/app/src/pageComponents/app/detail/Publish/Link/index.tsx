@@ -182,10 +182,10 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                               setEditLinkData({
                                 _id: item._id,
                                 name: item.name,
-                                showCite: item.showCite ?? false,
-                                canDownloadSource: item.canDownloadSource ?? false,
-                                showFullText: item.showFullText ?? true,
-                                showRunningStatus: item.showRunningStatus ?? false,
+                                showCite: item.showCite,
+                                canDownloadSource: item.canDownloadSource,
+                                showFullText: item.showFullText,
+                                showRunningStatus: item.showRunningStatus,
                                 limit: item.limit
                               })
                           },

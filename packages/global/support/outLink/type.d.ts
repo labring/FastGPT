@@ -67,11 +67,11 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   // whether to show the quote
   showCite: boolean;
   // whether to show the running status
-  showRunningStatus?: boolean;
+  showRunningStatus: boolean;
   // whether to show the full text reader
-  showFullText?: boolean;
+  showFullText: boolean;
   // whether can download source
-  canDownloadSource?: boolean;
+  canDownloadSource: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -94,10 +94,10 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  showCite?: OutLinkSchema<T>['showCite'];
-  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
-  showFullText?: OutLinkSchema<T>['showFullText'];
-  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
+  showCite: OutLinkSchema<T>['showCite'];
+  showRunningStatus: OutLinkSchema<T>['showRunningStatus'];
+  showFullText: OutLinkSchema<T>['showFullText'];
+  canDownloadSource: OutLinkSchema<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation

@@ -32,10 +32,10 @@ async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody
       $set: {
         appId,
         type: PublishChannelEnum.playground,
-        showRunningStatus: showRunningStatus ?? true,
-        showCite: showCite ?? true,
-        showFullText: showFullText ?? true,
-        canDownloadSource: canDownloadSource ?? true
+        showRunningStatus: showRunningStatus,
+        showCite: showCite,
+        showFullText: showFullText,
+        canDownloadSource: canDownloadSource
       }
     },
     { upsert: true }

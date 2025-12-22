@@ -111,10 +111,11 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
+
         showCite: outLinkConfig.showCite,
-        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
-        showFullText: outLinkConfig.showFullText ?? false,
-        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus,
+        showFullText: outLinkConfig.showFullText,
+        canDownloadSource: outLinkConfig.canDownloadSource,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -127,9 +128,9 @@ export async function authChatCrud({
         tmbId: String(outLinkConfig.tmbId),
         uid,
         showCite: outLinkConfig.showCite,
-        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
-        showFullText: outLinkConfig.showFullText ?? false,
-        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus,
+        showFullText: outLinkConfig.showFullText,
+        canDownloadSource: outLinkConfig.canDownloadSource,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -140,9 +141,9 @@ export async function authChatCrud({
       chat,
       uid,
       showCite: outLinkConfig.showCite,
-      showRunningStatus: outLinkConfig.showRunningStatus ?? true,
-      showFullText: outLinkConfig.showFullText ?? false,
-      canDownloadSource: outLinkConfig.canDownloadSource ?? false,
+      showRunningStatus: outLinkConfig.showRunningStatus,
+      showFullText: outLinkConfig.showFullText,
+      canDownloadSource: outLinkConfig.canDownloadSource,
       authType: AuthUserTypeEnum.outLink
     };
   }

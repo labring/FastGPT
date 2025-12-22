@@ -43,19 +43,21 @@ const OutLinkSchema = new Schema({
     type: Date
   },
 
+  showRunningStatus: {
+    type: Boolean,
+    default: false
+  },
   showCite: {
     type: Boolean,
     default: false
   },
-  showRunningStatus: {
-    type: Boolean,
-    default: true
-  },
   showFullText: {
-    type: Boolean
+    type: Boolean,
+    default: false
   },
   canDownloadSource: {
-    type: Boolean
+    type: Boolean,
+    default: false
   },
   limit: {
     maxUsagePoints: {

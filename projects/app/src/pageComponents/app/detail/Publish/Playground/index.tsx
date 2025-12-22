@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Grid, Switch, Button, Link } from '@chakra-ui/react';
+import { Box, Flex, Grid, Switch } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
