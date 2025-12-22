@@ -387,8 +387,8 @@ export function form2AppWorkflow(
   ): StoreNodeItemType {
     return {
       nodeId,
-      name: t('workflow:condition_checker'),
-      intro: t('workflow:execute_different_branches_based_on_conditions'),
+      name: i18nT('workflow:customer_service.enable_fallback_reply_node_name'),
+      intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
       avatar: 'core/workflow/template/ifelse',
       flowNodeType: FlowNodeTypeEnum.ifElseNode,
       showStatus: true,
@@ -418,7 +418,7 @@ export function form2AppWorkflow(
         {
           id: 'ifElseResult',
           key: 'ifElseResult',
-          label: t('workflow:judgment_result'),
+          label: i18nT('workflow:judgment_result'),
           valueType: WorkflowIOValueTypeEnum.string,
           type: FlowNodeOutputTypeEnum.static
         }
@@ -432,8 +432,8 @@ export function form2AppWorkflow(
   ): StoreNodeItemType {
     return {
       nodeId,
-      name: t('workflow:assigned_reply'),
-      intro: t('workflow:intro_assigned_reply'),
+      name: i18nT('workflow:customer_service.fallback_reply_node_name'),
+      intro: i18nT('workflow:intro_assigned_reply'),
       avatar: 'core/workflow/template/reply',
       flowNodeType: FlowNodeTypeEnum.answerNode,
       position,
@@ -444,9 +444,9 @@ export function form2AppWorkflow(
           renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
           valueType: WorkflowIOValueTypeEnum.any,
           required: true,
-          label: t('common:core.module.input.label.Response content'),
-          description: t('common:core.module.input.description.Response content'),
-          placeholder: t('common:core.module.input.description.Response content'),
+          label: i18nT('common:core.module.input.label.Response content'),
+          description: i18nT('common:core.module.input.description.Response content'),
+          placeholder: i18nT('common:core.module.input.description.Response content'),
           value: ['VARIABLE_NODE_ID', 'byG7WNk4'],
           selectedTypeIndex: 1
         }
@@ -474,15 +474,15 @@ export function form2AppWorkflow(
           return {
             ...input,
             max: 50,
-            description: t('workflow:max_dialog_rounds')
+            description: i18nT('workflow:max_dialog_rounds')
           };
         }
         // 更新用户问题输入的标签和描述
         if (input.key === NodeInputKeyEnum.userChatInput) {
           return {
             ...input,
-            label: t('workflow:user_question'),
-            toolDescription: t('workflow:user_question_tool_desc')
+            label: i18nT('workflow:user_question'),
+            toolDescription: i18nT('workflow:user_question_tool_desc')
           };
         }
         // 更新文件输入的键名和配置
@@ -509,7 +509,7 @@ export function form2AppWorkflow(
           id: 'reasoningText',
           key: 'reasoningText',
           required: false,
-          label: t('workflow:reasoning_text'),
+          label: i18nT('workflow:reasoning_text'),
           valueType: WorkflowIOValueTypeEnum.string,
           type: FlowNodeOutputTypeEnum.static
         },
@@ -518,7 +518,7 @@ export function form2AppWorkflow(
           key: 'system_error_text',
           type: FlowNodeOutputTypeEnum.error,
           valueType: WorkflowIOValueTypeEnum.string,
-          label: t('workflow:error_text')
+          label: i18nT('workflow:error_text')
         }
       ],
       catchError: false
@@ -619,7 +619,7 @@ export function form2AppWorkflow(
     ): StoreNodeItemType {
       return {
         nodeId,
-        name: t('workflow:variable_update'),
+        name: i18nT('app:smart_customer_service_qa_config'),
         avatar: 'core/workflow/template/variableUpdate',
         flowNodeType: FlowNodeTypeEnum.variableUpdate,
         showStatus: false,

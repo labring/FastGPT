@@ -9,8 +9,8 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getQuoteDataList } from '@/web/core/chat/api';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { isCorrectionRecord } from '@/global/core/chat/utils';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemDataId = '',
@@ -39,12 +39,17 @@ const QuoteList = React.memo(function QuoteList({
   );
 
   const datasetDataIdList = useMemo(
-    () => rawSearch.map((item) => item.id).filter((v) => !isDatabaseSource(v)),
+    () =>
+      rawSearch
+        .map((item) => item.id)
+        .filter((v) => !isDatabaseSource(v) && !isCorrectionRecord(v)),
     [rawSearch]
   );
   const collectionIdList = useMemo(
     () =>
-      [...new Set(rawSearch.map((item) => item.collectionId))].filter((v) => !isDatabaseSource(v)),
+      [...new Set(rawSearch.map((item) => item.collectionId))].filter(
+        (v) => !isDatabaseSource(v) && !isCorrectionRecord(v)
+      ),
     [rawSearch]
   );
 
@@ -70,6 +75,7 @@ const QuoteList = React.memo(function QuoteList({
     const processedData = rawSearch.map((item) => {
       if (chatItemDataId && quoteList) {
         const currentFilterItem = quoteList.find((res) => res._id === item.id);
+
         return {
           ...item,
           q: currentFilterItem?.q || '',

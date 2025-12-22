@@ -10,7 +10,7 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { addStatisticalDataToHistoryItem, isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
@@ -51,11 +51,13 @@ const ResponseTags = ({
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
   const {
-    totalQuoteList: quoteList = [],
+    totalQuoteList: quotes = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
     toolCiteLinks = []
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
+
+  const quoteList = useMemo(() => quotes.filter((v) => !isCorrectionRecord(v.id)), [quotes]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 

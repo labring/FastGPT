@@ -57,7 +57,8 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
     params: params || undefined,
-    refreshDeps: [params]
+    refreshDeps: [params],
+    defaultRequest: !!appId && !!filters
   });
 
   const HeaderRenderMap: Record<string, React.ReactNode> = useMemo(() => {
