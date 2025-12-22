@@ -54,7 +54,7 @@ async function handler(
   // Query corrections with pagination (parallel fetch)
   const [corrections, total] = await Promise.all([
     MongoChatCorrection.find(mergeQuery)
-      .populate<{ userId: { username: string } }>('userId', 'username')
+      .populate<{ tmbId: { name: string } }>('tmbId', 'name')
       .sort({ updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
@@ -70,7 +70,7 @@ async function handler(
       appId: correction.appId,
       correctionData: correction.correctionData,
       updateTime: correction.updateTime,
-      userName: correction.userId?.username
+      userName: correction.tmbId?.name
     })),
     total
   };
