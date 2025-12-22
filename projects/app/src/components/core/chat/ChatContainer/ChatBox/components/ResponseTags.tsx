@@ -56,21 +56,21 @@ const ResponseTags = ({
     historyPreviewLength = 0,
     toolCiteLinks = []
   } = useMemo(() => {
-    if (!isShowCite)
-      return {
-        totalQuoteList: [],
-        llmModuleAccount: 0,
-        historyPreviewLength: 0,
-        toolCiteLinks: []
-      };
-    return addStatisticalDataToHistoryItem(historyItem);
+    return {
+      ...addStatisticalDataToHistoryItem(historyItem),
+      ...(isShowCite
+        ? {
+            totalQuoteList: []
+          }
+        : {})
+    };
   }, [historyItem, isShowCite]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
-  const notSharePage = useMemo(() => chatType !== 'share' && isShowCite, [chatType, isShowCite]);
+  const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
   const {
     isOpen: isOpenWholeModal,

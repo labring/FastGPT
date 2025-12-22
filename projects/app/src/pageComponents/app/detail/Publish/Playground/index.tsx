@@ -12,6 +12,7 @@ import {
 import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/outLink/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showRunningStatus: true,
@@ -34,7 +35,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/chat?appId=${appId}`;
+      return `${window.location.origin}/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`;
     }
     return '';
   }, [appId]);
