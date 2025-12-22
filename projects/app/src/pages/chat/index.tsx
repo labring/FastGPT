@@ -29,6 +29,9 @@ import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { addLog } from '@fastgpt/service/common/system/log';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
@@ -88,7 +91,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 };
 
-const Render = (props: { appId: string; isStandalone?: string }) => {
+const Render = (props: {
+  appId: string;
+  isStandalone?: string;
+  showRunningStatus: boolean;
+  showCite: boolean;
+  showFullText: boolean;
+  canDownloadSource: boolean;
+}) => {
   const { appId, isStandalone } = props;
   const { chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
@@ -138,9 +148,10 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
       <ChatContextProvider params={chatHistoryProviderParams}>
         <ChatItemContextProvider
           showRouteToDatasetDetail={isStandalone !== '1'}
-          isShowReadRawSource={true}
-          isResponseDetail={true}
-          showNodeStatus
+          showRunningStatus={props.showRunningStatus}
+          canDownloadSource={props.canDownloadSource}
+          isShowCite={props.showCite}
+          isShowFullText={props.showFullText}
         >
           <ChatRecordContextProvider params={chatRecordProviderParams}>
             <Chat myApps={myApps} />
@@ -151,14 +162,38 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   );
 };
 
+export default Render;
+
 export async function getServerSideProps(context: any) {
+  const appId = context?.query?.appId || '';
+
+  const chatQuoteReaderConfig = await (async () => {
+    try {
+      if (!appId) return null;
+
+      const config = await MongoOutLink.findOne(
+        {
+          appId,
+          type: PublishChannelEnum.playground
+        },
+        'showRunningStatus showCite showFullText canDownloadSource'
+      ).lean();
+
+      return config;
+    } catch (error) {
+      addLog.error('getServerSideProps', error);
+      return null;
+    }
+  })();
+
   return {
     props: {
-      appId: context?.query?.appId || '',
-      isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'user', 'login']))
+      appId,
+      showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
+      showCite: chatQuoteReaderConfig?.showCite ?? true,
+      showFullText: chatQuoteReaderConfig?.showFullText ?? true,
+      canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };
 }
-
-export default Render;

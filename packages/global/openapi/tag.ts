@@ -13,6 +13,9 @@ export const TagsMap = {
   pluginToolTag: '工具标签',
   pluginTeam: '团队插件管理',
 
+  // Publish Channel
+  publishChannel: '发布渠道',
+
   /* Support */
   // Wallet
   walletBill: '订单',

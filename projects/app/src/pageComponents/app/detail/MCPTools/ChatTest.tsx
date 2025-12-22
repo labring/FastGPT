@@ -182,10 +182,10 @@ const Render = ({
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
-      // isShowFullText={true}
-      showNodeStatus
+      canDownloadSource={true}
+      isShowCite={true}
+      isShowFullText={true}
+      showRunningStatus={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
