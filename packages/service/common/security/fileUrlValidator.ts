@@ -3,9 +3,9 @@ const systemWhiteList = (() => {
   if (process.env.STORAGE_S3_ENDPOINT) {
     list.push(process.env.STORAGE_S3_ENDPOINT);
   }
-  if (process.env.STORAGE_EXTERNAL_BASE_URL) {
+  if (process.env.STORAGE_EXTERNAL_ENDPOINT) {
     try {
-      const urlData = new URL(process.env.STORAGE_EXTERNAL_BASE_URL);
+      const urlData = new URL(process.env.STORAGE_EXTERNAL_ENDPOINT);
       list.push(urlData.hostname);
     } catch (error) {}
   }

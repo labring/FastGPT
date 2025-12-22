@@ -48,7 +48,7 @@ export function createDefaultStorageOptions() {
       return {
         vendor: 'minio',
         forcePathStyle: true,
-        externalBaseUrl: process.env.STORAGE_EXTERNAL_BASE_URL || undefined,
+        externalBaseUrl: process.env.STORAGE_EXTERNAL_ENDPOINT || undefined,
         endpoint: process.env.STORAGE_S3_ENDPOINT || 'http://localhost:9000',
         region: process.env.STORAGE_REGION || 'us-east-1',
         publicBucket: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
@@ -71,7 +71,7 @@ export function createDefaultStorageOptions() {
       return {
         vendor: 'aws-s3',
         forcePathStyle: process.env.STORAGE_S3_FORCE_PATH_STYLE === 'true' ? true : false,
-        externalBaseUrl: process.env.STORAGE_EXTERNAL_BASE_URL || undefined,
+        externalBaseUrl: process.env.STORAGE_EXTERNAL_ENDPOINT || undefined,
         endpoint: process.env.STORAGE_S3_ENDPOINT || '',
         region: process.env.STORAGE_REGION || 'us-east-1',
         publicBucket: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
@@ -93,7 +93,7 @@ export function createDefaultStorageOptions() {
     case 'cos': {
       return {
         vendor: 'cos',
-        externalBaseUrl: process.env.STORAGE_EXTERNAL_BASE_URL || undefined,
+        externalBaseUrl: process.env.STORAGE_EXTERNAL_ENDPOINT || undefined,
         region: process.env.STORAGE_REGION || 'ap-shanghai',
         publicBucket: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
         privateBucket: process.env.STORAGE_PRIVATE_BUCKET || 'fastgpt-private',
@@ -115,7 +115,7 @@ export function createDefaultStorageOptions() {
     case 'oss': {
       return {
         vendor: 'oss',
-        externalBaseUrl: process.env.STORAGE_EXTERNAL_BASE_URL || undefined,
+        externalBaseUrl: process.env.STORAGE_EXTERNAL_ENDPOINT || undefined,
         endpoint: process.env.STORAGE_OSS_ENDPOINT || '',
         region: process.env.STORAGE_REGION || 'oss-cn-hangzhou',
         publicBucket: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
