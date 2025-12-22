@@ -106,16 +106,16 @@ const RenderText = React.memo(function RenderText({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const isShowQuote = useContextSelector(ChatItemContext, (v) => v.isShowQuote);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
   const source = useMemo(() => {
     if (!text) return '';
 
-    if (isShowQuote) {
+    if (isShowCite) {
       return text;
     }
-    return removeDatasetCiteText(text, isShowQuote);
-  }, [text, isShowQuote]);
+    return removeDatasetCiteText(text, isShowCite);
+  }, [text, isShowCite]);
 
   const chatAuthData = useCreation(() => {
     return { appId, chatId, chatItemDataId, ...outLinkAuthData };
@@ -336,7 +336,7 @@ const AIResponseBox = ({
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
-  const isShowQuote = useContextSelector(ChatItemContext, (v) => v.isShowQuote);
+  const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
 
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
@@ -357,7 +357,7 @@ const AIResponseBox = ({
       />
     );
   }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools && isShowQuote) {
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools && showRunningStatus) {
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {

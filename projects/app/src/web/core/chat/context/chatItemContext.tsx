@@ -14,7 +14,7 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
   canDownloadSource: boolean;
-  isShowQuote: boolean;
+  isShowCite: boolean;
   isShowFullText: boolean;
   showRunningStatus: boolean;
 };
@@ -121,7 +121,7 @@ const ChatItemContextProvider = ({
   children,
   showRouteToDatasetDetail,
   canDownloadSource,
-  isShowQuote,
+  isShowCite,
   isShowFullText,
   showRunningStatus
 }: {
@@ -197,7 +197,7 @@ const ChatItemContextProvider = ({
       clearChatRecords,
       showRouteToDatasetDetail,
       canDownloadSource,
-      isShowQuote,
+      isShowCite,
       isShowFullText,
       showRunningStatus,
 
@@ -215,7 +215,7 @@ const ChatItemContextProvider = ({
     clearChatRecords,
     showRouteToDatasetDetail,
     canDownloadSource,
-    isShowQuote,
+    isShowCite,
     showRunningStatus,
     isShowFullText,
     datasetCiteData,

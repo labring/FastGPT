@@ -87,7 +87,7 @@ const QuoteList = React.memo(function QuoteList({
         >
           <QuoteItem
             quoteItem={item}
-            canViewSource={canDownloadSource}
+            canDownloadSource={canDownloadSource}
             canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}

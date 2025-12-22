@@ -49,14 +49,14 @@ const ResponseTags = ({
 
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
-  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isShowQuote);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
     toolCiteLinks = []
   } = useMemo(() => {
-    if (!isResponseDetail)
+    if (!isShowCite)
       return {
         totalQuoteList: [],
         llmModuleAccount: 0,
@@ -64,16 +64,13 @@ const ResponseTags = ({
         toolCiteLinks: []
       };
     return addStatisticalDataToHistoryItem(historyItem);
-  }, [historyItem, isResponseDetail]);
+  }, [historyItem, isShowCite]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
-  const notSharePage = useMemo(
-    () => chatType !== 'share' && isResponseDetail,
-    [chatType, isResponseDetail]
-  );
+  const notSharePage = useMemo(() => chatType !== 'share' && isShowCite, [chatType, isShowCite]);
 
   const {
     isOpen: isOpenWholeModal,
@@ -92,7 +89,7 @@ const ResponseTags = ({
     : true;
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
-    if (!isResponseDetail) return [];
+    if (!isShowCite) return [];
     // Dataset citations
     const datasetItems = Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -131,7 +128,7 @@ const ResponseTags = ({
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal, isResponseDetail]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 

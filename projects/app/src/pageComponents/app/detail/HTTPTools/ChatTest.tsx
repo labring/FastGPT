@@ -206,7 +206,7 @@ const Render = ({
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
       canDownloadSource={true}
-      isShowQuote={true}
+      isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
     >

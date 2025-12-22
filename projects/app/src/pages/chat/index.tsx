@@ -150,7 +150,7 @@ const Render = (props: {
           showRouteToDatasetDetail={isStandalone !== '1'}
           showRunningStatus={props.showRunningStatus}
           canDownloadSource={props.canDownloadSource}
-          isShowQuote={props.showCite}
+          isShowCite={props.showCite}
           isShowFullText={props.showFullText}
         >
           <ChatRecordContextProvider params={chatRecordProviderParams}>
