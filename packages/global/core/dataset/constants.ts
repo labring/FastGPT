@@ -37,7 +37,7 @@ interface DatasetTypeConfig {
 /* ------------ database_dataset -------------- */
 export enum DatabaseTypeEnum {
   mysql = 'mysql',
-  postgresql = 'postgresql',
+  postgresql = 'postgres',
   mssql = 'mssql',
   sqlite = 'sqlite',
   duckdb = 'duckdb'

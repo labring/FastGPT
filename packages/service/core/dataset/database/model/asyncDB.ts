@@ -1,10 +1,16 @@
 import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
-import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
-import { DBTable, TableColumn, TableForeignKey } from './dataModel';
+import type {
+  DatabaseConfig,
+  TableSchemaType,
+  ColumnSchemaType,
+  ForeignKeySchemaType
+} from '@fastgpt/global/core/dataset/type';
 import { truncateText, isStringType, convertValueToString } from './utils';
 import type { TableColumn as ORMColumn, ColumnType, DataSourceOptions, Driver } from 'typeorm';
 import { DataSource } from 'typeorm';
+import pg from 'pg';
+delete (pg as any).native;
 
 export abstract class AsyncDB {
   protected db: DataSource;
@@ -44,9 +50,16 @@ export abstract class AsyncDB {
       password: config.password,
       database: config.database,
       synchronize: false,
-      logging: false
+      logging: false,
+      // PostgreSQL specific: disable native driver to use pure JS implementation
+      ...(config.clientType === DatabaseTypeEnum.postgresql && {
+        driver: require('pg'),
+        nativeDriver: null,
+        extra: { native: false },
+        ...(config.schema && { schema: config.schema })
+      })
     };
-    console.debug(`[AsyncDB.from_uri]:${Object.values(options)}`);
+    console.debug(`[AsyncDB.from_uri]:${JSON.stringify(options, null, 2)}`);
     return new DataSource(options);
   }
 
@@ -111,15 +124,24 @@ export abstract class AsyncDB {
     this.table_names = await this.get_all_table_names();
   }
 
-  async get_table_columns(table_name: string): Promise<Array<TableColumn>> {
+  async get_table_columns(table_name: string): Promise<Array<ColumnSchemaType>> {
     const queryRunner = this.db.createQueryRunner();
     try {
       const table = await queryRunner.getTable(table_name);
       if (!table) return Promise.reject(DatabaseErrEnum.fetchInfoError);
 
-      return table.columns.map((col: ORMColumn) => {
-        return new TableColumn(col.name, col.type as ColumnType, col.comment ?? '');
-      });
+      return table.columns.map((col: ORMColumn) => ({
+        columnName: col.name,
+        columnType: String(col.type),
+        description: col.comment ?? '',
+        examples: [],
+        forbid: true,
+        valueIndex: true,
+        isNullable: col.isNullable,
+        defaultValue: col.default ?? null,
+        isAutoIncrement: col.isGenerated,
+        isPrimaryKey: col.isPrimary
+      }));
     } finally {
       await queryRunner.release();
     }
@@ -137,7 +159,7 @@ export abstract class AsyncDB {
     }
   }
 
-  async get_table_info(tableName: string, getExamples: boolean = false): Promise<DBTable> {
+  async get_table_info(tableName: string, getExamples: boolean = false): Promise<TableSchemaType> {
     if (!this.db.isInitialized) {
       await this.db.initialize();
     }
@@ -150,7 +172,7 @@ export abstract class AsyncDB {
 
       const tableComment = table.comment ?? '';
 
-      const columns = new Map<string, TableColumn>();
+      const columns: Record<string, ColumnSchemaType> = {};
 
       for (const col of table.columns) {
         let examples: string[] = [];
@@ -182,42 +204,52 @@ export abstract class AsyncDB {
           }
         }
 
-        const tableColumn = new TableColumn(
-          col.name,
-          col.type as ColumnType,
-          col.comment || '',
-          false,
+        columns[col.name] = {
+          columnName: col.name,
+          columnType: String(col.type),
+          description: col.comment || '',
+          forbid: false,
           valueIndex,
           examples,
-          col.isNullable,
-          col.default ?? null,
-          col.isGenerated,
-          col.isPrimary,
-          table.foreignKeys.some((fk) => fk.columnNames.includes(col.name)), // isForeignKey
-          table.foreignKeys
+          isNullable: col.isNullable,
+          defaultValue: col.default ?? null,
+          isAutoIncrement: col.isGenerated,
+          isPrimaryKey: col.isPrimary,
+          isForeignKey: table.foreignKeys.some((fk) => fk.columnNames.includes(col.name)),
+          relatedColumns: table.foreignKeys
             ?.filter((fk) => fk.columnNames.includes(col.name))
             .map((fk) => fk.referencedColumnNames)
-            .flat() // relatedColumns
-        );
-        columns.set(col.name, tableColumn);
+            .flat()
+        };
       }
 
       const primaryKeys = table.primaryColumns.map((col) => col.name);
-      const foreignKeys: TableForeignKey[] = table.foreignKeys.flatMap((fk) => {
-        return fk.columnNames.map((col, idx) =>{
+      const foreignKeys: ForeignKeySchemaType[] = table.foreignKeys.flatMap((fk) => {
+        return fk.columnNames
+          .map((col, idx) => {
             if (fk.referencedColumnNames[idx] && fk.referencedTableName)
-            return new TableForeignKey(
-              fk.name || '',
-              col,
-              fk.referencedSchema || fk.referencedDatabase || this.config.database,
-              fk.referencedTableName,
-              fk.referencedColumnNames[idx]
-            )
-          }  
-        ).filter(Boolean) as TableForeignKey[];
+              return {
+                name: fk.name || '',
+                column: col,
+                referredSchema:
+                  fk.referencedSchema || fk.referencedDatabase || this.config.database,
+                referredTable: fk.referencedTableName,
+                referredColumns: fk.referencedColumnNames[idx]
+              };
+          })
+          .filter(Boolean) as ForeignKeySchemaType[];
       });
 
-      return new DBTable(tableName, tableComment, false, columns, foreignKeys, primaryKeys);
+      return {
+        tableName,
+        description: tableComment,
+        columns,
+        foreignKeys,
+        primaryKeys,
+        constraints: [],
+        exist: true,
+        lastUpdated: new Date()
+      };
     } finally {
       await queryRunner.release();
     }

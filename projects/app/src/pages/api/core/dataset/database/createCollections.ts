@@ -21,11 +21,8 @@ import type {
   CreateDatabaseCollectionsBody,
   CreateDatabaseCollectionsResponse
 } from '@fastgpt/global/core/dataset/database/api';
-import {
-  RequestValidationDiagnosisError,
-  TableTransformer
-} from '@fastgpt/service/core/dataset/database/model/dataModel';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { RequestValidationDiagnosisError } from '@fastgpt/service/core/dataset/database/model/utils';
 
 // Create collections and training tasks for database tables
 async function CreateDatabaseCollections(
@@ -53,8 +50,6 @@ async function CreateDatabaseCollections(
   try {
     await mongoSessionRun(async (session) => {
       for (const table of tables) {
-        // convert to DBTable object: check table info
-        const dbTable = TableTransformer.fromPlainObject(table);
         const collection = await createOneCollection({
           teamId,
           tmbId,
@@ -62,10 +57,11 @@ async function CreateDatabaseCollections(
           type: DatasetCollectionTypeEnum.table,
           name: table.tableName,
           trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
-          tableSchema: TableTransformer.toPlainObject(dbTable, {
+          tableSchema: {
+            ...table,
             exist: table.exist ?? true,
             lastUpdated: new Date()
-          }) as TableSchemaType,
+          } as TableSchemaType,
           forbid: table.forbid,
           session
         });

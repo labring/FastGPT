@@ -1,6 +1,7 @@
 import type { ColumnSchemaType, TableSchemaType, DatabaseConfig } from '../type';
 import { ConstraintSchemaType, ForeignKeySchemaType } from '../type';
 import type { DatabaseTypeEnum } from '../constants';
+import type { BucketNameEnum } from '../../../common/file/constants';
 /*-------API Request & Response Types-------*/
 
 export type CheckConnectionBody = {

@@ -170,6 +170,12 @@ const DatasetSchema = new Schema({
         type: String,
         required: true
       },
+      schema: {
+        type: String,
+        required: function (this: any) {
+          return this.databaseConfig?.clientType === DatabaseTypeEnum.postgresql;
+        }
+      },
       user: {
         type: String,
         required: true

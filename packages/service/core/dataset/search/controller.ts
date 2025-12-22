@@ -1390,7 +1390,8 @@ export const generateAndExecuteSQL = async ({
       port: dbConfig.port || 3306,
       username: dbConfig.user,
       password: dbConfig.password,
-      db_name: dbConfig.database
+      db_name: dbConfig.database,
+      ns_name: dbConfig?.schema
     } as DativeSourceConfigType,
     generate_sql_llm,
     evaluate_sql_llm,

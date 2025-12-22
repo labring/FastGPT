@@ -4,11 +4,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { withDatabaseClient } from '@fastgpt/service/core/dataset/database/clientManager';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import {
-  TableColumnTransformer,
-  type DBTable,
-  type TableColumn
-} from '@fastgpt/service/core/dataset/database/model/dataModel';
+import type { TableSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { DatabaseCollectionsBody as GetConfigurationResponse } from '@fastgpt/global/core/dataset/database/api';
 import { i18nT } from '@fastgpt/web/i18n/utils';
@@ -39,22 +35,14 @@ async function handler(req: ApiRequestProps<Query>): Promise<GetConfigurationRes
     // Fetch detailed info for each table
     const tableList = [];
     for (const tableName of tableNames) {
-      const tableInfo: DBTable = await dbClient.get_table_info(tableName, true);
-
-      // Convert Map to plain object for columns
-      const columnsObj: Record<string, any> = {};
-      if (tableInfo.columns instanceof Map) {
-        tableInfo.columns.forEach((value: TableColumn, key: string) => {
-          columnsObj[key] = TableColumnTransformer.toPlainObject(value);
-        });
-      }
+      const tableInfo: TableSchemaType = await dbClient.get_table_info(tableName, true);
 
       tableList.push({
         tableName: tableInfo.tableName,
-        exist: true,
+        exist: tableInfo.exist,
         description: tableInfo.description || '',
-        forbid: tableInfo.forbid ?? false,
-        columns: columnsObj,
+        forbid: false,
+        columns: tableInfo.columns,
         foreignKeys: tableInfo.foreignKeys || [],
         primaryKeys: tableInfo.primaryKeys || [],
         constraints: tableInfo.constraints || []

@@ -28,7 +28,6 @@ import type {
   ApplyChangesResponse
 } from '@fastgpt/global/core/dataset/database/api.d';
 import { StatusEnum } from '@fastgpt/global/core/dataset/database/api.d';
-import { TableTransformer } from '@fastgpt/service/core/dataset/database/model/dataModel';
 import type { ColumnSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
 
 // Check if column forbid status is inconsistent between database and collection
@@ -114,10 +113,11 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     type: DatasetCollectionTypeEnum.table,
                     name: table.tableName,
                     forbid: table.forbid,
-                    tableSchema: TableTransformer.toPlainObject(
-                      TableTransformer.fromPlainObject(table),
-                      { exist: true, lastUpdated: new Date() }
-                    ) as TableSchemaType,
+                    tableSchema: {
+                      ...table,
+                      exist: true,
+                      lastUpdated: new Date()
+                    } as TableSchemaType,
                     trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
                     updateTime: new Date()
                   }
@@ -219,10 +219,11 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     type: DatasetCollectionTypeEnum.table,
                     name: table.tableName,
                     trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
-                    tableSchema: TableTransformer.toPlainObject(
-                      TableTransformer.fromPlainObject(table),
-                      { exist: true, lastUpdated: new Date() }
-                    ) as TableSchemaType,
+                    tableSchema: {
+                      ...table,
+                      exist: true,
+                      lastUpdated: new Date()
+                    } as TableSchemaType,
                     forbid: table.forbid,
                     session
                   });
