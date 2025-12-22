@@ -39,10 +39,10 @@ describe('Playground Visibility Update API', () => {
   it('should handle update request with valid data', async () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
-      showNodeStatus: false,
-      responseDetail: false,
+      showRunningStatus: false,
+      showQuote: false,
       showFullText: false,
-      showRawSource: false
+      canDownloadSource: false
     };
 
     const res = await Call(updateApi.default, {
@@ -63,10 +63,10 @@ describe('Playground Visibility Update API', () => {
       if (createdConfig) {
         expect(createdConfig.appId).toBe(testApp._id);
         expect(createdConfig.type).toBe(PublishChannelEnum.playground);
-        expect(createdConfig.showNodeStatus).toBe(false);
-        expect(createdConfig.responseDetail).toBe(false);
+        expect(createdConfig.showRunningStatus).toBe(false);
+        expect(createdConfig.showQuote).toBe(false);
         expect(createdConfig.showFullText).toBe(false);
-        expect(createdConfig.showRawSource).toBe(false);
+        expect(createdConfig.canDownloadSource).toBe(false);
       }
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -78,10 +78,10 @@ describe('Playground Visibility Update API', () => {
   it('should handle update request with true values', async () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
-      showNodeStatus: true,
-      responseDetail: true,
+      showRunningStatus: true,
+      showQuote: true,
       showFullText: true,
-      showRawSource: true
+      canDownloadSource: true
     };
 
     const res = await Call(updateApi.default, {
@@ -100,10 +100,10 @@ describe('Playground Visibility Update API', () => {
       }).lean();
 
       if (createdConfig) {
-        expect(createdConfig.showNodeStatus).toBe(true);
-        expect(createdConfig.responseDetail).toBe(true);
+        expect(createdConfig.showRunningStatus).toBe(true);
+        expect(createdConfig.showQuote).toBe(true);
         expect(createdConfig.showFullText).toBe(true);
-        expect(createdConfig.showRawSource).toBe(true);
+        expect(createdConfig.canDownloadSource).toBe(true);
       }
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -115,10 +115,10 @@ describe('Playground Visibility Update API', () => {
   it('should handle update request with mixed boolean values', async () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
-      showNodeStatus: false,
-      responseDetail: true,
+      showRunningStatus: false,
+      showQuote: true,
       showFullText: false,
-      showRawSource: true
+      canDownloadSource: true
     };
 
     const res = await Call(updateApi.default, {
@@ -137,10 +137,10 @@ describe('Playground Visibility Update API', () => {
       }).lean();
 
       if (createdConfig) {
-        expect(createdConfig.showNodeStatus).toBe(false);
-        expect(createdConfig.responseDetail).toBe(true);
+        expect(createdConfig.showRunningStatus).toBe(false);
+        expect(createdConfig.showQuote).toBe(true);
         expect(createdConfig.showFullText).toBe(false);
-        expect(createdConfig.showRawSource).toBe(true);
+        expect(createdConfig.canDownloadSource).toBe(true);
       }
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -151,7 +151,7 @@ describe('Playground Visibility Update API', () => {
 
   it('should return 500 when appId is missing', async () => {
     const updateData = {
-      showNodeStatus: false
+      showRunningStatus: false
     };
 
     const res = await Call(updateApi.default, {
@@ -166,10 +166,10 @@ describe('Playground Visibility Update API', () => {
   it('should return 500 when appId is empty string', async () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: '',
-      showNodeStatus: false,
-      responseDetail: false,
+      showRunningStatus: false,
+      showQuote: false,
       showFullText: false,
-      showRawSource: false
+      canDownloadSource: false
     };
 
     const res = await Call(updateApi.default, {
@@ -184,10 +184,10 @@ describe('Playground Visibility Update API', () => {
   it('should return error when user is not authenticated', async () => {
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp._id,
-      showNodeStatus: false,
-      responseDetail: false,
+      showRunningStatus: false,
+      showQuote: false,
       showFullText: false,
-      showRawSource: false
+      canDownloadSource: false
     };
 
     const res = await Call(updateApi.default, {
@@ -202,7 +202,7 @@ describe('Playground Visibility Update API', () => {
     // Test with missing boolean fields (should fail validation)
     const updateData = {
       appId: testApp._id,
-      showNodeStatus: false
+      showRunningStatus: false
       // Missing other boolean fields
     };
 
@@ -232,10 +232,10 @@ describe('Playground Visibility Update API', () => {
       appId: testApp._id,
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
-      showNodeStatus: true,
-      responseDetail: true,
+      showRunningStatus: true,
+      showQuote: true,
       showFullText: true,
-      showRawSource: true,
+      canDownloadSource: true,
       usagePoints: 0,
       lastTime: new Date()
     });
@@ -243,10 +243,10 @@ describe('Playground Visibility Update API', () => {
     // Update config for second app
     const updateData: UpdatePlaygroundVisibilityConfigBody = {
       appId: testApp2._id,
-      showNodeStatus: false,
-      responseDetail: false,
+      showRunningStatus: false,
+      showQuote: false,
       showFullText: true,
-      showRawSource: true
+      canDownloadSource: true
     };
 
     const res = await Call(updateApi.default, {
@@ -265,8 +265,8 @@ describe('Playground Visibility Update API', () => {
       }).lean();
 
       if (config1) {
-        expect(config1.showNodeStatus).toBe(true);
-        expect(config1.responseDetail).toBe(true);
+        expect(config1.showRunningStatus).toBe(true);
+        expect(config1.showQuote).toBe(true);
       }
 
       // Verify second app config was created with new values
@@ -276,10 +276,10 @@ describe('Playground Visibility Update API', () => {
       }).lean();
 
       if (config2) {
-        expect(config2.showNodeStatus).toBe(false);
-        expect(config2.responseDetail).toBe(false);
+        expect(config2.showRunningStatus).toBe(false);
+        expect(config2.showQuote).toBe(false);
         expect(config2.showFullText).toBe(true);
-        expect(config2.showRawSource).toBe(true);
+        expect(config2.canDownloadSource).toBe(true);
       }
     } else {
       // If there are permission issues, we still expect the API to validate parameters

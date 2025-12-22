@@ -48,10 +48,10 @@ describe('Playground Visibility Config API', () => {
     if (res.code === 200) {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
-        showNodeStatus: true,
-        responseDetail: true,
+        showRunningStatus: true,
+        showQuote: true,
         showFullText: true,
-        showRawSource: true
+        canDownloadSource: true
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -69,10 +69,10 @@ describe('Playground Visibility Config API', () => {
       appId: testApp._id,
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
-      showNodeStatus: false,
-      responseDetail: false,
+      showRunningStatus: false,
+      showQuote: false,
       showFullText: false,
-      showRawSource: false,
+      canDownloadSource: false,
       usagePoints: 0,
       lastTime: new Date()
     });
@@ -88,10 +88,10 @@ describe('Playground Visibility Config API', () => {
     if (res.code === 200) {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
-        showNodeStatus: false,
-        responseDetail: false,
+        showRunningStatus: false,
+        showQuote: false,
         showFullText: false,
-        showRawSource: false
+        canDownloadSource: false
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -131,10 +131,10 @@ describe('Playground Visibility Config API', () => {
       appId: testApp._id,
       name: 'Playground Chat',
       type: PublishChannelEnum.playground,
-      showNodeStatus: true,
-      responseDetail: false,
+      showRunningStatus: true,
+      showQuote: false,
       showFullText: true,
-      showRawSource: false,
+      canDownloadSource: false,
       usagePoints: 0,
       lastTime: new Date()
     });
@@ -150,10 +150,10 @@ describe('Playground Visibility Config API', () => {
     if (res.code === 200) {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
-        showNodeStatus: true,
-        responseDetail: false,
+        showRunningStatus: true,
+        showQuote: false,
         showFullText: true,
-        showRawSource: false
+        canDownloadSource: false
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters

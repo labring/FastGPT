@@ -264,10 +264,10 @@ const Render = (props: Props) => {
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
+      canDownloadSource={true}
+      isShowQuote={true}
       isShowFullText={true}
-      showNodeStatus
+      showRunningStatus={true}
     >
       <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
         <DetailLogsModal
