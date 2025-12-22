@@ -30,6 +30,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     nodes
   });
 
+  await updateParentFoldersUpdateTime({
+    parentId: app.parentId
+  });
+
   if (autoSave) {
     await mongoSessionRun(async (session) => {
       await MongoAppVersion.updateOne(
@@ -62,11 +66,6 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
           session
         }
       );
-
-      await updateParentFoldersUpdateTime({
-        parentId: app.parentId,
-        session
-      });
     });
 
     addAuditLog({
@@ -128,11 +127,6 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
         session
       }
     );
-
-    await updateParentFoldersUpdateTime({
-      parentId: app.parentId,
-      session
-    });
   });
 
   (async () => {

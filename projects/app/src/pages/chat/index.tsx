@@ -33,7 +33,13 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  refreshRecentlyUsed
+}: {
+  myApps: AppListItemType[];
+  refreshRecentlyUsed: () => void;
+}) => {
   const { isPc } = useSystem();
 
   const { appId } = useChatStore();
@@ -62,7 +68,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {(!datasetCiteData || isPc) && (
         <PageContainer flex="1 0 0" w={0} position="relative">
           {/* home chat window */}
-          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow myApps={myApps} />}
+          {pane === ChatSidebarPaneEnum.HOME && (
+            <HomeChatWindow myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
+          )}
 
           {/* favourite apps */}
           {pane === ChatSidebarPaneEnum.FAVORITE_APPS && <ChatFavouriteApp />}
@@ -71,7 +79,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
 
           {/* recently used apps chat window */}
-          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow myApps={myApps} />}
+          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && (
+            <AppChatWindow myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
+          )}
 
           {/* setting */}
           {pane === ChatSidebarPaneEnum.SETTING && <ChatSetting />}
@@ -103,7 +113,7 @@ const Render = (props: {
   const { chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const { isInitedUser, userInfo, myApps } = useChat(appId);
+  const { isInitedUser, userInfo, myApps, refreshRecentlyUsed } = useChat(appId);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -154,7 +164,7 @@ const Render = (props: {
           isShowFullText={props.showFullText}
         >
           <ChatRecordContextProvider params={chatRecordProviderParams}>
-            <Chat myApps={myApps} />
+            <Chat myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
           </ChatRecordContextProvider>
         </ChatItemContextProvider>
       </ChatContextProvider>

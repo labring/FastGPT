@@ -27,6 +27,8 @@ import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
 import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
+import { type ClientSession } from '../../common/mongo';
+import { MongoAppRecord } from './record/schema';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -181,6 +183,8 @@ export const deleteAppDataProcessor = async ({
     await MongoAppRegistration.deleteMany({ appId });
     // 删除应用从MCP key apps数组中移除
     await MongoMcpKey.updateMany({ teamId, 'apps.appId': appId }, { $pull: { apps: { appId } } });
+    // 删除应用使用记录
+    await MongoAppRecord.deleteMany({ appId });
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });
@@ -214,13 +218,10 @@ export async function updateParentFoldersUpdateTime({
 }): Promise<void> {
   if (!parentId) return;
 
-  const parentApp = await MongoApp.findById(parentId).lean();
+  const parentApp = await MongoApp.findById(parentId, 'parentId');
   if (!parentApp) return;
 
-  // Only update if parent is a folder
-  if (AppFolderTypeList.includes(parentApp.type)) {
-    await MongoApp.findByIdAndUpdate(parentId, { updateTime: new Date() }, { session });
-  }
+  await MongoApp.findByIdAndUpdate(parentId, { updateTime: new Date() }, { session });
 
   // Recursively update parent folders
   await updateParentFoldersUpdateTime({

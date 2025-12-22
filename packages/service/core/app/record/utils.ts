@@ -1,5 +1,5 @@
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { MongoAppUsage } from './schema';
+import { MongoAppRecord } from './schema';
 
 export const recordAppUsage = async ({
   appId,
@@ -11,7 +11,7 @@ export const recordAppUsage = async ({
   teamId: string;
 }) => {
   await mongoSessionRun(async (session) => {
-    await MongoAppUsage.findOneAndUpdate(
+    await MongoAppRecord.findOneAndUpdate(
       { tmbId, appId },
       {
         $set: {
@@ -26,24 +26,24 @@ export const recordAppUsage = async ({
       }
     );
 
-    // 保留最新的50条记录，删除超出限制的旧记录
-    const threshold = await MongoAppUsage.findOne(
+    const records = await MongoAppRecord.find(
       { tmbId },
-      { lastUsedTime: 1 },
+      { _id: 1 },
       {
         session,
         sort: { lastUsedTime: -1 },
-        skip: 49,
         lean: true
       }
     );
 
-    if (threshold) {
-      await MongoAppUsage.deleteMany(
+    if (records.length > 50) {
+      const toDeleteRecords = records.slice(50);
+      const toDeleteIds = toDeleteRecords.map((record) => record._id);
+
+      await MongoAppRecord.deleteMany(
         {
           tmbId,
-          _id: { $ne: threshold._id },
-          lastUsedTime: { $lte: threshold.lastUsedTime }
+          _id: { $in: toDeleteIds }
         },
         { session }
       );

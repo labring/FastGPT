@@ -32,9 +32,10 @@ const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPlu
 
 type Props = {
   myApps: AppListItemType[];
+  refreshRecentlyUsed?: () => void;
 };
 
-const AppChatWindow = ({ myApps }: Props) => {
+const AppChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
@@ -122,9 +123,19 @@ const AppChatWindow = ({ myApps }: Props) => {
         title: newTitle
       }));
 
+      refreshRecentlyUsed?.();
+
       return { responseText, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat, isShowCite]
+    [
+      appId,
+      chatId,
+      onUpdateHistoryTitle,
+      setChatBoxData,
+      forbidLoadChat,
+      isShowCite,
+      refreshRecentlyUsed
+    ]
   );
 
   return (

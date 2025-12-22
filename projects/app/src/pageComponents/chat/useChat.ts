@@ -12,7 +12,7 @@ export const useChat = (appId: string) => {
   const [isInitedUser, setIsInitedUser] = useState(false);
 
   // get app list
-  const { data: myApps = [] } = useRequest2(() => getRecentlyUsedApps(), {
+  const { data: myApps = [], refresh } = useRequest2(() => getRecentlyUsedApps(), {
     manual: false,
     errorToast: '',
     refreshDeps: [userInfo],
@@ -43,6 +43,7 @@ export const useChat = (appId: string) => {
   return {
     isInitedUser,
     userInfo,
-    myApps
+    myApps,
+    refreshRecentlyUsed: refresh
   };
 };

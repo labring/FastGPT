@@ -51,6 +51,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type Props = {
   myApps: AppListItemType[];
+  refreshRecentlyUsed?: () => void;
 };
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
@@ -68,7 +69,7 @@ const defaultWhisperConfig: AppWhisperConfigType = {
   autoTTSResponse: false
 };
 
-const HomeChatWindow = ({ myApps }: Props) => {
+const HomeChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -232,6 +233,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
           title: newTitle
         }));
 
+        refreshRecentlyUsed?.();
+
         return { responseText, isNewChat: forbidLoadChat.current };
       }
 
@@ -280,6 +283,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
         ...state,
         title: newTitle
       }));
+
+      refreshRecentlyUsed?.();
 
       return { responseText, isNewChat: forbidLoadChat.current };
     }

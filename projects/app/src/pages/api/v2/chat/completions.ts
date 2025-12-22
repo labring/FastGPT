@@ -27,7 +27,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
-import { recordAppUsage } from '@fastgpt/service/core/app/usage/utils';
+import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
