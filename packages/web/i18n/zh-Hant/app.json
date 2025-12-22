@@ -9,6 +9,7 @@
   "fetch_app_datasets_error": "獲取應用關聯知識庫異常",
   "submit_correction_failed": "提交失敗",
   "submit_correction_success": "提交成功",
+  "fetch_correction_data_failed": "獲取糾錯數據失敗",
   "AutoOptimize": "自動優化",
   "Click_to_delete_this_field": "點擊刪除該字段",
   "Filed_is_deprecated": "該字段已棄用",
