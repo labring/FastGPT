@@ -94,10 +94,10 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  showCite: OutLinkSchema<T>['showCite'];
-  showRunningStatus: OutLinkSchema<T>['showRunningStatus'];
-  showFullText: OutLinkSchema<T>['showFullText'];
-  canDownloadSource: OutLinkSchema<T>['canDownloadSource'];
+  showCite?: OutLinkSchema<T>['showCite'];
+  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
+  showFullText?: OutLinkSchema<T>['showFullText'];
+  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
