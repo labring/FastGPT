@@ -8,7 +8,9 @@ import {
   CheckPayResultResponseSchema,
   BillDetailResponseSchema,
   BillListQuerySchema,
-  CancelBillPropsSchema
+  CancelBillPropsSchema,
+  CheckPayResultQuerySchema,
+  BillDetailQuerySchema
 } from './api';
 import { TagsMap } from '../../../tag';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -68,11 +70,7 @@ export const BillPath: OpenAPIPath = {
       description: '检查订单的支付状态，用于轮询支付结果',
       tags: [TagsMap.walletBill],
       requestParams: {
-        query: z.object({
-          payId: ObjectIdSchema.meta({
-            description: '订单 ID'
-          })
-        })
+        query: CheckPayResultQuerySchema
       },
       responses: {
         200: {
@@ -92,11 +90,7 @@ export const BillPath: OpenAPIPath = {
       description: '根据订单 ID 获取订单详细信息，包括优惠券名称等',
       tags: [TagsMap.walletBill],
       requestParams: {
-        query: z.object({
-          billId: ObjectIdSchema.meta({
-            description: '订单 ID'
-          })
-        })
+        query: BillDetailQuerySchema
       },
       responses: {
         200: {

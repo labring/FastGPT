@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
-import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
@@ -23,7 +23,7 @@ const StandardPlanContentList = ({
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
-  standplan?: TeamSubSchema;
+  standplan?: TeamSubSchemaType;
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
