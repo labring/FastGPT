@@ -1,0 +1,77 @@
+{
+  "id": "fastgpt-rerank-test-environment",
+  "name": "FastGPT Rerank 测试环境",
+  "values": [
+    {
+      "key": "API_BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "default",
+      "enabled": true,
+      "description": "API服务基础地址"
+    },
+    {
+      "key": "APP_ID",
+      "value": "your-app-id-here",
+      "type": "default",
+      "enabled": true,
+      "description": "测试应用ID - 请手动设置（必需）"
+    },
+    {
+      "key": "TASK_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "任务ID - 测试时自动设置"
+    },
+    {
+      "key": "TRAINSET_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "训练集ID - 测试时自动设置"
+    },
+    {
+      "key": "DATA_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "训练数据ID - 测试时自动设置"
+    },
+    {
+      "key": "FASTGPT_TOKEN",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "FastGPT 认证 Token - 从浏览器获取或登录后设置"
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Authorization Token - 格式：Bearer fastgpt-xxxxx"
+    },
+    {
+      "key": "API_KEY",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "API Key - 用于 API 认证"
+    },
+    {
+      "key": "ROOT_KEY",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Root Key - 管理员权限认证"
+    },
+    {
+      "key": "AUTH_TYPE",
+      "value": "cookie",
+      "type": "default",
+      "enabled": true,
+      "description": "认证类型：cookie, bearer, apikey, root"
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

@@ -20,6 +20,8 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 
 export enum QueueNames {
   datasetSync = 'datasetSync',
+  rerankTrainDataGenerate = 'rerankTrainDataGenerate',
+  rerankTrainTask = 'rerankTrainTask',
   evalDatasetDataQuality = 'evalDatasetDataQuality',
   evalDatasetDataSynthesize = 'evalDatasetDataSynthesize',
   evalTask = 'evalTask',

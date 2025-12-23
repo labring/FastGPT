@@ -760,5 +760,26 @@ export const auditLogMap = {
     content: i18nT('account_team:log_update_evaluation_summary_config'),
     typeLabel: i18nT('account_team:update_evaluation_summary_config'),
     params: {} as { name?: string; evalName: string }
+  },
+  // Rerank Train
+  [AuditEventEnum.CREATE_RERANK_TRAINSET]: {
+    content: i18nT('account_team:log_create_rerank_trainset'),
+    typeLabel: i18nT('account_team:create_rerank_trainset'),
+    params: {} as { name?: string; trainsetName: string; appName: string }
+  },
+  [AuditEventEnum.DELETE_RERANK_TRAINSET]: {
+    content: i18nT('account_team:log_delete_rerank_trainset'),
+    typeLabel: i18nT('account_team:delete_rerank_trainset'),
+    params: {} as { name?: string; trainsetName: string; appName: string }
+  },
+  [AuditEventEnum.CREATE_RERANK_TRAIN_TASK]: {
+    content: i18nT('account_team:log_create_rerank_train_task'),
+    typeLabel: i18nT('account_team:create_rerank_train_task'),
+    params: {} as { name?: string; taskName: string; appName: string }
+  },
+  [AuditEventEnum.DELETE_RERANK_TRAIN_TASK]: {
+    content: i18nT('account_team:log_delete_rerank_train_task'),
+    typeLabel: i18nT('account_team:delete_rerank_train_task'),
+    params: {} as { name?: string; taskName: string; appName: string }
   }
 } as const;
