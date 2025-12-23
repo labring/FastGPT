@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@fastgpt-sdk/storage": "0.5.1",
+    "@fastgpt-sdk/storage": "0.5.3",
     "@fastgpt/global": "workspace:*",
     "@maxmind/geoip2-node": "^6.3.4",
     "@modelcontextprotocol/sdk": "^1.24.0",

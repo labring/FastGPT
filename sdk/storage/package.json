@@ -1,8 +1,10 @@
 {
   "name": "@fastgpt-sdk/storage",
   "private": false,
-  "version": "0.5.1",
+  "version": "0.5.3",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "packageManager": "pnpm@9.15.9",
   "description": "FastGPT SDK for object storage",
   "author": "FastGPT",
@@ -51,12 +53,13 @@
     "@aws-sdk/s3-request-presigner": "^3.952.0",
     "ali-oss": "^6.23.0",
     "cos-nodejs-sdk-v5": "^2.15.4",
-    "es-toolkit": "^1.43.0"
+    "es-toolkit": "^1.43.0",
+    "vitest": "^4.0.16"
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.13",
     "@types/node": "^20",
-    "tsdown": "^0.17.4",
+    "tsdown": "^0.18.2",
     "typescript": "^5.9.3"
   }
 }

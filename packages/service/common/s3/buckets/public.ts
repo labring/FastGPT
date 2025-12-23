@@ -5,7 +5,6 @@ import {
   type ICosStorageOptions,
   type IOssStorageOptions,
   createStorage,
-  type IStorage,
   MinioStorageAdapter,
   type IStorageOptions
 } from '@fastgpt-sdk/storage';

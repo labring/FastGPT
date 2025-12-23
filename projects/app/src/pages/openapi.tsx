@@ -23,9 +23,7 @@ function OpenAPIPage() {
           hideDarkModeToggle: true,
           hideClientButton: true,
           theme: 'default',
-          spec: {
-            url: '/api/openapi.json'
-          }
+          url: '/api/openapi.json'
         }}
       />
     </Box>
