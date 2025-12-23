@@ -23,7 +23,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMount } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL,
   DEFAULT_LOGO_BANNER_URL
@@ -46,8 +46,8 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const refreshChatSetting = useContextSelector(ChatPageContext, (v) => v.refreshChatSetting);
 
   const chatSettings2Form = useCallback(
     (data?: ChatSettingType) => {

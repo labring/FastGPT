@@ -7,7 +7,6 @@ import SideBar from '@/components/SideBar';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { useCallback } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -20,23 +19,17 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-type Props = {
-  myApps: GetRecentlyUsedAppsResponseType;
-  refreshRecentlyUsed?: () => void;
-};
-
-const AppChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
+const AppChatWindow = () => {
   const { userInfo } = useUserStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
@@ -57,9 +50,10 @@ const AppChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const { loading } = useRequest2(
     async () => {
@@ -124,7 +118,7 @@ const AppChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
         title: newTitle
       }));
 
-      refreshRecentlyUsed?.();
+      refreshRecentlyUsed();
 
       return { responseText, isNewChat: forbidLoadChat.current };
     },
@@ -170,7 +164,6 @@ const AppChatWindow = ({ myApps, refreshRecentlyUsed }: Props) => {
           pane={pane}
           chatSettings={chatSettings}
           showHistory
-          apps={myApps}
           history={chatRecords}
           totalRecordsCount={totalRecordsCount}
         />

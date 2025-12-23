@@ -17,13 +17,12 @@ import {
 } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { usePathname } from 'next/navigation';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 type Props = {
   activeAppId: string;
-  apps: GetRecentlyUsedAppsResponseType;
 };
 
 const MotionBox = motion(Box);
@@ -149,13 +148,13 @@ const AnimatedText: React.FC<AnimatedTextProps> = ({ show, children, className, 
 );
 
 const LogoSection = () => {
-  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
-  const logos = useContextSelector(ChatSettingContext, (v) => v.logos);
+  const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
+  const logos = useContextSelector(ChatPageContext, (v) => v.logos);
   const isHomeActive = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
-  const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
+  const onTriggerCollapse = useContextSelector(ChatPageContext, (v) => v.onTriggerCollapse);
   const wideLogoSrc = logos.wideLogoUrl;
   const squareLogoSrc = logos.squareLogoUrl;
 
@@ -257,24 +256,24 @@ const NavigationSection = () => {
   const { feConfigs } = useSystemStore();
 
   const isEnableHome = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.chatSettings?.enableHome ?? true
   );
-  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
-  const onTriggerCollapse = useContextSelector(ChatSettingContext, (v) => v.onTriggerCollapse);
+  const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
+  const onTriggerCollapse = useContextSelector(ChatPageContext, (v) => v.onTriggerCollapse);
   const isHomeActive = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
   const isTeamAppsActive = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
   );
   const isFavouriteAppsActive = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.FAVORITE_APPS
   );
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
     <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
@@ -366,12 +365,12 @@ const BottomSection = () => {
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const isShare = pathname === '/chat/share';
 
-  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
+  const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
   const isSettingActive = useContextSelector(
-    ChatSettingContext,
+    ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.SETTING
   );
-  const onSettingClick = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const onSettingClick = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
     <MotionBox mt={'auto'} px={3} py={4} layout={false}>
@@ -486,13 +485,14 @@ const BottomSection = () => {
   );
 };
 
-const ChatSlider = ({ apps, activeAppId }: Props) => {
+const ChatSlider = ({ activeAppId }: Props) => {
   const { t } = useTranslation();
 
-  const isCollapsed = useContextSelector(ChatSettingContext, (v) => v.collapse === 1);
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
+  const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
 
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
     <MotionFlex
@@ -532,7 +532,7 @@ const ChatSlider = ({ apps, activeAppId }: Props) => {
         </HStack>
 
         <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
-          {apps.map((item) => (
+          {myApps.map((item) => (
             <Flex
               key={item._id}
               py={2}

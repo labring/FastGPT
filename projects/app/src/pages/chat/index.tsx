@@ -8,7 +8,6 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider from '@/web/core/chat/context/chatContext';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
@@ -18,13 +17,9 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatSetting from '@/pageComponents/chat/ChatSetting';
-import { useChat } from '@/pageComponents/chat/useChat';
 import AppChatWindow from '@/pageComponents/chat/ChatWindow/AppChatWindow';
 import HomeChatWindow from '@/pageComponents/chat/ChatWindow/HomeChatWindow';
-import {
-  ChatSettingContext,
-  ChatSettingContextProvider
-} from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/context/chatPageContext';
 import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -32,15 +27,8 @@ import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
-const Chat = ({
-  myApps,
-  refreshRecentlyUsed
-}: {
-  myApps: GetRecentlyUsedAppsResponseType;
-  refreshRecentlyUsed: () => void;
-}) => {
+const Chat = () => {
   const { isPc } = useSystem();
 
   const { appId } = useChatStore();
@@ -48,8 +36,8 @@ const Chat = ({
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const collapse = useContextSelector(ChatSettingContext, (v) => v.collapse);
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
+  const collapse = useContextSelector(ChatPageContext, (v) => v.collapse);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
 
   return (
     <Flex h={'100%'}>
@@ -62,16 +50,14 @@ const Chat = ({
           overflow={'hidden'}
           transition={'width 0.1s ease-in-out'}
         >
-          <ChatSlider apps={myApps} activeAppId={appId} />
+          <ChatSlider activeAppId={appId} />
         </Box>
       )}
 
       {(!datasetCiteData || isPc) && (
         <PageContainer flex="1 0 0" w={0} position="relative">
           {/* home chat window */}
-          {pane === ChatSidebarPaneEnum.HOME && (
-            <HomeChatWindow myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
-          )}
+          {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
           {/* favourite apps */}
           {pane === ChatSidebarPaneEnum.FAVORITE_APPS && <ChatFavouriteApp />}
@@ -80,9 +66,7 @@ const Chat = ({
           {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
 
           {/* recently used apps chat window */}
-          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && (
-            <AppChatWindow myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
-          )}
+          {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow />}
 
           {/* setting */}
           {pane === ChatSidebarPaneEnum.SETTING && <ChatSetting />}
@@ -102,19 +86,23 @@ const Chat = ({
   );
 };
 
-const Render = (props: {
+type ChatPageProps = {
   appId: string;
   isStandalone?: string;
   showRunningStatus: boolean;
   showCite: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
-}) => {
+};
+
+const ChatContent = (props: ChatPageProps) => {
   const { appId, isStandalone } = props;
   const { chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const { isInitedUser, userInfo, myApps, refreshRecentlyUsed } = useChat(appId);
+
+  const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
+  const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -155,21 +143,27 @@ const Render = (props: {
 
   // show main chat interface
   return (
-    <ChatSettingContextProvider>
-      <ChatContextProvider params={chatHistoryProviderParams}>
-        <ChatItemContextProvider
-          showRouteToDatasetDetail={isStandalone !== '1'}
-          showRunningStatus={props.showRunningStatus}
-          canDownloadSource={props.canDownloadSource}
-          isShowCite={props.showCite}
-          isShowFullText={props.showFullText}
-        >
-          <ChatRecordContextProvider params={chatRecordProviderParams}>
-            <Chat myApps={myApps} refreshRecentlyUsed={refreshRecentlyUsed} />
-          </ChatRecordContextProvider>
-        </ChatItemContextProvider>
-      </ChatContextProvider>
-    </ChatSettingContextProvider>
+    <ChatContextProvider params={chatHistoryProviderParams}>
+      <ChatItemContextProvider
+        showRouteToDatasetDetail={isStandalone !== '1'}
+        showRunningStatus={props.showRunningStatus}
+        canDownloadSource={props.canDownloadSource}
+        isShowCite={props.showCite}
+        isShowFullText={props.showFullText}
+      >
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <Chat />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
+    </ChatContextProvider>
+  );
+};
+
+const Render = (props: ChatPageProps) => {
+  return (
+    <ChatPageContextProvider appId={props.appId}>
+      <ChatContent {...props} />
+    </ChatPageContextProvider>
   );
 };
 

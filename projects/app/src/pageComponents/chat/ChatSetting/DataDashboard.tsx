@@ -1,5 +1,5 @@
 import LogChart from '@/pageComponents/app/detail/Logs/LogChart';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { Flex } from '@chakra-ui/react';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
@@ -13,7 +13,7 @@ type Props = {
 };
 
 const LogDetails = ({ Header }: Props) => {
-  const appId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId || '');
+  const appId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),

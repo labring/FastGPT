@@ -1,6 +1,6 @@
 import { GridItem, Grid } from '@chakra-ui/react';
 import React from 'react';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -24,9 +24,9 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const { isPc } = useSystem();
   const { setChatId } = useChatStore();
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const enableHome = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.enableHome);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const enableHome = useContextSelector(ChatPageContext, (v) => v.chatSettings?.enableHome);
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
