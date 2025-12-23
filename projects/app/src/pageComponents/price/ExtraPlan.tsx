@@ -105,7 +105,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   );
 
   // 计算活动时间
-  const activityExpirationTime = formatActivityExpirationTime(subPlans?.activityExpirationTime);
+  const { text: activityExpirationTime } = formatActivityExpirationTime(
+    subPlans?.activityExpirationTime
+  );
 
   return (
     <VStack>

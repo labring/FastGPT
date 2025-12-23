@@ -134,7 +134,9 @@ const Standard = ({
   });
 
   // 计算活动时间
-  const activityExpirationTime = formatActivityExpirationTime(subPlans?.activityExpirationTime);
+  const { text: activityExpirationTime } = formatActivityExpirationTime(
+    subPlans?.activityExpirationTime
+  );
 
   return (
     <>
