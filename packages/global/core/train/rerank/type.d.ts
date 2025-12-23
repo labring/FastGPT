@@ -114,7 +114,7 @@ export type RerankTrainTaskSchemaType = {
     model: string;
   };
 
-  status: `${RerankTrainTaskStatusEnum}`;
+  status: RerankTrainTaskStatusEnum;
 
   checkpoint: {
     stage: `${RerankTaskCheckpointStageEnum}` | null;

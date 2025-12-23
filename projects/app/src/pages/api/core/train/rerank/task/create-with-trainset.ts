@@ -15,20 +15,11 @@ import {
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type {
-  CreateRerankTrainTaskRequest,
+  CreateRerankTrainTaskWithTrainsetRequest,
   CreateRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { calculateTrainsetStats } from '@fastgpt/service/core/train/rerank/data/controller';
-
-// Extended request body type with polling configuration
-export type CreateRerankTrainTaskWithTrainsetBody = CreateRerankTrainTaskRequest & {
-  pollingConfig?: {
-    maxAttempts?: number; // Max polling attempts, default 60
-    interval?: number; // Polling interval (ms), default 5000
-  };
-};
 
 /**
  * Poll and wait for trainset to be ready
@@ -92,7 +83,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainTaskResponse>
 ): Promise<CreateRerankTrainTaskResponse> {
-  const { appId, name, pollingConfig } = req.body as CreateRerankTrainTaskWithTrainsetBody;
+  const { appId, name, pollingConfig } = req.body as CreateRerankTrainTaskWithTrainsetRequest;
 
   if (!appId) {
     return Promise.reject(CommonErrEnum.missingParams);

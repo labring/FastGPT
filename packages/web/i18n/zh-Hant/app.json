@@ -438,5 +438,13 @@
   "fetch_optimize_records_error": "獲取優化記錄異常",
   "answer_quote_knowledge_count": "答案引用知識（{{count}}）",
   "delete_failed": "刪除失敗",
-  "delete_success": "刪除成功"
+  "delete_success": "刪除成功",
+  "auto_learn_no_records": "暫無學習記錄",
+  "fetch_learning_records_error": "獲取學習記錄失敗",
+  "operation_failed": "操作失敗",
+  "operation_success": "操作成功",
+  "download_failed": "下載失敗",
+  "learning_status_pending": "等待中",
+  "learning_status_failed": "已失敗",
+  "learning_status_cancelled": "已取消"
 }
