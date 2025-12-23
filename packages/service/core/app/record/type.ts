@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-// Zod schemas
 export const AppRecordSchemaZod = z.object({
-  _id: z.string().optional(),
+  _id: z.string(),
   tmbId: z.string(),
   teamId: z.string(),
   appId: z.string(),
@@ -11,3 +10,12 @@ export const AppRecordSchemaZod = z.object({
 
 // TypeScript types inferred from Zod schemas
 export type AppRecordType = z.infer<typeof AppRecordSchemaZod>;
+
+export const GetRecentlyUsedAppsResponseSchema = z.array(
+  z.object({
+    _id: z.string(),
+    name: z.string(),
+    avatar: z.string()
+  })
+);
+export type GetRecentlyUsedAppsResponseType = z.infer<typeof GetRecentlyUsedAppsResponseSchema>;

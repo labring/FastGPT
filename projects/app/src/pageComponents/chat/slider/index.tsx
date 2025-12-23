@@ -19,10 +19,11 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
 import { usePathname } from 'next/navigation';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 type Props = {
   activeAppId: string;
-  apps: AppListItemType[];
+  apps: GetRecentlyUsedAppsResponseType;
 };
 
 const MotionBox = motion(Box);

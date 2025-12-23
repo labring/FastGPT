@@ -37,20 +37,17 @@ import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
-import type {
-  AppFileSelectConfigType,
-  AppListItemType,
-  AppWhisperConfigType
-} from '@fastgpt/global/core/app/type';
+import type { AppFileSelectConfigType, AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 type Props = {
-  myApps: AppListItemType[];
+  myApps: GetRecentlyUsedAppsResponseType;
   refreshRecentlyUsed?: () => void;
 };
 

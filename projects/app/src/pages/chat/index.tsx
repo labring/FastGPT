@@ -32,12 +32,13 @@ import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 const Chat = ({
   myApps,
   refreshRecentlyUsed
 }: {
-  myApps: AppListItemType[];
+  myApps: GetRecentlyUsedAppsResponseType;
   refreshRecentlyUsed: () => void;
 }) => {
   const { isPc } = useSystem();

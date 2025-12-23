@@ -183,8 +183,6 @@ export const deleteAppDataProcessor = async ({
     await MongoAppRegistration.deleteMany({ appId });
     // 删除应用从MCP key apps数组中移除
     await MongoMcpKey.updateMany({ teamId, 'apps.appId': appId }, { $pull: { apps: { appId } } });
-    // 删除应用使用记录
-    await MongoAppRecord.deleteMany({ appId });
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });
@@ -207,6 +205,9 @@ export const deleteAppsImmediate = async ({
     '_id'
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
+
+  // Remove app record
+  await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
 };
 
 export async function updateParentFoldersUpdateTime({
@@ -218,10 +219,11 @@ export async function updateParentFoldersUpdateTime({
 }): Promise<void> {
   if (!parentId) return;
 
-  const parentApp = await MongoApp.findById(parentId, 'parentId');
+  const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
   if (!parentApp) return;
 
-  await MongoApp.findByIdAndUpdate(parentId, { updateTime: new Date() }, { session });
+  parentApp.updateTime = new Date();
+  await parentApp.save({ session });
 
   // Recursively update parent folders
   await updateParentFoldersUpdateTime({

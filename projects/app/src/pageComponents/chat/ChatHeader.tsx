@@ -14,7 +14,6 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
@@ -34,6 +33,7 @@ import { usePathname } from 'next/navigation';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 const ChatHeader = ({
   history,
@@ -50,7 +50,7 @@ const ChatHeader = ({
 
   history: ChatItemType[];
   showHistory?: boolean;
-  apps?: AppListItemType[];
+  apps?: GetRecentlyUsedAppsResponseType;
   totalRecordsCount: number;
   reserveSpace?: boolean;
 }) => {
@@ -120,7 +120,7 @@ const MobileDrawer = ({
 }: {
   onCloseDrawer: () => void;
   appId: string;
-  apps?: AppListItemType[];
+  apps?: GetRecentlyUsedAppsResponseType;
 }) => {
   enum TabEnum {
     recently = 'recently',
@@ -253,7 +253,7 @@ const MobileHeader = ({
   showHistory?: boolean;
   avatar: string;
   name: string;
-  apps?: AppListItemType[];
+  apps?: GetRecentlyUsedAppsResponseType;
   appId: string;
 }) => {
   const router = useRouter();

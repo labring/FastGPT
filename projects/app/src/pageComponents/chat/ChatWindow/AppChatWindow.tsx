@@ -27,11 +27,12 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = {
-  myApps: AppListItemType[];
+  myApps: GetRecentlyUsedAppsResponseType;
   refreshRecentlyUsed?: () => void;
 };
 

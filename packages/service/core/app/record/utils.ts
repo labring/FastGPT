@@ -11,7 +11,7 @@ export const recordAppUsage = async ({
   teamId: string;
 }) => {
   await mongoSessionRun(async (session) => {
-    await MongoAppRecord.findOneAndUpdate(
+    await MongoAppRecord.updateOne(
       { tmbId, appId },
       {
         $set: {
@@ -21,31 +21,20 @@ export const recordAppUsage = async ({
       },
       {
         upsert: true,
-        new: true,
         session
       }
     );
 
-    const records = await MongoAppRecord.find(
-      { tmbId },
-      { _id: 1 },
-      {
-        session,
-        sort: { lastUsedTime: -1 },
-        lean: true
-      }
-    );
+    // 检查是否超过50条，如果超过则删除最旧的一条
+    const count = await MongoAppRecord.countDocuments({ tmbId }, { session });
 
-    if (records.length > 50) {
-      const toDeleteRecords = records.slice(50);
-      const toDeleteIds = toDeleteRecords.map((record) => record._id);
-
-      await MongoAppRecord.deleteMany(
+    if (count > 50) {
+      await MongoAppRecord.deleteOne(
+        { tmbId },
         {
-          tmbId,
-          _id: { $in: toDeleteIds }
-        },
-        { session }
+          session,
+          sort: { lastUsedTime: 1 }
+        }
       );
     }
   });
