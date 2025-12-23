@@ -1,7 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { UserTagsEnum, type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -66,6 +66,11 @@ const UserSchema = new Schema({
   phonePrefix: Number,
   contact: String,
 
+  tags: {
+    type: [String],
+    enum: UserTagsEnum.enum,
+    default: []
+  },
   /** @deprecated */
   avatar: String
 });

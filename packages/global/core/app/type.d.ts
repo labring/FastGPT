@@ -15,7 +15,7 @@ import type { AppPermission } from '../../support/permission/app/controller';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-import type { SourceMemberType } from '../../support/user/type';
+import type { SourceMemberType, UserTagsEnum } from '../../support/user/type';
 import type { JSONSchemaInputType, JSONSchemaOutputType } from './jsonschema';
 
 export type AppSchema = {
@@ -234,6 +234,8 @@ export type AppTemplateSchemaType = {
   author?: string;
   isActive?: boolean;
   isPromoted?: boolean;
+  promoteTags?: [UserTagsEnum | string];
+  hideTags?: [UserTagsEnum | string];
   recommendText?: string;
   userGuide?: {
     type: 'markdown' | 'link';
@@ -250,4 +252,6 @@ export type TemplateTypeSchemaType = {
   typeName: string;
   typeId: string;
   typeOrder: number;
+  promoteTags: Array<UserTagsEnum | string>;
+  hideTags: Array<UserTagsEnum | string>;
 };

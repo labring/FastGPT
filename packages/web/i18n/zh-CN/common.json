@@ -1160,6 +1160,7 @@
   "support.user.login.Provider error": "登录异常，请重试",
   "support.user.login.Username": "用户名",
   "support.user.login.Wechat": "微信登录",
+  "support.user.login.Wecom": "企业微信登录",
   "support.user.login.can_not_login": "无法登录，点击联系",
   "support.user.login.error": "登录异常",
   "support.user.login.security_failed": "安全校验失败",
