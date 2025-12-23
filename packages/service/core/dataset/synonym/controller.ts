@@ -72,6 +72,22 @@ export async function parseSynonymCSV(fileContent: string): Promise<ParsedSynony
             return reject(new Error(DatasetErrEnum.synonymFileEmpty));
           }
 
+          // 验证表头格式
+          const header = rows[0];
+          if (!header || header.length < 2) {
+            return reject(new Error(DatasetErrEnum.synonymFileInvalidFormat));
+          }
+
+          const firstColumn = header[0]?.trim();
+          if (firstColumn !== 'standardizedTerm') {
+            return reject(new Error(DatasetErrEnum.synonymFileInvalidFormat));
+          }
+
+          const secondColumn = header[1]?.trim();
+          if (secondColumn !== 'synonymTerms') {
+            return reject(new Error(DatasetErrEnum.synonymFileInvalidFormat));
+          }
+
           // 第一行是表头，从第二行开始是数据
           const parsedData: ParsedSynonymData[] = [];
 
