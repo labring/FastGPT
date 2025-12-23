@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -23,6 +23,12 @@ export enum PackageChangeStatusEnum {
   renewal = 'renewal',
   upgrade = 'upgrade'
 }
+const NEW_PLAN_LEVELS = [
+  StandardSubLevelEnum.free,
+  StandardSubLevelEnum.basic,
+  StandardSubLevelEnum.advanced,
+  StandardSubLevelEnum.custom
+];
 
 const Standard = ({
   standardPlan: myStandardPlan,
@@ -41,21 +47,17 @@ const Standard = ({
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.year);
-
   const hasActivityExpiration = !!subPlans?.activityExpirationTime;
+  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
+    hasActivityExpiration ? SubModeEnum.year : SubModeEnum.month
+  );
 
-  const NEW_PLAN_LEVELS = [
-    StandardSubLevelEnum.free,
-    StandardSubLevelEnum.basic,
-    StandardSubLevelEnum.advanced,
-    StandardSubLevelEnum.custom
-  ];
-  const {
-    data: coupons = [],
-    loading,
-    runAsync: getCoupons
-  } = useRequest2(
+  useEffect(() => {
+    setSelectSubMode(hasActivityExpiration ? SubModeEnum.year : SubModeEnum.month);
+  }, [hasActivityExpiration]);
+
+  // 获取优惠券
+  const { data: coupons = [], runAsync: getCoupons } = useRequest2(
     async () => {
       if (!myStandardPlan?.teamId) return [];
       return getDiscountCouponList(myStandardPlan.teamId);
@@ -65,7 +67,7 @@ const Standard = ({
       refreshDeps: [myStandardPlan?.teamId]
     }
   );
-
+  // 匹配合适的优惠券
   const matchedCoupon = useMemo(() => {
     const targetType =
       selectSubMode === SubModeEnum.month
@@ -111,7 +113,13 @@ const Standard = ({
             };
           })
       : [];
-  }, [subPlans?.standard, selectSubMode]);
+  }, [
+    subPlans?.standard,
+    selectSubMode,
+    myStandardPlan?.maxTeamMember,
+    myStandardPlan?.maxApp,
+    myStandardPlan?.maxDataset
+  ]);
 
   // Pay code
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
