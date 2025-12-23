@@ -14,6 +14,8 @@ import {
   ModalCloseButton
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useLocalStorageState } from 'ahooks';
+import { useRouter } from 'next/router';
 
 const CLOSED_AD_KEY = 'activity_ad_closed';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -22,21 +24,10 @@ const ActivityAdModal = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   // Check if ad was recently closed
-  const shouldShowAd = useMemo(() => {
-    const closedData = localStorage.getItem(CLOSED_AD_KEY);
-    if (!closedData) return true;
-
-    try {
-      const { timestamp } = JSON.parse(closedData);
-      const now = Date.now();
-      // Show if 24 hours passed
-      return now - timestamp > CLOSED_AD_DURATION;
-    } catch {
-      return true;
-    }
-  }, []);
+  const [closedData, setClosedData] = useLocalStorageState<string>(CLOSED_AD_KEY);
 
   const { data } = useRequest2(
     async () => {
@@ -46,6 +37,25 @@ const ActivityAdModal = () => {
     {
       manual: false,
       onSuccess(res) {
+        const shouldShowAd = (() => {
+          if (!res?.id) return false;
+          if (!closedData) return true;
+
+          try {
+            const { timestamp, adId } = JSON.parse(closedData) as {
+              timestamp: number;
+              adId: string;
+            };
+            // 不同的广告 id，一定展示
+            if (adId && res.id !== adId) return true;
+            const now = Date.now();
+            // Show if 24 hours passed
+            return now - timestamp > CLOSED_AD_DURATION;
+          } catch {
+            return true;
+          }
+        })();
+
         if (res?.activityAdImage && shouldShowAd) {
           onOpen();
         }
@@ -55,16 +65,21 @@ const ActivityAdModal = () => {
 
   const handleClose = useCallback(() => {
     if (data?.id) {
-      localStorage.setItem(CLOSED_AD_KEY, JSON.stringify({ timestamp: Date.now(), adId: data.id }));
+      setClosedData(JSON.stringify({ timestamp: Date.now(), adId: data.id }));
     }
     onClose();
-  }, [data?.id, onClose]);
+  }, [data?.id, onClose, setClosedData]);
 
   const handleJoin = useCallback(() => {
     if (data?.activityAdLink) {
-      window.open(data.activityAdLink, '_blank');
+      if (data.activityAdLink.startsWith('/')) {
+        router.push(data.activityAdLink);
+        handleClose();
+      } else {
+        window.open(data.activityAdLink, '_blank');
+      }
     }
-  }, [data?.activityAdLink]);
+  }, [data?.activityAdLink, handleClose, router]);
 
   if (!data?.activityAdImage) {
     return null;

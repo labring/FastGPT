@@ -48,15 +48,13 @@ const Standard = ({
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
-    subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month
-  );
+  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
   const hasActivityExpiration =
     !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
   useEffect(() => {
-    setSelectSubMode(hasActivityExpiration ? SubModeEnum.year : SubModeEnum.month);
-  }, [hasActivityExpiration]);
+    setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
+  }, [subPlans?.activityExpirationTime]);
 
   // 获取优惠券
   const { data: coupons = [], runAsync: getCoupons } = useRequest2(
