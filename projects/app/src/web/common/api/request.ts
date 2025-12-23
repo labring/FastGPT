@@ -179,15 +179,13 @@ function request(
   { cancelToken, maxQuantity, withCredentials, ...config }: ConfigType,
   method: Method
 ): any {
-  if (!(data instanceof Blob)) {
-    /* 去空 */
-    for (const key in data) {
-      const val = data[key];
-      if (data[key] === undefined) {
-        delete data[key];
-      } else if (val instanceof Date) {
-        data[key] = dayjs(val).format();
-      }
+  /* 去空 */
+  for (const key in data) {
+    const val = data[key];
+    if (data[key] === undefined) {
+      delete data[key];
+    } else if (val instanceof Date) {
+      data[key] = dayjs(val).format();
     }
   }
 

@@ -5,7 +5,7 @@ import {
   createStorage,
   type ICosStorageOptions,
   type IOssStorageOptions,
-  type IStorage
+  type IStorageOptions
 } from '@fastgpt-sdk/storage';
 
 export class S3PrivateBucket extends S3BaseBucket {
@@ -13,61 +13,75 @@ export class S3PrivateBucket extends S3BaseBucket {
     const { vendor, privateBucket, externalBaseUrl, credentials, region, ...options } =
       createDefaultStorageOptions();
 
-    let config: any = {};
-    let externalConfig: any = {};
-    if (vendor === 'minio') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        forcePathStyle: true,
-        endpoint: options.endpoint!,
-        maxRetries: options.maxRetries!
-      } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
-      externalConfig = {
-        ...config,
-        endpoint: externalBaseUrl
-      };
-    } else if (vendor === 'aws-s3') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        endpoint: options.endpoint!,
-        maxRetries: options.maxRetries!
-      } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
-      externalConfig = {
-        ...config,
-        endpoint: externalBaseUrl
-      };
-    } else if (vendor === 'cos') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        proxy: options.proxy,
-        domain: options.domain,
-        protocol: options.protocol,
-        useAccelerate: options.useAccelerate
-      } as Omit<ICosStorageOptions, 'bucket'>;
-    } else if (vendor === 'oss') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        endpoint: options.endpoint!,
-        cname: options.cname,
-        internal: options.internal,
-        secure: options.secure,
-        enableProxy: options.enableProxy
-      } as Omit<IOssStorageOptions, 'bucket'>;
-    }
+    const { config, externalConfig } = (() => {
+      if (vendor === 'minio') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          forcePathStyle: true,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'aws-s3') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'cos') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            proxy: options.proxy,
+            domain: options.domain,
+            protocol: options.protocol,
+            useAccelerate: options.useAccelerate
+          } as Omit<ICosStorageOptions, 'bucket'>
+        };
+      } else if (vendor === 'oss') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            endpoint: options.endpoint!,
+            cname: options.cname,
+            internal: options.internal,
+            secure: options.secure,
+            enableProxy: options.enableProxy
+          } as Omit<IOssStorageOptions, 'bucket'>
+        };
+      }
+      throw new Error(`Unsupported storage vendor: ${vendor}`);
+    })();
 
     const client = createStorage({ bucket: privateBucket, ...config });
 
-    let externalClient: IStorage | undefined = undefined;
+    let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
     if (externalBaseUrl) {
-      externalClient = createStorage({ bucket: privateBucket, ...externalConfig });
+      externalClient = createStorage({
+        bucket: privateBucket,
+        ...externalConfig
+      } as IStorageOptions);
     }
 
     super(client, externalClient);

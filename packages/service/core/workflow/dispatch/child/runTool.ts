@@ -22,7 +22,7 @@ import { getNodeErrResponse } from '../utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
-import { getFileS3Key } from '../../../../common/s3/utils';
+import { getS3ChatSource } from '../../../../common/s3/sources/chat';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -117,7 +117,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           tool: {
             id: formatToolId,
             version: version || tool.versionList?.[0]?.value || '',
-            prefix: getFileS3Key.chat({ chatId, uId, appId, isTool: true }).fileKey
+            prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
           },
           time: variables.cTime
         },

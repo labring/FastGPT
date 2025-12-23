@@ -6,7 +6,8 @@ import {
   type IOssStorageOptions,
   createStorage,
   type IStorage,
-  type MinioStorageAdapter
+  MinioStorageAdapter,
+  type IStorageOptions
 } from '@fastgpt-sdk/storage';
 
 export class S3PublicBucket extends S3BaseBucket {
@@ -14,74 +15,90 @@ export class S3PublicBucket extends S3BaseBucket {
     const { vendor, publicBucket, externalBaseUrl, credentials, region, ...options } =
       createDefaultStorageOptions();
 
-    let config: any = {};
-    let externalConfig: any = {};
-    if (vendor === 'minio') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        forcePathStyle: true,
-        endpoint: options.endpoint!,
-        maxRetries: options.maxRetries!
-      } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
-      externalConfig = {
-        ...config,
-        endpoint: externalBaseUrl
-      };
-    } else if (vendor === 'aws-s3') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        endpoint: options.endpoint!,
-        maxRetries: options.maxRetries!
-      } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
-      externalConfig = {
-        ...config,
-        endpoint: externalBaseUrl
-      };
-    } else if (vendor === 'cos') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        proxy: options.proxy,
-        domain: options.domain,
-        protocol: options.protocol,
-        useAccelerate: options.useAccelerate
-      } as Omit<ICosStorageOptions, 'bucket'>;
-    } else if (vendor === 'oss') {
-      config = {
-        region,
-        vendor,
-        credentials,
-        endpoint: options.endpoint!,
-        cname: options.cname,
-        internal: options.internal,
-        secure: options.secure,
-        enableProxy: options.enableProxy
-      } as Omit<IOssStorageOptions, 'bucket'>;
-    }
+    const { config, externalConfig } = (() => {
+      if (vendor === 'minio') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          forcePathStyle: true,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'aws-s3') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'cos') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            proxy: options.proxy,
+            domain: options.domain,
+            protocol: options.protocol,
+            useAccelerate: options.useAccelerate
+          } as Omit<ICosStorageOptions, 'bucket'>
+        };
+      } else if (vendor === 'oss') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            endpoint: options.endpoint!,
+            cname: options.cname,
+            internal: options.internal,
+            secure: options.secure,
+            enableProxy: options.enableProxy
+          } as Omit<IOssStorageOptions, 'bucket'>
+        };
+      }
+      throw new Error(`Unsupported storage vendor: ${vendor}`);
+    })();
 
     const client = createStorage({ bucket: publicBucket, ...config });
 
-    let externalClient: IStorage | undefined = undefined;
+    let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
     if (externalBaseUrl) {
-      externalClient = createStorage({ bucket: publicBucket, ...externalConfig });
+      externalClient = createStorage({
+        bucket: publicBucket,
+        ...externalConfig
+      } as IStorageOptions);
     }
 
     super(client, externalClient);
 
     client.ensureBucket().then(() => {
-      if (vendor !== 'minio') return;
-      (client as MinioStorageAdapter).ensurePublicBucketPolicy();
+      if (client instanceof MinioStorageAdapter) {
+        client.ensurePublicBucketPolicy();
+      }
     });
 
     if (externalClient) {
       externalClient.ensureBucket().then(() => {
-        if (vendor !== 'minio') return;
-        (externalClient as MinioStorageAdapter).ensurePublicBucketPolicy();
+        if (externalClient instanceof MinioStorageAdapter) {
+          externalClient.ensurePublicBucketPolicy();
+        }
       });
     }
   }

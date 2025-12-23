@@ -193,24 +193,15 @@ export const getFileS3Key = {
     appId,
     chatId,
     uId,
-    filename,
-    isTool = false
+    filename
   }: {
     chatId: string;
     uId: string;
     appId: string;
     filename?: string;
-    isTool?: boolean;
   }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
     const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
-
-    if (isTool) {
-      return {
-        fileKey: basePrefix,
-        fileParsedPrefix: ''
-      };
-    }
 
     return {
       fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),

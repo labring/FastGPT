@@ -12,14 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  S3_EXTERNAL_BASE_URL: https://minio.com # S3 的公网访问地址
-  S3_ENDPOINT: fastgpt-minio
-  S3_PORT: 9000
-  S3_USE_SSL: false
-  S3_ACCESS_KEY: minioadmin
-  S3_SECRET_KEY: minioadmin
-  S3_PUBLIC_BUCKET: fastgpt-public # 公开读私有写桶
-  S3_PRIVATE_BUCKET: fastgpt-private # 私有读写桶
+  # @see https://fastgpt.cn/docs/introduction/development/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -30,11 +23,6 @@ x-share-db-config: &x-share-db-config
   STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
-  STORAGE_OSS_ENDPOINT: oss-cn-hangzhou.aliyuncs.com
-  STORAGE_OSS_CNAME: false
-  STORAGE_OSS_SECURE: false
-  STORAGE_OSS_INTERNAL: false
-  STORAGE_COS_PROTOCOL: 'https:'
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
