@@ -105,6 +105,7 @@ export type FastGPTFeConfigsType = {
       tenantId?: string;
       customButton?: string;
     };
+    wecom?: boolean;
   };
   limit?: {
     exportDatasetLimitMinutes?: number;

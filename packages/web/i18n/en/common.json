@@ -1150,6 +1150,7 @@
   "support.user.login.Provider error": "Login Error, Please Try Again",
   "support.user.login.Username": "Username",
   "support.user.login.Wechat": "WeChat Login",
+  "support.user.login.Wecom": "Wecom Login",
   "support.user.login.can_not_login": "Cannot log in? Click here to contact us",
   "support.user.login.error": "Login Error",
   "support.user.login.security_failed": "Security Verification Failed",
