@@ -41,6 +41,7 @@ export type PointsPackageItem = {
   month: number;
   price: number;
   activityBonusPoints?: number;
+  activityExpirationTime?: string;
 };
 
 export type SubPlanType = {
@@ -48,6 +49,7 @@ export type SubPlanType = {
   planDescriptionUrl?: string;
   appRegistrationUrl?: string;
   communitySupportTip?: string;
+  activityExpirationTime?: string;
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };

@@ -1226,6 +1226,7 @@
   "support.wallet.subscription.Dataset size": "知识库索引量",
   "support.wallet.subscription.Extra ai points": "额外 AI 积分",
   "support.wallet.subscription.Extra ai points description": "积分购买量与有效期智能联动, 买的越多用的越久",
+  "support.wallet.subscription.Activity expiration time": "活动截至{{year}}年{{month}}月{{day}}日{{hour}}:{{minute}}",
   "support.wallet.subscription.Extra dataset description": "支持根据实际需求为知识库索引量延长有效期",
   "support.wallet.subscription.Extra dataset size": "额外知识库容量",
   "support.wallet.subscription.Extra dataset unit": "组/1个月",

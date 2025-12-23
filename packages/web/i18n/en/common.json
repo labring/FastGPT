@@ -1217,6 +1217,7 @@
   "support.wallet.subscription.Dataset size": "Knowledge Base Index",
   "support.wallet.subscription.Extra ai points": "AI Points",
   "support.wallet.subscription.Extra ai points description": "The purchase amount of points is intelligently linked to the validity period. The more you buy, the longer you use it.",
+  "support.wallet.subscription.Activity expiration time": "Activity ends on {{month}}/{{day}}/{{year}} at {{hour}}:{{minute}}",
   "support.wallet.subscription.Extra dataset description": "Supports extending the validity period for the knowledge base index based on actual needs",
   "support.wallet.subscription.Extra dataset size": "Extra Dataset Capacity",
   "support.wallet.subscription.Extra dataset unit": " Groups/1 Month",

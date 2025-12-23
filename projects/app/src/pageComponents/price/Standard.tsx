@@ -43,6 +43,8 @@ const Standard = ({
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.year);
 
+  const hasActivityExpiration = !!subPlans?.activityExpirationTime;
+
   const NEW_PLAN_LEVELS = [
     StandardSubLevelEnum.free,
     StandardSubLevelEnum.basic,
@@ -185,20 +187,100 @@ const Standard = ({
                 key={item.level}
                 pos={'relative'}
                 flex={'1 0 0'}
-                bg={isCurrentPlan ? 'blue.50' : 'rgba(255, 255, 255, 0.90)'}
+                bg={'rgba(255, 255, 255, 0.90)'}
                 p={'28px'}
                 borderRadius={'xl'}
-                borderWidth={isCurrentPlan ? '4px' : '1.5px'}
+                borderWidth={isCurrentPlan ? '2px' : '1.5px'}
                 boxShadow={'1.5'}
+                overflow={'hidden'}
                 {...(isCurrentPlan
                   ? {
-                      borderColor: 'primary.600'
+                      borderColor: hasActivityExpiration ? '#BB182C' : 'primary.600'
                     }
                   : {
                       borderColor: 'myGray.150'
                     })}
               >
-                {isCurrentPlan && (
+                {hasActivityExpiration &&
+                  (item.level === StandardSubLevelEnum.basic ||
+                    item.level === StandardSubLevelEnum.advanced) && (
+                    <>
+                      <Box
+                        position={'absolute'}
+                        top={24}
+                        left={0}
+                        w={'29px'}
+                        h={'12px'}
+                        bgImage={"url('/imgs/system/ribbonLeft.svg')"}
+                        bgSize={'contain'}
+                        bgRepeat={'no-repeat'}
+                        zIndex={0}
+                      />
+                      <Box
+                        position={'absolute'}
+                        top={4}
+                        right={0}
+                        w={'136px'}
+                        h={'170px'}
+                        bgImage={"url('/imgs/system/ribbonRight.svg')"}
+                        bgSize={'contain'}
+                        bgRepeat={'no-repeat'}
+                        zIndex={0}
+                      />
+                      <Box
+                        position={'absolute'}
+                        bottom={0}
+                        right={0}
+                        w={'78px'}
+                        h={'81px'}
+                        bgImage={"url('/imgs/system/snowflake.svg')"}
+                        bgSize={'contain'}
+                        bgRepeat={'no-repeat'}
+                        zIndex={0}
+                      />
+                    </>
+                  )}
+                {hasActivityExpiration &&
+                  (item.level === StandardSubLevelEnum.basic ||
+                    item.level === StandardSubLevelEnum.advanced) && (
+                    <Box
+                      position={'absolute'}
+                      top={0}
+                      left={0}
+                      right={0}
+                      h={'28px'}
+                      bg={'linear-gradient(180deg, #FFE0EB 7.14%, rgba(255, 255, 255, 0.00) 100%)'}
+                      backdropFilter={'blur(0px)'}
+                      zIndex={1}
+                      display={'flex'}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                    >
+                      <Box
+                        fontSize={'12px'}
+                        fontWeight={'500'}
+                        color={'#E45F5F'}
+                        textAlign={'center'}
+                      >
+                        {(() => {
+                          const date = new Date(subPlans.activityExpirationTime || '');
+                          const year = date.getFullYear();
+                          const month = date.getMonth() + 1;
+                          const day = date.getDate();
+                          const hour = date.getHours().toString().padStart(2, '0');
+                          const minute = date.getMinutes().toString().padStart(2, '0');
+                          return t('common:support.wallet.subscription.Activity expiration time', {
+                            year,
+                            month,
+                            day,
+                            hour,
+                            minute
+                          });
+                        })()}
+                      </Box>
+                    </Box>
+                  )}
+                {isCurrentPlan && !hasActivityExpiration && (
                   <Box
                     position={'absolute'}
                     right={0}
@@ -214,7 +296,12 @@ const Standard = ({
                     {t('common:is_using')}
                   </Box>
                 )}
-                <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
+                <Box
+                  fontSize={'md'}
+                  fontWeight={'500'}
+                  color={'myGray.900'}
+                  mt={hasActivityExpiration ? 2 : 0}
+                >
                   {t(item.label as any)}
                 </Box>
                 <Flex alignItems={'center'} gap={2.5}>
@@ -228,12 +315,21 @@ const Standard = ({
                       {t('common:custom_plan_price')}
                     </Box>
                   ) : (
-                    <MyBox fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
-                      ￥
-                      {matchedCoupon?.discount && item.price > 0
-                        ? (matchedCoupon.discount * item.price).toFixed(1)
-                        : item.price}
-                    </MyBox>
+                    <Box
+                      pr={8}
+                      py={1}
+                      borderRadius={'sm'}
+                      display={'inline-block'}
+                      zIndex={10}
+                      bgGradient={'linear(to-r, #fff 90%, transparent)'}
+                    >
+                      <MyBox fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
+                        ￥
+                        {matchedCoupon?.discount && item.price > 0
+                          ? (matchedCoupon.discount * item.price).toFixed(1)
+                          : item.price}
+                      </MyBox>
+                    </Box>
                   )}
                   {item.level !== StandardSubLevelEnum.free &&
                     item.level !== StandardSubLevelEnum.custom &&
@@ -255,11 +351,16 @@ const Standard = ({
 
                 {/* Button */}
                 {(() => {
+                  const buttonHeight = 10;
+                  const buttonMarginTop = 4;
+                  const buttonMarginBottom = 6;
+
                   if (item.level === StandardSubLevelEnum.free) {
                     return (
                       <Button
-                        mt={4}
-                        mb={6}
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
                         _active={{}}
                         _hover={{}}
                         boxShadow={'0'}
@@ -275,8 +376,9 @@ const Standard = ({
                   if (item.level === StandardSubLevelEnum.custom) {
                     return (
                       <Button
-                        mt={4}
-                        mb={6}
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
                         w={'100%'}
                         variant={'primaryGhost'}
                         onClick={() => {
@@ -292,11 +394,39 @@ const Standard = ({
                   if (isCurrentPlan) {
                     return (
                       <Button
-                        mt={4}
-                        mb={6}
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
                         w={'100%'}
-                        variant={'primary'}
                         isLoading={isLoading}
+                        variant={hasActivityExpiration ? 'solid' : 'primary'}
+                        {...(hasActivityExpiration && {
+                          bg: '#ED372C',
+                          color: 'white',
+                          borderRadius: '6px',
+                          _hover: { bg: '#DE0D00' },
+                          sx: {
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              left: '0',
+                              top: '0',
+                              width: '30px',
+                              height: '30px',
+                              backgroundImage: `url('/imgs/system/snowflakeLeft.svg')`,
+                              backgroundRepeat: 'no-repeat'
+                            },
+                            '&::after': {
+                              content: '""',
+                              position: 'absolute',
+                              right: '0',
+                              bottom: '0',
+                              width: '25px',
+                              height: '25px',
+                              backgroundImage: `url('/imgs/system/snowflakeRight.svg')`
+                            }
+                          }
+                        })}
                         onClick={() => {
                           setPackageChange(PackageChangeStatusEnum.renewal);
                           onPay({
@@ -314,8 +444,9 @@ const Standard = ({
                   if (isHigherLevel) {
                     return (
                       <Button
-                        mt={4}
-                        mb={6}
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
                         w={'100%'}
                         variant={'primaryGhost'}
                         isLoading={isLoading}
@@ -335,10 +466,20 @@ const Standard = ({
                   }
                   return (
                     <Button
-                      mt={4}
-                      mb={6}
+                      mt={buttonMarginTop}
+                      mb={buttonMarginBottom}
+                      h={buttonHeight}
                       w={'100%'}
-                      variant={'primaryGhost'}
+                      {...(hasActivityExpiration
+                        ? {
+                            variant: 'outline',
+                            borderColor: '#ED372C',
+                            color: '#ED372C',
+                            _hover: { bg: 'rgba(237, 55, 44, 0.1)' }
+                          }
+                        : {
+                            variant: 'primaryGhost'
+                          })}
                       isLoading={isLoading}
                       onClick={() => {
                         setPackageChange(PackageChangeStatusEnum.buy);
@@ -359,19 +500,19 @@ const Standard = ({
                 {item.level === StandardSubLevelEnum.custom ? (
                   <Grid gap={4} fontSize={'sm'}>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('common:custom_plan_feature_1')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('common:custom_plan_feature_2')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('common:custom_plan_feature_3')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={'price/right'} w={'16px'} mr={3} />
+                      <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
                       <Box color={'myGray.600'}>{t('common:custom_plan_feature_4')}</Box>
                     </Flex>
                   </Grid>

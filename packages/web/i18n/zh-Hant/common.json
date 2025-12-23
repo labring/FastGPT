@@ -1209,6 +1209,7 @@
   "support.wallet.subscription.AI points": "AI 點數",
   "support.wallet.subscription.AI points usage": "AI 點數使用量",
   "support.wallet.subscription.AI points usage tip": "每次呼叫 AI 模型時，都會消耗一定的 AI 點數。具體的計算標準可參考上方的「計費標準」",
+  "support.wallet.subscription.Activity expiration time": "活動截至{{year}}年{{month}}月{{day}}日{{hour}}:{{minute}}",
   "support.wallet.subscription.Ai points": "AI 點數計算標準",
   "support.wallet.subscription.Current plan": "目前方案",
   "support.wallet.subscription.Dataset size": "知識庫索引量",
