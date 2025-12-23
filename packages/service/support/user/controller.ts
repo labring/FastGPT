@@ -47,6 +47,7 @@ export async function getUserDetail({
     team: tmb,
     permission: tmb.permission,
     contact: user.contact,
-    language: user.language
+    language: user.language,
+    tags: user.tags
   };
 }
