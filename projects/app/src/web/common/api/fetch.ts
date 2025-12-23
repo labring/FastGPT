@@ -14,6 +14,7 @@ import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/Opt
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
+import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -52,7 +53,15 @@ type ResponseQueueItemType = CommonResponseType &
         tools: any;
       }
     | {
-        event: SseResponseEventEnum.formData;
+        event: SseResponseEventEnum.collectionForm;
+        collectionForm: UserInputInteractive;
+      }
+    | {
+        event: SseResponseEventEnum.generatedSkill;
+        data: any;
+      }
+    | {
+        event: SseResponseEventEnum.topAgentConfig;
         data: TopAgentFormDataType;
       }
   );
@@ -274,7 +283,12 @@ export const streamFetch = ({
               event,
               agentPlan: rest.agentPlan
             });
-          } else if (event === SseResponseEventEnum.formData) {
+          } else if (event === SseResponseEventEnum.collectionForm) {
+            onMessage({
+              event,
+              collectionForm: rest
+            });
+          } else if (event === SseResponseEventEnum.topAgentConfig) {
             // Directly call onMessage for formData, no need to queue
             onMessage({
               event,

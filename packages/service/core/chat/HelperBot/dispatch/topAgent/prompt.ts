@@ -102,20 +102,50 @@ ${buildMetadataInfo(metadata)}
   "question": "实际向用户提出的问题内容"
 }
 
-问题内容可以是开放式问题，也可以包含选项：
+问题内容可以是开放式问题，也可以包含表单填写：
 
-开放式问题示例：
+开放式问题，无需表单填写：
 {
   "phase": "collection",
   "reasoning": "需要首先了解任务的基本定位和目标场景，这将决定后续需要确认的工具类型和能力边界",
   "question": "我想了解一下您希望这个流程模板实现什么功能？能否详细描述一下具体要处理什么样的任务或问题？"
 }
 
-选择题示例：
+表单示例，一共有 4 类表单类型：
 {
   "phase": "collection",
   "reasoning": "需要确认参数化设计的重点方向，这将影响流程模板的灵活性设计",
-  "question": "关于流程的参数化设计，用户最需要调整的是：\\nA. 输入数据源（不同类型的数据库/文件）\\nB. 处理参数（阈值、过滤条件、算法选择）\\nC. 输出格式（报告类型、文件格式、目标系统）\\nD. 执行环境（触发方式、频率、并发度）\\n\\n请选择最符合的选项，或输入您的详细回答："
+  "question": "我需要和你确认一些参数，请根据你的需求选择对应的选项：",
+  "form": [
+    {
+      "type": "input",
+      "label": "请输入你想优化的方向"
+    },
+    {
+      "type": "numberInput",
+      "label": "你想优化多少次"
+    },
+    {
+      "type": "select",
+      "label": "关于流程的参数化设计，用户最需要调整的是",
+      "options": [
+        "输入数据源（不同类型的数据库/文件）",
+        "处理参数（阈值、过滤条件、算法选择）",
+        "输出格式（报告类型、文件格式、目标系统）",
+        "执行环境（触发方式、频率、并发度）"
+      ]
+    },
+    {
+      "type": "multipleSelect",
+      "label": "你想了解用户什么信息",
+      "options": [
+        "选项 A",
+        "选项 B",
+        "选项 C",
+        "选项 D"
+      ]
+    }
+  ]
 }
 
 选项设计原则：
@@ -277,24 +307,23 @@ ${resourceList}
 直接输出以下格式的JSON（千万不要添加其他字段进来）：
 {
   "phase": "generation",
+  "reasoning": "详细说明所有资源的选择理由：工具、知识库和系统功能如何协同工作来完成任务目标",
   "task_analysis": {
     "goal": "任务的核心目标描述",
     "role": "该流程的角色信息",
     "key_features": "收集到的信息，对任务的深度理解和定位"
   },
-  "reasoning": "详细说明所有资源的选择理由：工具、知识库和系统功能如何协同工作来完成任务目标",
   "resources": {
     "tools": [
-      {"id": "工具ID", "type": "tool"}
+      "工具ID"
     ],
     "knowledges": [
-      {"id": "知识库ID", "type": "knowledge"}
+      "知识库ID"
     ],
     "system_features": {
       "file_upload": {
         "enabled": true/false,
-        "purpose": "说明原因（enabled=true时必填）",
-        "file_types": ["可选的文件类型"]
+        "purpose": "说明原因（enabled=true时必填）"
       }
     }
   }
@@ -309,7 +338,6 @@ ${resourceList}
   * system_features: 系统功能配置对象
     - file_upload.enabled: 是否需要文件上传（必填）
     - file_upload.purpose: 为什么需要（enabled=true时必填）
-    - file_upload.file_types: 建议的文件类型（可选），如["pdf", "xlsx"]
 
 **✅ 正确示例1**（需要文件上传）：
 {
@@ -321,14 +349,13 @@ ${resourceList}
   "reasoning": "使用数据分析工具处理Excel数据，需要用户上传自己的财务报表文件",
   "resources": {
     "tools": [
-      {"id": "data_analysis/tool", "type": "tool"}
+      "data_analysis/tool"
     ],
     "knowledges": [],
     "system_features": {
       "file_upload": {
         "enabled": true,
-        "purpose": "需要您上传财务报表文件（Excel或PDF格式）进行数据提取和分析",
-        "file_types": ["xlsx", "xls", "pdf"]
+        "purpose": "需要您上传财务报表文件（Excel或PDF格式）进行数据提取和分析"
       }
     }
   }
@@ -340,10 +367,10 @@ ${resourceList}
   "reasoning": "使用搜索工具获取实时信息，结合知识库的专业知识",
   "resources": {
     "tools": [
-      {"id": "metaso/metasoSearch", "type": "tool"}
+      "metaso/metasoSearch"
     ],
     "knowledges": [
-      {"id": "travel_kb", "type": "knowledge"}
+      "travel_kb"
     ],
     "system_features": {
       "file_upload": {
@@ -374,9 +401,9 @@ ${resourceList}
 {
   "resources": {
     "tools": [
-      {"id": "bing/webSearch", "type": "tool"},
-      {"id": "google/search", "type": "tool"},
-      {"id": "metaso/metasoSearch", "type": "tool"}
+      "bing/webSearch",
+      "google/search",
+      "metaso/metasoSearch"
       // ❌ 错误：这三个都是网页搜索工具，只应该选择一个最合适的
     ]
   }
@@ -437,7 +464,7 @@ ${resourceList}
 <conversation_rules>
 **回复格式要求**：
 - **所有回复必须是 JSON 格式**，包含 \`phase\` 字段
-- 信息收集阶段：输出 \`{"phase": "collection", "reasoning": "...", "question": "..."}\`
+- 信息收集阶段：输出 \`{"phase": "collection", "reasoning": "...", "question": "...","form":[...]}\`
 - 配置生成阶段：输出 \`{"phase": "generation", "task_analysis": {...}, "resources": {...}, ...}\`
 - ❌ 不要输出任何非 JSON 格式的内容
 - ❌ 不要添加代码块标记（如 \\\`\\\`\\\`json）

@@ -6,7 +6,10 @@ import type {
   type ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  UserInputInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { GeneratedSkillDataType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
 
@@ -26,7 +29,8 @@ export type generatingMessageProps = {
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
 
-  // Agent
+  // HelperBot
+  collectionForm?: UserInputInteractive;
   formData?: TopAgentFormDataType;
   generatedSkill?: GeneratedSkillDataType;
 };

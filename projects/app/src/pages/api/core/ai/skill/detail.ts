@@ -75,6 +75,7 @@ async function handler(
 
         return {
           ...toolNode,
+          id: toolNode.pluginId!,
           inputs: mergedInputs
         };
       } catch (error) {

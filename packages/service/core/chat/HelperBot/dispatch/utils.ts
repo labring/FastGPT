@@ -1,11 +1,14 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export const formatAIResponse = ({
   text,
-  reasoning
+  reasoning,
+  collectionForm
 }: {
   text: string;
   reasoning?: string;
+  collectionForm?: UserInputInteractive;
 }): AIChatItemValueItemType[] => {
   const result: AIChatItemValueItemType[] = [];
 
@@ -22,6 +25,12 @@ export const formatAIResponse = ({
       content: text
     }
   });
+
+  if (collectionForm) {
+    result.push({
+      collectionForm
+    });
+  }
 
   return result;
 };

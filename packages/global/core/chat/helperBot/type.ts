@@ -2,6 +2,7 @@ import { ObjectIdSchema } from '../../../common/type/mongo';
 import { z } from 'zod';
 import { ChatRoleEnum } from '../constants';
 import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
+import { UserInputInteractiveSchema } from '../../workflow/template/system/interactive/type';
 
 export enum HelperBotTypeEnum {
   topAgent = 'topAgent',
@@ -34,7 +35,7 @@ export const AIChatItemValueItemSchema = z.union([
     })
   }),
   z.object({
-    tool: ToolModuleResponseItemSchema
+    collectionForm: UserInputInteractiveSchema
   })
 ]);
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueItemSchema>;

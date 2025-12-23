@@ -7,11 +7,11 @@ import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
-export type SkillLabelItemType = FlowNodeTemplateType & {
-  configStatus: 'active' | 'invalid' | 'waitingForConfig';
+export type SkillLabelItemType = SelectedToolItemType & {
   tooltip?: string;
 };
 

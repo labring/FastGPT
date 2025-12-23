@@ -1,4 +1,3 @@
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   SkillOptionItemType,
   SkillItemType
@@ -8,20 +7,16 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useState } from 'react';
 import {
+  checkNeedsUserConfiguration,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { workflowStartNodeId } from '@/web/core/app/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAppToolTemplates,
   getToolPreviewNode,
@@ -46,15 +41,15 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   return !!subAppTypeMap[flowNodeType];
 };
 
-export type SelectedToolItemType = AppFormEditFormType['selectedTools'][number];
-
 export const useSkillManager = ({
+  topAgentSelectedTools,
   selectedTools,
   onUpdateOrAddTool,
   onDeleteTool,
   canSelectFile,
   canSelectImg
 }: {
+  topAgentSelectedTools: SelectedToolItemType[];
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
@@ -70,26 +65,33 @@ export const useSkillManager = ({
       const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
         return [];
       });
-      return data.map<SkillItemType>((item) => {
-        return {
-          id: item.id,
-          parentId: item.parentId,
-          label: item.name,
-          icon: item.avatar,
-          showArrow: item.isFolder,
-          canClick: true
-        };
-      });
+      return data
+        .map<SkillItemType>((item) => {
+          return {
+            id: item.id,
+            parentId: item.parentId,
+            label: item.name,
+            icon: item.avatar,
+            description: item.intro,
+            showArrow: item.isFolder,
+            canClick: true,
+            tools: data
+              .filter((tool) => tool.parentId === item.id)
+              .map((tool) => ({
+                id: tool.id,
+                name: tool.name
+              }))
+          };
+        })
+        .filter((item) => !item.parentId);
     },
     {
       manual: false
     }
   );
   const onLoadSystemTool = useCallback(
-    async ({ parentId = null }: { parentId?: ParentIdType; searchKey?: string }) => {
-      return systemTools.filter((tool) => {
-        return tool.parentId === parentId;
-      });
+    async ({}: { searchKey?: string }) => {
+      return systemTools;
     },
     [systemTools]
   );
@@ -145,19 +147,21 @@ export const useSkillManager = ({
   }, []);
 
   const onAddAppOrTool = useCallback(
-    async (appId: string) => {
-      const toolTemplate = await getToolPreviewNode({ appId });
-
-      if (!toolTemplate) {
-        return;
+    async (toolId: string) => {
+      // Check tool exists, if exists, not update/add tool
+      const existsTool = selectedTools.find((tool) => tool.pluginId === toolId);
+      if (existsTool) {
+        return existsTool.id;
       }
 
-      const checkRes = validateToolConfiguration({
+      const toolTemplate = await getToolPreviewNode({ appId: toolId });
+
+      const toolValid = validateToolConfiguration({
         toolTemplate,
         canSelectFile,
         canSelectImg
       });
-      if (!checkRes) {
+      if (!toolValid) {
         toast({
           title: t('app:simple_tool_tips'),
           status: 'warning'
@@ -165,19 +169,20 @@ export const useSkillManager = ({
         return;
       }
 
+      // 添加与 top 相同工具的配置
+      const topTool = topAgentSelectedTools.find((tool) => tool.pluginId === toolTemplate.pluginId);
+      if (topTool) {
+        toolTemplate.inputs.forEach((input) => {
+          const topInput = topTool.inputs.find((tInput) => tInput.key === input.key);
+          if (topInput) {
+            input.value = topInput.value;
+          }
+        });
+      }
+
       const tool: SelectedToolItemType = {
         ...toolTemplate,
-        id: `tool_${getNanoid(6)}`,
-        inputs: toolTemplate.inputs.map((input) => {
-          // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-            return {
-              ...input,
-              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
-            };
-          }
-          return input;
-        })
+        id: toolId
       };
 
       onUpdateOrAddTool({
@@ -187,7 +192,7 @@ export const useSkillManager = ({
 
       return tool.id;
     },
-    [canSelectFile, canSelectImg, onUpdateOrAddTool, t, toast]
+    [canSelectFile, canSelectImg, onUpdateOrAddTool, selectedTools, t, toast, topAgentSelectedTools]
   );
 
   /* ===== Skill option ===== */
@@ -195,21 +200,9 @@ export const useSkillManager = ({
     return {
       onSelect: async (id: string) => {
         if (id === 'systemTool') {
-          const data = await onLoadSystemTool({ parentId: null });
+          const data = await onLoadSystemTool({});
           return {
-            description: t('app:can_select_toolset'),
             list: data,
-            onSelect: async (id: string) => {
-              const data = await onLoadSystemTool({ parentId: id });
-              return {
-                onClick: onAddAppOrTool,
-                list: data.map((item) => ({
-                  id: item.id,
-                  label: item.label,
-                  canClick: true
-                }))
-              };
-            },
             onClick: onAddAppOrTool
           };
         } else if (id === 'myTools') {
@@ -277,8 +270,8 @@ export const useSkillManager = ({
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        const { needConfig } = getToolConfigStatus(tool);
-        if (!needConfig) return;
+        const hasFormInput = checkNeedsUserConfiguration(tool);
+        if (!hasFormInput) return;
         setConfigTool(tool);
       } else {
         console.log('onClickSkill', id);
