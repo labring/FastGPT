@@ -6,12 +6,6 @@ export enum FAQAnswerModeEnum {
   LLMSummary = 'llm-summary'
 }
 
-// 变量键名常量
-export const VARIABLE_KEYS = {
-  FAQ_ANSWER_MODE: 'utjZSg8f',
-  FALLBACK_REPLY: 'byG7WNk4'
-} as const;
-
 // 默认值
 export const DEFAULT_VALUES = {
   FAQ_ANSWER_MODE: FAQAnswerModeEnum.Quote,
