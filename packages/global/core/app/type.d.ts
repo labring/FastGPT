@@ -234,8 +234,8 @@ export type AppTemplateSchemaType = {
   author?: string;
   isActive?: boolean;
   isPromoted?: boolean;
-  promoteTags?: [UserTagsEnum | string];
-  hideTags?: [UserTagsEnum | string];
+  promoteTags?: UserTagsEnum[];
+  hideTags?: UserTagsEnum[];
   recommendText?: string;
   userGuide?: {
     type: 'markdown' | 'link';
@@ -252,6 +252,4 @@ export type TemplateTypeSchemaType = {
   typeName: string;
   typeId: string;
   typeOrder: number;
-  promoteTags: Array<UserTagsEnum | string>;
-  hideTags: Array<UserTagsEnum | string>;
 };
