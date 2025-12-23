@@ -19,7 +19,9 @@ export enum SseResponseEventEnum {
 
   agentPlan = 'agentPlan', // agent plan
 
-  formData = 'formData', // form data for TopAgent
+  // Helperbot
+  collectionForm = 'collectionForm', // collection form for HelperBot
+  topAgentConfig = 'topAgentConfig', // form data for TopAgent
   generatedSkill = 'generatedSkill' // generated skill for SkillAgent
 }
 

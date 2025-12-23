@@ -308,14 +308,20 @@ const RenderList = React.memo(function RenderList({
                   key={template.id}
                   label={
                     <Box py={2} minW={['auto', '250px']}>
-                      <Flex alignItems={'center'}>
+                      <Flex alignItems={'center'} w={'100%'}>
                         <MyAvatar
                           src={template.avatar}
                           w={'1.75rem'}
                           objectFit={'contain'}
                           borderRadius={'sm'}
                         />
-                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'} overflow={'hidden'}>
+                        <Box
+                          fontWeight={'bold'}
+                          ml={3}
+                          color={'myGray.900'}
+                          flex={'1 0 0'}
+                          overflow={'hidden'}
+                        >
                           {t(parseI18nString(template.name, i18n.language))}
                         </Box>
                         {isSystemTool && (

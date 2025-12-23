@@ -3,7 +3,6 @@ import {
   Box,
   Flex,
   Grid,
-  useTheme,
   useDisclosure,
   Button,
   HStack,
@@ -16,10 +15,9 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import type { SelectedToolItemType, SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 
 import dynamic from 'next/dynamic';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -32,6 +30,8 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSkillManager } from '../hooks/useSkillManager';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -52,7 +52,6 @@ const EditForm = ({
   onClose,
   onSave
 }: EditFormProps) => {
-  const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -64,7 +63,8 @@ const EditForm = ({
     watch,
     setValue,
     reset,
-    formState: { isDirty }
+    formState: { isDirty },
+    control
   } = useForm<SkillEditType>({
     defaultValues: skill
   });
@@ -75,9 +75,38 @@ const EditForm = ({
   }, [skill, reset]);
 
   const selectedModel = getWebLLMModel(model);
-  const selectedTools = watch('selectedTools') || [];
+  const stepsText = watch('stepsText') || '';
   const selectDatasets = watch('dataset.list') || [];
   const skillName = watch('name');
+
+  const {
+    fields: selectedTools,
+    prepend: prependSelectedTools,
+    remove: removeSelectedTools,
+    update: updateSelectedTools
+  } = useFieldArray({
+    control,
+    name: 'selectedTools',
+    keyName: '_id'
+  });
+
+  const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
+    topAgentSelectedTools,
+    selectedTools,
+    onDeleteTool: (id) => {
+      removeSelectedTools(selectedTools.findIndex((item) => item.id === id));
+    },
+    onUpdateOrAddTool: (tool) => {
+      const index = selectedTools.findIndex((item) => item.id === tool.id);
+      if (index === -1) {
+        prependSelectedTools(tool);
+      } else {
+        updateSelectedTools(index, tool);
+      }
+    },
+    canSelectFile: fileSelectConfig?.canSelectFile,
+    canSelectImg: fileSelectConfig?.canSelectImg
+  });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -204,7 +233,21 @@ const EditForm = ({
             <FormLabel>{t('app:execution_steps')}</FormLabel>
           </HStack>
           <Box mt={2}>
-            <Textarea
+            <PromptEditor
+              minH={160}
+              title={t('app:execution_steps')}
+              placeholder={t('app:no_steps_yet')}
+              isRichText
+              skillOption={skillOption}
+              selectedSkills={selectedSkills}
+              onClickSkill={onClickSkill}
+              onRemoveSkill={onRemoveSkill}
+              value={stepsText}
+              onChange={(e) => {
+                setValue('stepsText', e);
+              }}
+            />
+            {/* <Textarea
               {...register('stepsText')}
               maxLength={1000000}
               bg={'myGray.50'}
@@ -213,7 +256,7 @@ const EditForm = ({
               placeholder={t('app:no_steps_yet')}
               fontSize={'sm'}
               color={'myGray.900'}
-            />
+            /> */}
           </Box>
         </Box>
 
@@ -225,23 +268,16 @@ const EditForm = ({
             selectedTools={selectedTools}
             fileSelectConfig={fileSelectConfig}
             onAddTool={(e) => {
-              setValue('selectedTools', [e, ...(selectedTools || [])], { shouldDirty: true });
+              prependSelectedTools(e);
             }}
             onUpdateTool={(e) => {
-              setValue(
-                'selectedTools',
-                selectedTools?.map((item) => (item.id === e.id ? e : item)) || [],
-                { shouldDirty: true }
+              updateSelectedTools(
+                selectedTools.findIndex((item) => item.id === e.id),
+                e
               );
             }}
             onRemoveTool={(id) => {
-              setValue(
-                'selectedTools',
-                selectedTools?.filter((item) => item.pluginId !== id) || [],
-                {
-                  shouldDirty: true
-                }
-              );
+              removeSelectedTools(selectedTools.findIndex((item) => item.id === id));
             }}
           />
         </Box>
@@ -338,6 +374,7 @@ const EditForm = ({
       )}
 
       <ConfirmModal />
+      <SkillModal />
     </>
   );
 };

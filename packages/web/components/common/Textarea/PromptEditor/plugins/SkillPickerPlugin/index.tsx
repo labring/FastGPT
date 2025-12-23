@@ -17,7 +17,7 @@ import {
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
@@ -27,6 +27,10 @@ import { useRequest2 } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 
+/* 
+  两列渲染器
+  第三列会展示第二列选中的 tool/toolset 的详细信息：头像、名称、描述、子工具（如有）
+*/
 export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
@@ -40,16 +44,20 @@ export type SkillItemType = {
   id: string;
   label: string;
   icon?: string;
+  description?: string;
   canClick: boolean;
+  children?: SkillOptionItemType;
 
   // Folder
   open?: boolean;
   isFolder?: boolean;
   folderChildren?: SkillItemType[];
 
-  // System tool/ model
-  showArrow?: boolean;
-  children?: SkillOptionItemType;
+  // Toolset
+  tools?: {
+    id: string;
+    name: string;
+  }[];
 };
 
 export default function SkillPickerPlugin({
@@ -558,6 +566,12 @@ export default function SkillPickerPlugin({
     getFlattenedVisibleItems
   ]);
 
+  const selectedTool = useMemo(() => {
+    const item = skillOptions[currentColumnIndex]?.list[currentRowIndex];
+    if (!item || !item.canClick) return null;
+    return item;
+  }, [skillOptions, currentColumnIndex, currentRowIndex]);
+
   // Recursively render item list
   const renderItemList = useCallback(
     (
@@ -661,8 +675,8 @@ export default function SkillPickerPlugin({
             ) : columnData.onFolderLoad ? (
               <Box w={3} flexShrink={0} />
             ) : null}
-            {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
 
+            {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
             {/* Folder content */}
             <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
               {item.label}
@@ -672,9 +686,6 @@ export default function SkillPickerPlugin({
                 </Box>
               )}
             </Box>
-            {item.showArrow && (
-              <MyIcon name={'core/chat/chevronRight'} w={'0.8rem'} color={'myGray.400'} />
-            )}
           </MyBox>
         );
 
@@ -779,8 +790,12 @@ export default function SkillPickerPlugin({
 
           // Insert skill node text at current selection
           selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-          closeMenu();
         });
+
+        // Close menu after editor update to avoid flushSync warning
+        setTimeout(() => {
+          closeMenu();
+        }, 0);
       } else {
         // If onClick didn't return a skillId, just close the menu
         closeMenu();
@@ -821,6 +836,63 @@ export default function SkillPickerPlugin({
             {skillOptions.map((column, index) => {
               return renderColumn(column, index);
             })}
+
+            {selectedTool && (
+              <Box
+                ml={2}
+                p={2.5}
+                borderRadius={'sm'}
+                w={'200px'}
+                boxShadow={
+                  '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
+                }
+                bg={'white'}
+                flexShrink={0}
+                maxH={'350px'}
+                overflow={'auto'}
+              >
+                <HStack>
+                  {selectedTool.icon && (
+                    <Avatar src={selectedTool.icon} w={'1.3rem'} borderRadius={'xs'} />
+                  )}
+                  {/* Folder content */}
+                  <Box fontSize={'sm'} fontWeight={'medium'}>
+                    {selectedTool.label}
+                  </Box>
+                </HStack>
+                <Box color={'myGray.500'} fontSize={'xs'} className="textEllipsis3">
+                  {selectedTool.description || t('app:tool_not_desc')}
+                </Box>
+                {/* Tools */}
+                {selectedTool.tools && selectedTool.tools.length > 0 && (
+                  <>
+                    <Box mt={2} color={'myGray.900'} fontSize={'sm'}>
+                      {t('app:tools')}({selectedTool.tools.length})
+                    </Box>
+                    {selectedTool.tools.map((tool) => (
+                      <Box
+                        key={tool.id}
+                        mt={1}
+                        fontSize={'xs'}
+                        color={'myGray.600'}
+                        display={'flex'}
+                        alignItems={'center'}
+                        gap={1.5}
+                      >
+                        <Box
+                          w={'6px'}
+                          h={'6px'}
+                          borderRadius={'50%'}
+                          bg={'primary.600'}
+                          flexShrink={0}
+                        />
+                        {tool.name}
+                      </Box>
+                    ))}
+                  </>
+                )}
+              </Box>
+            )}
           </Flex>,
           anchorElementRef.current!
         );

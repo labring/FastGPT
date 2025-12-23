@@ -10,11 +10,9 @@ import type { HelperBotChatItemType } from './type';
 import { simpleUserContentPart } from '../adapt';
 
 export const helperChats2GPTMessages = ({
-  messages,
-  reserveTool = false
+  messages
 }: {
   messages: HelperBotChatItemType[];
-  reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
 
@@ -66,29 +64,25 @@ export const helperChats2GPTMessages = ({
 
       //AI: 只需要把根节点转化即可
       item.value.forEach((value, i) => {
-        if ('tool' in value && reserveTool) {
-          const tool_calls: ChatCompletionMessageToolCall[] = [
-            {
-              id: value.tool.id,
-              type: 'function',
-              function: {
-                name: value.tool.functionName,
-                arguments: value.tool.params
-              }
-            }
-          ];
-          const toolResponse: ChatCompletionToolMessageParam[] = [
-            {
-              tool_call_id: value.tool.id,
-              role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: value.tool.response
-            }
-          ];
-          aiResults.push({
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            tool_calls
-          });
-          aiResults.push(...toolResponse);
+        if ('collectionForm' in value) {
+          const text = JSON.stringify(
+            value.collectionForm.params.inputForm.map((item) => ({
+              label: item.label,
+              type: item.type
+            }))
+          );
+
+          // Concat text
+          const lastValue = item.value[i - 1];
+          const lastResult = aiResults[aiResults.length - 1];
+          if (lastValue && typeof lastResult?.content === 'string') {
+            lastResult.content += text;
+          } else {
+            aiResults.push({
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: text
+            });
+          }
         } else if ('text' in value && typeof value.text?.content === 'string') {
           if (!value.text.content && item.value.length > 1) {
             return;

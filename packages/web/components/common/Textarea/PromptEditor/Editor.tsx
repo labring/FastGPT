@@ -38,7 +38,6 @@ import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 import ListExitPlugin from './plugins/ListExitPlugin';
@@ -48,7 +47,6 @@ import type { SkillLabelItemType } from './plugins/SkillLabelPlugin';
 import SkillLabelPlugin from './plugins/SkillLabelPlugin';
 import { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type { SkillOptionItemType } from './plugins/SkillPickerPlugin';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box

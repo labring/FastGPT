@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/core/chat/helperBot/type';
 import { WorkflowResponseFnSchema } from '../../../workflow/dispatch/type';
 import { LocaleList } from '@fastgpt/global/common/i18n/type';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const HelperBotDispatchParamsSchema = z.object({
   query: z.string(),
@@ -40,3 +41,19 @@ export const HelperBotDispatchResponseSchema = z.object({
   })
 });
 export type HelperBotDispatchResponseType = z.infer<typeof HelperBotDispatchResponseSchema>;
+
+/* AI 表单输出 schema */
+const InputSchema = z.object({
+  type: z.enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.numberInput]),
+  label: z.string()
+});
+const SelectSchema = z.object({
+  type: z.enum([FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect]),
+  label: z.string(),
+  options: z.array(z.string())
+});
+export const AICollectionAnswerSchema = z.object({
+  question: z.string(), // 可能只有一个问题，可能
+  form: z.array(z.union([InputSchema, SelectSchema])).optional()
+});
+export type AICollectionAnswerType = z.infer<typeof AICollectionAnswerSchema>;

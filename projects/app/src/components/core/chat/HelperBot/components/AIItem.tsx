@@ -8,7 +8,8 @@ import {
   AccordionItem,
   AccordionPanel,
   Flex,
-  HStack
+  HStack,
+  Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -16,6 +17,11 @@ import Markdown from '@/components/Markdown';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { Controller, useForm } from 'react-hook-form';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import InputRender from '@/components/core/app/formRender';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -69,7 +75,6 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
     </Accordion>
   );
 });
-
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text
@@ -86,19 +91,87 @@ const RenderText = React.memo(function RenderText({
 
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
+const RenderCollectionForm = React.memo(function RenderCollectionForm({
+  collectionForm,
+  onSubmit
+}: {
+  collectionForm: UserInputInteractive;
+  onSubmit: (formData: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { control, handleSubmit } = useForm();
+
+  const submitted = collectionForm.params.submitted;
+
+  return (
+    <Box>
+      <Box mb={3}>{collectionForm.params.description}</Box>
+      <Flex flexDirection={'column'} gap={3}>
+        {collectionForm.params.inputForm.map((input) => {
+          const inputType = nodeInputTypeToInputType([input.type]);
+
+          return (
+            <Controller
+              key={input.key}
+              control={control}
+              name={input.key}
+              render={({ field: { onChange, value }, fieldState: { error } }) => {
+                return (
+                  <Box>
+                    <FormLabel whiteSpace={'pre-wrap'} mb={0.5}>
+                      {input.label}
+                    </FormLabel>
+                    <InputRender
+                      {...input}
+                      inputType={inputType}
+                      value={value}
+                      onChange={onChange}
+                      isDisabled={submitted}
+                      isInvalid={!!error}
+                      isRichText={false}
+                    />
+                  </Box>
+                );
+              }}
+            />
+          );
+        })}
+      </Flex>
+
+      {!submitted && (
+        <Flex justifyContent={'flex-end'} mt={4}>
+          <Button
+            size={'sm'}
+            onClick={handleSubmit((data) => {
+              // 需要把 label 作为 key
+              const dataByLabel = Object.fromEntries(
+                collectionForm.params.inputForm.map((input) => [input.label, data[input.key]])
+              );
+              onSubmit(JSON.stringify(dataByLabel));
+            })}
+          >
+            {t('common:Submit')}
+          </Button>
+        </Flex>
+      )}
+    </Box>
+  );
+});
 
 const AIItem = ({
   chat,
   isChatting,
-  isLastChild
+  isLastChild,
+  onSubmitCollectionForm
 }: {
   chat: HelperBotChatItemSiteType;
   isChatting: boolean;
   isLastChild: boolean;
+  onSubmitCollectionForm: (formData: string) => void;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-
+  console.log(chat, 111122);
   return (
     <Box
       _hover={{
@@ -133,6 +206,15 @@ const AIItem = ({
                 isChatting={isChatting}
                 isLastResponseValue={isLastChild}
                 content={value.reasoning.content}
+              />
+            );
+          }
+          if ('collectionForm' in value && value.collectionForm) {
+            return (
+              <RenderCollectionForm
+                key={i}
+                collectionForm={value.collectionForm}
+                onSubmit={onSubmitCollectionForm}
               />
             );
           }

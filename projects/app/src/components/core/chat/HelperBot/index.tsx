@@ -1,7 +1,7 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import React, { useCallback, useImperativeHandle, useRef, useState } from 'react';
 
-import HelperBotContextProvider, { type HelperBotRefType, type HelperBotProps } from './context';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import HelperBotContextProvider, { type HelperBotProps } from './context';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -145,7 +145,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       event,
       text = '',
       reasoningText,
-      tool,
+      collectionForm,
       formData,
       generatedSkill
     }: generatingMessageProps) => {
@@ -158,26 +158,34 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           const updateValue: AIChatItemValueItemType = item.value[updateIndex];
 
           // Special event: form data
-          if (event === SseResponseEventEnum.formData && formData) {
-            if (type === HelperBotTypeEnum.topAgent) {
-              onApply?.(formData);
-            }
+          if (event === SseResponseEventEnum.collectionForm && collectionForm) {
+            return {
+              ...item,
+              value: item.value.concat({
+                collectionForm
+              })
+            };
+          }
+          if (
+            event === SseResponseEventEnum.topAgentConfig &&
+            formData &&
+            type === HelperBotTypeEnum.topAgent
+          ) {
+            onApply(formData);
             return item;
           }
-
-          // Special event: generated skill
-          if (event === SseResponseEventEnum.generatedSkill && generatedSkill) {
-            console.log('📊 HelperBot: Received generatedSkill event', generatedSkill);
-            // 直接将生成的 skill 数据传递给 onApply 回调（仅在 skillAgent 类型时）
-            if (type === HelperBotTypeEnum.skillAgent) {
-              onApply?.(generatedSkill);
-            }
+          if (
+            event === SseResponseEventEnum.generatedSkill &&
+            generatedSkill &&
+            type === HelperBotTypeEnum.skillAgent
+          ) {
+            onApply(generatedSkill);
             return item;
           }
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
-              if (updateValue?.reasoning) {
+              if ('reasoning' in updateValue && updateValue.reasoning) {
                 updateValue.reasoning.content += reasoningText;
                 return {
                   ...item,
@@ -200,7 +208,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
               }
             }
             if (text) {
-              if (updateValue?.text) {
+              if ('text' in updateValue && updateValue.text) {
                 updateValue.text.content += text;
                 return {
                   ...item,
@@ -224,50 +232,6 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
             }
           }
 
-          // Tool call
-          if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              tool: {
-                ...tool,
-                response: ''
-              }
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
-            };
-          }
-          if (event === SseResponseEventEnum.toolParams && tool && updateValue?.tool) {
-            if (tool.params) {
-              updateValue.tool.params += tool.params;
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-          if (event === SseResponseEventEnum.toolResponse && tool && updateValue?.tool) {
-            if (tool.response) {
-              // replace tool response
-              updateValue.tool.response += tool.response;
-
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-
           return item;
         })
       );
@@ -275,91 +239,98 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       generatingScroll(false);
     }
   );
-  const handleSendMessage = useMemoizedFn(async ({ query = '' }: onSendMessageParamsType) => {
-    // Init check
-    if (isChatting) {
-      return toast({
-        title: t('chat:is_chatting'),
-        status: 'warning'
-      });
-    }
-
-    abortRequest();
-    query = query.trim();
-
-    if (!query) {
-      toast({
-        title: t('chat:content_empty'),
-        status: 'warning'
-      });
-      return;
-    }
-
-    const chatItemDataId = getNanoid(24);
-    const newChatList: HelperBotChatItemSiteType[] = [
-      ...chatRecords,
-      // 用户消息
-      {
-        _id: getNanoid(24),
-        createTime: new Date(),
-        dataId: chatItemDataId,
-        obj: ChatRoleEnum.Human,
-        value: [
-          {
-            text: {
-              content: query
-            }
-          }
-        ]
-      },
-      // AI 消息 - 空白,用于接收流式输出
-      {
-        _id: getNanoid(24),
-        createTime: new Date(),
-        dataId: chatItemDataId,
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            text: {
-              content: ''
-            }
-          }
-        ]
+  const handleSendMessage = useMemoizedFn(
+    async ({ query = '', collectionFormData }: onSendMessageParamsType) => {
+      // Init check
+      if (isChatting) {
+        return toast({
+          title: t('chat:is_chatting'),
+          status: 'warning'
+        });
       }
-    ];
-    setChatRecords(newChatList);
 
-    resetInputVal({});
-    scrollToBottom();
+      abortRequest();
+      query = query.trim();
+      const mergeQuery = query || collectionFormData;
 
-    setIsChatting(true);
-    try {
-      const abortSignal = new AbortController();
-      chatController.current = abortSignal;
-      console.log('metadata-fronted', metadata);
-      const { responseText } = await streamFetch({
-        url: '/api/core/chat/helperBot/completions',
-        data: {
-          chatId,
-          chatItemId: chatItemDataId,
-          query,
-          files: chatForm.getValues('files').map((item) => ({
-            type: item.type,
-            key: item.key,
-            // url: item.url,
-            name: item.name
-          })),
-          metadata: {
-            type: type,
-            data: metadata
-          }
+      if (!mergeQuery) {
+        toast({
+          title: t('chat:content_empty'),
+          status: 'warning'
+        });
+        return;
+      }
+
+      const chatItemDataId = getNanoid(24);
+      const newChatList: HelperBotChatItemSiteType[] = [
+        ...chatRecords,
+        // 用户消息
+        {
+          _id: getNanoid(24),
+          createTime: new Date(),
+          dataId: chatItemDataId,
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              text: {
+                content: mergeQuery
+              }
+            }
+          ]
         },
-        onMessage: generatingMessage,
-        abortCtrl: abortSignal
-      });
-    } catch (error) {}
-    setIsChatting(false);
-  });
+        // AI 消息 - 空白,用于接收流式输出
+        ...(query
+          ? [
+              {
+                _id: getNanoid(24),
+                createTime: new Date(),
+                dataId: chatItemDataId,
+                obj: ChatRoleEnum.AI,
+                value: [
+                  {
+                    text: {
+                      content: ''
+                    }
+                  }
+                ]
+              }
+            ]
+          : [])
+      ];
+      setChatRecords(newChatList);
+
+      resetInputVal({});
+      scrollToBottom();
+
+      setIsChatting(true);
+      try {
+        const abortSignal = new AbortController();
+        chatController.current = abortSignal;
+
+        const { responseText } = await streamFetch({
+          url: '/api/core/chat/helperBot/completions',
+          data: {
+            chatId,
+            chatItemId: chatItemDataId,
+            query: mergeQuery,
+            files: chatForm.getValues('files').map((item) => ({
+              type: item.type,
+              key: item.key,
+              // url: item.url,
+              name: item.name
+            })),
+            metadata: {
+              type: type,
+              data: metadata
+            }
+          },
+          onMessage: generatingMessage,
+          abortCtrl: abortSignal
+        });
+      } catch (error) {}
+      setIsChatting(false);
+    }
+  );
 
   useImperativeHandle(ChatBoxRef, () => ({
     restartChat() {
@@ -397,6 +368,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
                 chat={item}
                 isChatting={isChatting}
                 isLastChild={index === chatRecords.length - 1}
+                onSubmitCollectionForm={(data) => handleSendMessage({ query: data })}
               />
             )}
           </Box>

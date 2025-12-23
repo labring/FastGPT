@@ -1,4 +1,8 @@
-import type { HelperBotDispatchParamsType, HelperBotDispatchResponseType } from '../type';
+import {
+  AICollectionAnswerSchema,
+  type HelperBotDispatchParamsType,
+  type HelperBotDispatchResponseType
+} from '../type';
 import { helperChats2GPTMessages } from '@fastgpt/global/core/chat/helperBot/adaptor';
 import { getPrompt } from './prompt';
 import { createLLMResponse } from '../../../../ai/llm/request';
@@ -6,10 +10,17 @@ import { getLLMModel } from '../../../../ai/model';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { generateResourceList } from './utils';
-import { TopAgentFormDataSchema } from './type';
+import { TopAgentAnswerSchema, TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
+import type {
+  UserInputFormItemType,
+  UserInputInteractive
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>
@@ -37,26 +48,19 @@ export const dispatchTopAgent = async (
   });
 
   const historyMessages = helperChats2GPTMessages({
-    messages: histories,
-    reserveTool: false
+    messages: histories
   });
   const conversationMessages = [
     { role: 'system' as const, content: systemPrompt },
     ...historyMessages,
     { role: 'user' as const, content: query }
   ];
-
+  console.log(JSON.stringify(conversationMessages, null, 2));
   const llmResponse = await createLLMResponse({
     body: {
       messages: conversationMessages,
       model: modelData,
       stream: true
-    },
-    onStreaming: ({ text }) => {
-      workflowResponseWrite?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({ text })
-      });
     },
     onReasoning: ({ text }) => {
       workflowResponseWrite?.({
@@ -71,9 +75,9 @@ export const dispatchTopAgent = async (
 
   const answerText = llmResponse.answerText;
   const reasoningText = llmResponse.reasoningText;
-
+  console.log('Top agent response:', answerText);
   try {
-    const responseJson = JSON.parse(answerText);
+    const responseJson = TopAgentAnswerSchema.parse(JSON.parse(answerText));
 
     if (responseJson.phase === 'generation') {
       addLog.debug('🔄 TopAgent: Configuration generation phase');
@@ -82,12 +86,12 @@ export const dispatchTopAgent = async (
         role: responseJson.task_analysis?.role,
         taskObject: responseJson.task_analysis?.goal,
         tools: responseJson.resources?.tools?.map((tool: any) => tool.id),
-        fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false
+        fileUploadEnabled: responseJson.resources?.file_upload?.enabled
       });
 
       if (formData) {
         workflowResponseWrite?.({
-          event: SseResponseEventEnum.formData,
+          event: SseResponseEventEnum.topAgentConfig,
           data: formData
         });
       }
@@ -102,16 +106,60 @@ export const dispatchTopAgent = async (
     } else if (responseJson.phase === 'collection') {
       addLog.debug('📝 TopAgent: Information collection phase');
 
-      const displayText = responseJson.question || answerText;
+      const formDeata = responseJson.form;
+      if (formDeata) {
+        const inputForm: UserInputInteractive = {
+          type: 'userInput',
+          params: {
+            inputForm: formDeata.map((item) => {
+              return {
+                type: item.type as FlowNodeInputTypeEnum,
+                key: getNanoid(6),
+                label: item.label,
+                value: '',
+                required: false,
+                valueType:
+                  item.type === FlowNodeInputTypeEnum.numberInput
+                    ? WorkflowIOValueTypeEnum.number
+                    : WorkflowIOValueTypeEnum.string,
+                list:
+                  'options' in item
+                    ? item.options?.map((option) => ({ label: option, value: option }))
+                    : undefined
+              };
+            }),
+            description: responseJson.question
+          }
+        };
+        workflowResponseWrite?.({
+          event: SseResponseEventEnum.collectionForm,
+          data: inputForm
+        });
+
+        return {
+          aiResponse: formatAIResponse({
+            text: responseJson.question,
+            reasoning: reasoningText,
+            collectionForm: inputForm
+          }),
+          usage
+        };
+      }
+
+      workflowResponseWrite?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({ text: responseJson.question })
+      });
+
       return {
         aiResponse: formatAIResponse({
-          text: displayText,
-          reasoning: responseJson.reasoning || reasoningText
+          text: responseJson.question,
+          reasoning: reasoningText
         }),
         usage
       };
     } else {
-      addLog.warn(`[Top agent] Unknown phase: ${responseJson.phase}`);
+      addLog.warn(`[Top agent] Unknown phase`, responseJson);
       return {
         aiResponse: formatAIResponse({
           text: answerText,
