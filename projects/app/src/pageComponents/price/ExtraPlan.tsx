@@ -13,6 +13,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
+import { formatActivityExpirationTime } from './utils';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t, i18n } = useTranslation();
@@ -103,6 +104,9 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     }
   );
 
+  // 计算活动时间
+  const activityExpirationTime = formatActivityExpirationTime(subPlans?.activityExpirationTime);
+
   return (
     <VStack>
       <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
@@ -167,23 +171,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           >
             {t('common:support.wallet.subscription.Extra ai points')}
             <Box fontSize={'12px'} fontWeight={'normal'} color={'myGray.600'} mt={0.5}>
-              {subPlans?.activityExpirationTime
-                ? (() => {
-                    const date = new Date(subPlans.activityExpirationTime);
-                    const year = date.getFullYear();
-                    const month = date.getMonth() + 1;
-                    const day = date.getDate();
-                    const hour = date.getHours().toString().padStart(2, '0');
-                    const minute = date.getMinutes().toString().padStart(2, '0');
-                    return t('common:support.wallet.subscription.Activity expiration time', {
-                      year,
-                      month,
-                      day,
-                      hour,
-                      minute
-                    });
-                  })()
-                : ''}
+              {activityExpirationTime}
             </Box>
           </Box>
           <Grid

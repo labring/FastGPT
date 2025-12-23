@@ -17,6 +17,7 @@ import {
   DiscountCouponStatusEnum,
   DiscountCouponTypeEnum
 } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
+import { formatActivityExpirationTime } from './utils';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -47,10 +48,11 @@ const Standard = ({
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const hasActivityExpiration = !!subPlans?.activityExpirationTime;
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
-    hasActivityExpiration ? SubModeEnum.year : SubModeEnum.month
+    subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month
   );
+  const hasActivityExpiration =
+    !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
   useEffect(() => {
     setSelectSubMode(hasActivityExpiration ? SubModeEnum.year : SubModeEnum.month);
@@ -130,6 +132,9 @@ const Standard = ({
       setQRPayData(res);
     }
   });
+
+  // 计算活动时间
+  const activityExpirationTime = formatActivityExpirationTime(subPlans?.activityExpirationTime);
 
   return (
     <>
@@ -270,21 +275,7 @@ const Standard = ({
                         color={'#E45F5F'}
                         textAlign={'center'}
                       >
-                        {(() => {
-                          const date = new Date(subPlans.activityExpirationTime || '');
-                          const year = date.getFullYear();
-                          const month = date.getMonth() + 1;
-                          const day = date.getDate();
-                          const hour = date.getHours().toString().padStart(2, '0');
-                          const minute = date.getMinutes().toString().padStart(2, '0');
-                          return t('common:support.wallet.subscription.Activity expiration time', {
-                            year,
-                            month,
-                            day,
-                            hour,
-                            minute
-                          });
-                        })()}
+                        {activityExpirationTime}
                       </Box>
                     </Box>
                   )}
