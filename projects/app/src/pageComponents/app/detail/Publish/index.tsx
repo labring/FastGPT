@@ -12,6 +12,8 @@ import { AppContext } from '../context';
 import { cardStyles } from '../constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { UserTagsEnum } from '@fastgpt/global/support/user/type';
 
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
@@ -25,6 +27,7 @@ const OutLink = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
+  const { userInfo } = useUserStore();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -43,7 +46,8 @@ const OutLink = () => {
       value: PublishChannelEnum.apikey,
       isProFn: false
     },
-    ...(feConfigs?.show_publish_feishu !== false
+    ...(feConfigs?.show_publish_feishu !== false &&
+    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'core/app/publish/lark',
@@ -54,7 +58,8 @@ const OutLink = () => {
           }
         ]
       : []),
-    ...(feConfigs?.show_publish_dingtalk !== false
+    ...(feConfigs?.show_publish_dingtalk !== false &&
+    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'common/dingtalkFill',
@@ -76,7 +81,8 @@ const OutLink = () => {
           }
         ]
       : []),
-    ...(feConfigs?.show_publish_offiaccount !== false
+    ...(feConfigs?.show_publish_offiaccount !== false &&
+    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'core/app/publish/offiaccount',

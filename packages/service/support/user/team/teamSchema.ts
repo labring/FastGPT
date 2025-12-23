@@ -57,12 +57,16 @@ const TeamSchema = new Schema({
   notificationAccount: {
     type: String,
     required: false
+  },
+  meta: {
+    type: Object
   }
 });
 
 try {
   TeamSchema.index({ name: 1 });
   TeamSchema.index({ ownerId: 1 });
+  TeamSchema.index({ 'meta.wecom.corpId': 1 }, { sparse: true, unique: true });
 } catch (error) {
   console.log(error);
 }
