@@ -119,7 +119,7 @@ const ChatRecordContextProvider = ({
               const scrollContainer = document.querySelector(
                 '[dataScrollContainer="true"]'
               ) as HTMLElement;
-              console.log(scrollContainer);
+
               if (scrollContainer) {
                 scrollContainer.scrollTop = scrollContainer.scrollHeight;
               }

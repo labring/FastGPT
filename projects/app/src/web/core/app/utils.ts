@@ -660,6 +660,8 @@ export function form2AppWorkflow(
       };
     }
 
+    formData.dataset.datasetSearchExtensionModel = formData.aiSettings.model;
+
     const nodes = [
       createUpdatedVariableUpdateNode(
         nodeIds.variableUpdate,

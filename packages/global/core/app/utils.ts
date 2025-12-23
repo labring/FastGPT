@@ -6,10 +6,9 @@ import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
-import { AppTypeEnum } from './constants';
+import { AppTypeEnum, AssistantGlobalVarKey } from './constants';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
-import { VARIABLE_KEYS } from '../../../../projects/app/src/pageComponents/app/detail/SmartCustomerService/constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -176,7 +175,8 @@ export const appWorkflow2Form = ({
       if (Array.isArray(updateList)) {
         const fallbackReplyItem = updateList.find(
           (item) =>
-            Array.isArray(item.variable) && item.variable[1] === VARIABLE_KEYS.FALLBACK_REPLY
+            Array.isArray(item.variable) &&
+            item.variable[1] === AssistantGlobalVarKey.FALLBACK_REPLY
         );
         if (
           fallbackReplyItem &&

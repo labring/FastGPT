@@ -341,7 +341,7 @@ const SynonymTab = () => {
         toast({
           status: 'error',
           title: t('dataset:synonym_upload_failed'),
-          description: (error as Error).message
+          description: t((error as Error).message)
         });
       } finally {
         setIsUploading(false);

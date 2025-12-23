@@ -62,3 +62,8 @@ export enum AppTemplateTypeEnum {
   // special type
   contribute = 'contribute'
 }
+
+export const AssistantGlobalVarKey = {
+  FAQ_ANSWER_MODE: 'utjZSg8f',
+  FALLBACK_REPLY: 'byG7WNk4'
+} as const;

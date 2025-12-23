@@ -395,7 +395,7 @@ const EditForm = ({
               <Input
                 value={appForm.chatConfig.welcomeText || ''}
                 onChange={(e) => updateChatConfig({ welcomeText: e.target.value })}
-                placeholder={DEFAULT_VALUES.WELCOME_TEXT}
+                placeholder={t(DEFAULT_VALUES.WELCOME_TEXT)}
               />
             </FormItem>
 
