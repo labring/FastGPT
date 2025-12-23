@@ -150,7 +150,24 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 }}
                 onClick={() => setSelectedPackageIndex(index)}
                 transition={'all 0.2s'}
+                position={'relative'}
               >
+                {pkg.activityBonusPoints && pkg.activityBonusPoints > 0 && (
+                  <Box
+                    position={'absolute'}
+                    top={[1, 2]}
+                    right={[1, 2]}
+                    fontSize={['10px', 'xs']}
+                    fontWeight={'bold'}
+                    color={'red.600'}
+                    bg={'red.50'}
+                    px={[1, 2]}
+                    py={[0.5, 1]}
+                    borderRadius={'sm'}
+                  >
+                    +{formatNumberWithUnit(pkg.activityBonusPoints, i18n.language)}
+                  </Box>
+                )}
                 <Box fontSize={'24px'} fontWeight={'medium'} color={'myGray.600'}>
                   {formatNumberWithUnit(pkg.points, i18n.language)}{' '}
                   {t('common:support.wallet.subscription.point')}

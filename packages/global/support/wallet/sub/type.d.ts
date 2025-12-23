@@ -22,6 +22,9 @@ export type TeamStandardSubPlanItemType = {
   ticketResponseTime?: number;
   customDomain?: number;
 
+  // Activity promotion fields
+  annualBonusPoints?: number;
+
   // Custom plan specific fields
   priceDescription?: string;
   customFormUrl?: string;
@@ -37,6 +40,7 @@ export type PointsPackageItem = {
   points: number;
   month: number;
   price: number;
+  activityBonusPoints?: number;
 };
 
 export type SubPlanType = {
@@ -76,6 +80,9 @@ export type TeamSubSchema = {
   auditLogStoreDuration?: number;
   ticketResponseTime?: number;
   customDomain?: number;
+
+  // Activity promotion fields
+  annualBonusPoints?: number;
 
   totalPoints: number;
   surplusPoints: number;

@@ -38,6 +38,8 @@ const StandardPlanContentList = ({
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
       totalPoints:
         standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
+      annualBonusPoints:
+        mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
@@ -56,6 +58,7 @@ const StandardPlanContentList = ({
     level,
     mode,
     standplan?.totalPoints,
+    standplan?.annualBonusPoints,
     standplan?.requestsPerMinute,
     standplan?.maxTeamMember,
     standplan?.maxApp,
@@ -68,6 +71,7 @@ const StandardPlanContentList = ({
     standplan?.ticketResponseTime,
     standplan?.customDomain
   ]);
+  console.log('planContent', planContent);
 
   return planContent ? (
     <Grid gap={4} fontSize={'sm'} fontWeight={500}>
@@ -76,7 +80,9 @@ const StandardPlanContentList = ({
         <Flex alignItems={'center'}>
           <Box fontWeight={'bold'} color={'myGray.600'}>
             {t('common:n_ai_points', {
-              amount: planContent.totalPoints
+              amount: planContent.annualBonusPoints
+                ? `${planContent.totalPoints} + ${planContent.annualBonusPoints}`
+                : planContent.totalPoints
             })}
           </Box>
           <ModelPriceModal>

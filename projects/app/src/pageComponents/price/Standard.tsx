@@ -41,7 +41,7 @@ const Standard = ({
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
+  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.year);
 
   const NEW_PLAN_LEVELS = [
     StandardSubLevelEnum.free,
@@ -99,6 +99,7 @@ const Standard = ({
               maxDatasetAmount: myStandardPlan?.maxDataset || value.maxDatasetAmount,
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
+              annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
               totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
 
               // custom plan
