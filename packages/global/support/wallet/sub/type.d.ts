@@ -41,7 +41,6 @@ export type PointsPackageItem = {
   month: number;
   price: number;
   activityBonusPoints?: number;
-  activityExpirationTime?: string;
 };
 
 export type SubPlanType = {

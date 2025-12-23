@@ -84,15 +84,10 @@ const StandardPlanContentList = ({
         <Flex alignItems={'center'}>
           {planContent.annualBonusPoints ? (
             <>
-              <Text
-                fontWeight={'medium'}
-                color={'myGray.600'}
-                textDecoration={'line-through'}
-                mr={1}
-              >
+              <Text fontWeight={'bold'} color={'myGray.600'} textDecoration={'line-through'} mr={1}>
                 {planContent.totalPoints}
               </Text>
-              <Text fontWeight={'medium'} color={'#DF531E'}>
+              <Text fontWeight={'bold'} color={'#DF531E'}>
                 {planContent.totalPoints + planContent.annualBonusPoints}
               </Text>
               <Text color={'myGray.600'} ml={1}>

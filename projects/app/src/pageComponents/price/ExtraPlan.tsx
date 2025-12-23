@@ -126,7 +126,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 left={'36%'}
                 width={'55px'}
                 height={'64px'}
-                zIndex={1111}
+                zIndex={0}
                 bgImage={'url(/imgs/system/extraSnowflake1.svg)'}
                 backgroundSize="100% 100%"
                 backgroundRepeat="no-repeat"

@@ -14,7 +14,6 @@ import {
   ModalCloseButton
 } from '@chakra-ui/react';
 
-// LocalStorage key for tracking closed ads
 const CLOSED_AD_KEY = 'activity_ad_closed';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
