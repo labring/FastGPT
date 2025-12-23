@@ -4,7 +4,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { type Tool } from '@modelcontextprotocol/sdk';
+import { type Tool } from '@modelcontextprotocol/sdk/types';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';

@@ -23,6 +23,7 @@
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
+    "@fastgpt-sdk/storage": "0.5.4",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@modelcontextprotocol/sdk": "^1.24.0",
     "@node-rs/jieba": "2.0.1",
