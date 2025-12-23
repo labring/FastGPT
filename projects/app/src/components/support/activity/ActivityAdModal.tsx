@@ -13,6 +13,7 @@ import {
   ModalContent,
   ModalCloseButton
 } from '@chakra-ui/react';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const CLOSED_AD_KEY = 'activity_ad_closed';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -20,6 +21,7 @@ const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const ActivityAdModal = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   // Check if ad was recently closed
   const shouldShowAd = useMemo(() => {
@@ -38,6 +40,7 @@ const ActivityAdModal = () => {
 
   const { data } = useRequest2(
     async () => {
+      if (!feConfigs?.isPlus) return;
       return getActivityAd();
     },
     {
@@ -61,8 +64,7 @@ const ActivityAdModal = () => {
     if (data?.activityAdLink) {
       window.open(data.activityAdLink, '_blank');
     }
-    // handleClose();
-  }, [data?.activityAdLink, handleClose]);
+  }, [data?.activityAdLink]);
 
   if (!data?.activityAdImage) {
     return null;
@@ -173,7 +175,7 @@ const ActivityAdModal = () => {
               >
                 {t('common:activity_ad.join_now')}
               </Button>
-              <Button width="100%" variant="outline" h={10} onClick={handleClose}>
+              <Button width="100%" variant="whiteBase" h={10} onClick={handleClose}>
                 {t('common:activity_ad.later')}
               </Button>
             </Flex>
