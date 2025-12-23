@@ -1,19 +1,13 @@
 import http from 'http';
 import https from 'https';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { ProxyAgent } from 'proxy-agent';
 
-if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
-  const httpProxy = process.env.HTTP_PROXY;
-  const httpsProxy = process.env.HTTPS_PROXY;
-  if (httpProxy) {
-    http.globalAgent = new HttpProxyAgent(httpProxy);
-  }
-  if (httpsProxy) {
-    https.globalAgent = new HttpsProxyAgent(httpsProxy);
-  }
+const agent = new ProxyAgent();
 
-  console.info(`Global Proxy enabled: ${httpProxy}, ${httpsProxy}`);
-} else {
-  console.info('Global Proxy disabled');
-}
+https.globalAgent = agent;
+http.globalAgent = agent;
+
+console.info('NO_PROXY: %s', process.env.NO_PROXY);
+console.info('ALL_PROXY: %s', process.env.ALL_PROXY);
+console.info('HTTP_PROXY: %s', process.env.HTTP_PROXY);
+console.info('HTTPS_PROXY: %s', process.env.HTTPS_PROXY);

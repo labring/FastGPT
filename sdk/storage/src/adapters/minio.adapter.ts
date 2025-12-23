@@ -1,7 +1,12 @@
 import { AwsS3StorageAdapter } from './aws-s3.adapter';
 import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
 import type { EnsureBucketResult } from '../types';
-import { CreateBucketCommand, NotFound, PutBucketPolicyCommand } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  DeleteBucketLifecycleCommand,
+  NotFound,
+  PutBucketPolicyCommand
+} from '@aws-sdk/client-s3';
 
 /**
  * 注意：
@@ -56,5 +61,9 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
         Policy: JSON.stringify(policy)
       })
     );
+  }
+
+  async removeBucketLifecycle(): Promise<void> {
+    await this.client.send(new DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
   }
 }

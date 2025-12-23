@@ -20,8 +20,10 @@ import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
 import { addLog } from '../../system/log';
 import { addS3DelJob } from '../mq';
 import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
-import { type IStorage } from '@fastgpt-sdk/storage';
+import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+
+type IStorage = ReturnType<typeof createStorage>;
 
 // Check if the error is a "file not found" type error, which should be treated as success
 export const isFileNotFoundError = (error: any): boolean => {

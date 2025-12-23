@@ -134,7 +134,9 @@ const FileSelector = ({
                   }
                 });
                 handleChangeFiles(files);
-              }
+              },
+              t,
+              maxSize
             });
 
             const previewUrl = await getPresignedChatFileGetUrl({
