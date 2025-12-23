@@ -115,6 +115,16 @@ export type DeleteRerankTrainDataResponse = MessageResponse;
 
 // ===== Training Task API =====
 
+// Create Training Task with new trainset
+export type CreateRerankTrainTaskWithTrainsetRequest = {
+  appId: string;
+  name?: string;
+  pollingConfig?: {
+    maxAttempts?: number; // Max polling attempts, default 60
+    interval?: number; // Polling interval (ms), default 5000
+  };
+};
+
 // Create Training Task
 export type CreateRerankTrainTaskRequest = {
   appId: string;
@@ -142,14 +152,14 @@ export type ListRerankTrainTasksRequest = PaginationProps<
     status?: `${RerankTrainTaskStatusEnum}`;
   } & SortParams<'createTime' | 'updateTime' | 'finishTime'>
 >;
-export type ListRerankTrainTasksResponse = PaginationResponse<
-  RerankTrainTaskSchemaType & {
-    appName: string;
-    appAvatar: string;
-    creatorName?: string;
-    creatorAvatar?: string;
-  }
->;
+
+export type RerankTrainTaskListItem = RerankTrainTaskSchemaType & {
+  appName: string;
+  appAvatar: string;
+  creatorName?: string;
+  creatorAvatar?: string;
+};
+export type ListRerankTrainTasksResponse = PaginationResponse<RerankTrainTaskListItem>;
 
 // Retry Training Task
 export type RetryRerankTrainTaskRequest = TaskIdQuery;

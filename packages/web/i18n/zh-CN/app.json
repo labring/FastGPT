@@ -438,5 +438,13 @@
   "fetch_optimize_records_error": "获取优化记录异常",
   "answer_quote_knowledge_count": "答案引用知识（{{count}}）",
   "delete_failed": "删除失败",
-  "delete_success": "删除成功"
+  "delete_success": "删除成功",
+  "auto_learn_no_records": "暂无学习记录",
+  "fetch_learning_records_error": "获取学习记录失败",
+  "operation_failed": "操作失败",
+  "operation_success": "操作成功",
+  "download_failed": "下载失败",
+  "learning_status_pending": "等待中",
+  "learning_status_failed": "已失败",
+  "learning_status_cancelled": "已取消"
 }
