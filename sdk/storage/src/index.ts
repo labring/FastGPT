@@ -1,4 +1,6 @@
 export { createStorage } from './factory';
+export { createVitestStorageMock } from './testing/vitestMock';
+export type { VitestStorageMock, CreateVitestStorageMockParams } from './testing/vitestMock';
 export type {
   IStorage,
   IStorageOptions,
