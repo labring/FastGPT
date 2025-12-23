@@ -1,4 +1,4 @@
-import { base64ToFile, fileToBase64 } from '../utils';
+import { base64ToFile, fileToBase64, putFileToS3 } from '../utils';
 import { compressBase64Img } from '../img';
 import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
@@ -41,16 +41,16 @@ export const useUploadAvatar = (
           url,
           fields: { key, ...headers }
         } = await api({ filename: file.name });
-        const res = await fetch(url, {
-          method: 'PUT',
-          body: compressed,
-          headers: {
-            ...headers
-          }
+
+        await putFileToS3({
+          url,
+          file: compressed,
+          headers,
+          onSuccess() {
+            onSuccess?.(`${imageBaseUrl}${key}`);
+          },
+          t
         });
-        if (res.ok && res.status === 200) {
-          onSuccess?.(`${imageBaseUrl}${key}`);
-        }
       });
     },
     [t, toast, api, onSuccess]

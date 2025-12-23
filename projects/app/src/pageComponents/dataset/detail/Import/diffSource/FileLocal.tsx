@@ -14,8 +14,7 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
-import { PUT } from '@/web/common/api/request';
-import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -78,10 +77,10 @@ const SelectFile = React.memo(function SelectFile() {
               });
 
               // Upload File to S3
-              await PUT(url, file, {
-                headers: {
-                  ...headers
-                },
+              await putFileToS3({
+                url,
+                file,
+                headers,
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);
@@ -98,9 +97,8 @@ const SelectFile = React.memo(function SelectFile() {
                     )
                   );
                 },
-                timeout: 5 * 60 * 1000 // 5 minutes
-              })
-                .then(() => {
+                t,
+                onSuccess: () => {
                   setSelectFiles((state) =>
                     state.map((item) =>
                       item.id === fileId
@@ -113,8 +111,8 @@ const SelectFile = React.memo(function SelectFile() {
                         : item
                     )
                   );
-                })
-                .catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
+                }
+              });
             } catch (error) {
               setSelectFiles((state) =>
                 state.map((item) =>
