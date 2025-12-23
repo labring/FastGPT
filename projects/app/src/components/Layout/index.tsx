@@ -40,6 +40,9 @@ const ManualCopyModal = dynamic(
   () => import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal),
   { ssr: false }
 );
+const ActivityAdModal = dynamic(() => import('@/components/support/activity/ActivityAdModal'), {
+  ssr: false
+});
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -187,6 +190,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       )}
 
       <ManualCopyModal />
+      <ActivityAdModal />
       <Loading loading={loading} zIndex={999999} />
     </>
   );

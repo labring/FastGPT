@@ -28,3 +28,8 @@ export const getOperationalAd = () =>
   GET<{ id: string; operationalAdImage: string; operationalAdLink: string }>(
     '/proApi/support/user/inform/getOperationalAd'
   );
+
+export const getActivityAd = () =>
+  GET<{ id: string; activityAdImage: string; activityAdLink: string }>(
+    '/proApi/support/user/inform/getActivityAd'
+  );
