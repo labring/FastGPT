@@ -16,6 +16,7 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useLocalStorageState } from 'ahooks';
 import { useRouter } from 'next/router';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const CLOSED_AD_KEY = 'activity_ad_closed';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -25,6 +26,7 @@ const ActivityAdModal = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const router = useRouter();
+  const { userInfo } = useUserStore();
 
   // Check if ad was recently closed
   const [closedData, setClosedData] = useLocalStorageState<string>(CLOSED_AD_KEY, {
