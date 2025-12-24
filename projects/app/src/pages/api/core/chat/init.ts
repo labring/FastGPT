@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
@@ -83,7 +82,7 @@ async function handler(
     };
   } catch (error: any) {
     if (error === AppErrEnum.unAuthApp) {
-      const { tmbId, teamId } = await authCert({
+      const { tmbId } = await authCert({
         req,
         authToken: true,
         authApiKey: true

@@ -28,7 +28,7 @@ import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/control
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
 export const getRecentlyUsedApps = () =>
-  GET<GetRecentlyUsedAppsResponseType>('/core/chat/recentlyUsed');
+  GET<GetRecentlyUsedAppsResponseType>('/core/chat/recentlyUsed', undefined, { maxQuantity: 1 });
 
 /**
  * 获取初始化聊天内容

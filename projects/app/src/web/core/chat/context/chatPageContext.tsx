@@ -83,7 +83,8 @@ export const ChatPageContextProvider = ({
       manual: false,
       errorToast: '',
       refreshDeps: [userInfo],
-      pollingInterval: 30000
+      pollingInterval: 30000,
+      throttleWait: 500 // 500ms throttle
     }
   );
 

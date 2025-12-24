@@ -213,8 +213,11 @@ export const deleteAppsImmediate = async ({
 
 export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {
   mongoSessionRun(async (session) => {
+    const existsId = new Set<string>();
     while (true) {
-      if (!parentId) return;
+      if (!parentId || existsId.has(parentId)) return;
+
+      existsId.add(parentId);
 
       const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
       if (!parentApp) return;
