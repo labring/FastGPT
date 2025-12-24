@@ -29,7 +29,7 @@ export enum RerankTrainErrEnum {
 
   // 外部服务错误
   ditingServiceError = 'ditingServiceError',
-  aicpServiceError = 'aicpServiceError'
+  sftBridgeServiceError = 'sftBridgeServiceError'
 }
 
 const trainErr = [
@@ -111,8 +111,8 @@ const trainErr = [
     message: i18nT('train:diting_service_error')
   },
   {
-    statusText: RerankTrainErrEnum.aicpServiceError,
-    message: i18nT('train:aicp_service_error')
+    statusText: RerankTrainErrEnum.sftBridgeServiceError,
+    message: i18nT('train:sft_bridge_service_error')
   }
 ];
 

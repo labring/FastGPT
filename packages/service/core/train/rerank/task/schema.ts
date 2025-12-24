@@ -70,7 +70,7 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
           trainDatasetFilePath: String
         },
         finetuning: {
-          aicpTaskId: String,
+          sftTaskId: String,
           tunedModelEndpoint: {
             base_url: String,
             model: String,

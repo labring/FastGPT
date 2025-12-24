@@ -16,5 +16,5 @@
   "eval_dataset_not_generated": "評測資料集尚未生成，請等待訓練任務完成",
   "eval_dataset_empty": "評測資料集為空",
   "diting_service_error": "DiTing 服務調用失敗",
-  "aicp_service_error": "AICP 訓推平台調用失敗"
+  "sft_bridge_service_error": "SFT Bridge 服務調用失敗"
 }

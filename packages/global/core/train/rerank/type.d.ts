@@ -125,7 +125,7 @@ export type RerankTrainTaskSchemaType = {
       };
 
       finetuning?: {
-        aicpTaskId: string;
+        sftTaskId: string;
         tunedModelEndpoint: {
           base_url: string;
           api_key: string;

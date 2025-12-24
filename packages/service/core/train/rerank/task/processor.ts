@@ -105,7 +105,7 @@ async function waitForTrainsetReady(
  * Executes complete rerank model training pipeline:
  * 0. Waiting - Wait for trainset generation to complete
  * 1. Preparing - Data preparation
- * 2. Finetuning - Model finetuning (AICP)
+ * 2. Finetuning - Model finetuning
  * 3. Registering - Model registration
  * 4. Evaluating - Performance evaluation
  * 5. Applying - Apply trained model to app workflow
@@ -156,7 +156,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
       const finetuneResult = await runFinetuneStage(taskAfterPrepare);
       await updateCheckpointData(taskId, 'finetuning', {
-        aicpTaskId: finetuneResult.aicpTaskId,
+        sftTaskId: finetuneResult.sftTaskId,
         tunedModelEndpoint: finetuneResult.tunedModelEndpoint
       });
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.finetuning);
