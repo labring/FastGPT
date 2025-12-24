@@ -87,16 +87,11 @@ describe('Create with Trainset API - 核心逻辑测试', () => {
     vi.clearAllMocks();
   });
 
-  describe('waitForTrainsetReady 轮询逻辑', () => {
-    test('数据集就绪时应返回训练集', async () => {
+  describe('API handler should return immediately', () => {
+    test('应该立即创建任务并添加到队列（不等待trainset就绪）', async () => {
       const { MongoRerankTrainset } = await import(
         '@fastgpt/service/core/train/rerank/trainset/schema'
       );
-
-      // Mock 数据集已就绪（第一次调用 - 但这个mock不会被使用，因为先有create再有轮询）
-
-      // 动态导入包含 waitForTrainsetReady 的模块
-      // 注意：waitForTrainsetReady 是私有函数，这里测试的是整体行为
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
@@ -105,9 +100,8 @@ describe('Create with Trainset API - 核心逻辑测试', () => {
         '@fastgpt/service/core/train/rerank/task/controller'
       );
       const { rerankTrainTaskQueue } = await import('@fastgpt/service/core/train/rerank/task/mq');
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { calculateTrainsetStats } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
+      const { rerankTrainDataGenerateQueue } = await import(
+        '@fastgpt/service/core/train/rerank/data/mq'
       );
 
       // 设置必要的 mocks
@@ -117,30 +111,19 @@ describe('Create with Trainset API - 核心逻辑测试', () => {
         tmbId: 'tmb-id'
       } as any);
 
-      // Mock findOne().lean() 链式调用
+      // Mock findOne().lean() 链式调用 - 没有运行中的任务
       vi.mocked(MongoRerankTrainTask.findOne).mockReturnValueOnce({
         lean: vi.fn().mockResolvedValueOnce(null)
       } as any);
 
+      // Mock trainset 创建
       vi.mocked(MongoRerankTrainset.create).mockResolvedValueOnce([{ _id: 'trainset-id' }] as any);
 
-      // waitForTrainsetReady 使用 findById 轮询检查
-      vi.mocked(MongoRerankTrainset.findById).mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValueOnce({
-          _id: 'trainset-id',
-          status: RerankTrainsetStatusEnum.ready
-        })
-      } as any);
-
-      // Mock calculateTrainsetStats
-      vi.mocked(calculateTrainsetStats).mockResolvedValueOnce({
-        dataCount: 10,
-        positiveCount: 10,
-        negativeCount: 50,
-        sourceSummary: []
-      });
-
+      // Mock 任务创建和队列
       vi.mocked(createRerankTrainTask).mockResolvedValueOnce('task-id');
+      vi.mocked(rerankTrainDataGenerateQueue.add).mockResolvedValueOnce({
+        id: 'generate-job-id'
+      } as any);
       vi.mocked(rerankTrainTaskQueue.add).mockResolvedValueOnce({ id: 'job-id' } as any);
 
       // 导入并调用 handler
@@ -158,7 +141,7 @@ describe('Create with Trainset API - 核心逻辑测试', () => {
 
       const result = await handler(mockReq as any, {} as any);
 
-      // NextAPI 包装后返回 { code, data } 格式
+      // 验证立即返回（不等待trainset就绪）
       expect(result).toEqual({
         code: 200,
         data: {
@@ -166,119 +149,34 @@ describe('Create with Trainset API - 核心逻辑测试', () => {
           status: RerankTrainTaskStatusEnum.pending
         }
       });
-    });
 
-    test('数据集为空时应抛出错误', async () => {
-      const { MongoRerankTrainset } = await import(
-        '@fastgpt/service/core/train/rerank/trainset/schema'
-      );
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-      const { authApp } = await import('@fastgpt/service/support/permission/app/auth');
-      const { calculateTrainsetStats } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
-      );
-
-      vi.mocked(authApp).mockResolvedValueOnce({
-        app: { _id: 'app-id', name: 'Test App' } as any,
-        teamId: 'team-id',
-        tmbId: 'tmb-id'
-      } as any);
-
-      vi.mocked(MongoRerankTrainTask.findOne).mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValueOnce(null)
-      } as any);
-
-      vi.mocked(MongoRerankTrainset.create).mockResolvedValueOnce([{ _id: 'trainset-id' }] as any);
-
-      // waitForTrainsetReady 使用 findById 检查数据集状态
-      vi.mocked(MongoRerankTrainset.findById).mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValueOnce({
-          _id: 'trainset-id',
-          status: RerankTrainsetStatusEnum.ready
-        })
-      } as any);
-
-      // Mock calculateTrainsetStats - 返回空数据
-      vi.mocked(calculateTrainsetStats).mockResolvedValueOnce({
-        dataCount: 0,
-        positiveCount: 0,
-        negativeCount: 0,
-        sourceSummary: []
-      });
-
-      const handlerModule = await import(
-        'D:/FastGPT/projects/app/src/pages/api/core/train/rerank/task/create-with-trainset'
-      );
-      const handler = handlerModule.default;
-
-      const mockReq = {
-        body: {
+      // 验证创建了trainset
+      expect(MongoRerankTrainset.create).toHaveBeenCalledWith([
+        expect.objectContaining({
           appId: 'app-id',
-          name: 'Test Task'
-        }
-      };
-
-      const result = await handler(mockReq as any, {} as any);
-
-      // NextAPI 包装后错误会转换为 { code: 500, error: ... }
-      expect(result).toEqual({
-        code: 500,
-        error: RerankTrainErrEnum.noTrainDataAvailable,
-        url: undefined
-      });
-    });
-
-    test('数据集生成失败时应抛出错误', async () => {
-      const { MongoRerankTrainset } = await import(
-        '@fastgpt/service/core/train/rerank/trainset/schema'
-      );
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-      const { authApp } = await import('@fastgpt/service/support/permission/app/auth');
-
-      vi.mocked(authApp).mockResolvedValueOnce({
-        app: { _id: 'app-id', name: 'Test App' } as any,
-        teamId: 'team-id',
-        tmbId: 'tmb-id'
-      } as any);
-
-      vi.mocked(MongoRerankTrainTask.findOne).mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValueOnce(null)
-      } as any);
-
-      vi.mocked(MongoRerankTrainset.create).mockResolvedValueOnce([{ _id: 'trainset-id' }] as any);
-
-      // waitForTrainsetReady 使用 findById 检查数据集状态 - 生成失败
-      vi.mocked(MongoRerankTrainset.findById).mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValueOnce({
-          _id: 'trainset-id',
-          status: RerankTrainsetStatusEnum.error
+          teamId: 'team-id',
+          tmbId: 'tmb-id',
+          status: RerankTrainsetStatusEnum.pending
         })
-      } as any);
+      ]);
 
-      const handlerModule = await import(
-        'D:/FastGPT/projects/app/src/pages/api/core/train/rerank/task/create-with-trainset'
-      );
-      const handler = handlerModule.default;
+      // 验证添加到数据生成队列
+      expect(rerankTrainDataGenerateQueue.add).toHaveBeenCalled();
 
-      const mockReq = {
-        body: {
-          appId: 'app-id',
-          name: 'Test Task'
-        }
-      };
-
-      const result = await handler(mockReq as any, {} as any);
-
-      // NextAPI 包装后错误会转换为 { code: 500, error: ... }
-      expect(result).toEqual({
-        code: 500,
-        error: RerankTrainErrEnum.trainsetGenerationFailed,
-        url: undefined
+      // 验证创建了任务
+      expect(createRerankTrainTask).toHaveBeenCalledWith({
+        appId: 'app-id',
+        trainsetId: 'trainset-id',
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        name: 'Test Task'
       });
+
+      // 验证添加到任务队列
+      expect(rerankTrainTaskQueue.add).toHaveBeenCalled();
+
+      // 注意：不再调用 MongoRerankTrainset.findById（不再等待trainset就绪）
+      expect(MongoRerankTrainset.findById).not.toHaveBeenCalled();
     });
   });
 

@@ -23,11 +23,87 @@ import {
   runEvaluateBaseModel,
   runEvaluateTunedModel
 } from './stages/evaluate';
+import { MongoRerankTrainset } from '../trainset/schema';
+import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { calculateTrainsetStats } from '../data/controller';
+
+/**
+ * Poll and wait for trainset to be ready
+ * Moved from API handler to avoid blocking the main thread
+ * @param trainsetId Trainset ID
+ * @param maxAttempts Max polling attempts (default: 120 for 10 minutes)
+ * @param interval Polling interval in ms (default: 5000ms = 5s)
+ */
+async function waitForTrainsetReady(
+  trainsetId: string,
+  maxAttempts: number = 120,
+  interval: number = 5000
+): Promise<void> {
+  let attempts = 0;
+
+  addLog.info('Waiting for trainset to be ready', {
+    trainsetId,
+    maxAttempts,
+    interval
+  });
+
+  while (attempts < maxAttempts) {
+    const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
+
+    if (!trainset) {
+      throw new UnrecoverableError(RerankTrainErrEnum.trainsetNotExist);
+    }
+
+    // If ready, validate data count and return successfully
+    if (trainset.status === RerankTrainsetStatusEnum.ready) {
+      const stats = await calculateTrainsetStats(String(trainset._id));
+      if (stats.dataCount === 0) {
+        addLog.error('No train data available in trainset', { trainsetId });
+        throw new UnrecoverableError(RerankTrainErrEnum.noTrainDataAvailable);
+      }
+      addLog.info('Trainset is ready', { trainsetId, dataCount: stats.dataCount });
+      return;
+    }
+
+    // If error, throw unrecoverable error
+    if (trainset.status === RerankTrainsetStatusEnum.error) {
+      const errorMsg = trainset.errorMsg || 'Trainset generation failed';
+      addLog.error('Trainset generation failed', { trainsetId, errorMsg });
+      throw new UnrecoverableError(RerankTrainErrEnum.trainsetGenerationFailed);
+    }
+
+    // If still generating or pending, continue waiting
+    if (
+      trainset.status === RerankTrainsetStatusEnum.generating ||
+      trainset.status === RerankTrainsetStatusEnum.pending
+    ) {
+      addLog.info('Trainset still generating', {
+        trainsetId,
+        status: trainset.status,
+        attempt: attempts + 1,
+        maxAttempts
+      });
+      await new Promise((resolve) => setTimeout(resolve, interval));
+      attempts++;
+      continue;
+    }
+
+    // Unknown status, continue waiting
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    attempts++;
+  }
+
+  // Timeout
+  addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
+  throw new UnrecoverableError(RerankTrainErrEnum.trainsetGenerationFailed);
+}
 
 /**
  * Rerank training task processor
  *
  * Executes complete rerank model training pipeline:
+ * 0. Waiting - Wait for trainset generation to complete
  * 1. Preparing - Data preparation
  * 2. Finetuning - Model finetuning (AICP)
  * 3. Registering - Model registration
@@ -55,6 +131,12 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
   try {
     if (task.status === RerankTrainTaskStatusEnum.pending) {
       await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.running);
+    }
+
+    // Wait for trainset to be ready before starting prepare stage
+    // This was moved from the API handler to avoid blocking the main thread
+    if (!currentStage || currentStage === null) {
+      await waitForTrainsetReady(task.trainsetId);
     }
 
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.preparing)) {

@@ -55,7 +55,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"name\": \"测试训练任务 - 自动生成训练集\",\n  \"pollingConfig\": {\n    \"maxAttempts\": 60,\n    \"interval\": 5000\n  }\n}"
+              "raw": "{\n  \"appId\": \"{{APP_ID}}\",\n  \"name\": \"测试训练任务 - 自动生成训练集\"\n}"
             },
             "url": {
               "raw": "{{API_BASE_URL}}/api/core/train/rerank/task/create-with-trainset",

@@ -2,10 +2,10 @@
  * External services unified entry point for training module
  *
  * Selects between mock implementation or real service based on environment variables:
- * - USE_DITING_MOCK=true: Use mock implementation (default)
- * - USE_DITING_MOCK=false: Use real DiTing service (requires DITING_BASE_URL configuration)
- * - USE_AICP_MOCK=true: Use mock implementation (default)
- * - USE_AICP_MOCK=false: Use real AICP service
+ * - USE_DITING_MOCK=true: Use mock implementation
+ * - USE_DITING_MOCK=false or not set: Use real DiTing service (default, requires DITING_BASE_URL configuration)
+ * - USE_AICP_MOCK=true: Use mock implementation
+ * - USE_AICP_MOCK=false or not set: Use real AICP service (default)
  */
 
 import {
@@ -19,7 +19,7 @@ import {
   evaluateRerankModel
 } from './diting/client';
 
-const useDiTingMock = process.env.USE_DITING_MOCK !== 'false';
+const useDiTingMock = process.env.USE_DITING_MOCK === 'true';
 
 export const syntheticRerankTrainDatas = useDiTingMock
   ? mockSynthesizeRerankTrainDatas
@@ -46,7 +46,7 @@ import {
   queryAicpTaskStatus as realQueryAicpTaskStatus
 } from './aicp/client';
 
-const useAicpMock = process.env.USE_AICP_MOCK !== 'false';
+const useAicpMock = process.env.USE_AICP_MOCK === 'true';
 
 export const createAicpOptimizationTask = useAicpMock
   ? mockCreateAicpOptimizationTask

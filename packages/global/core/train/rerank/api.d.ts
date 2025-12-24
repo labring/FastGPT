@@ -119,10 +119,6 @@ export type DeleteRerankTrainDataResponse = MessageResponse;
 export type CreateRerankTrainTaskWithTrainsetRequest = {
   appId: string;
   name?: string;
-  pollingConfig?: {
-    maxAttempts?: number; // Max polling attempts, default 60
-    interval?: number; // Polling interval (ms), default 5000
-  };
 };
 
 // Create Training Task

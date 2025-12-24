@@ -70,6 +70,7 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
 });
 
 // Indexes
+RerankTrainsetDataSchema.index({ trainsetId: 1 });
 RerankTrainsetDataSchema.index({ trainsetId: 1, createTime: -1 });
 RerankTrainsetDataSchema.index({ appId: 1, createTime: -1 });
 RerankTrainsetDataSchema.index({ teamId: 1 });
