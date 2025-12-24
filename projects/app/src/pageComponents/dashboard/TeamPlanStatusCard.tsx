@@ -24,9 +24,9 @@ const TeamPlanStatusCard = () => {
       loadOperationalAd();
     }
     if (operationalAd?.id) {
-      const currentKey = `hidden-operational-${operationalAd.id}`;
+      const currentKey = `logout-operational-${operationalAd.id}`;
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('hidden-operational-') && key !== currentKey) {
+        if (key.startsWith('logout-operational-') && key !== currentKey) {
           localStorage.removeItem(key);
         }
       });
@@ -34,7 +34,7 @@ const TeamPlanStatusCard = () => {
   }, [operationalAd, loadOperationalAd]);
 
   const [hiddenUntil, setHiddenUntil] = useLocalStorageState<number | undefined>(
-    `hidden-operational-${operationalAd?.id}`,
+    `logout-operational-${operationalAd?.id}`,
     {
       defaultValue: undefined
     }

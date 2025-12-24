@@ -3,7 +3,7 @@ import { loginOut } from '@/web/support/user/api';
 const clearAdStorage = () => {
   try {
     Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('hidden-')) {
+      if (key.startsWith('logout-')) {
         const oldValue = localStorage.getItem(key);
         localStorage.removeItem(key);
 
