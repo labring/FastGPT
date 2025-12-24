@@ -157,7 +157,7 @@ const ActivityAdModal = () => {
             {t('common:activity_ad.title')}
           </Flex>
 
-          <Flex mt={6} color={'black'} justifyContent={'center'} fontSize={'14px'}>
+          <Flex mt={6} color={'black'} justifyContent={'center'} fontSize={'14px'} px={8}>
             {t('common:activity_ad.desc')}
           </Flex>
 
