@@ -29,8 +29,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   beforeUpdateAppFormat({
     nodes
   });
-
-  await updateParentFoldersUpdateTime({
+  updateParentFoldersUpdateTime({
     parentId: app.parentId
   });
 

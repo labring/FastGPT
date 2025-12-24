@@ -52,11 +52,6 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       { session }
     );
 
-    await updateParentFoldersUpdateTime({
-      parentId: app.parentId,
-      session
-    });
-
     await MongoAppVersion.updateOne(
       { appId },
       {
@@ -66,6 +61,9 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       },
       { session }
     );
+  });
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
   });
 }
 

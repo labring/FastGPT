@@ -134,26 +134,24 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           edges
         }),
         ...(chatConfig && { chatConfig }),
-        ...(isMove && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true }),
+        updateTime: new Date()
       },
       { session }
     );
 
     if (isMove) {
       // Update both old and new parent folders
-      await updateParentFoldersUpdateTime({
-        parentId: app.parentId,
-        session
+      updateParentFoldersUpdateTime({
+        parentId: app.parentId
       });
-      await updateParentFoldersUpdateTime({
-        parentId,
-        session
+      updateParentFoldersUpdateTime({
+        parentId
       });
     } else {
       // Update current parent folder
-      await updateParentFoldersUpdateTime({
-        parentId: parentId || app.parentId,
-        session
+      updateParentFoldersUpdateTime({
+        parentId: parentId || app.parentId
       });
     }
 

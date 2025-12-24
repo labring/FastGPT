@@ -53,11 +53,6 @@ async function handler(
       { session }
     );
 
-    await updateParentFoldersUpdateTime({
-      parentId: app.parentId,
-      session
-    });
-
     await MongoAppVersion.updateOne(
       { appId },
       {
@@ -67,6 +62,9 @@ async function handler(
       },
       { session }
     );
+  });
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
   });
 
   return {};

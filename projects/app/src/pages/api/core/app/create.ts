@@ -244,9 +244,8 @@ export const onCreateApp = async ({
 
     await getS3AvatarSource().refreshAvatar(_avatar, undefined, session);
 
-    await updateParentFoldersUpdateTime({
-      parentId,
-      session
+    updateParentFoldersUpdateTime({
+      parentId
     });
 
     (async () => {
