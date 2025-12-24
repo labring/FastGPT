@@ -135,7 +135,7 @@ export const RechargeModal = ({
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.usedPoints || 0} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
+              >{`${Math.round(teamPlanStatus?.usedPoints || 0)} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box

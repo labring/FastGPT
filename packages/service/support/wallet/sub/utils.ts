@@ -7,8 +7,8 @@ import {
 import { MongoTeamSub } from './schema';
 import {
   type TeamPlanStatusType,
-  type TeamSubSchema
-} from '@fastgpt/global/support/wallet/sub/type.d';
+  type TeamSubSchemaType
+} from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths } from 'date-fns';
@@ -29,7 +29,7 @@ export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
   return global.subPlans?.standard?.[level];
 };
 
-export const sortStandPlans = (plans: TeamSubSchema[]) => {
+export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
   return plans.sort(
     (a, b) =>
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight

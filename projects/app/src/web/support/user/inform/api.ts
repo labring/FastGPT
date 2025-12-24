@@ -1,6 +1,6 @@
 import { GET, POST } from '@/web/common/api/request';
 import type { UserInformType } from '@fastgpt/global/support/user/inform/type';
-import type { SystemMsgModalValueType } from '@fastgpt/service/support/user/inform/type';
+import type { SystemMsgModalValueType } from '@fastgpt/global/openapi/admin/support/user/inform/api';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export const getInforms = (data: PaginationProps) =>

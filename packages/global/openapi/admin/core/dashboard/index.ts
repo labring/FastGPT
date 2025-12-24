@@ -13,8 +13,6 @@ import {
 } from './api';
 import { TagsMap } from '../../../tag';
 
-export * from './api';
-
 export const DashboardPath: OpenAPIPath = {
   '/admin/core/dashboard/getUserStats': {
     get: {

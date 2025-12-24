@@ -22,6 +22,8 @@ export const TagsMap = {
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
   customDomain: '自定义域名',
+  // User
+  userInform: '用户通知',
 
   /* Common */
   // APIKey
@@ -33,5 +35,7 @@ export const TagsMap = {
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
   // Data
-  adminDashboard: '管理员仪表盘'
+  adminDashboard: '管理员仪表盘',
+  // Inform
+  adminInform: '管理员通知管理'
 };
