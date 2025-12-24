@@ -40,7 +40,7 @@
             "renderTypeList": ["hidden"],
             "label": "core.app.Question Guide",
             "value": {
-              "open": false
+              "open": true
             }
           },
           {
@@ -126,7 +126,7 @@
             "value": [
               {
                 "variable": ["VARIABLE_NODE_ID", "byG7WNk4"],
-                "value": ["", "抱歉,我没有找到答案,您可以尝试重新提问,我也会帮您反馈给相关团队。"],
+                "value": ["", "抱歉，我没有找到答案，您可以尝试重新提问，我也会帮您反馈给相关团队。"],
                 "valueType": "string",
                 "renderType": "input"
               },
@@ -485,7 +485,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
-            "value": true,
+            "value": false,
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -798,7 +798,7 @@
         "timezone": "Asia/Shanghai",
         "defaultPrompt": ""
       },
-      "welcomeText": "您好,请问有什么可以帮您?"
+      "welcomeText": "您好，请问有什么可以帮您?"
     }
   }
 }

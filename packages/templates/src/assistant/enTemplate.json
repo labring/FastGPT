@@ -40,7 +40,7 @@
             "renderTypeList": ["hidden"],
             "label": "core.app.Question Guide",
             "value": {
-              "open": false
+              "open": true
             }
           },
           {
@@ -485,7 +485,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
-            "value": true,
+            "value": false,
             "debugLabel": "",
             "toolDescription": ""
           },
