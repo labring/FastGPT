@@ -4,7 +4,8 @@ export const TagsMap = {
   appLog: 'Agent 日志',
 
   // Chat - home
-  chatPage: '对话页操作',
+  chatPage: '对话页',
+  chatController: '对话框操作',
   chatHistory: '对话历史管理',
   chatSetting: '门户页配置',
   chatFeedback: '对话反馈',

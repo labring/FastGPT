@@ -1,5 +1,5 @@
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoAppRecord } from './schema';
+import { addLog } from '../../../common/system/log';
 
 export const recordAppUsage = async ({
   appId,
@@ -10,32 +10,18 @@ export const recordAppUsage = async ({
   tmbId: string;
   teamId: string;
 }) => {
-  await mongoSessionRun(async (session) => {
-    await MongoAppRecord.updateOne(
-      { tmbId, appId },
-      {
-        $set: {
-          teamId,
-          lastUsedTime: new Date()
-        }
-      },
-      {
-        upsert: true,
-        session
+  await MongoAppRecord.updateOne(
+    { tmbId, appId },
+    {
+      $set: {
+        teamId,
+        lastUsedTime: new Date()
       }
-    );
-
-    // 检查是否超过50条，如果超过则删除最旧的一条
-    const count = await MongoAppRecord.countDocuments({ tmbId }, { session });
-
-    if (count > 50) {
-      await MongoAppRecord.deleteOne(
-        { tmbId },
-        {
-          session,
-          sort: { lastUsedTime: 1 }
-        }
-      );
+    },
+    {
+      upsert: true
     }
+  ).catch((error) => {
+    addLog.error('recordAppUsage error', error);
   });
 };

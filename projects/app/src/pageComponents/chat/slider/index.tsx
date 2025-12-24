@@ -19,7 +19,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { usePathname } from 'next/navigation';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 type Props = {
   activeAppId: string;
@@ -534,7 +533,7 @@ const ChatSlider = ({ activeAppId }: Props) => {
         <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
           {myApps.map((item) => (
             <Flex
-              key={item._id}
+              key={item.appId}
               py={2}
               px={2}
               mb={3}
@@ -542,12 +541,12 @@ const ChatSlider = ({ activeAppId }: Props) => {
               borderRadius={'md'}
               alignItems={'center'}
               fontSize={'sm'}
-              {...(pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && item._id === activeAppId
+              {...(pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && item.appId === activeAppId
                 ? { bg: 'primary.100', color: 'primary.600' }
                 : {
                     _hover: { bg: 'primary.100' },
                     onClick: () =>
-                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item._id)
+                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId)
                   })}
             >
               <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />

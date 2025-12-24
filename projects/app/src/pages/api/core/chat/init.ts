@@ -14,6 +14,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(
   req: NextApiRequest,
@@ -82,15 +83,14 @@ async function handler(
     };
   } catch (error: any) {
     if (error === AppErrEnum.unAuthApp) {
-      const { tmbId, teamId } = await authUserPer({
+      const { tmbId, teamId } = await authCert({
         req,
         authToken: true,
         authApiKey: true
       });
 
-      await MongoAppRecord.deleteMany({
+      await MongoAppRecord.deleteOne({
         tmbId,
-        teamId,
         appId
       });
     }

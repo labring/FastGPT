@@ -24,7 +24,11 @@ import type {
   UpdateFavouriteAppParamsType
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
-import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/api';
+import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/controler/api';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
+
+export const getRecentlyUsedApps = () =>
+  GET<GetRecentlyUsedAppsResponseType>('/core/chat/recentlyUsed');
 
 /**
  * 获取初始化聊天内容

@@ -3,12 +3,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
 async function handler(
   req: ApiRequestProps<{}, {}>,
-  _res: ApiResponseType<GetRecentlyUsedAppsResponseType>
-) {
+  _res: ApiResponseType
+): Promise<GetRecentlyUsedAppsResponseType> {
   const { tmbId } = await authUserPer({
     req,
     authToken: true,
@@ -34,7 +34,7 @@ async function handler(
     .map((record) => appMap.get(String(record.appId)))
     .filter((app) => app != null)
     .map((app) => ({
-      _id: String(app._id),
+      appId: String(app._id),
       name: app.name,
       avatar: app.avatar
     }));

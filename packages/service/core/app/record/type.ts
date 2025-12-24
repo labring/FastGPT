@@ -10,12 +10,3 @@ export const AppRecordSchemaZod = z.object({
 
 // TypeScript types inferred from Zod schemas
 export type AppRecordType = z.infer<typeof AppRecordSchemaZod>;
-
-export const GetRecentlyUsedAppsResponseSchema = z.array(
-  z.object({
-    _id: z.string(),
-    name: z.string(),
-    avatar: z.string()
-  })
-);
-export type GetRecentlyUsedAppsResponseType = z.infer<typeof GetRecentlyUsedAppsResponseSchema>;

@@ -384,13 +384,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await saveChat(params);
     }
 
-    setImmediate(async () => {
+    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
+    if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
-        appId: String(app._id),
-        tmbId: String(tmbId),
-        teamId: String(teamId)
+        appId: app._id,
+        tmbId,
+        teamId
       });
-    });
+    }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 

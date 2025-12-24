@@ -5,7 +5,6 @@ import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 
 import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
 
 /**
  * 获取应用列表
@@ -14,9 +13,6 @@ export const getMyApps = (data?: ListAppBody) =>
   POST<AppListItemType[]>('/core/app/list', data, {
     maxQuantity: 1
   });
-
-export const getRecentlyUsedApps = () =>
-  GET<GetRecentlyUsedAppsResponseType>('/core/app/recentlyUsed');
 
 /**
  * 创建一个应用

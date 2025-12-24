@@ -210,24 +210,23 @@ export const deleteAppsImmediate = async ({
   await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
 };
 
-export async function updateParentFoldersUpdateTime({
+export const updateParentFoldersUpdateTime = async ({
   parentId,
   session
 }: {
   parentId?: string | null;
   session?: ClientSession;
-}): Promise<void> {
-  if (!parentId) return;
+}) => {
+  while (true) {
+    if (!parentId) return;
 
-  const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
-  if (!parentApp) return;
+    const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
+    if (!parentApp) return;
 
-  parentApp.updateTime = new Date();
-  await parentApp.save({ session });
+    parentApp.updateTime = new Date();
+    await parentApp.save({ session });
 
-  // Recursively update parent folders
-  await updateParentFoldersUpdateTime({
-    parentId: parentApp.parentId,
-    session
-  });
-}
+    // 递归删除
+    parentId = parentApp.parentId;
+  }
+};

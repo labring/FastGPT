@@ -13,10 +13,10 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { getRecentlyUsedApps } from '@/web/core/app/api';
+import { getRecentlyUsedApps } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useMount } from 'ahooks';
-import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/service/core/app/record/type';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 export type ChatPageContextValue = {
@@ -33,6 +33,7 @@ export type ChatPageContextValue = {
   chatSettings: ChatSettingType | undefined;
   refreshChatSetting: () => Promise<ChatSettingType | undefined>;
   logos: { wideLogoUrl?: string; squareLogoUrl?: string };
+
   // User & apps
   isInitedUser: boolean;
   userInfo: UserType | null;
