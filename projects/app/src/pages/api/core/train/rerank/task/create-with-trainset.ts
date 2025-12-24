@@ -19,78 +19,16 @@ import type {
   CreateRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { calculateTrainsetStats } from '@fastgpt/service/core/train/rerank/data/controller';
-
-/**
- * Poll and wait for trainset to be ready
- * @param trainsetId Trainset ID
- * @param maxAttempts Max polling attempts
- * @param interval Polling interval (ms)
- * @returns Ready trainset
- */
-async function waitForTrainsetReady(
-  trainsetId: string,
-  maxAttempts: number = 60,
-  interval: number = 5000
-) {
-  let attempts = 0;
-
-  while (attempts < maxAttempts) {
-    const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
-
-    if (!trainset) {
-      throw RerankTrainErrEnum.trainsetNotExist;
-    }
-
-    // If ready, return trainset with calculated statistics
-    if (trainset.status === RerankTrainsetStatusEnum.ready) {
-      const stats = await calculateTrainsetStats(String(trainset._id));
-      if (stats.dataCount === 0) {
-        throw RerankTrainErrEnum.noTrainDataAvailable;
-      }
-      return { trainset, stats };
-    }
-
-    // If error, throw exception
-    if (trainset.status === RerankTrainsetStatusEnum.error) {
-      throw RerankTrainErrEnum.trainsetGenerationFailed;
-    }
-
-    // If still generating, continue waiting
-    if (trainset.status === RerankTrainsetStatusEnum.generating) {
-      addLog.info('Waiting for trainset generation', {
-        trainsetId,
-        attempt: attempts + 1,
-        maxAttempts
-      });
-      await new Promise((resolve) => setTimeout(resolve, interval));
-      attempts++;
-      continue;
-    }
-
-    // Idle status shouldn't appear here (generation should have been triggered)
-    // Continue waiting for safety
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    attempts++;
-  }
-
-  // Timeout
-  addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
-  throw RerankTrainErrEnum.trainsetGenerationFailed;
-}
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainTaskResponse>
 ): Promise<CreateRerankTrainTaskResponse> {
-  const { appId, name, pollingConfig } = req.body as CreateRerankTrainTaskWithTrainsetRequest;
+  const { appId, name } = req.body as CreateRerankTrainTaskWithTrainsetRequest;
 
   if (!appId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
-
-  // Destructure polling config with defaults
-  const { maxAttempts = 60, interval = 5000 } = pollingConfig || {};
 
   // 1. Authenticate app write permission
   const { app, teamId, tmbId } = await authApp({
@@ -148,21 +86,8 @@ async function handler(
     }
   });
 
-  // 5. Wait for trainset generation to complete
-  addLog.info('Waiting for trainset to be ready', {
-    trainsetId: String(trainsetId),
-    maxAttempts,
-    interval
-  });
-
-  const { trainset, stats } = await waitForTrainsetReady(String(trainsetId), maxAttempts, interval);
-
-  addLog.info('Trainset is ready', {
-    appId,
-    dataCount: stats.dataCount
-  });
-
-  // 6. Create train task with trainsetId
+  // 5. Create train task with trainsetId
+  // Note: Trainset may still be generating. The task processor will wait for it to be ready.
   const taskId = await createRerankTrainTask({
     appId,
     trainsetId: String(trainsetId),
@@ -171,7 +96,7 @@ async function handler(
     name
   });
 
-  // 7. Add to task queue
+  // 6. Add to task queue
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -181,13 +106,13 @@ async function handler(
     }
   );
 
-  // 8. Update jobId
+  // 7. Update jobId
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
 
   addLog.info('Created train task with trainset', {
     appId,
     taskId,
-    trainsetId: String(trainset._id)
+    trainsetId: String(trainsetId)
   });
 
   return {

@@ -31,8 +31,10 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   const baseModelConfigId = task.baseModelConfigId;
   const tunedModelConfigId = tunedEndpoint.model;
 
-  const tunedModelName = `aicp-rerank-finetuned-${task._id}-${Date.now()}`;
-  const tunedModelChannelName = `${tunedModelName}-channel`;
+  // Use tunedModelConfigId directly to avoid VARCHAR(64) length constraint
+  // The model ID from AICP is already unique and identifies the finetuned model
+  const tunedModelName = tunedModelConfigId;
+  const tunedModelChannelName = `${tunedModelConfigId}-ch`;
 
   const tunedModelObjectId = await createRerankModelConfig({
     name: tunedModelName,

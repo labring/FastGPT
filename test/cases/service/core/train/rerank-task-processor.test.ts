@@ -62,6 +62,16 @@ vi.mock('@fastgpt/service/core/train/rerank/task/schema', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/core/train/rerank/trainset/schema', () => ({
+  MongoRerankTrainset: {
+    findById: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/data/controller', () => ({
+  calculateTrainsetStats: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
     findById: vi.fn(),
@@ -187,6 +197,28 @@ describe('Rerank Train Task Processor', () => {
     // 设置测试环境变量
     process.env.AIPROXY_API_ENDPOINT = 'http://test-aiproxy.com';
     process.env.AIPROXY_API_TOKEN = 'test-token';
+
+    // Mock trainset is ready by default
+    const { MongoRerankTrainset } = await import(
+      '@fastgpt/service/core/train/rerank/trainset/schema'
+    );
+    const { calculateTrainsetStats } = await import(
+      '@fastgpt/service/core/train/rerank/data/controller'
+    );
+
+    (MongoRerankTrainset.findById as any).mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: 'trainset_123',
+        status: 'ready'
+      })
+    });
+
+    (calculateTrainsetStats as any).mockResolvedValue({
+      dataCount: 10,
+      positiveCount: 10,
+      negativeCount: 50,
+      sourceSummary: []
+    });
 
     // 设置默认的 sampleDataFromDataset mock
     const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
@@ -493,9 +525,9 @@ describe('Rerank Train Task Processor', () => {
         taskId: 'aicp_task_123'
       });
 
-      // 验证注册阶段
+      // 验证注册阶段 - 使用 tunedModelConfigId 作为 name
       expect(createRerankModelConfig).toHaveBeenCalledWith({
-        name: expect.stringContaining('aicp-rerank-finetuned'),
+        name: 'tuned-model', // 直接使用 tunedModelConfigId 作为名称
         endpoint: {
           model: expect.any(String)
         },

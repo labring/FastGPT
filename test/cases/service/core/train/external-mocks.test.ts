@@ -1,4 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+
+// 使用 vi.hoisted 确保在所有模块导入之前设置环境变量
+vi.hoisted(() => {
+  process.env.USE_DITING_MOCK = 'true';
+  process.env.USE_AICP_MOCK = 'true';
+});
+
 import {
   syntheticRerankTrainDatas,
   syntheticRerankEvalData,
