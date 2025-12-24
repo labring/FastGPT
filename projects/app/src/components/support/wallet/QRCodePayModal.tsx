@@ -169,6 +169,7 @@ const QRCodePayModal = ({
       iconSrc="/imgs/modal/wallet.svg"
       w={'600px'}
       onClose={onClose}
+      closeOnOverlayClick={false}
     >
       <ModalBody textAlign={'center'} padding={['16px 24px', '32px 52px']}>
         {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
