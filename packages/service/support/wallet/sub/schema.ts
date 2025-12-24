@@ -11,7 +11,7 @@ import {
   SubModeEnum,
   SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
-import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 
 export const subCollectionName = 'team_subscriptions';
 
@@ -100,4 +100,4 @@ try {
   console.log(error);
 }
 
-export const MongoTeamSub = getMongoModel<TeamSubSchema>(subCollectionName, SubSchema);
+export const MongoTeamSub = getMongoModel<TeamSubSchemaType>(subCollectionName, SubSchema);

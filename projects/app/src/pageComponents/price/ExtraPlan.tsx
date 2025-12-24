@@ -13,6 +13,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
+import { formatActivityExpirationTime } from './utils';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t, i18n } = useTranslation();
@@ -103,10 +104,16 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     }
   );
 
+  // 计算活动时间
+  const { text: activityExpirationTime } = formatActivityExpirationTime(
+    subPlans?.activityExpirationTime
+  );
+
   return (
     <VStack>
       <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
         <Box
+          position={'relative'}
           bg={'white'}
           w={'100%'}
           px={[4, 8]}
@@ -115,18 +122,63 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           borderWidth={'1px'}
           borderColor={'myGray.200'}
           boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
+          overflow={'hidden'}
         >
+          {subPlans?.activityExpirationTime && (
+            <>
+              <Box
+                position={'absolute'}
+                top={8}
+                left={'36%'}
+                width={'55px'}
+                height={'64px'}
+                zIndex={0}
+                bgImage={'url(/imgs/system/extraSnowflake1.svg)'}
+                backgroundSize="100% 100%"
+                backgroundRepeat="no-repeat"
+              />
+              <Box
+                position={'absolute'}
+                top={1}
+                left={'60%'}
+                width={'25px'}
+                height={'25px'}
+                zIndex={0}
+                bgImage={'url(/imgs/system/extraSnowflake2.svg)'}
+                backgroundSize="100% 100%"
+                backgroundRepeat="no-repeat"
+              />
+              <Box
+                position={'absolute'}
+                top={1}
+                right={3}
+                width={'67px'}
+                height={'72px'}
+                zIndex={0}
+                bgImage={'url(/imgs/system/extraSnowflake3.svg)'}
+                backgroundSize="100% 100%"
+                backgroundRepeat="no-repeat"
+              />
+            </>
+          )}
           <Box
+            position={'relative'}
+            zIndex={1}
             fontSize={'18px'}
             fontWeight={'500'}
             color={'primary.700'}
-            pb={6}
+            pb={subPlans?.activityExpirationTime ? 2 : 6}
             borderBottomWidth={'1px'}
             borderBottomColor={'myGray.200'}
           >
             {t('common:support.wallet.subscription.Extra ai points')}
+            <Box fontSize={'12px'} fontWeight={'normal'} color={'myGray.600'} mt={0.5}>
+              {activityExpirationTime}
+            </Box>
           </Box>
           <Grid
+            position={'relative'}
+            zIndex={1}
             gridTemplateColumns={['repeat(2, 1fr)', 'repeat(3, 1fr)']}
             gap={[2, 3]}
             py={[3, 4]}
@@ -138,7 +190,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 flexDir={'column'}
                 alignItems={'center'}
                 justifyContent={'center'}
-                p={[3, 4]}
+                py={extraPointsPackages.length > 6 ? 1 : 2}
+                px={[3, 4]}
                 borderRadius={['8px', 'sm']}
                 borderWidth={'1px'}
                 borderColor={selectedPackageIndex === index ? '#3E78FF' : 'myGray.200'}
@@ -150,10 +203,32 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 }}
                 onClick={() => setSelectedPackageIndex(index)}
                 transition={'all 0.2s'}
+                position={'relative'}
+                overflow={'hidden'}
               >
+                {!!pkg.activityBonusPoints && (
+                  <Flex
+                    position={'absolute'}
+                    top={0.5}
+                    right={-8}
+                    minW={24}
+                    py={0.5}
+                    justifyContent={'center'}
+                    fontSize={'10px'}
+                    fontWeight={'bold'}
+                    color={'white'}
+                    bg={'#ED372C'}
+                    transform={'rotate(37deg)'}
+                    whiteSpace={'nowrap'}
+                  >
+                    +{formatNumberWithUnit(pkg.activityBonusPoints, i18n.language)}
+                  </Flex>
+                )}
                 <Box fontSize={'24px'} fontWeight={'medium'} color={'myGray.600'}>
                   {formatNumberWithUnit(pkg.points, i18n.language)}{' '}
-                  {t('common:support.wallet.subscription.point')}
+                  <Box as={'span'} fontSize={'12px'}>
+                    {t('common:support.wallet.subscription.point')}
+                  </Box>
                 </Box>
                 <Box
                   fontSize={['10px', '12px']}
@@ -168,7 +243,36 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             ))}
           </Grid>
 
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
+          <Flex
+            position={'relative'}
+            zIndex={1}
+            justifyContent={'space-between'}
+            alignItems={'center'}
+          >
+            <Box
+              fontSize={['13px', '14px']}
+              color={'myGray.600'}
+              fontWeight={'medium'}
+              textAlign={['center', 'left']}
+            >
+              {t('common:support.wallet.subscription.total_points')}
+            </Box>
+            <Box color={'myGray.600'} fontSize={['18px', '20px']} fontWeight={'medium'}>
+              {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
+                ? formatNumberWithUnit(
+                    extraPointsPackages[selectedPackageIndex].points +
+                      (extraPointsPackages[selectedPackageIndex]?.activityBonusPoints || 0),
+                    i18n.language
+                  )
+                : '--'}
+            </Box>
+          </Flex>
+          <Flex
+            position={'relative'}
+            zIndex={1}
+            justifyContent={'space-between'}
+            alignItems={'center'}
+          >
             <Box
               fontSize={['13px', '14px']}
               color={'myGray.600'}
@@ -187,6 +291,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           </Flex>
 
           <Button
+            position={'relative'}
+            zIndex={1}
             w={'100%'}
             h={['40px', '44px']}
             variant={'primaryGhost'}
@@ -210,7 +316,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             {t('common:support.wallet.Buy')}
           </Button>
 
-          <HStack color={'blue.700'} mt={[4, 6]} spacing={[2, 0]}>
+          <HStack position={'relative'} zIndex={1} color={'blue.700'} mt={[4, 6]} spacing={[2, 0]}>
             <MyIcon name={'infoRounded'} w={['16px', '18px']} />
             <Box fontSize={['12px', '14px']} fontWeight={'medium'} lineHeight={['1.4', 'normal']}>
               {t('common:support.wallet.subscription.Update extra ai points tips')}
@@ -349,7 +455,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
           </Flex>
 
-          <Box mt={['auto', 0]}>
+          <Box mt={['auto', 4]}>
             <Button
               w={'100%'}
               h={['40px', '44px']}

@@ -1,11 +1,9 @@
 import { createDocument } from 'zod-openapi';
 import { ChatPath } from './core/chat';
-import { ApiKeyPath } from './support/openapi';
 import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
-import { WalletPath } from './support/wallet';
-import { CustomDomainPath } from './support/customDomain';
 import { AppPath } from './core/app';
+import { SupportPath } from './support';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -17,10 +15,8 @@ export const openAPIDocument = createDocument({
   paths: {
     ...AppPath,
     ...ChatPath,
-    ...ApiKeyPath,
     ...PluginPath,
-    ...WalletPath,
-    ...CustomDomainPath
+    ...SupportPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
@@ -37,8 +33,8 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },
     {
-      name: '支付系统',
-      tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+      name: '用户体系',
+      tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     },
     {
       name: '通用-辅助功能',
