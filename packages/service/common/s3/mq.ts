@@ -34,7 +34,7 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
       return undefined;
     }
     if (data.prefix) {
-      return data.prefix;
+      return `${data.bucketName}:${data.prefix}`;
     }
     throw new Error('Invalid s3 delete job data');
   })();
@@ -42,8 +42,6 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
 };
 
 export const startS3DelWorker = async () => {
-  const limit = pLimit(50);
-
   return getWorker<S3MQJobData>(
     QueueNames.s3FileDelete,
     async (job) => {
@@ -60,7 +58,8 @@ export const startS3DelWorker = async () => {
       }
       if (keys) {
         addLog.debug(`[S3 delete] delete keys: ${keys.length}`);
-        await bucket.client.deleteObjectsByMultiKeys({ keys });
+        const { keys: fails } = await bucket.client.deleteObjectsByMultiKeys({ keys });
+
         await batchRun(keys, async (key) => {
           if (key.includes('-parsed/')) return;
           const fileParsedPrefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
@@ -69,10 +68,7 @@ export const startS3DelWorker = async () => {
       }
       if (prefix) {
         addLog.info(`[S3 delete] delete prefix: ${prefix}`);
-        const tasks = [];
-        const p = limit(() => retryFn(() => bucket.client.deleteObjectsByPrefix({ prefix })));
-        tasks.push(p);
-        await Promise.all(tasks);
+        bucket.client.deleteObjectsByPrefix({ prefix });
         addLog.info(`[S3 delete] delete prefix: ${prefix} success`);
       }
     },
