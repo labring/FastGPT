@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   VStack,
+  ModalBody,
   ModalFooter,
   Text,
   SimpleGrid,
@@ -239,105 +240,107 @@ const CorrectionModal = ({
       closeOnOverlayClick={false}
       isLoading={isInitializing}
     >
-      <VStack spacing={4} align="stretch" px={6} py={4}>
-        {/* 问题输入框 */}
-        <Box>
-          <FormLabel mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
-            {t('app:Correction_Question_Label')}
-          </FormLabel>
-          <MyTextarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} />
-        </Box>
-
-        {/* 答案类型选择 */}
-        <Box>
-          <FormLabel mb={3} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
-            {t('app:Correction_Answer_Label')}
-          </FormLabel>
-          <ChakraRadioGroup
-            value={correctionMode}
-            onChange={(value) => setCorrectionMode(value as CorrectionModeEnum)}
-          >
-            <SimpleGrid columns={2} spacing={4}>
-              <Box
-                border="1px solid"
-                borderColor={
-                  correctionMode === CorrectionModeEnum.edit ? 'primary.600' : 'myGray.200'
-                }
-                borderRadius="md"
-                px={3}
-                py={2.5}
-                cursor="pointer"
-                onClick={() => setCorrectionMode(CorrectionModeEnum.edit)}
-                transition="all 0.2s"
-                bg={correctionMode === CorrectionModeEnum.edit ? 'primary.50' : 'transparent'}
-                _hover={{ borderColor: 'primary.300' }}
-              >
-                <VStack align="stretch" spacing={2}>
-                  <HStack align="center" spacing={2}>
-                    <Radio value={CorrectionModeEnum.edit} />
-                    <Text fontWeight="medium" fontSize="14px" color="myGray.900">
-                      {t('app:Correction_Edit_Answer')}
-                    </Text>
-                  </HStack>
-                  <Text fontSize="12px" color="myGray.500">
-                    {t('app:Correction_Edit_Answer_Desc')}
-                  </Text>
-                </VStack>
-              </Box>
-
-              <Box
-                border="1px solid"
-                borderColor={
-                  correctionMode === CorrectionModeEnum.annotate ? 'primary.600' : 'myGray.200'
-                }
-                borderRadius="md"
-                px={3}
-                py={2.5}
-                cursor="pointer"
-                onClick={() => setCorrectionMode(CorrectionModeEnum.annotate)}
-                transition="all 0.2s"
-                bg={correctionMode === CorrectionModeEnum.annotate ? 'primary.50' : 'transparent'}
-                _hover={{ borderColor: 'primary.300' }}
-              >
-                <VStack align="stretch" spacing={2}>
-                  <HStack align="center" spacing={2}>
-                    <Radio value={CorrectionModeEnum.annotate} />
-                    <Text fontWeight="medium" fontSize="14px" color="myGray.900">
-                      {t('app:Correction_Annotate_Knowledge')}
-                    </Text>
-                  </HStack>
-                  <Text fontSize="12px" color="myGray.500">
-                    {t('app:Correction_Annotate_Knowledge_Desc')}
-                  </Text>
-                </VStack>
-              </Box>
-            </SimpleGrid>
-          </ChakraRadioGroup>
-        </Box>
-
-        {/* 根据选择的模式显示对应的输入框 */}
-        {correctionMode === CorrectionModeEnum.edit && (
+      <ModalBody>
+        <VStack spacing={4} align="stretch">
+          {/* 问题输入框 */}
           <Box>
-            <MyTextarea
-              value={correctedAnswer}
-              onChange={(e) => setCorrectedAnswer(e.target.value)}
-              rows={15}
-            />
+            <FormLabel mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
+              {t('app:Correction_Question_Label')}
+            </FormLabel>
+            <MyTextarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} />
           </Box>
-        )}
 
-        {correctionMode === CorrectionModeEnum.annotate && (
+          {/* 答案类型选择 */}
           <Box>
-            <KnowledgeSelect
-              correctedQuoteList={correctedQuoteList}
-              onCorrectedQuoteListChange={setCorrectedQuoteList}
-              appId={appId}
-              chatId={chatId}
-              datasetIds={datasetIds}
-            />
+            <FormLabel mb={3} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
+              {t('app:Correction_Answer_Label')}
+            </FormLabel>
+            <ChakraRadioGroup
+              value={correctionMode}
+              onChange={(value) => setCorrectionMode(value as CorrectionModeEnum)}
+            >
+              <SimpleGrid columns={2} spacing={4}>
+                <Box
+                  border="1px solid"
+                  borderColor={
+                    correctionMode === CorrectionModeEnum.edit ? 'primary.600' : 'myGray.200'
+                  }
+                  borderRadius="md"
+                  px={3}
+                  py={2.5}
+                  cursor="pointer"
+                  onClick={() => setCorrectionMode(CorrectionModeEnum.edit)}
+                  transition="all 0.2s"
+                  bg={correctionMode === CorrectionModeEnum.edit ? 'primary.50' : 'transparent'}
+                  _hover={{ borderColor: 'primary.300' }}
+                >
+                  <VStack align="stretch" spacing={2}>
+                    <HStack align="center" spacing={2}>
+                      <Radio value={CorrectionModeEnum.edit} />
+                      <Text fontWeight="medium" fontSize="14px" color="myGray.900">
+                        {t('app:Correction_Edit_Answer')}
+                      </Text>
+                    </HStack>
+                    <Text fontSize="12px" color="myGray.500">
+                      {t('app:Correction_Edit_Answer_Desc')}
+                    </Text>
+                  </VStack>
+                </Box>
+
+                <Box
+                  border="1px solid"
+                  borderColor={
+                    correctionMode === CorrectionModeEnum.annotate ? 'primary.600' : 'myGray.200'
+                  }
+                  borderRadius="md"
+                  px={3}
+                  py={2.5}
+                  cursor="pointer"
+                  onClick={() => setCorrectionMode(CorrectionModeEnum.annotate)}
+                  transition="all 0.2s"
+                  bg={correctionMode === CorrectionModeEnum.annotate ? 'primary.50' : 'transparent'}
+                  _hover={{ borderColor: 'primary.300' }}
+                >
+                  <VStack align="stretch" spacing={2}>
+                    <HStack align="center" spacing={2}>
+                      <Radio value={CorrectionModeEnum.annotate} />
+                      <Text fontWeight="medium" fontSize="14px" color="myGray.900">
+                        {t('app:Correction_Annotate_Knowledge')}
+                      </Text>
+                    </HStack>
+                    <Text fontSize="12px" color="myGray.500">
+                      {t('app:Correction_Annotate_Knowledge_Desc')}
+                    </Text>
+                  </VStack>
+                </Box>
+              </SimpleGrid>
+            </ChakraRadioGroup>
           </Box>
-        )}
-      </VStack>
+
+          {/* 根据选择的模式显示对应的输入框 */}
+          {correctionMode === CorrectionModeEnum.edit && (
+            <Box>
+              <MyTextarea
+                value={correctedAnswer}
+                onChange={(e) => setCorrectedAnswer(e.target.value)}
+                rows={15}
+              />
+            </Box>
+          )}
+
+          {correctionMode === CorrectionModeEnum.annotate && (
+            <Box>
+              <KnowledgeSelect
+                correctedQuoteList={correctedQuoteList}
+                onCorrectedQuoteListChange={setCorrectedQuoteList}
+                appId={appId}
+                chatId={chatId}
+                datasetIds={datasetIds}
+              />
+            </Box>
+          )}
+        </VStack>
+      </ModalBody>
 
       {/* 底部按钮 */}
       <ModalFooter>

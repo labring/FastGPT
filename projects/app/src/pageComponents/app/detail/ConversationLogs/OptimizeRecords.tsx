@@ -130,7 +130,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
     return (
       <>
         <Divider my={3} borderColor="myGray.200" />
-        <Text fontSize="mini" color="myGray.500" lineHeight="20px" className={styles.textEllipsis3}>
+        <Text fontSize="mini" color="myGray.500" lineHeight="20px" className={'textEllipsis3'}>
           {correctionData.correctedAnswer}
         </Text>
       </>
@@ -163,16 +163,40 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
                 display="flex"
                 flexDirection="column"
               >
-                <Text
-                  fontSize="mini"
-                  color="#485264"
-                  lineHeight="20px"
-                  className={styles.textEllipsis3}
-                  flex={1}
-                  mb="8px"
-                >
-                  {quote.a}
-                </Text>
+                {quote.a ? (
+                  <>
+                    <Text
+                      fontSize="mini"
+                      color="#485264"
+                      lineHeight="20px"
+                      className={'textEllipsis'}
+                    >
+                      {quote.q}
+                    </Text>
+                    <Box h="1px" bg="myGray.200" my="4px" />
+                    <Text
+                      fontSize="mini"
+                      color="#485264"
+                      lineHeight="20px"
+                      className={'textEllipsis2'}
+                      flex={1}
+                      mb="8px"
+                    >
+                      {quote.a}
+                    </Text>
+                  </>
+                ) : (
+                  <Text
+                    fontSize="mini"
+                    color="#485264"
+                    lineHeight="20px"
+                    className={'textEllipsis3'}
+                    flex={1}
+                    mb="8px"
+                  >
+                    {quote.q}
+                  </Text>
+                )}
                 <Tag
                   borderRadius="6px"
                   bg="#FFFFFF"

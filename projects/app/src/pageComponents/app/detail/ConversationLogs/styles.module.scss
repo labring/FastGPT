@@ -3,17 +3,6 @@
  * @description 优化记录组件的专用样式文件
  */
 
-/* 文本省略样式 */
-.textEllipsis3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
 /* 引用知识卡片样式 */
 .quote-card {
   border-radius: 4px;

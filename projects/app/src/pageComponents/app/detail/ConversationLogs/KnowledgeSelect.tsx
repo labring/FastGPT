@@ -243,17 +243,33 @@ const KnowledgeSelect = ({
                           />
                         </Box>
                         <VStack align={'stretch'} spacing={2} flex={1}>
-                          <Text fontWeight={500} fontSize={'14px'} color={'myGray.900'}>
-                            {knowledge.q}
-                          </Text>
-                          <Text
-                            fontSize={'12px'}
-                            color={'myGray.500'}
-                            whiteSpace="pre-wrap"
-                            wordBreak="break-word"
-                          >
-                            {knowledge.a}
-                          </Text>
+                          {knowledge.a ? (
+                            <>
+                              <Text
+                                fontSize={'12px'}
+                                color={'myGray.500'}
+                                className={'textEllipsis'}
+                              >
+                                {knowledge.q}
+                              </Text>
+                              <Box h="1px" bg="myGray.200" my="4px" />
+                              <Text
+                                fontSize={'12px'}
+                                color={'myGray.500'}
+                                className={'textEllipsis2'}
+                              >
+                                {knowledge.a}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text
+                              fontSize={'12px'}
+                              color={'myGray.500'}
+                              className={'textEllipsis3'}
+                            >
+                              {knowledge.q}
+                            </Text>
+                          )}
                           <Flex align="center" gap={1}>
                             <MyIcon name="file/fill/file" w="14px" />
                             <Text fontSize={'12px'} color="#000">
@@ -290,17 +306,26 @@ const KnowledgeSelect = ({
               >
                 <Flex align={'center'} gap={4}>
                   <VStack align={'stretch'} spacing={2} flex={1}>
-                    <Text fontWeight={500} fontSize={'14px'} color={'myGray.900'}>
-                      {knowledge.q}
-                    </Text>
-                    <Text
-                      fontSize={'12px'}
-                      color={'myGray.500'}
-                      whiteSpace="pre-wrap"
-                      wordBreak="break-word"
-                    >
-                      {knowledge.a}
-                    </Text>
+                    {knowledge.a ? (
+                      <>
+                        <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis'}>
+                          {knowledge.q}
+                        </Text>
+                        <Box h="1px" bg="myGray.200" my="4px" />
+                        <Text
+                          fontSize={'12px'}
+                          color={'myGray.500'}
+                          className={'textEllipsis2'}
+                          mb="8px"
+                        >
+                          {knowledge.a}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis3'}>
+                        {knowledge.q}
+                      </Text>
+                    )}
                     <Flex align="center" gap={1}>
                       <MyIcon name="file/fill/file" w="14px" />
                       <Text fontSize={'12px'} color="#000">

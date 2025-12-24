@@ -276,9 +276,8 @@ const AutoLearn = () => {
         <ScrollData>
           <Table variant={'simple'}>
             <Thead bg={'myGray.100'}>
-              {/* 一级表头 */}
               <Tr>
-                <Th rowSpan={2}>
+                <Th>
                   <HStack spacing={1}>
                     <Text>{t('app:auto_learn.learning_time')}</Text>
                     <MyIcon
@@ -290,36 +289,21 @@ const AutoLearn = () => {
                     />
                   </HStack>
                 </Th>
-                <Th rowSpan={2}>{t('app:auto_learn.status')}</Th>
-                <Th rowSpan={2}>{t('app:auto_learn.creator')}</Th>
-                <Th colSpan={2} textAlign={'center'} pb={0}>
-                  <HStack spacing={1} justifyContent={'center'}>
-                    <Text>{t('app:auto_learn.precision')}</Text>
+                <Th>{t('app:auto_learn.status')}</Th>
+                <Th>{t('app:auto_learn.creator')}</Th>
+                <Th>
+                  <HStack spacing={1}>
+                    <Text>{t('app:precision_before_after')}</Text>
                     <QuestionTip label={t('app:auto_learn.precision_tooltip')} />
                   </HStack>
                 </Th>
-                <Th colSpan={2} textAlign={'center'} pb={0}>
-                  <HStack spacing={1} justifyContent={'center'}>
-                    <Text>{t('app:auto_learn.average_ranking')}</Text>
+                <Th>
+                  <HStack spacing={1}>
+                    <Text>{t('app:mrr_before_after')}</Text>
                     <QuestionTip label={t('app:auto_learn.mrr_tooltip')} />
                   </HStack>
                 </Th>
-                <Th rowSpan={2}></Th>
-              </Tr>
-              {/* 二级表头 */}
-              <Tr>
-                <Th textAlign={'center'} pr={3}>
-                  {t('app:auto_learn.before_learning')}
-                </Th>
-                <Th textAlign={'center'} pl={3}>
-                  {t('app:auto_learn.after_learning')}
-                </Th>
-                <Th textAlign={'center'} pr={3}>
-                  {t('app:auto_learn.before_learning')}
-                </Th>
-                <Th textAlign={'center'} pl={3}>
-                  {t('app:auto_learn.after_learning')}
-                </Th>
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -334,29 +318,43 @@ const AutoLearn = () => {
                     <Td color={'myGray.600'} fontSize={'sm'}>
                       {task.creatorName || '-'}
                     </Td>
-                    <Td textAlign={'center'}>
-                      <Text color={'myGray.600'}>
-                        {metrics.precisionBefore !== undefined
-                          ? `${(metrics.precisionBefore * 100).toFixed(1)}%`
-                          : '-'}
-                      </Text>
+                    <Td>
+                      <HStack spacing={1}>
+                        <Text color={'myGray.600'}>
+                          {metrics.precisionBefore !== undefined
+                            ? `${(metrics.precisionBefore * 100).toFixed(1)}%`
+                            : '-'}
+                        </Text>
+                        <MyIcon
+                          name={'common/arrowRight'}
+                          w={'16px'}
+                          h={'16px'}
+                          color={'#039855'}
+                          mx={8}
+                        />
+                        <Text color={'myGray.600'}>
+                          {metrics.precisionAfter !== undefined
+                            ? `${(metrics.precisionAfter * 100).toFixed(1)}%`
+                            : '-'}
+                        </Text>
+                      </HStack>
                     </Td>
-                    <Td textAlign={'center'}>
-                      <Text color={'myGray.600'}>
-                        {metrics.precisionAfter !== undefined
-                          ? `${(metrics.precisionAfter * 100).toFixed(1)}%`
-                          : '-'}
-                      </Text>
-                    </Td>
-                    <Td textAlign={'center'}>
-                      <Text color={'myGray.600'}>
-                        {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(2) : '-'}
-                      </Text>
-                    </Td>
-                    <Td textAlign={'center'}>
-                      <Text color={'myGray.600'}>
-                        {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
-                      </Text>
+                    <Td>
+                      <HStack spacing={1}>
+                        <Text color={'myGray.600'}>
+                          {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(2) : '-'}
+                        </Text>
+                        <MyIcon
+                          name={'common/arrowRight'}
+                          w={'16px'}
+                          h={'16px'}
+                          color={'#039855'}
+                          mx={8}
+                        />
+                        <Text color={'myGray.600'}>
+                          {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
+                        </Text>
+                      </HStack>
                     </Td>
                     <Td>
                       {task.status === RerankTrainTaskStatusEnum.completed && (
