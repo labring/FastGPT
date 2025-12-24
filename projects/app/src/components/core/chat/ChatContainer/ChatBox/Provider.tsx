@@ -24,6 +24,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type ChatProviderProps = {
   appId: string;
@@ -71,6 +72,7 @@ type useChatStoreType = ChatProviderProps & {
   appId: string;
   chatId: string;
   outLinkAuthData: OutLinkChatAuthProps;
+  isAssistantType: boolean;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -128,7 +130,8 @@ export const ChatBoxContext = createContext<useChatStoreType>({
   },
   outLinkAuthData: {},
   // @ts-ignore
-  variablesForm: undefined
+  variablesForm: undefined,
+  isAssistantType: false
 });
 
 const Provider = ({
@@ -178,6 +181,11 @@ const Provider = ({
   const fileSelectConfig = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
+  );
+
+  const isAssistantType = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
   );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -257,7 +265,8 @@ const Provider = ({
     chatId,
     outLinkAuthData: formatOutLinkAuth,
     getHistoryResponseData,
-    chatType
+    chatType,
+    isAssistantType
   };
 
   return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;

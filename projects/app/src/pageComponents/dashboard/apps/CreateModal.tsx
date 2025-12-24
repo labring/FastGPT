@@ -196,9 +196,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   // 统一的应用名称和头像组件
   const renderAppNameAndAvatar = () => (
     <>
-      <Box color={'myGray.800'} fontWeight={'bold'}>
-        {t('common:input_name')}
-      </Box>
+      <Box color={'myGray.800'}>{t('common:input_name')}</Box>
       <Flex mt={2} alignItems={'center'}>
         <MyTooltip label={t('common:set_avatar')}>
           <Avatar
@@ -228,7 +226,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   const renderFooterButtons = () => (
     <ModalFooter gap={4}>
       <Button variant={'whiteBase'} onClick={onClose}>
-        {t('common:Close')}
+        {t('common:Cancel')}
       </Button>
       {(type === AppTypeEnum.assistant || currentCreateType === 'curl') && (
         <Button
@@ -246,6 +244,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     <MyModal
       iconSrc={typeData.icon}
       title={t(typeData.title)}
+      onClose={onClose}
       isOpen
       isCentered={!isPc}
       w={type === AppTypeEnum.assistant ? '800px' : undefined}
@@ -263,8 +262,6 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               value={smartCustomerService!}
               onChange={(data) => setValue('smartCustomerService', data)}
             />
-            {/* 统一的底部按钮 */}
-            {renderFooterButtons()}
           </>
         ) : (
           <>
@@ -410,12 +407,11 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
                 />
               </Box>
             )}
-
-            {/* 统一的底部按钮 */}
-            {renderFooterButtons()}
           </>
         )}
       </ModalBody>
+      {/* 统一的底部按钮 */}
+      {renderFooterButtons()}
 
       <File
         onSelect={(e) =>

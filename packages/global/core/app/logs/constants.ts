@@ -71,7 +71,7 @@ export const AssistantAppLogKeysEnumMap = {
   [AppLogKeysEnum.CREATED_TIME]: i18nT('app:logs_keys_createdTime'),
   [AppLogKeysEnum.LAST_CONVERSATION_TIME]: i18nT('app:logs_keys_lastConversationTime'),
   [AppLogKeysEnum.MESSAGE_COUNT]: i18nT('app:logs_keys_messageCount'),
-  [AppLogKeysEnum.FEEDBACK]: i18nT('app:logs_keys_feedback_all'),
+  [AppLogKeysEnum.FEEDBACK]: i18nT('app:logs_keys_feedback'),
   [AppLogKeysEnum.CUSTOM_FEEDBACK]: i18nT('app:logs_keys_customFeedback'),
   [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
   [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount'),

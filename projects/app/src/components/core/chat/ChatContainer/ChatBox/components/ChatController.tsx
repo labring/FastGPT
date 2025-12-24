@@ -63,6 +63,7 @@ const ChatController = ({
   const audioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.audioPlayingChatId);
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const isAssistantType = useContextSelector(ChatBoxContext, (v) => v.isAssistantType);
 
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
@@ -166,7 +167,7 @@ const ChatController = ({
             </MyTooltip>
           );
         })()}
-      {!!onMark && (
+      {!!onMark && !isAssistantType && (
         <MyTooltip label={t('common:core.chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
