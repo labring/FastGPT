@@ -88,6 +88,11 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   };
 
   app: T;
+
+  //@deprecated
+  responseDetail?: boolean;
+  showNodeStatus?: boolean;
+  showRawSource?: boolean;
 };
 
 // Edit the Outlink

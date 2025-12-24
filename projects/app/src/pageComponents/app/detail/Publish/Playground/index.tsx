@@ -106,7 +106,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
         {t('publish:private_config')}
       </Box>
 
-      <Grid templateColumns={'1fr 1fr'} gap={4} mt={4}>
+      <Grid templateColumns={'1fr 1fr'} gap={4} mt={4} w={'400px'}>
         <Flex alignItems={'center'}>
           <FormLabel fontSize={'12px'} flex={'0 0 127px'}>
             {t('publish:show_node')}
@@ -138,9 +138,6 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             isChecked={showCite}
           />
         </Flex>
-      </Grid>
-
-      <Grid templateColumns={'1fr 1fr'} gap={4} mt={4}>
         <Flex>
           <Flex alignItems={'center'} flex={'0 0 127px'}>
             <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>
