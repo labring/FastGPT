@@ -27,11 +27,13 @@ const ActivityAdModal = () => {
   const router = useRouter();
 
   // Check if ad was recently closed
-  const [closedData, setClosedData] = useLocalStorageState<string>(CLOSED_AD_KEY);
+  const [closedData, setClosedData] = useLocalStorageState<string>(CLOSED_AD_KEY, {
+    listenStorageChange: true
+  });
 
   const { data } = useRequest2(
     async () => {
-      if (!feConfigs?.isPlus) return;
+      if (!feConfigs?.isPlus || !userInfo) return;
       return getActivityAd();
     },
     {
@@ -59,7 +61,8 @@ const ActivityAdModal = () => {
         if (res?.activityAdImage && shouldShowAd) {
           onOpen();
         }
-      }
+      },
+      refreshDeps: [userInfo]
     }
   );
 
