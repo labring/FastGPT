@@ -954,7 +954,7 @@
   "n_ai_points": "{{amount}} points",
   "n_chat_records_retain": "{{amount}} Days of Chat History Retention",
   "n_custom_domain_amount": "{{amount}} Custom domains",
-  "n_custom_domain_amount tip": "The number of custom domain names that the team can configure, which can currently be used to access Wecom intelligent robots",
+  "n_custom_domain_amount_tip": "The number of custom domain names that the team can configure, which can currently be used to access Wecom intelligent robots",
   "n_dataset_amount": "{{amount}} Dataset limit",
   "n_dataset_size": "{{amount}} Dataset Indexes",
   "n_team_audit_day": "{{amount}} days team operation log records",

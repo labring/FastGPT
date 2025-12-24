@@ -222,7 +222,7 @@ const StandardPlanContentList = ({
               amount: planContent.customDomain
             })}
           </Box>
-          <QuestionTip ml={1} label={t('common:n_custom_domain_amount tip')} />
+          <QuestionTip ml={1} label={t('common:n_custom_domain_amount_tip')} />
         </Flex>
       )}
     </Grid>

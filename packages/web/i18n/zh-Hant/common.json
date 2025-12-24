@@ -952,7 +952,7 @@
   "n_ai_points": "{{amount}} 積分",
   "n_chat_records_retain": "{{amount}} 天對話紀錄保留",
   "n_custom_domain_amount": "{{amount}} 個自定義域名",
-  "n_custom_domain_amount tip": "團隊可以配置的自定義域名數量，目前可用於接入企微智能機器人",
+  "n_custom_domain_amount_tip": "團隊可以配置的自定義域名數量，目前可用於接入企微智能機器人",
   "n_dataset_amount": "{{amount}} 個知識庫",
   "n_dataset_size": "{{amount}} 組知識庫索引",
   "n_team_audit_day": "{{amount}} 天團隊操作日誌記錄",

@@ -961,7 +961,7 @@
   "n_app_registration_amount": "{{amount}} 个应用备案",
   "n_chat_records_retain": "{{amount}} 天对话记录保留",
   "n_custom_domain_amount": "{{amount}} 个自定义域名",
-  "n_custom_domain_amount tip": "团队可以配置的自定义域名数量，目前可用于接入企微智能机器人",
+  "n_custom_domain_amount_tip": "团队可以配置的自定义域名数量，目前可用于接入企微智能机器人",
   "n_dataset_amount": "{{amount}} 个知识库",
   "n_dataset_size": "{{amount}} 组知识库索引",
   "n_team_audit_day": "{{amount}} 天团队操作日志记录",
