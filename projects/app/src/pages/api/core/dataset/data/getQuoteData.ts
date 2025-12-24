@@ -51,7 +51,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
         return Promise.reject(i18nT('common:data_not_found'));
       }
 
-      const [collection, { responseDetail }] = await Promise.all([
+      const [collection, { showCite }] = await Promise.all([
         MongoDatasetCollection.findById(datasetData.collectionId).lean(),
         authChatCrud({
           req,
@@ -73,7 +73,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       if (!collection) {
         return Promise.reject('Can not find the collection');
       }
-      if (!responseDetail) {
+      if (!showCite) {
         return Promise.reject(ChatErrEnum.unAuthChat);
       }
 

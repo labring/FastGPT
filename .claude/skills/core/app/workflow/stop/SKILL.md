@@ -437,7 +437,7 @@ import {
   setAgentRuntimeStop,
   waitForWorkflowComplete
 } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
-import { StopV2ChatSchema, type StopV2ChatResponse } from '@fastgpt/global/openapi/core/chat/api';
+import { StopV2ChatSchema, type StopV2ChatResponse } from '@fastgpt/global/openapi/core/chat/controler/api';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV2ChatResponse> {
   const { appId, chatId, outLinkAuthData } = StopV2ChatSchema.parse(req.body);
@@ -527,7 +527,7 @@ LLM 节点，流输出时会同时被终止，但 HTTP 请求节点这种可能�
 
 ```typescript
 import { POST } from '@/web/common/api/request';
-import type { StopV2ChatParams, StopV2ChatResponse } from '@fastgpt/global/openapi/core/chat/api';
+import type { StopV2ChatParams, StopV2ChatResponse } from '@fastgpt/global/openapi/core/chat/controler/api';
 
 /**
  * 停止 v2 版本工作流运行

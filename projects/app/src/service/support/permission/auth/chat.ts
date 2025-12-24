@@ -24,9 +24,10 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
 export const defaultResponseShow = {
-  responseDetail: true,
-  showNodeStatus: true,
-  showRawSource: true
+  showCite: true,
+  showRunningStatus: true,
+  showFullText: true,
+  canDownloadSource: true
 };
 type AuthChatCommonProps = {
   appId: string;
@@ -54,9 +55,10 @@ export async function authChatCrud({
   tmbId: string;
   uid: string;
   chat?: ChatSchemaType;
-  responseDetail: boolean;
-  showNodeStatus: boolean;
-  showRawSource: boolean;
+  showCite: boolean;
+  showRunningStatus: boolean;
+  showFullText: boolean;
+  canDownloadSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
   if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
@@ -109,9 +111,11 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        responseDetail: outLinkConfig.responseDetail,
-        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-        showRawSource: outLinkConfig.showRawSource ?? false,
+
+        showCite: outLinkConfig.showCite ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
+        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -123,9 +127,10 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        responseDetail: outLinkConfig.responseDetail,
-        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-        showRawSource: outLinkConfig.showRawSource ?? false,
+        showCite: outLinkConfig.showCite ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
+        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -135,9 +140,10 @@ export async function authChatCrud({
       tmbId: String(outLinkConfig.tmbId),
       chat,
       uid,
-      responseDetail: outLinkConfig.responseDetail,
-      showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-      showRawSource: outLinkConfig.showRawSource ?? false,
+      showCite: outLinkConfig.showCite ?? false,
+      showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+      showFullText: outLinkConfig.showFullText ?? false,
+      canDownloadSource: outLinkConfig.canDownloadSource ?? false,
       authType: AuthUserTypeEnum.outLink
     };
   }

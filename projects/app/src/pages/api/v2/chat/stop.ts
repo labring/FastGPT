@@ -5,7 +5,10 @@ import {
   setAgentRuntimeStop,
   waitForWorkflowComplete
 } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
-import { StopV2ChatSchema, type StopV2ChatResponse } from '@fastgpt/global/openapi/core/chat/api';
+import {
+  StopV2ChatSchema,
+  type StopV2ChatResponse
+} from '@fastgpt/global/openapi/core/chat/controler/api';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV2ChatResponse> {
   const { appId, chatId, outLinkAuthData } = StopV2ChatSchema.parse(req.body);

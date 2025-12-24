@@ -1,4 +1,4 @@
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { AddIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -377,10 +377,10 @@ type Props = {
 const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const { t } = useTranslation();
 
-  const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
+  const refreshChatSetting = useContextSelector(ChatPageContext, (v) => v.refreshChatSetting);
 
   // get tags from db
-  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
+  const tags = useContextSelector(ChatPageContext, (v) => v.chatSettings?.favouriteTags || []);
   // local editable tags list
   const [localTags, setLocalTags] = useState<ChatFavouriteTagType[]>(tags);
 

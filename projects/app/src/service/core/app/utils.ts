@@ -101,7 +101,6 @@ export const getScheduleTriggerApp = async () => {
           nodes,
           appChatConfig: chatConfig,
           variables: {},
-          isUpdateUseTime: false, // owner update use time
           newTitle: 'Cron Job',
           source: ChatSourceEnum.cronJob,
           userContent: {

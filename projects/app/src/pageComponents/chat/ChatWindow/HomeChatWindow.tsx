@@ -36,22 +36,14 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
-import type {
-  AppFileSelectConfigType,
-  AppListItemType,
-  AppWhisperConfigType
-} from '@fastgpt/global/core/app/type';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import type { AppFileSelectConfigType, AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-
-type Props = {
-  myApps: AppListItemType[];
-};
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -68,7 +60,7 @@ const defaultWhisperConfig: AppWhisperConfigType = {
   autoTTSResponse: false
 };
 
-const HomeChatWindow = ({ myApps }: Props) => {
+const HomeChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -84,11 +76,13 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const homeAppId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId || '');
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
+  const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -216,7 +210,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
             variables,
             responseChatItemId,
             appId,
-            chatId
+            chatId,
+            retainDatasetCite: isShowCite
           },
           abortCtrl: controller,
           onMessage: generatingMessage
@@ -229,6 +224,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
           ...state,
           title: newTitle
         }));
+
+        refreshRecentlyUsed();
 
         return { responseText, isNewChat: forbidLoadChat.current };
       }
@@ -264,6 +261,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           appId,
           appName: t('chat:home.chat_app'),
           chatId,
+          retainDatasetCite: isShowCite,
           ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,
@@ -277,6 +275,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
         ...state,
         title: newTitle
       }));
+
+      refreshRecentlyUsed();
 
       return { responseText, isNewChat: forbidLoadChat.current };
     }
@@ -394,7 +394,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      isQuickApp
+      isQuickApp,
+      isShowCite
     ]
   );
 
@@ -445,7 +446,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
             pane={pane}
             chatSettings={chatSettings}
             showHistory
-            apps={myApps}
             history={chatRecords}
             totalRecordsCount={totalRecordsCount}
           />

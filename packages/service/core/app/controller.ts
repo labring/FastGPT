@@ -27,6 +27,9 @@ import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
 import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
+import { MongoAppRecord } from './record/schema';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { addLog } from '../../common/system/log';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -203,4 +206,29 @@ export const deleteAppsImmediate = async ({
     '_id'
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
+
+  // Remove app record
+  await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
+};
+
+export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {
+  mongoSessionRun(async (session) => {
+    const existsId = new Set<string>();
+    while (true) {
+      if (!parentId || existsId.has(parentId)) return;
+
+      existsId.add(parentId);
+
+      const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
+      if (!parentApp) return;
+
+      parentApp.updateTime = new Date();
+      await parentApp.save({ session });
+
+      // 递归更新上层
+      parentId = parentApp.parentId;
+    }
+  }).catch((err) => {
+    addLog.error('updateParentFoldersUpdateTime error', err);
+  });
 };

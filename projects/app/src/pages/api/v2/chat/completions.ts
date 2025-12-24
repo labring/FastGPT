@@ -27,6 +27,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -92,8 +93,8 @@ type AuthResponseType = {
   teamId: string;
   tmbId: string;
   app: AppSchema;
-  responseDetail?: boolean;
-  showNodeStatus?: boolean;
+  showCite?: boolean;
+  showRunningStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
   responseAllData: boolean;
@@ -158,13 +159,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId,
       app,
-      responseDetail,
+      showCite,
       authType,
       sourceName,
       apikey,
       responseAllData,
       outLinkUserId = customUid,
-      showNodeStatus
+      showRunningStatus
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
@@ -206,7 +207,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     pushTrack.teamChatQPM({ teamId });
 
-    retainDatasetCite = retainDatasetCite && !!responseDetail;
+    retainDatasetCite = retainDatasetCite && !!showCite;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
@@ -275,7 +276,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       streamResponse: stream,
       id: chatId,
-      showNodeStatus
+      showNodeStatus: showRunningStatus
     });
 
     const saveChatId = chatId || getNanoid(24);
@@ -321,14 +322,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
           responseAllData,
-          responseDetail
+          responseDetail: showCite
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
     })();
 
     // save chat
-    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
     const source = (() => {
       if (shareId) {
         return ChatSourceEnum.share;
@@ -365,7 +365,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
       newTitle,
       shareId,
       outLinkUid: outLinkUserId,
@@ -385,12 +384,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await saveChat(params);
     }
 
+    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
+    if (isOwnerUse && source === ChatSourceEnum.online) {
+      await recordAppUsage({
+        appId: app._id,
+        tmbId,
+        teamId
+      });
+    }
+
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
     const feResponseData = responseAllData
       ? flowResponses
-      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail });
+      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showCite });
 
     if (stream) {
       workflowResponseWrite({
@@ -503,7 +511,7 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, appId, authType, responseDetail, showNodeStatus, uid, sourceName } =
+  const { teamId, tmbId, appId, authType, showCite, showRunningStatus, uid, sourceName } =
     await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
@@ -525,9 +533,9 @@ const authShareChat = async ({
     apikey: '',
     authType,
     responseAllData: false,
-    responseDetail,
+    showCite,
     outLinkUserId: uid,
-    showNodeStatus
+    showRunningStatus
   };
 };
 const authTeamSpaceChat = async ({
@@ -564,7 +572,7 @@ const authTeamSpaceChat = async ({
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
     responseAllData: false,
-    responseDetail: true,
+    showCite: true,
     outLinkUserId: uid
   };
 };
@@ -646,7 +654,7 @@ const authHeaderRequest = async ({
     authType,
     sourceName,
     responseAllData: true,
-    responseDetail: true
+    showCite: true
   };
 };
 

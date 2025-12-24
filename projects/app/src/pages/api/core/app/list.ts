@@ -23,7 +23,6 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 export type ListAppBody = {
   parentId?: ParentIdType;
   type?: AppTypeEnum | AppTypeEnum[];
-  getRecentlyChat?: boolean;
   searchKey?: string;
 };
 
@@ -38,7 +37,7 @@ export type ListAppBody = {
 */
 
 async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemType[]> {
-  const { parentId, type, getRecentlyChat, searchKey } = req.body;
+  const { parentId, type, searchKey } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -94,14 +93,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   );
 
   const findAppsQuery = (() => {
-    if (getRecentlyChat) {
-      return {
-        // get all chat app, excluding hidden apps and deleted apps
-        teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] }
-      };
-    }
-
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
@@ -153,7 +144,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     };
   })();
   const limit = (() => {
-    if (getRecentlyChat) return 15;
     if (searchKey) return 50;
     return;
   })();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -15,8 +15,8 @@ const ChatSliderFooter = () => {
   const { feConfigs } = useSystemStore();
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
 
   const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const isSettingPane = pane === ChatSidebarPaneEnum.SETTING;
