@@ -1,7 +1,7 @@
 import type { ReadStream } from 'fs';
 
-/** Create optimization task request (multipart/form-data) */
-export type CreateAicpOptimizationTaskRequest = {
+/** Create SFT task request (multipart/form-data) */
+export type CreateSFTTaskRequest = {
   datasetFile: Buffer | ReadStream;
   taskType: 'rerank' | 'embed';
   parameters?: {
@@ -11,20 +11,20 @@ export type CreateAicpOptimizationTaskRequest = {
   };
 };
 
-/** Create optimization task response */
-export type CreateAicpOptimizationTaskResponse = {
+/** Create SFT task response */
+export type CreateSFTTaskResponse = {
   task_id: string;
-  status: AicpTaskStatus;
+  status: SFTTaskStatus;
   message: string;
 };
 
-/** Query optimization task status request */
-export type QueryAicpTaskStatusRequest = {
+/** Query SFT task status request */
+export type QuerySFTTaskStatusRequest = {
   taskId: string;
 };
 
-/** AICP task status enum (aligned with AICP API) */
-export enum AicpTaskStatus {
+/** SFT task status enum */
+export enum SFTTaskStatus {
   created = 'created',
   running = 'running',
   deploying = 'deploying',
@@ -32,10 +32,10 @@ export enum AicpTaskStatus {
   failed = 'failed'
 }
 
-/** Query optimization task status response */
-export type QueryAicpTaskStatusResponse = {
+/** Query SFT task status response */
+export type QuerySFTTaskStatusResponse = {
   task_id: string;
-  status: AicpTaskStatus;
+  status: SFTTaskStatus;
   progress?: number;
   message: string;
 

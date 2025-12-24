@@ -4,8 +4,8 @@
  * Selects between mock implementation or real service based on environment variables:
  * - USE_DITING_MOCK=true: Use mock implementation
  * - USE_DITING_MOCK=false or not set: Use real DiTing service (default, requires DITING_BASE_URL configuration)
- * - USE_AICP_MOCK=true: Use mock implementation
- * - USE_AICP_MOCK=false or not set: Use real AICP service (default)
+ * - USE_SFT_BRIDGE_MOCK=true: Use mock implementation
+ * - USE_SFT_BRIDGE_MOCK=false or not set: Use real SFT Bridge service (default)
  */
 
 import {
@@ -40,25 +40,25 @@ export type {
   DiTingEvaluateRerankResponse
 } from './diting/types';
 
-import { mockCreateAicpOptimizationTask, mockQueryAicpTaskStatus } from './aicp/mock';
+import { mockCreateSFTTask, mockQuerySFTTaskStatus } from './sftbridge/mock';
 import {
-  createAicpOptimizationTask as realCreateAicpOptimizationTask,
-  queryAicpTaskStatus as realQueryAicpTaskStatus
-} from './aicp/client';
+  createSFTTask as realCreateSFTTask,
+  querySFTTaskStatus as realQuerySFTTaskStatus
+} from './sftbridge/client';
 
-const useAicpMock = process.env.USE_AICP_MOCK === 'true';
+const useSFTBridgeMock = process.env.USE_SFT_BRIDGE_MOCK === 'true';
 
-export const createAicpOptimizationTask = useAicpMock
-  ? mockCreateAicpOptimizationTask
-  : realCreateAicpOptimizationTask;
+export const createSFTTask = useSFTBridgeMock ? mockCreateSFTTask : realCreateSFTTask;
 
-export const queryAicpTaskStatus = useAicpMock ? mockQueryAicpTaskStatus : realQueryAicpTaskStatus;
+export const querySFTTaskStatus = useSFTBridgeMock
+  ? mockQuerySFTTaskStatus
+  : realQuerySFTTaskStatus;
 
 export type {
-  CreateAicpOptimizationTaskRequest,
-  CreateAicpOptimizationTaskResponse,
-  QueryAicpTaskStatusRequest,
-  QueryAicpTaskStatusResponse
-} from './aicp/types';
+  CreateSFTTaskRequest,
+  CreateSFTTaskResponse,
+  QuerySFTTaskStatusRequest,
+  QuerySFTTaskStatusResponse
+} from './sftbridge/types';
 
-export { AicpTaskStatus } from './aicp/types';
+export { SFTTaskStatus } from './sftbridge/types';

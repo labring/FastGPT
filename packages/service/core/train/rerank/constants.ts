@@ -12,15 +12,15 @@ export const DEFAULT_DITING_CONCURRENCY = 10;
 /** DiTing API maximum concurrency */
 export const MAX_DITING_CONCURRENCY = 50;
 
-// ===== AICP Service Configuration =====
-/** AICP API default timeout (milliseconds) */
-export const DEFAULT_AICP_TIMEOUT = 300000; // 5 minutes
-/** AICP task polling default interval (milliseconds) */
-export const DEFAULT_AICP_POLL_INTERVAL = 5000; // 5 seconds
-/** AICP task polling maximum attempts */
-export const DEFAULT_AICP_MAX_POLLS = 600; // ~50 minutes total
-/** AICP task default learning rate */
-export const DEFAULT_AICP_LEARNING_RATE = 0.0001;
+// ===== SFT Bridge Service Configuration =====
+/** SFT Bridge API default timeout (milliseconds) */
+export const DEFAULT_SFT_BRIDGE_TIMEOUT = 300000; // 5 minutes
+/** SFT Bridge task polling default interval (milliseconds) */
+export const DEFAULT_SFT_BRIDGE_POLL_INTERVAL = 5000; // 5 seconds
+/** SFT Bridge task polling maximum attempts */
+export const DEFAULT_SFT_BRIDGE_MAX_POLLS = 600; // ~50 minutes total
+/** SFT Bridge task default learning rate */
+export const DEFAULT_SFT_BRIDGE_LEARNING_RATE = 0.0001;
 
 // ===== Dataset Search Configuration =====
 /** Dataset search default similarity threshold */

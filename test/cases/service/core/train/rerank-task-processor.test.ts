@@ -104,11 +104,11 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  createAicpOptimizationTask: vi.fn(),
-  queryAicpTaskStatus: vi.fn(),
+  createSFTTask: vi.fn(),
+  querySFTTaskStatus: vi.fn(),
   syntheticRerankEvalData: vi.fn(),
   evaluateRerank: vi.fn(),
-  AicpTaskStatus: {
+  SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
     completed: 'completed',
@@ -250,12 +250,8 @@ describe('Rerank Train Task Processor', () => {
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
-      const {
-        createAicpOptimizationTask,
-        queryAicpTaskStatus,
-        syntheticRerankEvalData,
-        evaluateRerank
-      } = await import('@fastgpt/service/core/train/rerank/external');
+      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
+        await import('@fastgpt/service/core/train/rerank/external');
 
       // Mock initial task
       const mockTask = createMockTask();
@@ -289,17 +285,17 @@ describe('Rerank Train Task Processor', () => {
         })
       });
 
-      // Mock AICP operations
-      (createAicpOptimizationTask as any).mockResolvedValue({
-        task_id: 'aicp_task_123'
+      // Mock SFT Bridge operations
+      (createSFTTask as any).mockResolvedValue({
+        task_id: 'sft_task_123'
       });
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'completed',
         endpoint: {
-          base_url: 'http://aicp.com/v1',
+          base_url: 'http://sft-bridge.com/v1',
           model: 'tuned-model',
-          api_key: 'aicp-key'
+          api_key: 'sft-brige-key'
         }
       });
 
@@ -520,9 +516,9 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // 验证微调阶段
-      expect(createAicpOptimizationTask).toHaveBeenCalled();
-      expect(queryAicpTaskStatus).toHaveBeenCalledWith({
-        taskId: 'aicp_task_123'
+      expect(createSFTTask).toHaveBeenCalled();
+      expect(querySFTTaskStatus).toHaveBeenCalledWith({
+        taskId: 'sft_task_123'
       });
 
       // 验证注册阶段 - 使用 tunedModelConfigId 作为 name
@@ -647,15 +643,15 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock AICP success
-      const { queryAicpTaskStatus } = await import('@fastgpt/service/core/train/rerank/external');
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      // Mock SFT success
+      const { querySFTTaskStatus } = await import('@fastgpt/service/core/train/rerank/external');
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'completed',
         endpoint: {
-          base_url: 'http://aicp.com/v1',
+          base_url: 'http://sft-bridge.com/v1',
           model: 'tuned-model',
-          api_key: 'aicp-key'
+          api_key: 'sft-bridge-key'
         }
       });
 
@@ -917,11 +913,9 @@ describe('Rerank Train Task Processor', () => {
         return Promise.resolve(mockTask);
       });
 
-      // Mock AICP operations to fail quickly for this test
-      const { createAicpOptimizationTask } = await import(
-        '@fastgpt/service/core/train/rerank/external'
-      );
-      (createAicpOptimizationTask as any).mockRejectedValue(new Error('AICP error'));
+      // Mock SFT operations to fail quickly for this test
+      const { createSFTTask } = await import('@fastgpt/service/core/train/rerank/external');
+      (createSFTTask as any).mockRejectedValue(new Error('SFT error'));
 
       await expect(
         rerankTrainTaskProcessor({
@@ -934,7 +928,7 @@ describe('Rerank Train Task Processor', () => {
             attempts: 3
           }
         } as any)
-      ).rejects.toThrow('AICP error');
+      ).rejects.toThrow('SFT error');
 
       // 验证确实在finetuning阶段重新获取了任务数据
       expect(getRerankTrainTask).toHaveBeenCalledTimes(2); // Initial + after preparing
@@ -1044,20 +1038,20 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock AICP operations
-      const { createAicpOptimizationTask, queryAicpTaskStatus } = await import(
+      // Mock SFT operations
+      const { createSFTTask, querySFTTaskStatus } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (createAicpOptimizationTask as any).mockResolvedValue({
-        task_id: 'aicp_task_123'
+      (createSFTTask as any).mockResolvedValue({
+        task_id: 'sft_task_123'
       });
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'completed',
         endpoint: {
-          base_url: 'http://aicp.com/v1',
+          base_url: 'http://sft-bridge.com/v1',
           model: 'tuned-model',
-          api_key: 'aicp-key'
+          api_key: 'sft-bridge-key'
         }
       });
 
@@ -1296,14 +1290,14 @@ describe('Rerank Train Task Processor', () => {
       // 状态更新由 worker 的 failed 事件处理器统一处理
     });
 
-    test('AICP 任务失败应该抛出错误', async () => {
+    test('SFT 任务失败应该抛出错误', async () => {
       const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/controller'
       );
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
-      const { createAicpOptimizationTask, queryAicpTaskStatus } = await import(
+      const { createSFTTask, querySFTTaskStatus } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
 
@@ -1357,12 +1351,12 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock AICP 创建成功但查询返回失败状态
-      (createAicpOptimizationTask as any).mockResolvedValue({
-        task_id: 'aicp_task_123'
+      // Mock SFT 创建成功但查询返回失败状态
+      (createSFTTask as any).mockResolvedValue({
+        task_id: 'sft_task_123'
       });
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'failed',
         error: 'Training failed due to insufficient data'
       });
@@ -1378,7 +1372,7 @@ describe('Rerank Train Task Processor', () => {
             attempts: 3
           }
         } as any)
-      ).rejects.toThrow('AICP task failed');
+      ).rejects.toThrow('SFT task failed');
 
       // 验证阶段已更新到 preparing
       expect(updateCheckpointStage).toHaveBeenCalledWith(
@@ -1394,8 +1388,9 @@ describe('Rerank Train Task Processor', () => {
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
-      const { createAicpOptimizationTask, queryAicpTaskStatus, syntheticRerankEvalData } =
-        await import('@fastgpt/service/core/train/rerank/external');
+      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData } = await import(
+        '@fastgpt/service/core/train/rerank/external'
+      );
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
@@ -1450,17 +1445,17 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock AICP 成功
-      (createAicpOptimizationTask as any).mockResolvedValue({
-        task_id: 'aicp_task_123'
+      // Mock SFT 成功
+      (createSFTTask as any).mockResolvedValue({
+        task_id: 'sft_task_123'
       });
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'completed',
         endpoint: {
-          base_url: 'http://aicp.com/v1',
+          base_url: 'http://sft-bridge.com/v1',
           model: 'tuned-model',
-          api_key: 'aicp-key'
+          api_key: 'sft-bridge-key'
         }
       });
 
@@ -1560,12 +1555,8 @@ describe('Rerank Train Task Processor', () => {
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
-      const {
-        createAicpOptimizationTask,
-        queryAicpTaskStatus,
-        syntheticRerankEvalData,
-        evaluateRerank
-      } = await import('@fastgpt/service/core/train/rerank/external');
+      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
+        await import('@fastgpt/service/core/train/rerank/external');
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
@@ -1624,17 +1615,17 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock AICP 成功
-      (createAicpOptimizationTask as any).mockResolvedValue({
-        task_id: 'aicp_task_123'
+      // Mock SFT 成功
+      (createSFTTask as any).mockResolvedValue({
+        task_id: 'sft_task_123'
       });
-      (queryAicpTaskStatus as any).mockResolvedValue({
-        task_id: 'aicp_task_123',
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
         status: 'completed',
         endpoint: {
-          base_url: 'http://aicp.com/v1',
+          base_url: 'http://sft-bridge.com/v1',
           model: 'tuned-model',
-          api_key: 'aicp-key'
+          api_key: 'sft-bridge-key'
         }
       });
 

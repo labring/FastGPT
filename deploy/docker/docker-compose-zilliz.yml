@@ -128,8 +128,8 @@ services:
       - AIPROXY_API_TOKEN=aiproxy
       # diting 地址
       - DITING_BASE_URL=http://diting:3000
-      # AICP 地址
-      - AICP_BASE_URL=http://aicp:3000
+      # SFT-Bridge 地址
+      - SFT_BRIDGE_BASE_URL=http://sft-bridge:3000
 
       # 数据库最大连接数
       - DB_MAX_LINK=30

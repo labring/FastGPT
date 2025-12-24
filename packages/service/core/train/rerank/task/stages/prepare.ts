@@ -9,7 +9,7 @@ import { addLog } from '../../../../../common/system/log';
 /**
  * Stage 1: Data Preparation
  *
- * Organizes training data into JSONL format for AICP upload.
+ * Organizes training data into JSONL format for SFT Platform upload.
  * Uses streaming to avoid memory overflow.
  * Queries data for the specific trainset associated with this task.
  *

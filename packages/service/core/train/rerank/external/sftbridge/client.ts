@@ -1,48 +1,46 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import type {
-  CreateAicpOptimizationTaskRequest,
-  CreateAicpOptimizationTaskResponse,
-  QueryAicpTaskStatusRequest,
-  QueryAicpTaskStatusResponse
+  CreateSFTTaskRequest,
+  CreateSFTTaskResponse,
+  QuerySFTTaskStatusRequest,
+  QuerySFTTaskStatusResponse
 } from './types';
-import { AicpTaskStatus } from './types';
+import { SFTTaskStatus } from './types';
 import { addLog } from '../../../../../common/system/log';
-import { DEFAULT_AICP_TIMEOUT } from '../../constants';
+import { DEFAULT_SFT_BRIDGE_TIMEOUT } from '../../constants';
 
 /**
- * AICP platform real client for optimization task creation and status query
+ * SFT Bridge platform real client for optimization task creation and status query
  */
 
-function getAicpConfig() {
+function getSFTBridgeConfig() {
   return {
-    url: process.env.AICP_BASE_URL || 'http://aicp-client:3000',
-    timeout: Number(process.env.AICP_TIMEOUT) || DEFAULT_AICP_TIMEOUT
+    url: process.env.SFT_BRIDGE_BASE_URL || 'http://sft-bridge:3000',
+    timeout: Number(process.env.SFT_BRIDGE_TIMEOUT) || DEFAULT_SFT_BRIDGE_TIMEOUT
   };
 }
 
-function getAicpEndpoint(): string {
-  return getAicpConfig().url;
+function getSFTBridgeEndpoint(): string {
+  return getSFTBridgeConfig().url;
 }
 
-function getAicpTimeout(): number {
-  return getAicpConfig().timeout;
+function getSFTBridgeTimeout(): number {
+  return getSFTBridgeConfig().timeout;
 }
 
 /**
- * Create AICP optimization task
- * Calls AICP platform /api/v1/optimization/tasks endpoint
+ * Create SFT task
+ * Calls SFT Bridge platform /api/v1/optimization/tasks endpoint
  *
  * @param request - Contains dataset file, task type, and training parameters
  * @returns Task ID and creation status
  */
-export async function createAicpOptimizationTask(
-  request: CreateAicpOptimizationTaskRequest
-): Promise<CreateAicpOptimizationTaskResponse> {
-  const endpoint = getAicpEndpoint();
+export async function createSFTTask(request: CreateSFTTaskRequest): Promise<CreateSFTTaskResponse> {
+  const endpoint = getSFTBridgeEndpoint();
   const url = `${endpoint}/api/v1/optimization/tasks`;
 
-  addLog.info('AICP create optimization task', {
+  addLog.info('SFT Bridge create optimization task', {
     url,
     taskType: request.taskType,
     hasParameters: !!request.parameters
@@ -61,7 +59,7 @@ export async function createAicpOptimizationTask(
     }
 
     const response = await axios.post(url, formData, {
-      timeout: getAicpTimeout(),
+      timeout: getSFTBridgeTimeout(),
       headers: {
         ...formData.getHeaders()
       }
@@ -70,10 +68,10 @@ export async function createAicpOptimizationTask(
     const apiResponse = response.data;
 
     if (!apiResponse.task_id || apiResponse.status !== 'pending') {
-      throw new Error('Invalid response from AICP API');
+      throw new Error('Invalid response from SFT Bridge API');
     }
 
-    addLog.info('AICP create optimization task completed', {
+    addLog.info('SFT Bridge create optimization task completed', {
       taskId: apiResponse.task_id,
       status: apiResponse.status
     });
@@ -84,13 +82,13 @@ export async function createAicpOptimizationTask(
       message: apiResponse.message || 'Optimization task created successfully'
     };
   } catch (error) {
-    addLog.error('AICP create optimization task failed', {
+    addLog.error('SFT Bridge create optimization task failed', {
       error: error instanceof Error ? error.message : String(error)
     });
 
     if (axios.isAxiosError(error)) {
       const errorMessage = error.response?.data?.message || error.message;
-      throw new Error(`AICP API error: ${errorMessage}`);
+      throw new Error(`SFT Bridge API error: ${errorMessage}`);
     }
 
     throw error;
@@ -98,41 +96,41 @@ export async function createAicpOptimizationTask(
 }
 
 /**
- * Query AICP task status
- * Calls AICP platform /api/v1/optimization/tasks/{task_id} endpoint
+ * Query SFT Bridge task status
+ * Calls SFT Bridge platform /api/v1/optimization/tasks/{task_id} endpoint
  *
  * @param request - Contains task ID
  * @returns Task status, progress, and endpoint information (if completed)
  */
-export async function queryAicpTaskStatus(
-  request: QueryAicpTaskStatusRequest
-): Promise<QueryAicpTaskStatusResponse> {
-  const endpoint = getAicpEndpoint();
+export async function querySFTTaskStatus(
+  request: QuerySFTTaskStatusRequest
+): Promise<QuerySFTTaskStatusResponse> {
+  const endpoint = getSFTBridgeEndpoint();
   const url = `${endpoint}/api/v1/optimization/tasks/${request.taskId}`;
 
-  addLog.info('AICP query task status', {
+  addLog.info('SFT Bridge query task status', {
     url,
     taskId: request.taskId
   });
 
   try {
     const response = await axios.get(url, {
-      timeout: getAicpTimeout()
+      timeout: getSFTBridgeTimeout()
     });
 
     const apiResponse = response.data;
 
     if (!apiResponse.task_id || !apiResponse.status) {
-      throw new Error('Invalid response from AICP API');
+      throw new Error('Invalid response from SFT Bridge API');
     }
 
-    addLog.info('AICP query task status completed', {
+    addLog.info('SFT Bridge query task status completed', {
       taskId: apiResponse.task_id,
       status: apiResponse.status,
       progress: apiResponse.progress
     });
 
-    const result: QueryAicpTaskStatusResponse = {
+    const result: QuerySFTTaskStatusResponse = {
       task_id: apiResponse.task_id,
       status: apiResponse.status,
       message: apiResponse.message || ''
@@ -156,7 +154,7 @@ export async function queryAicpTaskStatus(
 
     return result;
   } catch (error) {
-    addLog.error('AICP query task status failed', {
+    addLog.error('SFT Bridge query task status failed', {
       taskId: request.taskId,
       error: error instanceof Error ? error.message : String(error)
     });
@@ -164,7 +162,7 @@ export async function queryAicpTaskStatus(
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       return {
         task_id: request.taskId,
-        status: AicpTaskStatus.failed,
+        status: SFTTaskStatus.failed,
         message: 'Task not found',
         error: 'The specified task ID does not exist'
       };
@@ -172,7 +170,7 @@ export async function queryAicpTaskStatus(
 
     if (axios.isAxiosError(error)) {
       const errorMessage = error.response?.data?.message || error.message;
-      throw new Error(`AICP API error: ${errorMessage}`);
+      throw new Error(`SFT Bridge API error: ${errorMessage}`);
     }
 
     throw error;

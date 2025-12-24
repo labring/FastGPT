@@ -25,7 +25,7 @@ export enum RerankTrainTaskStatusEnum {
 /** Training task checkpoint stage */
 export enum RerankTaskCheckpointStageEnum {
   preparing = 'preparing',
-  finetuning = 'finetuning', // Model fine-tuning (AICP executes fine-tuning and auto-deploys)
+  finetuning = 'finetuning', // Model fine-tuning (sft bridge executes fine-tuning and auto-deploys)
   registering = 'registering', // Model registration (register configuration in FastGPT)
   evaluating = 'evaluating',
   applying = 'applying' // Apply update (apply fine-tuned model to app workflow)

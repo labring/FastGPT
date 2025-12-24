@@ -3,16 +3,16 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 // 使用 vi.hoisted 确保在所有模块导入之前设置环境变量
 vi.hoisted(() => {
   process.env.USE_DITING_MOCK = 'true';
-  process.env.USE_AICP_MOCK = 'true';
+  process.env.USE_SFT_BRIDGE_MOCK = 'true';
 });
 
 import {
   syntheticRerankTrainDatas,
   syntheticRerankEvalData,
   evaluateRerank,
-  createAicpOptimizationTask,
-  queryAicpTaskStatus,
-  AicpTaskStatus
+  createSFTTask,
+  querySFTTaskStatus,
+  SFTTaskStatus
 } from '@fastgpt/service/core/train/rerank/external';
 
 // Mock addLog
@@ -194,9 +194,9 @@ describe('Rerank Train External Mocks', () => {
     });
   });
 
-  describe('AICP Service Mocks', () => {
+  describe('SFT Bridge Service Mocks', () => {
     test('应该成功创建优化任务', async () => {
-      const response = await createAicpOptimizationTask({
+      const response = await createSFTTask({
         datasetFile: Buffer.from('mock dataset content'),
         taskType: 'rerank',
         parameters: {
@@ -214,16 +214,16 @@ describe('Rerank Train External Mocks', () => {
     });
 
     test('应该立即查询到 created 状态', async () => {
-      const createRes = await createAicpOptimizationTask({
+      const createRes = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'rerank',
         parameters: {}
       });
 
-      const statusRes = await queryAicpTaskStatus({ taskId: createRes.task_id });
+      const statusRes = await querySFTTaskStatus({ taskId: createRes.task_id });
 
       expect(statusRes.task_id).toBe(createRes.task_id);
-      expect(statusRes.status).toBe(AicpTaskStatus.created);
+      expect(statusRes.status).toBe(SFTTaskStatus.created);
       expect(statusRes.progress).toBeDefined();
       expect(typeof statusRes.progress).toBe('number');
       expect(statusRes.progress).toBe(0);
@@ -231,7 +231,7 @@ describe('Rerank Train External Mocks', () => {
     });
 
     test('任务状态应随时间变化', async () => {
-      const createRes = await createAicpOptimizationTask({
+      const createRes = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'rerank',
         parameters: {}
@@ -239,14 +239,14 @@ describe('Rerank Train External Mocks', () => {
 
       // 等待 4 秒后应该进入 running 状态
       await new Promise((resolve) => setTimeout(resolve, 4000));
-      const runningStatus = await queryAicpTaskStatus({ taskId: createRes.task_id });
-      expect(runningStatus.status).toBe(AicpTaskStatus.running);
+      const runningStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
+      expect(runningStatus.status).toBe(SFTTaskStatus.running);
       expect(runningStatus.progress).toBeGreaterThan(0);
       expect(runningStatus.progress).toBeLessThan(80);
     }, 10000); // 增加测试超时时间
 
     test('完成后应该返回 endpoint 信息', async () => {
-      const createRes = await createAicpOptimizationTask({
+      const createRes = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'rerank',
         parameters: {}
@@ -254,9 +254,9 @@ describe('Rerank Train External Mocks', () => {
 
       // 等待 13 秒确保任务完成
       await new Promise((resolve) => setTimeout(resolve, 13000));
-      const completedStatus = await queryAicpTaskStatus({ taskId: createRes.task_id });
+      const completedStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
 
-      expect(completedStatus.status).toBe(AicpTaskStatus.completed);
+      expect(completedStatus.status).toBe(SFTTaskStatus.completed);
       expect(completedStatus.progress).toBe(100);
       expect(completedStatus.endpoint).toBeDefined();
       expect(completedStatus.endpoint?.base_url).toBeDefined();
@@ -265,22 +265,22 @@ describe('Rerank Train External Mocks', () => {
     }, 15000); // 增加测试超时时间
 
     test('查询不存在的任务应返回错误', async () => {
-      const response = await queryAicpTaskStatus({ taskId: 'non_existent_task_id' });
+      const response = await querySFTTaskStatus({ taskId: 'non_existent_task_id' });
 
-      expect(response.status).toBe(AicpTaskStatus.failed);
+      expect(response.status).toBe(SFTTaskStatus.failed);
       expect(response.error).toBeDefined();
       expect(response.message).toBeDefined();
       expect(response.message).toContain('not found');
     });
 
     test('不同任务类型应被正确记录', async () => {
-      const rerankTask = await createAicpOptimizationTask({
+      const rerankTask = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'rerank',
         parameters: {}
       });
 
-      const embedTask = await createAicpOptimizationTask({
+      const embedTask = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'embed',
         parameters: {}
@@ -288,11 +288,11 @@ describe('Rerank Train External Mocks', () => {
 
       expect(rerankTask.task_id).not.toBe(embedTask.task_id);
 
-      const rerankStatus = await queryAicpTaskStatus({ taskId: rerankTask.task_id });
-      const embedStatus = await queryAicpTaskStatus({ taskId: embedTask.task_id });
+      const rerankStatus = await querySFTTaskStatus({ taskId: rerankTask.task_id });
+      const embedStatus = await querySFTTaskStatus({ taskId: embedTask.task_id });
 
-      expect(rerankStatus.status).toBe(AicpTaskStatus.created);
-      expect(embedStatus.status).toBe(AicpTaskStatus.created);
+      expect(rerankStatus.status).toBe(SFTTaskStatus.created);
+      expect(embedStatus.status).toBe(SFTTaskStatus.created);
     });
   });
 
@@ -339,15 +339,15 @@ describe('Rerank Train External Mocks', () => {
       });
     });
 
-    test('AICP 完成的任务应返回 endpoint 信息', async () => {
-      const createRes = await createAicpOptimizationTask({
+    test('SFT 完成的任务应返回 endpoint 信息', async () => {
+      const createRes = await createSFTTask({
         datasetFile: Buffer.from('test'),
         taskType: 'rerank',
         parameters: {}
       });
 
       await new Promise((resolve) => setTimeout(resolve, 13000));
-      const completedStatus = await queryAicpTaskStatus({ taskId: createRes.task_id });
+      const completedStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
 
       // 只验证 endpoint 存在且包含必要字段，不验证具体值（mock 返回值可能变化）
       expect(completedStatus.endpoint).toBeDefined();
