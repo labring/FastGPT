@@ -190,20 +190,20 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
           <Box px={3} overflow={'auto'} h={'100%'}>
             {Array.isArray(myApps) &&
               myApps.map((item) => (
-                <Flex justify={'center'} key={item._id}>
+                <Flex justify={'center'} key={item.appId}>
                   <Flex
                     py={2.5}
                     px={2}
                     width={'100%'}
                     borderRadius={'md'}
                     alignItems={'center'}
-                    {...(item._id === appId
+                    {...(item.appId === appId
                       ? {
                           backgroundColor: 'primary.50 !important',
                           color: 'primary.600'
                         }
                       : {
-                          onClick: () => onclickApp(item._id)
+                          onClick: () => onclickApp(item.appId)
                         })}
                   >
                     <Avatar src={item.avatar} w={'24px'} borderRadius={'sm'} />

@@ -226,7 +226,7 @@ export const updateParentFoldersUpdateTime = async ({
     parentApp.updateTime = new Date();
     await parentApp.save({ session });
 
-    // 递归删除
+    // 递归更新上层
     parentId = parentApp.parentId;
   }
 };
