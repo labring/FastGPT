@@ -47,6 +47,27 @@ const QRCodePayModal = ({
   const isWxConfigured = feConfigs.payConfig?.wx;
   const isBankConfigured = feConfigs.payConfig?.bank;
 
+  const MIN_QR_SIZE = 150;
+  const [dynamicQRSize, setDynamicQRSize] = useState(QR_CODE_SIZE);
+
+  useEffect(() => {
+    const calculateQRSize = () => {
+      const windowHeight = window.innerHeight;
+      const reservedSpace = 470 + (tip ? 60 : 0) + (discountCouponName ? 30 : 0);
+      const availableHeight = windowHeight - reservedSpace;
+
+      const newSize = Math.min(QR_CODE_SIZE, Math.max(MIN_QR_SIZE, availableHeight));
+
+      setDynamicQRSize(newSize);
+    };
+
+    window.addEventListener('resize', calculateQRSize);
+
+    return () => {
+      window.removeEventListener('resize', calculateQRSize);
+    };
+  }, [tip, discountCouponName]);
+
   const [payWayRenderData, setPayWayRenderData] = useState<{
     qrCode?: string;
     iframeCode?: string;
@@ -99,7 +120,7 @@ const QRCodePayModal = ({
     const canvas = document.createElement('canvas');
 
     QRCode.toCanvas(canvas, payWayRenderData.qrCode, {
-      width: QR_CODE_SIZE,
+      width: dynamicQRSize,
       margin: 0,
       color: {
         dark: '#000000',
@@ -113,7 +134,7 @@ const QRCodePayModal = ({
         }
       })
       .catch(console.error);
-  }, [payWayRenderData.qrCode]);
+  }, [payWayRenderData.qrCode, dynamicQRSize]);
   useEffect(() => {
     drawCode();
   }, [drawCode]);
@@ -140,15 +161,15 @@ const QRCodePayModal = ({
   });
   const renderPaymentContent = () => {
     if (payWayRenderData.qrCode) {
-      return <Box ref={canvasRef} display={'inline-block'} h={`${QR_CODE_SIZE}px`} />;
+      return <Box ref={canvasRef} display={'inline-block'} h={`${dynamicQRSize}px`} />;
     }
     if (payWayRenderData.iframeCode) {
       return (
         <iframe
           srcDoc={payWayRenderData.iframeCode}
           style={{
-            width: QR_CODE_SIZE + 5,
-            height: QR_CODE_SIZE + 5,
+            width: dynamicQRSize + 5,
+            height: dynamicQRSize + 5,
             border: 'none',
             display: 'inline-block'
           }}

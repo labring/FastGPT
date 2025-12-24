@@ -189,6 +189,9 @@ const Standard = ({
         >
           {standardSubList.map((item) => {
             const isCurrentPlan = item.level === myStandardPlan?.currentSubLevel;
+            const isActivityPlan =
+              item.level === StandardSubLevelEnum.advanced ||
+              item.level === StandardSubLevelEnum.basic;
 
             const isHigherLevel =
               standardSubLevelMap[item.level].weight >
@@ -208,7 +211,8 @@ const Standard = ({
                 overflow={'hidden'}
                 {...(isCurrentPlan
                   ? {
-                      borderColor: hasActivityExpiration ? '#BB182C' : 'primary.600'
+                      borderColor:
+                        hasActivityExpiration && isActivityPlan ? '#BB182C' : 'primary.600'
                     }
                   : {
                       borderColor: 'myGray.150'
@@ -303,7 +307,7 @@ const Standard = ({
                 >
                   {t(item.label as any)}
                 </Box>
-                <Flex alignItems={'center'} gap={2.5}>
+                <Flex alignItems={'center'}>
                   {item.level === StandardSubLevelEnum.custom ? (
                     <Box
                       fontSize={['32px', '36px']}
@@ -315,34 +319,40 @@ const Standard = ({
                     </Box>
                   ) : (
                     <Box
-                      pr={8}
                       py={1}
-                      borderRadius={'sm'}
+                      borderRadius={20}
                       display={'inline-block'}
                       zIndex={10}
+                      pr={8}
                       bgGradient={'linear(to-r, #fff 90%, transparent)'}
                     >
-                      <MyBox fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
+                      <Flex
+                        fontSize={['32px', '42px']}
+                        fontWeight={'bold'}
+                        color={'myGray.900'}
+                        alignItems={'end'}
+                        gap={1}
+                      >
                         ￥
                         {matchedCoupon?.discount && item.price > 0
-                          ? (matchedCoupon.discount * item.price).toFixed(1)
+                          ? Number.isInteger(matchedCoupon.discount * item.price)
+                            ? matchedCoupon.discount * item.price
+                            : (matchedCoupon.discount * item.price).toFixed(1)
                           : item.price}
-                      </MyBox>
+                        {item.level !== StandardSubLevelEnum.free && matchedCoupon && (
+                          <Box
+                            h={[8, '38px']}
+                            color={'primary.600'}
+                            fontSize={'18px'}
+                            fontWeight={'500'}
+                            whiteSpace={'nowrap'}
+                          >
+                            {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
+                          </Box>
+                        )}
+                      </Flex>
                     </Box>
                   )}
-                  {item.level !== StandardSubLevelEnum.free &&
-                    item.level !== StandardSubLevelEnum.custom &&
-                    matchedCoupon && (
-                      <Box
-                        h={4}
-                        color={'primary.600'}
-                        fontSize={'18px'}
-                        fontWeight={'500'}
-                        whiteSpace={'nowrap'}
-                      >
-                        {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
-                      </Box>
-                    )}
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {t(item.desc as any, { title: feConfigs?.systemTitle })}

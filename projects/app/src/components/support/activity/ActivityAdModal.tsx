@@ -86,7 +86,7 @@ const ActivityAdModal = () => {
     }
   }, [data?.activityAdLink, handleClose, router]);
 
-  if (!data?.activityAdImage) {
+  if (!data?.activityAdImage || !userInfo) {
     return null;
   }
 
