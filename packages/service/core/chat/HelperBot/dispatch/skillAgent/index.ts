@@ -14,6 +14,13 @@ import {
   GeneratedSkillResultSchema
 } from '@fastgpt/global/core/chat/helperBot/skillAgent/type';
 import { parseJsonArgs } from '../../../../ai/utils';
+import type {
+  UserInputFormItemType,
+  UserInputInteractive
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const dispatchSkillAgent = async (
   props: HelperBotDispatchParamsType<SkillAgentParamsType>
@@ -51,19 +58,13 @@ export const dispatchSkillAgent = async (
     { role: 'user' as const, content: query }
   ];
 
-  console.dir(conversationMessages, { depth: null });
+  // console.dir(conversationMessages, { depth: null });
   // Single LLM call - LLM self-determines phase and outputs corresponding format
   const llmResponse = await createLLMResponse({
     body: {
       messages: conversationMessages,
       model: modelData,
       stream: true
-    },
-    onStreaming: ({ text }) => {
-      workflowResponseWrite?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({ text })
-      });
     },
     onReasoning: ({ text }) => {
       workflowResponseWrite?.({
@@ -87,11 +88,10 @@ export const dispatchSkillAgent = async (
       addLog.warn(`[Skill agent] Failed to parse JSON response`, { text: answerText });
       throw new Error('Failed to parse JSON response');
     }
-    console.log(responseJson, 22323);
+    console.log(JSON.stringify(responseJson, null, 2));
     // Handle based on phase field
     if (responseJson.phase === 'generation') {
       addLog.debug('🔄 SkillAgent: Generated skill generation phase');
-
       const parseResult = GeneratedSkillResultSchema.safeParse(responseJson).data;
 
       if (!parseResult) {
@@ -116,10 +116,59 @@ export const dispatchSkillAgent = async (
     } else if (responseJson.phase === 'collection') {
       addLog.debug('📝 SkillAgent: Information collection phase');
 
-      const displayText = responseJson.question || answerText;
+      // 检查是否有表单数据
+      const formData = responseJson.form;
+      if (formData) {
+        // 转换为前端可用的表单格式
+        const inputForm: UserInputInteractive = {
+          type: 'userInput',
+          params: {
+            inputForm: formData.map((item) => {
+              return {
+                type: item.type as FlowNodeInputTypeEnum,
+                key: getNanoid(6),
+                label: item.label,
+                value: '',
+                required: false,
+                valueType:
+                  item.type === FlowNodeInputTypeEnum.numberInput
+                    ? WorkflowIOValueTypeEnum.number
+                    : WorkflowIOValueTypeEnum.string,
+                list:
+                  'options' in item
+                    ? item.options?.map((option) => ({ label: option, value: option }))
+                    : undefined
+              };
+            }),
+            description: responseJson.question
+          }
+        };
+
+        // 发送表单事件
+        workflowResponseWrite?.({
+          event: SseResponseEventEnum.collectionForm,
+          data: inputForm
+        });
+
+        return {
+          aiResponse: formatAIResponse({
+            text: responseJson.question,
+            reasoning: responseJson.reasoning || reasoningText,
+            collectionForm: inputForm
+          }),
+          usage
+        };
+      }
+
+      // 无表单，纯文本问题
+      workflowResponseWrite?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({ text: responseJson.question })
+      });
+
       return {
         aiResponse: formatAIResponse({
-          text: displayText,
+          text: responseJson.question,
           reasoning: responseJson.reasoning || reasoningText
         }),
         usage

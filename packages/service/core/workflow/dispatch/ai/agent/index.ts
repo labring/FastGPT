@@ -145,8 +145,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
-    // console.log(JSON.stringify(completionTools, null, 2), 'topAgent completionTools');
-    // console.log(subAppsMap, 'topAgent subAppsMap');
+    console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
+    console.log(agentSubAppsMap, 'topAgent subAppsMap');
 
     /* ===== AI Start ===== */
 
@@ -418,6 +418,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const isReplanStep = isPlanAgent && agentPlan && replanMessages;
 
       console.log('planHistoryMessages', planHistoryMessages);
+
       // 执行 Plan/replan
       if (isPlanStep) {
         const result = await planCallFn();
@@ -429,8 +430,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
         if (result) return result;
       }
+
       // 如果有保存的 skill id，恢复 skill 的 tools
-      else if (matchedSkillId) {
+      if (matchedSkillId) {
         addLog.debug(`恢复 skill tools, skill id: ${matchedSkillId}`);
         const skill = await matchSkillForId({
           id: matchedSkillId,

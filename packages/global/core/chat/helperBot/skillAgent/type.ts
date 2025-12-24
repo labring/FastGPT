@@ -40,10 +40,21 @@ const TaskAnalysisSchema = z.object({
 });
 
 // LLM 返回的完整数据
+const FormInputSchema = z.object({
+  type: z.literal('input').or(z.literal('numberInput')),
+  label: z.string()
+});
+const FormSelectSchema = z.object({
+  type: z.literal('select').or(z.literal('multipleSelect')),
+  label: z.string(),
+  options: z.array(z.string())
+});
+
 export const GeneratedSkillDataCollectionSchema = z.object({
   phase: z.literal('collection'),
   reasoning: z.string(),
-  question: z.string()
+  question: z.string(),
+  form: z.array(z.union([FormInputSchema, FormSelectSchema])).optional()
 });
 export type GeneratedSkillDataCollectionType = z.infer<typeof GeneratedSkillDataCollectionSchema>;
 export const GeneratedSkillResultSchema = z.object({

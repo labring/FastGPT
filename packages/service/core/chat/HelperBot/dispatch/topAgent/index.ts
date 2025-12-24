@@ -85,8 +85,8 @@ export const dispatchTopAgent = async (
       const formData = TopAgentFormDataSchema.parse({
         role: responseJson.task_analysis?.role,
         taskObject: responseJson.task_analysis?.goal,
-        tools: responseJson.resources?.tools?.map((tool: any) => tool.id),
-        fileUploadEnabled: responseJson.resources?.file_upload?.enabled
+        tools: responseJson.resources?.tools,
+        fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled
       });
 
       if (formData) {

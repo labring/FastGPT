@@ -67,21 +67,18 @@ const ChatTest = ({ topAgentSelectedTools = [], skill, appForm, onAIGenerate }: 
           onApply={async (generatedSkillData) => {
             console.log(generatedSkillData, 222);
 
-            // 1. 计算新的 tool
-            const newToolIds: string[] = [];
+            // 1. 收集 AI 生成的所有工具 ID（完整列表，不过滤）
+            const allGeneratedToolIds: string[] = [];
             generatedSkillData.execution_plan.steps.forEach((step) => {
               step.expectedTools?.forEach((tool) => {
-                if (tool.type === 'tool') {
-                  const exists = skill.selectedTools.find((t) => t.pluginId === tool.id);
-                  if (exists) return;
-                  newToolIds.push(tool.id);
+                if (tool.type === 'tool' && !allGeneratedToolIds.includes(tool.id)) {
+                  allGeneratedToolIds.push(tool.id);
                 }
               });
             });
 
-            // 3. 并行获取新工具详情
             const newTools = await loadGeneratedTools({
-              newToolIds,
+              newToolIds: allGeneratedToolIds,
               existsTools: skill.selectedTools,
               topAgentSelectedTools,
               fileSelectConfig: appForm.chatConfig.fileSelectConfig

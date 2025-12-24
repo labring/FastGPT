@@ -25,9 +25,11 @@ export const TopAgentGenerationAnswerSchema = z.object({
   resources: z.object({
     tools: z.array(z.string()),
     knowledges: z.array(z.string()),
-    file_upload: z.object({
-      enabled: z.boolean(),
-      purpose: z.string()
+    system_features: z.object({
+      file_upload: z.object({
+        enabled: z.boolean(),
+        purpose: z.string().nullish()
+      })
     })
   })
 });
