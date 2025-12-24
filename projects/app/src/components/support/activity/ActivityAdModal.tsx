@@ -18,7 +18,7 @@ import { useLocalStorageState } from 'ahooks';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-const CLOSED_AD_KEY = 'activity_ad_closed';
+const CLOSED_AD_KEY = 'hidden-activity-ad';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 const ActivityAdModal = () => {
