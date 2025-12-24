@@ -52,8 +52,7 @@ const ChatCorrectionSchema = new Schema({
         required: true
       },
       rawAnswer: {
-        type: String,
-        required: true
+        type: String
       },
       correctedAnswer: String,
       correctedQuoteList: [
