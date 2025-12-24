@@ -81,7 +81,7 @@ async function handler(
       }
     };
   } catch (error: any) {
-    if (error === AppErrEnum.unAuthApp) {
+    if (error === AppErrEnum.unAuthApp && appId) {
       const { tmbId } = await authCert({
         req,
         authToken: true,

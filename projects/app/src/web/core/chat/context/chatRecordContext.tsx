@@ -67,8 +67,7 @@ const ChatRecordContextProvider = ({
     setDataList: setChatRecords,
     ScrollData,
     isLoading,
-    itemRefs,
-    loadInitData
+    itemRefs
   } = useLinkedScroll(
     async (
       data: LinkedPaginationProps<GetChatRecordsProps>
@@ -94,7 +93,8 @@ const ChatRecordContextProvider = ({
       pageSize: 10,
       params,
       currentData,
-      defaultScroll: 'bottom'
+      defaultScroll: 'bottom',
+      showErrorToast: false
     }
   );
 

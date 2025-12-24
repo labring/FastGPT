@@ -26,6 +26,7 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -78,6 +79,9 @@ const AppChatWindow = () => {
           if (e?.statusText === ChatErrEnum.unAuthChat) {
             onChangeChatId();
             return;
+          }
+          if (e?.statusText === AppErrEnum.unAuthApp) {
+            refreshRecentlyUsed();
           }
           handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
         }
