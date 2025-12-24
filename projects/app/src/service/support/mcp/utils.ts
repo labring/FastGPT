@@ -257,7 +257,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: false, // owner update use time
       newTitle,
       source: ChatSourceEnum.mcp,
       userContent: userQuestion,

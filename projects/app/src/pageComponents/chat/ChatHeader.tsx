@@ -14,7 +14,6 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import {
   type GetResourceFolderListProps,
   type GetResourceListItemResponse
@@ -24,7 +23,7 @@ import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import {
   ChatSidebarPaneEnum,
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
@@ -38,7 +37,6 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 const ChatHeader = ({
   history,
   showHistory,
-  apps,
   totalRecordsCount,
 
   pane,
@@ -50,18 +48,15 @@ const ChatHeader = ({
 
   history: ChatItemType[];
   showHistory?: boolean;
-  apps?: AppListItemType[];
   totalRecordsCount: number;
   reserveSpace?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const pathname = usePathname();
   const { source } = useChatStore();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
-
   const isPlugin = chatData.app.type === AppTypeEnum.workflowTool;
   const isShare = source === 'share';
   const chatType = isShare ? ChatTypeEnum.share : ChatTypeEnum.chat;
@@ -87,7 +82,6 @@ const ChatHeader = ({
         </>
       ) : (
         <MobileHeader
-          apps={apps}
           appId={chatData.appId}
           name={
             pane === ChatSidebarPaneEnum.HOME && !isShare
@@ -113,15 +107,7 @@ const ChatHeader = ({
   );
 };
 
-const MobileDrawer = ({
-  onCloseDrawer,
-  appId,
-  apps
-}: {
-  onCloseDrawer: () => void;
-  appId: string;
-  apps?: AppListItemType[];
-}) => {
+const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; appId: string }) => {
   enum TabEnum {
     recently = 'recently',
     app = 'app'
@@ -129,6 +115,7 @@ const MobileDrawer = ({
   const { t } = useTranslation();
 
   const { setChatId } = useChatStore();
+  const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
 
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
 
@@ -143,7 +130,7 @@ const MobileDrawer = ({
     );
   }, []);
 
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   const onclickApp = (id: string) => {
     handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
@@ -201,22 +188,22 @@ const MobileDrawer = ({
         {/* history */}
         {currentTab === TabEnum.recently && (
           <Box px={3} overflow={'auto'} h={'100%'}>
-            {Array.isArray(apps) &&
-              apps.map((item) => (
-                <Flex justify={'center'} key={item._id}>
+            {Array.isArray(myApps) &&
+              myApps.map((item) => (
+                <Flex justify={'center'} key={item.appId}>
                   <Flex
                     py={2.5}
                     px={2}
                     width={'100%'}
                     borderRadius={'md'}
                     alignItems={'center'}
-                    {...(item._id === appId
+                    {...(item.appId === appId
                       ? {
                           backgroundColor: 'primary.50 !important',
                           color: 'primary.600'
                         }
                       : {
-                          onClick: () => onclickApp(item._id)
+                          onClick: () => onclickApp(item.appId)
                         })}
                   >
                     <Avatar src={item.avatar} w={'24px'} borderRadius={'sm'} />
@@ -247,13 +234,11 @@ const MobileHeader = ({
   showHistory,
   name,
   avatar,
-  appId,
-  apps
+  appId
 }: {
   showHistory?: boolean;
   avatar: string;
   name: string;
-  apps?: AppListItemType[];
   appId: string;
 }) => {
   const router = useRouter();
@@ -290,9 +275,7 @@ const MobileHeader = ({
         </Flex>
       </Flex>
 
-      {isOpenDrawer && !isShareChat && (
-        <MobileDrawer apps={apps} appId={appId} onCloseDrawer={onCloseDrawer} />
-      )}
+      {isOpenDrawer && !isShareChat && <MobileDrawer appId={appId} onCloseDrawer={onCloseDrawer} />}
     </>
   );
 };

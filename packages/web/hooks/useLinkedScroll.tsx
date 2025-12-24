@@ -17,12 +17,14 @@ export function useLinkedScroll<
     pageSize = 10,
     params = {},
     currentData,
-    defaultScroll = 'top'
+    defaultScroll = 'top',
+    showErrorToast = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
     defaultScroll?: 'top' | 'bottom';
+    showErrorToast?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -105,7 +107,8 @@ export function useLinkedScroll<
       onFinally() {
         isInit.current = true;
       },
-      manual: false
+      manual: false,
+      errorToast: showErrorToast ? undefined : ''
     }
   );
   useEffect(() => {
@@ -153,7 +156,8 @@ export function useLinkedScroll<
       return response;
     },
     {
-      refreshDeps: [hasMorePrev, isLoading, params, pageSize]
+      refreshDeps: [hasMorePrev, isLoading, params, pageSize],
+      errorToast: showErrorToast ? undefined : ''
     }
   );
 
@@ -188,7 +192,8 @@ export function useLinkedScroll<
       return response;
     },
     {
-      refreshDeps: [hasMoreNext, isLoading, params, pageSize]
+      refreshDeps: [hasMoreNext, isLoading, params, pageSize],
+      errorToast: showErrorToast ? undefined : ''
     }
   );
 

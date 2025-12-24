@@ -63,7 +63,7 @@ async function handler(
       authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
     ]);
 
-    if (!authRes.showRawSource) {
+    if (!authRes.canDownloadSource) {
       return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
     }
 

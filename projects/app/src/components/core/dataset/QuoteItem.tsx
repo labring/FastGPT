@@ -91,13 +91,13 @@ export const formatScore = (score: ScoreItemType[]) => {
 
 const QuoteItem = ({
   quoteItem,
-  canViewSource,
+  canDownloadSource,
   canEditData,
   canEditDataset,
   ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseItemType;
-  canViewSource?: boolean;
+  canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;
 } & Omit<readCollectionSourceBody, 'collectionId'>) => {
@@ -208,7 +208,7 @@ const QuoteItem = ({
             collectionId={quoteItem.collectionId}
             sourceName={quoteItem.sourceName}
             sourceId={quoteItem.sourceId}
-            canView={canViewSource}
+            canView={canDownloadSource}
             {...RawSourceBoxProps}
           />
           <Box flex={1} />

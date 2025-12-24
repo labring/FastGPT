@@ -13,8 +13,14 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { getRecentlyUsedApps } from '@/web/core/chat/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useMount } from 'ahooks';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
+import type { UserType } from '@fastgpt/global/support/user/type';
 
-export type ChatSettingContextValue = {
+export type ChatPageContextValue = {
+  // Pane & collapse
   pane: ChatSidebarPaneEnum;
   handlePaneChange: (
     pane: ChatSidebarPaneEnum,
@@ -23,12 +29,19 @@ export type ChatSettingContextValue = {
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
+  // Chat settings
   chatSettings: ChatSettingType | undefined;
   refreshChatSetting: () => Promise<ChatSettingType | undefined>;
   logos: { wideLogoUrl?: string; squareLogoUrl?: string };
+
+  // User & apps
+  isInitedUser: boolean;
+  userInfo: UserType | null;
+  myApps: GetRecentlyUsedAppsResponseType;
+  refreshRecentlyUsed: () => void;
 };
 
-export const ChatSettingContext = createContext<ChatSettingContextValue>({
+export const ChatPageContext = createContext<ChatPageContextValue>({
   pane: ChatSidebarPaneEnum.HOME,
   handlePaneChange: () => {},
   collapse: defaultCollapseStatus,
@@ -37,19 +50,63 @@ export const ChatSettingContext = createContext<ChatSettingContextValue>({
   logos: { wideLogoUrl: '', squareLogoUrl: '' },
   refreshChatSetting: function (): Promise<ChatSettingType | undefined> {
     throw new Error('Function not implemented.');
-  }
+  },
+  isInitedUser: false,
+  userInfo: null,
+  myApps: [],
+  refreshRecentlyUsed: () => {}
 });
 
-export const ChatSettingContextProvider = ({ children }: { children: React.ReactNode }) => {
+export const ChatPageContextProvider = ({
+  appId: routeAppId,
+  children
+}: {
+  appId: string;
+  children: React.ReactNode;
+}) => {
   const router = useRouter();
   const { feConfigs } = useSystemStore();
-  const { appId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
+  const { setSource, setAppId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
+  const { userInfo, initUserInfo } = useUserStore();
 
   const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
     pane: ChatSidebarPaneEnum;
   };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
+  const [isInitedUser, setIsInitedUser] = useState(false);
+
+  // Get recently used apps
+  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest2(
+    () => getRecentlyUsedApps(),
+    {
+      manual: false,
+      errorToast: '',
+      refreshDeps: [userInfo],
+      pollingInterval: 30000,
+      throttleWait: 500 // 500ms throttle
+    }
+  );
+
+  // Initialize user info
+  useMount(async () => {
+    if (routeAppId) setAppId(routeAppId);
+    try {
+      await initUserInfo();
+    } catch (error) {
+      console.log('User not logged in:', error);
+    } finally {
+      setSource('online');
+      setIsInitedUser(true);
+    }
+  });
+
+  // Sync appId to store as route/appId changes
+  useEffect(() => {
+    if (routeAppId) {
+      setAppId(routeAppId);
+    }
+  }, [routeAppId, setAppId, userInfo]);
 
   const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2(
     async () => {
@@ -69,8 +126,8 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
 
         if (
           pane === ChatSidebarPaneEnum.HOME &&
-          appId !== data.appId &&
-          data.quickAppList.every((q) => q._id !== appId)
+          routeAppId !== data.appId &&
+          data.quickAppList.every((q) => q._id !== routeAppId)
         ) {
           handlePaneChange(ChatSidebarPaneEnum.HOME, data.appId);
         }
@@ -126,7 +183,7 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
     setCollapse(collapse === 0 ? 1 : 0);
   }, [collapse]);
 
-  const value: ChatSettingContextValue = useMemoEnhance(
+  const value: ChatPageContextValue = useMemoEnhance(
     () => ({
       pane,
       handlePaneChange,
@@ -134,10 +191,26 @@ export const ChatSettingContextProvider = ({ children }: { children: React.React
       onTriggerCollapse,
       chatSettings,
       refreshChatSetting,
-      logos
+      logos,
+      isInitedUser,
+      userInfo,
+      myApps,
+      refreshRecentlyUsed
     }),
-    [pane, handlePaneChange, collapse, chatSettings, refreshChatSetting, onTriggerCollapse, logos]
+    [
+      pane,
+      handlePaneChange,
+      collapse,
+      onTriggerCollapse,
+      chatSettings,
+      refreshChatSetting,
+      logos,
+      isInitedUser,
+      userInfo,
+      myApps,
+      refreshRecentlyUsed
+    ]
   );
 
-  return <ChatSettingContext.Provider value={value}>{children}</ChatSettingContext.Provider>;
+  return <ChatPageContext.Provider value={value}>{children}</ChatPageContext.Provider>;
 };
