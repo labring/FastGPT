@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 
 import { request as httpsRequest } from 'https';
 import { request as httpRequest } from 'http';
+import { ProxyAgent } from 'proxy-agent';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -38,7 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       path: requestPath,
       method: req.method,
       headers: req.headers,
-      timeout: 60000
+      timeout: 60000,
+      agent: new ProxyAgent()
     });
 
     req.pipe(requestResult);

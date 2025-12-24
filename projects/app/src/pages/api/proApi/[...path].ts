@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
-import { Agent, request } from 'http';
+import { request } from 'http';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -25,8 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       port: parsedUrl.port,
       path: requestPath,
       method: req.method,
-      headers: req.headers,
-      agent: new Agent()
+      headers: req.headers
     });
     req.pipe(requestResult);
 

@@ -55,10 +55,12 @@
     "pino": "^9.7.0",
     "pino-opentelemetry-transport": "^1.0.1",
     "proxy-agent": "^6.5.0",
+    "proxy-from-env": "^1.1.0",
     "request-ip": "^3.3.0",
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
     "turndown": "^7.1.2",
+    "undici": "^7.16.0",
     "winston": "^3.17.0",
     "zod": "^4.1.12"
   },
@@ -72,6 +74,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/papaparse": "5.3.7",
     "@types/pg": "^8.6.6",
+    "@types/proxy-from-env": "^1.0.4",
     "@types/request-ip": "^0.0.37",
     "@types/tunnel": "^0.0.4",
     "@types/turndown": "^5.0.4"
