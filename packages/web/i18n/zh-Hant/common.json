@@ -1261,6 +1261,7 @@
   "support.wallet.subscription.status.inactive": "未使用",
   "support.wallet.subscription.team_operation_log": "記錄團隊操作日誌",
   "support.wallet.subscription.token_compute": "點選檢視線上 Token 計算機",
+  "support.wallet.subscription.total_points": "總積分",
   "support.wallet.subscription.type.balance": "餘額儲值",
   "support.wallet.subscription.type.extraDatasetSize": "知識庫擴充容量",
   "support.wallet.subscription.type.extraPoints": "AI 點數方案",

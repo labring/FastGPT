@@ -190,7 +190,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 flexDir={'column'}
                 alignItems={'center'}
                 justifyContent={'center'}
-                py={2}
+                py={extraPointsPackages.length > 6 ? 1 : 2}
                 px={[3, 4]}
                 borderRadius={['8px', 'sm']}
                 borderWidth={'1px'}
@@ -209,16 +209,16 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 {!!pkg.activityBonusPoints && (
                   <Flex
                     position={'absolute'}
-                    top={0}
-                    right={-4}
-                    minW={20}
+                    top={0.5}
+                    right={-8}
+                    minW={24}
                     py={0.5}
                     justifyContent={'center'}
                     fontSize={'10px'}
                     fontWeight={'bold'}
                     color={'white'}
                     bg={'#ED372C'}
-                    transform={'rotate(28deg)'}
+                    transform={'rotate(37deg)'}
                     whiteSpace={'nowrap'}
                   >
                     +{formatNumberWithUnit(pkg.activityBonusPoints, i18n.language)}
@@ -243,6 +243,30 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             ))}
           </Grid>
 
+          <Flex
+            position={'relative'}
+            zIndex={1}
+            justifyContent={'space-between'}
+            alignItems={'center'}
+          >
+            <Box
+              fontSize={['13px', '14px']}
+              color={'myGray.600'}
+              fontWeight={'medium'}
+              textAlign={['center', 'left']}
+            >
+              {t('common:support.wallet.subscription.total_points')}
+            </Box>
+            <Box color={'myGray.600'} fontSize={['18px', '20px']} fontWeight={'medium'}>
+              {selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]
+                ? formatNumberWithUnit(
+                    extraPointsPackages[selectedPackageIndex].points +
+                      (extraPointsPackages[selectedPackageIndex]?.activityBonusPoints || 0),
+                    i18n.language
+                  )
+                : '--'}
+            </Box>
+          </Flex>
           <Flex
             position={'relative'}
             zIndex={1}
@@ -431,7 +455,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
           </Flex>
 
-          <Box mt={['auto', 0]}>
+          <Box mt={['auto', 4]}>
             <Button
               w={'100%'}
               h={['40px', '44px']}
