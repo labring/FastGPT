@@ -18,7 +18,6 @@ import {
   getRerankTrainTaskList,
   createRerankTrainTaskWithTrainset
 } from '@/web/core/app/api/train';
-import { downloadFetch } from '@/web/common/system/utils';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
 import { cardStyles } from '../constants';
@@ -330,7 +329,7 @@ const AutoLearn = () => {
                           w={'16px'}
                           h={'16px'}
                           color={'#039855'}
-                          mx={8}
+                          mx={2}
                         />
                         <Text color={'myGray.600'}>
                           {metrics.precisionAfter !== undefined
@@ -349,7 +348,7 @@ const AutoLearn = () => {
                           w={'16px'}
                           h={'16px'}
                           color={'#039855'}
-                          mx={8}
+                          mx={2}
                         />
                         <Text color={'myGray.600'}>
                           {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
