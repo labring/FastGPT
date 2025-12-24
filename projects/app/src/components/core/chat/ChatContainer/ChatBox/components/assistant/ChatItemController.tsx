@@ -145,6 +145,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
             mr={3}
             ml={1}
             type={'borderFill'}
+            fontSize={'10px'}
             showDot
             colorSchema="green"
             borderRadius={'22px'}
@@ -187,10 +188,13 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
       }
       if (chat.totalQuoteList && chat.totalQuoteList.length === 0) {
         elements.push(
-          <MyTag key="quote-list" colorSchema="pink" showDot>
-            <Text fontSize="xs" fontWeight={500}>
-              {t('app:logs_filter_not_found_knowledge')}
-            </Text>
+          <MyTag key="quote-list" colorSchema="pink" showDot={false}>
+            <Flex alignItems={'center'}>
+              <MyIcon w={'14px'} name="common/info" mr={1} />
+              <Text fontSize="xs" fontWeight={500}>
+                {t('app:logs_filter_not_found_knowledge')}
+              </Text>
+            </Flex>
           </MyTag>
         );
       }

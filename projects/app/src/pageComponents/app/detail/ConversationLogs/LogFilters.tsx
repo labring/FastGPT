@@ -14,6 +14,7 @@ import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -54,7 +55,7 @@ const FeedbackSelect = ({
       isSelectAll={isSelectAll}
       setIsSelectAll={(value) => setIsSelectAll(value as boolean)}
       h={10}
-      w={'226px'}
+      w={'150px'}
       bg={'white'}
       rounded={'8px'}
       tagStyle={{
@@ -123,7 +124,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
 
   // member
   const [tmbInputValue, setTmbInputValue] = useState('');
-  const { data: members } = useScrollPagination(getTeamMembers, {
+  const { data: members, ScrollData: TmbScrollData } = useScrollPagination(getTeamMembers, {
     params: { searchKey: tmbInputValue },
     disabled: !feConfigs?.isPlus
   });
@@ -132,6 +133,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
       members.map((item) => ({
         label: (
           <HStack spacing={1}>
+            <Avatar src={item.avatar} w={'1.2rem'} rounded={'full'} />
             <Box color={'myGray.900'} className="textEllipsis">
               {item.memberName}
             </Box>
@@ -270,7 +272,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           isSelectAll={isSelectAllSource}
           setIsSelectAll={setIsSelectAllSource}
           h={10}
-          w={'200px'}
+          w={'150px'}
           rounded={'8px'}
           tagStyle={{
             px: 1,
@@ -285,9 +287,38 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
         />
       </Flex>
 
+      {/* 团队成员筛选 */}
+      {feConfigs?.isPlus && (
+        <Flex>
+          <MultipleSelect<string>
+            list={tmbList}
+            value={selectTmbIds}
+            onSelect={(val) => {
+              setSelectTmbIds(val as string[]);
+            }}
+            ScrollData={TmbScrollData}
+            isSelectAll={isSelectAllTmb}
+            setIsSelectAll={setIsSelectAllTmb}
+            h={10}
+            w={'150px'}
+            rounded={'8px'}
+            formLabelFontSize={'sm'}
+            formLabel={t('app:logs_chat_user')}
+            tagStyle={{
+              px: 1,
+              borderRadius: 'sm',
+              bg: 'myGray.100',
+              w: '76px'
+            }}
+            inputValue={tmbInputValue}
+            setInputValue={setTmbInputValue}
+          />
+        </Flex>
+      )}
+
       {/* 搜索 */}
       <Flex
-        flex={'0 1 230px'}
+        flex={'0 1 150px'}
         h={10}
         alignItems={'center'}
         rounded={'8px'}

@@ -84,7 +84,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
         <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
       ),
       [AppLogKeysEnum.FEEDBACK]: (
-        <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:logs_keys_feedback_all')}</Th>
+        <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:logs_keys_feedback')}</Th>
       ),
       [AppLogKeysEnum.OPTIMIZED_COUNT]: (
         <Th key={AppLogKeysEnum.OPTIMIZED_COUNT}>{t('app:logs_keys_optimizedCount')}</Th>
@@ -118,7 +118,13 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
     [AppLogKeysEnum.USER]: (
       <Td key={AppLogKeysEnum.USER}>
         <Box>
-          {!!item.outLinkUid ? item.outLinkUid : <UserBox sourceMember={item.sourceMember} />}
+          {!!item.outLinkUid ? (
+            item.outLinkUid
+          ) : (
+            <Box maxW={'150px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+              {item.sourceMember.name}
+            </Box>
+          )}
         </Box>
       </Td>
     ),
@@ -141,12 +147,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
               borderRadius={'md'}
               fontWeight={'bold'}
             >
-              <MyIcon
-                mr={1}
-                name={'core/chat/feedback/goodLight'}
-                color={'yellow.500'}
-                w={'16px'}
-              />
+              <MyIcon mr={1} name={'core/chat/feedback/goodLight'} w={'16px'} color={'green.500'} />
               {item.userGoodFeedbackCount}
             </Flex>
           )}
@@ -160,7 +161,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
               borderRadius={'md'}
               fontWeight={'bold'}
             >
-              <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'green.500'} w={'16px'} />
+              <MyIcon color={'yellow.500'} mr={1} name={'core/chat/feedback/badLight'} w={'16px'} />
               {item.userBadFeedbackCount}
             </Flex>
           )}

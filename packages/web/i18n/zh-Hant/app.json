@@ -399,7 +399,7 @@
   "smart_customer_service_ai_config": "AI 配置",
   "smart_customer_service_ai_model": "AI 模型",
   "smart_customer_service_deep_thinking": "深度思考",
-  "smart_customer_service_prompt_config": "提示詞配置",
+  "smart_customer_service_prompt_config": "提示詞",
   "smart_customer_service_welcome_text_placeholder": "您好，請問有什麼可以幫您？",
   "logs_keys_feedback_none": "無反饋",
   "logs_keys_feedback_column": "反馈",

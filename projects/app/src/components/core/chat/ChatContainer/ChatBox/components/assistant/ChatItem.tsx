@@ -123,7 +123,7 @@ const SimpleCitationDisplay = React.memo(
             <Box pb={1} borderRadius={'md'} fontSize={'xs'} color={'myGray.500'}>
               {citationList.map((item) => (
                 <Box key={item.id} _notLast={{ mb: 1 }} height={'16px'}>
-                  {item.index}.{item.displayText}
+                  {item.index}.{' ' + item.displayText}
                 </Box>
               ))}
             </Box>

@@ -367,7 +367,7 @@
   "synonym_tab_title": "同義詞",
   "synonym_usage_tip": "使用知識庫時，將自動根據已設定的近義詞、口語化表達、縮寫等，進行更精準的知識匹配。",
   "synonym_confirm_delete": "確認刪除同義詞文件嗎？",
-  "synonym_download_template": "點擊下載 xlsx 模板",
+  "synonym_download_template": "點擊下載模板",
   "synonym_upload_success": "文件上傳成功",
   "synonym_upload_failed": "文件上傳失敗",
   "synonym_fetch_failed": "獲取同義詞文件列表失敗",
