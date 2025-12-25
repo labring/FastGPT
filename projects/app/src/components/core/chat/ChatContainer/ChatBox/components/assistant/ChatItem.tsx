@@ -117,10 +117,17 @@ const SimpleCitationDisplay = React.memo(
             <MyIcon mt={1} name="core/chat/quoteFill" w={'14px'} color={'#C9CBFFCC'} />
           </Box>
           <Box>
-            <Box lineHeight={6} height={6} fontSize={'xs'} color="#333333" fontWeight={500} mb={1}>
+            <Box
+              lineHeight={6}
+              height={6}
+              fontSize={'12px'}
+              color="#333333"
+              fontWeight={500}
+              mb={2}
+            >
               {t('app:chat_item_citation_source')} {citationList.length}
             </Box>
-            <Box pb={1} borderRadius={'md'} fontSize={'xs'} color={'myGray.500'}>
+            <Box pb={1} borderRadius={'md'} fontSize={'11px'} color={'myGray.500'}>
               {citationList.map((item) => (
                 <Box key={item.id} _notLast={{ mb: 1 }} height={'16px'}>
                   {item.index}.{' ' + item.displayText}

@@ -274,17 +274,17 @@ const CorrectionModal = ({
                   bg={correctionMode === CorrectionModeEnum.edit ? 'primary.50' : 'transparent'}
                   _hover={{ borderColor: 'primary.300' }}
                 >
-                  <VStack align="stretch" spacing={2}>
-                    <HStack align="center" spacing={2}>
-                      <Radio value={CorrectionModeEnum.edit} />
+                  <HStack align="start" spacing={2}>
+                    <Radio value={CorrectionModeEnum.edit} mt={1} />
+                    <VStack align="start" spacing={1}>
                       <Text fontWeight="medium" fontSize="14px" color="myGray.900">
                         {t('app:Correction_Edit_Answer')}
                       </Text>
-                    </HStack>
-                    <Text fontSize="12px" color="myGray.500">
-                      {t('app:Correction_Edit_Answer_Desc')}
-                    </Text>
-                  </VStack>
+                      <Text fontSize="12px" color="myGray.500">
+                        {t('app:Correction_Edit_Answer_Desc')}
+                      </Text>
+                    </VStack>
+                  </HStack>
                 </Box>
 
                 <Box
@@ -301,17 +301,17 @@ const CorrectionModal = ({
                   bg={correctionMode === CorrectionModeEnum.annotate ? 'primary.50' : 'transparent'}
                   _hover={{ borderColor: 'primary.300' }}
                 >
-                  <VStack align="stretch" spacing={2}>
-                    <HStack align="center" spacing={2}>
-                      <Radio value={CorrectionModeEnum.annotate} />
+                  <HStack align="start" spacing={2}>
+                    <Radio value={CorrectionModeEnum.annotate} mt={1} />
+                    <VStack align="start" spacing={1}>
                       <Text fontWeight="medium" fontSize="14px" color="myGray.900">
                         {t('app:Correction_Annotate_Knowledge')}
                       </Text>
-                    </HStack>
-                    <Text fontSize="12px" color="myGray.500">
-                      {t('app:Correction_Annotate_Knowledge_Desc')}
-                    </Text>
-                  </VStack>
+                      <Text fontSize="12px" color="myGray.500">
+                        {t('app:Correction_Annotate_Knowledge_Desc')}
+                      </Text>
+                    </VStack>
+                  </HStack>
                 </Box>
               </SimpleGrid>
             </ChakraRadioGroup>

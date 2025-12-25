@@ -14,6 +14,7 @@ const FolderPath = (props: {
   fontSize?: string;
   hoverStyle?: BoxProps;
   forbidLastClick?: boolean;
+  isSxfDesign?: boolean;
 }) => {
   const { t } = useTranslation();
   const {
@@ -23,7 +24,8 @@ const FolderPath = (props: {
     onClick,
     fontSize,
     hoverStyle,
-    forbidLastClick = false
+    forbidLastClick = false,
+    isSxfDesign = false
   } = props;
 
   const concatPaths = useMemo(
@@ -121,7 +123,7 @@ const FolderPath = (props: {
         {...(isLast && concatPaths.length > 1
           ? {
               color: 'myGray.700',
-              fontWeight: 'bold'
+              ...(isSxfDesign ? {} : { fontWeight: 'bold' })
             }
           : {
               fontWeight: 'medium',

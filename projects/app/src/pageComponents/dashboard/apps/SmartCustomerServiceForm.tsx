@@ -63,7 +63,7 @@ const SmartCustomerServiceForm = ({ value, onChange }: SmartCustomerServiceFormP
       {/* 知识库选择 */}
       <Box mt={6}>
         <Flex alignItems={'center'} mb={3}>
-          <FormLabel>{t('common:core.dataset.Dataset')}</FormLabel>
+          <FormLabel>{t('选择知识库')}</FormLabel>
         </Flex>
 
         <MyBox isLoading={isFetching} h="353px">
@@ -97,7 +97,7 @@ const SmartCustomerServiceForm = ({ value, onChange }: SmartCustomerServiceFormP
           />
         </Box>
         <Text mt={2} fontSize={'xs'} color={'myGray.500'}>
-          {t('app:smart_customer_service_rerank_model_warning')}
+          {t('app:rerank_model_training_warning')}
         </Text>
       </Box>
     </>

@@ -152,7 +152,7 @@ export const DatasetSelect = ({
         {/* Search box */}
         <Box mb={2} px={4}>
           <SearchInput
-            placeholder={t('app:Search_dataset')}
+            placeholder={t('app:search_placeholder')}
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value?.trim())}
             size="md"
@@ -170,21 +170,20 @@ export const DatasetSelect = ({
               fontSize="sm"
               color="myGray.500"
             >
-              {t('chat:search_results')}
+              {t('app:chat_search_results')}
             </Box>
           )}
           {!searchKey && paths.length === 0 && (
             // Root directory path
             <Flex flex={1} alignItems="center">
               <Box
-                fontSize={['xs', 'sm']}
+                fontSize={'12px'}
                 py={0.5}
                 px={1.5}
                 borderRadius="sm"
                 maxW={['45vw', '250px']}
                 className="textEllipsis"
-                color="myGray.700"
-                fontWeight="bold"
+                color="myGray.500"
                 cursor="pointer"
                 _hover={{ bg: 'myGray.100' }}
                 onClick={() => setParentId('')}
@@ -201,6 +200,7 @@ export const DatasetSelect = ({
                 parentId: path.parentId,
                 parentName: path.parentName
               }))}
+              isSxfDesign={true}
               FirstPathDom={t('common:root_folder')}
               onClick={(e) => setParentId(e)}
             />

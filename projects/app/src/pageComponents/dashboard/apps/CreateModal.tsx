@@ -39,6 +39,7 @@ import { appTypeMap } from '@/pageComponents/app/constants';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 import SmartCustomerServiceForm from './SmartCustomerServiceForm';
 import type { SmartCustomerServiceFormType } from './SmartCustomerServiceForm';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 type FormType = {
   avatar: string;
@@ -193,35 +194,6 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     }
   );
 
-  // 统一的应用名称和头像组件
-  const renderAppNameAndAvatar = () => (
-    <>
-      <Box color={'myGray.800'}>{t('common:input_name')}</Box>
-      <Flex mt={2} alignItems={'center'}>
-        <MyTooltip label={t('common:set_avatar')}>
-          <Avatar
-            flexShrink={0}
-            src={avatar}
-            w={['28px', '36px']}
-            h={['28px', '36px']}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            onClick={onOpenSelectFile}
-          />
-        </MyTooltip>
-        <Input
-          flex={1}
-          ml={3}
-          autoFocus
-          bg={'myWhite.600'}
-          {...register('name', {
-            required: t('common:core.app.error.App name can not be empty')
-          })}
-        />
-      </Flex>
-    </>
-  );
-
   // 统一的底部按钮组件
   const renderFooterButtons = () => (
     <ModalFooter gap={4}>
@@ -252,12 +224,32 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
       isLoading={isCreating || isRequestTemplates}
     >
       <ModalBody>
-        {/* 统一的应用名称和头像 */}
-        {renderAppNameAndAvatar()}
-
         {/* 智能客服类型显示特殊表单 */}
         {type === AppTypeEnum.assistant ? (
           <>
+            <FormLabel color={'myGray.900'}>{t('common:core.app.Name and avatar')}</FormLabel>
+            <Flex mt={2} alignItems={'center'}>
+              <MyTooltip label={t('common:set_avatar')}>
+                <Avatar
+                  flexShrink={0}
+                  src={avatar}
+                  w={['28px', '36px']}
+                  h={['28px', '36px']}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={onOpenSelectFile}
+                />
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                autoFocus
+                bg={'myWhite.600'}
+                {...register('name', {
+                  required: t('common:core.app.error.App name can not be empty')
+                })}
+              />
+            </Flex>
             <SmartCustomerServiceForm
               value={smartCustomerService!}
               onChange={(data) => setValue('smartCustomerService', data)}
@@ -265,6 +257,29 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
           </>
         ) : (
           <>
+            <Box color={'myGray.800'}>{t('common:input_name')}</Box>
+            <Flex mt={2} alignItems={'center'}>
+              <MyTooltip label={t('common:set_avatar')}>
+                <Avatar
+                  flexShrink={0}
+                  src={avatar}
+                  w={['28px', '36px']}
+                  h={['28px', '36px']}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={onOpenSelectFile}
+                />
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                autoFocus
+                bg={'myWhite.600'}
+                {...register('name', {
+                  required: t('common:core.app.error.App name can not be empty')
+                })}
+              />
+            </Flex>
             <Flex mt={[4, 7]} mb={3}>
               {type === AppTypeEnum.plugin ? (
                 <FillRowTabs
