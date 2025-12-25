@@ -37,3 +37,51 @@ export type SearchResult = {
   orgs: Omit<OrgType, 'permission' | 'members'>[];
   groups: MemberGroupSchemaType[];
 };
+
+export type PostAdminGenerateTokenProps = {
+  username?: string;
+  teamId?: string;
+  tmbId?: string;
+};
+
+export type AdminGenerateTokenResponse = {
+  token: string;
+  userId: string;
+  username: string;
+  teamId: string;
+  tmbId: string;
+  teamName: string;
+  teamAvatar?: string;
+  memberName: string;
+  avatar: string;
+  role: string;
+  status: `${TeamMemberStatusEnum}`;
+  permission: {
+    hasManagePer: boolean;
+    hasWritePer: boolean;
+    isOwner: boolean;
+    hasAppCreatePer: boolean;
+    hasDatasetCreatePer: boolean;
+    hasApikeyCreatePer: boolean;
+  };
+  balance?: number;
+};
+
+export type AdminUserTeamsResponse = {
+  userId: string;
+  username: string;
+  teams: {
+    tmbId: string;
+    teamId: string;
+    teamName: string;
+    teamAvatar: string;
+    memberName: string;
+    memberAvatar: string;
+    role: string;
+    status: `${TeamMemberStatusEnum}`;
+    createTime: Date;
+    balance: number;
+  }[];
+  totalCount: number;
+  activeCount: number;
+};
