@@ -203,7 +203,6 @@ const FlowController = React.memo(function FlowController() {
             </ControlButton>
           </MyTooltip>
         </Panel>
-        <Background />
       </>
     );
   }, [

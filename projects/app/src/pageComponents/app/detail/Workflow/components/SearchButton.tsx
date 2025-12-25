@@ -112,7 +112,7 @@ const SearchButton = (props: ButtonProps) => {
 
   if (keyword === undefined) {
     return (
-      <Box position={'absolute'} top={'72px'} left={6} zIndex={1}>
+      <Box position={'absolute'} top={32} left={6} zIndex={1}>
         <MyTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
           <IconButton
             icon={<MyIcon name="common/searchLight" w="20px" color={'#8A95A7'} />}
@@ -134,7 +134,7 @@ const SearchButton = (props: ButtonProps) => {
   return (
     <Flex
       position="absolute"
-      top={3}
+      top={20}
       left="50%"
       transform="translateX(-50%)"
       pl={5}

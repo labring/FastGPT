@@ -1,9 +1,9 @@
 import dynamic from 'next/dynamic';
-import ButtonEdge from './components/ButtonEdge';
+import ButtonEdge, { CustomConnectionLine } from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 import 'reactflow/dist/style.css';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
+import { defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
@@ -114,7 +114,7 @@ const Workflow = () => {
         <>
           <IconButton
             position={'absolute'}
-            top={6}
+            top={20}
             left={6}
             size={'mdSquare'}
             borderRadius={'50%'}
@@ -143,7 +143,7 @@ const Workflow = () => {
           maxZoom={maxZoom}
           defaultEdgeOptions={defaultEdgeOptions}
           elevateEdgesOnSelect
-          connectionLineStyle={connectionLineStyle}
+          connectionLineComponent={CustomConnectionLine}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionRadius={50}
@@ -158,6 +158,7 @@ const Workflow = () => {
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           snapToGrid
+          style={{ background: '#F8F8F8' }}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,

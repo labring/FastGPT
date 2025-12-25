@@ -1,5 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { BezierEdge, getBezierPath, EdgeLabelRenderer, type EdgeProps } from 'reactflow';
+import {
+  SmoothStepEdge,
+  getSmoothStepPath,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  type ConnectionLineComponentProps
+} from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
@@ -11,6 +17,31 @@ import {
 } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+
+export const CustomConnectionLine = ({
+  fromX,
+  fromY,
+  fromPosition,
+  toX,
+  toY,
+  toPosition
+}: ConnectionLineComponentProps) => {
+  const [path] = getSmoothStepPath({
+    sourceX: fromX,
+    sourceY: fromY,
+    sourcePosition: fromPosition,
+    targetX: toX,
+    targetY: toY,
+    targetPosition: toPosition,
+    borderRadius: 30
+  });
+
+  return (
+    <g>
+      <path d={path} fill="none" stroke="#487FFF" strokeWidth={3} />
+    </g>
+  );
+};
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
@@ -81,13 +112,14 @@ const ButtonEdge = (props: EdgeProps) => {
     }
   );
 
-  const [, labelX, labelY] = getBezierPath({
+  const [, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
-    targetPosition
+    targetPosition,
+    borderRadius: 20
   });
 
   const isToolEdge = sourceHandleId === NodeOutputKeyEnum.selectedTools;
@@ -221,10 +253,13 @@ const ButtonEdge = (props: EdgeProps) => {
     })();
 
     return (
-      <BezierEdge
+      <SmoothStepEdge
         {...props}
         targetX={newTargetX}
         targetY={newTargetY}
+        pathOptions={{
+          borderRadius: 30
+        }}
         style={{
           ...edgeStyle,
           stroke: edgeColor,
