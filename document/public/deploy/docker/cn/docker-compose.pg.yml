@@ -49,7 +49,7 @@ services:
 
 
   mongo:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # cpu 不支持 AVX 时候使用 4.4.29
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
     restart: always
     networks:
