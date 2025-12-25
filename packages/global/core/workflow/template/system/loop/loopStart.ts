@@ -11,7 +11,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
-import { NodeGradients } from '../../../node/gradient';
 
 export const LoopStartNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopStart,
@@ -21,7 +20,7 @@ export const LoopStartNode: FlowNodeTemplateType = {
   showTargetHandle: false,
   avatar: 'core/workflow/systemNode/loopStart',
   avatarLinear: 'core/workflow/systemNode/loopStartLinear',
-  gradient: NodeGradients.violetDeep,
+  colorSchema: 'violetDeep',
   name: i18nT('workflow:loop_start'),
   unique: true,
   forbidDelete: true,

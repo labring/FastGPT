@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Background,
   ControlButton,
   MiniMap,
   type MiniMapNodeProps,
   Panel,
-  useReactFlow,
-  useViewport
+  useReactFlow
 } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
@@ -15,7 +14,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
-import { maxZoom, minZoom } from '../../constants';
 import { useKeyPress } from 'ahooks';
 import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
@@ -28,13 +26,15 @@ const buttonStyle = {
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const { zoom } = useViewport();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
   const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const { workflowControlMode, setWorkflowControlMode, mouseInCanvas } = useContextSelector(
-    WorkflowUIContext,
-    (v) => v
-  );
+  const {
+    workflowControlMode,
+    setWorkflowControlMode,
+    mouseInCanvas,
+    presentationMode,
+    setPresentationMode
+  } = useContextSelector(WorkflowUIContext, (v) => v);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
@@ -166,27 +166,23 @@ const FlowController = React.memo(function FlowController() {
 
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
-          {/* zoom out */}
-          <MyTooltip label={isMac ? t('common:zoomin_tip_mac') : t('common:zoomin_tip')}>
+          {/* presentation */}
+          <MyTooltip label={presentationMode ? '编辑模式' : '演示模式'}>
             <ControlButton
-              onClick={() => zoomOut()}
-              style={buttonStyle}
+              onClick={() => {
+                setPresentationMode(!presentationMode);
+              }}
+              style={{
+                ...buttonStyle,
+                backgroundColor: presentationMode ? '#EBF2FF' : 'transparent'
+              }}
               className={`${styles.customControlButton}`}
-              disabled={zoom <= minZoom}
             >
-              <MyIcon name={'common/subtract'} />
-            </ControlButton>
-          </MyTooltip>
-
-          {/* zoom in */}
-          <MyTooltip label={isMac ? t('common:zoomout_tip_mac') : t('common:zoomout_tip')}>
-            <ControlButton
-              onClick={() => zoomIn()}
-              style={buttonStyle}
-              className={`${styles.customControlButton}`}
-              disabled={zoom >= maxZoom}
-            >
-              <MyIcon name={'common/addLight'} />
+              <MyIcon
+                name={'core/workflow/presentation'}
+                fill="none"
+                color={presentationMode ? '#487FFF' : undefined}
+              />
             </ControlButton>
           </MyTooltip>
 
@@ -203,6 +199,7 @@ const FlowController = React.memo(function FlowController() {
             </ControlButton>
           </MyTooltip>
         </Panel>
+        <Background color="#A4A4A4" gap={60} size={3} />
       </>
     );
   }, [
@@ -214,10 +211,8 @@ const FlowController = React.memo(function FlowController() {
     canUndo,
     redo,
     canRedo,
-    zoom,
     setWorkflowControlMode,
-    zoomOut,
-    zoomIn,
+    presentationMode,
     fitView
   ]);
 

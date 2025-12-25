@@ -45,6 +45,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           alignItems: 'center',
           justifyContent: 'center',
           top: '-10px',
+          zIndex: 15,
           ...(showHandle ? {} : { visibility: 'hidden' })
         }}
         type="target"
@@ -109,7 +110,8 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bottom: '-10px'
+            bottom: '-10px',
+            zIndex: 15
           }}
           type="source"
           id={NodeOutputKeyEnum.selectedTools}

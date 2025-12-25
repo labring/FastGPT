@@ -11,7 +11,6 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
-import { NodeGradients } from '../../../node/gradient';
 
 export const FormInputNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.formInput,
@@ -21,7 +20,7 @@ export const FormInputNode: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/formInput',
   avatarLinear: 'core/workflow/systemNode/formInputLinear',
-  gradient: NodeGradients.violetDeep,
+  colorSchema: 'violetDeep',
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,

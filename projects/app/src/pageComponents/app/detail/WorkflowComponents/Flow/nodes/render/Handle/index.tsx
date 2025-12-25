@@ -27,7 +27,8 @@ const handleConnectedStyle = {
   borderWidth: '3px',
   borderColor: '#94B5FF',
   width: handleSizeConnected,
-  height: handleSizeConnected
+  height: handleSizeConnected,
+  zIndex: 15
 };
 
 const handleHighLightStyle = {
@@ -38,7 +39,8 @@ const handleHighLightStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   width: handleSizeConnecting,
-  height: handleSizeConnecting
+  height: handleSizeConnecting,
+  zIndex: 15
 };
 
 type Props = {
@@ -195,7 +197,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
       };
     }
     return {
-      visibility: 'hidden' as const
+      visibility: 'hidden' as const,
+      zIndex: 15
     };
   }, [connected, connectingEdge, showHandle, translateStr]);
 

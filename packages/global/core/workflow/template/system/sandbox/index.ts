@@ -14,7 +14,6 @@ import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
 import { JS_TEMPLATE } from './constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
-import { NodeGradients } from '../../../node/gradient';
 
 export const CodeNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.code,
@@ -24,7 +23,7 @@ export const CodeNode: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/codeRun',
   avatarLinear: 'core/workflow/systemNode/codeRunLinear',
-  gradient: NodeGradients.lime,
+  colorSchema: 'lime',
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,

@@ -14,7 +14,6 @@ import {
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { NodeGradients } from '../../node/gradient';
 
 export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
@@ -24,7 +23,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/httpRequest',
   avatarLinear: 'core/workflow/systemNode/httpRequestLinear',
-  gradient: NodeGradients.indigo,
+  colorSchema: 'indigo',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,

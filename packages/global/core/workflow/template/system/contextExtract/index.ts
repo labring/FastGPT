@@ -14,7 +14,6 @@ import { Input_Template_SelectAIModel, Input_Template_History } from '../../inpu
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
-import { NodeGradients } from '../../../node/gradient';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
@@ -24,7 +23,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/extractJson',
   avatarLinear: 'core/workflow/systemNode/extractJsonLinear',
-  gradient: NodeGradients.teal,
+  colorSchema: 'teal',
   name: i18nT('workflow:text_content_extraction'),
   intro: i18nT('workflow:intro_text_content_extraction'),
   showStatus: true,

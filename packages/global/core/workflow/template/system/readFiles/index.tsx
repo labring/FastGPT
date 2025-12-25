@@ -12,7 +12,6 @@ import {
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
 import { Output_Template_Error_Message } from '../../output';
-import { NodeGradients } from '../../../node/gradient';
 
 export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
@@ -22,7 +21,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/readFiles',
   avatarLinear: 'core/workflow/systemNode/readFilesLinear',
-  gradient: NodeGradients.green,
+  colorSchema: 'green',
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,

@@ -6,7 +6,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
-import { NodeGradients } from '../../../node/gradient';
+import { NodeGradients } from '../../../node/constant';
 
 export const VariableUpdateNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.variableUpdate,
@@ -16,7 +16,7 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/variableUpdate',
   avatarLinear: 'core/workflow/systemNode/variableUpdateLinear',
-  gradient: NodeGradients.coral,
+  colorSchema: 'coral',
   name: i18nT('workflow:variable_update'),
   intro: i18nT('workflow:update_specified_node_output_or_global_variable'),
   showStatus: false,

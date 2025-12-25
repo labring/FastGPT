@@ -311,6 +311,7 @@ export const iconPaths = {
   'core/workflow/inputType/timeRangeSelect': () =>
     import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
+  'core/workflow/presentation': () => import('./icons/core/workflow/presentation.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
   'core/workflow/revertVersion': () => import('./icons/core/workflow/revertVersion.svg'),

@@ -6,7 +6,6 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { NodeGradients } from '../../node/gradient';
 
 export const AssignedAnswerModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.answerNode,
@@ -16,7 +15,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/reply',
   avatarLinear: 'core/workflow/systemNode/replyLinear',
-  gradient: NodeGradients.blue,
+  colorSchema: 'blue',
   name: i18nT('workflow:assigned_reply'),
   intro: i18nT('workflow:intro_assigned_reply'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/reply/',

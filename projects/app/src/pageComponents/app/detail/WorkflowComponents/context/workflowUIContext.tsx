@@ -30,6 +30,12 @@ type WorkflowUIContextValue = {
   /** 设置工作流控制模式 */
   setWorkflowControlMode: (value: 'drag' | 'select') => void;
 
+  /** 演示模式 */
+  presentationMode: boolean;
+
+  /** 设置演示模式 */
+  setPresentationMode: React.Dispatch<React.SetStateAction<boolean>>;
+
   /** 右键菜单 */
   menu: { top: number; left: number } | null;
 
@@ -47,6 +53,10 @@ export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
   reactFlowWrapper: { current: null },
   workflowControlMode: 'drag',
   setWorkflowControlMode: function (value: 'drag' | 'select'): void {
+    throw new Error('Function not implemented.');
+  },
+  presentationMode: false,
+  setPresentationMode: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   menu: null,
@@ -86,6 +96,8 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       listenStorageChange: true
     }
   );
+  // 演示模式
+  const [presentationMode, setPresentationMode] = useState(false);
   // 右键菜单
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
 
@@ -100,10 +112,20 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       reactFlowWrapper,
       workflowControlMode,
       setWorkflowControlMode,
+      presentationMode,
+      setPresentationMode,
       menu,
       setMenu
     };
-  }, [hoverNodeId, hoverEdgeId, mouseInCanvas, workflowControlMode, setWorkflowControlMode, menu]);
+  }, [
+    hoverNodeId,
+    hoverEdgeId,
+    mouseInCanvas,
+    workflowControlMode,
+    setWorkflowControlMode,
+    presentationMode,
+    menu
+  ]);
 
   return <WorkflowUIContext.Provider value={contextValue}>{children}</WorkflowUIContext.Provider>;
 };

@@ -11,7 +11,10 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   AppNodeFlowNodeTypeMap,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  getGradientByColorSchema,
+  getBorderColorByColorSchema,
+  type NodeColorSchema
 } from '@fastgpt/global/core/workflow/node/constant';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
@@ -66,6 +69,7 @@ type Props = FlowNodeItemType & {
   };
   customStyle?: FlexProps;
   rtDoms?: React.ReactNode[];
+  colorSchema?: NodeColorSchema;
 };
 
 const NodeCard = (props: Props) => {
@@ -73,6 +77,7 @@ const NodeCard = (props: Props) => {
   const {
     children,
     avatar = LOGO_ICON,
+    avatarLinear,
     name = t('common:core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
@@ -91,7 +96,7 @@ const NodeCard = (props: Props) => {
     customStyle,
     inputs,
     rtDoms,
-    gradient
+    colorSchema
   } = props;
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
@@ -101,6 +106,7 @@ const NodeCard = (props: Props) => {
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
+  const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
 
   const inputConfig = useMemo(
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
@@ -108,6 +114,23 @@ const NodeCard = (props: Props) => {
   );
 
   const showToolHandle = isTool && hasToolNode;
+
+  // Compute gradient background from colorSchema
+  const gradient = useMemo(() => {
+    return colorSchema ? getGradientByColorSchema(colorSchema) : undefined;
+  }, [colorSchema]);
+
+  // Compute border color for presentation mode
+  const presentationBorderColor = useMemo(() => {
+    if (!presentationMode || !colorSchema) return undefined;
+    // In presentation mode, use darker/more opaque border when selected
+    if (selected) {
+      const baseColor = getBorderColorByColorSchema(colorSchema);
+      // Increase opacity from 0.6 to 0.9 for selected nodes
+      return baseColor.replace('0.6)', '0.9)');
+    }
+    return getBorderColorByColorSchema(colorSchema);
+  }, [presentationMode, colorSchema, selected]);
 
   // Current node and parent node
   const { node, hidden } = useMemo(() => {
@@ -118,6 +141,7 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
+  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
   const showVersion = useMemo(() => {
     // 1. MCP tool & HTTP tool set do not have version
     if (
@@ -181,16 +205,19 @@ const NodeCard = (props: Props) => {
       maxW={maxW}
       minH={minH}
       bg={'white'}
-      outline={selected ? '2px solid' : '1px solid'}
-      borderRadius={'lg'}
-      boxShadow={
-        '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+      outline={
+        presentationMode && selected
+          ? '3px solid'
+          : isError || presentationBorderColor
+            ? '2px solid'
+            : '1px solid'
       }
+      borderRadius={'lg'}
+      boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
       w={w}
       h={h}
       _hover={{
-        boxShadow:
-          '0px 12px 16px -4px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
+        boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
         '& .controller-menu': {
           display: 'flex'
         },
@@ -208,9 +235,13 @@ const NodeCard = (props: Props) => {
             outlineColor: 'red.500',
             onMouseDownCapture: () => onUpdateNodeError(nodeId, false)
           }
-        : {
-            outlineColor: selected ? 'primary.600' : 'myGray.250'
-          })}
+        : presentationBorderColor
+          ? {
+              outlineColor: presentationBorderColor
+            }
+          : {
+              outlineColor: selected ? 'primary.600' : 'myGray.250'
+            })}
       {...customStyle}
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
@@ -225,7 +256,7 @@ const NodeCard = (props: Props) => {
             height={'60px'}
             background={gradient}
             borderRadius={'lg'}
-            zIndex={0}
+            zIndex={presentationMode ? 20 : 0}
             pointerEvents={'none'}
           />
         )}
@@ -290,6 +321,108 @@ const NodeCard = (props: Props) => {
       <ConnectionSourceHandle nodeId={nodeId} />
       <ConnectionTargetHandle nodeId={nodeId} />
       {RenderToolHandle}
+
+      {/* Presentation Mode Overlay */}
+      {presentationMode && (
+        <Flex
+          position={'absolute'}
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg={'rgba(255, 255, 255, 0.80)'}
+          backdropFilter={'blur(10px)'}
+          alignItems={isLoopNode ? 'flex-start' : 'center'}
+          justifyContent={isLoopNode ? 'flex-start' : 'center'}
+          flexDirection={'column'}
+          zIndex={10}
+          borderRadius={'lg'}
+          px={isLoopNode ? 4 : 3}
+          py={isLoopNode ? 4 : 0}
+        >
+          {isLoopNode ? (
+            <Flex flexDirection={'column'} ml={4} mt={4}>
+              <MyIcon
+                name={avatarLinear || (avatar as any)}
+                fill={'none'}
+                w={'100px'}
+                h={'100px'}
+              />
+              {/* Node Name */}
+              {name && (
+                <Box
+                  color={'#000'}
+                  fontSize={'24px'}
+                  fontWeight={'medium'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  mt={2}
+                >
+                  {t(name as any)}
+                </Box>
+              )}
+
+              {/* Node Intro */}
+              {intro && (
+                <Box
+                  color={'#000'}
+                  fontSize={'16px'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  mt={1}
+                >
+                  {t(intro as any)}
+                </Box>
+              )}
+            </Flex>
+          ) : (
+            <>
+              {/* Regular node: Centered layout */}
+              <MyIcon
+                name={avatarLinear || (avatar as any)}
+                fill={'none'}
+                w={'100px'}
+                h={'100px'}
+              />
+
+              {/* Node Name */}
+              {name && (
+                <Box
+                  mt={2}
+                  color={'#000'}
+                  fontSize={'24px'}
+                  fontWeight={'medium'}
+                  textAlign={'center'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  maxW={'80%'}
+                >
+                  {t(name as any)}
+                </Box>
+              )}
+
+              {/* Node Intro */}
+              {intro && (
+                <Box
+                  mt={1}
+                  color={'#000'}
+                  fontSize={'16px'}
+                  textAlign={'center'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  maxW={'80%'}
+                >
+                  {t(intro as any)}
+                </Box>
+              )}
+            </>
+          )}
+        </Flex>
+      )}
     </Flex>
   );
 };

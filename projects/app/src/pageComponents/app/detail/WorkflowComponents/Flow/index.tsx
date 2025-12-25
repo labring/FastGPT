@@ -72,7 +72,7 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
+  const { reactFlowWrapper, workflowControlMode, menu, presentationMode } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -158,7 +158,7 @@ const Workflow = () => {
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           snapToGrid
-          style={{ background: '#F8F8F8' }}
+          style={{ background: '#F7F8FA' }}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,

@@ -11,7 +11,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
-import { NodeGradients } from '../../../node/gradient';
 import {
   Input_Template_Children_Node_List,
   Input_Template_LOOP_NODE_OFFSET,
@@ -27,7 +26,7 @@ export const LoopNode: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/loop',
   avatarLinear: 'core/workflow/systemNode/loopLinear',
-  gradient: NodeGradients.violetDeep,
+  colorSchema: 'violetDeep',
   name: i18nT('workflow:loop'),
   intro: i18nT('workflow:intro_loop'),
   showStatus: true,

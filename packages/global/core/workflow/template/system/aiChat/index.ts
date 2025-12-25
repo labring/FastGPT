@@ -21,7 +21,6 @@ import {
 } from '../../input';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
-import { NodeGradients } from '../../../node/gradient';
 
 export const AiChatQuoteRole = {
   key: NodeInputKeyEnum.aiChatQuoteRole,
@@ -51,7 +50,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   showTargetHandle: true,
   avatar: 'core/workflow/systemNode/aiChat',
   avatarLinear: 'core/workflow/systemNode/aiChatLinear',
-  gradient: NodeGradients.blueDark,
+  colorSchema: 'blueDark',
   name: i18nT('workflow:template.ai_chat'),
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
