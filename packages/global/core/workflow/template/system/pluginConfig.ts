@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node.d';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { NodeGradients } from '../../node/gradient';
 
 export const PluginConfigNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginConfig,
@@ -9,7 +10,9 @@ export const PluginConfigNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.pluginConfig,
   showSourceHandle: false,
   showTargetHandle: false,
-  avatar: 'core/workflow/template/systemConfig',
+  avatar: 'core/workflow/systemNode/systemConfig',
+  avatarLinear: 'core/workflow/systemNode/systemConfigLinear',
+  gradient: NodeGradients.violet,
   name: i18nT('workflow:template.system_config'),
   intro: '',
   unique: true,

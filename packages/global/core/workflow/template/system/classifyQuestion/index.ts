@@ -18,6 +18,7 @@ import {
 import { Input_Template_System_Prompt } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { NodeGradients } from '../../../node/gradient';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
@@ -25,7 +26,9 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.classifyQuestion,
   showSourceHandle: false,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/questionClassify',
+  avatar: 'core/workflow/systemNode/questionClassify',
+  avatarLinear: 'core/workflow/systemNode/questionClassifyLinear',
+  gradient: NodeGradients.purple,
   name: i18nT('workflow:question_classification'),
   intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,

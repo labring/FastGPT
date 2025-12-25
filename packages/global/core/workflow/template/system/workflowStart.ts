@@ -8,6 +8,7 @@ import {
 import { Input_Template_UserChatInput } from '../input';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { type FlowNodeOutputItemType } from '../../type/io';
+import { NodeGradients } from '../../node/gradient';
 
 export const userFilesInput: FlowNodeOutputItemType = {
   id: NodeOutputKeyEnum.userFiles,
@@ -24,7 +25,9 @@ export const WorkflowStart: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.workflowStart,
   showSourceHandle: true,
   showTargetHandle: false,
-  avatar: 'core/workflow/template/workflowStart',
+  avatar: 'core/workflow/systemNode/workflowStart',
+  avatarLinear: 'core/workflow/systemNode/workflowStartLinear',
+  gradient: NodeGradients.blue,
   name: i18nT('workflow:template.workflow_start'),
   intro: '',
   forbidDelete: true,

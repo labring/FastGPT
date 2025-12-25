@@ -11,6 +11,7 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node.d';
+import { NodeGradients } from '../../../node/gradient';
 
 export const UserSelectNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.userSelect,
@@ -18,7 +19,9 @@ export const UserSelectNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.userSelect,
   showSourceHandle: false,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/userSelect',
+  avatar: 'core/workflow/systemNode/userSelect',
+  avatarLinear: 'core/workflow/systemNode/userSelectLinear',
+  gradient: NodeGradients.green,
   diagram: '/imgs/app/userSelect.svg',
   name: i18nT('app:workflow.user_select'),
   intro: i18nT(`app:workflow.user_select_tip`),

@@ -11,6 +11,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { NodeGradients } from '../../node/gradient';
 
 export const TextEditorNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.textEditor,
@@ -18,7 +19,9 @@ export const TextEditorNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.textEditor,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/textConcat',
+  avatar: 'core/workflow/systemNode/textConcat',
+  avatarLinear: 'core/workflow/systemNode/textConcatLinear',
+  gradient: NodeGradients.orange,
   name: i18nT('workflow:text_concatenation'),
   intro: i18nT('workflow:intro_text_concatenation'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/text_editor/',

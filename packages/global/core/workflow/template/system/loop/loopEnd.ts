@@ -6,6 +6,7 @@ import {
 } from '../../../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
+import { NodeGradients } from '../../../node/gradient';
 
 export const LoopEndNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopEnd,
@@ -13,9 +14,9 @@ export const LoopEndNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.loopEnd,
   showSourceHandle: false,
   showTargetHandle: true,
-  unique: true,
-  forbidDelete: true,
-  avatar: 'core/workflow/template/loopEnd',
+  avatar: 'core/workflow/systemNode/loopEnd',
+  avatarLinear: 'core/workflow/systemNode/loopEndLinear',
+  gradient: NodeGradients.violetDeep,
   name: i18nT('workflow:loop_end'),
   showStatus: false,
   inputs: [

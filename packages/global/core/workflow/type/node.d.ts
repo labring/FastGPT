@@ -66,6 +66,8 @@ export type FlowNodeCommonType = {
   abandon?: boolean; // abandon node
 
   avatar?: string;
+  avatarLinear?: string; // Linear icon for gradient masks
+  gradient?: string; // Node top gradient background
   name: string;
   intro?: string; // template list intro
   toolDescription?: string;

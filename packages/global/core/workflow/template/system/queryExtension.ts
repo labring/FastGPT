@@ -16,6 +16,7 @@ import {
   Input_Template_SelectAIModel
 } from '../input';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { NodeGradients } from '../../node/gradient';
 
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
@@ -23,7 +24,9 @@ export const AiQueryExtension: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.queryExtension,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/queryExtension',
+  avatar: 'core/workflow/systemNode/queryExtension',
+  avatarLinear: 'core/workflow/systemNode/queryExtensionLinear',
+  gradient: NodeGradients.indigo,
   name: i18nT('workflow:question_optimization'),
   intro: i18nT('workflow:intro_question_optimization'),
   showStatus: true,

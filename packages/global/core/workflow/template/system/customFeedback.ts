@@ -6,6 +6,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { NodeGradients } from '../../node/gradient';
 
 export const CustomFeedbackNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.customFeedback,
@@ -13,7 +14,9 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.customFeedback,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/customFeedback',
+  avatar: 'core/workflow/systemNode/customFeedback',
+  avatarLinear: 'core/workflow/systemNode/customFeedbackLinear',
+  gradient: NodeGradients.yellowGreen,
   name: i18nT('workflow:custom_feedback'),
   intro: i18nT('workflow:intro_custom_feedback'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/custom_feedback/',

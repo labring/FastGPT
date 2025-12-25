@@ -14,6 +14,7 @@ import {
 import { getNanoid } from '../../../../common/string/tools';
 import { type FlowNodeInputItemType } from '../../type/io.d';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { NodeGradients } from '../../node/gradient';
 
 export const getOneQuoteInputTemplate = ({
   key = getNanoid(),
@@ -36,7 +37,9 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.other,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/datasetConcat',
+  avatar: 'core/workflow/systemNode/datasetConcat',
+  avatarLinear: 'core/workflow/systemNode/datasetConcatLinear',
+  gradient: NodeGradients.blue,
   name: i18nT('workflow:knowledge_base_search_merge'),
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),
 

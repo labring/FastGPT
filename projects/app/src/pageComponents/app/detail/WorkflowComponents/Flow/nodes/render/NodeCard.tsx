@@ -90,7 +90,8 @@ const NodeCard = (props: Props) => {
     isFolded,
     customStyle,
     inputs,
-    rtDoms
+    rtDoms,
+    gradient
   } = props;
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
@@ -215,8 +216,21 @@ const NodeCard = (props: Props) => {
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
       {/* Header */}
       <Box position={'relative'}>
+        {gradient && (
+          <Box
+            position={'absolute'}
+            top={0}
+            left={0}
+            right={0}
+            height={'60px'}
+            background={gradient}
+            borderRadius={'lg'}
+            zIndex={0}
+            pointerEvents={'none'}
+          />
+        )}
         {showHeader && (
-          <Box px={3} pt={4}>
+          <Box px={3} pt={4} position={'relative'} zIndex={1}>
             <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
             <Flex alignItems={'center'} mb={1}>

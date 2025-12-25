@@ -11,6 +11,7 @@ import {
   FlowNodeTypeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
+import { NodeGradients } from '../../../node/gradient';
 
 export const IfElseNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.ifElseNode,
@@ -18,7 +19,9 @@ export const IfElseNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.ifElseNode,
   showSourceHandle: false,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/ifelse',
+  avatar: 'core/workflow/systemNode/ifelse',
+  avatarLinear: 'core/workflow/systemNode/ifelseLinear',
+  gradient: NodeGradients.greenLight,
   name: i18nT('workflow:condition_checker'),
   intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
   showStatus: true,

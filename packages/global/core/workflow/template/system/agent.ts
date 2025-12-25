@@ -21,6 +21,7 @@ import { LLMModelTypeEnum } from '../../../ai/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
 import { Output_Template_Error_Message } from '../output';
+import { NodeGradients } from '../../node/gradient';
 
 export const AgentNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.agent,
@@ -28,7 +29,9 @@ export const AgentNode: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/toolCall',
+  avatar: 'core/workflow/systemNode/toolCall',
+  avatarLinear: 'core/workflow/systemNode/toolCallLinear',
+  gradient: NodeGradients.indigo,
   name: i18nT('workflow:template.agent'),
   intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,
