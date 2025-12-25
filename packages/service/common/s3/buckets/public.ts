@@ -8,6 +8,7 @@ import {
   MinioStorageAdapter,
   type IStorageOptions
 } from '@fastgpt-sdk/storage';
+import { addLog } from '../../system/log';
 
 export class S3PublicBucket extends S3BaseBucket {
   constructor() {
@@ -88,19 +89,30 @@ export class S3PublicBucket extends S3BaseBucket {
 
     super(client, externalClient);
 
-    client.ensureBucket().then(() => {
-      if (client instanceof MinioStorageAdapter) {
-        client.ensurePublicBucketPolicy();
-      }
-    });
+    client
+      .ensureBucket()
+      .then(() => {
+        if (client instanceof MinioStorageAdapter) {
+          client.ensurePublicBucketPolicy();
+        }
+      })
+      .catch((error) => {
+        addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
+      });
 
-    if (externalClient) {
-      externalClient.ensureBucket().then(() => {
+    externalClient
+      ?.ensureBucket()
+      .then(() => {
         if (externalClient instanceof MinioStorageAdapter) {
           externalClient.ensurePublicBucketPolicy();
         }
+      })
+      .catch((error) => {
+        addLog.error(
+          `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
+          error
+        );
       });
-    }
   }
 
   createPublicUrl(objectKey: string): string {

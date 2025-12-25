@@ -49,8 +49,15 @@ export class CosStorageAdapter implements IStorage {
       SecretKey: options.credentials.secretAccessKey,
       UseAccelerate: options.useAccelerate,
       Protocol: options.protocol,
-      Domain: options.domain
+      Domain: options.domain,
+      Proxy: options.proxy
     });
+  }
+
+  private handleCosError(err: any): Error {
+    const error = new Error(err.message || 'Unknown COS error');
+    Object.assign(error, { ...err });
+    return error;
   }
 
   async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
@@ -64,14 +71,14 @@ export class CosStorageAdapter implements IStorage {
           Region: this.options.region,
           Key: key
         },
-        function (err, _data) {
+        (err, _data) => {
           if (err && err.statusCode === 404) {
             exists = false;
             return resolve();
           }
 
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
 
           exists = true;
@@ -97,9 +104,9 @@ export class CosStorageAdapter implements IStorage {
           Bucket: this.options.bucket,
           Region: this.options.region
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
 
           resolve(data);
@@ -135,9 +142,9 @@ export class CosStorageAdapter implements IStorage {
           Bucket: this.options.bucket,
           Region: this.options.region
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
 
           resolve(data);
@@ -176,9 +183,9 @@ export class CosStorageAdapter implements IStorage {
           ContentLength: contentLength,
           Headers: Object.keys(headers).length ? headers : undefined
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data);
         }
@@ -201,9 +208,9 @@ export class CosStorageAdapter implements IStorage {
         Key: params.key,
         Output: passThrough
       },
-      function (err, _data) {
+      (err, _data) => {
         if (err) {
-          passThrough.destroy(isError(err.error) ? err.error : new Error(err.message));
+          passThrough.destroy(isError(err.error) ? err.error : this.handleCosError(err));
         }
       }
     );
@@ -225,9 +232,9 @@ export class CosStorageAdapter implements IStorage {
           Region: this.options.region,
           Key: key
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data);
         }
@@ -250,9 +257,9 @@ export class CosStorageAdapter implements IStorage {
           Region: this.options.region,
           Objects: keys.map((key) => ({ Key: key }))
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data);
         }
@@ -286,7 +293,7 @@ export class CosStorageAdapter implements IStorage {
           },
           (listErr, listData) => {
             if (listErr) {
-              return reject(listErr);
+              return reject(this.handleCosError(listErr));
             }
 
             if (!listData.Contents || listData.Contents.length === 0) {
@@ -301,7 +308,7 @@ export class CosStorageAdapter implements IStorage {
                 Region: this.options.region,
                 Objects: objectsToDelete
               },
-              function (deleteErr, deleteData) {
+              (deleteErr, deleteData) => {
                 if (deleteErr) {
                   fails.push(...objectsToDelete.map((content) => content.Key));
                   if (listData.IsTruncated === 'true') {
@@ -362,9 +369,9 @@ export class CosStorageAdapter implements IStorage {
           Sign: true,
           Method: 'PUT'
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data.Url);
         }
@@ -393,9 +400,9 @@ export class CosStorageAdapter implements IStorage {
           Sign: true,
           Method: 'GET'
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data.Url);
         }
@@ -442,9 +449,9 @@ export class CosStorageAdapter implements IStorage {
             Marker: marker,
             MaxKeys: 1000
           },
-          function (err, data) {
+          (err, data) => {
             if (err) {
-              return reject(err);
+              return reject(this.handleCosError(err));
             }
 
             keys = keys.concat(data.Contents?.map((content) => content.Key).filter(isNotNil) ?? []);
@@ -481,9 +488,9 @@ export class CosStorageAdapter implements IStorage {
           Key: targetKey,
           CopySource: copySource
         },
-        function (err, data) {
+        (err, data) => {
           if (err) {
-            return reject(err);
+            return reject(this.handleCosError(err));
           }
           resolve(data);
         }
