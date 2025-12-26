@@ -21,6 +21,7 @@ import path from 'node:path';
 import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import { ProxyAgent } from 'proxy-agent';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -199,10 +200,15 @@ export const getFileContentFromLinks = async ({
             return `${serverRequestBaseUrl}/${url.replace(/^\/+/, '')}`;
           };
 
+          const agent = new ProxyAgent();
+
           // Get file buffer data
           const response = await axios.get(url, {
             url: buildUrl(url),
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
+            proxy: false,
+            httpAgent: agent,
+            httpsAgent: agent
           });
 
           const buffer = Buffer.from(response.data, 'binary');
