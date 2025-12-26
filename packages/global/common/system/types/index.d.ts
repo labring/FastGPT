@@ -189,6 +189,8 @@ export type customPdfParseType = {
   url?: string;
   key?: string;
   doc2xKey?: string;
+  textinAppId?: string;
+  textinSecretCode?: string;
   price?: number;
 };
 
