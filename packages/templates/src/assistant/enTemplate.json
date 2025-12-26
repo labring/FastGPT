@@ -32,7 +32,27 @@
             "renderTypeList": ["hidden"],
             "valueType": "any",
             "label": "core.app.Chat Variable",
-            "value": []
+            "value": [
+              {
+                "key": "hTRJXdb1",
+                "label": "correct_mapping_answer",
+                "type": "custom",
+                "description": "",
+                "required": false,
+                "valueType": "string",
+                "defaultValue": "",
+                "icon": "core/workflow/inputType/customVariable"
+              },
+              {
+                "key": "udQRlgfO",
+                "label": "faqAnswer",
+                "type": "custom",
+                "description": "",
+                "required": false,
+                "valueType": "string",
+                "defaultValue": ""
+              }
+            ]
           },
           {
             "key": "questionGuide",
@@ -81,7 +101,7 @@
         "flowNodeType": "workflowStart",
         "position": {
           "x": 3.719230229326385,
-          "y": -1312.140341718712
+          "y": -1352.140341718712
         },
         "version": "481",
         "inputs": [
@@ -115,7 +135,7 @@
         "showStatus": false,
         "position": {
           "x": 494.7192302293264,
-          "y": -1212.140341718712
+          "y": -1232.140341718712
         },
         "inputs": [
           {
@@ -132,7 +152,7 @@
               },
               {
                 "variable": ["VARIABLE_NODE_ID", "utjZSg8f"],
-                "value": ["", "llm-summary"],
+                "value": ["", "quote"],
                 "renderType": "input",
                 "valueType": "string"
               }
@@ -152,7 +172,7 @@
         "showStatus": true,
         "position": {
           "x": 1060.7192302293263,
-          "y": -1335.640341718712
+          "y": -1383.640341718712
         },
         "version": "4.9.2",
         "inputs": [
@@ -337,7 +357,7 @@
         "showStatus": true,
         "position": {
           "x": 1846.7192302293263,
-          "y": -1185.140341718712
+          "y": -1205.140341718712
         },
         "inputs": [
           {
@@ -380,8 +400,8 @@
         "avatar": "core/workflow/template/reply",
         "flowNodeType": "answerNode",
         "position": {
-          "x": 2709.2192302293265,
-          "y": -1297.390341718712
+          "x": 5194.719230229326,
+          "y": -656.8903417187121
         },
         "inputs": [
           {
@@ -408,8 +428,8 @@
         "flowNodeType": "chatNode",
         "showStatus": true,
         "position": {
-          "x": 3591.7192302293265,
-          "y": -1632.140341718712
+          "x": 4454.219230229326,
+          "y": -1581.390341718712
         },
         "version": "4.9.7",
         "inputs": [
@@ -630,7 +650,7 @@
         "showStatus": true,
         "position": {
           "x": 2683.7192302293265,
-          "y": -994.3903417187121
+          "y": -1474.140341718712
         },
         "inputs": [
           {
@@ -678,8 +698,8 @@
         "avatar": "core/workflow/template/reply",
         "flowNodeType": "answerNode",
         "position": {
-          "x": 3520.7192302293265,
-          "y": -576.1403417187121
+          "x": 3546.2192302293265,
+          "y": -1586.390341718712
         },
         "inputs": [
           {
@@ -697,6 +717,124 @@
               "VARIABLE_NODE_ID",
               "hTRJXdb1"
             ],
+            "selectedTypeIndex": 1,
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "vjq2vUcq4Tmxiu0z",
+        "name": "Reply Mode Judgment",
+        "intro": "Execute different branches based on certain conditions.",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 3520.7192302293265,
+          "y": -1283.390341718712
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": ["VARIABLE_NODE_ID", "utjZSg8f"],
+                    "condition": "equalTo",
+                    "value": "llm-summary",
+                    "valueType": "input"
+                  }
+                ]
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "yv0uRQ4kOeVbaQ6i",
+        "name": "Check FAQ Data Match",
+        "intro": "Execute different branches based on certain conditions.",
+        "avatar": "core/workflow/template/ifelse",
+        "flowNodeType": "ifElseNode",
+        "showStatus": true,
+        "position": {
+          "x": 4357.719230229326,
+          "y": -442.3903417187121
+        },
+        "inputs": [
+          {
+            "key": "ifElseList",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "condition": "AND",
+                "list": [
+                  {
+                    "variable": ["VARIABLE_NODE_ID", "udQRlgfO"],
+                    "condition": "isNotEmpty",
+                    "valueType": "input"
+                  }
+                ]
+              }
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "ifElseResult",
+            "key": "ifElseResult",
+            "label": "workflow:judgment_result",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "v2hbYrBvxfBKTG7s",
+        "name": "Use FAQ Data Reply",
+        "intro": "This module can directly reply with specified content. Commonly used for guidance and prompts. Non-string content will be converted to string for output.",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 5194.719230229326,
+          "y": -353.8903417187121
+        },
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "required": true,
+            "label": "common:core.module.input.label.Response content",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": ["VARIABLE_NODE_ID", "udQRlgfO"],
             "selectedTypeIndex": 1,
             "debugLabel": "",
             "toolDescription": ""
@@ -732,8 +870,32 @@
       },
       {
         "source": "qaFDoVSH4WcXMZPO",
-        "target": "lb9O8Jqhq5RMomsX",
+        "target": "vjq2vUcq4Tmxiu0z",
         "sourceHandle": "qaFDoVSH4WcXMZPO-source-ELSE",
+        "targetHandle": "vjq2vUcq4Tmxiu0z-target-left"
+      },
+      {
+        "source": "vjq2vUcq4Tmxiu0z",
+        "target": "lb9O8Jqhq5RMomsX",
+        "sourceHandle": "vjq2vUcq4Tmxiu0z-source-IF",
+        "targetHandle": "lb9O8Jqhq5RMomsX-target-left"
+      },
+      {
+        "source": "vjq2vUcq4Tmxiu0z",
+        "target": "yv0uRQ4kOeVbaQ6i",
+        "sourceHandle": "vjq2vUcq4Tmxiu0z-source-ELSE",
+        "targetHandle": "yv0uRQ4kOeVbaQ6i-target-left"
+      },
+      {
+        "source": "yv0uRQ4kOeVbaQ6i",
+        "target": "v2hbYrBvxfBKTG7s",
+        "sourceHandle": "yv0uRQ4kOeVbaQ6i-source-IF",
+        "targetHandle": "v2hbYrBvxfBKTG7s-target-left"
+      },
+      {
+        "source": "yv0uRQ4kOeVbaQ6i",
+        "target": "lb9O8Jqhq5RMomsX",
+        "sourceHandle": "yv0uRQ4kOeVbaQ6i-source-ELSE",
         "targetHandle": "lb9O8Jqhq5RMomsX-target-left"
       },
       {
@@ -791,6 +953,15 @@
           "valueType": "string",
           "defaultValue": "",
           "icon": "core/workflow/inputType/customVariable"
+        },
+        {
+          "key": "udQRlgfO",
+          "label": "faqAnswer",
+          "type": "custom",
+          "description": "",
+          "required": false,
+          "valueType": "string",
+          "defaultValue": ""
         }
       ],
       "scheduledTriggerConfig": {
