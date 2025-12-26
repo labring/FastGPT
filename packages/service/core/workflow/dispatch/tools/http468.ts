@@ -497,11 +497,17 @@ async function fetchData({
     return Promise.reject('Url is invalid');
   }
 
+  const buildUrl = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `http://${SERVICE_LOCAL_HOST}/${url.replace(/^\/+/, '')}`;
+  };
+
   const { data: response } = await axios({
     method,
     maxContentLength: serviceRequestMaxContentLength,
-    baseURL: `http://${SERVICE_LOCAL_HOST}`,
-    url,
+    url: buildUrl(url),
     headers: {
       ...headers
     },
