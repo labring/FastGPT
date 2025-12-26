@@ -46,6 +46,8 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
@@ -236,13 +238,13 @@ const EditForm = ({
   );
 
   const updateVariableValue = useCallback(
-    (newValue: any) => {
+    (key: keyof AppChatConfigType, newValue: any) => {
       setAppForm((state) => {
         return {
           ...state,
           chatConfig: {
             ...state.chatConfig,
-            fallbackReply: newValue
+            [key]: newValue
           }
         };
       });
@@ -368,7 +370,7 @@ const EditForm = ({
               />
             </Box>
 
-            {/* <FormItem
+            <FormItem
               label={t('app:smart_customer_service_faq_answer_mode')}
               tooltip={t('app:smart_customer_service_faq_answer_mode_tooltip')}
             >
@@ -376,17 +378,14 @@ const EditForm = ({
                 list={FAQ_OPTIONS}
                 px={3}
                 py={2.5}
-                value={getVariableValue(
-                  VARIABLE_KEYS.FAQ_ANSWER_MODE,
-                  DEFAULT_VALUES.FAQ_ANSWER_MODE
-                )}
-                onChange={(value) => updateVariableValue(VARIABLE_KEYS.FAQ_ANSWER_MODE, value)}
+                value={appForm.chatConfig.faqAnswerMode || FAQAnswerModeEnum.Quote}
+                onChange={(e) => updateVariableValue('faqAnswerMode', e)}
                 flex={1}
                 defaultBg="white"
                 activeBg="white"
                 gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
               />
-            </FormItem> */}
+            </FormItem>
 
             <FormItem
               label={t('app:smart_customer_service_welcome_text')}
@@ -410,7 +409,7 @@ const EditForm = ({
               <MyTextarea
                 value={appForm.chatConfig.fallbackReply}
                 rows={3}
-                onChange={(e) => updateVariableValue(e.target.value)}
+                onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
               />
             </Flex>
           </AccordionSection>
