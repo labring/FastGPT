@@ -6,6 +6,7 @@ import axios, {
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ProxyAgent } from 'proxy-agent';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -64,6 +65,8 @@ function responseError(err: any) {
   return Promise.reject(err);
 }
 
+const agent = new ProxyAgent();
+
 /* 创建请求实例 */
 const instance = axios.create({
   timeout: 60000, // 超时时间
@@ -71,7 +74,10 @@ const instance = axios.create({
     'content-type': 'application/json',
     'Cache-Control': 'no-cache',
     rootkey: process.env.ROOT_KEY
-  }
+  },
+  proxy: false,
+  httpAgent: agent,
+  httpsAgent: agent
 });
 
 /* 请求拦截 */

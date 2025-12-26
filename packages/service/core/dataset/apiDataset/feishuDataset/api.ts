@@ -7,6 +7,7 @@ import type {
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import axios, { type Method } from 'axios';
 import { addLog } from '../../../../common/system/log';
+import { ProxyAgent } from 'proxy-agent';
 
 type ResponseDataType = {
   success: boolean;
@@ -32,9 +33,13 @@ type FeishuFileListResponse = {
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
+  const agent = new ProxyAgent();
   const instance = axios.create({
     baseURL: feishuBaseUrl,
-    timeout: 60000
+    timeout: 60000,
+    proxy: false,
+    httpAgent: agent,
+    httpsAgent: agent
   });
 
   // 添加请求拦截器

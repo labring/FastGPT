@@ -1,3 +1,4 @@
+import { ProxyAgent } from 'proxy-agent';
 import { SERVICE_LOCAL_HOST } from '../system/tools';
 import axios, { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 
@@ -55,13 +56,18 @@ function responseError(err: any) {
   return Promise.reject(err);
 }
 
+const agent = new ProxyAgent();
+
 /* 创建请求实例 */
 const instance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json',
     'Cache-Control': 'no-cache'
-  }
+  },
+  proxy: false,
+  httpAgent: agent,
+  httpsAgent: agent
 });
 export const serverRequestBaseUrl = `http://${SERVICE_LOCAL_HOST}`;
 
