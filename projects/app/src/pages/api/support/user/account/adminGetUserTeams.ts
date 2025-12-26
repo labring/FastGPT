@@ -56,8 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     await authCert({ req, authRoot: true });
 
     // 2. 获取请求参数（支持 GET 和 POST）
-    const username =
-      req.method === 'GET' ? (req.query.username as string) : req.body?.username;
+    const username = req.method === 'GET' ? (req.query.username as string) : req.body?.username;
     const status =
       req.method === 'GET'
         ? (req.query.status as TeamMemberStatusEnum)

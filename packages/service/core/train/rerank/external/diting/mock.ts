@@ -217,6 +217,50 @@ export async function mockEvaluateRerankModel(
   const baseRecall = 0.55 + Math.random() * 0.15;
   const baseMap = 0.7 + Math.random() * 0.1;
 
+  // Generate retrieval ranks for each case (case-by-case)
+  // Simulate rerank effect: expected documents should appear at various positions
+  // to reflect realistic evaluation metrics
+  const retrievalRanks: number[][] = request.dataset.map((item) => {
+    const expectedIds = item.expected_dataid || [];
+    const retrievalList = item.retrieval_reference_list || [];
+
+    // Simulate reranked positions for each expected document
+    const ranks: number[] = [];
+    expectedIds.forEach((expectedId, index) => {
+      const originalPosition = retrievalList.findIndex((doc) => doc.id === expectedId);
+
+      if (originalPosition === -1) {
+        // Expected document not found in retrieval list
+        ranks.push(-1);
+      } else {
+        // Simulate rerank effect: move expected documents closer to top with some randomness
+        // Distribution: 60% top-5, 30% top-10, 10% top-15+
+        const random = Math.random();
+        let rerankPosition: number;
+
+        if (random < 0.6) {
+          // 60% chance: rank 1-5 (good rerank)
+          rerankPosition = Math.floor(Math.random() * 5) + 1;
+        } else if (random < 0.9) {
+          // 30% chance: rank 6-10 (medium rerank)
+          rerankPosition = Math.floor(Math.random() * 5) + 6;
+        } else {
+          // 10% chance: rank 11-20 (poor rerank or difficult case)
+          rerankPosition = Math.floor(Math.random() * 10) + 11;
+        }
+
+        // For the first expected document (best match), bias towards better ranks
+        if (index === 0) {
+          rerankPosition = Math.floor(Math.random() * 3) + 1; // 80% rank 1-3
+        }
+
+        ranks.push(rerankPosition);
+      }
+    });
+
+    return ranks.length > 0 ? ranks : [-1]; // At least one rank per case
+  });
+
   const detailedResults = {
     rerank_top5_mrr: Number(baseMrr.toFixed(4)),
     rerank_top5_ndcg: Number(baseNdcg.toFixed(4)),
@@ -233,7 +277,35 @@ export async function mockEvaluateRerankModel(
     rerank_top15_precision: Number(basePrecision.toFixed(4)),
     overall_mrr: Number(baseMrr.toFixed(4)),
     overall_ndcg: Number(baseNdcg.toFixed(4)),
-    overall_map: Number(baseMap.toFixed(4))
+    overall_map: Number(baseMap.toFixed(4)),
+    overall_precision: Number(basePrecision.toFixed(4))
+  };
+
+  // Generate metric scores for each case at different k values
+  const mrrScores: Record<string, number[]> = {
+    'mrr@5': request.dataset.map(() => Number((baseMrr + (Math.random() - 0.5) * 0.15).toFixed(4))),
+    'mrr@10': request.dataset.map(() =>
+      Number((baseMrr + (Math.random() - 0.5) * 0.15).toFixed(4))
+    ),
+    'mrr@15': request.dataset.map(() => Number((baseMrr + (Math.random() - 0.5) * 0.15).toFixed(4)))
+  };
+
+  const ndcgScores: Record<string, number[]> = {
+    'ndcg@5': request.dataset.map(() =>
+      Number((baseNdcg + (Math.random() - 0.5) * 0.12).toFixed(4))
+    ),
+    'ndcg@10': request.dataset.map(() =>
+      Number((baseNdcg + (Math.random() - 0.5) * 0.12).toFixed(4))
+    ),
+    'ndcg@15': request.dataset.map(() =>
+      Number((baseNdcg + (Math.random() - 0.5) * 0.12).toFixed(4))
+    )
+  };
+
+  const mapScores: Record<string, number[]> = {
+    'map@5': request.dataset.map(() => Number((baseMap + (Math.random() - 0.5) * 0.1).toFixed(4))),
+    'map@10': request.dataset.map(() => Number((baseMap + (Math.random() - 0.5) * 0.1).toFixed(4))),
+    'map@15': request.dataset.map(() => Number((baseMap + (Math.random() - 0.5) * 0.1).toFixed(4)))
   };
 
   return {
@@ -246,6 +318,10 @@ export async function mockEvaluateRerankModel(
       reason: `Processed ${request.dataset.length} items; rerank_top10: MRR=${detailedResults.rerank_top10_mrr}, NDCG=${detailedResults.rerank_top10_ndcg}, Precision=${detailedResults.rerank_top10_precision}`,
       runLogs: {
         detailed_results: detailedResults,
+        mrr_scores: mrrScores,
+        ndcg_scores: ndcgScores,
+        map_scores: mapScores,
+        retrieval_ranks: retrievalRanks,
         total_rows: request.dataset.length,
         expect_count: request.dataset.length
       }

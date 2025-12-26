@@ -1,5 +1,4 @@
 import type { Processor } from 'bullmq';
-import { UnrecoverableError } from 'bullmq';
 import type { RerankTrainTaskJobData } from './mq';
 import { MongoRerankTrainTask } from './schema';
 import {
@@ -13,6 +12,7 @@ import {
   RerankTaskCheckpointStageEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
+import type { RerankEvalResult } from '@fastgpt/global/core/train/rerank/type';
 
 import { runPrepareStage } from './stages/prepare';
 import { runFinetuneStage } from './stages/finetune';
@@ -23,88 +23,85 @@ import {
   runEvaluateBaseModel,
   runEvaluateTunedModel
 } from './stages/evaluate';
-import { MongoRerankTrainset } from '../trainset/schema';
-import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
-import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
-import { calculateTrainsetStats } from '../data/controller';
+import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import { createEnhancedError } from '../utils';
+import { deleteRerankModelConfig } from '../model/controller';
+import { isTunedModel } from './helpers/model';
+import { TrainTaskUnrecoverableError } from './errors';
 
 /**
- * Poll and wait for trainset to be ready
- * Moved from API handler to avoid blocking the main thread
- * @param trainsetId Trainset ID
- * @param maxAttempts Max polling attempts (default: 120 for 10 minutes)
- * @param interval Polling interval in ms (default: 5000ms = 5s)
+ * Compare evaluation performance between base model and tuned model
+ * Both overall_mrr and overall_precision must be better for the tuned model
+ * @param baseModelResult Base model (previous tuned model) evaluation result
+ * @param tunedModelResult New tuned model evaluation result
+ * @returns true if tuned model performs better than base model in BOTH overall_mrr and overall_precision
  */
-async function waitForTrainsetReady(
-  trainsetId: string,
-  maxAttempts: number = 120,
-  interval: number = 5000
-): Promise<void> {
-  let attempts = 0;
-
-  addLog.info('Waiting for trainset to be ready', {
-    trainsetId,
-    maxAttempts,
-    interval
-  });
-
-  while (attempts < maxAttempts) {
-    const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
-
-    if (!trainset) {
-      throw new UnrecoverableError(RerankTrainErrEnum.trainsetNotExist);
-    }
-
-    // If ready, validate data count and return successfully
-    if (trainset.status === RerankTrainsetStatusEnum.ready) {
-      const stats = await calculateTrainsetStats(String(trainset._id));
-      if (stats.dataCount === 0) {
-        addLog.error('No train data available in trainset', { trainsetId });
-        throw new UnrecoverableError(RerankTrainErrEnum.noTrainDataAvailable);
-      }
-      addLog.info('Trainset is ready', { trainsetId, dataCount: stats.dataCount });
-      return;
-    }
-
-    // If error, throw unrecoverable error
-    if (trainset.status === RerankTrainsetStatusEnum.error) {
-      const errorMsg = trainset.errorMsg || 'Trainset generation failed';
-      addLog.error('Trainset generation failed', { trainsetId, errorMsg });
-      throw new UnrecoverableError(RerankTrainErrEnum.trainsetGenerationFailed);
-    }
-
-    // If still generating or pending, continue waiting
-    if (
-      trainset.status === RerankTrainsetStatusEnum.generating ||
-      trainset.status === RerankTrainsetStatusEnum.pending
-    ) {
-      addLog.info('Trainset still generating', {
-        trainsetId,
-        status: trainset.status,
-        attempt: attempts + 1,
-        maxAttempts
-      });
-      await new Promise((resolve) => setTimeout(resolve, interval));
-      attempts++;
-      continue;
-    }
-
-    // Unknown status, continue waiting
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    attempts++;
+function compareEvalPerformance(
+  baseModelResult: RerankEvalResult | null | undefined,
+  tunedModelResult: RerankEvalResult | null | undefined
+): boolean {
+  if (!baseModelResult || !tunedModelResult) {
+    addLog.warn('Cannot compare evaluation performance: missing evaluation results', {
+      hasBaseResult: !!baseModelResult,
+      hasTunedResult: !!tunedModelResult
+    });
+    return false;
   }
 
-  // Timeout
-  addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
-  throw new UnrecoverableError(RerankTrainErrEnum.trainsetGenerationFailed);
+  const baseDetails = baseModelResult.detailed_results;
+  const tunedDetails = tunedModelResult.detailed_results;
+
+  if (!baseDetails || !tunedDetails) {
+    addLog.warn('Cannot compare evaluation performance: missing detailed results', {
+      hasBaseDetails: !!baseDetails,
+      hasTunedDetails: !!tunedDetails
+    });
+    return false;
+  }
+
+  const baseMRR = baseDetails.overall_mrr;
+  const tunedMRR = tunedDetails.overall_mrr;
+  const basePrecision = baseDetails.overall_precision;
+  const tunedPrecision = tunedDetails.overall_precision;
+
+  // If any required metric is missing, conservatively keep the previous model
+  if (
+    baseMRR === undefined ||
+    tunedMRR === undefined ||
+    basePrecision === undefined ||
+    tunedPrecision === undefined
+  ) {
+    addLog.warn('Cannot compare evaluation performance: missing required metrics', {
+      hasBaseMRR: baseMRR !== undefined,
+      hasTunedMRR: tunedMRR !== undefined,
+      hasBasePrecision: basePrecision !== undefined,
+      hasTunedPrecision: tunedPrecision !== undefined
+    });
+    return false;
+  }
+
+  // Both overall_mrr and overall_precision must be better (higher is better for both metrics)
+  const mrrImproved = tunedMRR > baseMRR;
+  const precisionImproved = tunedPrecision > basePrecision;
+
+  addLog.info('Evaluation performance comparison', {
+    baseMRR,
+    tunedMRR,
+    mrrImproved,
+    basePrecision,
+    tunedPrecision,
+    precisionImproved,
+    bothImproved: mrrImproved && precisionImproved
+  });
+
+  return mrrImproved && precisionImproved;
 }
 
 /**
  * Rerank training task processor
  *
  * Executes complete rerank model training pipeline:
- * 0. Waiting - Wait for trainset generation to complete
- * 1. Preparing - Data preparation
+ * 1. Preparing - Data preparation (includes waiting for trainset to be ready)
  * 2. Finetuning - Model finetuning
  * 3. Registering - Model registration
  * 4. Evaluating - Performance evaluation
@@ -115,7 +112,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
   const task = await getRerankTrainTask(taskId);
   if (!task) {
-    throw new UnrecoverableError('Task not found');
+    const enhancedError = createEnhancedError(
+      null,
+      TrainTaskErrorType.INTERNAL_ERROR,
+      'Training task not found or has been deleted',
+      'Please check if the task ID is correct'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const currentStage = task.checkpoint.stage;
@@ -133,12 +136,6 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.running);
     }
 
-    // Wait for trainset to be ready before starting prepare stage
-    // This was moved from the API handler to avoid blocking the main thread
-    if (!currentStage || currentStage === null) {
-      await waitForTrainsetReady(task.trainsetId);
-    }
-
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.preparing)) {
       const prepareResult = await runPrepareStage(task);
       await updateCheckpointData(taskId, 'preparing', {
@@ -151,7 +148,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.finetuning)) {
       const taskAfterPrepare = await getRerankTrainTask(taskId);
       if (!taskAfterPrepare) {
-        throw new UnrecoverableError('Task not found after preparing stage');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.finetuning,
+          TrainTaskErrorType.INTERNAL_ERROR,
+          'Task not found after data preparation completed',
+          'This may be a system error, please contact administrator'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
       const finetuneResult = await runFinetuneStage(taskAfterPrepare);
@@ -165,7 +168,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.registering)) {
       const taskAfterFinetune = await getRerankTrainTask(taskId);
       if (!taskAfterFinetune) {
-        throw new UnrecoverableError('Task not found after finetuning stage');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.registering,
+          TrainTaskErrorType.INTERNAL_ERROR,
+          'Task not found after model finetuning completed',
+          'This may be a system error, please contact administrator'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
       const registerResult = await runRegisterStage(taskAfterFinetune);
@@ -178,14 +187,26 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.evaluating)) {
       const updatedTask = await getRerankTrainTask(taskId);
       if (!updatedTask) {
-        throw new UnrecoverableError('Task not found after checkpoint update');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.evaluating,
+          TrainTaskErrorType.INTERNAL_ERROR,
+          'Task not found after checkpoint update',
+          'This may be a system error, please contact administrator'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
       const checkpointData = updatedTask.checkpoint.data || {};
       const evaluatingData = checkpointData.evaluating || {};
 
       if (!checkpointData.registering?.tunedModelConfigId) {
-        throw new UnrecoverableError('Tuned model config ID not found in checkpoint');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.evaluating,
+          TrainTaskErrorType.MODEL_CONFIG_INVALID,
+          'Tuned model config ID not found in checkpoint',
+          'Please check if model registration stage completed correctly'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
       if (!evaluatingData.evalDatasetId) {
@@ -195,7 +216,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
       const taskAfterEvalDataset = await getRerankTrainTask(taskId);
       if (!taskAfterEvalDataset) {
-        throw new UnrecoverableError('Task not found');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.evaluating,
+          TrainTaskErrorType.INTERNAL_ERROR,
+          'Task not found after evaluation dataset generation',
+          'This may be a system error, please contact administrator'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
       const evalData = taskAfterEvalDataset.checkpoint.data?.evaluating || {};
 
@@ -224,7 +251,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.applying)) {
       const updatedTask = await getRerankTrainTask(taskId);
       if (!updatedTask) {
-        throw new UnrecoverableError('Task not found after evaluating stage');
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.applying,
+          TrainTaskErrorType.INTERNAL_ERROR,
+          'Task not found after evaluation completed',
+          'This may be a system error, please contact administrator'
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
       const applyResult = await runApplyingStage(updatedTask);
@@ -232,6 +265,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
         versionId: applyResult.versionId,
         versionName: applyResult.versionName,
         previousModelConfigId: applyResult.previousModelConfigId,
+        previousTaskId: applyResult.previousTaskId,
         updatedNodesCount: applyResult.updatedNodesCount
       });
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.applying);
@@ -239,7 +273,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
     const finalTask = await getRerankTrainTask(taskId);
     if (!finalTask) {
-      throw new UnrecoverableError('Task not found');
+      const enhancedError = createEnhancedError(
+        null,
+        TrainTaskErrorType.INTERNAL_ERROR,
+        'Task not found after all stages completed',
+        'This may be a system error, please contact administrator'
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
     }
     const finalCheckpoint = finalTask.checkpoint.data || {};
     await MongoRerankTrainTask.updateOne(
@@ -255,6 +295,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
           versionId: finalCheckpoint.applying?.versionId || '',
           versionName: finalCheckpoint.applying?.versionName || '',
           previousModelConfigId: finalCheckpoint.applying?.previousModelConfigId || '',
+          previousTaskId: finalCheckpoint.applying?.previousTaskId || '',
           updatedNodesCount: finalCheckpoint.applying?.updatedNodesCount || 0
         }
       }
@@ -262,9 +303,107 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
     await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.completed);
 
+    // Optimization 2: Auto-delete previous tuned model that is no longer in use
+    // This runs after the new tuned model has been successfully deployed to the app
+    const previousModelConfigId = finalCheckpoint.applying?.previousModelConfigId;
+    const previousTaskId = finalCheckpoint.applying?.previousTaskId;
+    const tunedModelConfigId = finalCheckpoint.registering?.tunedModelConfigId;
+    const baseModelEvalResult = finalCheckpoint.evaluating?.baseModelEvalResult;
+    const tunedModelEvalResult = finalCheckpoint.evaluating?.tunedModelEvalResult;
+
+    // Delete the previous model if all conditions are met:
+    // 1. It exists (app was using a model before)
+    // 2. It's a fine-tuned model created by training module (not a base model or manually created custom model)
+    // 3. Previous model is different from new tuned model (avoid self-deletion in in-place replacement scenarios)
+    // 4. New model performs better than previous model (based on evaluation metrics)
+    if (
+      previousModelConfigId &&
+      isTunedModel(previousModelConfigId) &&
+      previousModelConfigId !== tunedModelConfigId
+    ) {
+      // Compare evaluation performance (baseModelEvalResult is the previous tuned model's result)
+      const shouldDelete = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
+
+      if (shouldDelete) {
+        addLog.info('Deleting previous tuned model (new model performs better)', {
+          taskId,
+          previousModelConfigId,
+          previousTaskId,
+          baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+          baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+          tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+          tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+        });
+
+        try {
+          // Query previous task to get sftTaskId if previousTaskId is available
+          let previousSftTaskId: string | undefined;
+          if (previousTaskId) {
+            const previousTask = await MongoRerankTrainTask.findById(
+              previousTaskId,
+              'checkpoint'
+            ).lean();
+            previousSftTaskId = previousTask?.checkpoint?.data?.finetuning?.sftTaskId;
+            addLog.info('Found previous task sftTaskId', {
+              taskId,
+              previousTaskId,
+              previousSftTaskId
+            });
+          }
+
+          await deleteRerankModelConfig(previousModelConfigId, previousSftTaskId);
+          addLog.info('Successfully deleted previous tuned model', {
+            taskId,
+            previousModelConfigId,
+            previousTaskId,
+            previousSftTaskId
+          });
+        } catch (deleteError) {
+          addLog.warn('Failed to delete previous tuned model', {
+            taskId,
+            previousModelConfigId,
+            previousTaskId,
+            error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+          });
+        }
+      } else {
+        addLog.info('Keeping previous tuned model (new model does not perform better)', {
+          taskId,
+          previousModelConfigId,
+          previousTaskId,
+          baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+          baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+          tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+          tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+        });
+      }
+    } else {
+      addLog.info('No previous fine-tuned model to delete', {
+        taskId,
+        previousModelConfigId,
+        previousTaskId,
+        tunedModelConfigId,
+        isTunedModel: previousModelConfigId ? isTunedModel(previousModelConfigId) : false,
+        reason: !previousModelConfigId
+          ? 'No previous model recorded'
+          : !isTunedModel(previousModelConfigId)
+            ? 'Previous model is not a fine-tuned model created by training module'
+            : 'Previous model is the same as new tuned model (in-place replacement)'
+      });
+    }
+
     addLog.info('Rerank train task completed', { taskId });
   } catch (error) {
-    addLog.error('Rerank train task failed', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isUnrecoverable = error instanceof TrainTaskUnrecoverableError;
+
+    addLog.error('Rerank train task failed', {
+      taskId,
+      error: errorMessage,
+      isUnrecoverable,
+      errorType: error instanceof Error ? error.constructor.name : 'Unknown'
+    });
+
     throw error;
   }
 };

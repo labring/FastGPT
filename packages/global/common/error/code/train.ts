@@ -26,6 +26,7 @@ export enum RerankTrainErrEnum {
   // 评测数据集错误
   evalDatasetNotGenerated = 'evalDatasetNotGenerated',
   evalDatasetEmpty = 'evalDatasetEmpty',
+  evalResultsNotFound = 'evalResultsNotFound',
 
   // 外部服务错误
   ditingServiceError = 'ditingServiceError',
@@ -103,6 +104,10 @@ const trainErr = [
   {
     statusText: RerankTrainErrEnum.evalDatasetEmpty,
     message: i18nT('train:eval_dataset_empty')
+  },
+  {
+    statusText: RerankTrainErrEnum.evalResultsNotFound,
+    message: i18nT('train:eval_results_not_found')
   },
 
   // External service errors

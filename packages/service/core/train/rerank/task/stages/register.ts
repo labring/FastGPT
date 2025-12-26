@@ -1,8 +1,10 @@
-import { UnrecoverableError } from 'bullmq';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { createRerankModelConfig } from '../../model/controller';
-import { createTunedModelChannel } from '../helpers/channel';
 import { addLog } from '../../../../../common/system/log';
+import { createEnhancedError } from '../../utils';
+import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import { TrainTaskUnrecoverableError } from '../errors';
 
 /**
  * Stage 3: Model Registration
@@ -20,11 +22,23 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
 
   const checkpointData = task.checkpoint.data || {};
   if (!checkpointData.finetuning?.tunedModelEndpoint) {
-    throw new UnrecoverableError('Tuned model endpoint not found in checkpoint');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.registering,
+      TrainTaskErrorType.MODEL_CONFIG_INVALID,
+      'Tuned model endpoint information not found from finetuning stage',
+      'Please check if finetuning stage completed correctly, or re-run the training task'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   if (!task.baseModelConfigId) {
-    throw new UnrecoverableError('Base model config ID not found in task');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.registering,
+      TrainTaskErrorType.MODEL_CONFIG_INVALID,
+      'Base model config ID not found',
+      'Please check training task configuration and ensure base model is correctly selected'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const tunedEndpoint = checkpointData.finetuning.tunedModelEndpoint;
@@ -33,29 +47,32 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
 
   // The model ID from SFT Bridge is already unique and identifies the finetuned model
   const tunedModelName = tunedModelConfigId;
-  const tunedModelChannelName = `${tunedModelConfigId}-ch`;
 
-  const tunedModelObjectId = await createRerankModelConfig({
-    name: tunedModelName,
-    endpoint: {
-      model: tunedModelConfigId
-    },
-    isActive: true,
-    charsPointsPrice: 0
-  });
+  try {
+    const tunedModelObjectId = await createRerankModelConfig({
+      name: tunedModelName,
+      endpoint: tunedEndpoint,
+      isActive: true,
+      charsPointsPrice: 0
+    });
 
-  await createTunedModelChannel({
-    channelName: tunedModelChannelName,
-    endpoint: tunedEndpoint,
-    modelConfigId: tunedModelConfigId
-  });
-
-  addLog.info('Created tuned model channel and config', {
-    taskId: String(task._id),
-    modelConfigId: tunedModelConfigId,
-    ModelObjectId: tunedModelObjectId,
-    endpoint: tunedEndpoint
-  });
+    addLog.info('Created tuned model config and channel', {
+      taskId: String(task._id),
+      modelConfigId: tunedModelConfigId,
+      ModelObjectId: tunedModelObjectId,
+      endpoint: tunedEndpoint
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.registering,
+      TrainTaskErrorType.SERVICE_API_ERROR,
+      `Failed to register tuned model configuration: ${errorMsg}`,
+      'Please check AI Proxy configuration (AIPROXY_API_ENDPOINT and AIPROXY_API_TOKEN) and ensure the service is accessible',
+      errorMsg
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
+  }
 
   addLog.info('Register stage completed', {
     taskId: String(task._id),

@@ -29,6 +29,11 @@
       "datasetSmartGenerateConcurrency": 2,
       "maxStalledCount": 3
     },
+    "trainConfig": {
+      "taskConcurrency": 1,
+      "dataGenerateConcurrency": 3,
+      "maxStalledCount": 3
+    },
     "hypeParams": {
       "similarityThreshold": 0.85, // 用于判断语义漂移, CosineSimilarity(candidateQuery,top1Doc),top1Doc!=tarDoc
       "maxDeltaScore": 0.15, // 用于判断语义漂移, Score(Top1Doc) - Score(tarDoc) 必须低于此值

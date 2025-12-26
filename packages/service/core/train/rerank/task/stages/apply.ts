@@ -1,5 +1,5 @@
-import { UnrecoverableError } from 'bullmq';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoApp } from '../../../../../core/app/schema';
 import { MongoAppVersion } from '../../../../../core/app/version/schema';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
@@ -8,19 +8,25 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDefaultRerankModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import { createEnhancedError } from '../../utils';
+import { MongoRerankTrainTask } from '../schema';
+import { isTunedModel } from '../helpers/model';
+import { TrainTaskUnrecoverableError } from '../errors';
 
 /**
  * Stage 5: Apply update
  * Creates a new app version and replaces rerank model configurations in the new version
  *
  * @param task - Rerank training task instance
- * @returns Object containing versionId, versionName, previousModelConfigId, and updatedNodesCount
+ * @returns Object containing versionId, versionName, previousModelConfigId, previousTaskId, and updatedNodesCount
  * @throws UnrecoverableError if tuned model config ID not found or no nodes to update
  */
 export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise<{
   versionId: string;
   versionName: string;
   previousModelConfigId?: string;
+  previousTaskId?: string;
   updatedNodesCount: number;
 }> {
   addLog.info('Run applying stage', { taskId: String(task._id) });
@@ -29,12 +35,24 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   const tunedModelConfigId = checkpointData.registering?.tunedModelConfigId;
 
   if (!tunedModelConfigId) {
-    throw new UnrecoverableError('Tuned model config ID not found in checkpoint');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.applying,
+      TrainTaskErrorType.MODEL_CONFIG_INVALID,
+      'Tuned model config ID not found from registration stage',
+      'Please check if model registration stage completed correctly, or re-run the training task'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const app = await MongoApp.findById(task.appId).lean();
   if (!app) {
-    throw new UnrecoverableError('Application not found');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.applying,
+      TrainTaskErrorType.INTERNAL_ERROR,
+      'Application not found or has been deleted',
+      'Please check if the application still exists, cannot apply training results if deleted'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   let updatedNodes = 0;
@@ -89,58 +107,101 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   });
 
   if (updatedNodes === 0) {
-    throw new UnrecoverableError(
-      'No rerank model nodes found to update. The application workflow may have been modified or no longer uses the base model.'
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.applying,
+      TrainTaskErrorType.APP_UPDATE_FAILED,
+      'No Rerank model nodes found to update in application',
+      'Possible reasons: 1) App workflow has been modified 2) App is not using base model 3) Dataset search nodes have no Rerank model configured. Please check app workflow configuration'
     );
+    throw new TrainTaskUnrecoverableError(enhancedError);
+  }
+
+  // Query previous training task if previous model is a tuned model
+  let previousTaskId: string | undefined;
+  if (previousModelConfigId && isTunedModel(previousModelConfigId)) {
+    const previousTask = await MongoRerankTrainTask.findOne(
+      {
+        'result.tunedModelConfigId': previousModelConfigId
+      },
+      '_id'
+    ).lean();
+
+    if (previousTask) {
+      previousTaskId = String(previousTask._id);
+      addLog.info('Found previous training task for previous model', {
+        taskId: String(task._id),
+        previousModelConfigId,
+        previousTaskId
+      });
+    } else {
+      addLog.warn('Previous model is tuned but no training task found', {
+        taskId: String(task._id),
+        previousModelConfigId
+      });
+    }
   }
 
   const versionName = `${task.name} - Fine-tuned (${new Date().toLocaleDateString()})`;
 
-  const result = await mongoSessionRun(async (session) => {
-    const [{ _id: versionId }] = await MongoAppVersion.create(
-      [
+  try {
+    const result = await mongoSessionRun(async (session) => {
+      const [{ _id: versionId }] = await MongoAppVersion.create(
+        [
+          {
+            appId: task.appId,
+            tmbId: task.tmbId,
+            nodes: updatedModules,
+            edges: app.edges || [],
+            chatConfig: app.chatConfig || {},
+            versionName,
+            isPublish: true,
+            time: new Date()
+          }
+        ],
+        { session, ordered: true }
+      );
+
+      await MongoApp.findByIdAndUpdate(
+        task.appId,
         {
-          appId: task.appId,
-          tmbId: task.tmbId,
-          nodes: updatedModules,
+          modules: updatedModules,
           edges: app.edges || [],
           chatConfig: app.chatConfig || {},
-          versionName,
-          isPublish: true,
-          time: new Date()
-        }
-      ],
-      { session, ordered: true }
-    );
+          updateTime: new Date(),
+          version: 'v2',
+          'pluginData.nodeVersion': versionId
+        },
+        { session }
+      );
 
-    await MongoApp.findByIdAndUpdate(
-      task.appId,
-      {
-        modules: updatedModules,
-        edges: app.edges || [],
-        chatConfig: app.chatConfig || {},
-        updateTime: new Date(),
-        version: 'v2',
-        'pluginData.nodeVersion': versionId
-      },
-      { session }
-    );
+      addLog.info('Created and applied new app version with tuned rerank model', {
+        taskId: String(task._id),
+        versionId: String(versionId),
+        versionName,
+        updatedNodes,
+        previousModelConfigId,
+        previousTaskId
+      });
 
-    addLog.info('Created and applied new app version with tuned rerank model', {
-      taskId: String(task._id),
-      versionId: String(versionId),
-      versionName,
-      updatedNodes,
-      previousModelConfigId
+      return {
+        versionId: String(versionId),
+        versionName,
+        previousModelConfigId,
+        previousTaskId,
+        updatedNodesCount: updatedNodes
+      };
     });
 
-    return {
-      versionId: String(versionId),
-      versionName,
-      previousModelConfigId,
-      updatedNodesCount: updatedNodes
-    };
-  });
-
-  return result;
+    return result;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.applying,
+      TrainTaskErrorType.DATABASE_ERROR,
+      `Failed to update application with tuned model: ${errorMsg}`,
+      'This may be a database error. Please check database connection and try again',
+      errorMsg
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
+  }
 }

@@ -15,6 +15,7 @@
   "task_cannot_delete": "Running tasks cannot be deleted",
   "eval_dataset_not_generated": "Evaluation dataset has not been generated yet, please wait for training task to complete",
   "eval_dataset_empty": "Evaluation dataset is empty",
+  "eval_results_not_found": "Evaluation results not found, please ensure training task has completed the evaluation stage",
   "diting_service_error": "DiTing service call failed",
   "sft_bridge_service_error": "SFT Bridge service call failed"
 }

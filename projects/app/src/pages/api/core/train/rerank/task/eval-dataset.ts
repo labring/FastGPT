@@ -9,10 +9,15 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /**
  * Download training task evaluation dataset (JSONL format)
- * GET /api/core/train/rerank/task/eval-dataset/download?taskId=xxx
+ * POST /api/core/train/rerank/task/eval-dataset
+ *
+ * This API exports the evaluation dataset containing all expected contexts.
+ *
+ * Request Body:
+ * - taskId: Training task ID
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { taskId } = req.query;
+  const { taskId } = req.body as { taskId: string };
 
   if (!taskId || typeof taskId !== 'string') {
     return Promise.reject(CommonErrEnum.missingParams);

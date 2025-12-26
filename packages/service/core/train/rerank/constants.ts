@@ -35,6 +35,12 @@ export const MAX_SEARCH_RUN_TIMES = 50;
 export const DEFAULT_WORKER_STALLED_INTERVAL = 30000; // 30 seconds
 /** Job failure retry backoff delay (milliseconds) */
 export const DEFAULT_JOB_BACKOFF_DELAY = 5000; // 5 seconds
+/** Training task worker default concurrency */
+export const DEFAULT_TRAIN_TASK_CONCURRENCY = 1; // Limit to 1 to avoid resource contention
+/** Training data generation worker default concurrency */
+export const DEFAULT_TRAIN_DATA_GENERATE_CONCURRENCY = 2;
+/** Worker default max stalled count */
+export const DEFAULT_WORKER_MAX_STALLED_COUNT = 3;
 
 // ===== Channel Creation Configuration =====
 /** Channel creation request timeout (milliseconds) */
