@@ -10,6 +10,7 @@ import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import { ProxyAgent } from 'proxy-agent';
 
 type ResponseDataType = {
   success: boolean;
@@ -28,13 +29,17 @@ type APIFileListResponse = {
 };
 
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
+  const agent = new ProxyAgent();
   const instance = axios.create({
     baseURL: apiServer.baseUrl,
     timeout: 60000, // 超时时间
     headers: {
       'content-type': 'application/json',
       Authorization: `Bearer ${apiServer.authorization}`
-    }
+    },
+    proxy: false,
+    httpAgent: agent,
+    httpsAgent: agent
   });
 
   /**

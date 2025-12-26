@@ -1,15 +1,20 @@
 import { addLog } from '@fastgpt/service/common/system/log';
 import axios, { type Method } from 'axios';
+import { ProxyAgent } from 'proxy-agent';
 
 const url = process.env.API_PROXY_URL;
 const token = process.env.API_PROXY_TOKEN;
 
+const agent = new ProxyAgent();
 const instance = axios.create({
   baseURL: url,
   timeout: 60000, // 超时时间
   headers: {
     Authorization: `Bearer ${token}`
-  }
+  },
+  proxy: false,
+  httpAgent: agent,
+  httpsAgent: agent
 });
 
 /**

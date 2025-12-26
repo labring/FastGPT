@@ -6,6 +6,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type ImageType } from '../../worker/readFile/type';
 import { getImageBase64 } from '../../common/file/image/utils';
+import { ProxyAgent } from 'proxy-agent';
 
 type ApiResponseDataType<T = any> = {
   code: string;
@@ -15,12 +16,16 @@ type ApiResponseDataType<T = any> = {
 
 export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   // Init request
+  const agent = new ProxyAgent();
   const instance = axios.create({
     baseURL: 'https://v2.doc2x.noedgeai.com/api',
     timeout: 60000,
     headers: {
       Authorization: `Bearer ${apiKey}`
-    }
+    },
+    proxy: false,
+    httpAgent: agent,
+    httpsAgent: agent
   });
   // Response check
   const checkRes = (data: ApiResponseDataType) => {
