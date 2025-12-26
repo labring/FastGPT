@@ -257,7 +257,6 @@ export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
   [FlowNodeTypeEnum.toolSet]: true
 };
 
-// Node color system
 export const NodeGradients = {
   pink: 'linear-gradient(180deg, rgba(255, 161, 206, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   blue: 'linear-gradient(180deg, rgba(104, 192, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
@@ -303,14 +302,4 @@ export const NodeBorderColors = {
   skyBlue: 'rgba(137, 229, 255, 0.6)',
   salmon: 'rgba(255, 160, 160, 0.6)',
   gray: 'rgba(136, 136, 136, 0.6)'
-};
-
-export type NodeColorSchema = keyof typeof NodeGradients;
-
-export const getGradientByColorSchema = (colorSchema: NodeColorSchema): string => {
-  return NodeGradients[colorSchema];
-};
-
-export const getBorderColorByColorSchema = (colorSchema: NodeColorSchema): string => {
-  return NodeBorderColors[colorSchema];
 };

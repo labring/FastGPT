@@ -72,7 +72,7 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { reactFlowWrapper, workflowControlMode, menu, presentationMode } = useContextSelector(
+  const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -119,7 +119,7 @@ const Workflow = () => {
             size={'mdSquare'}
             borderRadius={'50%'}
             bg={'black'}
-            _hover={{ bg: 'myGray.900' }}
+            _hover={{ bg: 'myGray.700' }}
             icon={<MyIcon name="common/addLight" w={'26px'} />}
             transition={'0.2s ease'}
             aria-label={''}

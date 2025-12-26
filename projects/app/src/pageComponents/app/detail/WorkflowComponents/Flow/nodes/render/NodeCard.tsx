@@ -9,13 +9,17 @@ import type {
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type {
+  NodeGradients
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
-  FlowNodeTypeEnum,
-  getGradientByColorSchema,
-  getBorderColorByColorSchema,
-  type NodeColorSchema
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  getGradientByColorSchema,
+  getBorderColorByColorSchema
+} from '@fastgpt/global/core/workflow/utils';
 import { useReactFlow } from 'reactflow';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
@@ -71,7 +75,7 @@ type Props = FlowNodeItemType & {
   };
   customStyle?: FlexProps;
   rtDoms?: React.ReactNode[];
-  colorSchema?: NodeColorSchema;
+  colorSchema?: keyof typeof NodeGradients;
 };
 
 const NodeCard = (props: Props) => {
@@ -163,7 +167,6 @@ const NodeCard = (props: Props) => {
 
   const showToolHandle = isTool && hasToolNode;
 
-  // Compute gradient background from colorSchema
   const gradient = useMemo(() => {
     return colorSchema ? getGradientByColorSchema(colorSchema) : undefined;
   }, [colorSchema]);
@@ -254,11 +257,18 @@ const NodeCard = (props: Props) => {
     <Flex
       hidden={hidden}
       flexDirection={'column'}
-      minW={isFolded ? '240px' : minW}
-      maxW={isFolded ? '240px' : maxW}
-      minH={isFolded ? '240px' : minH}
-      w={isFolded ? '240px' : w}
-      h={isFolded ? '240px' : h}
+      {...(isFolded
+        ? {
+            w: '240px',
+            h: '240px'
+          }
+        : {
+            minW,
+            maxW,
+            minH,
+            w,
+            h
+          })}
       outline={outlineWidth}
       outlineColor={outlineColor}
       borderRadius={'lg'}
@@ -410,21 +420,38 @@ const NodeCard = (props: Props) => {
           bottom={0}
           bg={'rgba(255, 255, 255, 0.80)'}
           backdropFilter={'blur(10px)'}
-          alignItems={isLoopNode ? 'flex-start' : 'center'}
-          justifyContent={isLoopNode ? 'flex-start' : 'center'}
           flexDirection={'column'}
           zIndex={10}
           borderRadius={'lg'}
-          px={isLoopNode ? 4 : 3}
-          py={isLoopNode ? 4 : 0}
+          {...(isLoopNode
+            ? {
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                px: 4,
+                py: 4
+              }
+            : {
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: 3,
+                py: 0
+              })}
           cursor={'pointer'}
           onDoubleClick={handleDoubleClick}
         >
           <Flex
             flexDirection={'column'}
-            ml={isLoopNode ? 4 : 0}
-            mt={isLoopNode ? 4 : 0}
-            alignItems={isLoopNode ? 'flex-start' : 'center'}
+            {...(isLoopNode
+              ? {
+                  ml: 4,
+                  mt: 4,
+                  alignItems: 'flex-start'
+                }
+              : {
+                  ml: 0,
+                  mt: 0,
+                  alignItems: 'center'
+                })}
             w={'full'}
             color={'black'}
           >

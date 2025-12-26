@@ -84,7 +84,6 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
         customStyle={{
           border: 'none',
           rounded: 'none',
-          py: '0',
           boxShadow:
             '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
         }}

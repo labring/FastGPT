@@ -13,6 +13,8 @@ export const LoopEndNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.loopEnd,
   showSourceHandle: false,
   showTargetHandle: true,
+  unique: true,
+  forbidDelete: true,
   avatar: 'core/workflow/systemNode/loopEnd',
   avatarLinear: 'core/workflow/systemNode/loopEndLinear',
   colorSchema: 'violetDeep',

@@ -2,7 +2,9 @@ import {
   chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  NodeGradients,
+  NodeBorderColors
 } from './node/constant';
 import {
   WorkflowIOValueTypeEnum,
@@ -443,4 +445,12 @@ export const removeUnauthModels = async ({
     });
   }
   return modules;
+};
+
+export const getGradientByColorSchema = (colorSchema: keyof typeof NodeGradients): string => {
+  return NodeGradients[colorSchema];
+};
+
+export const getBorderColorByColorSchema = (colorSchema: keyof typeof NodeBorderColors): string => {
+  return NodeBorderColors[colorSchema];
 };
