@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -16,6 +16,7 @@ import {
   getBorderColorByColorSchema,
   type NodeColorSchema
 } from '@fastgpt/global/core/workflow/node/constant';
+import { useReactFlow } from 'reactflow';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
@@ -107,11 +108,57 @@ const NodeCard = (props: Props) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
   const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
+  const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
+  const { fitView } = useReactFlow();
 
   const inputConfig = useMemo(
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
     [inputs]
   );
+
+  // 获取演示模式容器高度
+  const [presentationHeight, setPresentationHeight] = useState<number>(0);
+
+  // ref 回调：当 DOM 元素绑定时立即读取高度
+  const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setPresentationHeight(node.offsetHeight);
+    }
+  }, []);
+
+  // Handle double click on node in presentation mode
+  const handleDoubleClick = useCallback(() => {
+    if (presentationMode) {
+      setPresentationMode(false);
+      // Fit view to show this node in center
+      setTimeout(() => {
+        fitView({
+          nodes: [{ id: nodeId }],
+          padding: 0.3,
+          duration: 300
+        });
+      }, 100);
+    }
+  }, [presentationMode, setPresentationMode, fitView, nodeId]);
+
+  // Handle double click on folded node to unfold and focus
+  const handleFoldedNodeDoubleClick = useCallback(() => {
+    // Unfold the node
+    onChangeNode({
+      nodeId,
+      type: 'attr',
+      key: 'isFolded',
+      value: false
+    });
+    // Fit view to show this node in center
+    setTimeout(() => {
+      fitView({
+        nodes: [{ id: nodeId }],
+        padding: 0.3,
+        duration: 300
+      });
+    }, 100);
+  }, [onChangeNode, nodeId, fitView]);
 
   const showToolHandle = isTool && hasToolNode;
 
@@ -120,17 +167,22 @@ const NodeCard = (props: Props) => {
     return colorSchema ? getGradientByColorSchema(colorSchema) : undefined;
   }, [colorSchema]);
 
-  // Compute border color for presentation mode
-  const presentationBorderColor = useMemo(() => {
-    if (!presentationMode || !colorSchema) return undefined;
-    // In presentation mode, use darker/more opaque border when selected
-    if (selected) {
-      const baseColor = getBorderColorByColorSchema(colorSchema);
-      // Increase opacity from 0.6 to 0.9 for selected nodes
-      return baseColor.replace('0.6)', '0.9)');
+  const { outlineColor, outlineWidth } = useMemo(() => {
+    if (isError) return { outlineColor: 'red.500', outlineWidth: '3px solid' };
+    if (!colorSchema) return { outlineColor: undefined, outlineWidth: undefined };
+    if (!presentationMode && !isFolded) {
+      const outlineColor = selected ? 'primary.600' : 'myGray.250';
+      const outlineWidth = selected ? '2px solid' : '1px solid';
+      return { outlineColor, outlineWidth };
     }
-    return getBorderColorByColorSchema(colorSchema);
-  }, [presentationMode, colorSchema, selected]);
+
+    const baseColor = getBorderColorByColorSchema(colorSchema);
+    const outlineColor = selected ? baseColor.replace('0.6)', '0.9)') : baseColor;
+    return {
+      outlineColor,
+      outlineWidth: '4px solid'
+    };
+  }, [presentationMode, isFolded, colorSchema, selected, isError]);
 
   // Current node and parent node
   const { node, hidden } = useMemo(() => {
@@ -201,21 +253,16 @@ const NodeCard = (props: Props) => {
     <Flex
       hidden={hidden}
       flexDirection={'column'}
-      minW={minW}
-      maxW={maxW}
-      minH={minH}
-      bg={'white'}
-      outline={
-        presentationMode && selected
-          ? '3px solid'
-          : isError || presentationBorderColor
-            ? '2px solid'
-            : '1px solid'
-      }
+      minW={isFolded ? '240px' : minW}
+      maxW={isFolded ? '240px' : maxW}
+      minH={isFolded ? '240px' : minH}
+      w={isFolded ? '240px' : w}
+      h={isFolded ? '240px' : h}
+      overflow={'hidden'}
+      outline={outlineWidth}
+      outlineColor={outlineColor}
       borderRadius={'lg'}
       boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
-      w={w}
-      h={h}
       _hover={{
         boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
         '& .controller-menu': {
@@ -230,101 +277,127 @@ const NodeCard = (props: Props) => {
       }}
       onMouseEnter={() => setHoverNodeId(nodeId)}
       onMouseLeave={() => setHoverNodeId(undefined)}
-      {...(isError
-        ? {
-            outlineColor: 'red.500',
-            onMouseDownCapture: () => onUpdateNodeError(nodeId, false)
-          }
-        : presentationBorderColor
-          ? {
-              outlineColor: presentationBorderColor
-            }
-          : {
-              outlineColor: selected ? 'primary.600' : 'myGray.250'
-            })}
+      {...(isError ? { onMouseDownCapture: () => onUpdateNodeError(nodeId, false) } : {})}
       {...customStyle}
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
-      {/* Header */}
-      <Box position={'relative'}>
-        {gradient && (
+
+      {/* Folded state: Show minimal square */}
+      {isFolded ? (
+        <Flex
+          position={'absolute'}
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          alignItems={'center'}
+          justifyContent={'center'}
+          flexDirection={'column'}
+          zIndex={1}
+          onDoubleClick={handleFoldedNodeDoubleClick}
+          cursor={'pointer'}
+          bg={'rgba(255, 255, 255, 0.80)'}
+          backdropFilter={'blur(10px)'}
+          borderRadius={'lg'}
+        >
+          <MyIcon name={avatarLinear || (avatar as any)} fill={'none'} w={'100px'} h={'100px'} />
           <Box
-            position={'absolute'}
-            top={0}
-            left={0}
-            right={0}
-            height={'60px'}
-            background={gradient}
-            borderRadius={'lg'}
-            zIndex={presentationMode ? 20 : 0}
-            pointerEvents={'none'}
-          />
-        )}
-        {showHeader && (
-          <Box px={3} pt={4} position={'relative'} zIndex={1}>
-            <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-
-            <Flex alignItems={'center'} mb={1}>
-              {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
-                <NodeFoldButton nodeId={nodeId} isFolded={isFolded} />
-              )}
-
-              <NodeTitleSection
-                nodeId={nodeId}
-                avatar={avatar}
-                name={name}
-                searchedText={searchedText}
-              />
-
-              <Box flex={1} mr={1} />
-
-              {showVersion && <NodeVersion node={node!} />}
-
-              <NodeActionButtons
-                nodeTemplate={nodeTemplate}
-                courseUrl={node?.courseUrl}
-                rtDoms={rtDoms}
-              />
-
-              <NodeStatusBadge status={nodeTemplate?.status} error={error} />
-            </Flex>
-
-            <NodeIntro nodeId={nodeId} intro={intro} />
+            mt={3}
+            color={'myGray.700'}
+            fontSize={'24px'}
+            fontWeight={'500'}
+            textAlign={'center'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+            maxW={'80%'}
+          >
+            {t(name as any)}
           </Box>
-        )}
-        <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
-      </Box>
-
-      <Flex flexDirection={'column'} flex={1} py={!isFolded ? 3 : 0} gap={2} position={'relative'}>
-        {!isFolded ? (
-          <>
-            {inputConfig && !inputConfig?.value ? (
-              <NodeSecret
-                nodeId={nodeId}
-                isFolder={node?.isFolder}
-                courseUrl={node?.courseUrl}
-                hasSystemSecret={node?.hasSystemSecret}
-                pluginId={node?.pluginId}
-                systemKeyCost={node?.systemKeyCost}
-                inputConfig={inputConfig}
+        </Flex>
+      ) : (
+        <Box bg={'white'}>
+          {/* Header */}
+          <Box position={'relative'}>
+            {gradient && (
+              <Box
+                position={'absolute'}
+                top={0}
+                left={0}
+                right={0}
+                height={'60px'}
+                background={gradient}
+                borderRadius={'lg'}
+                zIndex={presentationMode ? 20 : 0}
+                pointerEvents={'none'}
               />
-            ) : (
-              children
             )}
-          </>
-        ) : (
-          <Box h={4} />
-        )}
-      </Flex>
+            {showHeader && (
+              <Box px={3} pt={4} position={'relative'} zIndex={1}>
+                <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
-      {/* Handle */}
+                <Flex alignItems={'center'} mb={1}>
+                  <NodeTitleSection
+                    nodeId={nodeId}
+                    avatar={avatar}
+                    name={name}
+                    searchedText={searchedText}
+                  />
+
+                  <Box flex={1} mr={1} />
+
+                  {showVersion && <NodeVersion node={node!} />}
+
+                  <NodeActionButtons
+                    nodeTemplate={nodeTemplate}
+                    courseUrl={node?.courseUrl}
+                    rtDoms={rtDoms}
+                  />
+
+                  <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+                </Flex>
+
+                <NodeIntro nodeId={nodeId} intro={intro} />
+              </Box>
+            )}
+          </Box>
+
+          <Flex flexDirection={'column'} flex={1} py={3} gap={2} position={'relative'}>
+            {!isFolded ? (
+              <>
+                {inputConfig && !inputConfig?.value ? (
+                  <NodeSecret
+                    nodeId={nodeId}
+                    isFolder={node?.isFolder}
+                    courseUrl={node?.courseUrl}
+                    hasSystemSecret={node?.hasSystemSecret}
+                    pluginId={node?.pluginId}
+                    systemKeyCost={node?.systemKeyCost}
+                    inputConfig={inputConfig}
+                  />
+                ) : (
+                  children
+                )}
+              </>
+            ) : (
+              <Box h={4} />
+            )}
+          </Flex>
+        </Box>
+      )}
+
+      {/* Menu - Always render outside the fold/unfold condition */}
+      <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
+
+      {/* Handle - Always render handles outside the fold/unfold condition */}
       <ConnectionSourceHandle nodeId={nodeId} />
       <ConnectionTargetHandle nodeId={nodeId} />
       {RenderToolHandle}
 
       {/* Presentation Mode Overlay */}
-      {presentationMode && (
+      {presentationMode && !isFolded && (
         <Flex
+          ref={presentationOverlayRef}
           position={'absolute'}
           top={0}
           left={0}
@@ -339,88 +412,46 @@ const NodeCard = (props: Props) => {
           borderRadius={'lg'}
           px={isLoopNode ? 4 : 3}
           py={isLoopNode ? 4 : 0}
+          cursor={'pointer'}
+          onDoubleClick={handleDoubleClick}
         >
-          {isLoopNode ? (
-            <Flex flexDirection={'column'} ml={4} mt={4}>
-              <MyIcon
-                name={avatarLinear || (avatar as any)}
-                fill={'none'}
-                w={'100px'}
-                h={'100px'}
-              />
-              {/* Node Name */}
-              {name && (
-                <Box
-                  color={'#000'}
-                  fontSize={'24px'}
-                  fontWeight={'medium'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  mt={2}
-                >
-                  {t(name as any)}
-                </Box>
-              )}
-
-              {/* Node Intro */}
-              {intro && (
-                <Box
-                  color={'#000'}
-                  fontSize={'16px'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  mt={1}
-                >
-                  {t(intro as any)}
-                </Box>
-              )}
-            </Flex>
-          ) : (
-            <>
-              {/* Regular node: Centered layout */}
-              <MyIcon
-                name={avatarLinear || (avatar as any)}
-                fill={'none'}
-                w={'100px'}
-                h={'100px'}
-              />
-
-              {/* Node Name */}
-              {name && (
-                <Box
-                  mt={2}
-                  color={'#000'}
-                  fontSize={'24px'}
-                  fontWeight={'medium'}
-                  textAlign={'center'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  maxW={'80%'}
-                >
-                  {t(name as any)}
-                </Box>
-              )}
-
-              {/* Node Intro */}
-              {intro && (
-                <Box
-                  mt={1}
-                  color={'#000'}
-                  fontSize={'16px'}
-                  textAlign={'center'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  maxW={'80%'}
-                >
-                  {t(intro as any)}
-                </Box>
-              )}
-            </>
-          )}
+          <Flex
+            flexDirection={'column'}
+            ml={isLoopNode ? 4 : 0}
+            mt={isLoopNode ? 4 : 0}
+            alignItems={isLoopNode ? 'flex-start' : 'center'}
+            w={'full'}
+            color={'black'}
+          >
+            <MyIcon name={avatarLinear || (avatar as any)} fill={'none'} w={'160px'} h={'160px'} />
+            {name && presentationHeight > 200 && (
+              <Box
+                mt={2}
+                fontSize={'32px'}
+                fontWeight={'medium'}
+                textAlign={isLoopNode ? 'left' : 'center'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+                maxW={'80%'}
+              >
+                {t(name as any)}
+              </Box>
+            )}
+            {intro && presentationHeight > 240 && (
+              <Box
+                mt={1}
+                fontSize={'26px'}
+                textAlign={isLoopNode ? 'left' : 'center'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+                maxW={'80%'}
+              >
+                {t(intro as any)}
+              </Box>
+            )}
+          </Flex>
         </Flex>
       )}
     </Flex>
@@ -428,43 +459,6 @@ const NodeCard = (props: Props) => {
 };
 
 export default React.memo(NodeCard);
-
-// 节点折叠按钮组件
-const NodeFoldButton = React.memo<{
-  nodeId: string;
-  isFolded?: boolean;
-}>(({ nodeId, isFolded }) => {
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const handleClick = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'attr',
-      key: 'isFolded',
-      value: !isFolded
-    });
-  }, [nodeId, isFolded, onChangeNode]);
-
-  return (
-    <Flex
-      alignItems={'center'}
-      mr={1}
-      p={1}
-      cursor={'pointer'}
-      rounded={'sm'}
-      _hover={{ bg: 'myGray.200' }}
-      onClick={handleClick}
-    >
-      <MyIcon
-        name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
-        w={'16px'}
-        h={'16px'}
-        color={'myGray.500'}
-      />
-    </Flex>
-  );
-});
-NodeFoldButton.displayName = 'NodeFoldButton';
 
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
@@ -698,12 +692,17 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, setEdges, getNodeList } = useContextSelector(
+  const { setNodes, setEdges, getNodeList, getNodeById } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { computedNewNodeName } = useWorkflowUtils();
+
+  // Get current node to check if folded
+  const currentNode = getNodeById(nodeId);
+  const isFolded = currentNode?.isFolded;
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -801,6 +800,19 @@ const MenuRender = React.memo(function MenuRender({
 
   const Render = useMemo(() => {
     const menuList = [
+      {
+        icon: isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown',
+        label: isFolded ? t('workflow:Unfold') : t('workflow:Fold'),
+        variant: 'whiteBase',
+        onClick: () => {
+          onChangeNode({
+            nodeId,
+            type: 'attr',
+            key: 'isFolded',
+            value: !isFolded
+          });
+        }
+      },
       ...(menuForbid?.debug
         ? []
         : [
@@ -876,7 +888,9 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode
+    onDelNode,
+    isFolded,
+    onChangeNode
   ]);
 
   return Render;

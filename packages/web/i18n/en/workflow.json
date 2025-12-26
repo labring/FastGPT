@@ -72,6 +72,8 @@
   "find_tip": "Find node ctrl f",
   "find_tip_mac": "Find node ⌘ f",
   "foldAll": "Collapse all",
+  "Fold": "Collapse",
+  "Unfold": "Expand",
   "form_input_result": "User complete input result",
   "form_input_result_tip": "an object containing the complete result",
   "full_field_extraction": "Full Field Extraction",

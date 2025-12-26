@@ -72,6 +72,8 @@
   "find_tip": "查找节点 ctrl f",
   "find_tip_mac": "查找节点  ⌘  f",
   "foldAll": "全部折叠",
+  "Fold": "折叠",
+  "Unfold": "展开",
   "form_input_result": "用户完整输入结果",
   "form_input_result_tip": "一个包含完整结果的对象",
   "full_field_extraction": "字段完全提取",

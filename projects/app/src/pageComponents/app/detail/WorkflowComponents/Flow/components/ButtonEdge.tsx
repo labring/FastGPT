@@ -33,7 +33,7 @@ export const CustomConnectionLine = ({
     targetX: toX,
     targetY: toY,
     targetPosition: toPosition,
-    borderRadius: 40
+    borderRadius: 60
   });
 
   return (
@@ -258,7 +258,7 @@ const ButtonEdge = (props: EdgeProps) => {
         targetX={newTargetX}
         targetY={newTargetY}
         pathOptions={{
-          borderRadius: 40
+          borderRadius: 50
         }}
         style={{
           ...edgeStyle,

@@ -118,6 +118,8 @@ const Workflow = () => {
             left={6}
             size={'mdSquare'}
             borderRadius={'50%'}
+            bg={'black'}
+            _hover={{ bg: 'myGray.900' }}
             icon={<MyIcon name="common/addLight" w={'26px'} />}
             transition={'0.2s ease'}
             aria-label={''}
