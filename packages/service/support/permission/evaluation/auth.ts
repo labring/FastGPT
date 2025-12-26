@@ -7,6 +7,7 @@ import type { EvaluationSchemaType } from '@fastgpt/global/core/app/evaluation/t
 import type { AuthModeType } from '../type';
 import { MongoEvaluation } from '../../../core/app/evaluation/evalSchema';
 import { parseHeaderCert } from '../auth/common';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 export const authEval = async ({
   evalId,
@@ -21,7 +22,8 @@ export const authEval = async ({
 }> => {
   const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
 
-  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId').lean();
+  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId appId').lean();
+
   if (!evaluation) {
     return Promise.reject('Evaluation not found');
   }
@@ -36,12 +38,19 @@ export const authEval = async ({
 
   // App read per
   if (per === ReadPermissionVal) {
-    await authAppByTmbId({
-      tmbId,
-      appId: evaluation.appId,
-      per: ReadPermissionVal,
-      isRoot
-    });
+    try {
+      await authAppByTmbId({
+        tmbId,
+        appId: evaluation.appId,
+        per: ReadPermissionVal,
+        isRoot
+      });
+    } catch (error) {
+      // If app does not exist, allow access (app was deleted, but eval record remains)
+      if (error !== AppErrEnum.unExist) {
+        throw error;
+      }
+    }
     return {
       teamId,
       tmbId,
@@ -50,12 +59,19 @@ export const authEval = async ({
   }
 
   // Write per
-  await authAppByTmbId({
-    tmbId,
-    appId: evaluation.appId,
-    per: ManagePermissionVal,
-    isRoot
-  });
+  try {
+    await authAppByTmbId({
+      tmbId,
+      appId: evaluation.appId,
+      per: ManagePermissionVal,
+      isRoot
+    });
+  } catch (error) {
+    // If app does not exist, allow operation (app was deleted, allow eval cleanup)
+    if (error !== AppErrEnum.unExist) {
+      throw error;
+    }
+  }
   return {
     teamId,
     tmbId,
