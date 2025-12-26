@@ -29,6 +29,7 @@ import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
+import { ProxyAgent } from 'proxy-agent';
 
 type PropsArrType = {
   key: string;
@@ -504,6 +505,8 @@ async function fetchData({
     return `http://${SERVICE_LOCAL_HOST}/${url.replace(/^\/+/, '')}`;
   };
 
+  const agent = new ProxyAgent();
+
   const { data: response } = await axios({
     method,
     maxContentLength: serviceRequestMaxContentLength,
@@ -513,7 +516,10 @@ async function fetchData({
     },
     timeout: timeout * 1000,
     params: params,
-    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
+    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+    proxy: false,
+    httpAgent: agent,
+    httpsAgent: agent
   });
 
   return {
