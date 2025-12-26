@@ -3,6 +3,7 @@ import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import { addLog } from '../../../common/system/log';
 import { MysqlClient } from './model/mysql';
 import { PostgresqlClient } from './model/postgresql';
+import { MssqlClient } from './model/mssql';
 import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -14,6 +15,8 @@ export async function createDatabaseClient(config: DatabaseConfig): Promise<Asyn
       return MysqlClient.fromConfig(config);
     case DatabaseTypeEnum.postgresql:
       return PostgresqlClient.fromConfig(config);
+    case DatabaseTypeEnum.mssql:
+      return MssqlClient.fromConfig(config);
     default:
       return Promise.reject(DatabaseErrEnum.notSupportType);
   }

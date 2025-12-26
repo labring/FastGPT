@@ -51,12 +51,25 @@ export abstract class AsyncDB {
       database: config.database,
       synchronize: false,
       logging: false,
+      poolSize: config.poolSize || 20,
       // PostgreSQL specific: disable native driver to use pure JS implementation
       ...(config.clientType === DatabaseTypeEnum.postgresql && {
         driver: require('pg'),
         nativeDriver: null,
         extra: { native: false },
         ...(config.schema && { schema: config.schema })
+      }),
+      ...(config.clientType === DatabaseTypeEnum.mssql && {
+        pool: {
+          max: config.poolSize || 20,
+          min: 0,
+          idleTimeoutMillis: 30000
+        },
+        ...(config.schema && { schema: config.schema }),
+        options: {
+          encrypt: config.encrypt || false,
+          trustServerCertificate: config.trustServerCertificate || false
+        }
       })
     };
     console.debug(`[AsyncDB.from_uri]:${JSON.stringify(options, null, 2)}`);
@@ -154,6 +167,8 @@ export abstract class AsyncDB {
         return `\`${identifier}\``;
       case DatabaseTypeEnum.postgresql:
         return `"${identifier}"`;
+      case DatabaseTypeEnum.mssql:
+        return `[${identifier}]`;
       default:
         return identifier;
     }
