@@ -117,9 +117,12 @@ const ChatContent = (props: ChatPageProps) => {
     };
   }, [appId, chatId]);
 
-  const loginSuccess = useCallback(async (res: LoginSuccessResponse) => {
-    setUserInfo(res.user);
-  }, []);
+  const loginSuccess = useCallback(
+    async (res: LoginSuccessResponse) => {
+      setUserInfo(res.user);
+    },
+    [setUserInfo]
+  );
 
   // Waiting for user info to be initialized
   if (!isInitedUser) {

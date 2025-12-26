@@ -1,17 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { batchRun } from '@fastgpt/global/common/system/utils';
-import { getQueue, QueueNames } from '@fastgpt/service/common/bullmq';
-import type { S3MQJobData } from '@fastgpt/service/common/s3/mq';
-import { addLog } from '@fastgpt/service/common/system/log';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type ResponseType = {
   message: string;
-  retriedCount: number;
-  failedCount: number;
   shareLinkMigration: {
     totalRecords: number;
     updatedRecords: number;
@@ -33,57 +28,6 @@ export type ResponseType = {
  */
 
 /**
- * 功能1: 重试所有失败的 S3 删除任务
- */
-async function retryFailedS3DeleteJobs(): Promise<{
-  retriedCount: number;
-  failedCount: number;
-}> {
-  const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
-  const failedJobs = await queue.getFailed();
-  console.log(`Found ${failedJobs.length} failed S3 delete jobs`);
-
-  let retriedCount = 0;
-
-  await batchRun(
-    failedJobs,
-    async (job) => {
-      addLog.debug(`Retrying S3 delete job with new attempts`, { retriedCount });
-      try {
-        // Remove old job and recreate with new attempts
-        const jobData = job.data;
-        await job.remove();
-
-        // Add new job with more attempts
-        await queue.add('delete-s3-files', jobData, {
-          attempts: 10,
-          removeOnFail: {
-            count: 10000, // 保留10000个失败任务
-            age: 14 * 24 * 60 * 60 // 14 days
-          },
-          removeOnComplete: true,
-          backoff: {
-            delay: 2000,
-            type: 'exponential'
-          }
-        });
-
-        retriedCount++;
-        console.log(`Retried S3 delete job ${job.id} with new attempts`);
-      } catch (error) {
-        console.error(`Failed to retry S3 delete job ${job.id}:`, error);
-      }
-    },
-    100
-  );
-
-  return {
-    retriedCount,
-    failedCount: failedJobs.length
-  };
-}
-
-/**
  * 功能2和3: 处理 OutLink 记录的数据迁移
  * - 添加 showFullText 字段
  * - 重命名现有字段
@@ -102,143 +46,22 @@ async function migrateOutLinkData(): Promise<{
     updated: number;
   }> = [];
 
-  // 获取 MongoDB 原生集合，绕过 Mongoose 的严格模式
-  const db = connectionMongo.connection.db;
-  if (!db) {
-    throw new Error('Database connection not established');
-  }
-  const outLinkCollection = db.collection('outlinks');
-
   // 1. 为所有 share 类型的记录添加 showFullText 字段
-  const shareLinks = await outLinkCollection
-    .find({
-      type: PublishChannelEnum.share,
-      showFullText: { $exists: false } // 只查找没有 showFullText 字段的记录
-    })
-    .toArray();
+  const shareLinks = await MongoOutLink.find({
+    type: PublishChannelEnum.share
+  });
 
-  if (shareLinks.length > 0) {
-    // 批量更新添加 showFullText 字段
-    const showFullTextOps = shareLinks.map((link: any) => ({
-      updateOne: {
-        filter: { _id: link._id },
-        update: { $set: { showFullText: link.showRawSource ?? true } }
-      }
-    }));
-
-    const showFullTextResult = await outLinkCollection.bulkWrite(showFullTextOps);
-    totalUpdated += showFullTextResult.modifiedCount;
-    updateResults.push({
-      operation: 'Add showFullText field',
-      updated: showFullTextResult.modifiedCount
-    });
-
-    console.log(`Added showFullText field to ${showFullTextResult.modifiedCount} share links`);
-  }
-
-  // 2. 重命名字段：showNodeStatus -> showRunningStatus
-  const showNodeStatusLinks = await outLinkCollection
-    .find({
-      showNodeStatus: { $exists: true },
-      showRunningStatus: { $exists: false }
-    })
-    .toArray();
-
-  if (showNodeStatusLinks.length > 0) {
-    const renameNodeStatusOps = showNodeStatusLinks.map((link: any) => ({
-      updateOne: {
-        filter: { _id: link._id },
-        update: [
-          {
-            $set: { showRunningStatus: '$showNodeStatus' }
-          },
-          {
-            $unset: 'showNodeStatus'
-          }
-        ]
-      }
-    }));
-
-    const renameNodeStatusResult = await outLinkCollection.bulkWrite(renameNodeStatusOps);
-    totalUpdated += renameNodeStatusResult.modifiedCount;
-    updateResults.push({
-      operation: 'Rename showNodeStatus to showRunningStatus',
-      updated: renameNodeStatusResult.modifiedCount
-    });
-
-    console.log(
-      `Renamed showNodeStatus to showRunningStatus for ${renameNodeStatusResult.modifiedCount} links`
-    );
-  }
-
-  // 3. 重命名字段：responseDetail -> showCite
-  const responseDetailLinks = await outLinkCollection
-    .find({
-      responseDetail: { $exists: true },
-      showCite: { $exists: false }
-    })
-    .toArray();
-
-  if (responseDetailLinks.length > 0) {
-    const renameResponseDetailOps = responseDetailLinks.map((link: any) => ({
-      updateOne: {
-        filter: { _id: link._id },
-        update: [
-          {
-            $set: { showCite: '$responseDetail' }
-          },
-          {
-            $unset: 'responseDetail'
-          }
-        ]
-      }
-    }));
-
-    const renameResponseDetailResult = await outLinkCollection.bulkWrite(renameResponseDetailOps);
-    totalUpdated += renameResponseDetailResult.modifiedCount;
-    updateResults.push({
-      operation: 'Rename responseDetail to showCite',
-      updated: renameResponseDetailResult.modifiedCount
-    });
-
-    console.log(
-      `Renamed responseDetail to showCite for ${renameResponseDetailResult.modifiedCount} links`
-    );
-  }
-
-  // 4. 重命名字段：showRawSource -> canDownloadSource
-  const showRawSourceLinks = await outLinkCollection
-    .find({
-      showRawSource: { $exists: true },
-      canDownloadSource: { $exists: false }
-    })
-    .toArray();
-
-  if (showRawSourceLinks.length > 0) {
-    const renameRawSourceOps = showRawSourceLinks.map((link: any) => ({
-      updateOne: {
-        filter: { _id: link._id },
-        update: [
-          {
-            $set: { canDownloadSource: '$showRawSource' }
-          },
-          {
-            $unset: 'showRawSource'
-          }
-        ]
-      }
-    }));
-
-    const renameRawSourceResult = await outLinkCollection.bulkWrite(renameRawSourceOps);
-    totalUpdated += renameRawSourceResult.modifiedCount;
-    updateResults.push({
-      operation: 'Rename showRawSource to canDownloadSource',
-      updated: renameRawSourceResult.modifiedCount
-    });
-
-    console.log(
-      `Renamed showRawSource to canDownloadSource for ${renameRawSourceResult.modifiedCount} links`
-    );
+  for await (const link of shareLinks) {
+    try {
+      link.showFullText = link.showFullText ?? link.showRawSource ?? true;
+      link.showRunningStatus = link.showRunningStatus ?? link.showNodeStatus ?? false;
+      link.showCite = link.showCite ?? link.responseDetail ?? false;
+      link.canDownloadSource = link.canDownloadSource ?? link.showRawSource ?? false;
+      await link.save();
+      addLog.info(`[initv4145] 迁移 OutLink 数据成功: ${link.shareId}`);
+    } catch (error) {
+      addLog.error('[initv4145] 迁移 OutLink 数据失败:', error);
+    }
   }
 
   return {
@@ -257,9 +80,6 @@ async function handler(
 ): Promise<ResponseType> {
   await authCert({ req, authRoot: true });
 
-  // 执行功能1: 重试 S3 删除任务
-  const s3JobResult = await retryFailedS3DeleteJobs();
-
   // 执行功能2&3: OutLink 数据迁移
   let shareLinkMigration = {
     totalRecords: 0,
@@ -276,8 +96,6 @@ async function handler(
 
   return {
     message: `Completed v4.14.5 initialization: S3 job retries and outLink migration`,
-    retriedCount: s3JobResult.retriedCount,
-    failedCount: s3JobResult.failedCount,
     shareLinkMigration
   };
 }
