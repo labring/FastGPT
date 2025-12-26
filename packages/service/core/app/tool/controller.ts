@@ -60,6 +60,7 @@ type ChildAppType = AppToolTemplateItemType & {
   workflow?: WorkflowTemplateBasicType;
   versionLabel?: string; // Auto computed
   isLatestVersion?: boolean; // Auto computed
+  type?: AppTypeEnum;
 };
 
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
@@ -262,6 +263,7 @@ export async function getChildAppPreviewNode({
           chatConfig: version.chatConfig
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
+        type: item.type,
 
         version: versionId ? version?.versionId : '',
         versionLabel: version?.versionName,
@@ -467,6 +469,24 @@ export async function getChildAppPreviewNode({
     showStatus: true,
     isTool: true,
     catchError: false,
+    colorSchema: (() => {
+      if (source === AppToolSourceEnum.personal) {
+        return app.type === AppTypeEnum.simple || app.type === AppTypeEnum.workflow
+          ? 'skyBlue'
+          : 'salmon';
+      }
+      if (source === AppToolSourceEnum.http || source === AppToolSourceEnum.mcp) {
+        return 'salmon';
+      }
+      if (
+        source === AppToolSourceEnum.commercial ||
+        source === AppToolSourceEnum.community ||
+        source === AppToolSourceEnum.systemTool
+      ) {
+        return 'gray';
+      }
+      return undefined;
+    })(),
 
     version: app.version,
     versionLabel: app.versionLabel,

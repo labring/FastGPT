@@ -195,7 +195,7 @@ const WorkflowInitContextProvider = ({
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
-      if (!node.data.isFolded) {
+      if (!node.data.isFolded && flowNodeType !== FlowNodeTypeEnum.comment) {
         allNodeFolded = false;
       }
 

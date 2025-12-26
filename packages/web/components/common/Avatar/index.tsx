@@ -9,6 +9,7 @@ import MyImage from '../Image/MyImage';
 const Avatar = ({
   w = '30px',
   src,
+  fill,
   ...props
 }: Omit<ImageProps, 'src'> & { src?: string | null }) => {
   // @ts-ignore
@@ -16,7 +17,7 @@ const Avatar = ({
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>
-      <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
+      <MyIcon name={src as any} w={w} fill={fill} borderRadius={props.borderRadius} />
     </Box>
   ) : (
     <MyImage

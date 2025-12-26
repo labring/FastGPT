@@ -276,7 +276,11 @@ export const NodeGradients = {
   violetDeep:
     'linear-gradient(180deg, rgba(212, 117, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   yellowGreen:
-    'linear-gradient(180deg, rgba(166, 218, 114, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
+    'linear-gradient(180deg, rgba(166, 218, 114, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  lafTeal: 'linear-gradient(180deg, rgba(72, 213, 186, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
 };
 
 export const NodeBorderColors = {
@@ -294,7 +298,11 @@ export const NodeBorderColors = {
   lime: 'rgba(92, 216, 201, 0.6)',
   violet: 'rgba(155, 142, 255, 0.6)',
   violetDeep: 'rgba(212, 117, 255, 0.6)',
-  yellowGreen: 'rgba(166, 218, 114, 0.6)'
+  yellowGreen: 'rgba(166, 218, 114, 0.6)',
+  lafTeal: 'rgba(72, 213, 186, 0.6)',
+  skyBlue: 'rgba(137, 229, 255, 0.6)',
+  salmon: 'rgba(255, 160, 160, 0.6)',
+  gray: 'rgba(136, 136, 136, 0.6)'
 };
 
 export type NodeColorSchema = keyof typeof NodeGradients;

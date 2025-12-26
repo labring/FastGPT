@@ -67,6 +67,7 @@ type Props = FlowNodeItemType & {
     debug?: boolean;
     copy?: boolean;
     delete?: boolean;
+    fold?: boolean;
   };
   customStyle?: FlexProps;
   rtDoms?: React.ReactNode[];
@@ -258,7 +259,6 @@ const NodeCard = (props: Props) => {
       minH={isFolded ? '240px' : minH}
       w={isFolded ? '240px' : w}
       h={isFolded ? '240px' : h}
-      overflow={'hidden'}
       outline={outlineWidth}
       outlineColor={outlineColor}
       borderRadius={'lg'}
@@ -300,7 +300,7 @@ const NodeCard = (props: Props) => {
           backdropFilter={'blur(10px)'}
           borderRadius={'lg'}
         >
-          <MyIcon name={avatarLinear || (avatar as any)} fill={'none'} w={'100px'} h={'100px'} />
+          <Avatar src={avatarLinear || avatar} fill={'none'} w={'100px'} h={'100px'} />
           <Box
             mt={3}
             color={'myGray.700'}
@@ -316,7 +316,7 @@ const NodeCard = (props: Props) => {
           </Box>
         </Flex>
       ) : (
-        <Box bg={'white'}>
+        <Box bg={'white'} borderRadius={'lg'}>
           {/* Header */}
           <Box position={'relative'}>
             {gradient && (
@@ -333,9 +333,7 @@ const NodeCard = (props: Props) => {
               />
             )}
             {showHeader && (
-              <Box px={3} pt={4} position={'relative'} zIndex={1}>
-                <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-
+              <Box px={3} pt={4} position={'relative'}>
                 <Flex alignItems={'center'} mb={1}>
                   <NodeTitleSection
                     nodeId={nodeId}
@@ -362,7 +360,13 @@ const NodeCard = (props: Props) => {
             )}
           </Box>
 
-          <Flex flexDirection={'column'} flex={1} py={3} gap={2} position={'relative'}>
+          <Flex
+            flexDirection={'column'}
+            flex={1}
+            py={showHeader ? 3 : 0}
+            gap={2}
+            position={'relative'}
+          >
             {!isFolded ? (
               <>
                 {inputConfig && !inputConfig?.value ? (
@@ -390,12 +394,13 @@ const NodeCard = (props: Props) => {
       <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
 
       {/* Handle - Always render handles outside the fold/unfold condition */}
+      <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
       <ConnectionSourceHandle nodeId={nodeId} />
       <ConnectionTargetHandle nodeId={nodeId} />
       {RenderToolHandle}
 
       {/* Presentation Mode Overlay */}
-      {presentationMode && !isFolded && (
+      {presentationMode && !isFolded && showHeader && (
         <Flex
           ref={presentationOverlayRef}
           position={'absolute'}
@@ -423,7 +428,7 @@ const NodeCard = (props: Props) => {
             w={'full'}
             color={'black'}
           >
-            <MyIcon name={avatarLinear || (avatar as any)} fill={'none'} w={'160px'} h={'160px'} />
+            <Avatar src={avatarLinear || avatar} fill={'none'} w={'160px'} h={'160px'} />
             {name && presentationHeight > 200 && (
               <Box
                 mt={2}
@@ -438,7 +443,7 @@ const NodeCard = (props: Props) => {
                 {t(name as any)}
               </Box>
             )}
-            {intro && presentationHeight > 240 && (
+            {intro && presentationHeight > 250 && (
               <Box
                 mt={1}
                 fontSize={'26px'}
@@ -713,6 +718,8 @@ const MenuRender = React.memo(function MenuRender({
           flowNodeType: node.data.flowNodeType,
           parentNodeId: node.data.parentNodeId,
           avatar: node.data.avatar,
+          avatarLinear: node.data.avatarLinear,
+          colorSchema: node.data.colorSchema,
           name: computedNewNodeName({
             templateName: node.data.name,
             flowNodeType: node.data.flowNodeType,
@@ -751,6 +758,8 @@ const MenuRender = React.memo(function MenuRender({
             item: {
               flowNodeType: template.flowNodeType,
               avatar: template.avatar,
+              avatarLinear: template.avatarLinear,
+              colorSchema: template.colorSchema,
               name: template.name,
               intro: template.intro,
               nodeId: getNanoid(),
@@ -800,19 +809,23 @@ const MenuRender = React.memo(function MenuRender({
 
   const Render = useMemo(() => {
     const menuList = [
-      {
-        icon: isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown',
-        label: isFolded ? t('workflow:Unfold') : t('workflow:Fold'),
-        variant: 'whiteBase',
-        onClick: () => {
-          onChangeNode({
-            nodeId,
-            type: 'attr',
-            key: 'isFolded',
-            value: !isFolded
-          });
-        }
-      },
+      ...(menuForbid?.fold
+        ? []
+        : [
+            {
+              icon: isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown',
+              label: isFolded ? t('workflow:Unfold') : t('workflow:Fold'),
+              variant: 'whiteBase',
+              onClick: () => {
+                onChangeNode({
+                  nodeId,
+                  type: 'attr',
+                  key: 'isFolded',
+                  value: !isFolded
+                });
+              }
+            }
+          ]),
       ...(menuForbid?.debug
         ? []
         : [
@@ -883,6 +896,7 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.debug,
     menuForbid?.copy,
     menuForbid?.delete,
+    menuForbid?.fold,
     t,
     DebugInputModal,
     openDebugNode,

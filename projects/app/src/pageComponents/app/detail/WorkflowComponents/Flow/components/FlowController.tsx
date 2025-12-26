@@ -65,7 +65,13 @@ const FlowController = React.memo(function FlowController() {
     zoomOut();
   });
 
-  /* 
+  useKeyPress(['shift.space'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    setPresentationMode((v) => !v);
+  });
+
+  /*
     id: Render node id
    */
   const MiniMapNode = useCallback(
@@ -167,14 +173,18 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* presentation */}
-          <MyTooltip label={presentationMode ? '编辑模式' : '演示模式'}>
+          <MyTooltip
+            label={
+              presentationMode ? t('workflow:Edit_mode_tip') : t('workflow:Presentation_mode_tip')
+            }
+          >
             <ControlButton
               onClick={() => {
                 setPresentationMode(!presentationMode);
               }}
               style={{
                 ...buttonStyle,
-                backgroundColor: presentationMode ? '#EBF2FF' : 'transparent'
+                ...(presentationMode ? { backgroundColor: 'rgba(17, 24, 36, 0.05)' } : {})
               }}
               className={`${styles.customControlButton}`}
             >

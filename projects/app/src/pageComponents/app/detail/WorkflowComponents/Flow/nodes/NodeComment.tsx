@@ -78,7 +78,8 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
         minW={`${size.width}px`}
         minH={`${size.height}px`}
         menuForbid={{
-          debug: true
+          debug: true,
+          fold: true
         }}
         customStyle={{
           border: 'none',
