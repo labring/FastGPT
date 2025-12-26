@@ -32,6 +32,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
+  const showRunningStatus = watch('showRunningStatus');
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -114,6 +115,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             {...register('showRunningStatus', {
               onChange: autoSave
             })}
+            isChecked={showRunningStatus}
           />
         </Flex>
         <Flex>

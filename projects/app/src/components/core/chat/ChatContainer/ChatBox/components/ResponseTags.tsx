@@ -58,7 +58,7 @@ const ResponseTags = ({
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
-      ...(isShowCite
+      ...(!isShowCite
         ? {
             totalQuoteList: []
           }
