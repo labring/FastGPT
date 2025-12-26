@@ -85,7 +85,12 @@ const OutLinkSchema = new Schema({
   },
   defaultResponse: {
     type: String
-  }
+  },
+
+  //@deprecated
+  responseDetail: Boolean,
+  showNodeStatus: Boolean,
+  showRawSource: Boolean
 });
 
 OutLinkSchema.virtual('associatedApp', {
