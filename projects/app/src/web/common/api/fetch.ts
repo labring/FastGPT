@@ -42,10 +42,6 @@ type ResponseQueueItemType = CommonResponseType &
         [key: string]: any;
       }
     | {
-        event: SseResponseEventEnum.agentPlan;
-        agentPlan: AIChatItemValueItemType['agentPlan'];
-      }
-    | {
         event:
           | SseResponseEventEnum.toolCall
           | SseResponseEventEnum.toolParams
@@ -275,13 +271,6 @@ export const streamFetch = ({
               stepId,
               event,
               ...rest
-            });
-          } else if (event === SseResponseEventEnum.agentPlan) {
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              agentPlan: rest.agentPlan
             });
           } else if (event === SseResponseEventEnum.collectionForm) {
             onMessage({

@@ -52,8 +52,7 @@ export const appWorkflow2AgentForm = ({
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
-      defaultAppForm.aiSettings.aiRole = inputMap.get(NodeInputKeyEnum.aiRole);
-      defaultAppForm.aiSettings.aiTaskObject = inputMap.get(NodeInputKeyEnum.aiTaskObject);
+      defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
@@ -143,18 +142,11 @@ export function agentForm2AppWorkflow(
               value: data.aiSettings.model
             },
             {
-              key: NodeInputKeyEnum.aiRole,
+              key: NodeInputKeyEnum.aiSystemPrompt,
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+              label: t('common:core.ai.Prompt'),
               valueType: WorkflowIOValueTypeEnum.string,
-              label: t('app:ai_role'),
-              value: data.aiSettings.aiRole
-            },
-            {
-              key: NodeInputKeyEnum.aiTaskObject,
-              renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: t('app:task_object'),
-              value: data.aiSettings.aiTaskObject
+              value: data.aiSettings.systemPrompt
             },
             {
               ...Input_Template_File_Link,

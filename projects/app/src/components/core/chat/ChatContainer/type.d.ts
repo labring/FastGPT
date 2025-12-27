@@ -24,7 +24,6 @@ export type generatingMessageProps = {
   status?: 'running' | 'finish';
   tool?: ToolModuleResponseItemType;
   interactive?: WorkflowInteractiveResponseType;
-  agentPlan?: AIChatItemValueItemType['agentPlan'];
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;

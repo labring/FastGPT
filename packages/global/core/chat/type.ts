@@ -20,7 +20,7 @@ export const ToolModuleResponseItemSchema = z.object({
   toolName: z.string(),
   toolAvatar: z.string(),
   params: z.string(),
-  response: z.string(),
+  response: z.string().nullish(),
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
@@ -129,18 +129,6 @@ export type AIChatItemValueItemType = {
   };
   tool: ToolModuleResponseItemType;
   interactive: WorkflowInteractiveResponseType;
-
-  // Agent
-  agentPlan: {
-    replan?: boolean;
-    steps: {
-      id: string;
-      title: string;
-      description: string;
-      status: 'pending' | 'running' | 'completed';
-      value: AIChatItemValueItemType[];
-    }[];
-  };
 
   // @deprecated
   tools: ToolModuleResponseItemType[];

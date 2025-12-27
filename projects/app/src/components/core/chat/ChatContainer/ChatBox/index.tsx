@@ -63,7 +63,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { cloneDeep } from 'lodash';
+import { clone, cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -241,8 +241,6 @@ const ChatBox = ({
   const generatingMessage = useMemoizedFn(
     ({
       responseValueId,
-      stepId,
-
       event,
       text = '',
       reasoningText,
@@ -250,7 +248,6 @@ const ChatBox = ({
       name,
       tool,
       interactive,
-      agentPlan,
       variables,
       nodeResponse,
       durationSeconds,
@@ -271,8 +268,7 @@ const ChatBox = ({
             if (index !== -1) return index;
             return item.value.length - 1;
           })();
-          const updateValue: AIChatItemValueItemType = item.value[updateIndex];
-          updateValue.stepId = stepId;
+          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -304,7 +300,6 @@ const ChatBox = ({
               } else {
                 const val: AIChatItemValueItemType = {
                   id: responseValueId,
-                  stepId,
                   reasoning: {
                     content: reasoningText
                   }
@@ -329,7 +324,6 @@ const ChatBox = ({
               } else {
                 const newValue: AIChatItemValueItemType = {
                   id: responseValueId,
-                  stepId,
                   text: {
                     content: text
                   }
@@ -346,11 +340,7 @@ const ChatBox = ({
           if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
               id: responseValueId,
-              stepId,
-              tool: {
-                ...tool,
-                response: ''
-              }
+              tool
             };
             return {
               ...item,
@@ -374,6 +364,9 @@ const ChatBox = ({
           if (event === SseResponseEventEnum.toolResponse && tool && updateValue?.tool) {
             if (tool.response) {
               // replace tool response
+              if (typeof updateValue.tool.response !== 'string') {
+                updateValue.tool.response = '';
+              }
               updateValue.tool.response += tool.response;
 
               return {
@@ -398,20 +391,7 @@ const ChatBox = ({
 
             return {
               ...item,
-              stepId,
               value: item.value.concat(val)
-            };
-          }
-
-          // Agent
-          if (event === SseResponseEventEnum.agentPlan && agentPlan) {
-            return {
-              ...item,
-              value: item.value.concat({
-                id: responseValueId,
-                stepId,
-                agentPlan
-              })
             };
           }
 
@@ -605,7 +585,7 @@ const ChatBox = ({
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
                 rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
-                  interactive: interactive,
+                  interactive,
                   interactiveVal: text
                 })
               : newChatList
@@ -1257,6 +1237,7 @@ const ChatBox = ({
 
               <ChatInput
                 onSendMessage={sendPrompt}
+                lastInteractive={lastInteractive}
                 onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}

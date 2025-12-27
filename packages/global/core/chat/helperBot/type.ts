@@ -5,8 +5,7 @@ import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema 
 import { UserInputInteractiveSchema } from '../../workflow/template/system/interactive/type';
 
 export enum HelperBotTypeEnum {
-  topAgent = 'topAgent',
-  skillAgent = 'skillAgent'
+  topAgent = 'topAgent'
 }
 export const HelperBotTypeEnumSchema = z.enum(Object.values(HelperBotTypeEnum));
 export type HelperBotTypeEnumType = z.infer<typeof HelperBotTypeEnumSchema>;

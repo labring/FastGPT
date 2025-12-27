@@ -4,7 +4,6 @@ import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
-import { addMinutes } from 'date-fns';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';

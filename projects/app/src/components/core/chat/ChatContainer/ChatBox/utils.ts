@@ -1,8 +1,4 @@
-import {
-  type AIChatItemValueItemType,
-  type ChatItemValueItemType,
-  type ChatSiteItemType
-} from '@fastgpt/global/core/chat/type';
+import { type ChatItemValueItemType, type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -109,6 +105,10 @@ export const rewriteHistoriesByInteractiveResponse = ({
   interactiveVal: string;
   interactive: WorkflowInteractiveResponseType;
 }): ChatSiteItemType[] => {
+  if (interactive.type === 'agentPlanAskQuery') {
+    return histories;
+  }
+
   const formatHistories = (() => {
     // 确认 plan 的事件，可以发送 query
     if (interactive.type === 'agentPlanCheck' && interactiveVal !== ConfirmPlanAgentText) {

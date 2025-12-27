@@ -5,13 +5,12 @@ import { Box, Card, Flex } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import FileBlock from '../../ChatContainer/ChatBox/components/FilesBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 
-const HumanItem = ({ chat }: { chat: HelperBotChatItemSiteType }) => {
+const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { text, files = [] } = formatChatValue2InputType(chat.value);

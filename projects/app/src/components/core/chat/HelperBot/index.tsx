@@ -141,14 +141,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
     }
   );
   const generatingMessage = useMemoizedFn(
-    ({
-      event,
-      text = '',
-      reasoningText,
-      collectionForm,
-      formData,
-      generatedSkill
-    }: generatingMessageProps) => {
+    ({ event, text = '', reasoningText, collectionForm, formData }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
@@ -172,14 +165,6 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
             type === HelperBotTypeEnum.topAgent
           ) {
             onApply(formData);
-            return item;
-          }
-          if (
-            event === SseResponseEventEnum.generatedSkill &&
-            generatedSkill &&
-            type === HelperBotTypeEnum.skillAgent
-          ) {
-            onApply(generatedSkill);
             return item;
           }
 
