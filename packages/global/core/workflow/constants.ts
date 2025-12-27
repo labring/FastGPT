@@ -167,15 +167,10 @@ export enum NodeInputKeyEnum {
   aiChatStopSign = 'aiChatStopSign',
   aiChatResponseFormat = 'aiChatResponseFormat',
   aiChatJsonSchema = 'aiChatJsonSchema',
-  aiRole = 'aiRole',
-  aiTaskObject = 'aiTaskObject',
 
   // agent
   selectedTools = 'agent_selectedTools',
   skills = 'skills',
-  isAskAgent = 'isAskAgent',
-  isPlanAgent = 'isPlanAgent',
-  isConfirmPlanAgent = 'isConfirmPlanAgent',
 
   // dataset
   datasetSelectList = 'datasets',

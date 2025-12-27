@@ -14,25 +14,10 @@ export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.and(
 );
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
 
-/* ===== skill ===== */
-export const SkillEditTypeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  stepsText: z.string().optional(), // 执行步骤的文本描述
-  dataset: z.object({
-    list: z.array(SelectedDatasetSchema)
-  }),
-  selectedTools: z.array(SelectedToolItemTypeSchema)
-});
-export type SkillEditType = z.infer<typeof SkillEditTypeSchema>;
-
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({
     [NodeInputKeyEnum.aiModel]: z.string(),
     [NodeInputKeyEnum.aiSystemPrompt]: z.string().optional(),
-    [NodeInputKeyEnum.aiRole]: z.string().optional(),
-    [NodeInputKeyEnum.aiTaskObject]: z.string().optional(),
 
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),
     [NodeInputKeyEnum.aiChatMaxToken]: z.number().optional(),
@@ -50,7 +35,6 @@ export const AppFormEditFormV1TypeSchema = z.object({
     })
   ),
   selectedTools: z.array(SelectedToolItemTypeSchema),
-  skills: z.array(SkillEditTypeSchema),
   chatConfig: AppChatConfigTypeSchema
 });
 export type AppFormEditFormType = z.infer<typeof AppFormEditFormV1TypeSchema>;

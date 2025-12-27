@@ -8,6 +8,7 @@ import { NodeToolConfigTypeSchema } from '@fastgpt/global/core/workflow/type/nod
 export type SubAppInitType = {
   id: string;
   name: string;
+  avatar?: string;
   version?: string;
   toolConfig?: RuntimeNodeItemType['toolConfig'];
   requestSchema: ChatCompletionTool;

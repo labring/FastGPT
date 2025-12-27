@@ -5,7 +5,11 @@ import { addLog } from '../../../../../../../common/system/log';
 import { getHistoryFileLinks } from '../../../../tools/readFiles';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import z from 'zod';
 
+export const ReadFileToolSchema = z.object({
+  file_indexes: z.array(z.string())
+});
 export const readFileTool: ChatCompletionTool = {
   type: 'function',
   function: {

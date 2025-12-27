@@ -5,10 +5,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import type {
-  AppFormEditFormType,
-  SelectedToolItemType
-} from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
@@ -25,7 +22,6 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { loadGeneratedTools } from './utils';
 
 type Props = {
@@ -36,9 +32,8 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('helper');
+  const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('chat_debug');
   const HelperBotRef = useRef<HelperBotRefType>(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -55,7 +50,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   useEffect(() => {
     const { nodes, edges } = form2WorkflowFn(appForm, t);
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, t]);
+  }, [appForm, form2WorkflowFn, setWorkflowData, t]);
 
   useEffect(() => {
     setRenderEdit(!datasetCiteData);
@@ -70,8 +65,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   // 构建 TopAgent metadata,从 appForm 中提取配置
   const topAgentMetadata = useMemo(
     () => ({
-      role: appForm.aiSettings.aiRole,
-      taskObject: appForm.aiSettings.aiTaskObject,
+      systemPrompt: appForm.aiSettings.systemPrompt,
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
@@ -158,8 +152,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     selectedTools: newTools,
                     aiSettings: {
                       ...prev.aiSettings,
-                      aiRole: formData.role || prev.aiSettings.aiRole,
-                      aiTaskObject: formData.taskObject || prev.aiSettings.aiTaskObject
+                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt
                     },
                     chatConfig: {
                       ...prev.chatConfig,

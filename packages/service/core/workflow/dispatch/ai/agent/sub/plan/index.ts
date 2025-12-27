@@ -20,6 +20,7 @@ import type { AgentPlanType } from './type';
 import type { GetSubAppInfoFnType } from '../../type';
 import { getStepDependon } from '../../master/dependon';
 import { parseSystemPrompt } from '../../utils';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type PlanAgentConfig = {
   systemPrompt?: string;
@@ -30,18 +31,19 @@ type PlanAgentConfig = {
 };
 
 type DispatchPlanAgentProps = PlanAgentConfig & {
+  checkIsStopping?: () => boolean;
+
   historyMessages: ChatCompletionMessageParam[];
   interactive?: WorkflowInteractiveResponseType;
   userInput: string;
   background?: string;
   referencePlans?: string;
 
-  isTopPlanAgent: boolean;
   completionTools: ChatCompletionTool[];
   getSubAppInfo: GetSubAppInfoFnType;
 };
 
-type DispatchPlanAgentResponse = {
+export type DispatchPlanAgentResponse = {
   answerText?: string;
   plan?: AgentPlanType;
   completeMessages: ChatCompletionMessageParam[];
@@ -50,6 +52,7 @@ type DispatchPlanAgentResponse = {
 };
 
 export const dispatchPlanAgent = async ({
+  checkIsStopping,
   historyMessages,
   userInput,
   interactive,
@@ -59,8 +62,7 @@ export const dispatchPlanAgent = async ({
   model,
   temperature,
   top_p,
-  stream,
-  isTopPlanAgent
+  stream
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
 
@@ -92,7 +94,6 @@ export const dispatchPlanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
-    // TODO: 是否合理，以及模型兼容性问题
     requestMessages.push({
       role: 'assistant',
       content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
@@ -117,13 +118,14 @@ export const dispatchPlanAgent = async ({
     getEmptyResponseTip,
     completeMessages
   } = await createLLMResponse({
+    isAborted: checkIsStopping,
     body: {
       model: modelData.model,
       temperature,
       messages: requestMessages,
       top_p,
       stream,
-      tools: isTopPlanAgent ? [PlanAgentAskTool] : [],
+      tools: [PlanAgentAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: false
@@ -159,8 +161,6 @@ export const dispatchPlanAgent = async ({
 
   // 只有顶层有交互模式
   const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
-    if (!isTopPlanAgent) return;
-
     const tooCall = toolCalls[0];
     if (tooCall) {
       const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
@@ -183,7 +183,7 @@ export const dispatchPlanAgent = async ({
     }
 
     // Plan 没有主动交互，则强制触发 check
-    return PlanCheckInteractive;
+    // return PlanCheckInteractive;
   })();
 
   const { totalPoints, modelName } = formatModelChars2Points({
@@ -210,6 +210,7 @@ export const dispatchPlanAgent = async ({
 };
 
 export const dispatchReplanAgent = async ({
+  checkIsStopping,
   historyMessages,
   interactive,
   completionTools,
@@ -222,8 +223,7 @@ export const dispatchReplanAgent = async ({
   model,
   temperature,
   top_p,
-  stream,
-  isTopPlanAgent
+  stream
 }: DispatchPlanAgentProps & {
   plan: AgentPlanType;
 }): Promise<DispatchPlanAgentResponse> => {
@@ -292,13 +292,14 @@ export const dispatchReplanAgent = async ({
     getEmptyResponseTip,
     completeMessages
   } = await createLLMResponse({
+    isAborted: checkIsStopping,
     body: {
       model: modelData.model,
       temperature,
       messages: requestMessages,
       top_p,
       stream,
-      tools: isTopPlanAgent ? [PlanAgentAskTool] : [],
+      tools: [PlanAgentAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: false
@@ -330,10 +331,7 @@ export const dispatchReplanAgent = async ({
     answerText = '';
   }
 
-  // 只有顶层有交互模式
   const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
-    if (!isTopPlanAgent) return;
-
     const tooCall = toolCalls[0];
     if (tooCall) {
       const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
@@ -354,9 +352,6 @@ export const dispatchReplanAgent = async ({
         };
       }
     }
-
-    // RePlan 没有主动交互，则强制触发 check
-    return PlanCheckInteractive;
   })();
 
   const { totalPoints, modelName } = formatModelChars2Points({

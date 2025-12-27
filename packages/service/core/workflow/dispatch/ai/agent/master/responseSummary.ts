@@ -3,9 +3,10 @@ import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { getLLMModel } from '../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { AgentPlanStepType } from '../sub/plan/type';
 
 // TODO: 报错兜底机制
-export const getResponseSummary = async ({
+export const getOneStepResponseSummary = async ({
   response,
   model
 }: {
@@ -15,7 +16,7 @@ export const getResponseSummary = async ({
   answerText: string;
   usage: ChatNodeUsageType;
 }> => {
-  addLog.debug('GetResponseSummary start');
+  addLog.debug('Get one step response summary start');
 
   const modelData = getLLMModel(model);
   const { answerText, usage } = await createLLMResponse({

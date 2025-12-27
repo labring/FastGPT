@@ -5,7 +5,6 @@ import {
   HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
-import { skillAgentParamsSchema } from '../../../../core/chat/helperBot/skillAgent/type';
 import { z } from 'zod';
 import type { PaginationResponse } from '../../../../../web/common/fetch/type';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
@@ -59,10 +58,6 @@ export const HelperBotCompletionsParamsSchema = z.object({
     z.object({
       type: z.literal(HelperBotTypeEnum.topAgent),
       data: topAgentParamsSchema
-    }),
-    z.object({
-      type: z.literal(HelperBotTypeEnum.skillAgent),
-      data: skillAgentParamsSchema
     })
   ])
 });

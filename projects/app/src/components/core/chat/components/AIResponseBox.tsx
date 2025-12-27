@@ -134,25 +134,27 @@ const RenderTool = React.memo(
     tool: ToolModuleResponseItemType;
   }) {
     const { t } = useSafeTranslation();
-    const formatJson = (string: string) => {
+    const formatJson = useCallback((string: string) => {
       try {
         return JSON.stringify(JSON.parse(string), null, 2);
       } catch (error) {
         return string;
       }
-    };
-    const params = formatJson(tool.params);
-    const response = formatJson(tool.response);
+    }, []);
+    const params = useMemo(() => formatJson(tool.params), [formatJson, tool.params]);
+    const response = useMemo(() => formatJson(tool.response || ''), [formatJson, tool.response]);
 
     return (
-      <Accordion key={tool.id} allowToggle>
+      <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
           <AccordionButton {...accordionButtonStyle}>
             <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
             <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
               {t(tool.toolName)}
             </Box>
-            {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
+            {showAnimation && tool.response === undefined && (
+              <MyIcon name={'common/loading'} w={'14px'} />
+            )}
             <AccordionIcon color={'myGray.600'} ml={5} />
           </AccordionButton>
           <AccordionPanel
@@ -307,55 +309,6 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
   );
 });
 
-const RenderAgentPlan = React.memo(function RenderAgentPlan({
-  agentPlan,
-  chatItemDataId,
-  isChatting,
-  onOpenCiteModal
-}: {
-  agentPlan: NonNullable<AIChatItemValueItemType['agentPlan']>;
-  chatItemDataId: string;
-  isChatting: boolean;
-  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Box>
-      <Box fontSize={'xl'} color={'myGray.900'} fontWeight={'bold'}>
-        任务
-      </Box>
-      <Box>
-        {agentPlan.steps.map((step, index) => (
-          <Box key={step.id} mt={3}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
-              {`${index + 1}. ${step.title}`}
-            </Box>
-            <Box>{step.description}</Box>
-            {/* <Flex flexDirection={'column'}>
-              {step.value.map((value, i) => {
-                const key = `${step.id}-ai-${i}`;
-
-                return (
-                  <AIResponseBox
-                    chatItemDataId={chatItemDataId}
-                    key={key}
-                    value={value}
-                    isLastResponseValue={index === step.value.length - 1}
-                    isChatting={isChatting}
-                    onOpenCiteModal={onOpenCiteModal}
-                  />
-                );
-              })}
-            </Flex> */}
-          </Box>
-        ))}
-      </Box>
-      <MyDivider />
-      <Box>{t('chat:plan_check_tip')}</Box>
-    </Box>
-  );
-});
-
 const AIResponseBox = ({
   chatItemDataId,
   value,
@@ -410,16 +363,6 @@ const AIResponseBox = ({
     if (interactive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={interactive} />;
     }
-  }
-  if ('agentPlan' in value && value.agentPlan) {
-    return (
-      <RenderAgentPlan
-        agentPlan={value.agentPlan}
-        chatItemDataId={chatItemDataId}
-        isChatting={isChatting}
-        onOpenCiteModal={onOpenCiteModal}
-      />
-    );
   }
 
   // Abandon

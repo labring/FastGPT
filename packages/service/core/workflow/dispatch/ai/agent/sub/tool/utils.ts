@@ -126,7 +126,6 @@ export const agentSkillToToolRuntime = async ({
 
         const removePrefixId = pluginId.replace(`${source}-`, '');
         const requestToolId = `t${removePrefixId}`;
-        console.log(requestToolId);
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
@@ -144,6 +143,7 @@ export const agentSkillToToolRuntime = async ({
             return children.map((child) => ({
               id: child.nodeId,
               name: child.name,
+              avatar: child.avatar,
               version: child.version,
               toolConfig: child.toolConfig,
               params: tool.config,
@@ -179,6 +179,7 @@ export const agentSkillToToolRuntime = async ({
               return {
                 id: child.nodeId,
                 name: child.name,
+                avatar: child.avatar,
                 version: child.version,
                 toolConfig: child.toolConfig,
                 params: tool.config,
@@ -200,6 +201,7 @@ export const agentSkillToToolRuntime = async ({
             {
               id: requestToolId,
               name: toolNode.name,
+              avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,

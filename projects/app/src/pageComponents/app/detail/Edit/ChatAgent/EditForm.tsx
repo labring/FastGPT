@@ -9,13 +9,11 @@ import {
   Button,
   HStack
 } from '@chakra-ui/react';
-import type { SkillEditType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -27,12 +25,10 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
-import SkillRow from './SkillEdit/Row';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { getAiSkillDetail } from '@/web/core/ai/skill/api';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
+import { useSkillManager } from './hooks/useSkillManager';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -52,20 +48,44 @@ const BoxStyles: BoxProps = {
 
 const EditForm = ({
   appForm,
-  setAppForm,
-  onEditSkill
+  setAppForm
 }: {
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
-  onEditSkill: (e: SkillEditType) => void;
 }) => {
-  const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
+
+  const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
+    selectedTools: appForm.selectedTools,
+    onDeleteTool: (id) => {
+      setAppForm((state) => ({
+        ...state,
+        selectedTools: state.selectedTools?.filter((item) => item.id !== id) || []
+      }));
+    },
+    onUpdateOrAddTool: (tool) => {
+      const index = appForm.selectedTools.findIndex((item) => item.id === tool.id);
+      if (index === -1) {
+        setAppForm((state) => ({
+          ...state,
+          selectedTools: [tool, ...(state.selectedTools || [])]
+        }));
+      } else {
+        setAppForm((state) => ({
+          ...state,
+          selectedTools:
+            state.selectedTools?.map((item) => (item.id === tool.id ? tool : item)) || []
+        }));
+      }
+    },
+    canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
+    canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
+  });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -102,35 +122,6 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
-
-  // 打开skill编辑器
-  const handleEditSkill = useCallback(
-    async (skill: SkillEditType) => {
-      // If skill has dbId, load full details from server
-      if (skill.id) {
-        const detail = await getAiSkillDetail({ id: skill.id });
-
-        // Merge server data with local data
-        onEditSkill({
-          id: detail._id,
-          name: detail.name,
-          description: detail.description || '',
-          stepsText: detail.steps,
-          selectedTools: (detail.tools || []).map((tool) => {
-            return {
-              ...tool,
-              configStatus: getToolConfigStatus(tool).status
-            };
-          }),
-          dataset: { list: detail.datasets || [] }
-        });
-      } else {
-        // New skill without dbId
-        onEditSkill(skill);
-      }
-    },
-    [onEditSkill]
-  );
 
   return (
     <>
@@ -179,62 +170,33 @@ const EditForm = ({
           {/* Prompt */}
           <Box mt={4}>
             <HStack w={'100%'}>
-              <FormLabel>{t('app:ai_role')}</FormLabel>
+              <FormLabel>{t('common:core.ai.Prompt')}</FormLabel>
             </HStack>
-            <Box mt={1}>
+            <Box mt={2}>
               <PromptEditor
-                minH={36}
-                maxH={100}
-                value={appForm.aiSettings.aiRole}
+                minH={160}
                 bg={'myGray.50'}
-                onChange={(text) => {
-                  startTst(() => {
-                    setAppForm((state) => ({
-                      ...state,
-                      aiSettings: {
-                        ...state.aiSettings,
-                        aiRole: text
-                      }
-                    }));
-                  });
+                title={t('common:core.ai.Prompt')}
+                isRichText={true}
+                skillOption={skillOption}
+                selectedSkills={selectedSkills}
+                onClickSkill={onClickSkill}
+                onRemoveSkill={onRemoveSkill}
+                value={appForm.aiSettings.systemPrompt}
+                onChange={(e) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    aiSettings: {
+                      ...state.aiSettings,
+                      systemPrompt: e
+                    }
+                  }));
                 }}
-                title={t('app:ai_role')}
-                isRichText={false}
-              />
-            </Box>
-          </Box>
-          <Box mt={2}>
-            <HStack w={'100%'}>
-              <FormLabel>{t('app:task_object')}</FormLabel>
-            </HStack>
-            <Box mt={1}>
-              <PromptEditor
-                minH={36}
-                maxH={100}
-                value={appForm.aiSettings.aiTaskObject}
-                bg={'myGray.50'}
-                onChange={(text) => {
-                  startTst(() => {
-                    setAppForm((state) => ({
-                      ...state,
-                      aiSettings: {
-                        ...state.aiSettings,
-                        aiTaskObject: text
-                      }
-                    }));
-                  });
-                }}
-                // variableLabels={formatVariables}
-                title={t('app:task_object')}
-                isRichText={false}
               />
             </Box>
           </Box>
         </Box>
 
-        <Box {...BoxStyles}>
-          <SkillRow skills={appForm.skills} onEditSkill={handleEditSkill} setAppForm={setAppForm} />
-        </Box>
         {/* tool choice */}
         <Box {...BoxStyles}>
           <ToolSelect

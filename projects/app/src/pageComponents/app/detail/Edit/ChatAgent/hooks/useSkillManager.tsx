@@ -42,14 +42,12 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
 };
 
 export const useSkillManager = ({
-  topAgentSelectedTools,
   selectedTools,
   onUpdateOrAddTool,
   onDeleteTool,
   canSelectFile,
   canSelectImg
 }: {
-  topAgentSelectedTools: SelectedToolItemType[];
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
@@ -169,17 +167,6 @@ export const useSkillManager = ({
         return;
       }
 
-      // 添加与 top 相同工具的配置
-      const topTool = topAgentSelectedTools.find((tool) => tool.pluginId === toolTemplate.pluginId);
-      if (topTool) {
-        toolTemplate.inputs.forEach((input) => {
-          const topInput = topTool.inputs.find((tInput) => tInput.key === input.key);
-          if (topInput) {
-            input.value = topInput.value;
-          }
-        });
-      }
-
       const tool: SelectedToolItemType = {
         ...toolTemplate,
         id: toolId
@@ -192,7 +179,7 @@ export const useSkillManager = ({
 
       return tool.id;
     },
-    [canSelectFile, canSelectImg, onUpdateOrAddTool, selectedTools, t, toast, topAgentSelectedTools]
+    [canSelectFile, canSelectImg, onUpdateOrAddTool, selectedTools, t, toast]
   );
 
   /* ===== Skill option ===== */

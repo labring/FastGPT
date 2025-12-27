@@ -173,7 +173,9 @@ export const sliceJsonStr = (str: string) => {
   return str;
 };
 
-export const sliceStrStartEnd = (str: string, start: number, end: number) => {
+export const sliceStrStartEnd = (str: string | null = '', start: number, end: number) => {
+  if (!str) return '';
+
   const overSize = str.length > start + end;
 
   if (!overSize) return str;

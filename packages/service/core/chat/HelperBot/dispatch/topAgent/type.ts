@@ -2,8 +2,7 @@ import { z } from 'zod';
 import { AICollectionAnswerSchema } from '../type';
 
 export const TopAgentFormDataSchema = z.object({
-  role: z.string().optional(),
-  taskObject: z.string().optional(),
+  systemPrompt: z.string().optional(),
   tools: z.array(z.string()).optional().default([]),
   fileUploadEnabled: z.boolean().optional().default(false)
 });

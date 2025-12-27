@@ -191,6 +191,7 @@ export const runAgentCall = async ({
   }
 
   // 自循环运行
+  let consecutiveRequestToolTimes = 0; // 连续多次工具调用后会强制回答，避免模型自身死循环。
   while (runTimes < maxRunAgentTimes) {
     // TODO: 费用检测
 
@@ -220,7 +221,7 @@ export const runAgentCall = async ({
         max_tokens: maxTokens,
         model,
         messages: requestMessages,
-        tool_choice: 'auto',
+        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         tools,
         parallel_tool_calls: true
@@ -239,13 +240,19 @@ export const runAgentCall = async ({
       return Promise.reject(getEmptyResponseTip());
     }
 
+    if (toolCalls.length) {
+      consecutiveRequestToolTimes++;
+    }
+    if (answer) {
+      consecutiveRequestToolTimes = 0;
+    }
+
     // 3. 更新 messages
     const cloneRequestMessages = requestMessages.slice();
     // 推送 AI 生成后的 assistantMessages
     assistantMessages.push(...llmAssistantMessage);
     requestMessages.push(...llmAssistantMessage);
-    console.log('Master Running tools', tools);
-    console.log('Master Running toolCalls', toolCalls);
+
     // 4. Call tools
     let toolCallStep = false;
     for await (const tool of toolCalls) {

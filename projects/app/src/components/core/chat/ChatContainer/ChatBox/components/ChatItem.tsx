@@ -182,26 +182,25 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
     2. Auto-complete the last textnode
   */
   const splitAiResponseResults = useMemo(() => {
-    if (chat.obj === ChatRoleEnum.Human) {
-      return [chat.value];
-    }
+    if (chat.obj === ChatRoleEnum.Human) return [chat.value];
 
     if (chat.obj === ChatRoleEnum.AI) {
+      // Remove empty text node
+      const filterList = chat.value.filter((item, i) => {
+        if (item.text && !item.text.content?.trim()) {
+          return false;
+        }
+        if (item.reasoning && !item.reasoning.content?.trim()) {
+          return false;
+        }
+        return item;
+      });
+
       const groupedValues: AIChatItemValueItemType[][] = [];
       let currentGroup: AIChatItemValueItemType[] = [];
-      chat.value.forEach((value) => {
-        if (value.text && !value.text.content?.trim()) {
-          return false;
-        }
-        if (value.reasoning && !value.reasoning.content?.trim()) {
-          return false;
-        }
 
+      filterList.forEach((value) => {
         if (value.interactive) {
-          // 每次遇到交互节点，则推送一个全新的分组
-          if (value.interactive.type === 'agentPlanCheck') {
-            return;
-          }
           if (currentGroup.length > 0) {
             groupedValues.push(currentGroup);
             currentGroup = [];
@@ -219,7 +218,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
       // Check last group is interactive, Auto add a empty text node(animation)
       const lastGroup = groupedValues[groupedValues.length - 1];
-      if (isChatting || groupedValues.length === 0) {
+      if (isLastChild && (isChatting || groupedValues.length === 0)) {
         if (
           (lastGroup &&
             lastGroup[lastGroup.length - 1] &&
@@ -240,8 +239,8 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
     }
 
     return [];
-  }, [chat.obj, chat.value, isChatting]);
-
+  }, [chat.obj, chat.value, isChatting, isLastChild]);
+  console.log(splitAiResponseResults);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
     (item?: {

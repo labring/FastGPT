@@ -116,7 +116,7 @@ export const chats2GPTMessages = ({
             toolResponse.push({
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: tool.response
+              content: tool.response || ''
             });
           });
           aiResults.push({
