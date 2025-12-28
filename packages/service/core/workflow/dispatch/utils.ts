@@ -132,6 +132,7 @@ export const runtimeSystemVar2StoreType = ({
 
   // Delete system variables
   delete copyVariables.userId;
+  delete copyVariables.username;
   delete copyVariables.appId;
   delete copyVariables.chatId;
   delete copyVariables.responseChatItemId;
@@ -166,6 +167,7 @@ export const runtimeSystemVar2StoreType = ({
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
     userId: variables.userId,
+    username: variables.username,
     appId: variables.appId,
     chatId: variables.chatId,
     responseChatItemId: variables.responseChatItemId,
