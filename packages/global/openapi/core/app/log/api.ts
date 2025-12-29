@@ -55,6 +55,7 @@ export const ChatLogItemSchema = z.object({
   tmbId: z.string().nullish().meta({ example: 'tmb123', description: '团队成员 ID' }),
   sourceMember: SourceMemberSchema.nullish().meta({ description: '来源成员信息' }),
   versionName: z.string().nullish().meta({ example: 'v1.0.0', description: '版本名称' }),
+  originIp: z.string().nullish().meta({ example: '192.168.1.1', description: '原始 IP 地址' }),
   region: z.string().nullish().meta({ example: '中国', description: '区域' })
 });
 export type AppLogsListItemType = z.infer<typeof ChatLogItemSchema>;

@@ -49,6 +49,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
+import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -79,6 +80,7 @@ const LogTable = ({
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
   const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+  const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
 
   // source
   const sourceList = useMemo(
@@ -257,7 +259,22 @@ const LogTable = ({
         </Th>
       ),
       [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
-      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>,
+      [AppLogKeysEnum.REGION]: (
+        <Th key={AppLogKeysEnum.REGION}>
+          <UserIpTypeFilter
+            userIpType={userIpType}
+            setUserIpType={setUserIpType}
+            menuButtonProps={{
+              fontSize: '12.8px',
+              fontWeight: 'medium',
+              color: 'myGray.600',
+              px: 0,
+              _hover: {},
+              _active: {}
+            }}
+          />
+        </Th>
+      ),
       [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
       [AppLogKeysEnum.SESSION_ID]: (
         <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
@@ -308,7 +325,7 @@ const LogTable = ({
         <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
       )
     }),
-    [t, feedbackType, setFeedbackType, unreadOnly, setUnreadOnly]
+    [t, feedbackType, setFeedbackType, unreadOnly, setUnreadOnly, userIpType, setUserIpType]
   );
 
   const getCellRenderMap = useCallback(
@@ -342,7 +359,19 @@ const LogTable = ({
           </Box>
         </Td>
       ),
-      [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>,
+      [AppLogKeysEnum.REGION]: (
+        <Td key={AppLogKeysEnum.REGION}>
+          {userIpType === 'only_ip'
+            ? item.originIp || '-'
+            : userIpType === 'only_region'
+              ? item.originIp !== item.region
+                ? item.region || '-'
+                : '-'
+              : item.originIp
+                ? `${item.region || '-'}: ${item.originIp}`
+                : '-'}
+        </Td>
+      ),
       [AppLogKeysEnum.TITLE]: (
         <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
           {item.customTitle || item.title}
@@ -398,7 +427,7 @@ const LogTable = ({
         <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
       )
     }),
-    [t]
+    [t, userIpType]
   );
 
   return (
