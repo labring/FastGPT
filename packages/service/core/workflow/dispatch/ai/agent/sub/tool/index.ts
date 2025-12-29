@@ -125,7 +125,10 @@ export const dispatchTool = async ({
       }
 
       const usagePoints = (() => {
-        if (params.system_input_config?.type !== SystemToolSecretInputTypeEnum.system) {
+        if (
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
+        ) {
           return 0;
         }
         return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
