@@ -26,6 +26,8 @@
   "close_auto_sync": "確認關閉自動同步功能？",
   "collection.Create update time": "建立／更新時間",
   "collection.Training type": "分段模式",
+  "collection.export_all_chunks": "導出分塊",
+  "collection.not_found": "集合不存在",
   "collection.sync.submit": "已提交同步任務",
   "collection.training_type": "處理模式",
   "collection_data_count": "資料量",

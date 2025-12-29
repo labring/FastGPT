@@ -13,6 +13,8 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { addDays } from 'date-fns';
 
 export type ExportCollectionBody = {
   collectionId: string;
@@ -47,7 +49,7 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
       });
     }
 
-    /* 
+    /*
       1. auth chat read permission
       2. auth collection quote in chat
       3. auth outlink open show quote
@@ -110,8 +112,14 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
   write(`\uFEFFindex,content`);
 
   cursor.on('data', (doc) => {
-    const sanitizedQ = sanitizeCsvField(doc.q || '');
-    const sanitizedA = sanitizeCsvField(doc.a || '');
+    const sanitizedQ = replaceS3KeyToPreviewUrl(
+      sanitizeCsvField(doc.q || ''),
+      addDays(new Date(), 90)
+    );
+    const sanitizedA = replaceS3KeyToPreviewUrl(
+      sanitizeCsvField(doc.a || ''),
+      addDays(new Date(), 90)
+    );
 
     write(`\n${sanitizedQ},${sanitizedA}`);
   });
