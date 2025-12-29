@@ -8,12 +8,13 @@ import type {
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import type { DispatchNodeResponseKeyEnum } from './constants';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
+import type { NodeInputKeyEnum } from '../constants';
+import { NodeOutputKeyEnum } from '../constants';
 import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
 import type { NextApiResponse } from 'next';
 import type { AppSchemaType } from '../../app/type';
 import type { RuntimeEdgeItemType } from '../type/edge';
-import type { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import { type ReadFileNodeResponseType } from '../template/system/readFiles/type';
 import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
@@ -25,10 +26,10 @@ import type {
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import { type UserChatItemValueItemType } from '../../chat/type';
-import { z } from 'zod';
 import type { DatasetSearchModeEnum } from '../../dataset/constants';
 import type { ChatRoleEnum } from '../../chat/constants';
 import type { MCPClient } from '../../../../service/core/app/mcp';
+import z from 'zod';
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
@@ -129,6 +130,137 @@ export type RuntimeNodeItemType = {
   catchError?: boolean;
 };
 
+// export const DispatchNodeResponseSchema = z.object({
+//   // common
+//   moduleLogo: z.string().nullish(),
+//   runningTime: z.number().nullish(),
+//   query: z.string().nullish(),
+//   textOutput: z.string().nullish(),
+
+//   error: z.record(z.string(), z.any()).nullish(), // Client will toast
+//   errorText: z.string().nullish(), // Just show
+
+//   customInputs: z.record(z.string(), z.any()).nullish(),
+//   customOutputs: z.record(z.string(), z.any()).nullish(),
+//   nodeInputs: z.record(z.string(), z.any()).nullish(),
+//   nodeOutputs: z.record(z.string(), z.any()).nullish(),
+//   mergeSignId: z.string().nullish(),
+
+//   // bill
+//   tokens: z.number().nullish(), // @deprecated
+//   inputTokens: z.number().nullish(),
+//   outputTokens: z.number().nullish(),
+//   model: z.string().nullish(),
+//   contextTotalLen: z.number().nullish(),
+//   totalPoints: z.string().nullish(),
+//   childTotalPoints: z.string().nullish(),
+
+//   // chat
+//   temperature: z.number().nullish(),
+//   maxToken: z.number().nullish(),
+//   quoteList: z.array(SearchDataResponseItemTypeSchema).nullish(),
+//   reasoningText: z.string().nullish(),
+//   historyPreview: z
+//     .array(
+//       z.object({
+//         obj: z.enum(Object.values(ChatRoleEnum)),
+//         value: z.string()
+//       })
+//     )
+//     .nullish(), // completion context array. history will slice
+//   finishReason: z.enum(Object.values(CompletionFinishReason)).nullish(),
+
+//   // dataset search
+//   embeddingModel: z.string().nullish(),
+//   embeddingTokens: z.number().nullish(),
+//   similarity: z.number().nullish(),
+//   limit: z.number().nullish(),
+//   searchMode: z.enum(Object.values(DatasetSearchModeEnum)).nullish(),
+//   embeddingWeight: z.number().nullish(),
+//   rerankModel: z.string().nullish(),
+//   rerankWeight: z.number().nullish(),
+//   reRankInputTokens: z.number().nullish(),
+//   searchUsingReRank: z.boolean().nullish(),
+//   queryExtensionResult: z
+//     .object({
+//       model: z.string(),
+//       inputTokens: z.number(),
+//       outputTokens: z.number(),
+//       query: z.string()
+//     })
+//     .nullish(),
+//   deepSearchResult: z
+//     .object({
+//       model: z.string(),
+//       inputTokens: z.number(),
+//       outputTokens: z.number()
+//     })
+//     .nullish(),
+
+//   // dataset concat
+//   concatLength: z.number().nullish(),
+
+//   // cq
+//   cqList: z.array(ClassifyQuestionAgentItemTypeSchema).nullish(),
+//   cqResult: z.string().nullish(),
+
+//   // content extract
+//   extractDescription: z.string().nullish(),
+//   extractResult: z.record(z.string(), z.any()).nullish(),
+
+//   // http
+//   params: z.record(z.string(), z.any()).nullish(),
+//   body: z.record(z.string(), z.any()).nullish(),
+//   headers: z.record(z.string(), z.any()).nullish(),
+//   httpResult: z.record(z.string(), z.any()).nullish(),
+
+//   // Tool
+//   toolInput: z.record(z.string(), z.any()).nullish(),
+//   pluginOutput: z.record(z.string(), z.any()).nullish(),
+//   pluginDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
+
+//   // if-else
+//   ifElseResult: z.string().nullish(),
+
+//   // tool call
+//   toolCallInputTokens: z.number().nullish(),
+//   toolCallOutputTokens: z.number().nullish(),
+//   toolDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
+//   toolStop: z.boolean().nullish(),
+
+//   // code
+//   codeLog: z.string().nullish(),
+
+//   // read files
+//   readFilesResult: z.string().nullish(),
+//   readFiles: ReadFileNodeResponseSchema.nullish(),
+
+//   // user select
+//   userSelectResult: z.string().nullish(),
+
+//   // update var
+//   updateVarResult: z.array(z.any()).nullish(),
+
+//   // loop
+//   loopResult: z.array(z.any()).nullish(),
+//   loopInput: z.array(z.any()).nullish(),
+//   loopDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
+//   loopInputValue: z.any().nullish(),
+//   loopOutputValue: z.any().nullish(),
+
+//   // form input
+//   formInputResult: z.record(z.string(), z.any()).nullish(),
+
+//   // tool params
+//   toolParamsResult: z.record(z.string(), z.any()).nullish(),
+
+//   toolRes: z.any().nullish(),
+
+//   // @deprecated
+//   extensionModel: z.string().nullish(),
+//   extensionResult: z.string().nullish(),
+//   extensionTokens: z.number().nullish()
+// });
 export type DispatchNodeResponseType = {
   // common
   moduleLogo?: string;
@@ -226,7 +358,7 @@ export type DispatchNodeResponseType = {
 
   // read files
   readFilesResult?: string;
-  readFiles?: ReadFileNodeResponse;
+  readFiles?: ReadFileNodeResponseType;
 
   // user select
   userSelectResult?: string;
@@ -297,3 +429,11 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.stringQuoteText]?: string;
   [NodeInputKeyEnum.fileUrlList]?: string[];
 };
+
+/* ---------- node outputs ------------ */
+export const NodeOutputItemSchema = z.object({
+  nodeId: z.string(),
+  key: z.enum(Object.values(NodeOutputKeyEnum)),
+  value: z.any()
+});
+export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;

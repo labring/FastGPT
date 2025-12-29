@@ -267,16 +267,15 @@ export const runAgentCall = async ({
         messages: cloneRequestMessages
       });
 
+      // 5. Add tool response to messages
       const toolMessage: ChatCompletionMessageParam = {
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         content: response
       };
-
-      // 5. Add tool response to messages
       assistantMessages.push(toolMessage);
-      assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
       requestMessages.push(toolMessage); // 请求的 Request 只需要工具响应，不需要工具中 assistant 的内容，所以不推送 toolAssistantMessages
+      assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
       subAppUsages.push(...usages);
 

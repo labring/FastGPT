@@ -248,6 +248,9 @@ const ChatBox = ({
       name,
       tool,
       interactive,
+      plan,
+      stepId,
+      stepTitle,
       variables,
       nodeResponse,
       durationSeconds,
@@ -269,6 +272,9 @@ const ChatBox = ({
             return item.value.length - 1;
           })();
           const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+          if (stepId) {
+            updateValue.stepId = stepId;
+          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -287,7 +293,7 @@ const ChatBox = ({
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
-              if (updateValue?.reasoning) {
+              if (updateValue?.reasoning && updateValue.stepId === stepId) {
                 updateValue.reasoning.content += reasoningText;
                 return {
                   ...item,
@@ -311,7 +317,7 @@ const ChatBox = ({
               }
             }
             if (text) {
-              if (updateValue?.text) {
+              if (updateValue?.text && updateValue.stepId === stepId) {
                 updateValue.text.content += text;
                 return {
                   ...item,
@@ -347,7 +353,7 @@ const ChatBox = ({
               value: [...item.value, val]
             };
           }
-          if (event === SseResponseEventEnum.toolParams && tool && updateValue?.tool) {
+          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tool) {
             if (tool.params) {
               updateValue.tool.params += tool.params;
               return {
@@ -361,7 +367,7 @@ const ChatBox = ({
             }
             return item;
           }
-          if (event === SseResponseEventEnum.toolResponse && tool && updateValue?.tool) {
+          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tool) {
             if (tool.response) {
               // replace tool response
               if (typeof updateValue.tool.response !== 'string') {
@@ -379,6 +385,32 @@ const ChatBox = ({
               };
             }
             return item;
+          }
+          if (event === SseResponseEventEnum.plan && plan) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  plan
+                }
+              ]
+            };
+          }
+          if (event === SseResponseEventEnum.stepTitle && stepTitle) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  stepTitle
+                }
+              ]
+            };
           }
 
           if (event === SseResponseEventEnum.updateVariables && variables) {
@@ -412,7 +444,7 @@ const ChatBox = ({
       generatingScroll(forceScroll);
     }
   );
-
+  console.log(chatRecords, 'chatRecords');
   // 重置输入内容
   const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
     if (!TextareaDom.current) return;

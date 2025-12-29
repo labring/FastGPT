@@ -1,4 +1,4 @@
-import { NodeOutputItemSchema } from '../../../../chat/type';
+import { NodeOutputItemSchema } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';

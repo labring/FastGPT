@@ -1,4 +1,8 @@
-import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import {
   getPlanAgentSystemPrompt,
@@ -10,17 +14,20 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
-  InteractiveNodeResponseType,
+  AgentPlanAskQueryInteractive,
+  UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseJsonArgs } from '../../../../../../ai/utils';
-import { PlanAgentAskTool, type AskAgentToolParamsType } from './ask/constants';
-import { PlanCheckInteractive } from './constants';
-import type { AgentPlanType } from './type';
+import { AIAskAnswerSchema, AIAskTool } from './ask/constants';
+import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
 import { getStepDependon } from '../../master/dependon';
 import { parseSystemPrompt } from '../../utils';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { addLog } from '../../../../../../../common/system/log';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 type PlanAgentConfig = {
   systemPrompt?: string;
@@ -44,11 +51,70 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
 };
 
 export type DispatchPlanAgentResponse = {
-  answerText?: string;
+  askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
   plan?: AgentPlanType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
-  interactiveResponse?: InteractiveNodeResponseType;
+};
+
+const parsePlan = async (text: string) => {
+  if (!text) {
+    return;
+  }
+
+  const params = await AgentPlanSchema.safeParseAsync(parseJsonArgs(text));
+  if (!params.success) {
+    addLog.warn(`[Plan Agent] Plan response is not valid`, { text });
+    return;
+  }
+
+  return params.data;
+};
+const parseAskInteractive = async (
+  toolCalls: ChatCompletionMessageToolCall[]
+): Promise<UserInputInteractive | AgentPlanAskQueryInteractive | undefined> => {
+  const tooCall = toolCalls[0];
+  if (!tooCall) return;
+  const params = await AIAskAnswerSchema.safeParseAsync(parseJsonArgs(tooCall.function.arguments));
+  if (params.success) {
+    const data = params.data;
+
+    if (data.form && data.form.length > 0) {
+      return {
+        type: 'agentPlanAskUserForm',
+        params: {
+          description: data.question,
+          inputForm:
+            data.form?.map((item) => {
+              return {
+                type: item.type as FlowNodeInputTypeEnum,
+                key: getNanoid(6),
+                label: item.label,
+                value: '',
+                required: false,
+                valueType:
+                  item.type === FlowNodeInputTypeEnum.numberInput
+                    ? WorkflowIOValueTypeEnum.number
+                    : WorkflowIOValueTypeEnum.string,
+                list:
+                  'options' in item
+                    ? item.options?.map((option) => ({ label: option, value: option }))
+                    : undefined
+              };
+            }) || []
+        }
+      };
+    }
+    return {
+      type: 'agentPlanAskQuery',
+      params: {
+        content: data.question
+      }
+    };
+  } else {
+    addLog.warn(`[Plan Agent] Ask tool params is not valid`, { tooCall });
+    return;
+  }
 };
 
 export const dispatchPlanAgent = async ({
@@ -79,13 +145,11 @@ export const dispatchPlanAgent = async ({
 
   // 分类：query/user select/user form
   const lastMessages = requestMessages[requestMessages.length - 1];
-  // console.log('--------------PLAN MODE--------------');
-  // console.log('user input:', userInput);
-  // console.log('systemPrompt:', systemPrompt);
-
   // 上一轮是 Ask 模式，进行工具调用拼接
   if (
-    (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
+    (interactive?.type === 'agentPlanAskUserForm' ||
+      interactive?.type === 'agentPlanAskUserSelect' ||
+      interactive?.type === 'agentPlanAskQuery') &&
     lastMessages.role === 'assistant' &&
     lastMessages.tool_calls
   ) {
@@ -125,7 +189,7 @@ export const dispatchPlanAgent = async ({
       messages: requestMessages,
       top_p,
       stream,
-      tools: [PlanAgentAskTool],
+      tools: [AIAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: false
@@ -140,51 +204,12 @@ export const dispatchPlanAgent = async ({
     正常输出情况：
     1. text: 正常生成plan
     2. toolCall: 调用ask工具
-    3. text + toolCall: 可能生成 plan + 调用ask工具
+    3. text + confirm: 成功生成工具 + 确认操作
   */
-
   // 获取生成的 plan
-  const plan = (() => {
-    if (!answerText) {
-      return;
-    }
-
-    const params = parseJsonArgs<AgentPlanType>(answerText);
-    if (toolCalls.length === 0 && (!params || !params.task || !params.steps)) {
-      throw new Error('Plan response is not valid');
-    }
-    return params;
-  })();
-  if (plan) {
-    answerText = '';
-  }
-
-  // 只有顶层有交互模式
-  const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
-    const tooCall = toolCalls[0];
-    if (tooCall) {
-      const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
-      if (params) {
-        return {
-          type: 'agentPlanAskQuery',
-          params: {
-            content: params.questions.join('\n')
-          }
-        };
-      } else {
-        console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Plan response');
-        return {
-          type: 'agentPlanAskQuery',
-          params: {
-            content: '生成的 ask 结构异常'
-          }
-        };
-      }
-    }
-
-    // Plan 没有主动交互，则强制触发 check
-    // return PlanCheckInteractive;
-  })();
+  const plan = await parsePlan(answerText);
+  // 获取交互结果
+  const askInteractive = await parseAskInteractive(toolCalls);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,
@@ -193,7 +218,7 @@ export const dispatchPlanAgent = async ({
   });
 
   return {
-    answerText: answerText || '',
+    askInteractive,
     plan,
     completeMessages,
     usages: [
@@ -204,8 +229,7 @@ export const dispatchPlanAgent = async ({
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
-    ],
-    interactiveResponse
+    ]
   };
 };
 
@@ -253,7 +277,6 @@ export const dispatchReplanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
-    // TODO: 确认这里是否有问题
     requestMessages.push({
       role: 'assistant',
       content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
@@ -299,7 +322,7 @@ export const dispatchReplanAgent = async ({
       messages: requestMessages,
       top_p,
       stream,
-      tools: [PlanAgentAskTool],
+      tools: [AIAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: false
@@ -316,43 +339,8 @@ export const dispatchReplanAgent = async ({
     2. toolCall: 调用ask工具
     3. text + toolCall: 可能生成 plan + 调用ask工具
   */
-  const rePlan = (() => {
-    if (!answerText) {
-      return;
-    }
-
-    const params = parseJsonArgs<AgentPlanType>(answerText);
-    if (toolCalls.length === 0 && (!params || !params.steps)) {
-      throw new Error('Replan response is not valid');
-    }
-    return params;
-  })();
-  if (rePlan) {
-    answerText = '';
-  }
-
-  const interactiveResponse: InteractiveNodeResponseType | undefined = (() => {
-    const tooCall = toolCalls[0];
-    if (tooCall) {
-      const params = parseJsonArgs<AskAgentToolParamsType>(tooCall.function.arguments);
-      if (params) {
-        return {
-          type: 'agentPlanAskQuery',
-          params: {
-            content: params.questions.join('\n')
-          }
-        };
-      } else {
-        console.log(JSON.stringify({ answerText, toolCalls }, null, 2), 'Replan response');
-        return {
-          type: 'agentPlanAskQuery',
-          params: {
-            content: '生成的 ask 结构异常'
-          }
-        };
-      }
-    }
-  })();
+  const rePlan = await parsePlan(answerText);
+  const askInteractive = await parseAskInteractive(toolCalls);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,
@@ -361,7 +349,7 @@ export const dispatchReplanAgent = async ({
   });
 
   return {
-    answerText,
+    askInteractive,
     plan: rePlan,
     completeMessages,
     usages: [
@@ -372,7 +360,6 @@ export const dispatchReplanAgent = async ({
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
-    ],
-    interactiveResponse
+    ]
   };
 };

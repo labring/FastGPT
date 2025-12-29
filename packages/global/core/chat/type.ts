@@ -7,10 +7,10 @@ import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants'
 import type { AppSchemaType, VariableItemType } from '../app/type';
 import type { DispatchNodeResponseType } from '../workflow/runtime/type';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
-import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
-import type { RequireOnlyOne } from '../../common/type/utils';
 import z from 'zod';
+import { AgentPlanSchema } from '../ai/agent/type';
 
 /* One tool run response  */
 export type ToolRunResponseItemType = any;
@@ -24,6 +24,13 @@ export const ToolModuleResponseItemSchema = z.object({
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
+
+/* step call */
+export const StepTitleItemSchema = z.object({
+  stepId: z.string(),
+  title: z.string()
+});
+export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -117,22 +124,31 @@ export const AdminFbkSchema = z.object({
 });
 export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 
-export type AIChatItemValueItemType = {
-  id?: string;
-  stepId?: string;
-} & RequireOnlyOne<{
-  text: {
-    content: string;
-  };
-  reasoning: {
-    content: string;
-  };
-  tool: ToolModuleResponseItemType;
-  interactive: WorkflowInteractiveResponseType;
+export const AIChatItemValueSchema = z.object({
+  id: z.string().nullish(),
+  stepId: z.string().nullish(),
+  text: z
+    .object({
+      content: z.string()
+    })
+    .nullish(),
+  reasoning: z
+    .object({
+      content: z.string()
+    })
+    .nullish(),
+  tool: ToolModuleResponseItemSchema.nullish(),
+  interactive: WorkflowInteractiveResponseTypeSchema.optional(),
+  plan: AgentPlanSchema.nullish(),
+  stepTitle: StepTitleItemSchema.nullish(),
 
   // @deprecated
-  tools: ToolModuleResponseItemType[];
-}>;
+  tools: z.array(ToolModuleResponseItemSchema).nullish()
+});
+
+export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;
+
+// TODO 待迁移成 zod
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];
@@ -228,14 +244,6 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
   moduleType: FlowNodeTypeEnum;
   moduleName: string;
 };
-
-/* ---------- node outputs ------------ */
-export const NodeOutputItemSchema = z.object({
-  nodeId: z.string(),
-  key: z.enum(Object.values(NodeOutputKeyEnum)),
-  value: z.any()
-});
-export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;
 
 export const ToolCiteLinksSchema = z.object({
   name: z.string(),
