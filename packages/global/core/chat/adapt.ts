@@ -136,7 +136,11 @@ export const chats2GPTMessages = ({
           // Concat text
           const lastValue = item.value[i - 1];
           const lastResult = aiResults[aiResults.length - 1];
-          if (lastValue && typeof lastResult?.content === 'string') {
+          if (
+            lastValue &&
+            lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+            typeof lastResult?.content === 'string'
+          ) {
             lastResult.content += value.text.content;
           } else {
             aiResults.push({

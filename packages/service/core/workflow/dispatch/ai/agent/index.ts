@@ -18,7 +18,7 @@ import {
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { filterMemoryMessages } from '../utils';
-import { SubAppIds, systemSubInfo } from './sub/constants';
+import { systemSubInfo } from './sub/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent, dispatchReplanAgent } from './sub/plan';
 
@@ -29,7 +29,6 @@ import { addLog } from '../../../../../common/system/log';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -57,19 +56,15 @@ type Response = DispatchNodeResultType<{
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   let {
     checkIsStopping,
-    node: { nodeId, name, isEntry, version, inputs },
+    node: { nodeId, inputs },
     lang,
-    runtimeNodes,
     histories,
     query,
     requestOrigin,
     chatConfig,
     lastInteractive,
-    runningUserInfo,
     runningAppInfo,
-    externalProvider,
     stream,
-    workflowDispatchDeep,
     workflowStreamResponse,
     usagePush,
     params: {
@@ -116,9 +111,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   })();
   const assistantResponses: AIChatItemValueItemType[] = [];
-  console.log('historiesMessages', JSON.stringify(historiesMessages, null, 2));
-  console.log('planHistoryMessages', JSON.stringify(planHistoryMessages, null, 2));
-  console.log('agentPlan', JSON.stringify(agentPlan, null, 2));
 
   // agentPlan = {
   //   task: '撰写 dify 和 fastgpt 两个产品的功能和价格对比报告',
@@ -278,20 +270,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     };
 
-    // Plan step: 需要生成 plan，且还没有完整的 plan
-    const isPlanStep = !!planHistoryMessages?.length;
-    // Replan step: 已有 plan，且有 replan 历史消息
-    const isReplanStep = agentPlan && !!replanMessages?.length;
-
-    // console.log('planHistoryMessages', planHistoryMessages);
     // 执行 Plan/replan
-    if (isPlanStep) {
+    if (!!planHistoryMessages?.length) {
       const result = await planCallFn();
       // 有 result 代表 plan 有交互响应（check/ask）
       if (result) return result;
-    } else if (isReplanStep) {
+    } else if (agentPlan && !!replanMessages?.length) {
       const result = await replanCallFn({
-        plan: agentPlan!
+        plan: agentPlan
       });
       if (result) return result;
     }
@@ -353,14 +339,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           }
 
           // Call replan
-          // if (agentPlan.replan === true) {
-          //   // 内部会修改 agentPlan.steps 的内容，从而使循环重复触发
-          //   const replanResult = await replanCallFn({
-          //     plan: agentPlan
-          //   });
-          //   // Replan 里有需要用户交互的内容，直接 return
-          //   if (replanResult) return replanResult;
-          // }
+          if (agentPlan.replan === true) {
+            // 内部会修改 agentPlan.steps 的内容，从而使循环重复触发
+            const replanResult = await replanCallFn({
+              plan: agentPlan
+            });
+            // Replan 里有需要用户交互的内容，直接 return
+            if (replanResult) return replanResult;
+          }
         }
 
         // Step call 执行完，交给 master agent 继续执行
