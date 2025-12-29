@@ -48,6 +48,7 @@ export const dispatchTool = async ({
   variables,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
+  const startTime = Date.now();
   try {
     if (toolConfig?.systemTool?.toolId) {
       const tool = await getSystemToolById(toolConfig?.systemTool.toolId);
@@ -145,6 +146,8 @@ export const dispatchTool = async ({
 
       return {
         response: JSON.stringify(result),
+        result,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         usages: [
           {
             moduleName: name,
@@ -174,7 +177,9 @@ export const dispatchTool = async ({
         params
       });
       return {
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         response: JSON.stringify(result),
+        result,
         usages: []
       };
     } else {

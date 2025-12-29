@@ -103,6 +103,12 @@ const AIContentCard = React.memo(function AIContentCard({
     <Flex flexDirection={'column'}>
       {chatValue.map((value, i) => {
         const key = `${dataId}-ai-${i}`;
+        const folded = value.stepId
+          ? chatValue.find((item) => item.stepTitle?.stepId === value.stepId)?.stepTitle?.folded ??
+            true
+          : false;
+
+        if (folded) return null;
 
         return (
           <Box
@@ -110,6 +116,7 @@ const AIContentCard = React.memo(function AIContentCard({
             _notFirst={
               value.stepId
                 ? {
+                    pb: 2,
                     pl: 4,
                     borderLeft: '4px solid',
                     borderLeftColor: 'myGray.200'
@@ -409,7 +416,9 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
               borderRadius={styleMap.borderRadius}
               textAlign={'left'}
             >
-              {chat.obj === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
+              {chat.obj === ChatRoleEnum.Human && (
+                <HumanContentCard chatValue={value as UserChatItemValueItemType[]} />
+              )}
               {chat.obj === ChatRoleEnum.AI && (
                 <>
                   <AIContentCard

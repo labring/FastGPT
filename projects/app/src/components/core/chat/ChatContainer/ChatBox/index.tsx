@@ -407,7 +407,10 @@ const ChatBox = ({
                 {
                   id: responseValueId,
                   stepId,
-                  stepTitle
+                  stepTitle: {
+                    ...stepTitle,
+                    folded: false
+                  }
                 }
               ]
             };

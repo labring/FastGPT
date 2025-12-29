@@ -10,7 +10,11 @@ import type {
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getNodeErrResponse, getHistories } from '../../utils';
-import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ChatItemType
+} from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   chats2GPTMessages,
@@ -111,18 +115,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   })();
   const assistantResponses: AIChatItemValueItemType[] = [];
-
-  // agentPlan = {
-  //   task: '撰写 dify 和 fastgpt 两个产品的功能和价格对比报告',
-  //   steps: [
-  //     {
-  //       id: 'step1',
-  //       title: '收集 dify 产品的功能和价格信息',
-  //       description: '使用 @秘塔搜索 搜索 dify 产品的官方信息、功能介绍和价格方案，整理关键信息'
-  //     }
-  //   ],
-  //   replan: false
-  // };
+  const nodeResponses: ChatHistoryItemResType[] = [];
 
   try {
     // Get files
@@ -282,14 +275,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       if (result) return result;
     }
 
+    let userQuery: string | undefined = userChatInput;
     while (true) {
+      if (checkIsStopping()) {
+        break;
+      }
+
       if (agentPlan) {
         addLog.debug(`Start step call`, {
           agentPlan: JSON.stringify(agentPlan, null, 2)
         });
 
-        while (agentPlan.steps.filter((item) => !item.response).length) {
+        while (!checkIsStopping() && agentPlan.steps.filter((item) => !item.response).length) {
           for await (const step of agentPlan.steps) {
+            if (checkIsStopping()) {
+              break;
+            }
             if (step.response) continue;
             addLog.debug(`Step call: ${step.id}`, step);
             assistantResponses.push({
@@ -319,6 +320,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               filesMap,
               subAppsMap: agentSubAppsMap
             });
+            nodeResponses.push(result.nodeResponse);
 
             // Merge response
             const assistantResponse = GPTMessages2Chats({
@@ -351,6 +353,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         // Step call 执行完，交给 master agent 继续执行
         agentPlan = undefined;
+        userQuery = undefined; // 本轮调用时候，不需要传递 query，最后一位是 tool
         continue;
       } else {
         addLog.debug(`Start master agent`);
@@ -361,12 +364,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
         const result = await masterCall({
           ...props,
+          userQuery,
           historiesMessages: [...historiesMessages, ...messages],
           getSubAppInfo,
           completionTools: agentCompletionTools,
           filesMap,
           subAppsMap: agentSubAppsMap
         });
+        nodeResponses.push(result.nodeResponse);
 
         // Merge assistant responses
         const assistantResponse = GPTMessages2Chats({
@@ -392,7 +397,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 [planMessagesKey]: filterMemoryMessages(completeMessages),
                 [agentPlanKey]: plan
               },
-              [DispatchNodeResponseKeyEnum.interactive]: askInteractive
+              [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
+              [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
             };
           }
 
@@ -411,26 +417,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 任务结束
     return {
-      // 目前 Master 不会触发交互
-      // [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse,
-      // TODO: 需要对 memoryMessages 单独建表存储
       [DispatchNodeResponseKeyEnum.memories]: {
         [agentPlanKey]: undefined,
         [planMessagesKey]: undefined,
         [replanMessagesKey]: undefined
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        // 展示的积分消耗
-        // totalPoints: totalPointsUsage,
-        // toolCallInputTokens: inputTokens,
-        // toolCallOutputTokens: outputTokens,
-        // childTotalPoints: toolTotalPoints,
-        // model: modelName,
-        query: userChatInput,
-        // toolDetail: dispatchFlowResponse,
-        mergeSignId: nodeId
-      }
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
     };
   } catch (error) {
     return getNodeErrResponse({ error });

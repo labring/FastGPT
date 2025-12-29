@@ -8,16 +8,7 @@ import {
   Box,
   Button,
   Flex,
-  HStack,
-  Step,
-  StepDescription,
-  StepIcon,
-  StepIndicator,
-  StepNumber,
-  StepSeparator,
-  StepStatus,
-  StepTitle,
-  Stepper
+  HStack
 } from '@chakra-ui/react';
 import type {
   AIChatItemValueItemType,
@@ -50,6 +41,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import Icon from '@fastgpt/web/components/common/Icon';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -333,32 +325,41 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
         </Box>
       </Flex>
       <Box px={4} py={4}>
-        <Stepper index={-1} orientation="vertical" gap="2" size={'sm'}>
+        <Flex direction="column" gap={0}>
           {plan.steps.map((step, index) => (
-            <Step key={step.id} w={'100%'}>
-              <StepIndicator>
-                <StepStatus
-                  complete={<StepIcon />}
-                  incomplete={<StepNumber />}
-                  active={<StepNumber />}
+            <Flex key={step.id} gap={3} position="relative">
+              {/* Left side: dot and line */}
+              <Flex direction="column" alignItems="center" position="relative">
+                {/* Dot */}
+                <Box
+                  w="10px"
+                  h="10px"
+                  borderRadius="full"
+                  border="2px solid"
+                  borderColor="primary.600"
+                  flexShrink={0}
+                  mt={1.5}
                 />
-              </StepIndicator>
+                {/* Connecting line */}
+                {index < plan.steps.length - 1 && (
+                  <Box w="1.5px" h="100%" bg="myGray.250" mb={-1} flexGrow={1} minH="20px" />
+                )}
+              </Flex>
 
-              <Box flexShrink="1" ml={1} w={'0'} flex={'1'}>
-                <StepTitle fontSize={'sm'} fontWeight={'medium'}>
+              {/* Right side: content */}
+              <Box flex={1} pb={index < plan.steps.length - 1 ? 3 : 0}>
+                <Box fontSize="sm" fontWeight="medium" color="myGray.900">
                   {step.title}
-                </StepTitle>
+                </Box>
                 {step.description && (
-                  <StepDescription fontSize={'xs'} mt={1} color={'myGray.500'}>
+                  <Box fontSize="xs" mt={1} color="myGray.500">
                     {step.description}
-                  </StepDescription>
+                  </Box>
                 )}
               </Box>
-
-              <StepSeparator />
-            </Step>
+            </Flex>
           ))}
-        </Stepper>
+        </Flex>
       </Box>
     </Box>
   );
@@ -371,9 +372,40 @@ const RenderStepTitle = React.memo(function RenderStepTitle({
   step: StepTitleItemType;
 }) {
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const folded = step.folded ?? true;
 
   return (
-    <HStack pb={2} fontSize={'lg'} fontWeight={'bold'} userSelect={'none'}>
+    <HStack
+      pt={2}
+      pb={folded ? 0 : 2}
+      fontSize={'lg'}
+      userSelect={'none'}
+      cursor={'pointer'}
+      onClick={() => {
+        setChatRecords((prev) => {
+          return prev.map((item) => {
+            if (item.dataId === chatItemDataId && item.obj === ChatRoleEnum.AI) {
+              return {
+                ...item,
+                value: item.value.map((value) => {
+                  if (value.stepTitle?.stepId === step.stepId) {
+                    return {
+                      ...value,
+                      stepTitle: {
+                        ...value.stepTitle,
+                        folded: !folded
+                      }
+                    };
+                  }
+                  return value;
+                })
+              };
+            }
+            return item;
+          });
+        });
+      }}
+    >
       <Box
         w={'10px'}
         h={'10px'}
@@ -381,13 +413,14 @@ const RenderStepTitle = React.memo(function RenderStepTitle({
         border={'2px solid'}
         borderColor={'primary.600'}
       ></Box>
-      <Box>{step.title}</Box>
-      {/* <Icon
+      <Box fontWeight={'bold'}>{step.title}</Box>
+      <Icon
         name={'common/leftArrowLight'}
         w={'1rem'}
         h={'1rem'}
-        transform={step.folded ? 'rotate(90deg)' : 'rotate(-90deg)'}
-      /> */}
+        transition={'transform 0.2s ease-in-out'}
+        transform={folded ? 'rotate(90deg)' : 'rotate(-90deg)'}
+      />
     </HStack>
   );
 });

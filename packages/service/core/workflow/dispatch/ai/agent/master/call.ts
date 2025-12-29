@@ -22,7 +22,11 @@ import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
 import { addLog } from '../../../../../../common/system/log';
 import type { WorkflowResponseItemType } from '../../../type';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { i18nT } from '../../../../../../../web/i18n/utils';
+import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 
 type Response = {
   stepResponse?: {
@@ -33,9 +37,7 @@ type Response = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
 
-  inputTokens: number;
-  outputTokens: number;
-  subAppUsages: ChatNodeUsageType[];
+  nodeResponse: ChatHistoryItemResType;
 };
 
 export const masterCall = async ({
@@ -44,6 +46,7 @@ export const masterCall = async ({
   completionTools,
   filesMap,
   subAppsMap,
+  userQuery,
   steps,
   step,
   ...props
@@ -54,6 +57,7 @@ export const masterCall = async ({
   filesMap: Record<string, string>;
   subAppsMap: Map<string, SubAppRuntimeType>;
 
+  userQuery?: string;
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
@@ -71,6 +75,8 @@ export const masterCall = async ({
     params: { userChatInput, systemPrompt, model, temperature, aiChatTopP }
   } = props;
 
+  const startTime = Date.now();
+  const childrenResponses: ChatHistoryItemResType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -89,13 +95,21 @@ export const masterCall = async ({
     if (isStepCall) {
       // Get depends on step ids
       if (!step.depends_on) {
-        const { depends, usage: dependsUsage } = await getStepDependon({
+        const {
+          depends,
+          usage: dependsUsage,
+          nodeResponse
+        } = await getStepDependon({
+          checkIsStopping,
           model,
           steps,
           step
         });
         if (dependsUsage) {
           usagePush([dependsUsage]);
+        }
+        if (nodeResponse) {
+          childrenResponses.push(nodeResponse);
         }
         step.depends_on = depends;
       }
@@ -148,14 +162,14 @@ export const masterCall = async ({
           ]
         : []),
       ...historiesMessages,
-      ...(historiesMessages[historiesMessages.length - 1]?.role === 'tool'
-        ? []
-        : [
+      ...(userQuery
+        ? [
             {
               role: 'user' as const,
-              content: userChatInput
+              content: userQuery
             }
-          ])
+          ]
+        : [])
     ];
     return {
       requestMessages: messages
@@ -166,244 +180,292 @@ export const masterCall = async ({
 
   let planResult: DispatchPlanAgentResponse | undefined;
 
-  const { assistantMessages, completeMessages, inputTokens, outputTokens, subAppUsages } =
-    await runAgentCall({
-      maxRunAgentTimes: 100,
-      body: {
-        messages: requestMessages,
-        model: getLLMModel(model),
-        temperature,
-        stream,
-        top_p: aiChatTopP,
-        tools: completionTools
-      },
+  const {
+    model: agentModel,
+    assistantMessages,
+    completeMessages,
+    inputTokens,
+    outputTokens,
+    childrenUsages
+  } = await runAgentCall({
+    maxRunAgentTimes: 100,
+    body: {
+      messages: requestMessages,
+      model: getLLMModel(model),
+      temperature,
+      stream: true,
+      top_p: aiChatTopP,
+      tools: completionTools
+    },
 
-      userKey: externalProvider.openaiAccount,
-      usagePush,
-      isAborted: checkIsStopping,
-      // childrenInteractiveParams
+    userKey: externalProvider.openaiAccount,
+    usagePush,
+    isAborted: checkIsStopping,
+    // childrenInteractiveParams
 
-      onReasoning({ text }) {
-        stepStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            reasoning_content: text
-          })
-        });
-      },
-      onStreaming({ text }) {
-        stepStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text
-          })
-        });
-      },
-      onToolCall({ call }) {
-        const subApp = getSubAppInfo(call.function.name);
+    onReasoning({ text }) {
+      stepStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          reasoning_content: text
+        })
+      });
+    },
+    onStreaming({ text }) {
+      stepStreamResponse?.({
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text
+        })
+      });
+    },
+    onToolCall({ call }) {
+      const subApp = getSubAppInfo(call.function.name);
 
-        if (call.function.name === SubAppIds.plan) {
-          return;
+      if (call.function.name === SubAppIds.plan) {
+        return;
+      }
+
+      stepStreamResponse?.({
+        id: call.id,
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: {
+            id: call.id,
+            toolName: subApp?.name || call.function.name,
+            toolAvatar: subApp?.avatar || '',
+            functionName: call.function.name,
+            params: call.function.arguments ?? ''
+          }
         }
-
-        stepStreamResponse?.({
-          id: call.id,
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool: {
-              id: call.id,
-              toolName: subApp?.name || call.function.name,
-              toolAvatar: subApp?.avatar || '',
-              functionName: call.function.name,
-              params: call.function.arguments ?? ''
-            }
+      });
+    },
+    onToolParam({ tool, params }) {
+      stepStreamResponse?.({
+        id: tool.id,
+        event: SseResponseEventEnum.toolParams,
+        data: {
+          tool: {
+            params
           }
-        });
-      },
-      onToolParam({ tool, params }) {
-        stepStreamResponse?.({
-          id: tool.id,
-          event: SseResponseEventEnum.toolParams,
-          data: {
-            tool: {
-              params
-            }
-          }
-        });
-      },
-      handleToolResponse: async ({ call, messages }) => {
-        addLog.debug('handleToolResponse', { toolName: call.function.name });
-        const toolId = call.function.name;
+        }
+      });
+    },
+    onCompressContext({ modelName, inputTokens, outputTokens, totalPoints, seconds }) {
+      childrenResponses.push({
+        nodeId: getNanoid(),
+        id: getNanoid(),
+        moduleType: FlowNodeTypeEnum.emptyNode,
+        moduleName: i18nT('chat:compress_llm_messages'),
+        model: modelName,
+        inputTokens,
+        outputTokens,
+        totalPoints,
+        runningTime: seconds
+      });
+    },
+    handleToolResponse: async ({ call, messages }) => {
+      addLog.debug('handleToolResponse', { toolName: call.function.name });
+      const toolId = call.function.name;
 
-        const {
-          response,
-          usages = [],
-          stop = false
-        } = await (async () => {
-          try {
-            if (toolId === SubAppIds.fileRead) {
-              const toolParams = ReadFileToolSchema.safeParse(
-                parseJsonArgs(call.function.arguments)
-              );
+      const {
+        response,
+        usages = [],
+        stop = false
+      } = await (async () => {
+        try {
+          if (toolId === SubAppIds.fileRead) {
+            const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(call.function.arguments));
 
-              if (!toolParams.success) {
-                return {
-                  response: toolParams.error.message,
-                  usages: []
-                };
-              }
-              const params = toolParams.data;
-
-              const files = params.file_indexes.map((index) => ({
-                index,
-                url: filesMap[index]
-              }));
-              const result = await dispatchFileRead({
-                files,
-                teamId: runningUserInfo.teamId,
-                tmbId: runningUserInfo.tmbId,
-                customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
-              });
+            if (!toolParams.success) {
               return {
-                response: result.response,
-                usages: result.usages
+                response: toolParams.error.message,
+                usages: []
               };
             }
-            if (toolId === SubAppIds.plan) {
-              try {
-                planResult = await dispatchPlanAgent({
-                  checkIsStopping,
-                  historyMessages: historiesMessages,
-                  userInput: userChatInput,
-                  completionTools,
-                  getSubAppInfo,
-                  systemPrompt: systemPrompt,
-                  model,
-                  stream
-                });
+            const params = toolParams.data;
 
-                return {
-                  response: '',
-                  stop: true
-                };
-              } catch (error) {
-                console.log(error, 111);
-                return {
-                  response: getErrText(error),
-                  stop: false
-                };
-              }
-            }
-            // User Sub App
-            else {
-              const tool = subAppsMap.get(toolId);
-              if (!tool) {
-                return {
-                  response: 'Can not find the tool',
-                  usages: []
-                };
-              }
-
-              const toolCallParams = parseJsonArgs(call.function.arguments);
-
-              if (!toolCallParams) {
-                return {
-                  response: 'params is not object',
-                  usages: []
-                };
-              }
-
-              // Get params
-              const requestParams = {
-                ...tool.params,
-                ...toolCallParams
-              };
-
-              if (tool.type === 'tool') {
-                const { response, usages } = await dispatchTool({
-                  tool: {
-                    name: tool.name,
-                    version: tool.version,
-                    toolConfig: tool.toolConfig
-                  },
-                  params: requestParams,
-                  runningUserInfo,
-                  runningAppInfo,
-                  variables,
-                  workflowStreamResponse: stepStreamResponse
-                });
-                return {
-                  response,
-                  usages
-                };
-              } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
-                // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
-
-                // const { response, usages } = await fn({
-                //   ...props,
-                //   node,
-                //   workflowStreamResponse:stepStreamResponse,
-                //   callParams: {
-                //     appId: node.pluginId,
-                //     version: node.version,
-                //     ...requestParams
-                //   }
-                // });
-
-                // return {
-                //   response,
-                //   usages
-                // };
-                return {
-                  response: 'Can not find the tool',
-                  usages: []
-                };
-              } else {
-                return {
-                  response: 'Can not find the tool',
-                  usages: []
-                };
-              }
-            }
-          } catch (error) {
+            const files = params.file_indexes.map((index) => ({
+              index,
+              url: filesMap[index]
+            }));
+            const result = await dispatchFileRead({
+              files,
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId,
+              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+            });
             return {
-              response: getErrText(error),
-              usages: []
+              response: result.response,
+              usages: result.usages
             };
           }
-        })();
+          if (toolId === SubAppIds.plan) {
+            try {
+              planResult = await dispatchPlanAgent({
+                checkIsStopping,
+                historyMessages: historiesMessages,
+                userInput: userChatInput,
+                completionTools,
+                getSubAppInfo,
+                systemPrompt: systemPrompt,
+                model,
+                stream
+              });
 
-        // Push stream response
-        stepStreamResponse?.({
-          id: call.id,
-          event: SseResponseEventEnum.toolResponse,
-          data: {
-            tool: {
-              response
+              return {
+                response: '',
+                stop: true
+              };
+            } catch (error) {
+              console.log(error, 111);
+              return {
+                response: getErrText(error),
+                stop: false
+              };
             }
           }
-        });
+          // User Sub App
+          else {
+            const tool = subAppsMap.get(toolId);
+            if (!tool) {
+              return {
+                response: 'Can not find the tool',
+                usages: []
+              };
+            }
 
-        // TODO: 推送账单
+            const toolCallParams = parseJsonArgs(call.function.arguments);
 
-        return {
-          response,
-          assistantMessages: [], // TODO
-          usages,
-          stop
-        };
-      },
-      handleInteractiveTool: async ({ toolParams }) => {
-        return {
-          response: 'Interactive tool not supported',
-          assistantMessages: [], // TODO
-          usages: []
-        };
-      }
-    });
+            if (!toolCallParams) {
+              return {
+                response: 'params is not object',
+                usages: []
+              };
+            }
+
+            // Get params
+            const requestParams = {
+              ...tool.params,
+              ...toolCallParams
+            };
+
+            if (tool.type === 'tool') {
+              const { response, usages, runningTime, result } = await dispatchTool({
+                tool: {
+                  name: tool.name,
+                  version: tool.version,
+                  toolConfig: tool.toolConfig
+                },
+                params: requestParams,
+                runningUserInfo,
+                runningAppInfo,
+                variables,
+                workflowStreamResponse: stepStreamResponse
+              });
+
+              childrenResponses.push({
+                nodeId: getNanoid(),
+                id: getNanoid(),
+                runningTime,
+                moduleType: FlowNodeTypeEnum.tool,
+                moduleName: tool.name,
+                moduleLogo: tool.avatar,
+                toolInput: requestParams,
+                toolRes: result,
+                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+              });
+
+              return {
+                response,
+                usages
+              };
+            } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
+              // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
+
+              // const { response, usages } = await fn({
+              //   ...props,
+              //   node,
+              //   workflowStreamResponse:stepStreamResponse,
+              //   callParams: {
+              //     appId: node.pluginId,
+              //     version: node.version,
+              //     ...requestParams
+              //   }
+              // });
+
+              // return {
+              //   response,
+              //   usages
+              // };
+              return {
+                response: 'Can not find the tool',
+                usages: []
+              };
+            } else {
+              return {
+                response: 'Can not find the tool',
+                usages: []
+              };
+            }
+          }
+        } catch (error) {
+          return {
+            response: getErrText(error),
+            usages: []
+          };
+        }
+      })();
+
+      // Push stream response
+      stepStreamResponse?.({
+        id: call.id,
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            response
+          }
+        }
+      });
+
+      // TODO: 推送账单
+
+      return {
+        response,
+        assistantMessages: [], // TODO
+        usages,
+        stop
+      };
+    },
+    handleInteractiveTool: async ({ toolParams }) => {
+      return {
+        response: 'Interactive tool not supported',
+        assistantMessages: [], // TODO
+        usages: []
+      };
+    }
+  });
+
+  const llmUsage = formatModelChars2Points({
+    model: agentModel,
+    inputTokens,
+    outputTokens
+  });
+  const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);
+  const nodeResponse: ChatHistoryItemResType = {
+    nodeId: getNanoid(),
+    id: getNanoid(),
+    moduleType: FlowNodeTypeEnum.agent,
+    moduleName: i18nT('chat:agent_call'),
+    model: llmUsage.modelName,
+    inputTokens,
+    outputTokens,
+    totalPoints: childTotalPoints + llmUsage.totalPoints,
+    childrenResponses
+  };
 
   // Step call
-  if (isStepCall) {
+  if (isStepCall && !checkIsStopping()) {
     const answerText = assistantMessages
       .map((item) => {
         if (item.role === 'assistant' && item.content) {
@@ -420,13 +482,17 @@ export const masterCall = async ({
       .join('\n');
 
     // Get step response summary
-    const { answerText: summary, usage: summaryUsage } = await getOneStepResponseSummary({
+    const {
+      answerText: summary,
+      usage: summaryUsage,
+      nodeResponse: summaryNodeResponse
+    } = await getOneStepResponseSummary({
       response: answerText,
       model
     });
-    if (summaryUsage) {
-      usagePush([summaryUsage]);
-    }
+    usagePush([summaryUsage]);
+    nodeResponse.childrenResponses?.push(summaryNodeResponse);
+    nodeResponse.runningTime = +((Date.now() - startTime) / 1000).toFixed(2);
 
     return {
       stepResponse: {
@@ -435,19 +501,16 @@ export const masterCall = async ({
       },
       completeMessages,
       assistantMessages,
-      inputTokens,
-      outputTokens,
-      subAppUsages
+      nodeResponse
     };
   }
 
+  nodeResponse.runningTime = +((Date.now() - startTime) / 1000).toFixed(2);
   // Default
   return {
     planResponse: planResult,
     completeMessages,
     assistantMessages,
-    inputTokens,
-    outputTokens,
-    subAppUsages
+    nodeResponse
   };
 };

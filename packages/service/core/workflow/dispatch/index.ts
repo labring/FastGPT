@@ -628,11 +628,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return {};
       })();
 
+      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       // format response data. Add modulename and module type
       const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
-        return {
+        const val = {
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
           id: getNanoid(),
           nodeId: node.nodeId,
@@ -640,18 +641,23 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           moduleType: node.flowNodeType,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
+        nodeResponses.push(val);
+        return val;
       })();
 
       // Response node response
-      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
-        data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeResponse,
-          data: responseAllData
-            ? formatResponseData
-            : filterPublicNodeResponseData({
-                nodeRespones: [formatResponseData],
-                responseDetail
-              })[0]
+      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && nodeResponses.length > 0) {
+        const filteredResponses = responseAllData
+          ? nodeResponses
+          : filterPublicNodeResponseData({
+              nodeRespones: nodeResponses,
+              responseDetail
+            });
+        filteredResponses.forEach((item) => {
+          data.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeResponse,
+            data: item
+          });
         });
       }
 
@@ -729,6 +735,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         answerText,
         reasoningText,
         responseData,
+        nodeResponses,
         nodeDispatchUsages,
         toolResponses,
         assistantResponses,
@@ -749,6 +756,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         if (responseData) {
           this.chatResponses.push(responseData);
+        }
+        if (nodeResponses) {
+          this.chatResponses.push(...nodeResponses);
         }
 
         // Push usage in real time. Avoid a workflow usage a large number of points

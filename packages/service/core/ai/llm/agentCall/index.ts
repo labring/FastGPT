@@ -18,6 +18,7 @@ import { filterGPTMessageByMaxContext } from '../utils';
 import { getLLMModel } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
@@ -31,10 +32,17 @@ type RunAgentCallProps = {
     stream?: boolean;
   };
 
-  usagePush: (usages: ChatNodeUsageType[]) => void;
+  usagePush?: (usages: ChatNodeUsageType[]) => void;
   userKey?: CreateLLMResponseProps['userKey'];
   isAborted?: CreateLLMResponseProps['isAborted'];
 
+  onCompressContext?: (usage: {
+    modelName: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalPoints: number;
+    seconds: number;
+  }) => void;
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
   handleInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
     response: string;
@@ -43,7 +51,6 @@ type RunAgentCallProps = {
     interactive?: WorkflowInteractiveResponseType;
     stop?: boolean;
   }>;
-
   handleToolResponse: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
@@ -63,9 +70,12 @@ type RunAgentResponse = {
   interactiveResponse?: ToolCallChildrenInteractive;
 
   // Usage
+  model: string;
   inputTokens: number;
   outputTokens: number;
-  subAppUsages: ChatNodeUsageType[];
+  compressInputTokens: number;
+  compressOutputTokens: number;
+  childrenUsages: ChatNodeUsageType[];
 
   finish_reason: CompletionFinishReason | undefined;
 };
@@ -93,6 +103,7 @@ export const runAgentCall = async ({
   userKey,
   isAborted,
 
+  onCompressContext,
   childrenInteractiveParams,
   handleInteractiveTool,
   handleToolResponse,
@@ -138,9 +149,11 @@ export const runAgentCall = async ({
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
+  let compressInputTokens = 0;
+  let compressOutputTokens = 0;
   let finish_reason: CompletionFinishReason | undefined;
   let requestError: any;
-  const subAppUsages: ChatNodeUsageType[] = [];
+  const childrenUsages: ChatNodeUsageType[] = [];
 
   // 处理 tool 里的交互
   if (childrenInteractiveParams) {
@@ -164,8 +177,8 @@ export const runAgentCall = async ({
 
     // 只需要推送本轮产生的 assistantMessages
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
-    subAppUsages.push(...usages);
-    usagePush(usages);
+    childrenUsages.push(...usages);
+    usagePush?.(usages);
 
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
@@ -184,9 +197,12 @@ export const runAgentCall = async ({
 
     if (interactiveResponse || stop) {
       return {
+        model: modelData.model,
         inputTokens: 0,
         outputTokens: 0,
-        subAppUsages,
+        compressInputTokens: 0,
+        compressOutputTokens: 0,
+        childrenUsages,
         completeMessages: requestMessages,
         assistantMessages,
         interactiveResponse,
@@ -205,13 +221,38 @@ export const runAgentCall = async ({
     runTimes++;
 
     // 1. Compress request messages
+    const compressStartTime = Date.now();
     const result = await compressRequestMessages({
+      checkIsStopping: isAborted,
       messages: requestMessages,
       model: modelData
     });
     requestMessages = result.messages;
-    inputTokens += result.usage?.inputTokens || 0;
-    outputTokens += result.usage?.outputTokens || 0;
+    if (result.usage) {
+      compressInputTokens += result.usage.inputTokens || 0;
+      compressOutputTokens += result.usage.outputTokens || 0;
+      const compressedUsage = formatModelChars2Points({
+        model: modelData.model,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens
+      });
+      const usage = {
+        moduleName: i18nT('account_usage:compress_llm_messages'),
+        model: compressedUsage.modelName,
+        totalPoints: compressedUsage.totalPoints,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens
+      };
+      childrenUsages.push(usage);
+      usagePush?.([usage]);
+      onCompressContext?.({
+        modelName: compressedUsage.modelName,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        totalPoints: compressedUsage.totalPoints,
+        seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+      });
+    }
 
     // 2. Request LLM
     let {
@@ -252,7 +293,6 @@ export const runAgentCall = async ({
     if (responseEmptyTip) {
       return Promise.reject(responseEmptyTip);
     }
-
     if (toolCalls.length) {
       consecutiveRequestToolTimes++;
     }
@@ -263,16 +303,16 @@ export const runAgentCall = async ({
     // Record usage
     inputTokens += usage.inputTokens;
     outputTokens += usage.outputTokens;
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const agentUsage = formatModelChars2Points({
       model: modelData.model,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
-    usagePush([
+    usagePush?.([
       {
-        moduleName: 'Agent 调用',
-        model: modelName,
-        totalPoints,
+        moduleName: i18nT('account_usage:agent_call'),
+        model: agentUsage.modelName,
+        totalPoints: agentUsage.totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
@@ -308,8 +348,8 @@ export const runAgentCall = async ({
       requestMessages.push(toolMessage); // 请求的 Request 只需要工具响应，不需要工具中 assistant 的内容，所以不推送 toolAssistantMessages
       assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
-      subAppUsages.push(...usages);
-      usagePush(usages);
+      childrenUsages.push(...usages);
+      usagePush?.(usages);
 
       if (interactive) {
         interactiveResponse = {
@@ -339,9 +379,12 @@ export const runAgentCall = async ({
 
   return {
     error: requestError,
+    model: modelData.model,
     inputTokens,
     outputTokens,
-    subAppUsages,
+    compressInputTokens,
+    compressOutputTokens,
+    childrenUsages,
     completeMessages: requestMessages,
     assistantMessages,
     interactiveResponse,

@@ -3,7 +3,10 @@ import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { getLLMModel } from '../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { AgentPlanStepType } from '../sub/plan/type';
+import { i18nT } from '../../../../../../../web/i18n/utils';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 // TODO: 报错兜底机制
 export const getOneStepResponseSummary = async ({
@@ -15,7 +18,9 @@ export const getOneStepResponseSummary = async ({
 }): Promise<{
   answerText: string;
   usage: ChatNodeUsageType;
+  nodeResponse: ChatHistoryItemResType;
 }> => {
+  const startTime = Date.now();
   addLog.debug('Get one step response summary start');
 
   const modelData = getLLMModel(model);
@@ -50,11 +55,21 @@ export const getOneStepResponseSummary = async ({
   return {
     answerText,
     usage: {
-      moduleName: '步骤执行结果概括',
+      moduleName: i18nT('account_usage:step_summary'),
       model: modelName,
       totalPoints,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
+    },
+    nodeResponse: {
+      nodeId: getNanoid(),
+      id: getNanoid(),
+      runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+      moduleType: FlowNodeTypeEnum.emptyNode,
+      moduleName: i18nT('chat:step_summary'),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalPoints
     }
   };
 };
