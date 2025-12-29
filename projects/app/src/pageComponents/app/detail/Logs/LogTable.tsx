@@ -264,7 +264,6 @@ const LogTable = ({
           <UserIpTypeFilter
             userIpType={userIpType}
             setUserIpType={setUserIpType}
-            placement="right"
             menuButtonProps={{
               fontSize: '12.8px',
               fontWeight: 'medium',

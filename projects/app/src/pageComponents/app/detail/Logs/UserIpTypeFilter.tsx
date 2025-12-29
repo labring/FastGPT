@@ -19,15 +19,9 @@ type FilterProps = {
   userIpType: UserIpTypeValue;
   setUserIpType: (userIpType: UserIpTypeValue) => void;
   menuButtonProps?: ButtonProps;
-  placement?: PlacementWithLogical;
 };
 
-const UserIpTypeFilter = ({
-  userIpType,
-  setUserIpType,
-  menuButtonProps,
-  placement
-}: FilterProps) => {
+const UserIpTypeFilter = ({ userIpType, setUserIpType, menuButtonProps }: FilterProps) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -54,7 +48,7 @@ const UserIpTypeFilter = ({
       closeOnSelect={true}
       strategy={'fixed'}
       autoSelect={false}
-      placement={placement}
+      placement="bottom"
     >
       <MenuButton
         as={Button}
