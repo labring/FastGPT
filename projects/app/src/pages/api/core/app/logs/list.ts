@@ -330,14 +330,13 @@ async function handler(
 
     return {
       ...item,
+      originIp: ip,
       region: region || ip
     };
   });
 
   // 获取有 tmbId 的人员
-  const listWithSourceMember = await addSourceMember({
-    list: listWithRegion
-  });
+  const listWithSourceMember = await addSourceMember({ list: listWithRegion });
   // 获取没有 tmbId 的人员
   const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
   return GetAppChatLogsResponseSchema.parse({
