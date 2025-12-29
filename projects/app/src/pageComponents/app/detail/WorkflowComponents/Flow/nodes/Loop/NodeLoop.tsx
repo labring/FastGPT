@@ -174,7 +174,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               minH: nodeHeight
             })}
           >
-            <Background color="#A4A4A4" gap={60} size={3} />
+            {/* <Background color="#A4A4A4" gap={60} size={3} /> */}
           </Box>
         </>
       </Container>

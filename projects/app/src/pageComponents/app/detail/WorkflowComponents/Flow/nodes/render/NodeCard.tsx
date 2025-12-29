@@ -154,20 +154,63 @@ const NodeCard = (props: Props) => {
     return getGradientByColorSchema({ colorSchema, source });
   }, [colorSchema, pluginId]);
 
+  const foldedOverlay = useMemo(() => {
+    if (!isFolded) return null;
+
+    return (
+      <Flex
+        position={'absolute'}
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        alignItems={'center'}
+        justifyContent={'center'}
+        flexDirection={'column'}
+        zIndex={1}
+        onDoubleClick={handleDoubleClick}
+        cursor={'pointer'}
+        bg={'rgba(255, 255, 255, 0.80)'}
+        backdropFilter={'blur(10px)'}
+        borderRadius={26}
+      >
+        <Avatar
+          src={avatarLinear || avatar}
+          fill={'none'}
+          borderRadius={16}
+          w={'100px'}
+          h={'100px'}
+        />
+        <Box
+          mt={3}
+          color={'myGray.700'}
+          fontSize={'26px'}
+          fontWeight={'500'}
+          textAlign={'center'}
+          overflow={'hidden'}
+          textOverflow={'ellipsis'}
+          whiteSpace={'nowrap'}
+          maxW={'80%'}
+        >
+          {t(name as any)}
+        </Box>
+      </Flex>
+    );
+  }, [isFolded, avatar, avatarLinear, name, handleDoubleClick, t]);
+
   const { outlineColor, outlineWidth } = useMemo(() => {
     // error mode
-    if (isError) return { outlineColor: 'red.500', outlineWidth: '3px solid' };
+    if (isError) return { outlineColor: '#F97066', outlineWidth: '4px solid' };
     // common mode
     if (!presentationMode && !isFolded) {
       const outlineColor = selected ? 'primary.600' : 'myGray.250';
-      const outlineWidth = selected ? '2px solid' : '1px solid';
+      const outlineWidth = selected ? '4px solid' : '1px solid';
       return { outlineColor, outlineWidth };
     }
     // presentation & fold mode
     const { source } = splitCombineToolId(pluginId ?? '');
-    const baseColor = getBorderColorByColorSchema({ colorSchema, source });
-    if (!baseColor) return { outlineColor: undefined, outlineWidth: undefined };
-    const outlineColor = selected ? baseColor.replace('0.6)', '0.9)') : baseColor;
+    const outlineColor = getBorderColorByColorSchema({ colorSchema, source });
+    if (!outlineColor) return { outlineColor: undefined, outlineWidth: undefined };
     return {
       outlineColor,
       outlineWidth: '4px solid'
@@ -241,248 +284,218 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
-      hidden={hidden}
-      flexDirection={'column'}
-      {...(isFolded
-        ? {
-            w: '240px',
-            h: '240px'
-          }
-        : {
-            minW,
-            maxW,
-            minH,
-            w,
-            h
-          })}
-      outline={outlineWidth}
-      outlineColor={outlineColor}
-      borderRadius={isFolded ? 24 : 'lg'}
+      outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
+      outlineColor={'rgba(17, 24, 36, 0.05)'}
+      borderRadius={isFolded ? 26 : 'lg'}
       boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
-      _hover={{
-        boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
-        '& .controller-menu': {
-          display: 'flex'
-        },
-        '& .controller-debug': {
-          display: 'block'
-        },
-        '& .controller-rename': {
-          display: 'block'
-        }
-      }}
-      onMouseEnter={() => setHoverNodeId(nodeId)}
-      onMouseLeave={() => setHoverNodeId(undefined)}
-      {...(isError ? { onMouseDownCapture: () => onUpdateNodeError(nodeId, false) } : {})}
       {...customStyle}
     >
-      {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
+      <Flex
+        hidden={hidden}
+        flexDirection={'column'}
+        {...(isFolded
+          ? {
+              w: '240px',
+              h: '240px'
+            }
+          : {
+              minW,
+              maxW,
+              minH,
+              w,
+              h
+            })}
+        outline={outlineWidth}
+        outlineColor={outlineColor}
+        borderRadius={isFolded ? 26 : 'lg'}
+        _hover={{
+          boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
+          '& .controller-menu': {
+            display: 'flex'
+          },
+          '& .controller-debug': {
+            display: 'block'
+          },
+          '& .controller-rename': {
+            display: 'block'
+          }
+        }}
+        onMouseEnter={() => setHoverNodeId(nodeId)}
+        onMouseLeave={() => setHoverNodeId(undefined)}
+        {...(isError ? { onMouseDownCapture: () => onUpdateNodeError(nodeId, false) } : {})}
+      >
+        {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
 
-      {isFolded ? (
-        <Flex
-          position={'absolute'}
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          alignItems={'center'}
-          justifyContent={'center'}
-          flexDirection={'column'}
-          zIndex={1}
-          onDoubleClick={handleDoubleClick}
-          cursor={'pointer'}
-          bg={'rgba(255, 255, 255, 0.80)'}
-          backdropFilter={'blur(10px)'}
-          borderRadius={24}
-        >
-          <Avatar
-            src={avatarLinear || avatar}
-            fill={'none'}
-            borderRadius={16}
-            w={'100px'}
-            h={'100px'}
-          />
-          <Box
-            mt={3}
-            color={'myGray.700'}
-            fontSize={'24px'}
-            fontWeight={'500'}
-            textAlign={'center'}
-            overflow={'hidden'}
-            textOverflow={'ellipsis'}
-            whiteSpace={'nowrap'}
-            maxW={'80%'}
-          >
-            {t(name as any)}
+        {foldedOverlay}
+
+        {!isFolded && (
+          <Box bg={'white'} borderRadius={'lg'}>
+            {/* Header */}
+            <Box position={'relative'}>
+              {gradient && (
+                <Box
+                  position={'absolute'}
+                  top={0}
+                  left={0}
+                  right={0}
+                  height={'60px'}
+                  background={gradient}
+                  borderRadius={'lg'}
+                  zIndex={20}
+                  pointerEvents={'none'}
+                />
+              )}
+              {showHeader && (
+                <Box px={3} pt={4} position={'relative'}>
+                  <Flex alignItems={'center'} mb={1}>
+                    <NodeTitleSection
+                      nodeId={nodeId}
+                      avatar={avatar}
+                      name={name}
+                      searchedText={searchedText}
+                    />
+
+                    <Box flex={1} mr={1} />
+
+                    {showVersion && <NodeVersion node={node!} />}
+
+                    <NodeActionButtons
+                      nodeTemplate={nodeTemplate}
+                      courseUrl={node?.courseUrl}
+                      rtDoms={rtDoms}
+                    />
+
+                    <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+                  </Flex>
+
+                  <NodeIntro nodeId={nodeId} intro={intro} />
+                </Box>
+              )}
+            </Box>
+
+            <Flex
+              flexDirection={'column'}
+              flex={1}
+              py={showHeader ? 3 : 0}
+              gap={2}
+              position={'relative'}
+            >
+              {!isFolded ? (
+                <>
+                  {inputConfig && !inputConfig?.value ? (
+                    <NodeSecret
+                      nodeId={nodeId}
+                      isFolder={node?.isFolder}
+                      courseUrl={node?.courseUrl}
+                      hasSystemSecret={node?.hasSystemSecret}
+                      pluginId={node?.pluginId}
+                      systemKeyCost={node?.systemKeyCost}
+                      inputConfig={inputConfig}
+                    />
+                  ) : (
+                    children
+                  )}
+                </>
+              ) : (
+                <Box h={4} />
+              )}
+            </Flex>
           </Box>
-        </Flex>
-      ) : (
-        <Box bg={'white'} borderRadius={'lg'}>
-          {/* Header */}
-          <Box position={'relative'}>
-            {gradient && (
-              <Box
-                position={'absolute'}
-                top={0}
-                left={0}
-                right={0}
-                height={'60px'}
-                background={gradient}
-                borderRadius={'lg'}
-                zIndex={presentationMode ? 20 : 0}
-                pointerEvents={'none'}
-              />
-            )}
-            {showHeader && (
-              <Box px={3} pt={4} position={'relative'}>
-                <Flex alignItems={'center'} mb={1}>
-                  <NodeTitleSection
-                    nodeId={nodeId}
-                    avatar={avatar}
-                    name={name}
-                    searchedText={searchedText}
-                  />
+        )}
 
-                  <Box flex={1} mr={1} />
+        {/* Menu - Always render outside the fold/unfold condition */}
+        <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
 
-                  {showVersion && <NodeVersion node={node!} />}
+        {/* Handle - Always render handles outside the fold/unfold condition */}
+        <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
+        <ConnectionSourceHandle nodeId={nodeId} />
+        <ConnectionTargetHandle nodeId={nodeId} />
+        {RenderToolHandle}
 
-                  <NodeActionButtons
-                    nodeTemplate={nodeTemplate}
-                    courseUrl={node?.courseUrl}
-                    rtDoms={rtDoms}
-                  />
-
-                  <NodeStatusBadge status={nodeTemplate?.status} error={error} />
-                </Flex>
-
-                <NodeIntro nodeId={nodeId} intro={intro} />
-              </Box>
-            )}
-          </Box>
-
+        {/* Presentation Mode Overlay */}
+        {presentationMode && !isFolded && showHeader && (
           <Flex
+            ref={presentationOverlayRef}
+            position={'absolute'}
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg={'rgba(255, 255, 255, 0.80)'}
+            backdropFilter={'blur(10px)'}
             flexDirection={'column'}
-            flex={1}
-            py={showHeader ? 3 : 0}
-            gap={2}
-            position={'relative'}
-          >
-            {!isFolded ? (
-              <>
-                {inputConfig && !inputConfig?.value ? (
-                  <NodeSecret
-                    nodeId={nodeId}
-                    isFolder={node?.isFolder}
-                    courseUrl={node?.courseUrl}
-                    hasSystemSecret={node?.hasSystemSecret}
-                    pluginId={node?.pluginId}
-                    systemKeyCost={node?.systemKeyCost}
-                    inputConfig={inputConfig}
-                  />
-                ) : (
-                  children
-                )}
-              </>
-            ) : (
-              <Box h={4} />
-            )}
-          </Flex>
-        </Box>
-      )}
-
-      {/* Menu - Always render outside the fold/unfold condition */}
-      <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
-
-      {/* Handle - Always render handles outside the fold/unfold condition */}
-      <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-      <ConnectionSourceHandle nodeId={nodeId} />
-      <ConnectionTargetHandle nodeId={nodeId} />
-      {RenderToolHandle}
-
-      {/* Presentation Mode Overlay */}
-      {presentationMode && !isFolded && showHeader && (
-        <Flex
-          ref={presentationOverlayRef}
-          position={'absolute'}
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          bg={'rgba(255, 255, 255, 0.80)'}
-          backdropFilter={'blur(10px)'}
-          flexDirection={'column'}
-          zIndex={10}
-          borderRadius={'lg'}
-          {...(isLoopNode
-            ? {
-                alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                px: 4,
-                py: 4
-              }
-            : {
-                alignItems: 'center',
-                justifyContent: 'center',
-                px: 3,
-                py: 0
-              })}
-          cursor={'pointer'}
-          onDoubleClick={handleDoubleClick}
-        >
-          <Flex
-            flexDirection={'column'}
+            zIndex={10}
+            borderRadius={'lg'}
             {...(isLoopNode
               ? {
-                  ml: 4,
-                  mt: 4,
-                  alignItems: 'flex-start'
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  px: 4,
+                  py: 4
                 }
               : {
-                  ml: 0,
-                  mt: 0,
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  px: 3,
+                  py: 0
                 })}
-            w={'full'}
-            color={'black'}
+            cursor={'pointer'}
+            onDoubleClick={handleDoubleClick}
           >
-            <Avatar
-              src={avatarLinear || avatar}
-              fill={'none'}
-              borderRadius={24}
-              w={'160px'}
-              h={'160px'}
-            />
-            {name && presentationHeight > 250 && (
-              <Box
-                mt={2}
-                fontSize={'32px'}
-                fontWeight={'medium'}
-                textAlign={isLoopNode ? 'left' : 'center'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
-                whiteSpace={'nowrap'}
-                maxW={'80%'}
-              >
-                {t(name as any)}
-              </Box>
-            )}
-            {intro && presentationHeight > 300 && (
-              <Box
-                mt={1}
-                fontSize={'26px'}
-                textAlign={isLoopNode ? 'left' : 'center'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
-                whiteSpace={'nowrap'}
-                maxW={'80%'}
-              >
-                {t(intro as any)}
-              </Box>
-            )}
+            <Flex
+              flexDirection={'column'}
+              {...(isLoopNode
+                ? {
+                    ml: 4,
+                    mt: 4,
+                    alignItems: 'flex-start'
+                  }
+                : {
+                    ml: 0,
+                    mt: 0,
+                    alignItems: 'center'
+                  })}
+              w={'full'}
+              color={'black'}
+            >
+              <Avatar
+                src={avatarLinear || avatar}
+                fill={'none'}
+                borderRadius={24}
+                w={'160px'}
+                h={'160px'}
+              />
+              {name && presentationHeight > 280 && (
+                <Box
+                  mt={2}
+                  fontSize={'36px'}
+                  fontWeight={'medium'}
+                  textAlign={isLoopNode ? 'left' : 'center'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  maxW={'80%'}
+                >
+                  {t(name as any)}
+                </Box>
+              )}
+              {intro && presentationHeight > 320 && (
+                <Box
+                  mt={1}
+                  fontSize={'28px'}
+                  textAlign={isLoopNode ? 'left' : 'center'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  maxW={'80%'}
+                >
+                  {t(intro as any)}
+                </Box>
+              )}
+            </Flex>
           </Flex>
-        </Flex>
-      )}
+        )}
+      </Flex>
     </Flex>
   );
 };

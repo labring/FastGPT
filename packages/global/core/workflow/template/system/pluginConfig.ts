@@ -11,7 +11,7 @@ export const PluginConfigNode: FlowNodeTemplateType = {
   showTargetHandle: false,
   avatar: 'core/workflow/systemNode/systemConfig',
   avatarLinear: 'core/workflow/systemNode/systemConfigLinear',
-  colorSchema: 'violet',
+  colorSchema: 'pink',
   name: i18nT('workflow:template.system_config'),
   intro: '',
   unique: true,

@@ -156,7 +156,7 @@ const Workflow = () => {
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           snapToGrid
-          style={{ background: 'myGray.50' }}
+          style={{ background: '#F7F8FA' }}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,
