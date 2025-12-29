@@ -9,9 +9,7 @@ import type {
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type {
-  NodeGradients
-} from '@fastgpt/global/core/workflow/node/constant';
+import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum
@@ -56,6 +54,7 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -102,6 +101,7 @@ const NodeCard = (props: Props) => {
     customStyle,
     inputs,
     rtDoms,
+    pluginId,
     colorSchema
   } = props;
 
@@ -168,25 +168,26 @@ const NodeCard = (props: Props) => {
   const showToolHandle = isTool && hasToolNode;
 
   const gradient = useMemo(() => {
-    return colorSchema ? getGradientByColorSchema(colorSchema) : undefined;
-  }, [colorSchema]);
+    const { source } = splitCombineToolId(pluginId ?? '');
+    return getGradientByColorSchema({ colorSchema, source });
+  }, [colorSchema, pluginId]);
 
   const { outlineColor, outlineWidth } = useMemo(() => {
     if (isError) return { outlineColor: 'red.500', outlineWidth: '3px solid' };
-    if (!colorSchema) return { outlineColor: undefined, outlineWidth: undefined };
     if (!presentationMode && !isFolded) {
       const outlineColor = selected ? 'primary.600' : 'myGray.250';
       const outlineWidth = selected ? '2px solid' : '1px solid';
       return { outlineColor, outlineWidth };
     }
-
-    const baseColor = getBorderColorByColorSchema(colorSchema);
+    const { source } = splitCombineToolId(pluginId ?? '');
+    const baseColor = getBorderColorByColorSchema({ colorSchema, source });
+    if (!baseColor) return { outlineColor: undefined, outlineWidth: undefined };
     const outlineColor = selected ? baseColor.replace('0.6)', '0.9)') : baseColor;
     return {
       outlineColor,
       outlineWidth: '4px solid'
     };
-  }, [presentationMode, isFolded, colorSchema, selected, isError]);
+  }, [presentationMode, isFolded, colorSchema, selected, isError, pluginId]);
 
   // Current node and parent node
   const { node, hidden } = useMemo(() => {
