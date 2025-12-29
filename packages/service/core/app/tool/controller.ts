@@ -469,24 +469,6 @@ export async function getChildAppPreviewNode({
     showStatus: true,
     isTool: true,
     catchError: false,
-    colorSchema: (() => {
-      if (source === AppToolSourceEnum.personal) {
-        return app.type === AppTypeEnum.simple || app.type === AppTypeEnum.workflow
-          ? 'skyBlue'
-          : 'salmon';
-      }
-      if (source === AppToolSourceEnum.http || source === AppToolSourceEnum.mcp) {
-        return 'salmon';
-      }
-      if (
-        source === AppToolSourceEnum.commercial ||
-        source === AppToolSourceEnum.community ||
-        source === AppToolSourceEnum.systemTool
-      ) {
-        return 'gray';
-      }
-      return undefined;
-    })(),
 
     version: app.version,
     versionLabel: app.versionLabel,
