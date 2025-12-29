@@ -183,7 +183,7 @@ export const dispatchTool = async ({
         usages: []
       };
     } else {
-      return Promise.reject("Can't find tool");
+      return Promise.reject("Can't find the tool");
     }
   } catch (error) {
     if (toolConfig?.systemTool?.toolId) {
@@ -196,6 +196,6 @@ export const dispatchTool = async ({
         msg: getErrText(error)
       });
     }
-    return Promise.reject("Can't find tool");
+    return Promise.reject("Can't find the tool");
   }
 };

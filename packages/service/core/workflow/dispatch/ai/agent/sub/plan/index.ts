@@ -158,10 +158,10 @@ export const dispatchPlanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
-    requestMessages.push({
-      role: 'assistant',
-      content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
-    });
+    // requestMessages.push({
+    //   role: 'assistant',
+    //   content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
+    // });
   } else {
     // TODO: 这里拼接的话，对于多轮对话不是很友好。
     requestMessages.push({

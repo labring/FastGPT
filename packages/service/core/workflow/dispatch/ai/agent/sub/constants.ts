@@ -14,8 +14,7 @@ export const systemSubInfo: Record<
   [SubAppIds.plan]: {
     name: i18nT('chat:plan_agent'),
     avatar: 'common/detail',
-    toolDescription:
-      '将任务拆解成多个步骤，并给出每个步骤的描述和执行工具。当任务较为复杂，并且需要多轮运行时，执行该工具。或者当用户已经有明确流程时，也调用该工具进行流程化运行。'
+    toolDescription: '将任务拆解成多个步骤执行，适合处理复杂任务。'
   },
   [SubAppIds.fileRead]: {
     name: i18nT('chat:file_parse'),
