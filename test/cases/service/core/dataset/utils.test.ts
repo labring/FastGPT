@@ -265,6 +265,12 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('mock-jwt-token-dataset/team1/file{1}.png');
     });
 
+    it('文件名包含方括号应正常处理', () => {
+      const text = '![braces](dataset/team1/file[1].png)';
+      const result = replaceS3KeyToPreviewUrl(text, expiredTime);
+      expect(result).toContain('mock-jwt-token-dataset/team1/file[1].png');
+    });
+
     // 引号
     it('alt 文本包含单引号应正常处理', () => {
       const text = "![it's a test](dataset/team1/file.png)";

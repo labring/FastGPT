@@ -151,7 +151,7 @@ const getFormatedFilename = (filename?: string) => {
   // 先截断文件名，再进行格式化
   const truncatedFilename = truncateFilename(filename);
   const extension = path.extname(truncatedFilename); // 带.
-  const name = path.basename(truncatedFilename, extension);
+  const name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
   return {
     formatedFilename: `${id}-${name}`,
     extension: extension.replace('.', '')
@@ -244,4 +244,15 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   source: T
 ): key is `${T}/${string}` {
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
+}
+
+export function sanitizeS3ObjectKey(key: string) {
+  // 替换掉圆括号
+  const replaceParentheses = (key: string) => {
+    return key.replace(/[()]/g, (match) => (match === '(' ? '[' : ']'));
+  };
+
+  key = replaceParentheses(key);
+
+  return key;
 }
