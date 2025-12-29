@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { getDownloadCounts } from '../downloadCount';
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 
 declare global {
   // eslint-disable-next-line no-var

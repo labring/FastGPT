@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const baseUrl = process.env.AIPROXY_API_ENDPOINT;

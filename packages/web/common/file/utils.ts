@@ -1,6 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import Papa from 'papaparse';
-import axios, { type AxiosProgressEvent } from 'axios';
+import { type AxiosProgressEvent } from 'axios';
+import axios from 'axios';
 import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
 export const loadFile2Buffer = ({ file, onError }: { file: File; onError?: (err: any) => void }) =>
