@@ -179,7 +179,10 @@ export const chats2GPTMessages = ({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: toolId,
-            content: JSON.stringify(steps)
+            content: JSON.stringify({
+              prompt: '请根据分步执行的结果继续任务或进行总结。',
+              steps
+            })
           });
         } else if (value.interactive) {
           if (value.interactive.type === 'agentPlanAskQuery') {

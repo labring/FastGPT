@@ -27,6 +27,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
+import { MasterSystemPrompt } from './prompt';
 
 type Response = {
   stepResponse?: {
@@ -153,6 +154,10 @@ export const masterCall = async ({
 
     // Get history messages
     const messages: ChatCompletionMessageParam[] = [
+      {
+        role: 'system' as const,
+        content: MasterSystemPrompt
+      },
       ...(systemPrompt
         ? [
             {
