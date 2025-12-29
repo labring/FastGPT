@@ -9,7 +9,6 @@ import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getMasterAgentSystemPrompt } from '../constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getWorkflowChildResponseWrite } from '../../../utils';
 import { SubAppIds } from '../sub/constants';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
@@ -23,6 +22,7 @@ import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
 import { addLog } from '../../../../../../common/system/log';
 import type { WorkflowResponseItemType } from '../../../type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 type Response = {
   stepResponse?: {
@@ -32,6 +32,10 @@ type Response = {
   planResponse?: DispatchPlanAgentResponse;
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
+
+  inputTokens: number;
+  outputTokens: number;
+  subAppUsages: ChatNodeUsageType[];
 };
 
 export const masterCall = async ({
@@ -96,14 +100,16 @@ export const masterCall = async ({
         step.depends_on = depends;
       }
       // Step call system prompt
-      // TODO: 需要把压缩的 usage 返回
-      const systemPromptContent = await getMasterAgentSystemPrompt({
+      const compressResult = await getMasterAgentSystemPrompt({
         steps,
         step,
         userInput: userChatInput,
         model,
         background: systemPrompt
       });
+      if (compressResult.usage) {
+        usagePush([compressResult.usage]);
+      }
 
       const requestMessages = chats2GPTMessages({
         messages: [
@@ -112,7 +118,7 @@ export const masterCall = async ({
             value: [
               {
                 text: {
-                  content: systemPromptContent
+                  content: compressResult.prompt
                 }
               }
             ]
@@ -160,244 +166,241 @@ export const masterCall = async ({
 
   let planResult: DispatchPlanAgentResponse | undefined;
 
-  const {
-    assistantMessages,
-    completeMessages,
-    inputTokens,
-    outputTokens,
-    subAppUsages,
-    interactiveResponse
-  } = await runAgentCall({
-    maxRunAgentTimes: 100,
-    body: {
-      messages: requestMessages,
-      model: getLLMModel(model),
-      temperature,
-      stream,
-      top_p: aiChatTopP,
-      tools: completionTools
-    },
+  const { assistantMessages, completeMessages, inputTokens, outputTokens, subAppUsages } =
+    await runAgentCall({
+      maxRunAgentTimes: 100,
+      body: {
+        messages: requestMessages,
+        model: getLLMModel(model),
+        temperature,
+        stream,
+        top_p: aiChatTopP,
+        tools: completionTools
+      },
 
-    userKey: externalProvider.openaiAccount,
-    isAborted: checkIsStopping,
-    // childrenInteractiveParams
+      userKey: externalProvider.openaiAccount,
+      usagePush,
+      isAborted: checkIsStopping,
+      // childrenInteractiveParams
 
-    onReasoning({ text }) {
-      stepStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          reasoning_content: text
-        })
-      });
-    },
-    onStreaming({ text }) {
-      stepStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text
-        })
-      });
-    },
-    onToolCall({ call }) {
-      const subApp = getSubAppInfo(call.function.name);
+      onReasoning({ text }) {
+        stepStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: text
+          })
+        });
+      },
+      onStreaming({ text }) {
+        stepStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text
+          })
+        });
+      },
+      onToolCall({ call }) {
+        const subApp = getSubAppInfo(call.function.name);
 
-      if (call.function.name === SubAppIds.plan) {
-        return;
-      }
-
-      stepStreamResponse?.({
-        id: call.id,
-        event: SseResponseEventEnum.toolCall,
-        data: {
-          tool: {
-            id: call.id,
-            toolName: subApp?.name || call.function.name,
-            toolAvatar: subApp?.avatar || '',
-            functionName: call.function.name,
-            params: call.function.arguments ?? ''
-          }
+        if (call.function.name === SubAppIds.plan) {
+          return;
         }
-      });
-    },
-    onToolParam({ tool, params }) {
-      stepStreamResponse?.({
-        id: tool.id,
-        event: SseResponseEventEnum.toolParams,
-        data: {
-          tool: {
-            params
+
+        stepStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: call.id,
+              toolName: subApp?.name || call.function.name,
+              toolAvatar: subApp?.avatar || '',
+              functionName: call.function.name,
+              params: call.function.arguments ?? ''
+            }
           }
-        }
-      });
-    },
-    handleToolResponse: async ({ call, messages }) => {
-      addLog.debug('handleToolResponse', { toolName: call.function.name });
-      const toolId = call.function.name;
+        });
+      },
+      onToolParam({ tool, params }) {
+        stepStreamResponse?.({
+          id: tool.id,
+          event: SseResponseEventEnum.toolParams,
+          data: {
+            tool: {
+              params
+            }
+          }
+        });
+      },
+      handleToolResponse: async ({ call, messages }) => {
+        addLog.debug('handleToolResponse', { toolName: call.function.name });
+        const toolId = call.function.name;
 
-      const {
-        response,
-        usages = [],
-        stop = false
-      } = await (async () => {
-        try {
-          if (toolId === SubAppIds.fileRead) {
-            const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(call.function.arguments));
+        const {
+          response,
+          usages = [],
+          stop = false
+        } = await (async () => {
+          try {
+            if (toolId === SubAppIds.fileRead) {
+              const toolParams = ReadFileToolSchema.safeParse(
+                parseJsonArgs(call.function.arguments)
+              );
 
-            if (!toolParams.success) {
+              if (!toolParams.success) {
+                return {
+                  response: toolParams.error.message,
+                  usages: []
+                };
+              }
+              const params = toolParams.data;
+
+              const files = params.file_indexes.map((index) => ({
+                index,
+                url: filesMap[index]
+              }));
+              const result = await dispatchFileRead({
+                files,
+                teamId: runningUserInfo.teamId,
+                tmbId: runningUserInfo.tmbId,
+                customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+              });
               return {
-                response: toolParams.error.message,
-                usages: []
+                response: result.response,
+                usages: result.usages
               };
             }
-            const params = toolParams.data;
+            if (toolId === SubAppIds.plan) {
+              try {
+                planResult = await dispatchPlanAgent({
+                  checkIsStopping,
+                  historyMessages: historiesMessages,
+                  userInput: userChatInput,
+                  completionTools,
+                  getSubAppInfo,
+                  systemPrompt: systemPrompt,
+                  model,
+                  stream
+                });
 
-            const files = params.file_indexes.map((index) => ({
-              index,
-              url: filesMap[index]
-            }));
-            const result = await dispatchFileRead({
-              files,
-              teamId: runningUserInfo.teamId,
-              tmbId: runningUserInfo.tmbId,
-              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
-            });
+                return {
+                  response: '',
+                  stop: true
+                };
+              } catch (error) {
+                console.log(error, 111);
+                return {
+                  response: getErrText(error),
+                  stop: false
+                };
+              }
+            }
+            // User Sub App
+            else {
+              const tool = subAppsMap.get(toolId);
+              if (!tool) {
+                return {
+                  response: 'Can not find the tool',
+                  usages: []
+                };
+              }
+
+              const toolCallParams = parseJsonArgs(call.function.arguments);
+
+              if (!toolCallParams) {
+                return {
+                  response: 'params is not object',
+                  usages: []
+                };
+              }
+
+              // Get params
+              const requestParams = {
+                ...tool.params,
+                ...toolCallParams
+              };
+
+              if (tool.type === 'tool') {
+                const { response, usages } = await dispatchTool({
+                  tool: {
+                    name: tool.name,
+                    version: tool.version,
+                    toolConfig: tool.toolConfig
+                  },
+                  params: requestParams,
+                  runningUserInfo,
+                  runningAppInfo,
+                  variables,
+                  workflowStreamResponse: stepStreamResponse
+                });
+                return {
+                  response,
+                  usages
+                };
+              } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
+                // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
+
+                // const { response, usages } = await fn({
+                //   ...props,
+                //   node,
+                //   workflowStreamResponse:stepStreamResponse,
+                //   callParams: {
+                //     appId: node.pluginId,
+                //     version: node.version,
+                //     ...requestParams
+                //   }
+                // });
+
+                // return {
+                //   response,
+                //   usages
+                // };
+                return {
+                  response: 'Can not find the tool',
+                  usages: []
+                };
+              } else {
+                return {
+                  response: 'Can not find the tool',
+                  usages: []
+                };
+              }
+            }
+          } catch (error) {
             return {
-              response: result.response,
-              usages: result.usages
+              response: getErrText(error),
+              usages: []
             };
           }
-          if (toolId === SubAppIds.plan) {
-            try {
-              planResult = await dispatchPlanAgent({
-                checkIsStopping,
-                historyMessages: historiesMessages,
-                userInput: userChatInput,
-                completionTools,
-                getSubAppInfo,
-                systemPrompt: systemPrompt,
-                model,
-                stream
-              });
+        })();
 
-              return {
-                response: '',
-                stop: true
-              };
-            } catch (error) {
-              console.log(error, 111);
-              return {
-                response: getErrText(error),
-                stop: false
-              };
+        // Push stream response
+        stepStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              response
             }
           }
-          // User Sub App
-          else {
-            const tool = subAppsMap.get(toolId);
-            if (!tool) {
-              return {
-                response: 'Can not find the tool',
-                usages: []
-              };
-            }
+        });
 
-            const toolCallParams = parseJsonArgs(call.function.arguments);
+        // TODO: 推送账单
 
-            if (!toolCallParams) {
-              return {
-                response: 'params is not object',
-                usages: []
-              };
-            }
-
-            // Get params
-            const requestParams = {
-              ...tool.params,
-              ...toolCallParams
-            };
-
-            if (tool.type === 'tool') {
-              const { response, usages } = await dispatchTool({
-                tool: {
-                  name: tool.name,
-                  version: tool.version,
-                  toolConfig: tool.toolConfig
-                },
-                params: requestParams,
-                runningUserInfo,
-                runningAppInfo,
-                variables,
-                workflowStreamResponse: stepStreamResponse
-              });
-              return {
-                response,
-                usages
-              };
-            } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
-              // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
-
-              // const { response, usages } = await fn({
-              //   ...props,
-              //   node,
-              //   workflowStreamResponse:stepStreamResponse,
-              //   callParams: {
-              //     appId: node.pluginId,
-              //     version: node.version,
-              //     ...requestParams
-              //   }
-              // });
-
-              // return {
-              //   response,
-              //   usages
-              // };
-              return {
-                response: 'Can not find the tool',
-                usages: []
-              };
-            } else {
-              return {
-                response: 'Can not find the tool',
-                usages: []
-              };
-            }
-          }
-        } catch (error) {
-          return {
-            response: getErrText(error),
-            usages: []
-          };
-        }
-      })();
-
-      // Push stream response
-      stepStreamResponse?.({
-        id: call.id,
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            response
-          }
-        }
-      });
-
-      // TODO: 推送账单
-
-      return {
-        response,
-        assistantMessages: [], // TODO
-        usages,
-        stop
-      };
-    },
-    handleInteractiveTool: async ({ toolParams }) => {
-      return {
-        response: 'Interactive tool not supported',
-        assistantMessages: [], // TODO
-        usages: []
-      };
-    }
-  });
+        return {
+          response,
+          assistantMessages: [], // TODO
+          usages,
+          stop
+        };
+      },
+      handleInteractiveTool: async ({ toolParams }) => {
+        return {
+          response: 'Interactive tool not supported',
+          assistantMessages: [], // TODO
+          usages: []
+        };
+      }
+    });
 
   // Step call
   if (isStepCall) {
@@ -431,7 +434,10 @@ export const masterCall = async ({
         summary
       },
       completeMessages,
-      assistantMessages
+      assistantMessages,
+      inputTokens,
+      outputTokens,
+      subAppUsages
     };
   }
 
@@ -439,6 +445,9 @@ export const masterCall = async ({
   return {
     planResponse: planResult,
     completeMessages,
-    assistantMessages
+    assistantMessages,
+    inputTokens,
+    outputTokens,
+    subAppUsages
   };
 };

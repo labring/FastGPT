@@ -17,6 +17,7 @@ import { computedMaxToken } from '../../utils';
 import { filterGPTMessageByMaxContext } from '../utils';
 import { getLLMModel } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
@@ -30,6 +31,7 @@ type RunAgentCallProps = {
     stream?: boolean;
   };
 
+  usagePush: (usages: ChatNodeUsageType[]) => void;
   userKey?: CreateLLMResponseProps['userKey'];
   isAborted?: CreateLLMResponseProps['isAborted'];
 
@@ -85,6 +87,8 @@ type RunAgentResponse = {
 export const runAgentCall = async ({
   maxRunAgentTimes,
   body: { model, messages, max_tokens, tools, ...body },
+
+  usagePush,
   userKey,
   isAborted,
 
@@ -159,6 +163,7 @@ export const runAgentCall = async ({
     // 只需要推送本轮产生的 assistantMessages
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     subAppUsages.push(...usages);
+    usagePush(usages);
 
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
@@ -247,6 +252,24 @@ export const runAgentCall = async ({
       consecutiveRequestToolTimes = 0;
     }
 
+    // Record usage
+    inputTokens += usage.inputTokens;
+    outputTokens += usage.outputTokens;
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: modelData.model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    });
+    usagePush([
+      {
+        moduleName: 'Agent 调用',
+        model: modelName,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ]);
+
     // 3. 更新 messages
     const cloneRequestMessages = requestMessages.slice();
     // 推送 AI 生成后的 assistantMessages
@@ -278,6 +301,7 @@ export const runAgentCall = async ({
       assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
       subAppUsages.push(...usages);
+      usagePush(usages);
 
       if (interactive) {
         interactiveResponse = {
@@ -295,10 +319,6 @@ export const runAgentCall = async ({
         toolCallStep = true;
       }
     }
-
-    // 6 Record usage
-    inputTokens += usage.inputTokens;
-    outputTokens += usage.outputTokens;
 
     if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep) {
       break;

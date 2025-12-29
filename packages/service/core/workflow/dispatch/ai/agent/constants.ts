@@ -1,10 +1,12 @@
-import type { AgentPlanStepType } from './sub/plan/type';
+import type { AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import { getLLMModel } from '../../../../ai/model';
 import { countPromptTokens } from '../../../../../common/string/tiktoken/index';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { addLog } from '../../../../../common/system/log';
 import { calculateCompressionThresholds } from '../../../../ai/llm/compress/constants';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 
 export const getMasterAgentSystemPrompt = async ({
   steps,
@@ -13,8 +15,8 @@ export const getMasterAgentSystemPrompt = async ({
   background = '',
   model
 }: {
-  steps: AgentPlanStepType[];
-  step: AgentPlanStepType;
+  steps: AgentStepItemType[];
+  step: AgentStepItemType;
   userInput: string;
   background?: string;
   model: string;
@@ -27,18 +29,21 @@ export const getMasterAgentSystemPrompt = async ({
     stepPrompt: string,
     model: string,
     currentDescription: string
-  ): Promise<string> => {
-    if (!stepPrompt) return stepPrompt;
+  ): Promise<{
+    stepPrompt: string;
+    usage?: ChatNodeUsageType;
+  }> => {
+    if (!stepPrompt) return { stepPrompt };
 
     const modelData = getLLMModel(model);
-    if (!modelData) return stepPrompt;
+    if (!modelData) return { stepPrompt };
 
     const tokenCount = await countPromptTokens(stepPrompt);
     const thresholds = calculateCompressionThresholds(modelData.maxContext);
     const maxTokenThreshold = thresholds.dependsOn.threshold;
 
     if (tokenCount <= maxTokenThreshold) {
-      return stepPrompt;
+      return { stepPrompt: stepPrompt };
     }
 
     const targetTokens = thresholds.dependsOn.target;
@@ -129,7 +134,7 @@ ${stepPrompt}
 请直接输出压缩后的步骤历史：`;
 
     try {
-      const { answerText } = await createLLMResponse({
+      const { answerText, usage } = await createLLMResponse({
         body: {
           model: modelData,
           messages: [
@@ -147,11 +152,26 @@ ${stepPrompt}
         }
       });
 
-      return answerText || stepPrompt;
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: modelData.model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      });
+
+      return {
+        stepPrompt: answerText || stepPrompt,
+        usage: {
+          moduleName: '压缩步骤提示词',
+          model: modelName,
+          totalPoints,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }
+      };
     } catch (error) {
       console.error('压缩 stepPrompt 失败:', error);
       // 压缩失败时返回原始内容
-      return stepPrompt;
+      return { stepPrompt: stepPrompt };
     }
   };
 
@@ -163,11 +183,18 @@ ${stepPrompt}
     )
     .filter(Boolean)
     .join('\n');
-  addLog.debug(`Step call depends_on (LLM): ${step.id}`, step.depends_on);
+  addLog.debug(`Step call depends_on (LLM): ${step.id}, dependOn: ${step.depends_on}`);
   // 压缩依赖的上下文
-  stepPrompt = await compressStepPrompt(stepPrompt, model, step.description || step.title);
+  const compressResult = await compressStepPrompt(
+    stepPrompt,
+    model,
+    step.description || step.title
+  );
+  stepPrompt = compressResult.stepPrompt;
 
-  return `请根据任务背景、之前步骤的执行结果和当前步骤要求选择并调用相应的工具。如果是一个总结性质的步骤，请整合之前步骤的结果进行总结。
+  return {
+    usage: compressResult.usage,
+    prompt: `请根据任务背景、之前步骤的执行结果和当前步骤要求选择并调用相应的工具。如果是一个总结性质的步骤，请整合之前步骤的结果进行总结。
   【任务背景】
   目标: ${userInput}
   前置信息: ${background}
@@ -192,5 +219,6 @@ ${stepPrompt}
   6. 确保当前步骤的执行能够有效利用和整合前面的结果
   7. 如果是总结的步骤，请利用之前步骤的信息进行全面总结
   
-  请严格按照步骤描述执行，确保完成所有要求的子任务。`;
+  请严格按照步骤描述执行，确保完成所有要求的子任务。`
+  };
 };

@@ -251,6 +251,7 @@ export const dispatchReplanAgent = async ({
 }: DispatchPlanAgentProps & {
   plan: AgentPlanType;
 }): Promise<DispatchPlanAgentResponse> => {
+  const usages: ChatNodeUsageType[] = [];
   const modelData = getLLMModel(model);
 
   const requestMessages: ChatCompletionMessageParam[] = [
@@ -292,7 +293,10 @@ export const dispatchReplanAgent = async ({
         description: '本步骤分析先前的执行结果，以确定重新规划时需要依赖哪些特定步骤。'
       }
     });
-    // TODO: 推送
+
+    if (dependsUsage) {
+      usages.push(dependsUsage);
+    }
     const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
 
     requestMessages.push({
@@ -347,19 +351,18 @@ export const dispatchReplanAgent = async ({
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens
   });
+  usages.push({
+    moduleName: '重新规划',
+    model: modelName,
+    totalPoints,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
 
   return {
     askInteractive,
     plan: rePlan,
     completeMessages,
-    usages: [
-      {
-        moduleName: '重新规划',
-        model: modelName,
-        totalPoints,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      }
-    ]
+    usages
   };
 };

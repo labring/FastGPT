@@ -1,5 +1,5 @@
 import { getLLMModel } from '../../../../../ai/model';
-import type { AgentPlanStepType } from '../sub/plan/type';
+import type { AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { parseJsonArgs } from '../../../../../ai/utils';
@@ -12,8 +12,8 @@ export const getStepDependon = async ({
   step
 }: {
   model: string;
-  steps: AgentPlanStepType[];
-  step: AgentPlanStepType;
+  steps: AgentStepItemType[];
+  step: AgentStepItemType;
 }): Promise<{
   depends: string[];
   usage?: ChatNodeUsageType;
