@@ -41,7 +41,7 @@ export type ResponseEvents = {
 export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
-  isAborted?: () => boolean | undefined;
+  isAborted?: () => boolean | undefined | null;
   custonHeaders?: Record<string, string>;
 } & ResponseEvents;
 
@@ -188,7 +188,7 @@ export const createStreamResponse = async ({
   onToolParam
 }: CompleteParams & {
   response: StreamChatType;
-  isAborted?: () => boolean | undefined;
+  isAborted?: CreateLLMResponseProps['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
   const modelData = getLLMModel(model);

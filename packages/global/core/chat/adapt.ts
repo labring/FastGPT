@@ -150,13 +150,15 @@ export const chats2GPTMessages = ({
             });
           }
         } else if (value.plan && reserveTool) {
-          let response = '';
-          value.plan.steps.forEach((step) => {
+          const steps = value.plan.steps.map((step) => {
             const stepResponse = item.value
               .filter((item) => item.stepId === step.id)
               ?.map((item) => item.text?.content)
               .join('\n');
-            response += `## ${step.title}\n${stepResponse}`;
+            return {
+              title: step.title,
+              response: stepResponse
+            };
           });
           const toolId = getNanoid(6);
           aiResults.push({
@@ -177,16 +179,17 @@ export const chats2GPTMessages = ({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: toolId,
-            content: response
+            content: JSON.stringify(steps)
           });
+        } else if (value.interactive) {
+          if (value.interactive.type === 'agentPlanAskQuery') {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: value.interactive.params.content
+            });
+          }
         }
-        // else if (value.interactive) {
-        //   aiResults.push({
-        //     dataId,
-        //     role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        //     interactive: value.interactive
-        //   });
-        // }
       });
 
       // Auto add empty assistant message

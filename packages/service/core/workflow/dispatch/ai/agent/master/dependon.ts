@@ -5,19 +5,27 @@ import { createLLMResponse } from '../../../../../ai/llm/request';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
+import { i18nT } from '../../../../../../../web/i18n/utils';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const getStepDependon = async ({
+  checkIsStopping,
   model,
   steps,
   step
 }: {
+  checkIsStopping: () => boolean;
   model: string;
   steps: AgentStepItemType[];
   step: AgentStepItemType;
 }): Promise<{
   depends: string[];
   usage?: ChatNodeUsageType;
+  nodeResponse?: ChatHistoryItemResType;
 }> => {
+  const startTime = Date.now();
   const modelData = getLLMModel(model);
   addLog.debug('GetStepResponse start', { model, step });
   const historySummary = steps
@@ -62,35 +70,52 @@ export const getStepDependon = async ({
   \`\`\``;
 
   const { answerText, usage } = await createLLMResponse({
+    isAborted: checkIsStopping,
     body: {
       model: modelData.model,
       messages: [{ role: 'user', content: prompt }],
-      stream: false
+      stream: true
     }
   });
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: modelData.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  });
+  const formatUsage = {
+    moduleName: i18nT('account_usage:context_pick'),
+    model: modelName,
+    totalPoints,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  };
+  const nodeResponse: ChatHistoryItemResType = {
+    nodeId: getNanoid(),
+    id: getNanoid(),
+    moduleType: FlowNodeTypeEnum.emptyNode,
+    moduleName: i18nT('chat:context_pick'),
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    totalPoints,
+    model: modelName,
+    runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+  };
+
   const params = parseJsonArgs<{
     needed_step_ids: string[];
     reason: string;
   }>(answerText);
   if (!params) {
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelData.model,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
-    });
     return {
       depends: [],
-      usage: {
-        moduleName: '步骤依赖分析',
-        model: modelName,
-        totalPoints,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      }
+      usage: formatUsage,
+      nodeResponse
     };
   }
 
   return {
-    depends: params.needed_step_ids
+    depends: params.needed_step_ids,
+    usage: formatUsage,
+    nodeResponse
   };
 };

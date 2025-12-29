@@ -38,7 +38,7 @@ type PlanAgentConfig = {
 };
 
 type DispatchPlanAgentProps = PlanAgentConfig & {
-  checkIsStopping?: () => boolean;
+  checkIsStopping: () => boolean;
 
   historyMessages: ChatCompletionMessageParam[];
   interactive?: WorkflowInteractiveResponseType;
@@ -188,7 +188,7 @@ export const dispatchPlanAgent = async ({
       temperature,
       messages: requestMessages,
       top_p,
-      stream,
+      stream: true,
       tools: [AIAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
@@ -285,6 +285,7 @@ export const dispatchReplanAgent = async ({
   } else {
     // 获取依赖的步骤
     const { depends, usage: dependsUsage } = await getStepDependon({
+      checkIsStopping,
       model,
       steps: plan.steps,
       step: {
@@ -325,7 +326,7 @@ export const dispatchReplanAgent = async ({
       temperature,
       messages: requestMessages,
       top_p,
-      stream,
+      stream: true,
       tools: [AIAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',

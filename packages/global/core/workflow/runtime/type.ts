@@ -343,6 +343,8 @@ export type DispatchNodeResponseType = {
   toolInput?: Record<string, any>;
   pluginOutput?: Record<string, any>;
   pluginDetail?: ChatHistoryItemResType[];
+  toolParamsResult?: Record<string, any>;
+  toolRes?: any;
 
   // if-else
   ifElseResult?: string;
@@ -378,10 +380,8 @@ export type DispatchNodeResponseType = {
   // form input
   formInputResult?: Record<string, any>;
 
-  // tool params
-  toolParamsResult?: Record<string, any>;
-
-  toolRes?: any;
+  // Children node responses
+  childrenResponses?: ChatHistoryItemResType[];
 
   // abandon
   extensionModel?: string;
@@ -394,6 +394,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
+  [DispatchNodeResponseKeyEnum.nodeResponses]?: ChatHistoryItemResType[]; // Node responses
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
   [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response

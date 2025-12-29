@@ -28,7 +28,10 @@ export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSc
 /* step call */
 export const StepTitleItemSchema = z.object({
   stepId: z.string(),
-  title: z.string()
+  title: z.string(),
+
+  // Client data
+  folded: z.boolean().optional()
 });
 export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
