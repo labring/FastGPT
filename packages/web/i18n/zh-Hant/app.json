@@ -448,5 +448,10 @@
   "download_failed": "下載失敗",
   "learning_status_pending": "等待中",
   "learning_status_failed": "已失敗",
-  "learning_status_cancelled": "已取消"
+  "learning_status_cancelled": "已取消",
+  "search_placeholder": "搜索",
+  "chat_search_results": "搜索結果",
+  "select_knowledge_base": "選擇知識庫",
+  "rerank_model_training_warning": "該模型會參與訓練，應用創建後不支持修改",
+  "model_not_support_reasoning": "所選 AI 模型不支持深度思考"
 }

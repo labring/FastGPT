@@ -47,7 +47,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const SfDatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
 
 // 样式常量
@@ -442,7 +442,7 @@ const EditForm = ({
               <FormLabel minW={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}>
                 {t('app:smart_customer_service_deep_thinking')}
               </FormLabel>
-              <MyTooltip label={!isReasoningSupported ? t('所选 AI 模型不支持深度思考') : ''}>
+              <MyTooltip label={!isReasoningSupported ? t('app:model_not_support_reasoning') : ''}>
                 <Switch
                   isChecked={appForm.aiSettings.aiChatReasoning ?? false}
                   onChange={(e) => updateAISettings({ aiChatReasoning: e.target.checked })}
@@ -474,7 +474,7 @@ const EditForm = ({
       </Box>
 
       {isOpenDatasetSelect && (
-        <DatasetSelectModal
+        <SfDatasetSelectModal
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
