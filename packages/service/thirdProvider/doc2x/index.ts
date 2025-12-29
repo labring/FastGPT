@@ -1,12 +1,12 @@
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../common/system/log';
 import { htmlTable2Md } from '@fastgpt/global/common/string/markdown';
-import axios, { type Method } from 'axios';
+import { type Method } from 'axios';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type ImageType } from '../../worker/readFile/type';
 import { getImageBase64 } from '../../common/file/image/utils';
-import { ProxyAgent } from 'proxy-agent';
+import { createProxyAxios, axios } from '../../common/api/axios';
 
 type ApiResponseDataType<T = any> = {
   code: string;
@@ -16,16 +16,12 @@ type ApiResponseDataType<T = any> = {
 
 export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   // Init request
-  const agent = new ProxyAgent();
-  const instance = axios.create({
+  const instance = createProxyAxios({
     baseURL: 'https://v2.doc2x.noedgeai.com/api',
     timeout: 60000,
     headers: {
       Authorization: `Bearer ${apiKey}`
-    },
-    proxy: false,
-    httpAgent: agent,
-    httpsAgent: agent
+    }
   });
   // Response check
   const checkRes = (data: ApiResponseDataType) => {

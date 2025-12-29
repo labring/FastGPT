@@ -4,10 +4,10 @@ import type {
   YuqueServer,
   ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset/type';
-import axios, { type Method } from 'axios';
+import { type Method } from 'axios';
 import { addLog } from '../../../../common/system/log';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { ProxyAgent } from 'proxy-agent';
+import { createProxyAxios } from '../../../../common/api/axios';
 
 type ResponseDataType = {
   success: boolean;
@@ -43,16 +43,12 @@ type YuqueTocListResponse = {
 const yuqueBaseUrl = process.env.YUQUE_DATASET_BASE_URL || 'https://www.yuque.com';
 
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServer }) => {
-  const agent = new ProxyAgent();
-  const instance = axios.create({
+  const instance = createProxyAxios({
     baseURL: yuqueBaseUrl,
     timeout: 60000, // 超时时间
     headers: {
       'X-Auth-Token': yuqueServer.token
-    },
-    proxy: false,
-    httpAgent: agent,
-    httpsAgent: agent
+    }
   });
 
   /**
