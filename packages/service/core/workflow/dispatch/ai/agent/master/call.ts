@@ -56,7 +56,6 @@ export const masterCall = async ({
 }): Promise<Response> => {
   const {
     checkIsStopping,
-    node: { nodeId },
     chatConfig,
     runningUserInfo,
     runningAppInfo,
@@ -160,7 +159,6 @@ export const masterCall = async ({
   // console.log('Master call requestMessages', JSON.stringify(requestMessages, null, 2));
 
   let planResult: DispatchPlanAgentResponse | undefined;
-  let planCallId: string | undefined;
 
   const {
     assistantMessages,
@@ -204,7 +202,6 @@ export const masterCall = async ({
       const subApp = getSubAppInfo(call.function.name);
 
       if (call.function.name === SubAppIds.plan) {
-        planCallId = call.id;
         return;
       }
 
