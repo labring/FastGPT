@@ -72,7 +72,7 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
+  const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -112,32 +112,28 @@ const Workflow = () => {
       >
         {/* open module template */}
         <>
-          <IconButton
-            position={'absolute'}
-            top={20}
-            left={6}
-            size={'mdSquare'}
-            borderRadius={'50%'}
-            bg={'black'}
-            _hover={{ bg: 'myGray.700' }}
-            icon={<MyIcon name="common/addLight" w={'26px'} />}
-            transition={'0.2s ease'}
-            aria-label={''}
-            zIndex={1}
-            boxShadow={
-              '0px 4px 10px 0px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.50)'
-            }
-            onClick={() => {
-              isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
-            }}
-          />
+          <Box position={'absolute'} top={20} left={6} zIndex={1}>
+            <IconButton
+              icon={<MyIcon name="common/addLight" w={6} />}
+              w={9}
+              h={9}
+              borderRadius={'50%'}
+              bg={'black'}
+              _hover={{ bg: 'myGray.700' }}
+              aria-label={''}
+              boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
+              onClick={() => {
+                isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
+              }}
+            />
+          </Box>
           <SearchButton />
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
           <NodeTemplatesPopover />
         </>
 
         <ReactFlow
-          ref={reactFlowWrapper}
+          ref={reactFlowWrapperCallback}
           fitView
           nodes={nodes}
           edges={edges}
@@ -160,7 +156,7 @@ const Workflow = () => {
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           snapToGrid
-          style={{ background: '#F7F8FA' }}
+          style={{ background: 'myGray.50' }}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,

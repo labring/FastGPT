@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -121,40 +121,22 @@ const NodeCard = (props: Props) => {
     [inputs]
   );
 
-  // 获取演示模式容器高度
   const [presentationHeight, setPresentationHeight] = useState<number>(0);
-
-  // ref 回调：当 DOM 元素绑定时立即读取高度
   const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
       setPresentationHeight(node.offsetHeight);
     }
   }, []);
 
-  // Handle double click on node in presentation mode
   const handleDoubleClick = useCallback(() => {
-    if (presentationMode) {
-      setPresentationMode(false);
-      // Fit view to show this node in center
-      setTimeout(() => {
-        fitView({
-          nodes: [{ id: nodeId }],
-          padding: 0.3,
-          duration: 300
-        });
-      }, 100);
-    }
-  }, [presentationMode, setPresentationMode, fitView, nodeId]);
-
-  // Handle double click on folded node to unfold and focus
-  const handleFoldedNodeDoubleClick = useCallback(() => {
-    // Unfold the node
     onChangeNode({
       nodeId,
       type: 'attr',
       key: 'isFolded',
       value: false
     });
+    setPresentationMode(false);
+
     // Fit view to show this node in center
     setTimeout(() => {
       fitView({
@@ -163,7 +145,7 @@ const NodeCard = (props: Props) => {
         duration: 300
       });
     }, 100);
-  }, [onChangeNode, nodeId, fitView]);
+  }, [onChangeNode, setPresentationMode, fitView, nodeId]);
 
   const showToolHandle = isTool && hasToolNode;
 
@@ -173,12 +155,15 @@ const NodeCard = (props: Props) => {
   }, [colorSchema, pluginId]);
 
   const { outlineColor, outlineWidth } = useMemo(() => {
+    // error mode
     if (isError) return { outlineColor: 'red.500', outlineWidth: '3px solid' };
+    // common mode
     if (!presentationMode && !isFolded) {
       const outlineColor = selected ? 'primary.600' : 'myGray.250';
       const outlineWidth = selected ? '2px solid' : '1px solid';
       return { outlineColor, outlineWidth };
     }
+    // presentation & fold mode
     const { source } = splitCombineToolId(pluginId ?? '');
     const baseColor = getBorderColorByColorSchema({ colorSchema, source });
     if (!baseColor) return { outlineColor: undefined, outlineWidth: undefined };
@@ -272,7 +257,7 @@ const NodeCard = (props: Props) => {
           })}
       outline={outlineWidth}
       outlineColor={outlineColor}
-      borderRadius={'lg'}
+      borderRadius={isFolded ? 24 : 'lg'}
       boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
       _hover={{
         boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
@@ -293,7 +278,6 @@ const NodeCard = (props: Props) => {
     >
       {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
 
-      {/* Folded state: Show minimal square */}
       {isFolded ? (
         <Flex
           position={'absolute'}
@@ -305,13 +289,19 @@ const NodeCard = (props: Props) => {
           justifyContent={'center'}
           flexDirection={'column'}
           zIndex={1}
-          onDoubleClick={handleFoldedNodeDoubleClick}
+          onDoubleClick={handleDoubleClick}
           cursor={'pointer'}
           bg={'rgba(255, 255, 255, 0.80)'}
           backdropFilter={'blur(10px)'}
-          borderRadius={'lg'}
+          borderRadius={24}
         >
-          <Avatar src={avatarLinear || avatar} fill={'none'} w={'100px'} h={'100px'} />
+          <Avatar
+            src={avatarLinear || avatar}
+            fill={'none'}
+            borderRadius={16}
+            w={'100px'}
+            h={'100px'}
+          />
           <Box
             mt={3}
             color={'myGray.700'}
@@ -456,8 +446,14 @@ const NodeCard = (props: Props) => {
             w={'full'}
             color={'black'}
           >
-            <Avatar src={avatarLinear || avatar} fill={'none'} w={'160px'} h={'160px'} />
-            {name && presentationHeight > 200 && (
+            <Avatar
+              src={avatarLinear || avatar}
+              fill={'none'}
+              borderRadius={24}
+              w={'160px'}
+              h={'160px'}
+            />
+            {name && presentationHeight > 250 && (
               <Box
                 mt={2}
                 fontSize={'32px'}
@@ -471,7 +467,7 @@ const NodeCard = (props: Props) => {
                 {t(name as any)}
               </Box>
             )}
-            {intro && presentationHeight > 250 && (
+            {intro && presentationHeight > 300 && (
               <Box
                 mt={1}
                 fontSize={'26px'}

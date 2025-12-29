@@ -128,7 +128,7 @@ const ButtonEdge = (props: EdgeProps) => {
   const { newTargetX, newTargetY } = useMemo(() => {
     if (targetPosition === 'left') {
       return {
-        newTargetX: targetX - 3,
+        newTargetX: targetX - 7,
         newTargetY: targetY
       };
     }
@@ -159,7 +159,7 @@ const ButtonEdge = (props: EdgeProps) => {
   const memoEdgeLabel = useMemo(() => {
     const arrowTransform = (() => {
       if (targetPosition === 'left') {
-        return `translate(-85%, -47%) translate(${newTargetX}px,${newTargetY}px) rotate(0deg)`;
+        return `translate(-89%, -49%) translate(${newTargetX}px,${newTargetY}px) rotate(0deg)`;
       }
       if (targetPosition === 'right') {
         return `translate(-10%, -50%) translate(${newTargetX}px,${newTargetY}px) rotate(-180deg)`;
@@ -199,8 +199,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '14px' : '12px'}
-              h={highlightEdge ? '14px' : '12px'}
+              w={highlightEdge ? '18px' : '16px'}
+              h={highlightEdge ? '18px' : '16px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon

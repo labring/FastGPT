@@ -188,11 +188,7 @@ const FlowController = React.memo(function FlowController() {
               }}
               className={`${styles.customControlButton}`}
             >
-              <MyIcon
-                name={'core/workflow/present'}
-                fill="none"
-                color={presentationMode ? '#487FFF' : undefined}
-              />
+              <MyIcon name={'core/workflow/present'} fill="none" />
             </ControlButton>
           </MyTooltip>
 

@@ -1,7 +1,7 @@
 // 工作流 UI 交互层
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
-import React, { type PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 
 // 创建 Context
@@ -21,8 +21,8 @@ type WorkflowUIContextValue = {
   /** 鼠标是否在 Canvas 中 */
   mouseInCanvas: boolean;
 
-  /** ReactFlow 包装器 ref */
-  reactFlowWrapper: React.RefObject<HTMLDivElement>;
+  /** ReactFlow 包装器 callback ref */
+  reactFlowWrapperCallback: (node: HTMLDivElement | null) => void;
 
   /** 工作流控制模式 */
   workflowControlMode: 'drag' | 'select';
@@ -43,24 +43,26 @@ type WorkflowUIContextValue = {
   setMenu: React.Dispatch<React.SetStateAction<{ top: number; left: number } | null>>;
 };
 export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
-  setHoverNodeId: function (value: React.SetStateAction<string | undefined>): void {
+  setHoverNodeId: function (_value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
-  setHoverEdgeId: function (value: React.SetStateAction<string | undefined>): void {
+  setHoverEdgeId: function (_value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
   mouseInCanvas: false,
-  reactFlowWrapper: { current: null },
+  reactFlowWrapperCallback: function (_node: HTMLDivElement | null): void {
+    throw new Error('Function not implemented.');
+  },
   workflowControlMode: 'drag',
-  setWorkflowControlMode: function (value: 'drag' | 'select'): void {
+  setWorkflowControlMode: function (_value: 'drag' | 'select'): void {
     throw new Error('Function not implemented.');
   },
   presentationMode: false,
-  setPresentationMode: function (value: React.SetStateAction<boolean>): void {
+  setPresentationMode: function (_value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   menu: null,
-  setMenu: function (value: React.SetStateAction<{ top: number; left: number } | null>): void {
+  setMenu: function (_value: React.SetStateAction<{ top: number; left: number } | null>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -72,21 +74,49 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
 
   // Canvas 交互
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  // 使用 ref 来存储 wrapper 引用和 cleanup 函数
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  const reactFlowWrapperCallback = useCallback((node: HTMLDivElement | null) => {
+    // 先清理旧的事件监听器
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+
+    if (node) {
+      (reactFlowWrapper as any).current = node;
+
+      const handleMouseInCanvas = () => {
+        setMouseInCanvas(true);
+      };
+      const handleMouseOutCanvas = () => {
+        setMouseInCanvas(false);
+      };
+
+      node.addEventListener('mouseenter', handleMouseInCanvas);
+      node.addEventListener('mouseleave', handleMouseOutCanvas);
+
+      // 存储 cleanup 函数到 ref
+      cleanupRef.current = () => {
+        node.removeEventListener('mouseenter', handleMouseInCanvas);
+        node.removeEventListener('mouseleave', handleMouseOutCanvas);
+        setMouseInCanvas(false);
+      };
+    } else {
+      (reactFlowWrapper as any).current = null;
+    }
+  }, []);
+
+  // 组件 unmount 时清理
   useEffect(() => {
-    const handleMouseInCanvas = (e: MouseEvent) => {
-      setMouseInCanvas(true);
-    };
-    const handleMouseOutCanvas = (e: MouseEvent) => {
-      setMouseInCanvas(false);
-    };
-    reactFlowWrapper?.current?.addEventListener('mouseenter', handleMouseInCanvas);
-    reactFlowWrapper?.current?.addEventListener('mouseleave', handleMouseOutCanvas);
     return () => {
-      reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
-      reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
     };
-  }, [setMouseInCanvas]);
+  }, []);
 
   // 控制模式
   const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
@@ -109,7 +139,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       hoverEdgeId,
       setHoverEdgeId,
       mouseInCanvas,
-      reactFlowWrapper,
+      reactFlowWrapperCallback,
       workflowControlMode,
       setWorkflowControlMode,
       presentationMode,
@@ -121,6 +151,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     hoverNodeId,
     hoverEdgeId,
     mouseInCanvas,
+    reactFlowWrapperCallback,
     workflowControlMode,
     setWorkflowControlMode,
     presentationMode,

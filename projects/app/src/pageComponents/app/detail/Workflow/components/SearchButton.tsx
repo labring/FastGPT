@@ -113,18 +113,22 @@ const SearchButton = (props: ButtonProps) => {
   if (keyword === undefined) {
     return (
       <Box position={'absolute'} top={32} left={6} zIndex={1}>
-        <MyTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
+        <MyTooltip
+          shouldWrapChildren={false}
+          label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}
+        >
           <IconButton
-            icon={<MyIcon name="common/searchLight" w="20px" color={'#8A95A7'} />}
-            aria-label=""
-            variant="whitePrimary"
-            size={'mdSquare'}
+            icon={<MyIcon name="common/searchLight" w={5} color={'myGray.400'} />}
+            w={9}
+            h={9}
             borderRadius={'50%'}
-            bg={'white'}
-            _hover={{ bg: 'white', borderColor: 'primary.300' }}
-            boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.20)'}
-            {...props}
+            aria-label={''}
+            variant="whitePrimary"
+            _hover={{ bg: 'myGray.50' }}
+            border={'none'}
+            boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
             onClick={() => setKeyword('')}
+            {...props}
           />
         </MyTooltip>
       </Box>
