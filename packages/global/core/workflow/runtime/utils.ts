@@ -1,7 +1,8 @@
 import json5 from 'json5';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
 import { ChatRoleEnum } from '../../../core/chat/constants';
-import type { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
+import type { ChatItemType } from '../../../core/chat/type';
+import type { NodeOutputItemType } from './type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import {
   NodeInputKeyEnum,

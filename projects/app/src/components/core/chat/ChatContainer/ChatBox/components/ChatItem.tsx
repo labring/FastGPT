@@ -100,19 +100,33 @@ const AIContentCard = React.memo(function AIContentCard({
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
   return (
-    <Flex flexDirection={'column'} gap={2}>
+    <Flex flexDirection={'column'}>
       {chatValue.map((value, i) => {
         const key = `${dataId}-ai-${i}`;
 
         return (
-          <AIResponseBox
-            chatItemDataId={dataId}
+          <Box
             key={key}
-            value={value}
-            isLastResponseValue={isLastChild && i === chatValue.length - 1}
-            isChatting={isChatting}
-            onOpenCiteModal={onOpenCiteModal}
-          />
+            _notFirst={
+              value.stepId
+                ? {
+                    pl: 4,
+                    borderLeft: '4px solid',
+                    borderLeftColor: 'myGray.200'
+                  }
+                : {
+                    mt: 2
+                  }
+            }
+          >
+            <AIResponseBox
+              chatItemDataId={dataId}
+              value={value}
+              isLastResponseValue={isLastChild && i === chatValue.length - 1}
+              isChatting={isChatting}
+              onOpenCiteModal={onOpenCiteModal}
+            />
+          </Box>
         );
       })}
       {isLastChild && questionGuides.length > 0 && (
@@ -240,7 +254,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
     return [];
   }, [chat.obj, chat.value, isChatting, isLastChild]);
-  console.log(splitAiResponseResults);
+
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
     (item?: {

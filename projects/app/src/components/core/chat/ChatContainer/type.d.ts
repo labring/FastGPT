@@ -2,6 +2,7 @@ import type { StreamResponseType } from '@/web/common/api/fetch';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
+  StepTitleItemType,
   type AIChatItemValueItemType,
   type ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
@@ -12,6 +13,7 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { GeneratedSkillDataType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
@@ -27,6 +29,10 @@ export type generatingMessageProps = {
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
+
+  // Agent
+  plan?: AgentPlanType;
+  stepTitle?: StepTitleItemType;
 
   // HelperBot
   collectionForm?: UserInputInteractive;

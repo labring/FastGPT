@@ -3,9 +3,9 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  NodeOutputItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -1198,7 +1198,7 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
     if (item.text) {
       let text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.text?.content) {
+      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
         lastItem.text.content += text;
         continue;
       }

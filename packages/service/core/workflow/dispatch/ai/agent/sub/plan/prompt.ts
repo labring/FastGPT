@@ -1,8 +1,8 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../constants';
-import { PlanAgentAskTool } from './ask/constants';
+import { AIAskTool } from './ask/constants';
 import type { GetSubAppInfoFnType } from '../../type';
-import type { AgentPlanStepType } from './type';
+import type { AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import { parseSystemPrompt } from '../../utils';
 
 const getSubAppPrompt = ({
@@ -49,7 +49,7 @@ export const getPlanAgentSystemPrompt = ({
   「以下是在规划 PLAN 过程中可以使用在每个 step 的 description 中的工具」
     ${subAppPrompt}
   「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
-    - [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
+    - [@${SubAppIds.ask}]：${AIAskTool.function.description}
 
   **工具选择限制**：
   1. **同类工具去重**：如果有多个功能相似的工具（如多个搜索工具、多个翻译工具等），只选择一个最合适的
@@ -308,7 +308,7 @@ export const getReplanAgentSystemPrompt = ({
 「以下是在规划 PLAN 过程中可以使用在每个 step 的 description 中的工具」
 ${subAppPrompt}
 「以下是在规划 PLAN 过程中可以用来调用的工具，不应该在 step 的 description 中」
-- [@${SubAppIds.ask}]：${PlanAgentAskTool.function.description}
+- [@${SubAppIds.ask}]：${AIAskTool.function.description}
 
 **工具选择限制**：
 1. **工具一致性**：在追加优化步骤时，应优先使用已完成步骤中使用过的工具
@@ -483,7 +483,7 @@ export const getReplanAgentUserPrompt = ({
   task: string;
   background?: string;
   systemPrompt?: string;
-  dependsSteps: AgentPlanStepType[];
+  dependsSteps: AgentStepItemType[];
 }) => {
   console.log('replan systemPrompt:', systemPrompt);
   const stepsResponsePrompt = dependsSteps

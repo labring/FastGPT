@@ -1,11 +1,25 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../../constants';
+import z from 'zod';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-export type AskAgentToolParamsType = {
-  questions: string[];
-};
+/* AI 表单输出 schema */
+const InputSchema = z.object({
+  type: z.enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.numberInput]),
+  label: z.string()
+});
+const SelectSchema = z.object({
+  type: z.enum([FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect]),
+  label: z.string(),
+  options: z.array(z.string())
+});
+export const AIAskAnswerSchema = z.object({
+  question: z.string(),
+  form: z.array(z.union([InputSchema, SelectSchema])).optional()
+});
+export type AIAskAnswerType = z.infer<typeof AIAskAnswerSchema>;
 
-export const PlanAgentAskTool: ChatCompletionTool = {
+export const AIAskTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SubAppIds.ask,
@@ -33,16 +47,43 @@ export const PlanAgentAskTool: ChatCompletionTool = {
     parameters: {
       type: 'object',
       properties: {
-        questions: {
-          description: `要向用户搜集的问题列表`,
+        question: {
+          description: `向用户提问的问题/表单描述`,
+          type: 'string'
+        },
+        form: {
+          description: `需要收集信息的表单，如果需要复杂的信息收集，则使用这个字段`,
+          type: 'array',
           items: {
-            type: 'string',
-            description: '一个具体的、有针对性的问题'
+            type: 'object',
+            properties: {
+              type: {
+                description: `问题类型，可选值为：
+      input: 文本输入框
+      numberInput: 数字输入框
+      select: 单选
+      multipleSelect: 多选`,
+                type: 'string',
+                enum: ['input', 'numberInput', 'select', 'multipleSelect']
+              },
+              label: {
+                description: `问题名称`,
+                type: 'string'
+              },
+              options: {
+                description: `选项列表，当 type 为 select 或 multipleSelect 时必填`,
+                type: 'array',
+                items: {
+                  type: 'string',
+                  description: '选项文本'
+                }
+              }
+            }
           },
-          type: 'array'
+          required: ['type', 'label']
         }
       },
-      required: ['questions']
+      required: ['question']
     }
   }
 };

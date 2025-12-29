@@ -8,10 +8,20 @@ import {
   Box,
   Button,
   Flex,
-  HStack
+  HStack,
+  Step,
+  StepDescription,
+  StepIcon,
+  StepIndicator,
+  StepNumber,
+  StepSeparator,
+  StepStatus,
+  StepTitle,
+  Stepper
 } from '@chakra-ui/react';
 import type {
   AIChatItemValueItemType,
+  StepTitleItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import React, { useCallback, useMemo } from 'react';
@@ -37,8 +47,9 @@ import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntime
 import { useCreation } from 'ahooks';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import type { AgentPlanType } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/plan/type';
-import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import Icon from '@fastgpt/web/components/common/Icon';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -224,14 +235,11 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
-    if (interactive.type === 'userInput') {
-      return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
-        // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
-        acc[item.key] = item.value ?? item.defaultValue;
-        return acc;
-      }, {});
-    }
-    return {};
+    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
+      // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
+      acc[item.key] = item.value ?? item.defaultValue;
+      return acc;
+    }, {});
   }, [interactive]);
 
   const handleFormSubmit = useCallback(
@@ -315,6 +323,74 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
     </>
   );
 });
+const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanType }) {
+  return (
+    <Box border={'base'} bg={'white'} overflow={'hidden'} borderRadius={'md'} w={'full'}>
+      <Flex alignItems={'center'} px={4} py={3} bg={'myGray.50'} borderBottom={'base'}>
+        <MyIcon name={'common/list'} w={'1rem'} mr={2} color={'myGray.600'} />
+        <Box fontWeight={'bold'} fontSize={'sm'}>
+          {plan.task || '-'}
+        </Box>
+      </Flex>
+      <Box px={4} py={4}>
+        <Stepper index={-1} orientation="vertical" gap="2" size={'sm'}>
+          {plan.steps.map((step, index) => (
+            <Step key={step.id} w={'100%'}>
+              <StepIndicator>
+                <StepStatus
+                  complete={<StepIcon />}
+                  incomplete={<StepNumber />}
+                  active={<StepNumber />}
+                />
+              </StepIndicator>
+
+              <Box flexShrink="1" ml={1} w={'0'} flex={'1'}>
+                <StepTitle fontSize={'sm'} fontWeight={'medium'}>
+                  {step.title}
+                </StepTitle>
+                {step.description && (
+                  <StepDescription fontSize={'xs'} mt={1} color={'myGray.500'}>
+                    {step.description}
+                  </StepDescription>
+                )}
+              </Box>
+
+              <StepSeparator />
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
+    </Box>
+  );
+});
+const RenderStepTitle = React.memo(function RenderStepTitle({
+  chatItemDataId,
+  step
+}: {
+  chatItemDataId: string;
+  step: StepTitleItemType;
+}) {
+  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+
+  return (
+    <HStack pb={2} fontSize={'lg'} fontWeight={'bold'} userSelect={'none'}>
+      <Box
+        w={'10px'}
+        h={'10px'}
+        borderRadius={'full'}
+        border={'2px solid'}
+        borderColor={'primary.600'}
+      ></Box>
+      <Box>{step.title}</Box>
+      {/* <Icon
+        name={'common/leftArrowLight'}
+        w={'1rem'}
+        h={'1rem'}
+        transform={step.folded ? 'rotate(90deg)' : 'rotate(-90deg)'}
+      /> */}
+    </HStack>
+  );
+});
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -372,6 +448,12 @@ const AIResponseBox = ({
     if (interactive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={interactive} />;
     }
+  }
+  if ('plan' in value && value.plan) {
+    return <RenderPlan plan={value.plan} />;
+  }
+  if ('stepTitle' in value && value.stepTitle) {
+    return <RenderStepTitle chatItemDataId={chatItemDataId} step={value.stepTitle} />;
   }
 
   // Abandon

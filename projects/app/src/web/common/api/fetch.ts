@@ -12,9 +12,10 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { StepTitleItemType } from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type StreamFetchProps = {
   url?: string;
@@ -53,12 +54,16 @@ type ResponseQueueItemType = CommonResponseType &
         collectionForm: UserInputInteractive;
       }
     | {
-        event: SseResponseEventEnum.generatedSkill;
-        data: any;
-      }
-    | {
         event: SseResponseEventEnum.topAgentConfig;
         data: TopAgentFormDataType;
+      }
+    | {
+        event: SseResponseEventEnum.plan;
+        plan: AgentPlanType;
+      }
+    | {
+        event: SseResponseEventEnum.stepTitle;
+        stepTitle: StepTitleItemType;
       }
   );
 
@@ -247,7 +252,10 @@ export const streamFetch = ({
           } else if (
             event === SseResponseEventEnum.toolCall ||
             event === SseResponseEventEnum.toolParams ||
-            event === SseResponseEventEnum.toolResponse
+            event === SseResponseEventEnum.toolResponse ||
+            event === SseResponseEventEnum.interactive ||
+            event === SseResponseEventEnum.plan ||
+            event === SseResponseEventEnum.stepTitle
           ) {
             pushDataToQueue({
               responseValueId,
@@ -265,13 +273,6 @@ export const streamFetch = ({
               event,
               variables: rest
             });
-          } else if (event === SseResponseEventEnum.interactive) {
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              ...rest
-            });
           } else if (event === SseResponseEventEnum.collectionForm) {
             onMessage({
               event,
@@ -282,12 +283,6 @@ export const streamFetch = ({
             onMessage({
               event,
               formData: rest
-            });
-          } else if (event === SseResponseEventEnum.generatedSkill) {
-            // Directly call onMessage for generatedSkill, no need to queue
-            onMessage({
-              event,
-              generatedSkill: rest
             });
           } else if (event === SseResponseEventEnum.error) {
             if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {

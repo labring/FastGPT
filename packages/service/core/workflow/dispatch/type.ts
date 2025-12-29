@@ -44,15 +44,15 @@ export type DispatchFlowResponse = {
   durationSeconds: number;
 };
 
+const WorkflowResponseItemSchema = z.object({
+  id: z.string().optional(),
+  stepId: z.string().optional(),
+  event: z.custom<SseResponseEventEnum>(),
+  data: z.record(z.string(), z.any())
+});
+export type WorkflowResponseItemType = z.infer<typeof WorkflowResponseItemSchema>;
 export const WorkflowResponseFnSchema = z.function({
-  input: z.tuple([
-    z.object({
-      id: z.string().optional(),
-      stepId: z.string().optional(),
-      event: z.custom<SseResponseEventEnum>(),
-      data: z.record(z.string(), z.any())
-    })
-  ]),
+  input: z.tuple([WorkflowResponseItemSchema]),
   output: z.void()
 });
 

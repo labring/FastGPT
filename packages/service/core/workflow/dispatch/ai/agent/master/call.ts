@@ -3,7 +3,8 @@ import { runAgentCall } from '../../../../../ai/llm/agentCall';
 import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
-import type { AgentPlanStepType, AgentPlanType } from '../sub/plan/type';
+import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
+
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getMasterAgentSystemPrompt } from '../constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -21,6 +22,7 @@ import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
 import { addLog } from '../../../../../../common/system/log';
+import type { WorkflowResponseItemType } from '../../../type';
 
 type Response = {
   stepResponse?: {
@@ -49,8 +51,8 @@ export const masterCall = async ({
   subAppsMap: Map<string, SubAppRuntimeType>;
 
   // Step call
-  steps?: AgentPlanStepType[];
-  step?: AgentPlanStepType;
+  steps?: AgentStepItemType[];
+  step?: AgentStepItemType;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -67,6 +69,15 @@ export const masterCall = async ({
   } = props;
 
   const isStepCall = steps && step;
+  const stepId = step?.id;
+  const stepStreamResponse = (args: WorkflowResponseItemType) => {
+    return workflowStreamResponse?.({
+      stepId,
+      ...args
+    });
+  };
+
+  // StepCall 暂时不支持二次 plan
   if (isStepCall) {
     completionTools = completionTools.filter((item) => item.function.name !== SubAppIds.plan);
   }
@@ -149,6 +160,7 @@ export const masterCall = async ({
   // console.log('Master call requestMessages', JSON.stringify(requestMessages, null, 2));
 
   let planResult: DispatchPlanAgentResponse | undefined;
+  let planCallId: string | undefined;
 
   const {
     assistantMessages,
@@ -173,7 +185,7 @@ export const masterCall = async ({
     // childrenInteractiveParams
 
     onReasoning({ text }) {
-      workflowStreamResponse?.({
+      stepStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           reasoning_content: text
@@ -181,7 +193,7 @@ export const masterCall = async ({
       });
     },
     onStreaming({ text }) {
-      workflowStreamResponse?.({
+      stepStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text
@@ -190,7 +202,13 @@ export const masterCall = async ({
     },
     onToolCall({ call }) {
       const subApp = getSubAppInfo(call.function.name);
-      workflowStreamResponse?.({
+
+      if (call.function.name === SubAppIds.plan) {
+        planCallId = call.id;
+        return;
+      }
+
+      stepStreamResponse?.({
         id: call.id,
         event: SseResponseEventEnum.toolCall,
         data: {
@@ -205,7 +223,7 @@ export const masterCall = async ({
       });
     },
     onToolParam({ tool, params }) {
-      workflowStreamResponse?.({
+      stepStreamResponse?.({
         id: tool.id,
         event: SseResponseEventEnum.toolParams,
         data: {
@@ -269,6 +287,7 @@ export const masterCall = async ({
                 stop: true
               };
             } catch (error) {
+              console.log(error, 111);
               return {
                 response: getErrText(error),
                 stop: false
@@ -311,7 +330,7 @@ export const masterCall = async ({
                 runningUserInfo,
                 runningAppInfo,
                 variables,
-                workflowStreamResponse
+                workflowStreamResponse: stepStreamResponse
               });
               return {
                 response,
@@ -323,7 +342,7 @@ export const masterCall = async ({
               // const { response, usages } = await fn({
               //   ...props,
               //   node,
-              //   workflowStreamResponse,
+              //   workflowStreamResponse:stepStreamResponse,
               //   callParams: {
               //     appId: node.pluginId,
               //     version: node.version,
@@ -355,7 +374,7 @@ export const masterCall = async ({
       })();
 
       // Push stream response
-      workflowStreamResponse?.({
+      stepStreamResponse?.({
         id: call.id,
         event: SseResponseEventEnum.toolResponse,
         data: {

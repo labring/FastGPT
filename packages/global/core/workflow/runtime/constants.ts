@@ -17,10 +17,13 @@ export enum SseResponseEventEnum {
 
   interactive = 'interactive',
 
+  // Agent
+  plan = 'plan', // plan response
+  stepTitle = 'stepTitle', // step title response
+
   // Helperbot
   collectionForm = 'collectionForm', // collection form for HelperBot
-  topAgentConfig = 'topAgentConfig', // form data for TopAgent
-  generatedSkill = 'generatedSkill' // generated skill for SkillAgent
+  topAgentConfig = 'topAgentConfig' // form data for TopAgent
 }
 
 export enum DispatchNodeResponseKeyEnum {

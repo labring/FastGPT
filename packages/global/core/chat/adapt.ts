@@ -18,6 +18,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+import { getNanoid } from '../../common/string/tools';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
@@ -101,10 +102,13 @@ export const chats2GPTMessages = ({
 
       //AI: 只需要把根节点转化即可
       item.value.forEach((value, i) => {
-        if (value.tools && reserveTool) {
+        if (value.stepId) return;
+
+        if ((value.tools || value.tool) && reserveTool) {
+          const tools = value.tools || [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
-          value.tools.forEach((tool) => {
+          tools.forEach((tool) => {
             tool_calls.push({
               id: tool.id,
               type: 'function',
@@ -141,6 +145,36 @@ export const chats2GPTMessages = ({
               content: value.text.content
             });
           }
+        } else if (value.plan && reserveTool) {
+          let response = '';
+          value.plan.steps.forEach((step) => {
+            const stepResponse = item.value
+              .filter((item) => item.stepId === step.id)
+              ?.map((item) => item.text?.content)
+              .join('\n');
+            response += `## ${step.title}\n${stepResponse}`;
+          });
+          const toolId = getNanoid(6);
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            tool_calls: [
+              {
+                id: toolId,
+                type: 'function',
+                function: {
+                  name: 'plan_agent',
+                  arguments: ''
+                }
+              }
+            ]
+          });
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: toolId,
+            content: response
+          });
         }
         // else if (value.interactive) {
         //   aiResults.push({
@@ -152,17 +186,7 @@ export const chats2GPTMessages = ({
       });
 
       // Auto add empty assistant message
-      results = results.concat(
-        aiResults.length > 0
-          ? aiResults
-          : [
-              {
-                dataId,
-                role: ChatCompletionRequestMessageRoleEnum.Assistant,
-                content: ''
-              }
-            ]
-      );
+      results = results.concat(aiResults);
     }
   });
 
@@ -272,28 +296,32 @@ export const GPTMessages2Chats = ({
         if (item.tool_calls && reserveTool) {
           // save tool calls
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
-          value.push({
-            tools: toolCalls.map((tool) => {
-              let toolResponse =
-                messages.find(
-                  (msg) =>
-                    msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                    msg.tool_call_id === tool.id
-                )?.content || '';
-              toolResponse =
-                typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
+          toolCalls.forEach((tool) => {
+            // Skil plan tool
+            if (tool.function.name === 'plan_agent') {
+              return;
+            }
+            let toolResponse =
+              messages.find(
+                (msg) =>
+                  msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                  msg.tool_call_id === tool.id
+              )?.content || '';
+            toolResponse =
+              typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
 
-              const toolInfo = getToolInfo?.(tool.function.name);
+            const toolInfo = getToolInfo?.(tool.function.name);
 
-              return {
+            value.push({
+              tool: {
                 id: tool.id,
                 toolName: toolInfo?.name || '',
                 toolAvatar: toolInfo?.avatar || '',
                 functionName: tool.function.name,
                 params: tool.function.arguments,
                 response: toolResponse as string
-              };
-            })
+              }
+            });
           });
         }
         if (item.function_call && reserveTool) {
@@ -306,16 +334,14 @@ export const GPTMessages2Chats = ({
 
           if (functionResponse) {
             value.push({
-              tools: [
-                {
-                  id: functionCall.id || '',
-                  toolName: functionCall.toolName || '',
-                  toolAvatar: functionCall.toolAvatar || '',
-                  functionName: functionCall.name,
-                  params: functionCall.arguments,
-                  response: functionResponse.content || ''
-                }
-              ]
+              tool: {
+                id: functionCall.id || '',
+                toolName: functionCall.toolName || '',
+                toolAvatar: functionCall.toolAvatar || '',
+                functionName: functionCall.name,
+                params: functionCall.arguments,
+                response: functionResponse.content || ''
+              }
             });
           }
         }
