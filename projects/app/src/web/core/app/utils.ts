@@ -643,7 +643,7 @@ export function form2AppWorkflow(
               },
               {
                 variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
-                value: ['', 'llm-summary'],
+                value: ['', formData.chatConfig.faqAnswerMode || 'quote'],
                 renderType: 'input',
                 valueType: 'string'
               },
