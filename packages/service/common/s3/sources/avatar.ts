@@ -25,7 +25,7 @@ class S3AvatarSource extends S3PublicBucket {
   }) {
     const { fileKey } = getFileS3Key.avatar({ teamId, filename });
 
-    return this.createPostPresignedUrl(
+    return this.createPresignedPutUrl(
       { filename, rawKey: fileKey },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours

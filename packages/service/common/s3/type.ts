@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { defaultS3Options, Mimes } from './constants';
+import type { Mimes } from './constants';
 import type { S3BaseBucket } from './buckets/base';
 
 export const S3MetadataSchema = z.object({
@@ -14,8 +14,6 @@ export type S3Metadata = z.infer<typeof S3MetadataSchema>;
 
 export type ContentType = (typeof Mimes)[keyof typeof Mimes];
 export type ExtensionType = keyof typeof Mimes;
-
-export type S3OptionsType = typeof defaultS3Options;
 
 export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp', 'rawText']);
 export const S3Sources = S3SourcesSchema.enum;

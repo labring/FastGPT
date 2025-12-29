@@ -1,27 +1,70 @@
 import { vi } from 'vitest';
+import { createVitestStorageMock } from '../../../sdk/storage/src/testing/vitestMock';
+
+const mockStorageByBucket = new Map<string, ReturnType<typeof createVitestStorageMock>>();
+const getMockStorage = (bucketName: string) => {
+  const existing = mockStorageByBucket.get(bucketName);
+  if (existing) return existing;
+  const storage = createVitestStorageMock({
+    vi,
+    bucketName,
+    baseUrl: 'http://localhost:9000'
+  });
+  mockStorageByBucket.set(bucketName, storage);
+  return storage;
+};
 
 // Create mock S3 bucket object for global use
-const createMockS3Bucket = () => ({
-  name: 'mock-bucket',
-  client: {},
-  externalClient: {},
-  exist: vi.fn().mockResolvedValue(true),
-  delete: vi.fn().mockResolvedValue(undefined),
-  putObject: vi.fn().mockResolvedValue(undefined),
-  getFileStream: vi.fn().mockResolvedValue(null),
-  statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
-  move: vi.fn().mockResolvedValue(undefined),
-  copy: vi.fn().mockResolvedValue(undefined),
-  addDeleteJob: vi.fn().mockResolvedValue(undefined),
-  createPostPresignedUrl: vi.fn().mockResolvedValue({
-    url: 'http://localhost:9000/mock-bucket',
-    fields: { key: 'mock-key' },
-    maxSize: 100 * 1024 * 1024
-  }),
-  createExternalUrl: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-key'),
-  createGetPresignedUrl: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-key'),
-  createPublicUrl: vi.fn((key: string) => `http://localhost:9000/mock-bucket/${key}`)
-});
+const createMockS3Bucket = (bucketName = 'mock-bucket') => {
+  const client = getMockStorage(bucketName);
+  const externalClient = getMockStorage(bucketName);
+
+  return {
+    name: bucketName,
+    client,
+    externalClient,
+    exist: vi.fn().mockResolvedValue(true),
+    delete: vi.fn().mockResolvedValue(undefined),
+    putObject: vi.fn(async (key: string, body: any) => {
+      await client.uploadObject({ key, body });
+    }),
+    getFileStream: vi.fn(async (key: string) => {
+      const res = await client.downloadObject({ key });
+      return res.body;
+    }),
+    statObject: vi.fn(async (key: string) => {
+      const meta = await client.getObjectMetadata({ key });
+      return {
+        size: meta.contentLength ?? 0,
+        etag: meta.etag ?? 'mock-etag'
+      };
+    }),
+    move: vi.fn(async ({ from, to }: { from: string; to: string }) => {
+      await client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+      await client.deleteObject({ key: from });
+    }),
+    copy: vi.fn(async ({ from, to }: { from: string; to: string }) => {
+      await client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+    }),
+    addDeleteJob: vi.fn().mockResolvedValue(undefined),
+    createPostPresignedUrl: vi.fn().mockResolvedValue({
+      url: 'http://localhost:9000/mock-bucket',
+      fields: { key: 'mock-key' },
+      maxSize: 100 * 1024 * 1024
+    }),
+    createExternalUrl: vi.fn(async (key: string) => {
+      const { getUrl } = await externalClient.generatePresignedGetUrl({ key });
+      return getUrl;
+    }),
+    createGetPresignedUrl: vi.fn(async (key: string) => {
+      const { getUrl } = await client.generatePresignedGetUrl({ key });
+      return getUrl;
+    }),
+    createPublicUrl: vi.fn(
+      (key: string) => externalClient.generatePublicGetUrl({ key }).publicGetUrl
+    )
+  };
+};
 
 // Initialize global s3BucketMap early to prevent any real S3 connections
 const mockBucket = createMockS3Bucket();
@@ -68,27 +111,36 @@ const createMockBucketClass = (defaultName: string) => {
   return class MockS3Bucket {
     public name: string;
     public options: any;
-    public client = {};
-    public externalClient = {};
+    public client = getMockStorage(defaultName);
+    public externalClient = getMockStorage(defaultName);
 
     constructor(bucket?: string, options?: any) {
       this.name = bucket || defaultName;
       this.options = options || {};
+      this.client = getMockStorage(this.name);
+      this.externalClient = getMockStorage(this.name);
     }
 
     async exist() {
       return true;
     }
     async delete() {}
-    async putObject() {}
+    async putObject(key: string, body: any) {
+      await this.client.uploadObject({ key, body });
+    }
     async getFileStream() {
       return null;
     }
     async statObject() {
       return { size: 0, etag: 'mock-etag' };
     }
-    async move() {}
-    async copy() {}
+    async move({ from, to }: { from: string; to: string }) {
+      await this.client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+      await this.client.deleteObject({ key: from });
+    }
+    async copy({ from, to }: { from: string; to: string }) {
+      await this.client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+    }
     async addDeleteJob() {}
     async createPostPresignedUrl(params: any, options?: any) {
       return {
@@ -98,13 +150,21 @@ const createMockBucketClass = (defaultName: string) => {
       };
     }
     async createExternalUrl(params: any) {
-      return `http://localhost:9000/mock-bucket/${params.key}`;
+      const { getUrl } = await this.externalClient.generatePresignedGetUrl({
+        key: params.key,
+        expiredSeconds: params.expires
+      });
+      return getUrl;
     }
     async createGetPresignedUrl(params: any) {
-      return `http://localhost:9000/mock-bucket/${params.key}`;
+      const { getUrl } = await this.client.generatePresignedGetUrl({
+        key: params.key,
+        expiredSeconds: params.expires
+      });
+      return getUrl;
     }
     createPublicUrl(objectKey: string) {
-      return `http://localhost:9000/mock-bucket/${objectKey}`;
+      return this.externalClient.generatePublicGetUrl({ key: objectKey }).publicGetUrl;
     }
   };
 };

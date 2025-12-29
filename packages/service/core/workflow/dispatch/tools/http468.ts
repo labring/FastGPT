@@ -8,7 +8,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import axios from 'axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
@@ -29,6 +28,7 @@ import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
+import { axios } from '../../../../common/api/axios';
 
 type PropsArrType = {
   key: string;
@@ -497,11 +497,17 @@ async function fetchData({
     return Promise.reject('Url is invalid');
   }
 
+  const buildUrl = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `http://${SERVICE_LOCAL_HOST}/${url.replace(/^\/+/, '')}`;
+  };
+
   const { data: response } = await axios({
     method,
     maxContentLength: serviceRequestMaxContentLength,
-    baseURL: `http://${SERVICE_LOCAL_HOST}`,
-    url,
+    url: buildUrl(url),
     headers: {
       ...headers
     },

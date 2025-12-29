@@ -6,6 +6,8 @@ import axios, {
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ProxyAgent } from 'proxy-agent';
+import { createProxyAxios } from './axios';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -65,8 +67,8 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = axios.create({
-  timeout: 60000, // 超时时间
+const instance = createProxyAxios({
+  timeout: 60000,
   headers: {
     'content-type': 'application/json',
     'Cache-Control': 'no-cache',

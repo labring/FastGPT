@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       getS3DatasetSource().getFileStream(fileId)
     ]);
 
-    if (!file) {
+    if (!file || !fileStream) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
 
@@ -49,7 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       'Content-Disposition',
       `${disposition}; filename="${encodeURIComponent(filename)}"`
     );
-    res.setHeader('Content-Length', file.contentLength);
+    if (file.contentLength) {
+      res.setHeader('Content-Length', file.contentLength);
+    }
 
     stream.pipe(res);
 

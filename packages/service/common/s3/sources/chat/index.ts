@@ -60,21 +60,27 @@ export class S3ChatSource extends S3PrivateBucket {
   async createUploadChatFileURL(params: CheckChatFileKeys) {
     const { appId, chatId, uId, filename, expiredTime } = ChatFileUploadSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
-    return await this.createPostPresignedUrl(
+    return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
       { expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 24 }
     );
   }
 
-  deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {
+  async deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {
     const { appId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
 
     const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
-    return this.addDeleteJob({ prefix });
+    const publicBucket = global.s3BucketMap[S3Buckets.public];
+
+    await this.addDeleteJob({ prefix });
+    await publicBucket.addDeleteJob({ prefix });
+
+    return prefix;
   }
 
   deleteChatFileByKey(key: string) {
-    return this.addDeleteJob({ key });
+    this.addDeleteJob({ key });
+    return key;
   }
 
   async uploadChatFileByBuffer(params: UploadFileParams) {
@@ -92,6 +98,11 @@ export class S3ChatSource extends S3PrivateBucket {
       buffer,
       contentType
     });
+  }
+
+  getToolFilePrefix(params: { appId: string; chatId: string; uId: string }) {
+    const { appId, chatId, uId } = params;
+    return [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
   }
 }
 

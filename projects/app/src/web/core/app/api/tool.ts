@@ -1,4 +1,4 @@
-import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
+import { GET, POST } from '@/web/common/api/request';
 import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {

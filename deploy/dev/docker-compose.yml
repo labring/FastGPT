@@ -162,14 +162,17 @@ services:
       - fastgpt
     environment:
       - AUTH_TOKEN=token
-      - S3_EXTERNAL_BASE_URL=http://127.0.0.1:9000 # TODO: 改为你 Minio 的实际的 ip 地址
-      - S3_ENDPOINT=fastgpt-minio
-      - S3_PORT=9000
-      - S3_USE_SSL=false
-      - S3_ACCESS_KEY=minioadmin
-      - S3_SECRET_KEY=minioadmin
-      - S3_PUBLIC_BUCKET=fastgpt-public # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
-      - S3_PRIVATE_BUCKET=fastgpt-private # 系统插件热安装文件的桶，私有读写。
+      # @see https://fastgpt.cn/docs/introduction/development/object-storage
+      - STORAGE_VENDOR=minio # minio | aws-s3 | cos | oss
+      - STORAGE_REGION=us-east-1
+      - STORAGE_ACCESS_KEY_ID=minioadmin
+      - STORAGE_SECRET_ACCESS_KEY=minioadmin
+      - STORAGE_PUBLIC_BUCKET=fastgpt-public
+      - STORAGE_PRIVATE_BUCKET=fastgpt-private
+      - STORAGE_EXTERNAL_ENDPOINT=https://minio.com # 一个公开的、前端和用户可以直接访问的对象存储连接
+      - STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
+      - STORAGE_S3_FORCE_PATH_STYLE=true
+      - STORAGE_S3_MAX_RETRIES=3
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true
       - REDIS_URL=redis://default:mypassword@redis:6379
     depends_on:

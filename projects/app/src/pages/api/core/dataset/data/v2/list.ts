@@ -83,7 +83,7 @@ async function handler(
     const s3ImageIds = imageIds.filter((id) => isS3ObjectKey(id, 'dataset'));
     for (const id of s3ImageIds) {
       const metadata = await getS3DatasetSource().getFileMetadata(id);
-      if (metadata) {
+      if (metadata?.contentLength) {
         imageSizeMap.set(id, metadata.contentLength);
       }
     }

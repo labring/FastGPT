@@ -1,7 +1,7 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import axios from 'axios';
+import { axios } from '../../../../common/api/axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';

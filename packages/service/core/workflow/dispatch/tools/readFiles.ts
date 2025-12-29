@@ -3,7 +3,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import axios from 'axios';
+import { axios } from '../../../../common/api/axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
@@ -192,9 +192,16 @@ export const getFileContentFromLinks = async ({
             return Promise.reject('Url is invalid');
           }
 
+          const buildUrl = (url: string) => {
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+              return url;
+            }
+            return `${serverRequestBaseUrl}/${url.replace(/^\/+/, '')}`;
+          };
+
           // Get file buffer data
           const response = await axios.get(url, {
-            baseURL: serverRequestBaseUrl,
+            url: buildUrl(url),
             responseType: 'arraybuffer'
           });
 

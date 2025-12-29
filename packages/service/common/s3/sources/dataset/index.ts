@@ -1,6 +1,6 @@
 import { S3Sources } from '../../type';
 import { S3PrivateBucket } from '../../buckets/private';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import streamConsumer from 'node:stream/consumers';
 import {
   type CreateGetDatasetFileURLParams,
   CreateGetDatasetFileURLParamsSchema,
@@ -46,7 +46,7 @@ export class S3DatasetSource extends S3PrivateBucket {
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
     const { filename, datasetId } = CreateUploadDatasetFileParamsSchema.parse(params);
     const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
-    return await this.createPostPresignedUrl({ rawKey: fileKey, filename }, { expiredHours: 3 });
+    return await this.createPresignedPutUrl({ rawKey: fileKey, filename }, { expiredHours: 3 });
   }
 
   // 单个键删除
@@ -71,13 +71,14 @@ export class S3DatasetSource extends S3PrivateBucket {
   }
 
   async getDatasetBase64Image(key: string): Promise<string> {
-    const [stream, metadata] = await Promise.all([
-      this.getFileStream(key),
+    const [downloadResponse, fileMetadata] = await Promise.all([
+      this.client.downloadObject({ key }),
       this.getFileMetadata(key)
     ]);
-    const buffer = await this.fileStreamToBuffer(stream);
+
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
     const base64 = buffer.toString('base64');
-    return `data:${metadata?.contentType || 'image/jpeg'};base64,${base64}`;
+    return `data:${fileMetadata?.contentType || 'image/jpeg'};base64,${base64}`;
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
@@ -95,16 +96,16 @@ export class S3DatasetSource extends S3PrivateBucket {
       };
     }
 
-    const [metadata, stream] = await Promise.all([
+    const [fileMetadata, downloadResponse] = await Promise.all([
       this.getFileMetadata(fileId),
-      this.getFileStream(fileId)
+      this.client.downloadObject({ key: fileId })
     ]);
 
-    const extension = metadata?.extension || '';
-    const filename: string = decodeURIComponent(metadata?.filename || '');
+    const filename = fileMetadata?.filename || '';
+    const extension = fileMetadata?.extension || '';
 
     const start = Date.now();
-    const buffer = await this.fileStreamToBuffer(stream);
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
     addLog.debug('get dataset file buffer', { time: Date.now() - start });
 
     const encoding = detectFileEncoding(buffer);
@@ -144,29 +145,20 @@ export class S3DatasetSource extends S3PrivateBucket {
     const truncatedFilename = truncateFilename(filename);
     const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
 
-    const { stream, size } = (() => {
-      if ('buffer' in file) {
-        return {
-          stream: file.buffer,
-          size: file.buffer.length
-        };
-      }
-      return {
-        stream: file.stream,
-        size: file.size
-      };
-    })();
-
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucketName,
       expiredTime: addHours(new Date(), 3)
     });
 
-    await this.putObject(key, stream, size, {
-      'content-type': Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
-      'upload-time': new Date().toISOString(),
-      'origin-filename': encodeURIComponent(truncatedFilename)
+    await this.client.uploadObject({
+      key,
+      body: 'buffer' in file ? file.buffer : file.stream,
+      contentType: Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
+      metadata: {
+        uploadTime: new Date().toISOString(),
+        originFilename: encodeURIComponent(truncatedFilename)
+      }
     });
 
     return key;
