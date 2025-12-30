@@ -108,7 +108,7 @@ describe('html2md 性能和功能测试', () => {
 
     it('大型 base64 图片性能(~1MB)', () => {
       // 生成约 1MB 的 base64 数据
-      const base64Data = 'A'.repeat(1024 * 1024);
+      const base64Data = 'A'.repeat(1000000);
       const html = `<img src="data:image/png;base64,${base64Data}">`;
 
       const start = Date.now();
@@ -160,12 +160,21 @@ describe('html2md 性能和功能测试', () => {
   });
 
   describe('防御性功能', () => {
-    it('应该拒绝超大 HTML 文档', () => {
-      const hugeHtml = 'x'.repeat(100 * 1000 + 1);
+    it('应该拒绝超大 HTML 文档(>1MB)', () => {
+      const hugeHtml = 'x'.repeat(1000000 + 1);
       const result = html2md(hugeHtml);
 
       expect(result.rawText).toBe(hugeHtml);
       expect(result.imageList).toHaveLength(0);
+    });
+
+    it('应该正常处理大型 HTML 文档(<1MB)', () => {
+      const largeHtml = 'x'.repeat(1000000 - 1);
+      const result = html2md(largeHtml);
+
+      // 即使很大，但在限制内，应该正常处理
+      expect(result.rawText).toBeTruthy();
+      expect(result.rawText.length).toBeGreaterThan(0);
     });
 
     it('应该处理空 HTML', () => {

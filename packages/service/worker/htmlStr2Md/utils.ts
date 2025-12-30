@@ -5,7 +5,7 @@ import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
-const MAX_HTML_SIZE = 100 * 1000; // 100k characters limit
+const MAX_HTML_SIZE = Number(process.env.MAX_HTML_TRANSFORM_CHARS || 1000000);
 
 const processBase64Images = (htmlContent: string) => {
   // 优化后的正则:
@@ -70,9 +70,9 @@ export const html2md = (
     // Base64 img to id, otherwise it will occupy memory when going to md
     const { processedHtml, images } = processBase64Images(html);
 
-    // if html is too large, return the original html
+    // if html is too large, return the original html (but preserve image list)
     if (processedHtml.length > MAX_HTML_SIZE) {
-      return { rawText: processedHtml, imageList: [] };
+      return { rawText: processedHtml, imageList: images };
     }
 
     const md = turndownService.turndown(processedHtml);
