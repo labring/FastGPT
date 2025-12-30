@@ -37,11 +37,11 @@
     "zhlint": "^0.7.4"
   },
   "lint-staged": {
-    "./**/**/*.{ts,tsx,scss}": [
-      "npm run format-code",
+    "*.{ts,tsx,scss}": [
+      "prettier --write",
       "npm run lint:fix"
     ],
-    "./docSite/**/**/*.md": "npm run format-doc && npm run gen:llms"
+    "docSite/**/*.md": "npm run format-doc && npm run gen:llms"
   },
   "resolutions": {
     "mdast-util-gfm-autolink-literal": "2.0.0"
