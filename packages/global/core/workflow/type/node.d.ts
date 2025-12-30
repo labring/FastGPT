@@ -1,4 +1,5 @@
-import type { FlowNodeTypeEnum } from '../node/constant';
+import type { NodeGradients } from '../node/constant';
+import { type FlowNodeTypeEnum } from '../node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -66,6 +67,8 @@ export type FlowNodeCommonType = {
   abandon?: boolean; // abandon node
 
   avatar?: string;
+  avatarLinear?: string; // Linear icon for gradient masks
+  colorSchema?: keyof typeof NodeGradients; // Node color schema
   name: string;
   intro?: string; // template list intro
   toolDescription?: string;

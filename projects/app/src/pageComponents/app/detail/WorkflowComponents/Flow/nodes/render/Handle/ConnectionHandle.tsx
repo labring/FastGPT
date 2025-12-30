@@ -33,7 +33,7 @@ export const ConnectionSourceHandle = ({
         (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
       );
 
-      /* 
+      /*
         If the node is folded and has outputs, must show the handle
         hide handle when:
           - not folded

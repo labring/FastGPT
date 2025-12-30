@@ -167,14 +167,14 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             flex={1}
             position={'relative'}
             border={'base'}
-            bg={'myGray.100'}
+            bg={'myGray.50'}
             rounded={'8px'}
             {...(!isFolded && {
               minW: nodeWidth,
               minH: nodeHeight
             })}
           >
-            <Background />
+            {/* <Background color="#A4A4A4" gap={60} size={3} /> */}
           </Box>
         </>
       </Container>

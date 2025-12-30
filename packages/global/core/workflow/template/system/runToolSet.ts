@@ -8,6 +8,7 @@ export const RunToolSetNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.toolSet,
   showSourceHandle: false,
   showTargetHandle: false,
+  colorSchema: 'salmon',
   isTool: true,
   intro: '',
   name: '',

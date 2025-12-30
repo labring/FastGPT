@@ -1,4 +1,4 @@
-import { Box, Button, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,16 +49,14 @@ const SaveButton = ({
         onCloseFunc={() => setIsSave(false)}
         trigger={'hover'}
         Trigger={
-          <Button
-            size={'sm'}
-            rightIcon={
+          <Button w={'95px'} h={'34px'} bg={'black'} color={'white'}>
+            <Flex gap={2}>
+              <Box>{t('common:Save')}</Box>
               <MyIcon
                 name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
                 w={['14px', '16px']}
               />
-            }
-          >
-            <Box>{t('common:Save')}</Box>
+            </Flex>
           </Button>
         }
       >
@@ -70,7 +68,7 @@ const SaveButton = ({
               gap={2}
               p={1.5}
               rounded={'4px'}
-              _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+              _hover={{ color: 'myGray.900', bg: 'rgba(17, 24, 36, 0.05)' }}
               cursor={'pointer'}
               isLoading={isLoading}
               onClick={async () => {
@@ -91,7 +89,7 @@ const SaveButton = ({
             <HStack
               p={1.5}
               rounded={'4px'}
-              _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+              _hover={{ color: 'myGray.900', bg: 'rgba(17, 24, 36, 0.05)' }}
               cursor={'pointer'}
               onClick={() => {
                 const canOpen = !checkData || checkData();
