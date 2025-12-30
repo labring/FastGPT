@@ -18,6 +18,7 @@ import {
   DiscountCouponTypeEnum
 } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import { formatActivityExpirationTime } from './utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -39,6 +40,7 @@ const Standard = ({
   onPaySuccess?: () => void;
 }) => {
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
 
   const packagePayTextMap = {
     [PackageChangeStatusEnum.buy]: t('common:pay.package_tip.buy'),
@@ -46,9 +48,15 @@ const Standard = ({
     [PackageChangeStatusEnum.upgrade]: t('common:pay.package_tip.upgrade')
   };
 
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecom;
+
+  // alert(`isWecomTeam: ${JSON.stringify(Object.keys(userInfo?.team))}`);
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
+  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
+    isWecomTeam ? SubModeEnum.year : SubModeEnum.month
+  );
   const hasActivityExpiration =
     !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
@@ -127,6 +135,12 @@ const Standard = ({
   /* Get pay code */
   const { runAsync: onPay, loading: isLoading } = useRequest2(postCreatePayBill, {
     onSuccess(res) {
+      // For WeChat Work payment, open payment URL in new tab
+      if (res.payUrl) {
+        window.open(res.payUrl, '_blank');
+        return;
+      }
+      // For other payment methods, show QR code modal
       setQRPayData(res);
     }
   });
@@ -139,44 +153,46 @@ const Standard = ({
   return (
     <>
       <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-        <Flex>
-          <Box>
-            <Box
-              textAlign={'right'}
-              color="#DC7E03"
-              fontWeight="500"
-              fontStyle="italic"
-              fontFamily={'JiangChengXieHei'}
-              fontSize={'14px'}
-              lineHeight={'20px'}
-              letterSpacing={'0.1px'}
-              textTransform={'lowercase'}
-              mb={2}
-              mr={'-2'}
-            >
-              {t('common:pay_year_tip')}
+        {!isWecomTeam && (
+          <Flex>
+            <Box>
+              <Box
+                textAlign={'right'}
+                color="#DC7E03"
+                fontWeight="500"
+                fontStyle="italic"
+                fontFamily={'JiangChengXieHei'}
+                fontSize={'14px'}
+                lineHeight={'20px'}
+                letterSpacing={'0.1px'}
+                textTransform={'lowercase'}
+                mb={2}
+                mr={'-2'}
+              >
+                {t('common:pay_year_tip')}
+              </Box>
+              <RowTabs
+                list={[
+                  {
+                    label: t('common:support.wallet.subscription.mode.Month'),
+                    value: SubModeEnum.month
+                  },
+                  {
+                    label: (
+                      <Box whiteSpace={'nowrap'}>
+                        {t('common:support.wallet.subscription.mode.Year')}
+                      </Box>
+                    ),
+                    value: SubModeEnum.year
+                  }
+                ]}
+                value={selectSubMode}
+                onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
+              />
             </Box>
-            <RowTabs
-              list={[
-                {
-                  label: t('common:support.wallet.subscription.mode.Month'),
-                  value: SubModeEnum.month
-                },
-                {
-                  label: (
-                    <Box whiteSpace={'nowrap'}>
-                      {t('common:support.wallet.subscription.mode.Year')}
-                    </Box>
-                  ),
-                  value: SubModeEnum.year
-                }
-              ]}
-              value={selectSubMode}
-              onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
-            />
-          </Box>
-          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
-        </Flex>
+            <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
+          </Flex>
+        )}
 
         {/* card */}
         <Grid
@@ -305,7 +321,9 @@ const Standard = ({
                   color={'myGray.900'}
                   mt={hasActivityExpiration ? 2 : 0}
                 >
-                  {t(item.label as any)}
+                  {isWecomTeam && item.level === StandardSubLevelEnum.free
+                    ? t('common:support.wallet.subscription.standardSubLevel.trial')
+                    : t(item.label as any)}
                 </Box>
                 <Flex alignItems={'center'}>
                   {item.level === StandardSubLevelEnum.custom ? (
@@ -339,6 +357,11 @@ const Standard = ({
                             ? matchedCoupon.discount * item.price
                             : (matchedCoupon.discount * item.price).toFixed(1)
                           : item.price}
+                        {isWecomTeam && item.level !== StandardSubLevelEnum.free && (
+                          <Box fontSize={'md'} color={'myGray.600'}>
+                            {t('common:support.wallet.subscription.per_year')}
+                          </Box>
+                        )}
                         {item.level !== StandardSubLevelEnum.free && matchedCoupon && (
                           <Box
                             h={[8, '38px']}
@@ -355,7 +378,9 @@ const Standard = ({
                   )}
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
-                  {t(item.desc as any, { title: feConfigs?.systemTitle })}
+                  {isWecomTeam && item.level === StandardSubLevelEnum.free
+                    ? t('common:support.wallet.subscription.standardSubLevel.trial_desc')
+                    : t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
 
                 {/* Button */}
