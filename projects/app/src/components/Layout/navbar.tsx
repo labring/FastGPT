@@ -151,7 +151,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                 : {
                     bg: 'transparent',
                     _hover: {
-                      bg: isDashboardPage ? 'white' : 'rgba(255,255,255,0.9)'
+                      bg: isDashboardPage || isAppDetailPage ? 'white' : 'rgba(255,255,255,0.9)'
                     }
                   })}
               {...(item.link !== router.asPath
