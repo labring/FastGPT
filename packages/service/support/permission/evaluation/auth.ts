@@ -22,8 +22,13 @@ export const authEval = async ({
 }> => {
   const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
 
-  const evaluation = await MongoEvaluation.findById(evalId, 'tmbId appId').lean();
-
+  const evaluation = await MongoEvaluation.findOne(
+    {
+      _id: evalId,
+      teamId
+    },
+    'tmbId appId'
+  ).lean();
   if (!evaluation) {
     return Promise.reject('Evaluation not found');
   }
@@ -36,30 +41,24 @@ export const authEval = async ({
     };
   }
 
-  // App read per
-  if (per === ReadPermissionVal) {
-    try {
+  try {
+    // App read per
+    if (per === ReadPermissionVal) {
       await authAppByTmbId({
         tmbId,
         appId: evaluation.appId,
         per: ReadPermissionVal,
         isRoot
       });
-    } catch (error) {
-      // If app does not exist, allow access (app was deleted, but eval record remains)
-      if (error !== AppErrEnum.unExist) {
-        throw error;
-      }
-    }
-    return {
-      teamId,
-      tmbId,
-      evaluation
-    };
-  }
 
-  // Write per
-  try {
+      return {
+        teamId,
+        tmbId,
+        evaluation
+      };
+    }
+
+    // Write per
     await authAppByTmbId({
       tmbId,
       appId: evaluation.appId,
@@ -72,6 +71,7 @@ export const authEval = async ({
       throw error;
     }
   }
+
   return {
     teamId,
     tmbId,
