@@ -48,6 +48,8 @@ declare global {
       CHAT_LOG_SOURCE_ID_PREFIX?: string;
 
       NEXT_PUBLIC_BASE_URL: string;
+
+      MAX_HTML_TRANSFORM_CHARS: string;
     }
   }
 }

@@ -163,6 +163,8 @@ ${{vec.db}}
       CHAT_FILE_EXPIRE_TIME: 7
       # 服务器接收请求，最大大小，单位 MB
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # HTML 转换最大字符数
+      MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
   sandbox:

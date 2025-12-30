@@ -5,7 +5,7 @@ import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
-const MAX_HTML_SIZE = 1024 * 1024; // 1MB limit for HTML to markdown conversion
+const MAX_HTML_SIZE = Number(process.env.MAX_HTML_TRANSFORM_CHARS || 1000000);
 
 const processBase64Images = (htmlContent: string) => {
   // 优化后的正则:

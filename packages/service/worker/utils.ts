@@ -12,6 +12,7 @@ export enum WorkerNameEnum {
 
 export const getSafeEnv = () => {
   return {
+    MAX_HTML_TRANSFORM_CHARS: process.env.MAX_HTML_TRANSFORM_CHARS,
     LOG_LEVEL: process.env.LOG_LEVEL,
     STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
     NODE_ENV: process.env.NODE_ENV,
