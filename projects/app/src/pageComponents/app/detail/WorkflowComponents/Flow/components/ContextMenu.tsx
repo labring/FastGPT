@@ -226,7 +226,7 @@ const ContextMenu = () => {
     });
 
     setTimeout(() => {
-      fitView();
+      fitView({ padding: 0.3 });
     });
   }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
@@ -302,9 +302,9 @@ const ContextMenu = () => {
   );
 
   return (
-    <Box position="relative">
+    <Box>
       <Box
-        position="absolute"
+        position={'fixed'}
         top={`${menu.top - 6}px`}
         left={`${menu.left + 10}px`}
         width={0}
@@ -312,18 +312,17 @@ const ContextMenu = () => {
         borderLeft="6px solid transparent"
         borderRight="6px solid transparent"
         borderBottom="6px solid white"
-        zIndex={2}
+        zIndex={10}
         filter="drop-shadow(0px -1px 2px rgba(0, 0, 0, 0.1))"
       />
       <Box
-        position={'absolute'}
+        position={'fixed'}
         top={menu.top}
         left={menu.left}
         bg={'white'}
         w={'120px'}
         rounded={'md'}
         boxShadow={'0px 2px 4px 0px #A1A7B340'}
-        className="context-menu"
         color={'myGray.600'}
         p={1}
         zIndex={10}

@@ -828,7 +828,7 @@ export const useWorkflow = () => {
       e.preventDefault();
 
       setMenu({
-        top: e.clientY - 64,
+        top: e.clientY + 6,
         left: e.clientX - 12
       });
     },
