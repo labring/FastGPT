@@ -52,10 +52,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     unreadOnly
   } = ExportChatLogsBodySchema.parse(req.body);
 
-  if (!appId) {
-    throw new Error('缺少参数');
-  }
-
   const locale = getLocale(req);
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
 
