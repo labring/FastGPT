@@ -66,7 +66,7 @@ export const insertDatasetDataVector = async ({
   model,
   inputs,
   ...props
-}: InsertVectorControllerPropsType & {
+}: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: string[];
   model: EmbeddingModelItemType;
 }) => {
