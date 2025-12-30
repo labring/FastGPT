@@ -6,7 +6,7 @@
     "fastgpt-plugin": "v0.3.4",
     "aiproxy": "v0.3.2",
     "aiproxy-pg": "0.8.0-pg15",
-    "mongo": "5.0.18",
+    "mongo": "5.0.32",
     "redis": "7.2-alpine",
     "minio": "RELEASE.2025-09-07T16-13-09Z",
     "pg": "0.8.0-pg15",
