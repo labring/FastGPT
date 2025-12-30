@@ -93,10 +93,11 @@ export const UpdateBillResponseSchema = z
   .object({
     qrCode: z.string().optional().meta({ description: '支付二维码 URL' }),
     iframeCode: z.string().optional().meta({ description: '支付 iframe 代码' }),
-    markdown: z.string().optional().meta({ description: 'Markdown 格式的支付信息' })
+    markdown: z.string().optional().meta({ description: 'Markdown 格式的支付信息' }),
+    payUrl: z.string().optional().meta({ description: '支付跳转 URL（企微支付）' })
   })
-  .refine((data) => data.qrCode || data.iframeCode || data.markdown, {
-    message: 'At least one of qrCode, iframeCode, or markdown must be provided'
+  .refine((data) => data.qrCode || data.iframeCode || data.markdown || data.payUrl, {
+    message: 'At least one of qrCode, iframeCode, markdown, or payUrl must be provided'
   });
 export type UpdateBillResponseType = z.infer<typeof UpdateBillResponseSchema>;
 

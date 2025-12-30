@@ -69,15 +69,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             }
           ]
         : []),
-      ...(feConfigs?.oauth?.wecom
-        ? [
-            {
-              label: t('common:support.user.login.Wecom'),
-              provider: OAuthEnum.wecom,
-              icon: 'common/wecom'
-            }
-          ]
-        : []),
       ...(pageType !== LoginPageTypeEnum.passwordLogin
         ? [
             {
@@ -183,7 +174,9 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     // sso auto login
     if (sso && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) onClickOauth(sso);
     if (feConfigs.oauth?.wecom && isWecomWorkTerminal) {
-      onClickOauth(oAuthList.find((item) => item.provider === OAuthEnum.wecom)!);
+      onClickOauth({
+        provider: OAuthEnum.wecom
+      } as any);
     }
   }, [
     rootLogin,

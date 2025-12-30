@@ -38,7 +38,7 @@ import {
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -53,11 +53,12 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
+const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { userInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isSyncMode = feConfigs?.register_method?.includes('sync');
 
@@ -92,6 +93,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     isOpen: isOpenTeamTagsAsync,
     onOpen: onOpenTeamTagsAsync,
     onClose: onCloseTeamTagsAsync
+  } = useDisclosure();
+
+  const isWecomTeam = useMemo(() => {
+    return !!userInfo?.team?.isWecom;
+  }, [userInfo?.team?.isWecom]);
+
+  const {
+    isOpen: isOpenTransferModal,
+    onOpen: onOpenTransferModal,
+    onClose: onCloseTransferModal
   } = useDisclosure();
 
   // member action
@@ -223,6 +234,17 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               onClick={onOpenInvite}
             >
               {t('account_team:user_team_invite_member')}
+            </Button>
+          )}
+          {userInfo?.team.permission.isOwner && !isSyncMode && isWecomTeam && (
+            <Button
+              variant={'whitePrimary'}
+              size="md"
+              borderRadius={'md'}
+              ml={3}
+              onClick={onOpenTransferModal}
+            >
+              {t('account_team:transfer_team_ownership')}
             </Button>
           )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
@@ -382,6 +404,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
+      {isOpenTransferModal && (
+        <TransferOwnershipModal
+          onClose={onCloseTransferModal}
+          onSuccess={() => {
+            onCloseTransferModal();
+            initUserInfo();
+            refetchMemberList();
+          }}
+        />
+      )}
     </>
   );
 }

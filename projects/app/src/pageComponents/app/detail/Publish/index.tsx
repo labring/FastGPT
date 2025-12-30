@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { AlertTitle, Box, Flex } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -47,7 +47,7 @@ const OutLink = () => {
       isProFn: false
     },
     ...(feConfigs?.show_publish_feishu !== false &&
-    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'core/app/publish/lark',
@@ -59,7 +59,7 @@ const OutLink = () => {
         ]
       : []),
     ...(feConfigs?.show_publish_dingtalk !== false &&
-    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'common/dingtalkFill',
@@ -82,7 +82,7 @@ const OutLink = () => {
         ]
       : []),
     ...(feConfigs?.show_publish_offiaccount !== false &&
-    userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
           {
             icon: 'core/app/publish/offiaccount',
