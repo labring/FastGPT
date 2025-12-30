@@ -17,7 +17,12 @@ const Avatar = ({
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>
-      <MyIcon name={src as any} w={w} fill={fill} borderRadius={props.borderRadius} />
+      <MyIcon
+        name={src as any}
+        w={w}
+        borderRadius={props.borderRadius}
+        {...(fill ? { fill } : {})}
+      />
     </Box>
   ) : (
     <MyImage

@@ -216,6 +216,7 @@ const Header = () => {
               </Button>
               {!showHistoryModal && (
                 <SaveButton
+                  colorSchema={'black'}
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => !!flowData2StoreDataAndCheck()}

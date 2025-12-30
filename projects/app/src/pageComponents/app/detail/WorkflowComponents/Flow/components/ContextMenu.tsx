@@ -67,17 +67,42 @@ const ContextMenu = () => {
       const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
       const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
 
+      // Group nodes by rank (horizontal position in LR layout)
+      const nodesByRank: Map<
+        number,
+        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+      > = new Map();
+
       nodes.forEach((node) => {
         if (!connectedNodeIds.has(node.id)) {
           return;
         }
 
         const nodeWithPosition = dagreGraph.node(node.id);
+        const rank = Math.round(nodeWithPosition.x); // Group by x coordinate (same column)
 
-        node.position = {
-          x: nodeWithPosition.x - node.width! / 2 + offsetX,
-          y: nodeWithPosition.y - node.height! / 2 + offsetY
-        };
+        if (!nodesByRank.has(rank)) {
+          nodesByRank.set(rank, []);
+        }
+        nodesByRank.get(rank)!.push({ node, dagreNode: nodeWithPosition });
+      });
+
+      // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      nodesByRank.forEach((nodesInRank) => {
+        // Find the minimum left position (for left alignment)
+        let minLeft = Infinity;
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          const left = dagreNode.x - node.width! / 2;
+          minLeft = Math.min(minLeft, left);
+        });
+
+        // Apply positions: same left for vertical alignment, center Y for horizontal alignment
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          node.position = {
+            x: minLeft + offsetX, // Left-aligned for vertical stacking
+            y: dagreNode.y - node.height! / 2 + offsetY // Center-aligned for horizontal placement
+          };
+        });
       });
     };
     const updateParentNodesPosition = ({
@@ -124,29 +149,56 @@ const ContextMenu = () => {
       const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
       const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
 
+      // Group nodes by rank (horizontal position in LR layout)
+      const nodesByRank: Map<
+        number,
+        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+      > = new Map();
+
       nodes.forEach((node) => {
         if (!connectedNodeIds.has(node.id) || childNodeIdsSet.has(node.data.nodeId)) {
           return;
         }
 
         const nodeWithPosition = dagreGraph.node(node.id);
-        const targetX = nodeWithPosition.x - node.width! / 2 + offsetX;
-        const targetY = nodeWithPosition.y - node.height! / 2 + offsetY;
-        const diffX = targetX - node.position.x;
-        const diffY = targetY - node.position.y;
-        node.position = {
-          x: targetX,
-          y: targetY
-        };
+        const rank = Math.round(nodeWithPosition.x); // Group by x coordinate (same column)
 
-        // Update child nodes position
-        nodes.forEach((childNode) => {
-          if (childNode.data.parentNodeId === node.data.nodeId) {
-            childNode.position = {
-              x: childNode.position.x + diffX,
-              y: childNode.position.y + diffY
-            };
-          }
+        if (!nodesByRank.has(rank)) {
+          nodesByRank.set(rank, []);
+        }
+        nodesByRank.get(rank)!.push({ node, dagreNode: nodeWithPosition });
+      });
+
+      // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      nodesByRank.forEach((nodesInRank) => {
+        // Find the minimum left position (for left alignment)
+        let minLeft = Infinity;
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          const left = dagreNode.x - node.width! / 2;
+          minLeft = Math.min(minLeft, left);
+        });
+
+        // Apply positions: same left for vertical alignment, center Y for horizontal alignment
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          const targetX = minLeft + offsetX; // Left-aligned for vertical stacking
+          const targetY = dagreNode.y - node.height! / 2 + offsetY; // Center-aligned for horizontal placement
+          const diffX = targetX - node.position.x;
+          const diffY = targetY - node.position.y;
+
+          node.position = {
+            x: targetX,
+            y: targetY
+          };
+
+          // Update child nodes position
+          nodes.forEach((childNode) => {
+            if (childNode.data.parentNodeId === node.data.nodeId) {
+              childNode.position = {
+                x: childNode.position.x + diffX,
+                y: childNode.position.y + diffY
+              };
+            }
+          });
         });
       });
     };
@@ -231,9 +283,14 @@ const ContextMenu = () => {
   }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
+    // Compensate for menu position offset (set in onPaneContextMenu)
+    // menu.left = e.clientX - 12, menu.top = e.clientY + 6
+    const mouseX = (menu?.left ?? 0) + 12;
+    const mouseY = (menu?.top ?? 0) - 6;
+
     const newNode = nodeTemplate2FlowNode({
       template: CommentNode,
-      position: screenToFlowPosition({ x: menu?.left ?? 0, y: (menu?.top ?? 0) + 100 }),
+      position: screenToFlowPosition({ x: mouseX, y: mouseY }),
       t
     });
 
