@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -27,24 +28,33 @@ const StandardPlanContentList = ({
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
-    const plan = subPlans?.standard?.[level];
+    const isWecomTeam = !!userInfo?.team?.isWecom;
+
+    // For wecom teams, free plan should use basic plan config
+    const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
+    const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
+    // For wecom free plan (trial), limit points to 500 and dataset size to 1000
+    const isWecomFreePlan = isWecomTeam && level === 'free';
+
     return {
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-      totalPoints:
-        standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
       annualBonusPoints:
         mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+      totalPoints: isWecomFreePlan
+        ? 500
+        : standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
       maxDatasetAmount: standplan?.maxDataset ?? plan.maxDatasetAmount,
-      maxDatasetSize: standplan?.maxDatasetSize ?? plan.maxDatasetSize,
+      maxDatasetSize: isWecomFreePlan ? 1000 : standplan?.maxDatasetSize ?? plan.maxDatasetSize,
       websiteSyncPerDataset: standplan?.websiteSyncPerDataset ?? plan.websiteSyncPerDataset,
       chatHistoryStoreDuration:
         standplan?.chatHistoryStoreDuration ?? plan.chatHistoryStoreDuration,
@@ -57,6 +67,7 @@ const StandardPlanContentList = ({
     subPlans?.standard,
     level,
     mode,
+    userInfo?.team?.isWecom,
     standplan?.totalPoints,
     standplan?.annualBonusPoints,
     standplan?.requestsPerMinute,
