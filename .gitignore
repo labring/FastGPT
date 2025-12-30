@@ -50,6 +50,12 @@ coverage
 mongo/
 pg/
 fastgpt-minio/
+redis/
+sandbox/
+
+# 忽略特定目录
+fastgpt-admin/
+fastgpt-backend/
 
 # Docker 相关
 docker-compose.override.yml
@@ -69,3 +75,90 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+# ================== 运行时数据库、备份与大文件（追加） ==================
+# Backups and archives
+/backups/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Database dumps and exports
+*.dump
+*.sql
+*.bak
+*.mongodump
+*.bson
+*.bson.gz
+*.rdb
+*.aof
+*.ndjson
+*.export.json
+*.backup.json
+*_backup.json
+
+# MongoDB runtime/engine files
+**/mongo/
+**/mongodb/
+projects/**/mongo/
+WiredTiger*
+*.wt
+diagnostic.data/
+mongod.lock
+storage.bson
+
+# PostgreSQL runtime files
+**/pg/
+**/postgres/
+fastgpt/aiproxy_pg/
+**/pg/data/
+postmaster.pid
+postmaster.opts
+pg_wal/
+pg_xlog/
+pg_multixact/
+pg_stat/
+pg_subtrans/
+pg_xact/
+
+# Redis runtime
+**/redis/
+redis/data/
+redis/appendonlydir/
+appendonlydir/
+appendonly.aof
+dump.rdb
+
+# MinIO runtime/system
+**/.minio.sys/
+fastgpt-*/.minio.sys/
+
+# Large binary blobs and caches
+*.iso
+*.exe
+*.bin
+*.dat
+*.cache
+
+# Generated/temporary JSON and metadata (ignore generated/exported JSON but not source config files)
+# Keep repository config files like package.json, tsconfig.json, config.json unless they are local copies
+*.local.json
+*.env.json
+*.metadata.json
+*._metadata.json
+*.storage.json
+*_export.json
+
+# Editor / OS files
+*.swp
+Thumbs.db
+ehthumbs.db
+
+# Ensure important configs remain tracked — do NOT ignore these:
+# package.json
+# tsconfig.json
+# config.json
+
+**/node_modules/
+/.next/
