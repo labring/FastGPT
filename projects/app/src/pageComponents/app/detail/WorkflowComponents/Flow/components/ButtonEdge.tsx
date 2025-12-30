@@ -1,5 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { BezierEdge, getBezierPath, EdgeLabelRenderer, type EdgeProps } from 'reactflow';
+import {
+  SmoothStepEdge,
+  getSmoothStepPath,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  type ConnectionLineComponentProps
+} from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
@@ -11,6 +17,31 @@ import {
 } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+
+export const CustomConnectionLine = ({
+  fromX,
+  fromY,
+  fromPosition,
+  toX,
+  toY,
+  toPosition
+}: ConnectionLineComponentProps) => {
+  const [path] = getSmoothStepPath({
+    sourceX: fromX,
+    sourceY: fromY,
+    sourcePosition: fromPosition,
+    targetX: toX,
+    targetY: toY,
+    targetPosition: toPosition,
+    borderRadius: 60
+  });
+
+  return (
+    <g>
+      <path d={path} fill="none" stroke="#487FFF" strokeWidth={3} />
+    </g>
+  );
+};
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
@@ -81,13 +112,14 @@ const ButtonEdge = (props: EdgeProps) => {
     }
   );
 
-  const [, labelX, labelY] = getBezierPath({
+  const [, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
-    targetPosition
+    targetPosition,
+    borderRadius: 20
   });
 
   const isToolEdge = sourceHandleId === NodeOutputKeyEnum.selectedTools;
@@ -96,7 +128,7 @@ const ButtonEdge = (props: EdgeProps) => {
   const { newTargetX, newTargetY } = useMemo(() => {
     if (targetPosition === 'left') {
       return {
-        newTargetX: targetX - 3,
+        newTargetX: targetX - 7,
         newTargetY: targetY
       };
     }
@@ -127,7 +159,7 @@ const ButtonEdge = (props: EdgeProps) => {
   const memoEdgeLabel = useMemo(() => {
     const arrowTransform = (() => {
       if (targetPosition === 'left') {
-        return `translate(-85%, -47%) translate(${newTargetX}px,${newTargetY}px) rotate(0deg)`;
+        return `translate(-89%, -49%) translate(${newTargetX}px,${newTargetY}px) rotate(0deg)`;
       }
       if (targetPosition === 'right') {
         return `translate(-10%, -50%) translate(${newTargetX}px,${newTargetY}px) rotate(-180deg)`;
@@ -167,8 +199,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '14px' : '12px'}
-              h={highlightEdge ? '14px' : '12px'}
+              w={highlightEdge ? '18px' : '16px'}
+              h={highlightEdge ? '18px' : '16px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
@@ -221,10 +253,13 @@ const ButtonEdge = (props: EdgeProps) => {
     })();
 
     return (
-      <BezierEdge
+      <SmoothStepEdge
         {...props}
         targetX={newTargetX}
         targetY={newTargetY}
+        pathOptions={{
+          borderRadius: 50
+        }}
         style={{
           ...edgeStyle,
           stroke: edgeColor,

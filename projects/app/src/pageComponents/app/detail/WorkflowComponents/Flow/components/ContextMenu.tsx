@@ -251,13 +251,19 @@ const ContextMenu = () => {
 
   const onFold = useCallback(() => {
     setNodes((state) => {
-      return state.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          isFolded: !allNodeFolded
+      return state.map((node) => {
+        // Skip comment nodes
+        if (node.data.flowNodeType === FlowNodeTypeEnum.comment) {
+          return node;
         }
-      }));
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isFolded: !allNodeFolded
+          }
+        };
+      });
     });
   }, [allNodeFolded, setNodes]);
 

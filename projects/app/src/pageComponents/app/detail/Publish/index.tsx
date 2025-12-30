@@ -106,7 +106,7 @@ const OutLink = () => {
       h={'100%'}
       flexDirection={'column'}
     >
-      <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
+      <Box mx={[4, 8]} py={[4, 6]} borderBottom={'1px solid'} borderColor={'myGray.150'}>
         <MyRadio
           gridTemplateColumns={[
             'repeat(1,1fr)',
@@ -132,15 +132,7 @@ const OutLink = () => {
         />
       </Box>
 
-      <Flex
-        flexDirection={'column'}
-        {...cardStyles}
-        boxShadow={3.5}
-        mt={4}
-        px={[4, 8]}
-        py={[4, 6]}
-        flex={1}
-      >
+      <Flex flexDirection={'column'} mt={2} px={[4, 8]} py={[4, 6]} flex={1}>
         {linkType === PublishChannelEnum.share && (
           <Link appId={appId} type={PublishChannelEnum.share} />
         )}

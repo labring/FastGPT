@@ -9,12 +9,14 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.pluginOutput,
   showSourceHandle: false,
   showTargetHandle: true,
-  unique: true,
-  forbidDelete: true,
-  avatar: 'core/workflow/template/pluginOutput',
+  avatar: 'core/workflow/systemNode/pluginOutput',
+  avatarLinear: 'core/workflow/systemNode/pluginOutputLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:template.plugin_output'),
   intro: i18nT('workflow:intro_custom_plugin_output'),
   showStatus: false,
+  unique: true,
+  forbidDelete: true,
   inputs: [],
   outputs: []
 };
