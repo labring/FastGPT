@@ -174,3 +174,9 @@ vi.mock('@fastgpt/service/common/s3', () => ({
   }),
   initS3MQWorker: vi.fn().mockResolvedValue(undefined)
 }));
+
+// Mock S3 MQ (Message Queue) operations
+vi.mock('@fastgpt/service/common/s3/mq', () => ({
+  prefixDel: vi.fn().mockResolvedValue(undefined),
+  addDeleteJob: vi.fn().mockResolvedValue(undefined)
+}));
