@@ -1391,7 +1391,8 @@ export const generateAndExecuteSQL = async ({
       username: dbConfig.user,
       password: dbConfig.password,
       db_name: dbConfig.database,
-      ns_name: dbConfig?.schema
+      ns_name: dbConfig?.schema,
+      encrypt: dbConfig?.encrypt
     } as DativeSourceConfigType,
     generate_sql_llm,
     evaluate_sql_llm,

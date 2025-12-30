@@ -79,6 +79,9 @@ export type DatabaseConfig = {
   poolSize?: number;
   // PostgreSQL specific
   schema?: string;
+  // MSSQL specific
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
 };
 
 // Database table schema types
