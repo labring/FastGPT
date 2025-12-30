@@ -197,11 +197,11 @@ const FlowController = React.memo(function FlowController() {
           {/* fit view */}
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
-              onClick={() => fitView()}
+              onClick={() => fitView({ padding: 0.3 })}
               style={buttonStyle}
               className={`custom-workflow-fix_view ${styles.customControlButton}`}
             >
-              <MyIcon name={'core/modules/fixview'} />
+              <MyIcon name={'core/modules/fitView'} />
             </ControlButton>
           </MyTooltip>
         </Panel>

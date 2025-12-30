@@ -135,8 +135,7 @@ const NodeCard = (props: Props) => {
     setTimeout(() => {
       fitView({
         nodes: [{ id: nodeId }],
-        padding: 0.3,
-        duration: 300
+        padding: 0.3
       });
     }, 100);
   }, [onChangeNode, setPresentationMode, fitView, nodeId]);

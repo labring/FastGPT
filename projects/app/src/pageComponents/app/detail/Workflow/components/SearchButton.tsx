@@ -64,7 +64,7 @@ const SearchButton = (props: ButtonProps) => {
       const searchedNode = searchResult[searchIndex] ?? searchResult[0];
 
       if (searchedNode) {
-        fitView({ nodes: [searchedNode], padding: 0.4 });
+        fitView({ nodes: [searchedNode], padding: 0.6 });
       }
 
       return nodes.map((node) => ({

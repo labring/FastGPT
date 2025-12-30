@@ -196,18 +196,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         // View move to the node that failed
         fitView({
           nodes: nodes.filter((node) => checkResults.includes(node.data.nodeId)),
-          padding: 0.3,
-          duration: 300
+          padding: 0.3
         });
-
-        setTimeout(() => {
-          const viewport = getViewport();
-          setViewport({
-            x: viewport.x,
-            y: viewport.y + 36,
-            zoom: viewport.zoom
-          });
-        }, 300);
 
         toast({
           status: 'warning',
