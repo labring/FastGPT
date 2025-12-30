@@ -435,6 +435,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/toolkitActive.svg'),
   'core/workflow/template/toolkitInactive': () =>
     import('./icons/core/workflow/template/toolkitInactive.svg'),
+  'core/workflow/template/variable': () => import('./icons/core/workflow/template/variable.svg'),
   'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
   'core/workflow/touchTable': () => import('./icons/core/workflow/touchTable.svg'),
   'core/workflow/undo': () => import('./icons/core/workflow/undo.svg'),

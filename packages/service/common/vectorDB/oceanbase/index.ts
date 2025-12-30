@@ -2,19 +2,13 @@
 import { DatasetVectorTableName } from '../constants';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
-import {
-  type DelDatasetVectorCtrlProps,
-  type EmbeddingRecallCtrlProps,
-  type EmbeddingRecallResponse,
-  type InsertVectorControllerProps
-} from '../controller.d';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
 
 export class ObVectorCtrl implements VectorControllerType {
   constructor() {}
-  init = async () => {
+  init: VectorControllerType['init'] = async () => {
     try {
       await ObClient.query(`
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
@@ -42,7 +36,7 @@ export class ObVectorCtrl implements VectorControllerType {
     }
   };
 
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+  insert: VectorControllerType['insert'] = async (props) => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
     const values = vectors.map((vector) => [
@@ -64,7 +58,7 @@ export class ObVectorCtrl implements VectorControllerType {
       insertIds
     };
   };
-  delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
+  delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
@@ -99,7 +93,7 @@ export class ObVectorCtrl implements VectorControllerType {
       where: [where]
     });
   };
-  embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
+  embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
 
@@ -159,7 +153,7 @@ export class ObVectorCtrl implements VectorControllerType {
       }))
     };
   };
-  getVectorDataByTime = async (start: Date, end: Date) => {
+  getVectorDataByTime: VectorControllerType['getVectorDataByTime'] = async (start, end) => {
     const rows = await ObClient.query<
       ({
         id: string;
@@ -182,11 +176,7 @@ export class ObVectorCtrl implements VectorControllerType {
     }));
   };
 
-  getVectorCount = async (props: {
-    teamId?: string;
-    datasetId?: string;
-    collectionId?: string;
-  }) => {
+  getVectorCount: VectorControllerType['getVectorCount'] = async (props) => {
     const { teamId, datasetId, collectionId } = props;
 
     // Build where conditions dynamically
