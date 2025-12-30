@@ -150,6 +150,9 @@ export type SystemEnvType = {
   // Correction search similarity threshold
   correctionSimilarityThreshold?: number;
 
+  // FAQ search similarity threshold
+  faqSimilarityThreshold?: number;
+
   // Hype index parameters
   hypeParams?: HypeParamsType;
 };

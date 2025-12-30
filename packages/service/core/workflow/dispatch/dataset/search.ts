@@ -174,116 +174,6 @@ export async function dispatchDatasetSearch(
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);
 
-    // 初始化校正数据搜索结果
-    let correctionResult = null;
-
-    addLog.debug('userChatInput', {
-      userChatInput
-    });
-    if (isAssistant && userChatInput && vectorModel) {
-      correctionResult = await searchCorrectionData({
-        appId,
-        userChatInput, // 使用传入的 userChatInput（已经是经过 queryExtensionForAssistant 处理过的标准化查询）
-        teamId,
-        vectorModel
-      });
-
-      // 如果命中高相似度校正数据，提前返回
-      if (
-        correctionResult &&
-        correctionResult.similarity > (global.systemEnv?.correctionSimilarityThreshold ?? 0.95) &&
-        correctionResult.correctedAnswer
-      ) {
-        // TypeScript 类型保护，确保 correctionResult 不为 null 且 correctedAnswer 存在
-        const result: NonNullable<SearchCorrectionDataResult> = correctionResult;
-        addLog.info('Correction Search - Early return with high similarity match', {
-          appId,
-          similarity: result.similarity,
-          correctionId: result.correctionId
-        });
-
-        // 创建校正数据块
-        const correctionChunk: SearchDataResponseItemType = {
-          id: `correction_quote_${result.correctionId}`,
-          updateTime: new Date(),
-          q: result.question,
-          a: result.correctedAnswer,
-          chunkIndex: 0,
-          datasetId: appId,
-          collectionId: `correction_quote_${result.correctionId}`,
-          sourceName: 'Correction Data',
-          sourceId: result.correctionId,
-          score: [
-            {
-              type: SearchScoreTypeEnum.embedding,
-              value: result.similarity,
-              index: 0
-            }
-          ]
-        };
-
-        // 计算向量生成的计费（使用实际的token消耗）
-        const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
-          formatModelChars2Points({
-            model: vectorModel.model,
-            inputTokens: result.embeddingTokens, // 使用实际的向量生成token数量
-            modelType: ModelTypeEnum.embedding
-          });
-
-        // 返回与原有 dispatchDatasetSearch 兼容的响应格式
-        const responseData: DispatchNodeResponseType & { totalPoints: number } = {
-          totalPoints: embeddingTotalPoints,
-          query: userChatInput,
-          embeddingTokens: result.embeddingTokens,
-          similarity: result.similarity,
-          limit,
-          searchMode,
-          searchUsingReRank: false,
-          quoteList: [correctionChunk],
-          // Store correction search result
-          correctSearchResult: [
-            {
-              correctionId: result.correctionId,
-              question: result.question,
-              correctedAnswer: result.correctedAnswer,
-              similarity: result.similarity
-            }
-          ]
-          // 校正数据信息通过全局变量传递
-        };
-
-        return {
-          data: {
-            quoteQA: [correctionChunk]
-          },
-          [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
-          [DispatchNodeResponseKeyEnum.newVariables]: {
-            // 设置全局变量 correct_mapping_answer
-            hTRJXdb1: result.correctedAnswer
-          },
-          nodeDispatchUsages: [
-            {
-              totalPoints: embeddingTotalPoints,
-              moduleName: node.name,
-              model: embeddingModelName,
-              inputTokens: result.embeddingTokens
-            }
-          ],
-          [DispatchNodeResponseKeyEnum.toolResponses]: {
-            prompt: getDatasetSearchToolResponsePrompt(),
-            cites: [
-              {
-                id: correctionChunk.id,
-                sourceName: correctionChunk.sourceName,
-                updateTime: correctionChunk.updateTime,
-                content: `${correctionChunk.q}\n${correctionChunk.a}`.trim()
-              }
-            ]
-          }
-        };
-      }
-    }
-
     // Check dataset types and separate them
     const datasetDetails = await Promise.all(
       datasetIds.map((id) => MongoDataset.findById(id, 'type databaseConfig').lean())
@@ -312,6 +202,10 @@ export async function dispatchDatasetSearch(
     let queryExtensionResult = undefined;
     let deepSearchResult = undefined;
     let sqlResult: SqlResultWithDatasetId[] = [];
+    let correctionData:
+      | { correctionId: string; correctedAnswer: string; question: string; similarity: number }
+      | undefined = undefined;
+    let faqAnswer: string | undefined = undefined; // FAQ 匹配成功时的答案
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -480,7 +374,8 @@ export async function dispatchDatasetSearch(
             datasetSearchExtensionModel,
             datasetSearchExtensionBg,
             isAssistant,
-            datasetIds: datasetIds
+            datasetIds: datasetIds,
+            appId // 传递 appId 用于校正数据检索
           });
     }
 
@@ -503,6 +398,12 @@ export async function dispatchDatasetSearch(
       searchUsingReRank = commonResult.usingReRank;
       queryExtensionResult = commonResult.queryExtensionResult;
       deepSearchResult = commonResult.deepSearchResult;
+      // 提取校正数据信息
+      correctionData = commonResult.correctionData;
+      // 提取 FAQ 数据信息
+      if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
+        faqAnswer = commonResult.searchRes[0].a;
+      }
     }
 
     // count bill results
@@ -613,8 +514,7 @@ export async function dispatchDatasetSearch(
         totalPoints: 0
       };
     })();
-    // 校正数据处理：只有高相似度（> 配置阈值）才会提前返回，低相似度的不做处理
-    // 这里无需额外处理，校正数据已经在搜索阶段处理完毕
+    // 校正数据处理已移到 defaultSearchDatasetData 中，在问题优化之后执行
 
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
 
@@ -650,18 +550,17 @@ export async function dispatchDatasetSearch(
       quoteList: searchRes,
       queryExtensionResult,
       deepSearchResult,
-      // Correction search result (if exists)
-      ...(correctionResult && {
+      // 校正数据搜索结果
+      ...(correctionData && {
         correctSearchResult: [
           {
-            correctionId: correctionResult.correctionId,
-            question: correctionResult.question,
-            correctedAnswer: correctionResult.correctedAnswer,
-            similarity: correctionResult.similarity
+            correctionId: correctionData.correctionId,
+            question: correctionData.question,
+            correctedAnswer: correctionData.correctedAnswer,
+            similarity: correctionData.similarity
           }
         ]
       })
-      // 注意：校正数据信息只在高相似度提前返回时设置，低相似度不添加额外信息
     };
 
     return {
@@ -669,6 +568,14 @@ export async function dispatchDatasetSearch(
         quoteQA: searchRes
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
+      ...((correctionData || faqAnswer) && {
+        [DispatchNodeResponseKeyEnum.newVariables]: {
+          // 设置全局变量 correct_mapping_answer
+          ...(correctionData && { hTRJXdb1: correctionData.correctedAnswer }),
+          // 设置全局变量 faqAnswer
+          ...(faqAnswer && { udQRlgfO: faqAnswer })
+        }
+      }),
       nodeDispatchUsages,
       [DispatchNodeResponseKeyEnum.toolResponses]: {
         prompt: getDatasetSearchToolResponsePrompt(),
@@ -689,7 +596,7 @@ export async function dispatchDatasetSearch(
  * 搜索校正数据
  * 从 chat_corrections 表中查找与用户输入相似度高的历史校正数据
  */
-async function searchCorrectionData({
+export async function searchCorrectionData({
   appId,
   userChatInput,
   teamId,
