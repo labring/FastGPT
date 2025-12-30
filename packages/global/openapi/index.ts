@@ -31,6 +31,10 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.chatHistory, TagsMap.chatPage, TagsMap.chatFeedback, TagsMap.chatSetting]
     },
     {
+      name: '知识库',
+      tags: [TagsMap.datasetCollection]
+    },
+    {
       name: '插件系统',
       tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },

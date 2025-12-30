@@ -129,38 +129,18 @@ const DataCard = () => {
     }
   });
 
-  const [isExportChunksLoading, setIsExportChunksLoading] = useState(false);
-  const { runAsync: onExportAllChunks } = useRequest2(
-    async (collectionId: string | undefined) => {
-      if (!collectionId) {
-        toast({
-          title: t('dataset:collection.not_found'),
-          status: 'error'
-        });
-        return;
-      }
-
-      try {
-        setIsExportChunksLoading(true);
-        await downloadFetch({
-          url: '/api/core/dataset/collection/export',
-          filename: `${collection?.name}.csv`,
-          body: {
-            collectionId
-          }
-        });
-      } catch (error) {
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
-      } finally {
-        setIsExportChunksLoading(false);
-      }
+  const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest2(
+    async (collectionId: string) => {
+      await downloadFetch({
+        url: '/api/core/dataset/collection/export',
+        filename: `${collection?.name}.csv`,
+        body: {
+          collectionId
+        }
+      });
     },
     {
-      manual: true,
-      throttleWait: 1000
+      manual: true
     }
   );
 
@@ -198,7 +178,7 @@ const DataCard = () => {
             isDisabled={!collection}
             isLoading={isExportChunksLoading}
             onClick={() => {
-              onExportAllChunks(collection?._id);
+              onExportAllChunks(collection?._id!);
             }}
           >
             {t('dataset:collection.export_all_chunks')}

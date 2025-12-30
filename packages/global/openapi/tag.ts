@@ -11,8 +11,8 @@ export const TagsMap = {
   chatFeedback: '对话反馈',
 
   // Dataset
-  datasetCollection: '数据集合',
-  datasetData: '数据块',
+  datasetCollection: '集合',
+  datasetData: '数据',
 
   // Plugin
   pluginToolTag: '工具标签',

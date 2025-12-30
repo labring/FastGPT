@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -15,40 +14,33 @@ import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
+import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
-export type ExportCollectionBody = {
-  collectionId: string;
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  const parseBody = ExportCollectionBodySchema.parse(req.body);
+  const collectionId = parseBody.collectionId;
 
-  appId?: string;
-  chatId?: string;
-  chatItemDataId?: string;
-  chatTime: Date;
-} & OutLinkChatAuthProps;
-
-async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: NextApiResponse) {
   const {
-    collectionId,
-    appId,
-    chatId,
-    chatItemDataId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    collection,
+    teamId: userTeamId,
     chatTime
-  } = req.body;
-
-  const { collection, teamId: userTeamId } = await (async () => {
-    if (!appId || !chatId || !chatItemDataId) {
-      return authDatasetCollection({
+  } = await (async () => {
+    if (!('chatItemDataId' in parseBody)) {
+      const result = await authDatasetCollection({
         req,
         authToken: true,
         authApiKey: true,
-        collectionId: req.body.collectionId,
+        collectionId,
         per: ReadPermissionVal
       });
+      return {
+        ...result,
+        chatTime: undefined
+      };
     }
 
+    const { appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken, chatTime } =
+      parseBody;
     /*
       1. auth chat read permission
       2. auth collection quote in chat
@@ -75,7 +67,8 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
 
     return {
       ...authRes,
-      collection
+      collection,
+      chatTime
     };
   })();
 
@@ -109,7 +102,7 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
     readStream: cursor
   });
 
-  write(`\uFEFFindex,content`);
+  write(`\uFEFFq,a`);
 
   cursor.on('data', (doc) => {
     const sanitizedQ = replaceS3KeyToPreviewUrl(

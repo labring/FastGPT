@@ -1,24 +1,23 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
-import { ExportCollectionChunksBodySchema } from './api';
+import { ExportCollectionBodySchema } from './api';
 
-export const DatasetCollectionChunksPath: OpenAPIPath = {
-  '/core/dataset/collection/exportChunks': {
+export const DatasetCollectionPath: OpenAPIPath = {
+  '/core/dataset/collection/export': {
     post: {
-      summary: '导出并下载集合的所有数据块',
-      description: '导出并下载集合的所有数据块',
+      summary: '下载集合的所有数据块',
+      description: '下载集合的所有数据块',
       tags: [TagsMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
-            schema: ExportCollectionChunksBodySchema
+            schema: ExportCollectionBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '成功导出并下载集合的所有数据块内容',
-          content: null
+          description: '成功导出并下载集合的所有数据块内容'
         }
       }
     }
