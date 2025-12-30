@@ -172,14 +172,6 @@ export const readS3FileContentByBuffer = async ({
   };
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
-    console.log(
-      'global.systemEnv.customPdfParse?.textinAppId',
-      global.systemEnv.customPdfParse?.textinAppId
-    );
-    console.log(
-      'global.systemEnv.customPdfParse?.doc2xKey',
-      global.systemEnv.customPdfParse?.doc2xKey
-    );
     if (!customPdfParse) return systemParse();
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
