@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f4f4f4;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 后端API连接测试</h1>
+    <p>这个页面用于测试前端是否能连接到后端API</p>
+    
+    <div>
+        <button onclick="testFeedbackAPI()">测试反馈API</button>
+        <button onclick="testAnnouncementAPI()">测试公告API</button>
+        <button onclick="testBoth()">测试两个API</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <script>
+        const resultDiv = document.getElementById('result');
+        
+        function showResult(message, isError = false) {
+            resultDiv.textContent = message;
+            resultDiv.className = isError ? 'error' : 'success';
+        }
+        
+        async function testFeedbackAPI() {
+            showResult('正在测试反馈API...');
+            try {
+                const apiUrl = window.location.hostname === 'localhost' 
+                    ? 'http://localhost:8080/api/feedbacks/all'
+                    : 'http://10.14.53.120:8080/api/feedbacks/all';
+                console.log('开始请求反馈API...', apiUrl);
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('响应状态:', response.status);
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                showResult(
+                    `✅ 反馈API测试成功！\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应数据:\n${JSON.stringify(data, null, 2)}`
+                );
+            } catch (error) {
+                console.error('反馈API测试失败:', error);
+                showResult(
+                    `❌ 反馈API测试失败！\n\n` +
+                    `错误: ${error.message}\n\n` +
+                    `可能原因:\n` +
+                    `1. 后端服务未启动\n` +
+                    `2. 端口8080被其他程序占用\n` +
+                    `3. CORS跨域问题`,
+                    true
+                );
+            }
+        }
+        
+        async function testAnnouncementAPI() {
+            showResult('正在测试公告API...');
+            try {
+                console.log('开始请求公告API...');
+                const requestData = {
+                    adminUserId: 1,
+                    title: '浏览器测试公告',
+                    content: '这是从测试页面发送的公告',
+                    priority: 0
+                };
+                
+                const apiUrl = window.location.hostname === 'localhost'
+                    ? 'http://localhost:8080/api/announcements/create'
+                    : 'http://10.14.53.120:8080/api/announcements/create';
+                
+                console.log('请求数据:', requestData);
+                console.log('API地址:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('响应状态:', response.status);
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                showResult(
+                    `✅ 公告API测试成功！\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应数据:\n${JSON.stringify(data, null, 2)}`
+                );
+            } catch (error) {
+                console.error('公告API测试失败:', error);
+                showResult(
+                    `❌ 公告API测试失败！\n\n` +
+                    `错误: ${error.message}\n\n` +
+                    `可能原因:\n` +
+                    `1. 后端服务未启动\n` +
+                    `2. 端口8080被其他程序占用\n` +
+                    `3. CORS跨域问题`,
+                    true
+                );
+            }
+        }
+        
+        async function testBoth() {
+            await testFeedbackAPI();
+            setTimeout(testAnnouncementAPI, 2000);
+        }
+    </script>
+</body>
+</html>

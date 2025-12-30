@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.fastgptproject.mapper.LoginMapper">
+
+    <!-- 查询所有用户 -->
+    <select id="findAll" resultType="com.example.fastgptproject.pojo.Users">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users
+    </select>
+
+    <!-- 查询 role_id = 1 的用户 -->
+    <select id="findAllUsers" resultType="com.example.fastgptproject.pojo.Users">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users
+        WHERE role_id = 1
+    </select>
+
+</mapper>

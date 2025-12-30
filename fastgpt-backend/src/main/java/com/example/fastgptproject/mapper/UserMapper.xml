@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.fastgptproject.mapper.UserMapper">
+
+    <!-- 用户结果映射 -->
+    <resultMap id="UserResultMap" type="com.example.fastgptproject.pojo.Users">
+        <id property="userId" column="userId" jdbcType="INTEGER"/>
+        <result property="userName" column="userName" jdbcType="VARCHAR"/>
+        <result property="student_number" column="student_number" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="password" column="password" jdbcType="VARCHAR"/>
+        <result property="create_time" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="update_time" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="role_id" column="role_id" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!--  根据用户名查找用户  -->
+    <select id="findByUserName" parameterType="string" resultMap="UserResultMap">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users WHERE userName = #{userName}
+    </select>
+
+    <!--  插入新用户  -->
+    <insert id="insertUser" parameterType="com.example.fastgptproject.pojo.Users" 
+            useGeneratedKeys="true" keyProperty="userId" keyColumn="userId">
+        INSERT INTO users(userName, email, password, create_time, update_time, role_id)
+        VALUES(#{userName}, #{email}, #{password}, #{create_time}, #{update_time}, #{role_id})
+    </insert>
+
+    <!--  查询所有用户  -->
+    <select id="findAllUsers" resultMap="UserResultMap">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users ORDER BY userId DESC
+    </select>
+
+    <!--  根据用户ID查找用户  -->
+    <select id="findByUserId" parameterType="int" resultMap="UserResultMap">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users WHERE userId = #{userId}
+    </select>
+
+    <!--  更新用户信息  -->
+    <update id="updateUser" parameterType="com.example.fastgptproject.pojo.Users">
+        UPDATE users 
+        SET userName = #{userName}, 
+            email = #{email},
+            password = #{password},
+            role_id = #{role_id},
+            update_time = #{update_time}
+        WHERE userId = #{userId}
+    </update>
+
+    <!--  删除用户  -->
+    <delete id="deleteUser" parameterType="int">
+        DELETE FROM users WHERE userId = #{userId}
+    </delete>
+
+    <!--  检查用户名是否已存在  -->
+    <select id="countByUserName" parameterType="string" resultType="int">
+        SELECT COUNT(*) FROM users WHERE userName = #{userName}
+    </select>
+
+    <!--  检查邮箱是否已存在  -->
+    <select id="countByEmail" parameterType="string" resultType="int">
+        SELECT COUNT(*) FROM users WHERE email = #{email}
+    </select>
+    
+    <!--  根据邮箱查找用户  -->
+    <select id="findByEmail" parameterType="string" resultMap="UserResultMap">
+        SELECT userId, userName, student_number, email, password, create_time, update_time, role_id
+        FROM users WHERE email = #{email}
+    </select>
+
+</mapper>

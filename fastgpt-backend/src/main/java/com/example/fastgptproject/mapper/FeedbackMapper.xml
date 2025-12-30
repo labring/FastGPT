@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.fastgptproject.mapper.FeedbackMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="FeedbackResultMap" type="com.example.fastgptproject.entity.Feedback">
+        <id property="fbId" column="fb_id"/>
+        <result property="userId" column="userId"/>
+        <result property="context" column="context"/>
+        <result property="upTime" column="upTime"/>
+        <result property="userName" column="userName"/>
+        <result property="email" column="email"/>
+    </resultMap>
+
+    <!-- 查询所有反馈（联合查询用户信息） -->
+    <select id="findAllFeedbacks" resultMap="FeedbackResultMap">
+        SELECT 
+            f.fb_id,
+            f.userId,
+            f.context,
+            f.upTime,
+            u.userName AS userName,
+            u.email AS email
+        FROM feedBack f
+        LEFT JOIN Users u ON f.userId = u.userId
+        ORDER BY f.upTime DESC
+    </select>
+
+    <!-- 根据用户ID查询反馈 -->
+    <select id="findFeedbacksByUserId" resultMap="FeedbackResultMap">
+        SELECT 
+            f.fb_id,
+            f.userId,
+            f.context,
+            f.upTime,
+            u.userName AS userName,
+            u.email AS email
+        FROM feedBack f
+        LEFT JOIN Users u ON f.userId = u.userId
+        WHERE f.userId = #{userId}
+        ORDER BY f.upTime DESC
+    </select>
+
+    <!-- 根据ID查询反馈 -->
+    <select id="findFeedbackById" resultMap="FeedbackResultMap">
+        SELECT 
+            f.fb_id,
+            f.userId,
+            f.context,
+            f.upTime,
+            u.userName AS userName,
+            u.email AS email
+        FROM feedBack f
+        LEFT JOIN Users u ON f.userId = u.userId
+        WHERE f.fb_id = #{fbId}
+    </select>
+
+    <!-- 插入反馈 -->
+    <insert id="insertFeedback" parameterType="com.example.fastgptproject.entity.Feedback"
+            useGeneratedKeys="true" keyProperty="fbId">
+        INSERT INTO feedBack (userId, context, upTime)
+        VALUES (#{userId}, #{context}, #{upTime})
+    </insert>
+
+    <!-- 删除反馈 -->
+    <delete id="deleteFeedback">
+        DELETE FROM feedBack WHERE fb_id = #{fbId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.fastgptproject.mapper.FindContextMapper">
+
+    <!-- 对话记录结果映射 -->
+    <resultMap id="ConversationResultMap" type="com.example.fastgptproject.pojo.Conversation">
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="userId" column="userId" jdbcType="INTEGER"/>
+        <result property="title" column="title" jdbcType="VARCHAR"/>
+        <result property="content" column="content" jdbcType="LONGVARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 对话记录结果映射（包含用户信息） -->
+    <resultMap id="ConversationWithUserResultMap" type="com.example.fastgptproject.dto.ConversationWithUser">
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="userId" column="userId" jdbcType="INTEGER"/>
+        <result property="userName" column="userName" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="title" column="title" jdbcType="VARCHAR"/>
+        <result property="content" column="content" jdbcType="LONGVARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 插入对话记录 -->
+    <insert id="insertConversation" parameterType="com.example.fastgptproject.pojo.Conversation"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO conversations(userId, title, content, create_time)
+        VALUES(#{userId}, #{title}, #{content}, #{createTime})
+    </insert>
+
+    <!-- 获取所有对话记录（分页） -->
+    <select id="findAllConversations" resultMap="ConversationResultMap">
+        SELECT id, userId, title, content, create_time
+        FROM conversations
+        ORDER BY create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 获取所有对话记录（分页，包含用户信息） -->
+    <select id="findAllConversationsWithUser" resultMap="ConversationWithUserResultMap">
+        SELECT 
+            c.id,
+            c.userId,
+            u.userName,
+            u.email,
+            c.title,
+            c.content,
+            c.create_time
+        FROM conversations c
+        LEFT JOIN Users u ON c.userId = u.userId
+        ORDER BY c.create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据用户ID获取对话记录 -->
+    <select id="findConversationsByUserId" resultMap="ConversationResultMap">
+        SELECT id, userId, title, content, create_time
+        FROM conversations
+        WHERE userId = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID获取对话记录 -->
+    <select id="findConversationById" resultMap="ConversationResultMap">
+        SELECT id, userId, title, content, create_time
+        FROM conversations
+        WHERE id = #{id}
+    </select>
+
+    <!-- 删除对话记录 -->
+    <delete id="deleteConversationById">
+        DELETE FROM conversations WHERE id = #{id}
+    </delete>
+
+    <!-- 获取对话记录总数 -->
+    <select id="countConversations" resultType="int">
+        SELECT COUNT(*) FROM conversations
+    </select>
+
+    <!-- 搜索对话记录 -->
+    <select id="searchConversations" resultMap="ConversationResultMap">
+        SELECT id, userId, title, content, create_time
+        FROM conversations
+        WHERE title LIKE CONCAT('%', #{keyword}, '%')
+           OR content LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

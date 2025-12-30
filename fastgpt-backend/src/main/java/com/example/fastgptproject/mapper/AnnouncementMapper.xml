@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.fastgptproject.mapper.AnnouncementMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="AnnouncementResultMap" type="com.example.fastgptproject.entity.Announcement">
+        <id property="announcementId" column="announcement_id"/>
+        <result property="adminUserId" column="admin_user_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="priority" column="priority"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createTime" column="create_time"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="isRead" column="is_read"/>
+        <result property="readTime" column="read_time"/>
+    </resultMap>
+
+    <!-- 插入公告 -->
+    <insert id="insertAnnouncement" parameterType="com.example.fastgptproject.entity.Announcement"
+            useGeneratedKeys="true" keyProperty="announcementId">
+        INSERT INTO announcements (admin_user_id, title, content, priority, is_active, create_time, expire_time)
+        VALUES (#{adminUserId}, #{title}, #{content}, #{priority}, #{isActive}, #{createTime}, #{expireTime})
+    </insert>
+
+    <!-- 更新公告 -->
+    <update id="updateAnnouncement" parameterType="com.example.fastgptproject.entity.Announcement">
+        UPDATE announcements
+        SET title = #{title},
+            content = #{content},
+            priority = #{priority},
+            is_active = #{isActive},
+            expire_time = #{expireTime}
+        WHERE announcement_id = #{announcementId}
+    </update>
+
+    <!-- 停用公告 -->
+    <update id="deactivateAnnouncement">
+        UPDATE announcements
+        SET is_active = FALSE
+        WHERE announcement_id = #{announcementId}
+    </update>
+
+    <!-- 查询所有活跃公告 -->
+    <select id="findAllActiveAnnouncements" resultMap="AnnouncementResultMap">
+        SELECT announcement_id, admin_user_id, title, content, priority, is_active, create_time, expire_time
+        FROM announcements
+        WHERE is_active = TRUE
+          AND (expire_time IS NULL OR expire_time > NOW())
+        ORDER BY priority DESC, create_time DESC
+    </select>
+
+    <!-- 查询用户未读公告（核心联合查询） -->
+    <select id="findUnreadAnnouncementsByUserId" resultMap="AnnouncementResultMap">
+        SELECT 
+            a.announcement_id,
+            a.admin_user_id,
+            a.title,
+            a.content,
+            a.priority,
+            a.is_active,
+            a.create_time,
+            a.expire_time,
+            COALESCE(uas.is_read, FALSE) as is_read,
+            uas.read_time
+        FROM announcements a
+        LEFT JOIN user_announcement_status uas 
+            ON a.announcement_id = uas.announcement_id 
+            AND uas.user_id = #{userId}
+        WHERE a.is_active = TRUE
+          AND (a.expire_time IS NULL OR a.expire_time > NOW())
+          AND (uas.is_read IS NULL OR uas.is_read = FALSE)
+        ORDER BY a.priority DESC, a.create_time DESC
+    </select>
+
+    <!-- 标记公告为已读（插入或更新） -->
+    <insert id="markAnnouncementAsRead">
+        INSERT INTO user_announcement_status (announcement_id, user_id, is_read, read_time)
+        VALUES (#{announcementId}, #{userId}, TRUE, NOW())
+        ON DUPLICATE KEY UPDATE 
+            is_read = TRUE, 
+            read_time = NOW()
+    </insert>
+
+    <!-- 查询用户对某公告的阅读状态 -->
+    <select id="findUserAnnouncementStatus" resultType="com.example.fastgptproject.entity.UserAnnouncementStatus">
+        SELECT status_id, announcement_id, user_id, is_read, read_time
+        FROM user_announcement_status
+        WHERE announcement_id = #{announcementId}
+          AND user_id = #{userId}
+    </select>
+
+    <!-- 获取公告阅读统计 -->
+    <select id="getAnnouncementReadStats" resultType="map">
+        SELECT 
+            a.announcement_id,
+            a.title,
+            COUNT(DISTINCT u.userId) as totalUsers,
+            COUNT(DISTINCT CASE WHEN uas.is_read = TRUE THEN uas.user_id END) as readUsers,
+            ROUND(
+                COUNT(DISTINCT CASE WHEN uas.is_read = TRUE THEN uas.user_id END) * 100.0 / 
+                COUNT(DISTINCT u.userId), 
+                2
+            ) as readPercentage
+        FROM announcements a
+        CROSS JOIN Users u
+        LEFT JOIN user_announcement_status uas 
+            ON a.announcement_id = uas.announcement_id 
+            AND uas.user_id = u.userId
+        WHERE a.announcement_id = #{announcementId}
+        GROUP BY a.announcement_id, a.title
+    </select>
+
+</mapper>

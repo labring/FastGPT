@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: FastGPT-project
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://127.0.0.1:3306/fastgpt?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&useUnicode=true&autoReconnect=true&failOverReadOnly=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: Admin123
+  
+  # 邮件服务配置
+  mail:
+    # SMTP服务器地址（根据邮箱提供商修改）
+    host: smtp.qq.com
+    # SMTP端口（TLS加密：587, SSL加密：465, 不加密：25）
+    port: 587
+    # 发件邮箱账号
+    username: your-email@qq.com
+    # 邮箱授权码（不是邮箱密码！需要在邮箱设置中开启SMTP并获取）
+    password: your-authorization-code
+    # 默认编码
+    default-encoding: UTF-8
+    # 其他配置
+    properties:
+      mail:
+        smtp:
+          # 启用认证
+          auth: true
+          # 启用TLS加密
+          starttls:
+            enable: true
+            required: true
+          # 连接超时
+          connectiontimeout: 5000
+          # 读取超时
+          timeout: 3000
+          # 写入超时
+          writetimeout: 5000
+
+# 服务器配置
+server:
+  port: 8080
+  address: 0.0.0.0  # 允许所有网络接口访问
+  
+  # 强制使用UTF-8编码
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# JWT 配置
+jwt:
+  secret: your-jwt-secret-key-here-make-it-long-and-secure-for-production
+  expiration: 86400 # 24小时（秒）
+
+mybatis:
+  configuration:
+    # log-impl: org.apache.ibatis.logging.commons.JakartaCommonsLoggingImpl
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:com/example/fastgptproject/mapper/*.xml
