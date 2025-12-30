@@ -251,3 +251,24 @@ export const mergeChatResponseData = (
 
   return result;
 };
+
+export function extractCitationIdsFromText(text: string): string[] {
+  if (!text) return [];
+
+  // Match [24-bit hexadecimal ID](CITE) format
+  const citeRegex = /\[([a-f0-9]{24})\]\(CITE\)/gi;
+  const matches = text.match(citeRegex);
+
+  if (!matches) return [];
+
+  // Extract ID part (24-bit hexadecimal in brackets)
+  const ids = matches
+    .map((match) => {
+      const idMatch = match.match(/\[([a-f0-9]{24})\]/);
+      return idMatch ? idMatch[1] : null;
+    })
+    .filter((id): id is string => id !== null);
+
+  // Deduplicate
+  return Array.from(new Set(ids));
+}

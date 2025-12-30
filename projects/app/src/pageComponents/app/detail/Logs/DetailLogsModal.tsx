@@ -268,6 +268,7 @@ const Render = (props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
         <DetailLogsModal
