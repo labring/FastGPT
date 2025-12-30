@@ -6,12 +6,15 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SaveAndPublishModal from '../../WorkflowComponents/Flow/components/SaveAndPublish';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const SaveButton = ({
+  colorSchema,
   isLoading,
   onClickSave,
   checkData
 }: {
+  colorSchema: 'primary' | 'black';
   isLoading: boolean;
   onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
   checkData?: () => boolean | undefined;
@@ -31,6 +34,20 @@ const SaveButton = ({
     onClose: onSaveAndPublishModalClose
   } = useDisclosure();
 
+  const { bg, color } = useMemoEnhance(() => {
+    if (colorSchema === 'primary') {
+      return {
+        bg: undefined,
+        color: 'primary.600'
+      };
+    }
+
+    return {
+      bg: 'black',
+      color: 'myGray.900'
+    };
+  }, [colorSchema]);
+
   return (
     <Box
       flexShrink={0}
@@ -49,7 +66,7 @@ const SaveButton = ({
         onCloseFunc={() => setIsSave(false)}
         trigger={'hover'}
         Trigger={
-          <Button w={'95px'} h={'34px'} bg={'black'} color={'white'}>
+          <Button w={'95px'} h={'34px'} bg={bg} color={'white'}>
             <Flex gap={2}>
               <Box>{t('common:Save')}</Box>
               <MyIcon
@@ -68,7 +85,7 @@ const SaveButton = ({
               gap={2}
               p={1.5}
               rounded={'4px'}
-              _hover={{ color: 'myGray.900', bg: 'rgba(17, 24, 36, 0.05)' }}
+              _hover={{ color, bg: 'rgba(17, 24, 36, 0.05)' }}
               cursor={'pointer'}
               isLoading={isLoading}
               onClick={async () => {
@@ -89,7 +106,7 @@ const SaveButton = ({
             <HStack
               p={1.5}
               rounded={'4px'}
-              _hover={{ color: 'myGray.900', bg: 'rgba(17, 24, 36, 0.05)' }}
+              _hover={{ color, bg: 'rgba(17, 24, 36, 0.05)' }}
               cursor={'pointer'}
               onClick={() => {
                 const canOpen = !checkData || checkData();
