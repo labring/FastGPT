@@ -2,9 +2,7 @@ import {
   chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeGradients,
-  NodeBorderColors
+  FlowNodeTypeEnum
 } from './node/constant';
 import {
   WorkflowIOValueTypeEnum,
@@ -52,7 +50,6 @@ import { type RuntimeUserPromptType, type UserChatItemType } from '../../core/ch
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
-import { AppToolSourceEnum } from '../app/tool/constants';
 
 export const getHandleId = (
   nodeId: string,
@@ -446,48 +443,4 @@ export const removeUnauthModels = async ({
     });
   }
   return modules;
-};
-
-const getColorSchemaBySource = (source: AppToolSourceEnum) => {
-  if (source === AppToolSourceEnum.http || source === AppToolSourceEnum.mcp) {
-    return 'salmon';
-  }
-  if (
-    source === AppToolSourceEnum.commercial ||
-    source === AppToolSourceEnum.community ||
-    source === AppToolSourceEnum.systemTool
-  ) {
-    return 'gray';
-  }
-  return undefined;
-};
-
-export const getGradientByColorSchema = ({
-  colorSchema,
-  source
-}: {
-  colorSchema?: keyof typeof NodeGradients;
-  source: AppToolSourceEnum;
-}): string | undefined => {
-  const sourceColor = getColorSchemaBySource(source);
-  if (sourceColor) {
-    return NodeGradients[sourceColor];
-  }
-  if (!colorSchema) return undefined;
-  return NodeGradients[colorSchema];
-};
-
-export const getBorderColorByColorSchema = ({
-  colorSchema,
-  source
-}: {
-  colorSchema?: keyof typeof NodeBorderColors;
-  source: AppToolSourceEnum;
-}): string | undefined => {
-  const sourceColor = getColorSchemaBySource(source);
-  if (sourceColor) {
-    return NodeBorderColors[sourceColor];
-  }
-  if (!colorSchema) return undefined;
-  return NodeBorderColors[colorSchema];
 };

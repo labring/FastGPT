@@ -16,8 +16,9 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getGradientByColorSchema,
-  getBorderColorByColorSchema
-} from '@fastgpt/global/core/workflow/utils';
+  getBorderColorByColorSchema,
+  getColorSchemaByFlowNodeType
+} from '@fastgpt/web/core/workflow/utils';
 import { useReactFlow } from 'reactflow';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
@@ -584,6 +585,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
             id: node.nodeId,
             node: {
               ...template,
+              colorSchema:
+                template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
               name: node.name,
               intro: node.intro,
               avatar: node.avatar
