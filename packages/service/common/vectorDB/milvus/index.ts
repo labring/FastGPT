@@ -11,11 +11,12 @@ import type {
   EmbeddingRecallResponse,
   InsertVectorControllerProps
 } from '../controller.d';
+import type { VectorControllerType } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 
-export class MilvusCtrl {
+export class MilvusCtrl implements VectorControllerType {
   constructor() {}
   getClient = async () => {
     if (!MILVUS_ADDRESS) {

@@ -8,10 +8,11 @@ import {
   type EmbeddingRecallResponse,
   type InsertVectorControllerProps
 } from '../controller.d';
+import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
 
-export class ObVectorCtrl {
+export class ObVectorCtrl implements VectorControllerType {
   constructor() {}
   init = async () => {
     try {
