@@ -111,7 +111,7 @@ const SimpleEdit = () => {
   );
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} bg={'myGray.25'}>
       <Header
         appForm={appForm}
         forbiddenSaveSnapshot={forbiddenSaveSnapshot}

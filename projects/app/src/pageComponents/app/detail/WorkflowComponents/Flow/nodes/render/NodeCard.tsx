@@ -121,13 +121,6 @@ const NodeCard = (props: Props) => {
     [inputs]
   );
 
-  const [presentationHeight, setPresentationHeight] = useState<number>(0);
-  const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      setPresentationHeight(node.offsetHeight);
-    }
-  }, []);
-
   const handleDoubleClick = useCallback(() => {
     onChangeNode({
       nodeId,
@@ -414,86 +407,13 @@ const NodeCard = (props: Props) => {
 
         {/* Presentation Mode Overlay */}
         {presentationMode && !isFolded && showHeader && (
-          <Flex
-            ref={presentationOverlayRef}
-            position={'absolute'}
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg={'rgba(255, 255, 255, 0.80)'}
-            backdropFilter={'blur(10px)'}
-            flexDirection={'column'}
-            zIndex={10}
-            borderRadius={'lg'}
-            {...(isLoopNode
-              ? {
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  px: 4,
-                  py: 4
-                }
-              : {
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  px: 3,
-                  py: 0
-                })}
-            cursor={'pointer'}
+          <PresentationModeOverlay
+            avatar={avatarLinear || avatar}
+            name={name}
+            intro={intro}
+            isLoopNode={isLoopNode}
             onDoubleClick={handleDoubleClick}
-          >
-            <Flex
-              flexDirection={'column'}
-              {...(isLoopNode
-                ? {
-                    ml: 4,
-                    mt: 4,
-                    alignItems: 'flex-start'
-                  }
-                : {
-                    ml: 0,
-                    mt: 0,
-                    alignItems: 'center'
-                  })}
-              w={'full'}
-              color={'black'}
-            >
-              <Avatar
-                src={avatarLinear || avatar}
-                fill={'none'}
-                borderRadius={24}
-                w={'160px'}
-                h={'160px'}
-              />
-              {name && presentationHeight > 280 && (
-                <Box
-                  mt={2}
-                  fontSize={'36px'}
-                  fontWeight={'medium'}
-                  textAlign={isLoopNode ? 'left' : 'center'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  maxW={'80%'}
-                >
-                  {t(name as any)}
-                </Box>
-              )}
-              {intro && presentationHeight > 320 && (
-                <Box
-                  mt={1}
-                  fontSize={'28px'}
-                  textAlign={isLoopNode ? 'left' : 'center'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                  maxW={'80%'}
-                >
-                  {t(intro as any)}
-                </Box>
-              )}
-            </Flex>
-          </Flex>
+          />
         )}
       </Flex>
     </Flex>
@@ -1134,5 +1054,106 @@ const NodeSecret = React.memo(function NodeSecret({
         />
       )}
     </>
+  );
+});
+
+// Presentation Mode Overlay 组件
+const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
+  avatar,
+  name,
+  intro,
+  isLoopNode,
+  onDoubleClick
+}: {
+  avatar: string;
+  name: string;
+  intro?: string;
+  isLoopNode: boolean;
+  onDoubleClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const [presentationHeight, setPresentationHeight] = useState<number>(0);
+
+  const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setPresentationHeight(node.offsetHeight);
+    }
+  }, []);
+
+  return (
+    <Flex
+      ref={presentationOverlayRef}
+      position={'absolute'}
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg={'rgba(255, 255, 255, 0.80)'}
+      backdropFilter={'blur(10px)'}
+      flexDirection={'column'}
+      zIndex={10}
+      borderRadius={'lg'}
+      {...(isLoopNode
+        ? {
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            px: 4,
+            py: 4
+          }
+        : {
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 3,
+            py: 0
+          })}
+      cursor={'pointer'}
+      onDoubleClick={onDoubleClick}
+    >
+      <Flex
+        flexDirection={'column'}
+        {...(isLoopNode
+          ? {
+              ml: 4,
+              mt: 4,
+              alignItems: 'flex-start'
+            }
+          : {
+              ml: 0,
+              mt: 0,
+              alignItems: 'center'
+            })}
+        w={'full'}
+        color={'black'}
+      >
+        <Avatar src={avatar} fill={'none'} borderRadius={24} w={'160px'} h={'160px'} />
+        {name && presentationHeight > 280 && (
+          <Box
+            mt={2}
+            fontSize={'36px'}
+            fontWeight={'medium'}
+            textAlign={isLoopNode ? 'left' : 'center'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+            maxW={'80%'}
+          >
+            {t(name as any)}
+          </Box>
+        )}
+        {intro && presentationHeight > 320 && (
+          <Box
+            mt={1}
+            fontSize={'28px'}
+            textAlign={isLoopNode ? 'left' : 'center'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+            maxW={'80%'}
+          >
+            {t(intro as any)}
+          </Box>
+        )}
+      </Flex>
+    </Flex>
   );
 });
