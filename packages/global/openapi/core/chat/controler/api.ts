@@ -1,4 +1,4 @@
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat/type';
+import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
 

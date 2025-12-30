@@ -4,6 +4,7 @@ import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
 import { AppPath } from './core/app';
 import { SupportPath } from './support';
+import { DatasetPath } from './core/dataset';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -15,6 +16,7 @@ export const openAPIDocument = createDocument({
   paths: {
     ...AppPath,
     ...ChatPath,
+    ...DatasetPath,
     ...PluginPath,
     ...SupportPath
   },
@@ -27,6 +29,10 @@ export const openAPIDocument = createDocument({
     {
       name: '对话管理',
       tags: [TagsMap.chatHistory, TagsMap.chatPage, TagsMap.chatFeedback, TagsMap.chatSetting]
+    },
+    {
+      name: '知识库',
+      tags: [TagsMap.datasetCollection]
     },
     {
       name: '插件系统',
