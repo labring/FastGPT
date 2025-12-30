@@ -283,9 +283,14 @@ const ContextMenu = () => {
   }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
+    // Compensate for menu position offset (set in onPaneContextMenu)
+    // menu.left = e.clientX - 12, menu.top = e.clientY + 6
+    const mouseX = (menu?.left ?? 0) + 12;
+    const mouseY = (menu?.top ?? 0) - 6;
+
     const newNode = nodeTemplate2FlowNode({
       template: CommentNode,
-      position: screenToFlowPosition({ x: menu?.left ?? 0, y: (menu?.top ?? 0) + 100 }),
+      position: screenToFlowPosition({ x: mouseX, y: mouseY }),
       t
     });
 

@@ -88,7 +88,14 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
             '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
         }}
       >
-        <Box w={'full'} h={'full'} position={'relative'} bg={'#D8E9FF'}>
+        <Box
+          w={'full'}
+          h={'full'}
+          borderRadius={'lg'}
+          position={'relative'}
+          bg={'#D8E9FF'}
+          overflow={'hidden'}
+        >
           <Box
             position={'absolute'}
             right={'0'}
