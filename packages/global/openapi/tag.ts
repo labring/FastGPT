@@ -10,6 +10,10 @@ export const TagsMap = {
   chatSetting: '门户页配置',
   chatFeedback: '对话反馈',
 
+  // Dataset
+  datasetCollection: '集合',
+  datasetData: '数据',
+
   // Plugin
   pluginToolTag: '工具标签',
   pluginTeam: '团队插件管理',

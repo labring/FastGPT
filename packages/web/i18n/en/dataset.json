@@ -26,6 +26,8 @@
   "close_auto_sync": "Are you sure you want to turn off automatic sync?",
   "collection.Create update time": "Creation/Update Time",
   "collection.Training type": "Training",
+  "collection.export_all_chunks": "Export chunks",
+  "collection.not_found": "Collection does not exist",
   "collection.sync.submit": "The synchronization task has been submitted",
   "collection.training_type": "Chunk type",
   "collection_data_count": "Data amount",
