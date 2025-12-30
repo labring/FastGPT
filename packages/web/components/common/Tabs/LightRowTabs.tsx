@@ -90,14 +90,7 @@ const LightRowTabs = <ValueType = string,>({
           >
             {item.icon && (
               <>
-                <Avatar
-                  src={item.icon}
-                  alt={''}
-                  w={'1.25rem'}
-                  borderRadius={'sm'}
-                  mr={1}
-                  color={'myGray.600'}
-                />
+                <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} mr={1} />
               </>
             )}
             <Box>{typeof item.label === 'string' ? t(item.label as any) : item.label}</Box>
