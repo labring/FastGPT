@@ -638,7 +638,9 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       currentCost: dbPluginConfig?.currentCost ?? 0,
       systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
       hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
-      pluginOrder: dbPluginConfig?.pluginOrder
+      pluginOrder: dbPluginConfig?.pluginOrder,
+      hideTags: dbPluginConfig?.hideTags,
+      promoteTags: dbPluginConfig?.promoteTags
     };
   });
 

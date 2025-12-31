@@ -1191,6 +1191,7 @@
   "support.wallet.bill.payWay.alipay": "支付宝支付",
   "support.wallet.bill.payWay.balance": "余额支付",
   "support.wallet.bill.payWay.bank": "对公支付",
+  "support.wallet.bill.payWay.wecom": "企业微信支付",
   "support.wallet.bill.payWay.wx": "微信支付",
   "support.wallet.bill.status.closed": "已关闭",
   "support.wallet.bill.status.notpay": "未支付",

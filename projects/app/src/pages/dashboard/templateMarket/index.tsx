@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -45,7 +46,11 @@ const TemplateMarket = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { userInfo } = useUserStore();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecom;
 
   const {
     parentId,
@@ -338,6 +343,12 @@ const TemplateMarket = ({
           ) : (
             <Flex flexDirection={'column'} gap={5}>
               {tagsWithTemplates.map((item) => {
+                // Display "WeChat Work Zone" for wecom teams when showing "Recommendation" tag
+                const displayName =
+                  isWecomTeam && item.typeName === 'app:templateMarket.templateTags.Recommendation'
+                    ? t('app:templateMarket.templateTags.WecomZone')
+                    : t(item.typeName as any);
+
                 return (
                   <Box key={item.typeId}>
                     <Box
@@ -347,7 +358,7 @@ const TemplateMarket = ({
                       fontWeight={'medium'}
                       fontSize={'14px'}
                     >
-                      {t(item.typeName as any)}
+                      {displayName}
                     </Box>
                     <Grid
                       gridTemplateColumns={[

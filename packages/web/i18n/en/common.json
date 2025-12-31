@@ -1182,6 +1182,7 @@
   "support.wallet.bill.payWay.alipay": "Alipay Payment",
   "support.wallet.bill.payWay.balance": "Balance Payment",
   "support.wallet.bill.payWay.bank": "Bank Transfer",
+  "support.wallet.bill.payWay.wecom": "WeChat Work Payment",
   "support.wallet.bill.payWay.wx": "WeChat Payment",
   "support.wallet.bill.status.closed": "Closed",
   "support.wallet.bill.status.notpay": "Unpaid",
