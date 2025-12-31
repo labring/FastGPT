@@ -43,10 +43,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return Promise.reject('Invalid account!');
   }
 
-  if (user.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
-
   if (user) {
     if (user.username.startsWith('wecom-')) {
       return Promise.reject(new UserError('Wecom user can not login with password'));
@@ -58,9 +54,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     userId: user._id
   });
 
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  await user.save();
+  await MongoUser.findByIdAndUpdate(user._id, {
+    lastLoginTmbId: userDetail.team.tmbId,
+    language: language
+  });
 
   const token = await createUserSession({
     userId: user._id,

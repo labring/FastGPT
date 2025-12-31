@@ -355,6 +355,9 @@ const PlanUsage = () => {
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
+
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecom;
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
@@ -566,7 +569,7 @@ const PlanUsage = () => {
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
-              mode={'month'}
+              mode={isWecomTeam ? 'year' : 'month'}
               standplan={standardPlan}
             />
           </Box>

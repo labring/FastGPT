@@ -27,7 +27,8 @@ export const BillSchema = z.object({
       month: z.number().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
       extraPoints: z.number().optional().meta({ description: '额外积分' }),
-      wecomOrderId: z.string().optional().meta({ description: '企微订单 ID' })
+      wecomOrderId: z.string().optional().meta({ description: '企微订单 ID' }),
+      wecomOrderUrl: z.string().optional().meta({ description: '企微订单 URL' })
     })
     .meta({ description: '元数据' }),
   refundData: z

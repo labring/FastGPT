@@ -32,7 +32,9 @@ async function handler(
     currentCost: updateFields.currentCost,
     hasTokenFee: updateFields.hasTokenFee,
     systemKeyCost: updateFields.systemKeyCost,
-    inputListVal: updateFields.inputListVal ?? null //Important
+    inputListVal: updateFields.inputListVal ?? null, //Important
+    promoteTags: updateFields.promoteTags ?? null,
+    hideTags: updateFields.hideTags ?? null
   };
 
   // 如果是自定义插件,需要更新 customConfig

@@ -61,8 +61,13 @@ const Standard = ({
     !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
   useEffect(() => {
-    setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
-  }, [subPlans?.activityExpirationTime]);
+    // For WeCom teams, always default to yearly mode
+    if (isWecomTeam) {
+      setSelectSubMode(SubModeEnum.year);
+    } else {
+      setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
+    }
+  }, [subPlans?.activityExpirationTime, isWecomTeam]);
 
   // 获取优惠券
   const { data: coupons = [], runAsync: getCoupons } = useRequest2(
