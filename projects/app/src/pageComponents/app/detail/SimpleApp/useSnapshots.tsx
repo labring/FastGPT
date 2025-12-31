@@ -66,12 +66,14 @@ export const compareAssistantAppSnapshot = (
       {
         welcomeText: appForm1.chatConfig?.welcomeText || '',
         questionGuide: appForm1.chatConfig?.questionGuide || undefined,
-        fallbackReply: appForm1.chatConfig?.fallbackReply || ''
+        fallbackReply: appForm1.chatConfig?.fallbackReply || '',
+        faqAnswerMode: appForm1.chatConfig?.faqAnswerMode || undefined
       },
       {
         welcomeText: appForm2.chatConfig?.welcomeText || '',
         questionGuide: appForm2.chatConfig?.questionGuide || undefined,
-        fallbackReply: appForm2.chatConfig?.fallbackReply || ''
+        fallbackReply: appForm2.chatConfig?.fallbackReply || '',
+        faqAnswerMode: appForm2.chatConfig?.faqAnswerMode || undefined
       }
     )
   ) {

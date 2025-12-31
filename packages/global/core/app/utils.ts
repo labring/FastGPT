@@ -170,20 +170,24 @@ export const appWorkflow2Form = ({
         toolConfig: node.toolConfig
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
-      // 处理智能客服的 fallbackReply 字段
+      // 处理智能客服的 fallbackReply 和 faqAnswerMode 字段
       const updateList = findInputValueByKey(node.inputs, NodeInputKeyEnum.updateList);
       if (Array.isArray(updateList)) {
-        const fallbackReplyItem = updateList.find(
-          (item) =>
-            Array.isArray(item.variable) &&
-            item.variable[1] === AssistantGlobalVarKey.FALLBACK_REPLY
-        );
-        if (
-          fallbackReplyItem &&
-          Array.isArray(fallbackReplyItem.value) &&
-          fallbackReplyItem.value[1]
-        ) {
-          defaultAppForm.chatConfig.fallbackReply = fallbackReplyItem.value[1];
+        const extractGlobalVarValue = (varKey: string) => {
+          const item = updateList.find(
+            (item) => Array.isArray(item.variable) && item.variable[1] === varKey
+          );
+          return item && Array.isArray(item.value) ? item.value[1] : undefined;
+        };
+
+        const fallbackReply = extractGlobalVarValue(AssistantGlobalVarKey.FALLBACK_REPLY);
+        if (fallbackReply) {
+          defaultAppForm.chatConfig.fallbackReply = fallbackReply;
+        }
+
+        const faqAnswerMode = extractGlobalVarValue(AssistantGlobalVarKey.FAQ_ANSWER_MODE);
+        if (faqAnswerMode) {
+          defaultAppForm.chatConfig.faqAnswerMode = faqAnswerMode;
         }
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
