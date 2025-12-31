@@ -100,7 +100,7 @@ const DetailLogsModal = ({
       <MyBox
         display={'flex'}
         flexDirection={'column'}
-        zIndex={3}
+        zIndex={1000}
         position={['fixed', 'absolute']}
         top={[0, '2%']}
         right={0}
