@@ -6,6 +6,7 @@ import {
 import z from 'zod';
 import { ParentIdSchema } from '../../../../../common/parentFolder/type';
 import { PluginStatusSchema } from '../../../../../core/plugin/type';
+import { UserTagsEnum } from '../../../../../support/user/type';
 
 // Admin tool list
 export const GetAdminSystemToolsQuery = z.object({
@@ -47,6 +48,8 @@ export const UpdateToolBodySchema = z.object({
   hasTokenFee: z.boolean().optional(),
   inputListVal: z.record(z.string(), z.any()).nullish(),
   childTools: z.array(UpdateChildToolSchema).optional(),
+  promoteTags: z.array(UserTagsEnum).nullish(),
+  hideTags: z.array(UserTagsEnum).nullish(),
 
   // App tool fields
   name: z.string().optional(),

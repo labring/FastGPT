@@ -83,18 +83,25 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
 export const initTeamFreePlan = async ({
   teamId,
+  wecom = false,
   session
 }: {
   teamId: string;
+  wecom?: boolean;
   session?: ClientSession;
 }) => {
-  const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
+  const freePoints = wecom
+    ? 500
+    : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
     type: SubTypeEnum.standard,
     currentSubLevel: StandardSubLevelEnum.free
   });
+
+  // Get basic plan config for wecom mode
+  const basicPlanConfig = wecom ? global?.subPlans?.standard?.[StandardSubLevelEnum.basic] : null;
 
   // Reset one month free plan
   if (freePlan) {
@@ -111,28 +118,56 @@ export const initTeamFreePlan = async ({
       freePlan.surplusPoints && freePlan.surplusPoints < 0
         ? freePlan.surplusPoints + freePoints
         : freePoints;
+
+    // Apply basic plan config for wecom, but with limited points and dataset size
+    if (wecom && basicPlanConfig) {
+      freePlan.maxTeamMember = basicPlanConfig.maxTeamMember;
+      freePlan.maxApp = basicPlanConfig.maxAppAmount;
+      freePlan.maxDataset = basicPlanConfig.maxDatasetAmount;
+      freePlan.requestsPerMinute = basicPlanConfig.requestsPerMinute;
+      freePlan.chatHistoryStoreDuration = basicPlanConfig.chatHistoryStoreDuration;
+      freePlan.maxDatasetSize = 1000; // Limit to 1000 for wecom free plan
+      freePlan.websiteSyncPerDataset = basicPlanConfig.websiteSyncPerDataset;
+      freePlan.appRegistrationCount = basicPlanConfig.appRegistrationCount;
+      freePlan.auditLogStoreDuration = basicPlanConfig.auditLogStoreDuration;
+      freePlan.ticketResponseTime = basicPlanConfig.ticketResponseTime;
+      freePlan.customDomain = basicPlanConfig.customDomain;
+    }
+
     return freePlan.save({ session });
   }
 
-  return MongoTeamSub.create(
-    [
-      {
-        teamId,
-        type: SubTypeEnum.standard,
-        currentMode: SubModeEnum.month,
-        nextMode: SubModeEnum.month,
-        startTime: new Date(),
-        expiredTime: addMonths(new Date(), 1),
+  const newPlanData: any = {
+    teamId,
+    type: SubTypeEnum.standard,
+    currentMode: SubModeEnum.month,
+    nextMode: SubModeEnum.month,
+    startTime: new Date(),
+    expiredTime: addMonths(new Date(), 1),
 
-        currentSubLevel: StandardSubLevelEnum.free,
-        nextSubLevel: StandardSubLevelEnum.free,
+    currentSubLevel: StandardSubLevelEnum.free,
+    nextSubLevel: StandardSubLevelEnum.free,
 
-        totalPoints: freePoints,
-        surplusPoints: freePoints
-      }
-    ],
-    { session, ordered: true }
-  );
+    totalPoints: freePoints,
+    surplusPoints: freePoints
+  };
+
+  // Apply basic plan config for wecom, but with limited points and dataset size
+  if (wecom && basicPlanConfig) {
+    newPlanData.maxTeamMember = basicPlanConfig.maxTeamMember;
+    newPlanData.maxApp = basicPlanConfig.maxAppAmount;
+    newPlanData.maxDataset = basicPlanConfig.maxDatasetAmount;
+    newPlanData.requestsPerMinute = basicPlanConfig.requestsPerMinute;
+    newPlanData.chatHistoryStoreDuration = basicPlanConfig.chatHistoryStoreDuration;
+    newPlanData.maxDatasetSize = 1000; // Limit to 1000 for wecom free plan
+    newPlanData.websiteSyncPerDataset = basicPlanConfig.websiteSyncPerDataset;
+    newPlanData.appRegistrationCount = basicPlanConfig.appRegistrationCount;
+    newPlanData.auditLogStoreDuration = basicPlanConfig.auditLogStoreDuration;
+    newPlanData.ticketResponseTime = basicPlanConfig.ticketResponseTime;
+    newPlanData.customDomain = basicPlanConfig.customDomain;
+  }
+
+  return MongoTeamSub.create([newPlanData], { session, ordered: true });
 };
 
 export const getTeamPlanStatus = async ({

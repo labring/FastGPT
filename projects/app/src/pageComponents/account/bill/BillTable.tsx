@@ -90,6 +90,12 @@ const BillTable = () => {
           payWay
         });
 
+        // 企微支付直接打开 URL
+        if (payWay === 'wecom' && paymentData.payUrl) {
+          window.open(paymentData.payUrl, '_blank');
+          return;
+        }
+
         setQRPayData({
           billId: bill._id,
           readPrice: formatStorePrice2Read(bill.price),

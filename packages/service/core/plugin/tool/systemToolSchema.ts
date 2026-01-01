@@ -1,6 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 const { Schema } = connectionMongo;
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
+import { UserTagsEnum } from '@fastgpt/global/support/user/type';
 
 export const collectionName = 'system_plugin_tools';
 
@@ -38,6 +39,14 @@ const SystemToolSchema = new Schema({
   },
   customConfig: Object,
   inputListVal: Object,
+  promoteTags: {
+    type: [String],
+    enum: UserTagsEnum.enum
+  },
+  hideTags: {
+    type: [String],
+    enum: UserTagsEnum.enum
+  },
 
   // @deprecated
   inputConfig: Array,

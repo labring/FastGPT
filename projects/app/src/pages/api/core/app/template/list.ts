@@ -5,6 +5,7 @@ import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
 
 export type ListParams = {
   isQuickTemplate?: boolean;
@@ -22,7 +23,11 @@ async function handler(
   req: ApiRequestProps<ListParams>,
   res: NextApiResponse<any>
 ): Promise<ListResponse> {
-  await authCert({ req, authToken: true });
+  const { tmbId } = await authCert({ req, authToken: true });
+
+  // Get user tags for filtering
+  const userDetail = await getUserDetail({ tmbId });
+  const userTags = userDetail.tags || [];
 
   const { isQuickTemplate = false, randomNumber = 0, type = 'all', excludeIds } = req.query;
 
@@ -44,6 +49,18 @@ async function handler(
     if (item.type === type) return true;
     return false;
   });
+
+  // Filter based on hideTags
+  filteredItems = filteredItems.filter((item) => {
+    if (item.hideTags && item.hideTags.length > 0 && userTags.length > 0) {
+      const hasHideTag = item.hideTags.some((hideTag) => userTags.includes(hideTag));
+      if (hasHideTag) {
+        return false; // Hide this template from user
+      }
+    }
+    return true;
+  });
+
   const total = filteredItems.length;
 
   if (parsedExcludeIds && parsedExcludeIds.length > 0) {
@@ -69,12 +86,19 @@ async function handler(
   }
 
   const list = filteredItems.map((item) => {
+    // Check if this template should be promoted for current user
+    const isPromotedForUser =
+      item.promoteTags &&
+      item.promoteTags.length > 0 &&
+      userTags.length > 0 &&
+      item.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
+
     return {
       templateId: item.templateId,
       name: item.name,
       intro: item.intro,
       recommendText: item.recommendText,
-      isPromoted: item.isPromoted,
+      isPromoted: item.isPromoted || isPromotedForUser, // Merge global and tag-based promotion
       avatar: item.avatar,
       tags: item.tags,
       type: item.type,
