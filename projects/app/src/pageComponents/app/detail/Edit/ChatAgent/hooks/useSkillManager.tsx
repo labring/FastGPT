@@ -149,7 +149,7 @@ export const useSkillManager = ({
       // Check tool exists, if exists, not update/add tool
       const existsTool = selectedTools.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
-        return existsTool.id;
+        return existsTool.pluginId;
       }
 
       const toolTemplate = await getToolPreviewNode({ appId: toolId });

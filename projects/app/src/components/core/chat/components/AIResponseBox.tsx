@@ -316,13 +316,23 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
   );
 });
 const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanType }) {
+  const { t } = useTranslation();
+
   return (
     <Box border={'base'} bg={'white'} overflow={'hidden'} borderRadius={'md'} w={'full'}>
       <Flex alignItems={'center'} px={4} py={3} bg={'myGray.50'} borderBottom={'base'}>
         <MyIcon name={'common/list'} w={'1rem'} mr={2} color={'myGray.600'} />
-        <Box fontWeight={'bold'} fontSize={'sm'}>
+        <Box fontWeight={'bold'} fontSize={'sm'} flex={1}>
           {plan.task || '-'}
         </Box>
+        {plan.replan && (
+          <Flex alignItems={'center'} gap={1.5} px={2.5} py={1} bg="orange.50" borderRadius="sm">
+            <MyIcon name={'core/plan/continuePlan'} w={'0.875rem'} color={'orange.600'} />
+            <Box fontSize="xs" color="orange.700" fontWeight="medium">
+              {t('chat:agent_plan_continue')}
+            </Box>
+          </Flex>
+        )}
       </Flex>
       <Box px={4} py={4}>
         <Flex direction="column" gap={0}>

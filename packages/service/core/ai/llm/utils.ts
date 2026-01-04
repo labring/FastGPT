@@ -27,9 +27,14 @@ export const filterGPTMessageByMaxContext = async ({
     return [];
   }
 
-  // If the text length is less than half of the maximum token, no calculation is required
+  // 如果消息数量很少，但仍需检查是否超出上下文限制
   if (messages.length < 4) {
-    return messages;
+    const totalTokens = await countGptMessagesTokens(messages);
+    // 如果 token 数量在限制内，直接返回
+    if (totalTokens <= maxContext) {
+      return messages;
+    }
+    // 否则继续执行后续的过滤逻辑
   }
 
   // filter startWith system prompt

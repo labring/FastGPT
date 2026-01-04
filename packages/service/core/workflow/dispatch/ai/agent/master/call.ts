@@ -181,7 +181,7 @@ export const masterCall = async ({
     };
   })();
 
-  // console.log('Master call requestMessages', JSON.stringify(requestMessages, null, 2));
+  console.log('Master call requestMessages', JSON.stringify(requestMessages, null, 2));
 
   let planResult: DispatchPlanAgentResponse | undefined;
 

@@ -282,7 +282,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       if (agentPlan) {
-        addLog.debug(`Start step call`, {
+        console.log(`Start step call`, {
           agentPlan: JSON.stringify(agentPlan, null, 2)
         });
 
@@ -349,6 +349,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             // Replan 里有需要用户交互的内容，直接 return
             if (replanResult) return replanResult;
           }
+        }
+
+        if (agentPlan.replan === false) {
+          return {
+            [DispatchNodeResponseKeyEnum.memories]: {
+              [agentPlanKey]: undefined,
+              [planMessagesKey]: undefined,
+              [replanMessagesKey]: undefined
+            },
+            [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+            [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+          };
         }
 
         // Step call 执行完，交给 master agent 继续执行
