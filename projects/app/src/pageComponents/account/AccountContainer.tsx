@@ -9,6 +9,7 @@ import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export enum TabEnum {
   'info' = 'info',
@@ -136,6 +137,8 @@ const AccountContainer = ({
     content: t('account:confirm_logout')
   });
 
+  const { toast } = useToast();
+
   const setCurrentTab = useCallback(
     (tab: string) => {
       if (tab === TabEnum.loginout) {
@@ -146,6 +149,13 @@ const AccountContainer = ({
           }
         })();
       } else {
+        if (tab === TabEnum.bill && userInfo?.team.isWecom) {
+          toast({
+            title: t('common:support.wallet.wecom_bill_tip'),
+            status: 'info'
+          });
+          return;
+        }
         router.replace('/account/' + tab);
       }
     },
