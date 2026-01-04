@@ -15,7 +15,7 @@ export const TeamPluginListItemSchema = z.object({
   status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
   installed: z.boolean(),
   associatedPluginId: z.string().optional(),
-  isPromoted: z.boolean().optional()
+  isPromoted: z.boolean().nullish()
 });
 export const GetTeamPluginListResponseSchema = z.array(TeamPluginListItemSchema);
 export type GetTeamPluginListResponseType = z.infer<typeof GetTeamPluginListResponseSchema>;
