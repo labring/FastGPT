@@ -1191,6 +1191,7 @@
   "support.wallet.bill_tag.bill": "Bill Records",
   "support.wallet.bill_tag.default_header": "Default Header",
   "support.wallet.bill_tag.invoice": "Invoice Records",
+  "support.wallet.wecom_bill_tip": "Please go to WeCom - Checkout to query bills and apply for invoices",
   "support.wallet.billable_invoice": "Billable Invoice",
   "support.wallet.buy_ai_points": "Buy AI points",
   "support.wallet.buy_dataset_capacity": "Buy Knowledge Base Index",

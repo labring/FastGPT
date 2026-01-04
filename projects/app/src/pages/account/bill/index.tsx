@@ -1,15 +1,13 @@
 'use client';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 
 export enum InvoiceTabEnum {
   bill = 'bill',
@@ -24,24 +22,8 @@ const BillAndInvoice = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
-  const { userInfo } = useUserStore();
 
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
-  const {
-    isOpen: isWecomAlertOpen,
-    onOpen: onWecomAlertOpen,
-    onClose: onWecomAlertClose
-  } = useDisclosure();
-
-  // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecom;
-
-  // Show alert for wecom teams
-  useEffect(() => {
-    if (isWecomTeam) {
-      onWecomAlertOpen();
-    }
-  }, [isWecomTeam, onWecomAlertOpen]);
 
   return (
     <AccountContainer>
@@ -91,16 +73,6 @@ const BillAndInvoice = () => {
               setIsOpenInvoiceModal(false);
             }}
           />
-        )}
-        {isWecomAlertOpen && (
-          <MyModal
-            isOpen={isWecomAlertOpen}
-            onClose={onWecomAlertClose}
-            iconSrc="common/info"
-            title="企业微信团队提示"
-          >
-            <Box>请前往企微-收银台进行账单查询和开票</Box>
-          </MyModal>
         )}
       </Flex>
     </AccountContainer>

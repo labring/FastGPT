@@ -13,6 +13,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -40,9 +41,11 @@ const hoverStyle: LinkProps = {
 const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId, lastPane } = useChatStore();
+  const isWecom = !!userInfo?.team?.isWecom;
 
   const navbarList = useMemo(
     () => [
@@ -159,6 +162,13 @@ const Navbar = ({ unread }: { unread: number }) => {
                     onClick: () => {
                       if (item.link.startsWith('/chat')) {
                         window.open(getWebReqUrl(item.link), '_blank', 'noopener,noreferrer');
+                        return;
+                      }
+                      if (item.link.startsWith('/account/bill') && isWecom) {
+                        toast({
+                          title: t('common:support.wallet.wecom_bill_tip'),
+                          status: 'info'
+                        });
                         return;
                       }
                       router.push(item.link);
