@@ -6,15 +6,12 @@ import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
-  const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const { lastChatAppId, lastPane } = useChatStore();
-  const isWecom = !!userInfo?.team?.isWecom;
 
   const navbarList = useMemo(
     () => [
@@ -117,13 +114,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               if (item.link === router.asPath) return;
               if (item.link.startsWith('/chat')) {
                 window.open(item.link, '_blank');
-                return;
-              }
-              if (item.link.startsWith('/account/bill') && isWecom) {
-                toast({
-                  title: t('common:support.wallet.wecom_bill_tip'),
-                  status: 'info'
-                });
                 return;
               }
               router.push(item.link);
