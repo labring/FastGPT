@@ -644,5 +644,8 @@
   "hype_rerank": "Enable reranking",
   "hype_rerank_desc": "Whether to use a reranking model for secondary ranking (enabling this generates higher quality questions but increases computation time, requires configuring a reranking model)",
   "hype_min_rerank_threshold": "Reranking score threshold",
-  "hype_min_rerank_threshold_desc": "Minimum score requirement after reranking (value range (0,1), higher values ​​generate higher quality but fewer questions, only effective when reranking is enabled)"
+  "hype_min_rerank_threshold_desc": "Minimum score requirement after reranking (value range (0,1), higher values ​​generate higher quality but fewer questions, only effective when reranking is enabled)",
+  "confirm_delete_user_warning": "Confirm deletion of this user? Deletion will clear the user account and all resources created by it.",
+  "delete_user": "Deleting user",
+  "user_deleted": "User successfully deleted"
 }
