@@ -7,8 +7,7 @@ import { createLLMResponse } from '../../../../../../ai/llm/request';
 import {
   getPlanAgentSystemPrompt,
   getReplanAgentSystemPrompt,
-  getReplanAgentUserPrompt,
-  getUserContent
+  getReplanAgentUserPrompt
 } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
@@ -132,13 +131,28 @@ export const dispatchPlanAgent = async ({
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
 
+  const parsedSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
+
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: getPlanAgentSystemPrompt({
-        getSubAppInfo,
-        completionTools
-      })
+      content: [
+        getPlanAgentSystemPrompt({
+          getSubAppInfo,
+          completionTools
+        }),
+        parsedSystemPrompt
+          ? `<user_background>
+          ${parsedSystemPrompt}
+          
+          请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。
+          
+          **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。
+          </user_background>`
+          : ''
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     },
     ...historyMessages
   ];
@@ -163,18 +177,14 @@ export const dispatchPlanAgent = async ({
     //   content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
     // });
   } else {
-    // TODO: 这里拼接的话，对于多轮对话不是很友好。
     requestMessages.push({
       role: 'user',
-      content: getUserContent({ userInput, systemPrompt, getSubAppInfo })
+      content: `用户输入：${userInput}`
     });
   }
 
-  // console.log('Plan request messages');
-  // console.dir(
-  //   { requestMessages, tools: isTopPlanAgent ? [PlanAgentAskTool] : [] },
-  //   { depth: null }
-  // );
+  console.log('Plan request messages');
+  console.dir({ requestMessages }, { depth: null });
   let {
     answerText,
     toolCalls = [],
@@ -254,13 +264,27 @@ export const dispatchReplanAgent = async ({
   const usages: ChatNodeUsageType[] = [];
   const modelData = getLLMModel(model);
 
+  // 解析 systemPrompt（如果存在）
+  const parsedSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
+
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: getReplanAgentSystemPrompt({
-        getSubAppInfo,
-        completionTools
-      })
+      content: [
+        getReplanAgentSystemPrompt({
+          getSubAppInfo,
+          completionTools
+        }),
+        parsedSystemPrompt
+          ? `<user_background>
+            ${parsedSystemPrompt}
+            
+            如果用户提供了前置规划，请按照用户的步骤安排和偏好来重新生成计划，优先遵循用户的步骤安排和偏好。如果「用户前置规划」中包含工具引用（@工具名），请优先使用这些工具，避免功能重叠。
+            </user_background>`
+          : ''
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     },
     ...historyMessages
   ];
@@ -302,12 +326,10 @@ export const dispatchReplanAgent = async ({
 
     requestMessages.push({
       role: 'user',
-      // 根据需要 replanSteps 生成用户输入
       content: getReplanAgentUserPrompt({
         task: userInput,
         dependsSteps: replanSteps,
-        background,
-        systemPrompt: parseSystemPrompt({ systemPrompt, getSubAppInfo })
+        background
       })
     });
   }

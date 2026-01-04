@@ -120,7 +120,7 @@ export const runAgentCall = async ({
   // Init messages
   const maxTokens = computedMaxToken({
     model: modelData,
-    maxToken: max_tokens || 8000,
+    maxToken: max_tokens ?? modelData.maxResponse,
     min: 100
   });
 
@@ -251,7 +251,15 @@ export const runAgentCall = async ({
         seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
       });
     }
-
+    console.log(
+      '[Agent Call] Run times:',
+      runTimes,
+      'maxTokens',
+      maxTokens,
+      'max_tokens',
+      max_tokens,
+      modelData
+    );
     // 2. Request LLM
     let {
       reasoningText: reasoningContent,
