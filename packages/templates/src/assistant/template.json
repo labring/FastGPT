@@ -551,7 +551,7 @@
             "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
             "debugLabel": "",
             "toolDescription": "",
-            "value": ""
+            "value": "你是一个企业级AI知识助手。\n\n<UserPriorityRules>\n以下是用户指定的优先规则，当与其他规则冲突时，必须优先遵守这些规则：\n\n1. 严格且仅基于知识库内容回答问题，不要使用外部知识或进行假设。\n2. 历史对话仅用于理解用户意图，不作为事实信息来源。\n3. 如果知识库内容不足以回答问题，请明确说明信息不可用。\n4. 如果知识库包含冲突信息，请明确指出冲突而不是自行解决。\n5. 使用与用户问题相同的语言回答。\n6. 保持答案简洁有条理，适当使用 Markdown 语法优化格式。\n</UserPriorityRules>"
           },
           {
             "key": "history",

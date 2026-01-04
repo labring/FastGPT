@@ -1551,7 +1551,7 @@ export const generateAndExecuteSQL = async ({
 /**
  * 搜索 FAQ 数据
  * 仅检索 trainingType='template' 的 collection 数据
- * @returns 返回相似度最高的 FAQ 数据（如果满足阈值要求）
+ * @returns 返回相似度最高且 a 不为空的 FAQ 数据（如果满足阈值要求）
  */
 async function searchFAQData({
   teamId,
@@ -1564,8 +1564,12 @@ async function searchFAQData({
   rewriteQuery: string;
   model: string;
 }): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
+  const startTime = Date.now();
+  const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
+
   try {
     // 1. 获取所有 FAQ collection (trainingType='template')
+    const step1Start = Date.now();
     const faqCollections = await MongoDatasetCollection.find(
       {
         teamId,
@@ -1575,104 +1579,179 @@ async function searchFAQData({
       },
       '_id'
     ).lean();
+    addLog.debug('FAQ Search - Step 1: Get FAQ collections', {
+      duration: `${Date.now() - step1Start}ms`,
+      count: faqCollections.length
+    });
 
     if (faqCollections.length === 0) {
-      addLog.debug('FAQ Search - No FAQ collections found', { teamId, datasetIds });
+      addLog.debug('FAQ Search - No FAQ collections found', {
+        teamId,
+        datasetIds,
+        totalDuration: `${Date.now() - startTime}ms`
+      });
       return null;
     }
 
     const faqCollectionIds = faqCollections.map((c) => String(c._id));
-    addLog.debug('FAQ Search - Found FAQ collections', {
-      teamId,
-      count: faqCollectionIds.length
-    });
 
     // 2. 获取向量
+    const step2Start = Date.now();
     const vectorModel = getEmbeddingModel(model);
     const { vectors, tokens } = await getVectorsByText({
       model: vectorModel,
       input: [rewriteQuery],
       type: 'query'
     });
+    addLog.debug('FAQ Search - Step 2: Get embedding vector', {
+      duration: `${Date.now() - step2Start}ms`,
+      tokens
+    });
 
-    // 3. 向量检索 (仅在 FAQ collections 中)
+    // 3. 向量检索 (仅在 FAQ collections 中，取 top 1000)
+    const step3Start = Date.now();
     const recallResult = await recallFromVectorStore({
       teamId,
       datasetIds,
       vector: vectors[0],
-      limit: 1, // 只取最相似的一条
+      limit: 1000,
       forbidCollectionIdList: [],
       filterCollectionIdList: faqCollectionIds // 只在 FAQ collections 中检索
     });
+    addLog.debug('FAQ Search - Step 3: Vector recall from PG', {
+      duration: `${Date.now() - step3Start}ms`,
+      resultCount: recallResult.results?.length || 0
+    });
 
     if (!recallResult.results || recallResult.results.length === 0) {
-      addLog.debug('FAQ Search - No results from vector search', { teamId });
-      return null;
-    }
-
-    // 4. 获取完整数据
-    const topResult = recallResult.results[0];
-    const dataDoc = await MongoDatasetData.findOne(
-      {
+      addLog.debug('FAQ Search - No results from vector search', {
         teamId,
-        'indexes.dataId': topResult.id
-      },
-      '_id datasetId collectionId updateTime q a chunkIndex'
-    )
-      .lean()
-      .exec();
-
-    if (!dataDoc) {
-      addLog.debug('FAQ Search - Data not found', { dataId: topResult.id });
-      return null;
-    }
-
-    const collection = await MongoDatasetCollection.findById(dataDoc.collectionId, 'name').lean();
-
-    const similarity = topResult.score || 0;
-
-    // 检查相似度阈值 (>= faqSimilarityThreshold, 默认 0.95)
-    const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
-    if (similarity < faqThreshold) {
-      addLog.debug('FAQ Search - Similarity below threshold', {
-        teamId,
-        score: similarity,
-        threshold: faqThreshold
+        totalDuration: `${Date.now() - startTime}ms`
       });
       return null;
     }
 
-    // 5. 返回 FAQ 数据（符合 SearchDataResponseItemType 类型）
-    const faqData: SearchDataResponseItemType & { embeddingTokens: number } = {
-      id: topResult.id,
-      updateTime: dataDoc.updateTime,
-      q: dataDoc.q,
-      a: dataDoc.a || '',
-      chunkIndex: dataDoc.chunkIndex,
-      datasetId: String(dataDoc.datasetId),
-      collectionId: String(dataDoc.collectionId),
-      sourceName: collection?.name || 'FAQ',
-      sourceId: String(dataDoc._id),
-      score: [
-        {
-          type: SearchScoreTypeEnum.embedding,
-          value: similarity,
-          index: 0
-        }
-      ],
-      embeddingTokens: tokens
-    };
-
-    addLog.info('FAQ Search - Match found', {
-      teamId,
-      dataId: faqData.id,
-      similarity,
-      question: dataDoc.q
+    // 4. 先过滤相似度 >= 阈值的结果（短路优化）
+    const step4Start = Date.now();
+    const filteredByThreshold = recallResult.results.filter((r) => (r.score || 0) >= faqThreshold);
+    addLog.debug('FAQ Search - Step 4: Filter by similarity threshold', {
+      duration: `${Date.now() - step4Start}ms`,
+      threshold: faqThreshold,
+      beforeCount: recallResult.results.length,
+      afterCount: filteredByThreshold.length
     });
 
-    return faqData;
+    if (filteredByThreshold.length === 0) {
+      addLog.debug('FAQ Search - No results above threshold', {
+        teamId,
+        threshold: faqThreshold,
+        topScore: recallResult.results[0]?.score || 0,
+        totalDuration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 5. 只对满足阈值的数据查询 MongoDB（查询量大幅减少）
+    const step5Start = Date.now();
+    const thresholdDataIds = filteredByThreshold.map((r) => r.id);
+    const dataDocs = await MongoDatasetData.find(
+      {
+        teamId,
+        'indexes.dataId': { $in: thresholdDataIds },
+        a: { $exists: true, $ne: '' } // 只获取 a 不为空的数据
+      },
+      '_id datasetId collectionId updateTime q a chunkIndex indexes'
+    )
+      .lean()
+      .exec();
+    addLog.debug('FAQ Search - Step 5: Query MongoDB for threshold-filtered data', {
+      duration: `${Date.now() - step5Start}ms`,
+      queryCount: thresholdDataIds.length,
+      validDataCount: dataDocs.length
+    });
+
+    if (dataDocs.length === 0) {
+      addLog.debug('FAQ Search - No data with non-empty answer found in threshold results', {
+        teamId,
+        totalDuration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 6. 构建 dataId -> dataDoc 的映射
+    const step6Start = Date.now();
+    const dataIdToDocMap = new Map<string, (typeof dataDocs)[0]>();
+    for (const doc of dataDocs) {
+      for (const index of doc.indexes) {
+        if (thresholdDataIds.includes(index.dataId)) {
+          dataIdToDocMap.set(index.dataId, doc);
+        }
+      }
+    }
+    addLog.debug('FAQ Search - Step 6: Build dataId map', {
+      duration: `${Date.now() - step6Start}ms`,
+      mapSize: dataIdToDocMap.size
+    });
+
+    // 7. 按相似度顺序遍历，找到第一个 a 不为空的结果
+    const step7Start = Date.now();
+    for (const result of filteredByThreshold) {
+      const similarity = result.score || 0;
+
+      // 检查是否有对应的 a 不为空的数据
+      const dataDoc = dataIdToDocMap.get(result.id);
+      if (!dataDoc) {
+        continue; // 这条数据的 a 为空，继续找下一条
+      }
+
+      // 找到了第一个 a 不为空的结果
+      const collection = await MongoDatasetCollection.findById(dataDoc.collectionId, 'name').lean();
+
+      const faqData: SearchDataResponseItemType & { embeddingTokens: number } = {
+        id: result.id,
+        updateTime: dataDoc.updateTime,
+        q: dataDoc.q,
+        a: dataDoc.a || '',
+        chunkIndex: dataDoc.chunkIndex,
+        datasetId: String(dataDoc.datasetId),
+        collectionId: String(dataDoc.collectionId),
+        sourceName: collection?.name || 'FAQ',
+        sourceId: String(dataDoc._id),
+        score: [
+          {
+            type: SearchScoreTypeEnum.embedding,
+            value: similarity,
+            index: 0
+          }
+        ],
+        embeddingTokens: tokens
+      };
+
+      addLog.debug('FAQ Search - Step 7: Find valid result', {
+        duration: `${Date.now() - step7Start}ms`
+      });
+
+      addLog.info('FAQ Search - Match found', {
+        teamId,
+        dataId: faqData.id,
+        similarity,
+        question: dataDoc.q,
+        totalDuration: `${Date.now() - startTime}ms`
+      });
+
+      return faqData;
+    }
+
+    addLog.debug('FAQ Search - No valid result found after filtering', {
+      teamId,
+      totalDuration: `${Date.now() - startTime}ms`
+    });
+    return null;
   } catch (error) {
-    addLog.error('FAQ Search - Error occurred', error);
+    addLog.error('FAQ Search - Error occurred', {
+      error,
+      totalDuration: `${Date.now() - startTime}ms`
+    });
     return null;
   }
 }
