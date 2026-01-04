@@ -219,6 +219,12 @@ const Standard = ({
               standardSubLevelMap[myStandardPlan?.currentSubLevel || StandardSubLevelEnum.free]
                 .weight;
 
+            // For wecom teams with advanced plan, cannot buy basic plan
+            const isWecomDowngrade =
+              isWecomTeam &&
+              myStandardPlan?.currentSubLevel === StandardSubLevelEnum.advanced &&
+              item.level === StandardSubLevelEnum.basic;
+
             return (
               <Box
                 key={item.level}
@@ -500,6 +506,24 @@ const Standard = ({
                         }}
                       >
                         {t('common:support.wallet.subscription.Upgrade plan')}
+                      </Button>
+                    );
+                  }
+                  // For wecom teams with advanced plan, disable basic plan purchase
+                  if (isWecomDowngrade) {
+                    return (
+                      <Button
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
+                        w={'100%'}
+                        variant={'whiteBase'}
+                        isDisabled
+                        _hover={{}}
+                        _active={{}}
+                        cursor={'not-allowed'}
+                      >
+                        {t('user:bill.buy_plan')}
                       </Button>
                     );
                   }
