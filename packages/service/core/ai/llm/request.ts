@@ -91,7 +91,10 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     messages: rewriteMessages
   });
 
-  console.log('requestData', JSON.stringify(messages, null, 2), messages.length);
+  // console.log('requestData', JSON.stringify(messages, null, 2), messages.length);
+  // console.log('rewriteMessages', JSON.stringify(rewriteMessages, null, 2), rewriteMessages.length);
+  const messageTokens = await countGptMessagesTokens(requestBody.messages);
+  console.log('[After] messageTokens', messageTokens);
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
     body: requestBody,
     modelData,

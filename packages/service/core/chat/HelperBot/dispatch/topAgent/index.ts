@@ -1,15 +1,16 @@
-import {
-  AICollectionAnswerSchema,
-  type HelperBotDispatchParamsType,
-  type HelperBotDispatchResponseType
-} from '../type';
+import { type HelperBotDispatchParamsType, type HelperBotDispatchResponseType } from '../type';
 import { helperChats2GPTMessages } from '@fastgpt/global/core/chat/helperBot/adaptor';
 import { getPrompt } from './prompt';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { getLLMModel } from '../../../../ai/model';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { generateResourceList } from './utils';
+import {
+  generateResourceList,
+  extractResourcesFromPlan,
+  buildSystemPrompt,
+  buildDisplayText
+} from './utils';
 import { TopAgentAnswerSchema, TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
@@ -82,11 +83,14 @@ export const dispatchTopAgent = async (
     if (responseJson.phase === 'generation') {
       addLog.debug('🔄 TopAgent: Configuration generation phase');
 
+      const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
+
       const formData = TopAgentFormDataSchema.parse({
-        role: responseJson.task_analysis?.role,
-        taskObject: responseJson.task_analysis?.goal,
-        tools: responseJson.resources?.tools?.map((tool: any) => tool.id),
-        fileUploadEnabled: responseJson.resources?.file_upload?.enabled
+        systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
+        tools, // 从 execution_plan 提取
+        knowledges, // 从 execution_plan 提取
+        fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
+        executionPlan: responseJson.execution_plan // 保存原始 execution_plan
       });
 
       if (formData) {
@@ -98,7 +102,7 @@ export const dispatchTopAgent = async (
 
       return {
         aiResponse: formatAIResponse({
-          text: answerText,
+          text: buildDisplayText(responseJson), // 构建显示文本
           reasoning: reasoningText
         }),
         usage

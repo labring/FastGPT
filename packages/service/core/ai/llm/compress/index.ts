@@ -49,7 +49,7 @@ export const compressRequestMessages = async ({
 
   const messageTokens = await countGptMessagesTokens(otherMessages);
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
-
+  console.log('messageTokens', messageTokens, 'thresholds', thresholds);
   if (messageTokens < thresholds.threshold) {
     return {
       messages
@@ -113,7 +113,7 @@ export const compressRequestMessages = async ({
 
     if (
       !compressResult ||
-      !Array.isArray(compressResult) ||
+      !Array.isArray(compressResult.compressed_messages) ||
       compressResult.compressed_messages.length === 0
     ) {
       addLog.warn('[Compression messages] failed: cannot parse JSON, return original messages', {

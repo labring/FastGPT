@@ -5,6 +5,7 @@
   "Next": "Next",
   "Previous": "Previous",
   "agent_call": "Agent call",
+  "agent_plan_continue": "Continue Planning",
   "ai_reasoning": "Thinking process",
   "back_to_text": "Text input",
   "balance_not_enough_pause": "Workflow paused due to insufficient AI points",

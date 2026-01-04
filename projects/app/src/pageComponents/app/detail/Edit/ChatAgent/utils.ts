@@ -61,6 +61,7 @@ export const appWorkflow2AgentForm = ({
       if (tools) {
         defaultAppForm.selectedTools = tools.map((tool) => ({
           ...tool,
+          id: tool.pluginId,
           configStatus: getToolConfigStatus(tool).status
         }));
       }
@@ -274,6 +275,7 @@ export const loadGeneratedTools = async ({
 
         return {
           ...tool,
+          id: toolId,
           configStatus: getToolConfigStatus(tool).status
         };
       })
