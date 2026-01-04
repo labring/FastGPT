@@ -31,6 +31,7 @@ async function handler(
     // Get user tags for filtering
     const userDetail = await getUserDetail({ tmbId });
     const userTags = userDetail.tags || [];
+    console.log('get user tags:', userTags, userDetail);
 
     const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
 

@@ -1201,6 +1201,7 @@
   "support.wallet.bill_tag.bill": "账单记录",
   "support.wallet.bill_tag.default_header": "默认抬头",
   "support.wallet.bill_tag.invoice": "开票记录",
+  "support.wallet.wecom_bill_tip": "请前往企微-收银台进行账单查询和开票",
   "support.wallet.billable_invoice": "可开票账单",
   "support.wallet.buy_ai_points": "购买 AI 积分",
   "support.wallet.buy_dataset_capacity": "购买知识库索引量",
