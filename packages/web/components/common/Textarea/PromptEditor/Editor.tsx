@@ -43,6 +43,7 @@ import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 import ListExitPlugin from './plugins/ListExitPlugin';
 import KeyDownPlugin from './plugins/KeyDownPlugin';
+import EditablePlugin from './plugins/EditablePlugin';
 
 const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box
@@ -80,6 +81,7 @@ export type EditorProps = {
   placeholder?: string;
   placeholderPadding?: string;
   isInvalid?: boolean;
+  isDisabled?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
@@ -105,6 +107,7 @@ export default function Editor({
   placeholderPadding = '12px 14px',
   bg = 'white',
   isInvalid,
+  isDisabled = false,
   onKeyDown,
   ExtensionPopover,
   boxStyle
@@ -179,7 +182,13 @@ export default function Editor({
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
+                className={`${
+                  isDisabled
+                    ? styles.contentEditable_disabled
+                    : isInvalid
+                      ? styles.contentEditable_invalid
+                      : styles.contentEditable
+                } ${styles.richText}`}
                 style={{
                   minHeight: `${minH}px`,
                   maxHeight: `${maxH}px`,
@@ -194,7 +203,13 @@ export default function Editor({
           <PlainTextPlugin
             contentEditable={
               <ContentEditable
-                className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
+                className={
+                  isDisabled
+                    ? styles.contentEditable_disabled
+                    : isInvalid
+                      ? styles.contentEditable_invalid
+                      : styles.contentEditable
+                }
                 style={{
                   minHeight: `${minH}px`,
                   maxHeight: `${maxH}px`,
@@ -211,8 +226,9 @@ export default function Editor({
         <>
           <HistoryPlugin />
           <MaxLengthPlugin maxLength={maxLength || 999999} />
-          <FocusPlugin focus={focus} setFocus={setFocus} />
+          <FocusPlugin focus={focus} setFocus={setFocus} isDisabled={isDisabled} />
           <KeyDownPlugin onKeyDown={onKeyDown} />
+          <EditablePlugin isDisabled={isDisabled || !onChangeText} />
 
           {variableLabels.length > 0 && (
             <>

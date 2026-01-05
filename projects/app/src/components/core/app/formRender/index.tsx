@@ -101,7 +101,7 @@ const InputRender = (props: InputRenderProps) => {
         {...commonProps}
         onChange={(e) => {
           const val = e.target.value;
-          onChange({
+          onChange?.({
             value: val,
             secret: ''
           });
@@ -165,7 +165,7 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <Switch
         isChecked={value}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={(e) => onChange?.(e.target.checked)}
         isDisabled={isDisabled}
       />
     );
@@ -186,7 +186,7 @@ const InputRender = (props: InputRenderProps) => {
         h={10}
         list={list}
         value={value}
-        onSelect={onChange}
+        onSelect={(e) => onChange?.(e)}
         isSelectAll={isSelectAll}
         itemWrap
       />
@@ -251,7 +251,7 @@ const InputRender = (props: InputRenderProps) => {
         list={list ?? []}
         value={selectedValues}
         onSelect={(selectedVals) => {
-          onChange(
+          onChange?.(
             selectedVals.map((val) => {
               const selectedItem = list?.find((item) => item.value === val);
               return {
@@ -274,7 +274,7 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <TimeInput
         value={val ? new Date(val) : undefined}
-        onDateTimeChange={(date) => onChange(date ? date.toISOString() : undefined)}
+        onDateTimeChange={(date) => onChange?.(date ? date.toISOString() : undefined)}
         timeGranularity={props.timeGranularity}
         minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
         maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
@@ -297,7 +297,7 @@ const InputRender = (props: InputRenderProps) => {
             onDateTimeChange={(date) => {
               const newArray = [...rangeArray];
               newArray[0] = date ? date.toISOString() : undefined;
-              onChange(newArray);
+              onChange?.(newArray);
             }}
             timeGranularity={props.timeGranularity}
             maxDate={
@@ -315,7 +315,7 @@ const InputRender = (props: InputRenderProps) => {
             onDateTimeChange={(date) => {
               const newArray = [...rangeArray];
               newArray[1] = date ? date.toISOString() : undefined;
-              onChange(newArray);
+              onChange?.(newArray);
             }}
             timeGranularity={props.timeGranularity}
             minDate={
