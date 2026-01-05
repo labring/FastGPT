@@ -34,6 +34,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsEnum } from '@fastgpt/global/support/user/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
@@ -47,6 +48,7 @@ const SystemToolConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { register, reset, handleSubmit, setValue, watch, control } =
     useForm<AdminSystemToolDetailType>();
 
@@ -254,37 +256,41 @@ const SystemToolConfigModal = ({
                 </>
               )}
 
-              <Box>
-                <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                  推荐标签
-                </Box>
-                <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
-                  {'拥有以下标签的用户会看到"推荐"标识'}
-                </Box>
-                <MultipleSelect
-                  list={userTagsList}
-                  value={promoteTags || []}
-                  onSelect={(val) => setValue('promoteTags', val)}
-                  placeholder="选择用户标签"
-                  w={'100%'}
-                />
-              </Box>
+              {feConfigs?.showSystemToolUserTagsControl && (
+                <>
+                  <Box>
+                    <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                      {t('app:toolkit_promote_tags')}
+                    </Box>
+                    <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                      {t('app:toolkit_promote_tags_tip')}
+                    </Box>
+                    <MultipleSelect
+                      list={userTagsList}
+                      value={promoteTags || []}
+                      onSelect={(val) => setValue('promoteTags', val)}
+                      placeholder={t('app:toolkit_select_user_tags')}
+                      w={'100%'}
+                    />
+                  </Box>
 
-              <Box>
-                <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                  隐藏标签
-                </Box>
-                <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
-                  拥有以下标签的用户将完全看不到此工具
-                </Box>
-                <MultipleSelect
-                  list={userTagsList}
-                  value={hideTags || []}
-                  onSelect={(val) => setValue('hideTags', val)}
-                  placeholder="选择用户标签"
-                  w={'100%'}
-                />
-              </Box>
+                  <Box>
+                    <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                      {t('app:toolkit_hide_tags')}
+                    </Box>
+                    <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                      {t('app:toolkit_hide_tags_tip')}
+                    </Box>
+                    <MultipleSelect
+                      list={userTagsList}
+                      value={hideTags || []}
+                      onSelect={(val) => setValue('hideTags', val)}
+                      placeholder={t('app:toolkit_select_user_tags')}
+                      w={'100%'}
+                    />
+                  </Box>
+                </>
+              )}
             </Flex>
 
             <Flex flex={'3 0 0'} flexDirection={'column'}>
@@ -397,37 +403,41 @@ const SystemToolConfigModal = ({
               </>
             )}
 
-            <Box>
-              <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                推荐标签
-              </Box>
-              <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
-                {'拥有以下标签的用户会看到"推荐"标识'}
-              </Box>
-              <MultipleSelect
-                list={userTagsList}
-                value={promoteTags || []}
-                onSelect={(val) => setValue('promoteTags', val)}
-                placeholder="选择用户标签"
-                w={'100%'}
-              />
-            </Box>
+            {feConfigs?.showSystemToolUserTagsControl && (
+              <>
+                <Box>
+                  <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                    {t('app:toolkit_promote_tags')}
+                  </Box>
+                  <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                    {t('app:toolkit_promote_tags_tip')}
+                  </Box>
+                  <MultipleSelect
+                    list={userTagsList}
+                    value={promoteTags || []}
+                    onSelect={(val) => setValue('promoteTags', val)}
+                    placeholder={t('app:toolkit_select_user_tags')}
+                    w={'100%'}
+                  />
+                </Box>
 
-            <Box>
-              <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                隐藏标签
-              </Box>
-              <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
-                拥有以下标签的用户将完全看不到此工具
-              </Box>
-              <MultipleSelect
-                list={userTagsList}
-                value={hideTags || []}
-                onSelect={(val) => setValue('hideTags', val)}
-                placeholder="选择用户标签"
-                w={'100%'}
-              />
-            </Box>
+                <Box>
+                  <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                    {t('app:toolkit_hide_tags')}
+                  </Box>
+                  <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                    {t('app:toolkit_hide_tags_tip')}
+                  </Box>
+                  <MultipleSelect
+                    list={userTagsList}
+                    value={hideTags || []}
+                    onSelect={(val) => setValue('hideTags', val)}
+                    placeholder={t('app:toolkit_select_user_tags')}
+                    w={'100%'}
+                  />
+                </Box>
+              </>
+            )}
           </Flex>
         )}
       </ModalBody>

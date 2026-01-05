@@ -53,7 +53,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     lafAccount: tmb.team.lafAccount,
     openaiAccount: tmb.team.openaiAccount,
     externalWorkflowVariables: tmb.team.externalWorkflowVariables,
-    isWecom: !!tmb.team.meta?.wecom
+    isWecomTeam: !!tmb.team.meta?.wecom
   };
 }
 

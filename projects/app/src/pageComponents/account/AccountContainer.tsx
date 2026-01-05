@@ -149,7 +149,7 @@ const AccountContainer = ({
           }
         })();
       } else {
-        if (tab === TabEnum.bill && userInfo?.team.isWecom) {
+        if (tab === TabEnum.bill && userInfo?.team.isWecomTeam) {
           toast({
             title: t('common:support.wallet.wecom_bill_tip'),
             status: 'info'

@@ -66,6 +66,7 @@ export type FastGPTFeConfigsType = {
   show_aiproxy?: boolean;
   show_coupon?: boolean;
   show_discount_coupon?: boolean;
+  showSystemToolUserTagsControl?: boolean;
   concatMd?: string;
 
   show_dataset_feishu?: boolean;

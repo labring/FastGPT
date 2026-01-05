@@ -62,7 +62,7 @@ const DashboardContainer = ({
         ? getTemplateTagList().then((res) => [
             {
               typeId: AppTemplateTypeEnum.recommendation,
-              typeName: userInfo?.team.isWecom
+              typeName: userInfo?.team.isWecomTeam
                 ? t('app:templateMarket.templateTags.WecomZone')
                 : t('app:templateMarket.templateTags.Recommendation'),
               typeOrder: 0

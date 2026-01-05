@@ -50,7 +50,7 @@ const TemplateMarket = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecom;
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   const {
     parentId,

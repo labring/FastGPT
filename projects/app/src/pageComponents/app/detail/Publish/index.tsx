@@ -81,8 +81,7 @@ const OutLink = () => {
           }
         ]
       : []),
-    ...(feConfigs?.show_publish_offiaccount !== false &&
-    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    ...(feConfigs?.show_publish_offiaccount !== false
       ? [
           {
             icon: 'core/app/publish/offiaccount',

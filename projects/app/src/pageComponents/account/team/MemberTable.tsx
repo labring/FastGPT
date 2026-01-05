@@ -96,8 +96,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   } = useDisclosure();
 
   const isWecomTeam = useMemo(() => {
-    return !!userInfo?.team?.isWecom;
-  }, [userInfo?.team?.isWecom]);
+    return !!userInfo?.team?.isWecomTeam;
+  }, [userInfo?.team?.isWecomTeam]);
 
   const {
     isOpen: isOpenTransferModal,

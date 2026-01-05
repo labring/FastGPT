@@ -35,7 +35,7 @@ export const AdminSystemToolDetailSchema = AdminSystemToolListItemSchema.omit({
   inputList: z.array(ToolSecretInputItemSchema).optional(),
   inputListVal: z.record(z.string(), z.any()).nullish(),
   childTools: z.array(ToolsetChildSchema).optional(),
-  promoteTags: z.array(UserTagsEnum).nullish(),
-  hideTags: z.array(UserTagsEnum).nullish()
+  promoteTags: z.array(UserTagsEnum).nullish().describe('对拥有这些 Tag 的用户推荐, 排序到前面'),
+  hideTags: z.array(UserTagsEnum).nullish().describe('对拥有这些 Tag 的用户隐藏')
 });
 export type AdminSystemToolDetailType = z.infer<typeof AdminSystemToolDetailSchema>;
