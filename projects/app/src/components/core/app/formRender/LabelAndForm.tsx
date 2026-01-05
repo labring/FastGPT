@@ -35,6 +35,7 @@ const LabelAndFormRender = ({
   placeholder,
   inputType,
   showValueType,
+  isUnChange,
   ...props
 }: {
   label: string | React.ReactNode;
@@ -45,6 +46,7 @@ const LabelAndFormRender = ({
   fieldName: string;
 
   isDisabled?: boolean;
+  isUnChange?: boolean;
   minLength?: number;
 } & SpecificProps &
   BoxProps) => {
@@ -98,7 +100,7 @@ const LabelAndFormRender = ({
                 inputType={inputType}
                 isRichText={false}
                 value={value}
-                onChange={onChange}
+                onChange={isUnChange ? undefined : onChange}
                 placeholder={placeholder}
                 isInvalid={!!error}
                 {...props}
