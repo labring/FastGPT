@@ -211,7 +211,7 @@ export const runAgentCall = async ({
       answerText: answer,
       toolCalls = [],
       usage,
-      getEmptyResponseTip,
+      responseEmptyTip,
       assistantMessage: llmAssistantMessage,
       finish_reason: finishReason
     } = await createLLMResponse({
@@ -235,8 +235,8 @@ export const runAgentCall = async ({
 
     finish_reason = finishReason;
 
-    if (!answer && !reasoningContent && !toolCalls.length) {
-      return Promise.reject(getEmptyResponseTip());
+    if (responseEmptyTip) {
+      return Promise.reject(responseEmptyTip);
     }
 
     // 3. 更新 messages
