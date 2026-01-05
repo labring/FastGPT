@@ -63,7 +63,7 @@ const DashboardContainer = ({
             {
               typeId: AppTemplateTypeEnum.recommendation,
               typeName: userInfo?.team.isWecom
-                ? t('templateMarket.templateTags.WecomZone')
+                ? t('app:templateMarket.templateTags.WecomZone')
                 : t('app:templateMarket.templateTags.Recommendation'),
               typeOrder: 0
             },
