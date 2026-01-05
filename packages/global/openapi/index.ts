@@ -24,7 +24,7 @@ export const openAPIDocument = createDocument({
   'x-tagGroups': [
     {
       name: 'Agent 应用',
-      tags: [TagsMap.appLog, TagsMap.publishChannel]
+      tags: [TagsMap.appCommon, TagsMap.appLog, TagsMap.publishChannel]
     },
     {
       name: '对话管理',

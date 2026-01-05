@@ -56,6 +56,7 @@ import {
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getAppPermission } from '@/web/core/app/api';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -309,8 +310,8 @@ const NodeCard = (props: Props) => {
           '& .controller-debug': {
             display: 'block'
           },
-          '& .controller-rename': {
-            display: 'block'
+          '& .node-hover-controller': {
+            visibility: 'visible'
           }
         }}
         onMouseEnter={() => setHoverNodeId(nodeId)}
@@ -346,6 +347,7 @@ const NodeCard = (props: Props) => {
                       avatar={avatar}
                       name={name}
                       searchedText={searchedText}
+                      appId={pluginId}
                     />
 
                     <Box flex={1} mr={1} />
@@ -428,7 +430,8 @@ const NodeTitleSection = React.memo<{
   avatar: string;
   name: string;
   searchedText?: string;
-}>(({ nodeId, avatar, name, searchedText }) => {
+  appId?: string;
+}>(({ nodeId, avatar, name, searchedText, appId }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -460,7 +463,7 @@ const NodeTitleSection = React.memo<{
   }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
   return (
-    <>
+    <Flex alignItems={'center'}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
       <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
         <HighlightText
@@ -470,20 +473,32 @@ const NodeTitleSection = React.memo<{
           color={'#ffe82d'}
         />
       </Box>
-      <Button
-        display={'none'}
-        variant={'grayGhost'}
-        size={'xs'}
-        ml={0.5}
-        className="controller-rename"
-        cursor={'pointer'}
-        onClick={handleRenameClick}
-      >
-        <MyIcon name={'edit'} w={'14px'} />
-      </Button>
+      <Box ml={1} visibility={'hidden'}>
+        <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
+      </Box>
+      {appId && !appId.startsWith('system') && (
+        <Box ml={1} visibility={'hidden'}>
+          <MyIconButton
+            className="node-hover-controller"
+            icon="common/link"
+            tip={t('workflow:to_app_detail')}
+            onClick={async () => {
+              const permission = await getAppPermission(appId);
+              if (permission.hasWritePer) {
+                window.open(`/app/detail?appId=${appId}`, '_blank');
+              } else {
+                toast({
+                  title: t('workflow:no_edit_permission'),
+                  status: 'warning'
+                });
+              }
+            }}
+          />
+        </Box>
+      )}
 
       <EditTitleModal maxLength={100} />
-    </>
+    </Flex>
   );
 });
 NodeTitleSection.displayName = 'NodeTitleSection';

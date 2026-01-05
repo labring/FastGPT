@@ -5,6 +5,7 @@ import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 
 import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
+import type { GetAppPermissionResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
 /**
  * 获取应用列表
@@ -35,6 +36,9 @@ export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/de
  */
 export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);
+
+export const getAppPermission = (appId: string) =>
+  GET<GetAppPermissionResponseType>(`/core/app/getPermission?appId=${appId}`);
 
 /**
  * Get app basic info by ids
