@@ -2,6 +2,8 @@ export const TagsMap = {
   /* Core */
   // Agent - log
   appLog: 'Agent 日志',
+  // Agent - common
+  appCommon: 'Agent 管理',
 
   // Chat - home
   chatPage: '对话页',

@@ -414,7 +414,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
-      // Thread avoidance
       await surrenderProcess();
       const nodeId = this.activeRunQueue.keys().next().value;
       const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
@@ -430,10 +429,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.processActiveNode();
         });
       }
-      // 兜底，除非极端情况，否则不可能触发
-      else {
-        this.processActiveNode();
-      }
     }
 
     private addSkipNode(node: RuntimeNodeItemType, skippedNodeIdList: Set<string>) {
@@ -446,9 +441,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.skipNodeQueue.set(node.nodeId, { node, skippedNodeIdList: concatSkippedNodeIdList });
     }
     private async processSkipNodes() {
-      // Thread avoidance
-      await surrenderProcess();
       // 取一个 node，并且从队列里删除
+      await surrenderProcess();
       const skipItem = this.skipNodeQueue.values().next().value;
       if (skipItem) {
         this.skipNodeQueue.delete(skipItem.node.nodeId);
