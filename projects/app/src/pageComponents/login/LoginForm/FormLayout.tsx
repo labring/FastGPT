@@ -212,4 +212,3 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 export default dynamic(() => Promise.resolve(FormLayout), {
   ssr: false
 });
-

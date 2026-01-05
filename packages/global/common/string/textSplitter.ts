@@ -113,12 +113,12 @@ ${mdSplitString}
 // 判断字符串是否为HTML的表格形式
 const strIsHtmlTable = (str: string) => {
   const trimmedStr = str.trim();
-  
+
   // 检查是否以 <table 开头（严格检查）
   if (!trimmedStr.match(/^<table[\s>]/i)) {
     return false;
   }
-  
+
   // 检查是否以 </table> 结尾（严格检查）
   if (!trimmedStr.endsWith('</table>')) {
     return false;
@@ -240,7 +240,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
-  
+
   // 确保 HTML 表格前有换行符
   text = text.replace(/([^\n])(<table)/gi, '$1\n$2');
 
@@ -352,7 +352,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         };
       })
       .filter((item) => !!item.title || !!item.text?.trim());
-    
+
     return result;
   };
 
@@ -435,8 +435,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         { check: strIsMdTable, split: markdownTableSplit }
       ];
 
-      const matchedHandler = tableHandlers.find((handler) =>
-        handler.check(currentText) && newTextLen > maxLen
+      const matchedHandler = tableHandlers.find(
+        (handler) => handler.check(currentText) && newTextLen > maxLen
       );
 
       if (matchedHandler) {
@@ -452,17 +452,17 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         if (isMarkdownStep && item.title) {
           headerPrefix = parentTitle + item.title;
         }
-        
+
         const { chunks: tableChunks } = matchedHandler.split({
           text: currentText,
           chunkSize: chunkSize * 1.2,
           headerPrefix: headerPrefix
         });
-        
+
         chunks.push(...tableChunks);
         continue;
       }
-      
+
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
@@ -481,16 +481,14 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // 在合并最深级标题时，需要补充标题
         chunks.push(
-          ...innerChunks.map(
-            (chunk) => {
-              // 如果 chunk 已经包含 parentTitle（来自表格分块），则不重复添加
-              const fullTitle = parentTitle + item.title;
-              if (step === markdownIndex + customRegLen) {
-                return chunk.startsWith(fullTitle) ? chunk : `${fullTitle}${chunk}`;
-              }
-              return chunk;
+          ...innerChunks.map((chunk) => {
+            // 如果 chunk 已经包含 parentTitle（来自表格分块），则不重复添加
+            const fullTitle = parentTitle + item.title;
+            if (step === markdownIndex + customRegLen) {
+              return chunk.startsWith(fullTitle) ? chunk : `${fullTitle}${chunk}`;
             }
-          )
+            return chunk;
+          })
         );
 
         continue;
@@ -619,20 +617,15 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     .flat()
     .map((chunk) => simpleText(chunk));
 
-  // 特判：第一个分块如果小于400，直接合并到第二个分块
-  if (chunks.length >= 2 && getTextValidLength(chunks[0]) < 400) {
-    chunks[1] = chunks[0] + '\n' + chunks[1];
-    chunks = chunks.slice(1);
-  }
-
   // 辅助函数：提取文本开头的连续 Markdown 标题（返回数组）
   const extractLeadingHeadersArray = (text: string): string[] => {
     const lines = text.split('\n');
     const headers: string[] = [];
     for (const line of lines) {
-      if (/^#{1,6}\s/.test(line.trim())) {
-        headers.push(line);
-      } else if (line.trim()) {
+      const trimmedLine = line.trim();
+      if (/^#{1,6}\s/.test(trimmedLine)) {
+        headers.push(trimmedLine);
+      } else if (trimmedLine) {
         // 遇到非标题的非空行就停止
         break;
       }
@@ -640,12 +633,58 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     return headers;
   };
 
+  // 辅助函数：提取文本中所有的 Markdown 标题（返回数组）
+  const extractAllHeadersArray = (text: string): string[] => {
+    const lines = text.split('\n');
+    const headers: string[] = [];
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (/^#{1,6}\s/.test(trimmedLine)) {
+        headers.push(trimmedLine);
+      }
+    }
+    return headers;
+  };
+
+  //辅助函数：检查 chunk 开头的标题有多少个已经在 currentBox 的所有标题中按顺序出现
+  const countMatchingPrefixHeaders = (
+    currentBoxAllHeaders: string[],
+    chunkLeadingHeaders: string[]
+  ): number => {
+    if (chunkLeadingHeaders.length === 0) return 0;
+
+    // 从 chunk 的第一个标题开始，看有多少个连续的标题在 currentBox 中按顺序出现
+    let matchCount = 0;
+    let searchStartIndex = 0;
+
+    for (let i = 0; i < chunkLeadingHeaders.length; i++) {
+      const targetHeader = chunkLeadingHeaders[i];
+      // 在 currentBox 的剩余标题中查找当前标题
+      let found = false;
+      for (let j = searchStartIndex; j < currentBoxAllHeaders.length; j++) {
+        if (currentBoxAllHeaders[j] === targetHeader) {
+          matchCount++;
+          searchStartIndex = j + 1; // 下一次从这个位置之后开始搜索
+          found = true;
+          break;
+        }
+      }
+      // 如果当前标题没找到，停止匹配
+      if (!found) {
+        break;
+      }
+    }
+
+    return matchCount;
+  };
+
   // 辅助函数：找出两个标题数组的共同前缀长度
   const getCommonHeaderPrefixLength = (headers1: string[], headers2: string[]): number => {
     let count = 0;
     const minLen = Math.min(headers1.length, headers2.length);
     for (let i = 0; i < minLen; i++) {
-      if (headers1[i].trim() === headers2[i].trim()) {
+      // 标题已经在 extractLeadingHeadersArray 中 trim 过了，直接比较即可
+      if (headers1[i] === headers2[i]) {
         count++;
       } else {
         break;
@@ -661,16 +700,30 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     let removed = 0;
     let startIndex = 0;
     for (let i = 0; i < lines.length && removed < count; i++) {
-      if (/^#{1,6}\s/.test(lines[i].trim())) {
+      const trimmedLine = lines[i].trim();
+      if (/^#{1,6}\s/.test(trimmedLine)) {
         removed++;
         startIndex = i + 1;
-      } else if (lines[i].trim()) {
+      } else if (trimmedLine) {
         // 遇到非标题的非空行就停止
         break;
       }
     }
     return lines.slice(startIndex).join('\n');
   };
+
+  // 特判：第一个分块如果小于400，直接合并到第二个分块
+  if (chunks.length >= 2 && getTextValidLength(chunks[0]) < 400) {
+    const firstHeaders = extractLeadingHeadersArray(chunks[0]);
+    const secondHeaders = extractLeadingHeadersArray(chunks[1]);
+    const commonPrefixLength = getCommonHeaderPrefixLength(firstHeaders, secondHeaders);
+
+    const secondChunkToMerge =
+      commonPrefixLength > 0 ? removeLeadingHeadersCount(chunks[1], commonPrefixLength) : chunks[1];
+
+    chunks[1] = chunks[0] + '\n' + secondChunkToMerge;
+    chunks = chunks.slice(1);
+  }
 
   // 第一步：对小于400的连续小块进行两两合并（多轮迭代直到无法继续合并）
   const smallChunkThreshold = 400;
@@ -697,10 +750,11 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
           const currentHeaders = extractLeadingHeadersArray(currentChunk);
           const nextHeaders = extractLeadingHeadersArray(nextChunk);
           const commonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
-          
-          const nextChunkToAdd = commonPrefixLength > 0 
-            ? removeLeadingHeadersCount(nextChunk, commonPrefixLength)
-            : nextChunk;
+
+          const nextChunkToAdd =
+            commonPrefixLength > 0
+              ? removeLeadingHeadersCount(nextChunk, commonPrefixLength)
+              : nextChunk;
 
           const mergedChunk = currentChunk + '\n\n' + nextChunkToAdd;
           tempChunks.push(mergedChunk);
@@ -726,22 +780,25 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   for (let i = 0; i < preProcessedChunks.length; i++) {
     const chunk = preProcessedChunks[i];
     const chunkLength = getTextValidLength(chunk);
-    
+
     // 检测并去除重复的父标题
     let chunkToAdd = chunk;
     if (currentBox) {
-      const currentBoxHeaders = extractLeadingHeadersArray(currentBox);
-      const chunkHeaders = extractLeadingHeadersArray(chunk);
-      
-      // 找出共同的父标题前缀长度
-      const commonPrefixLength = getCommonHeaderPrefixLength(currentBoxHeaders, chunkHeaders);
-      
-      // 如果有共同的父标题，去除 chunk 中的重复父标题
-      if (commonPrefixLength > 0) {
-        chunkToAdd = removeLeadingHeadersCount(chunk, commonPrefixLength);
+      // 提取 currentBox 中所有的标题和 chunk 的开头标题
+      const currentBoxAllHeaders = extractAllHeadersArray(currentBox);
+      const chunkLeadingHeaders = extractLeadingHeadersArray(chunk);
+
+      // 检查 chunk 的开头标题有多少个已经在 currentBox 中按顺序出现
+      if (chunkLeadingHeaders.length > 0) {
+        const matchCount = countMatchingPrefixHeaders(currentBoxAllHeaders, chunkLeadingHeaders);
+
+        if (matchCount > 0) {
+          // 移除 chunk 中已经在 currentBox 出现过的开头标题
+          chunkToAdd = removeLeadingHeadersCount(chunk, matchCount);
+        }
       }
     }
-    
+
     const testBox = currentBox ? currentBox + '\n\n' + chunkToAdd : chunk;
     const testBoxLength = getTextValidLength(testBox);
 
@@ -751,7 +808,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     } else {
       // 装不下了，需要判断当前盒子是否太小
       const currentBoxLength = getTextValidLength(currentBox);
-      
+
       // 如果当前盒子小于400，强制装入当前chunk（即使超过maxBoxSize）
       if (currentBoxLength < smallChunkThreshold && currentBox) {
         currentBox = testBox;
@@ -760,10 +817,10 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
         if (currentBox) {
           mergedChunks.push(currentBox);
         }
-        
+
         // 开始新盒子，装入当前chunk（使用原始chunk，保留标题）
         currentBox = chunk;
-        
+
         // 检查当前chunk是否太小，如果是最后一个chunk则无所谓，否则强制与下一个合并
         if (chunkLength < smallChunkThreshold && i < preProcessedChunks.length - 1) {
           // 当前chunk太小，尝试与下一个chunk合并
@@ -771,11 +828,12 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
           const nextHeaders = extractLeadingHeadersArray(nextChunk);
           const currentHeaders = extractLeadingHeadersArray(chunk);
           const nextCommonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
-          
-          const nextChunkToAdd = nextCommonPrefixLength > 0
-            ? removeLeadingHeadersCount(nextChunk, nextCommonPrefixLength)
-            : nextChunk;
-          
+
+          const nextChunkToAdd =
+            nextCommonPrefixLength > 0
+              ? removeLeadingHeadersCount(nextChunk, nextCommonPrefixLength)
+              : nextChunk;
+
           currentBox = chunk + '\n\n' + nextChunkToAdd;
           i++; // 跳过下一个chunk
         }
@@ -788,8 +846,34 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     mergedChunks.push(currentBox);
   }
 
+  // 第三步：最终去重 - 去除相邻分片中重复的父标题
+  const finalChunks: string[] = [];
+  for (let i = 0; i < mergedChunks.length; i++) {
+    const currentChunk = mergedChunks[i];
+
+    if (i === 0) {
+      // 第一个分片保持不变
+      finalChunks.push(currentChunk);
+    } else {
+      const prevChunk = mergedChunks[i - 1];
+      const prevHeaders = extractLeadingHeadersArray(prevChunk);
+      const currentHeaders = extractLeadingHeadersArray(currentChunk);
+
+      // 找出共同的父标题前缀长度
+      const commonPrefixLength = getCommonHeaderPrefixLength(prevHeaders, currentHeaders);
+
+      if (commonPrefixLength > 0) {
+        // 去除当前分片中的重复父标题
+        const dedupedChunk = removeLeadingHeadersCount(currentChunk, commonPrefixLength);
+        finalChunks.push(dedupedChunk);
+      } else {
+        finalChunks.push(currentChunk);
+      }
+    }
+  }
+
   return {
-    chunks: mergedChunks,
-    chars: mergedChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+    chunks: finalChunks,
+    chars: finalChunks.reduce((sum, chunk) => sum + chunk.length, 0)
   };
 };

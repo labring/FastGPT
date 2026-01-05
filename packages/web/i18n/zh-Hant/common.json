@@ -1391,5 +1391,7 @@
   "execute_different_branches_based_on_conditions": "根據一定的條件，執行不同的分支。",
   "faq_checker_node_name": "是否命中faq數據",
   "use_faq_data_reply": "使用faq數據回覆",
-  "faq_reply_node_intro": "該模組可以直接回覆一段指定的內容。常用於引導、提示。非字串內容傳入時，會轉成字串進行輸出。"
+  "faq_reply_node_intro": "該模組可以直接回覆一段指定的內容。常用於引導、提示。非字串內容傳入時，會轉成字串進行輸出。",
+  "core.file.error.docParseRequiresCustomService": "DOC 檔案解析需要自訂解析服務。請設定 customPdfParse 服務或轉換為 PDF/DOCX 格式。",
+  "core.file.error.pptParseRequiresCustomService": "PPT 檔案解析需要自訂解析服務。請設定 customPdfParse 服務或轉換為 PDF/PPTX 格式。"
 }
