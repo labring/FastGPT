@@ -532,7 +532,10 @@ export function form2AppWorkflow(
       fallbackReply: 'vprtN0xvK1dV0c6M',
       aiChat: aiChatNodeId,
       correctionChecker: 'lb9O8Jqhq5RMomsX',
-      correctionReply: 'm8xjpNzwcx2yE3Ar'
+      correctionReply: 'm8xjpNzwcx2yE3Ar',
+      replyModeChecker: 'vjq2vUcq4Tmxiu0z',
+      faqChecker: 'yv0uRQ4kOeVbaQ6i',
+      faqReply: 'v2hbYrBvxfBKTG7s'
     };
 
     // 创建校正数据检查节点
@@ -662,6 +665,129 @@ export function form2AppWorkflow(
 
     formData.dataset.datasetSearchExtensionModel = formData.aiSettings.model;
 
+    // 创建回复模式判断节点
+    function createReplyModeCheckerNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('common:reply_mode_checker_node_name'),
+        intro: i18nT('common:execute_different_branches_based_on_conditions'),
+        avatar: 'core/workflow/template/ifelse',
+        flowNodeType: FlowNodeTypeEnum.ifElseNode,
+        showStatus: true,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'ifElseList',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['VARIABLE_NODE_ID', 'utjZSg8f'],
+                    condition: 'equalTo',
+                    value: 'llm-summary',
+                    valueType: 'input'
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        outputs: [
+          {
+            id: 'ifElseResult',
+            key: 'ifElseResult',
+            label: i18nT('workflow:judgment_result'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      };
+    }
+
+    // 创建FAQ命中检查节点
+    function createFaqCheckerNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('common:faq_checker_node_name'),
+        intro: i18nT('common:execute_different_branches_based_on_conditions'),
+        avatar: 'core/workflow/template/ifelse',
+        flowNodeType: FlowNodeTypeEnum.ifElseNode,
+        showStatus: true,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'ifElseList',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['VARIABLE_NODE_ID', 'udQRlgfO'],
+                    condition: 'isNotEmpty',
+                    valueType: 'input'
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        outputs: [
+          {
+            id: 'ifElseResult',
+            key: 'ifElseResult',
+            label: i18nT('workflow:judgment_result'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      };
+    }
+
+    // 创建FAQ回复节点
+    function createFaqReplyNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('common:use_faq_data_reply'),
+        intro: i18nT('common:faq_reply_node_intro'),
+        avatar: 'core/workflow/template/reply',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'text',
+            renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+            valueType: WorkflowIOValueTypeEnum.any,
+            required: true,
+            label: i18nT('common:core.module.input.label.Response content'),
+            description: i18nT('common:core.module.input.description.Response content'),
+            placeholder: i18nT('common:core.module.input.description.Response content'),
+            value: ['VARIABLE_NODE_ID', 'udQRlgfO'],
+            selectedTypeIndex: 1
+          }
+        ],
+        outputs: []
+      };
+    }
+
     const nodes = [
       createUpdatedVariableUpdateNode(
         nodeIds.variableUpdate,
@@ -691,6 +817,18 @@ export function form2AppWorkflow(
       createCorrectionReplyNode(nodeIds.correctionReply, {
         x: 3520.7192302293265,
         y: -576.1403417187121
+      }),
+      createReplyModeCheckerNode(nodeIds.replyModeChecker, {
+        x: 3520.7192302293265,
+        y: -1283.390341718712
+      }),
+      createFaqCheckerNode(nodeIds.faqChecker, {
+        x: 4357.719230229326,
+        y: -442.3903417187121
+      }),
+      createFaqReplyNode(nodeIds.faqReply, {
+        x: 5194.719230229326,
+        y: -353.8903417187121
       })
     ];
 
@@ -721,8 +859,32 @@ export function form2AppWorkflow(
       },
       {
         source: nodeIds.conditionChecker,
-        target: nodeIds.correctionChecker,
+        target: nodeIds.replyModeChecker,
         sourceHandle: `${nodeIds.conditionChecker}-source-ELSE`,
+        targetHandle: `${nodeIds.replyModeChecker}-target-left`
+      },
+      {
+        source: nodeIds.replyModeChecker,
+        target: nodeIds.correctionChecker,
+        sourceHandle: `${nodeIds.replyModeChecker}-source-IF`,
+        targetHandle: `${nodeIds.correctionChecker}-target-left`
+      },
+      {
+        source: nodeIds.replyModeChecker,
+        target: nodeIds.faqChecker,
+        sourceHandle: `${nodeIds.replyModeChecker}-source-ELSE`,
+        targetHandle: `${nodeIds.faqChecker}-target-left`
+      },
+      {
+        source: nodeIds.faqChecker,
+        target: nodeIds.faqReply,
+        sourceHandle: `${nodeIds.faqChecker}-source-IF`,
+        targetHandle: `${nodeIds.faqReply}-target-left`
+      },
+      {
+        source: nodeIds.faqChecker,
+        target: nodeIds.correctionChecker,
+        sourceHandle: `${nodeIds.faqChecker}-source-ELSE`,
         targetHandle: `${nodeIds.correctionChecker}-target-left`
       },
       {
