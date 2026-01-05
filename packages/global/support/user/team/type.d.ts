@@ -24,6 +24,7 @@ export type TeamSchema = {
   };
   notificationAccount?: string;
   meta?: TeamMetaType;
+  deleteTime?: Date;
 } & ThirdPartyAccountType;
 
 export type tagsType = {

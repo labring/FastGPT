@@ -60,6 +60,9 @@ const TeamSchema = new Schema({
   },
   meta: {
     type: Object
+  },
+  deleteTime: {
+    type: Date
   }
 });
 
