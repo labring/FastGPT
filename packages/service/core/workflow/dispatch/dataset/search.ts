@@ -50,6 +50,27 @@ import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 import { MongoApp } from '../../../app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+
+/**
+ * 从全局变量中获取 faqAnswerMode 配置
+ * faqAnswerMode 定义在 chatConfig.variables 中，需要通过 label 找到对应的 key，再从 variables 中获取值
+ */
+function getFaqAnswerMode(
+  variableDefinitions: VariableItemType[] | undefined,
+  variableValues: Record<string, any> | undefined
+): 'quote' | 'llm-summary' | undefined {
+  if (!variableDefinitions || !variableValues) return undefined;
+
+  const faqAnswerModeVar = variableDefinitions.find((v) => v.label === 'faqAnswerMode');
+  if (!faqAnswerModeVar) return undefined;
+
+  const value = variableValues[faqAnswerModeVar.key];
+  if (value === 'quote' || value === 'llm-summary') {
+    return value;
+  }
+  return undefined;
+}
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -89,6 +110,8 @@ export async function dispatchDatasetSearch(
     runningAppInfo,
     runningUserInfo: { tmbId },
     histories,
+    chatConfig,
+    variables,
     node,
     params: {
       datasets = [],
@@ -129,6 +152,9 @@ export async function dispatchDatasetSearch(
   const app = await MongoApp.findById(appId).select('type').lean();
   const isAssistant = app?.type === AppTypeEnum.assistant;
 
+  // 获取 faqAnswerMode 配置
+  // const faqAnswerMode = chatConfig?.faqAnswerMode; 这样是undefined
+  const faqAnswerMode = getFaqAnswerMode(chatConfig?.variables, variables);
   // 获取所有知识库ID（用于同义词检索）
   const datasetIds = datasets.map((d) => d.datasetId);
 
@@ -375,7 +401,8 @@ export async function dispatchDatasetSearch(
             datasetSearchExtensionBg,
             isAssistant,
             datasetIds: datasetIds,
-            appId // 传递 appId 用于校正数据检索
+            appId, // 传递 appId 用于校正数据检索
+            faqAnswerMode // 传递 faqAnswerMode 用于 FAQ 检索判断
           });
     }
 
@@ -613,6 +640,7 @@ export async function searchCorrectionData({
       _id: string;
       chatId: string;
       dataId: string;
+      updateTime: Date;
       correctionData: {
         question: string;
         correctedAnswer?: string;
@@ -634,6 +662,7 @@ export async function searchCorrectionData({
           _id: 1,
           chatId: 1,
           dataId: 1,
+          updateTime: 1,
           'correctionData.question': 1,
           'correctionData.correctedAnswer': 1,
           'correctionData.indexs': {
@@ -661,7 +690,8 @@ export async function searchCorrectionData({
         question: correction.correctionData.question,
         correctedAnswer: correction.correctionData.correctedAnswer,
         chatId: correction.chatId,
-        dataId: correction.dataId
+        dataId: correction.dataId,
+        updateTime: correction.updateTime
       }));
     });
 
@@ -683,7 +713,8 @@ export async function searchCorrectionData({
     // 步骤4：使用现有的向量相似度计算
     // 从向量存储中检索与用户查询最相似的问题向量
     // 校正数据的dataset_id存储的是app_id
-    const correctionSearchLimit = 1; // 校正搜索只需要最相似的一个结果
+    // 扩大搜索范围以处理多个相似度相同的情况
+    const correctionSearchLimit = 10;
     const { results: vectorSearchResults } = await recallFromVectorStore({
       teamId,
       datasetIds: [appId], // 使用appId查询校正数据
@@ -702,28 +733,41 @@ export async function searchCorrectionData({
       return null;
     }
 
-    // 获取最相似的向量结果
-    const topVectorResult = vectorSearchResults[0];
-    const similarityScore = topVectorResult.score;
+    // 获取最高相似度分数
+    const topScore = vectorSearchResults[0].score;
 
-    // 从 questionVectorIds 中找到对应的校正数据信息
-    const correctionInfo = questionVectorIds.find((item) => item.vectorId === topVectorResult.id);
+    // 找出所有相似度等于最高分的结果
+    const topScoreResults = vectorSearchResults.filter((r) => r.score === topScore);
 
-    if (!correctionInfo) {
-      addLog.info('Correction Search - No correction data found for vector', {
+    // 将向量结果与校正数据信息关联，并按更新时间排序
+    const matchedCorrections = topScoreResults
+      .map((vectorResult) => {
+        const correctionInfo = questionVectorIds.find((item) => item.vectorId === vectorResult.id);
+        return correctionInfo ? { ...correctionInfo, similarity: vectorResult.score } : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      // 按更新时间降序排序，取最新的
+      .sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
+
+    if (matchedCorrections.length === 0) {
+      addLog.info('Correction Search - No correction data found for vectors', {
         appId,
-        vectorId: topVectorResult.id,
+        topScore,
+        matchCount: topScoreResults.length,
         threshold: global.systemEnv?.correctionSimilarityThreshold ?? 0.95,
         totalVectors: questionVectorIds.length
       });
       return null;
     }
 
+    // 取更新时间最新的校正数据
+    const correctionInfo = matchedCorrections[0];
+
     const result = {
       correctionId: correctionInfo.correctionId,
       correctedAnswer: correctionInfo.correctedAnswer,
       question: correctionInfo.question,
-      similarity: similarityScore,
+      similarity: correctionInfo.similarity,
       chatId: correctionInfo.chatId,
       dataId: correctionInfo.dataId,
       embeddingTokens: embeddingTokens || 0 // 使用实际的向量生成token数量
@@ -733,6 +777,8 @@ export async function searchCorrectionData({
       appId,
       similarity: result.similarity,
       correctionId: result.correctionId,
+      updateTime: correctionInfo.updateTime,
+      matchedCount: matchedCorrections.length,
       matched: true
     });
 

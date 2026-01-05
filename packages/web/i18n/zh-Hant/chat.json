@@ -137,5 +137,9 @@
   "database_search_results": "數據庫搜索結果",
   "other_knowledge_base_search_results": "其他知識庫搜索結果",
   "no_auth_to_chat": "您沒有權限存取該應用",
-  "chat_response_complete": "查看詳情"
+  "chat_response_complete": "查看詳情",
+  "assistant_source_type_faq": "FAQ問答",
+  "assistant_source_type_sql": "資料庫查詢",
+  "assistant_source_type_correction": "校正資料",
+  "assistant_source_type_chunk": "知識庫"
 }

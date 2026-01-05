@@ -402,6 +402,17 @@ export type DatasetCiteItemType = {
   updated?: boolean;
 };
 
+/* ============= assistant source type =============== */
+export type AssistantSourceType = 'faq' | 'sql' | 'correction' | 'chunk';
+
+export type AssistantDatasetCiteItemType = DatasetCiteItemType & {
+  sourceType: AssistantSourceType;
+};
+
+export type AssistantSearchDataResponseItemType = SearchDataResponseItemType & {
+  sourceType: AssistantSourceType;
+};
+
 /* ============= synonym =============== */
 /**
  * 同义词文件元数据

@@ -1005,6 +1005,7 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   isAssistant?: boolean;
   datasetIds?: string[];
   appId?: string; // 用于校正数据检索
+  faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
@@ -1013,6 +1014,7 @@ export const defaultSearchDatasetData = async ({
   isAssistant,
   datasetIds,
   appId,
+  faqAnswerMode,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
@@ -1106,9 +1108,10 @@ export const defaultSearchDatasetData = async ({
   }
   // ===== 校正数据检索结束 =====
 
-  // ===== 新增: FAQ 数据优先检索 =====
+  // ===== 新增: FAQ 数据优先检索（仅 faqAnswerMode 为 quote 时执行）=====
   if (
     isAssistant &&
+    faqAnswerMode === 'quote' &&
     aiExtensionResult?.synonymRewriteResult &&
     datasetIds &&
     datasetIds.length > 0
@@ -1552,7 +1555,7 @@ export const generateAndExecuteSQL = async ({
 /**
  * 搜索 FAQ 数据
  * 仅检索 trainingType='template' 的 collection 数据
- * @returns 返回相似度最高的 FAQ 数据（如果满足阈值要求）
+ * @returns 返回相似度最高且 a 不为空的 FAQ 数据（如果满足阈值要求）
  */
 async function searchFAQData({
   teamId,
@@ -1565,6 +1568,9 @@ async function searchFAQData({
   rewriteQuery: string;
   model: string;
 }): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
+  const startTime = Date.now();
+  const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
+
   try {
     // 1. 获取所有 FAQ collection (trainingType='template')
     const faqCollections = await MongoDatasetCollection.find(
@@ -1578,15 +1584,10 @@ async function searchFAQData({
     ).lean();
 
     if (faqCollections.length === 0) {
-      addLog.debug('FAQ Search - No FAQ collections found', { teamId, datasetIds });
       return null;
     }
 
     const faqCollectionIds = faqCollections.map((c) => String(c._id));
-    addLog.debug('FAQ Search - Found FAQ collections', {
-      teamId,
-      count: faqCollectionIds.length
-    });
 
     // 2. 获取向量
     const vectorModel = getEmbeddingModel(model);
@@ -1596,56 +1597,86 @@ async function searchFAQData({
       type: 'query'
     });
 
-    // 3. 向量检索 (仅在 FAQ collections 中)
+    // 3. 向量检索 (仅在 FAQ collections 中，取 top 1000)
     const recallResult = await recallFromVectorStore({
       teamId,
       datasetIds,
       vector: vectors[0],
-      limit: 1, // 只取最相似的一条
+      limit: 1000,
       forbidCollectionIdList: [],
       filterCollectionIdList: faqCollectionIds // 只在 FAQ collections 中检索
     });
 
     if (!recallResult.results || recallResult.results.length === 0) {
-      addLog.debug('FAQ Search - No results from vector search', { teamId });
       return null;
     }
 
-    // 4. 获取完整数据
-    const topResult = recallResult.results[0];
-    const dataDoc = await MongoDatasetData.findOne(
+    // 4. 先过滤相似度 >= 阈值的结果（短路优化）
+    const filteredByThreshold = recallResult.results.filter((r) => (r.score || 0) >= faqThreshold);
+
+    if (filteredByThreshold.length === 0) {
+      return null;
+    }
+
+    // 5. 只对满足阈值的数据查询 MongoDB（查询量大幅减少）
+    const thresholdDataIds = new Set(filteredByThreshold.map((r) => r.id)); // 直接生成 Set 优化后续查找性能
+    const dataDocs = await MongoDatasetData.find(
       {
         teamId,
-        'indexes.dataId': topResult.id
+        'indexes.dataId': { $in: Array.from(thresholdDataIds) },
+        a: { $exists: true, $ne: '' } // 只获取 a 不为空的数据
       },
-      '_id datasetId collectionId updateTime q a chunkIndex'
+      '_id datasetId collectionId updateTime q a chunkIndex indexes'
     )
       .lean()
       .exec();
 
-    if (!dataDoc) {
-      addLog.debug('FAQ Search - Data not found', { dataId: topResult.id });
+    if (dataDocs.length === 0) {
       return null;
     }
 
-    const collection = await MongoDatasetCollection.findById(dataDoc.collectionId, 'name').lean();
+    // 6. 构建 dataId -> dataDoc 的映射
+    const dataIdToDocMap = new Map<string, (typeof dataDocs)[0]>();
+    for (const doc of dataDocs) {
+      for (const index of doc.indexes) {
+        if (thresholdDataIds.has(index.dataId)) {
+          dataIdToDocMap.set(index.dataId, doc);
+        }
+      }
+    }
 
+    // 7. 获取最高相似度分数，处理多个相同分数的情况
+    const topScore = filteredByThreshold[0].score || 0;
+
+    // 找出所有相似度等于最高分的结果
+    const topScoreResults = filteredByThreshold.filter((r) => r.score === topScore);
+
+    // 将结果与数据文档关联，并按更新时间排序
+    const matchedDocs = topScoreResults
+      .map((result) => {
+        const dataDoc = dataIdToDocMap.get(result.id);
+        return dataDoc ? { result, dataDoc } : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      // 按更新时间降序排序，取最新的
+      .sort(
+        (a, b) =>
+          new Date(b.dataDoc.updateTime).getTime() - new Date(a.dataDoc.updateTime).getTime()
+      );
+
+    if (matchedDocs.length === 0) {
+      return null;
+    }
+
+    // 取更新时间最新的 FAQ 数据
+    const { result: topResult, dataDoc } = matchedDocs[0];
     const similarity = topResult.score || 0;
 
-    // 检查相似度阈值 (>= faqSimilarityThreshold, 默认 0.95)
-    const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
-    if (similarity < faqThreshold) {
-      addLog.debug('FAQ Search - Similarity below threshold', {
-        teamId,
-        score: similarity,
-        threshold: faqThreshold
-      });
-      return null;
-    }
+    // 单独查询 collection（只查一次）
+    const collection = await MongoDatasetCollection.findById(dataDoc.collectionId, 'name').lean();
 
-    // 5. 返回 FAQ 数据（符合 SearchDataResponseItemType 类型）
     const faqData: SearchDataResponseItemType & { embeddingTokens: number } = {
-      id: topResult.id,
+      id: String(dataDoc._id),
       updateTime: dataDoc.updateTime,
       q: dataDoc.q,
       a: dataDoc.a || '',
@@ -1668,12 +1699,18 @@ async function searchFAQData({
       teamId,
       dataId: faqData.id,
       similarity,
-      question: dataDoc.q
+      question: dataDoc.q,
+      updateTime: dataDoc.updateTime,
+      matchedCount: matchedDocs.length,
+      duration: `${Date.now() - startTime}ms`
     });
 
     return faqData;
   } catch (error) {
-    addLog.error('FAQ Search - Error occurred', error);
+    addLog.error('FAQ Search - Error occurred', {
+      error,
+      duration: `${Date.now() - startTime}ms`
+    });
     return null;
   }
 }
