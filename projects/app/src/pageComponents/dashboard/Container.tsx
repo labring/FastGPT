@@ -13,6 +13,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import TeamPlanStatusCard from './TeamPlanStatusCard';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   agent = 'agent',
@@ -38,6 +39,7 @@ const DashboardContainer = ({
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
+  const { userInfo } = useUserStore();
 
   // First tab
   const currentTab = useMemo(() => {
@@ -60,7 +62,9 @@ const DashboardContainer = ({
         ? getTemplateTagList().then((res) => [
             {
               typeId: AppTemplateTypeEnum.recommendation,
-              typeName: t('app:templateMarket.templateTags.Recommendation'),
+              typeName: userInfo?.team.isWecom
+                ? t('templateMarket.templateTags.WecomZone')
+                : t('app:templateMarket.templateTags.Recommendation'),
               typeOrder: 0
             },
             ...res
