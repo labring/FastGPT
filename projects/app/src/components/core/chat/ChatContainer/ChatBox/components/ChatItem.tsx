@@ -6,6 +6,7 @@ import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
+import markdownStyles from '@/components/Markdown/index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
@@ -16,7 +17,7 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import type { AIChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
@@ -99,9 +100,11 @@ const AIContentCard = React.memo(function AIContentCard({
   questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
+  const lastIsText = chatValue[chatValue.length - 1]?.text;
   return (
     <Flex flexDirection={'column'}>
       {chatValue.map((value, i) => {
+        const isLastResponse = isLastChild && i === chatValue.length - 1;
         const key = `${dataId}-ai-${i}`;
         const folded = value.stepId
           ? chatValue.find((item) => item.stepTitle?.stepId === value.stepId)?.stepTitle?.folded ??
@@ -129,13 +132,17 @@ const AIContentCard = React.memo(function AIContentCard({
             <AIResponseBox
               chatItemDataId={dataId}
               value={value}
-              isLastResponseValue={isLastChild && i === chatValue.length - 1}
+              isLastResponseValue={isLastResponse}
               isChatting={isChatting}
               onOpenCiteModal={onOpenCiteModal}
             />
           </Box>
         );
       })}
+
+      {/* Requesting animation */}
+      {isLastChild && !lastIsText && isChatting && <Box className={markdownStyles.animation}></Box>}
+
       {isLastChild && questionGuides.length > 0 && (
         <RenderQuestionGuide questionGuides={questionGuides} />
       )}

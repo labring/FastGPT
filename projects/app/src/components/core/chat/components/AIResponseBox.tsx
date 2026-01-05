@@ -327,7 +327,7 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
         </Box>
         {plan.replan && (
           <Flex alignItems={'center'} gap={1.5} px={2.5} py={1} bg="orange.50" borderRadius="sm">
-            <MyIcon name={'core/plan/continuePlan'} w={'0.875rem'} color={'orange.600'} />
+            <MyIcon name={'core/app/schedulePlan'} w={'0.875rem'} color={'orange.600'} />
             <Box fontSize="xs" color="orange.700" fontWeight="medium">
               {t('chat:agent_plan_continue')}
             </Box>

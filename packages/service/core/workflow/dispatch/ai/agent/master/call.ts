@@ -6,7 +6,7 @@ import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
 import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
-import { getMasterAgentSystemPrompt } from '../constants';
+import { getStepCallQuery } from '../constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SubAppIds } from '../sub/constants';
@@ -115,33 +115,21 @@ export const masterCall = async ({
         step.depends_on = depends;
       }
       // Step call system prompt
-      const compressResult = await getMasterAgentSystemPrompt({
+      const callQuery = await getStepCallQuery({
         steps,
         step,
-        userInput: userChatInput,
-        model,
-        background: systemPrompt
+        model
       });
-      if (compressResult.usage) {
-        usagePush([compressResult.usage]);
+      if (callQuery.usage) {
+        usagePush([callQuery.usage]);
       }
 
       const requestMessages = chats2GPTMessages({
         messages: [
           {
-            obj: ChatRoleEnum.System,
-            value: [
-              {
-                text: {
-                  content: compressResult.prompt
-                }
-              }
-            ]
-          },
-          {
             obj: ChatRoleEnum.Human,
             value: runtimePrompt2ChatsValue({
-              text: addFilePrompt2Input({ query: step.description }),
+              text: addFilePrompt2Input({ query: callQuery.prompt }),
               files: []
             })
           }
@@ -180,8 +168,6 @@ export const masterCall = async ({
       requestMessages: messages
     };
   })();
-
-  console.log('Master call requestMessages', JSON.stringify(requestMessages, null, 2));
 
   let planResult: DispatchPlanAgentResponse | undefined;
 

@@ -124,10 +124,7 @@ export const dispatchPlanAgent = async ({
   completionTools,
   getSubAppInfo,
   systemPrompt,
-  model,
-  temperature,
-  top_p,
-  stream
+  model
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
 
@@ -179,7 +176,7 @@ export const dispatchPlanAgent = async ({
   } else {
     requestMessages.push({
       role: 'user',
-      content: `用户输入：${userInput}`
+      content: userInput
     });
   }
 
@@ -195,9 +192,7 @@ export const dispatchPlanAgent = async ({
     isAborted: checkIsStopping,
     body: {
       model: modelData.model,
-      temperature,
       messages: requestMessages,
-      top_p,
       stream: true,
       tools: [AIAskTool],
       tool_choice: 'auto',

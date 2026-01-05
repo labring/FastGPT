@@ -119,19 +119,13 @@ export const runAgentCall = async ({
   let interactiveResponse: ToolCallChildrenInteractive | undefined;
 
   // Init messages
-  const maxTokens = computedMaxToken({
-    model: modelData,
-    maxToken: max_tokens ?? modelData.maxResponse,
-    min: 100
-  });
-
   // 本轮产生的 assistantMessages，包括 tool 内产生的
   const assistantMessages: ChatCompletionMessageParam[] = [];
   // 多轮运行时候的请求 messages
   let requestMessages = (
     await filterGPTMessageByMaxContext({
       messages,
-      maxContext: modelData.maxContext - (maxTokens || 0) // filter token. not response maxToken
+      maxContext: modelData.maxContext - 8000 // 始终预留 8000 个 token 响应空间。
     })
   ).map((item) => {
     if (item.role === 'assistant' && item.tool_calls) {
@@ -253,15 +247,7 @@ export const runAgentCall = async ({
         seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
       });
     }
-    console.log(
-      '[Agent Call] Run times:',
-      runTimes,
-      'maxTokens',
-      maxTokens,
-      'max_tokens',
-      max_tokens,
-      modelData
-    );
+
     // 2. Request LLM
     let {
       reasoningText: reasoningContent,
@@ -276,7 +262,6 @@ export const runAgentCall = async ({
       throwError: false,
       body: {
         ...body,
-        max_tokens: maxTokens,
         model,
         messages: requestMessages,
         tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
