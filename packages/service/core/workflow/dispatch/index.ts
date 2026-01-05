@@ -387,7 +387,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.processActiveNode();
     }
     // Process next active node
-    private processActiveNode() {
+    private async processActiveNode() {
       // Finish
       if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
         if (isDebugMode) {
@@ -414,6 +414,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
+      // Thread avoidance
+      await surrenderProcess();
       const nodeId = this.activeRunQueue.keys().next().value;
       const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
 
@@ -443,7 +445,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       this.skipNodeQueue.set(node.nodeId, { node, skippedNodeIdList: concatSkippedNodeIdList });
     }
-    private processSkipNodes() {
+    private async processSkipNodes() {
+      // Thread avoidance
+      await surrenderProcess();
       // 取一个 node，并且从队列里删除
       const skipItem = this.skipNodeQueue.values().next().value;
       if (skipItem) {
@@ -867,9 +871,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
-      // Thread avoidance
-      await surrenderProcess();
-
       addLog.debug(`Run node`, { maxRunTimes: data.maxRunTimes, appId: data.runningAppInfo.id });
 
       // Get node run status by edges
@@ -881,6 +882,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const nodeRunResult = await (async () => {
         if (status === 'run') {
+          // All source edges status to waiting
+          runtimeEdges.forEach((item) => {
+            if (item.target === node.nodeId) {
+              item.status = 'waiting';
+            }
+          });
+
           const blanceCheckResult = await this.checkTeamBlance();
           if (blanceCheckResult) {
             return {
@@ -889,13 +897,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               result: blanceCheckResult
             };
           }
-
-          // All source edges status to waiting
-          runtimeEdges.forEach((item) => {
-            if (item.target === node.nodeId) {
-              item.status = 'waiting';
-            }
-          });
 
           addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return this.nodeRunWithActive(node);
