@@ -343,12 +343,6 @@ const TemplateMarket = ({
           ) : (
             <Flex flexDirection={'column'} gap={5}>
               {tagsWithTemplates.map((item) => {
-                // Display "WeChat Work Zone" for wecom teams when showing "Recommendation" tag
-                const displayName =
-                  isWecomTeam && item.typeName === 'app:templateMarket.templateTags.Recommendation'
-                    ? t('app:templateMarket.templateTags.WecomZone')
-                    : t(item.typeName as any);
-
                 return (
                   <Box key={item.typeId}>
                     <Box
@@ -358,7 +352,7 @@ const TemplateMarket = ({
                       fontWeight={'medium'}
                       fontSize={'14px'}
                     >
-                      {displayName}
+                      {t(item.typeName as any)}
                     </Box>
                     <Grid
                       gridTemplateColumns={[
