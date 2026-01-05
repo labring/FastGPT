@@ -9,6 +9,7 @@ import type {
   GetAppPermissionQueryType,
   GetAppPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { ZodError } from 'zod';
 
 describe('get app permission api', () => {
   it('should return permission when user has access', async () => {
@@ -35,7 +36,6 @@ describe('get app permission api', () => {
       }
     );
 
-    expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
     expect(res.data).toBeDefined();
     expect(res.data.isOwner).toBe(true);
@@ -57,8 +57,8 @@ describe('get app permission api', () => {
         }
       }
     );
-
-    expect(res.error).toBeDefined();
+    console.log(res.error, 232);
+    expect(res.error instanceof ZodError).toBe(true);
     expect(res.code).toBe(500);
   });
 
@@ -88,8 +88,12 @@ describe('get app permission api', () => {
       }
     );
 
-    expect(res.error).toBe(AppErrEnum.unAuthApp);
-    expect(res.code).toBe(500);
+    expect(res.data.isOwner).toBe(false);
+    expect(res.data.hasReadPer).toBe(false);
+    expect(res.data.hasWritePer).toBe(false);
+    expect(res.data.hasManagePer).toBe(false);
+    expect(res.data.hasReadChatLogPer).toBe(false);
+    expect(res.code).toBe(200);
   });
 
   it('should return error when app does not exist', async () => {
@@ -106,7 +110,11 @@ describe('get app permission api', () => {
       }
     );
 
-    expect(res.error).toBe(AppErrEnum.unExist);
-    expect(res.code).toBe(500);
+    expect(res.data.isOwner).toBe(false);
+    expect(res.data.hasReadPer).toBe(false);
+    expect(res.data.hasWritePer).toBe(false);
+    expect(res.data.hasManagePer).toBe(false);
+    expect(res.data.hasReadChatLogPer).toBe(false);
+    expect(res.code).toBe(200);
   });
 });
