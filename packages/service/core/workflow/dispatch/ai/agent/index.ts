@@ -22,7 +22,7 @@ import {
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { filterMemoryMessages } from '../utils';
-import { systemSubInfo } from './sub/constants';
+import { SubAppIds, systemSubInfo } from './sub/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent, dispatchReplanAgent } from './sub/plan';
 
@@ -198,7 +198,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           historyMessages: planHistoryMessages || historiesMessages,
           userInput: lastInteractive ? interactiveInput : userChatInput,
           interactive: lastInteractive,
-          completionTools: agentCompletionTools,
+          completionTools: agentCompletionTools.filter(
+            (item) => item.function.name !== SubAppIds.plan
+          ),
           getSubAppInfo,
           systemPrompt: systemPrompt,
           model,
@@ -234,7 +236,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         userInput: lastInteractive ? interactiveInput : userChatInput,
         plan,
         interactive: lastInteractive,
-        completionTools: agentCompletionTools,
+        completionTools: agentCompletionTools.filter(
+          (item) => item.function.name !== SubAppIds.plan
+        ),
         getSubAppInfo,
         systemPrompt,
         model,
@@ -349,18 +353,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             // Replan 里有需要用户交互的内容，直接 return
             if (replanResult) return replanResult;
           }
-        }
-
-        if (agentPlan.replan === false) {
-          return {
-            [DispatchNodeResponseKeyEnum.memories]: {
-              [agentPlanKey]: undefined,
-              [planMessagesKey]: undefined,
-              [replanMessagesKey]: undefined
-            },
-            [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-            [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
-          };
         }
 
         // Step call 执行完，交给 master agent 继续执行

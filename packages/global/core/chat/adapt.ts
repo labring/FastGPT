@@ -180,8 +180,8 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: toolId,
             content: JSON.stringify({
-              prompt: '请根据分步执行的结果继续任务或进行总结。',
-              steps
+              steps,
+              prompt: '请根据分步执行的结果继续任务或对任务进行总结回答。'
             })
           });
         } else if (value.interactive) {
