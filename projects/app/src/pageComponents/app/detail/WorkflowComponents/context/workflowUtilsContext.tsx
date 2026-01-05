@@ -205,18 +205,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         });
       }
     },
-    [
-      getNodes,
-      edges,
-      onRemoveError,
-      fitView,
-      getViewport,
-      setViewport,
-      toast,
-      t,
-      onUpdateNodeError,
-      onChangeNode
-    ]
+    [getNodes, edges, onRemoveError, fitView, toast, t, onUpdateNodeError]
   );
 
   // 4. initData - 初始化工作流数据

@@ -177,56 +177,50 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
-    const {
-      completeMessages,
-      reasoningText,
-      answerText,
-      finish_reason,
-      getEmptyResponseTip,
-      usage
-    } = await createLLMResponse({
-      body: {
-        model: modelConstantsData.model,
-        stream,
-        messages: filterMessages,
-        temperature,
-        max_tokens,
-        top_p: aiChatTopP,
-        stop: aiChatStopSign,
-        response_format: {
-          type: aiChatResponseFormat,
-          json_schema: aiChatJsonSchema
+    const { completeMessages, reasoningText, answerText, finish_reason, responseEmptyTip, usage } =
+      await createLLMResponse({
+        body: {
+          model: modelConstantsData.model,
+          stream,
+          messages: filterMessages,
+          temperature,
+          max_tokens,
+          top_p: aiChatTopP,
+          stop: aiChatStopSign,
+          response_format: {
+            type: aiChatResponseFormat,
+            json_schema: aiChatJsonSchema
+          },
+          retainDatasetCite,
+          useVision: aiChatVision,
+          requestOrigin
         },
-        retainDatasetCite,
-        useVision: aiChatVision,
-        requestOrigin
-      },
-      userKey: externalProvider.openaiAccount,
-      isAborted: checkIsStopping,
-      onReasoning({ text }) {
-        if (!aiChatReasoning) return;
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            reasoning_content: text
-          })
-        });
-      },
-      onStreaming({ text }) {
-        if (!isResponseAnswerText) return;
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text
-          })
-        });
-      }
-    });
+        userKey: externalProvider.openaiAccount,
+        isAborted: checkIsStopping,
+        onReasoning({ text }) {
+          if (!aiChatReasoning) return;
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              reasoning_content: text
+            })
+          });
+        },
+        onStreaming({ text }) {
+          if (!isResponseAnswerText) return;
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text
+            })
+          });
+        }
+      });
 
-    if (!answerText && !reasoningText) {
-      return getNodeErrResponse({ error: getEmptyResponseTip() });
+    if (responseEmptyTip) {
+      return getNodeErrResponse({ error: responseEmptyTip });
     }
 
     const { totalPoints, modelName } = formatModelChars2Points({

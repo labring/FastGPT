@@ -51,7 +51,7 @@ type LLMResponse = {
   reasoningText: string;
   toolCalls?: ChatCompletionMessageToolCall[];
   finish_reason: CompletionFinishReason;
-  getEmptyResponseTip: () => string;
+  responseEmptyTip?: string;
   usage: {
     inputTokens: number;
     outputTokens: number;
@@ -92,7 +92,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   });
 
   // console.log(JSON.stringify(requestBody, null, 2));
-  const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
+  const { response, isStreamResponse } = await createChatCompletion({
     body: requestBody,
     modelData,
     userKey,
@@ -151,9 +151,33 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     usage?.prompt_tokens || (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
   const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(assistantMessage));
 
+  const getEmptyResponseTip = () => {
+    if (userKey?.baseUrl) {
+      addLog.warn(`User LLM response empty`, {
+        baseUrl: userKey?.baseUrl,
+        requestBody,
+        finish_reason
+      });
+      return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
+    } else {
+      addLog.error(`LLM response empty`, {
+        message: '',
+        data: requestBody,
+        finish_reason
+      });
+    }
+    return i18nT('chat:LLM_model_response_empty');
+  };
+  const isNotResponse =
+    !answerText &&
+    !reasoningText &&
+    !toolCalls?.length &&
+    (finish_reason === 'stop' || !finish_reason);
+  const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
+
   return {
     isStreamResponse,
-    getEmptyResponseTip,
+    responseEmptyTip,
     answerText,
     reasoningText,
     toolCalls,
@@ -535,7 +559,8 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
     maxToken: body.max_tokens || undefined
   });
 
-  const requestBody = {
+  const formatStop = stop?.split('|').filter((item) => !!item.trim());
+  let requestBody = {
     ...body,
     max_tokens: maxTokens,
     model: modelData.model,
@@ -546,15 +571,19 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
             temperature: body.temperature
           })
         : undefined,
-    ...modelData?.defaultConfig,
     response_format,
-    stop: stop?.split('|').filter((item) => !!item.trim()),
+    stop: formatStop?.length ? formatStop : undefined,
     ...(toolCallMode === 'toolChoice' && {
       tools,
       tool_choice,
       parallel_tool_calls
     })
   } as T;
+
+  // Filter null value
+  requestBody = Object.fromEntries(
+    Object.entries(requestBody).filter(([_, value]) => value !== null)
+  ) as T;
 
   // field map
   if (modelData.fieldMap) {
@@ -565,6 +594,11 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
       delete requestBody[sourceKey];
     });
   }
+
+  requestBody = {
+    ...requestBody,
+    ...modelData?.defaultConfig
+  };
 
   return {
     requestBody: requestBody as unknown as InferCompletionsBody<T>,
@@ -584,18 +618,14 @@ const createChatCompletion = async ({
   timeout?: number;
   options?: OpenAI.RequestOptions;
 }): Promise<
-  {
-    getEmptyResponseTip: () => string;
-  } & (
-    | {
-        response: StreamChatType;
-        isStreamResponse: true;
-      }
-    | {
-        response: UnStreamChatType;
-        isStreamResponse: false;
-      }
-  )
+  | {
+      response: StreamChatType;
+      isStreamResponse: true;
+    }
+  | {
+      response: UnStreamChatType;
+      isStreamResponse: false;
+    }
 > => {
   try {
     if (!modelData) {
@@ -627,34 +657,16 @@ const createChatCompletion = async ({
       response !== null &&
       ('iterator' in response || 'controller' in response);
 
-    const getEmptyResponseTip = () => {
-      if (userKey?.baseUrl) {
-        addLog.warn(`User LLM response empty`, {
-          baseUrl: userKey?.baseUrl,
-          requestBody: body
-        });
-        return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
-      } else {
-        addLog.error(`LLM response empty`, {
-          message: '',
-          data: body
-        });
-      }
-      return i18nT('chat:LLM_model_response_empty');
-    };
-
     if (isStreamResponse) {
       return {
         response,
-        isStreamResponse: true,
-        getEmptyResponseTip
+        isStreamResponse: true
       };
     }
 
     return {
       response,
-      isStreamResponse: false,
-      getEmptyResponseTip
+      isStreamResponse: false
     };
   } catch (error) {
     if (userKey?.baseUrl) {
