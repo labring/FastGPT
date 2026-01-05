@@ -55,7 +55,7 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppPermission } from '@/web/core/app/api';
 
 type Props = FlowNodeItemType & {
@@ -436,6 +436,8 @@ const NodeTitleSection = React.memo<{
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
+  const childAppId = useMemo(() => (appId ? getToolRawId(appId) : undefined), [appId]);
+
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:custom_title'),
@@ -462,6 +464,19 @@ const NodeTitleSection = React.memo<{
     });
   }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
+  const { runAsync: onGetPermission } = useRequest2(getAppPermission, {
+    onSuccess(permission) {
+      if (permission.hasWritePer) {
+        window.open(`/app/detail?appId=${childAppId}`, '_blank');
+      } else {
+        toast({
+          title: t('workflow:no_edit_permission'),
+          status: 'warning'
+        });
+      }
+    }
+  });
+
   return (
     <Flex alignItems={'center'}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
@@ -476,23 +491,13 @@ const NodeTitleSection = React.memo<{
       <Box ml={1} visibility={'hidden'}>
         <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
       </Box>
-      {appId && !appId.startsWith('system') && (
+      {childAppId && (
         <Box ml={1} visibility={'hidden'}>
           <MyIconButton
             className="node-hover-controller"
             icon="common/link"
             tip={t('workflow:to_app_detail')}
-            onClick={async () => {
-              const permission = await getAppPermission(appId);
-              if (permission.hasWritePer) {
-                window.open(`/app/detail?appId=${appId}`, '_blank');
-              } else {
-                toast({
-                  title: t('workflow:no_edit_permission'),
-                  status: 'warning'
-                });
-              }
-            }}
+            onClick={() => onGetPermission(childAppId)}
           />
         </Box>
       )}
