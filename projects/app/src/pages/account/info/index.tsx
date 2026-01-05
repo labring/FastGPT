@@ -357,7 +357,7 @@ const PlanUsage = () => {
   const { subPlans, feConfigs } = useSystemStore();
 
   // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecom;
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,

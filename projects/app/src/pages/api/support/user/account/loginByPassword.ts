@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await MongoUser.findOne({
     username,
     password
-  }).lean();
+  });
 
   if (!user) {
     return Promise.reject(UserErrEnum.account_psw_error);
@@ -54,10 +54,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     userId: user._id
   });
 
-  await MongoUser.findByIdAndUpdate(user._id, {
-    lastLoginTmbId: userDetail.team.tmbId,
-    language: language
-  });
+  user.lastLoginTmbId = userDetail.team.tmbId;
+  user.language = language;
+  await user.save();
 
   const token = await createUserSession({
     userId: user._id,

@@ -49,7 +49,7 @@ const Standard = ({
   };
 
   // Check if it's a wecom team
-  const isWecomTeam = !!userInfo?.team?.isWecom;
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   // alert(`isWecomTeam: ${JSON.stringify(Object.keys(userInfo?.team))}`);
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
