@@ -25,6 +25,7 @@ const FileSelector = ({
   FileTypeNode,
   autoFilterOverSize,
   fileTipNode,
+  showFaqTip = false,
   ...props
 }: {
   fileType: string;
@@ -35,6 +36,7 @@ const FileSelector = ({
   FileTypeNode?: React.ReactNode;
   fileTipNode?: React.ReactNode;
   autoFilterOverSize?: boolean;
+  showFaqTip?: boolean;
 } & FlexProps) => {
   const { t } = useTranslation();
 
@@ -238,6 +240,8 @@ const FileSelector = ({
                   )}
                   {/* max size */}
                   {t('file:support_max_size', { maxSize: displayMaxSize })}
+
+                  {showFaqTip && t('file:faq_read_tip')}
                 </>
               )}
             </Box>
