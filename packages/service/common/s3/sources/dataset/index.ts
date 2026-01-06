@@ -139,7 +139,7 @@ export class S3DatasetSource extends S3PrivateBucket {
 
   // 根据文件 Buffer 上传文件
   async upload(params: UploadParams): Promise<string> {
-    const { datasetId, filename, ...file } = UploadParamsSchema.parse(params);
+    const { datasetId, filename, contentType, ...file } = UploadParamsSchema.parse(params);
 
     // 截断文件名以避免 S3 key 过长的问题
     const truncatedFilename = truncateFilename(filename);
@@ -154,7 +154,7 @@ export class S3DatasetSource extends S3PrivateBucket {
     await this.client.uploadObject({
       key,
       body: 'buffer' in file ? file.buffer : file.stream,
-      contentType: Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
+      contentType: contentType || Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
       metadata: {
         uploadTime: new Date().toISOString(),
         originFilename: encodeURIComponent(truncatedFilename)
