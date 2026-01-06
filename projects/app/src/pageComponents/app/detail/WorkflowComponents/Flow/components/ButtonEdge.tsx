@@ -103,12 +103,7 @@ const ButtonEdge = (props: EdgeProps) => {
     const index = sortedEdges.findIndex((e) => e.id === id);
     const total = sortedEdges.length;
     const spacing = 20;
-    const midPoint = Math.ceil(total / 2);
-
-    const offset =
-      index < midPoint
-        ? (index - Math.floor(midPoint / 2)) * spacing
-        : (Math.floor((total - midPoint) / 2) - (index - midPoint)) * spacing;
+    const offset = (index - (total - 1) / 2) * spacing;
 
     const maxOffset = Math.abs(targetX - sourceX) * 0.25;
     return Math.max(-maxOffset, Math.min(maxOffset, offset));

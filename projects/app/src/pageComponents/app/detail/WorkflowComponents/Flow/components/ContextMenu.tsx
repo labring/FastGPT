@@ -98,14 +98,32 @@ const ContextMenu = () => {
           minLeft = Math.min(minLeft, left);
         });
 
-        // Sort by source handle order
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
         nodesInRank.sort((a, b) => {
           const edgeA = edges.find((e) => e.target === a.node.id);
           const edgeB = edges.find((e) => e.target === b.node.id);
-          return (
-            getHandleIndex(edgeA, nodesMap.get(edgeA?.source)) -
-            getHandleIndex(edgeB, nodesMap.get(edgeB?.source))
-          );
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+          }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
         });
 
         // Assign Y positions in sorted order
@@ -191,14 +209,32 @@ const ContextMenu = () => {
           minLeft = Math.min(minLeft, left);
         });
 
-        // Sort by source handle order
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
         nodesInRank.sort((a, b) => {
           const edgeA = filteredEdges.find((e) => e.target === a.node.id);
           const edgeB = filteredEdges.find((e) => e.target === b.node.id);
-          return (
-            getHandleIndex(edgeA, nodesMap.get(edgeA?.source)) -
-            getHandleIndex(edgeB, nodesMap.get(edgeB?.source))
-          );
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+          }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
         });
 
         // Assign Y positions in sorted order
