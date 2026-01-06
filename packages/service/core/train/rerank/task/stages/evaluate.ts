@@ -1,4 +1,8 @@
-import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import type {
+  RerankTrainTaskSchemaType,
+  RerankEvalResult
+} from '@fastgpt/global/core/train/rerank/type';
+import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoApp } from '../../../../../core/app/schema';
 import { MongoEvalDatasetCollection } from '../../../../../core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../../../../core/evaluation/dataset/evalDatasetDataSchema';
@@ -13,6 +17,8 @@ import {
   extractModelFromApp,
   buildModelEndpoint
 } from '../../utils';
+import { createEnhancedError } from '../../utils';
+import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
 import { syntheticRerankEvalData, evaluateRerank } from '../../external';
 import { getDefaultLLMModel, getRerankModel } from '../../../../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -24,6 +30,7 @@ import {
   MAX_DITING_CONCURRENCY,
   DEFAULT_DITING_TIMEOUT
 } from '../../constants';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
 
 /**
  * Generate evaluation dataset
@@ -45,12 +52,24 @@ export async function runGenerateEvalDataset(task: RerankTrainTaskSchemaType): P
 
   const app = await MongoApp.findById(task.appId).lean();
   if (!app) {
-    throw new Error('Application not found');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.INTERNAL_ERROR,
+      'Application not found or has been deleted',
+      'Please check if the application still exists'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const datasetIds = extractDatasetIdsFromApp(app);
   if (datasetIds.length === 0) {
-    throw new Error('No datasets found in application');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.EVAL_DATASET_EMPTY,
+      'No dataset configured in application, cannot generate evaluation data',
+      'Please add dataset configuration to the application and retry'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   addLog.info('Extracted dataset IDs from app', {
@@ -62,7 +81,13 @@ export async function runGenerateEvalDataset(task: RerankTrainTaskSchemaType): P
   const sampledData = await sampleDataFromDataset(datasetIds, { datasetType: 'eval' });
 
   if (sampledData.length === 0) {
-    throw new Error('No data available in datasets');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.EVAL_DATASET_EMPTY,
+      'No evaluation data available in dataset',
+      'Please ensure the dataset contains sufficient data content'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   addLog.info('Sampled data from datasets', {
@@ -138,7 +163,13 @@ export async function runGenerateEvalDataset(task: RerankTrainTaskSchemaType): P
     .filter((value) => value !== null);
 
   if (evalDataItems.length === 0) {
-    throw new Error('Failed to generate any eval QA pairs');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.EVAL_FAILED,
+      'DiTing service failed to generate any evaluation QA pairs',
+      'This may be due to data quality issues or DiTing service exception, please check data content or contact system administrator'
+    );
+    throw new TrainTaskRetriableError(enhancedError);
   }
 
   addLog.info('Generated eval QA pairs using DiTing', {
@@ -190,50 +221,63 @@ export async function runGenerateEvalDataset(task: RerankTrainTaskSchemaType): P
   });
 
   const evalCollectionName = `Eval Dataset - Task ${task._id}`;
-  const [evalCollection] = await MongoEvalDatasetCollection.create([
-    {
-      teamId: task.teamId,
-      tmbId: task.tmbId,
-      name: evalCollectionName,
-      description: `Rerank Model Evaluation Dataset - Training Task ${task.name}`,
-      metadata: {
-        taskId: String(task._id),
-        taskName: task.name,
-        generatedAt: new Date(),
-        sampleSize: enrichedEvalDataItems.length
+
+  try {
+    const [evalCollection] = await MongoEvalDatasetCollection.create([
+      {
+        teamId: task.teamId,
+        tmbId: task.tmbId,
+        name: evalCollectionName,
+        description: `Rerank Model Evaluation Dataset - Training Task ${task.name}`,
+        metadata: {
+          taskId: String(task._id),
+          taskName: task.name,
+          generatedAt: new Date(),
+          sampleSize: enrichedEvalDataItems.length
+        }
       }
-    }
-  ]);
+    ]);
 
-  const evalDataDocs = enrichedEvalDataItems.map((item) => ({
-    teamId: item.teamId,
-    tmbId: item.tmbId,
-    evalDatasetCollectionId: evalCollection._id,
-    [EvalDatasetDataKeyEnum.UserInput]: item.question,
-    [EvalDatasetDataKeyEnum.ExpectedOutput]: item.answer,
-    [EvalDatasetDataKeyEnum.Context]: [],
-    [EvalDatasetDataKeyEnum.RetrievalContext]: [],
-    [EvalDatasetDataKeyEnum.RetrievalContextsFull]: item.retrievalContextsFull,
-    [EvalDatasetDataKeyEnum.ExpectedContextIds]: item.expectedContextIds,
-    createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration,
-    synthesisMetadata: {
-      sourceDataId: item.sourceDataId,
-      sourceDatasetId: item.sourceDatasetId,
-      intelligentGenerationModel: aiModelName,
-      synthesizedAt: item.synthesizedAt,
-      generatedAt: new Date()
-    }
-  }));
+    const evalDataDocs = enrichedEvalDataItems.map((item) => ({
+      teamId: item.teamId,
+      tmbId: item.tmbId,
+      evalDatasetCollectionId: evalCollection._id,
+      [EvalDatasetDataKeyEnum.UserInput]: item.question,
+      [EvalDatasetDataKeyEnum.ExpectedOutput]: item.answer,
+      [EvalDatasetDataKeyEnum.Context]: [],
+      [EvalDatasetDataKeyEnum.RetrievalContext]: [],
+      [EvalDatasetDataKeyEnum.RetrievalContextsFull]: item.retrievalContextsFull,
+      [EvalDatasetDataKeyEnum.ExpectedContextIds]: item.expectedContextIds,
+      createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration,
+      synthesisMetadata: {
+        sourceDataId: item.sourceDataId,
+        sourceDatasetId: item.sourceDatasetId,
+        intelligentGenerationModel: aiModelName,
+        synthesizedAt: item.synthesizedAt,
+        generatedAt: new Date()
+      }
+    }));
 
-  await MongoEvalDatasetData.insertMany(evalDataDocs);
+    await MongoEvalDatasetData.insertMany(evalDataDocs);
 
-  addLog.info('Generated eval dataset', {
-    taskId: String(task._id),
-    datasetId: String(evalCollection._id),
-    dataCount: evalDataDocs.length
-  });
+    addLog.info('Generated eval dataset', {
+      taskId: String(task._id),
+      datasetId: String(evalCollection._id),
+      dataCount: evalDataDocs.length
+    });
 
-  return String(evalCollection._id);
+    return String(evalCollection._id);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.DATABASE_ERROR,
+      `Failed to save evaluation dataset: ${errorMsg}`,
+      'This may be a database error. Please check database connection and try again',
+      errorMsg
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
+  }
 }
 
 /**
@@ -251,7 +295,7 @@ async function evaluateModel(
   evalDatasetId: string,
   modelConfigId: string,
   modelType: 'base' | 'tuned'
-): Promise<Record<string, unknown>> {
+): Promise<RerankEvalResult> {
   const modelTypeName = modelType === 'base' ? 'base' : 'tuned';
   addLog.info(`Run evaluate ${modelTypeName} model`, { taskId });
 
@@ -260,13 +304,25 @@ async function evaluateModel(
   }).lean();
 
   if (evalDataItems.length === 0) {
-    throw new Error('Eval dataset is empty');
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.EVAL_DATASET_EMPTY,
+      'Evaluation dataset is empty, cannot perform model evaluation',
+      'Please check if evaluation data generation step completed correctly'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const modelConfig = getRerankModel(modelConfigId);
 
   if (!modelConfig) {
-    throw new Error(`Model config not found: ${modelConfigId}`);
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.MODEL_NOT_FOUND,
+      `Model configuration not found: ${modelConfigId}`,
+      'Please check if model configuration has been deleted or ID is correct'
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const dataset = evalDataItems.map((item) => ({
@@ -296,21 +352,29 @@ async function evaluateModel(
   });
 
   if (!response.success || !response.data?.runLogs?.detailed_results) {
-    throw new Error(
-      `${modelTypeName} model evaluation failed: ${response.error || 'Unknown error'}`
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      TrainTaskErrorType.EVAL_FAILED,
+      `${modelTypeName} model evaluation failed: ${response.error || 'Unknown error'}`,
+      'Please check DiTing service status or view detailed logs',
+      response.error
     );
+    throw new TrainTaskRetriableError(enhancedError);
   }
 
-  const detailedResults = response.data.runLogs.detailed_results;
+  const runLogs = response.data.runLogs;
+  const detailedResults = runLogs.detailed_results;
 
   addLog.info(`${modelTypeName} model evaluated`, {
     taskId,
     ndcg: detailedResults.rerank_top10_ndcg,
     mrr: detailedResults.rerank_top10_mrr,
-    precision: detailedResults.rerank_top10_precision
+    precision: detailedResults.rerank_top10_precision,
+    hasRetrievalRanks: !!runLogs.retrieval_ranks
   });
 
-  return detailedResults;
+  // Return full runLogs including retrieval_ranks for CSV download
+  return runLogs;
 }
 
 /**
@@ -325,7 +389,7 @@ export async function runEvaluateBaseModel(
   taskId: string,
   baseEvalDatasetId: string,
   baseModelConfigId: string
-): Promise<Record<string, unknown>> {
+): Promise<RerankEvalResult> {
   return evaluateModel(taskId, baseEvalDatasetId, baseModelConfigId, 'base');
 }
 
@@ -341,6 +405,6 @@ export async function runEvaluateTunedModel(
   taskId: string,
   tunedEvalDatasetId: string,
   tunedModelConfigId: string
-): Promise<Record<string, unknown>> {
+): Promise<RerankEvalResult> {
   return evaluateModel(taskId, tunedEvalDatasetId, tunedModelConfigId, 'tuned');
 }

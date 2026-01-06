@@ -16,6 +16,7 @@ type BaseModelItemType = {
 
   isActive?: boolean;
   isCustom?: boolean;
+  isTuned?: boolean; // Whether this is a fine-tuned model created by training module
   isDefault?: boolean;
   isDefaultDatasetTextModel?: boolean;
   isDefaultDatasetImageModel?: boolean;

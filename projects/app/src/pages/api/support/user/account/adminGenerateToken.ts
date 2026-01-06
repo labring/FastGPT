@@ -3,14 +3,20 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authUserExist } from '@fastgpt/service/support/user/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';
-import { getUserDefaultTeam, getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
+import {
+  getUserDefaultTeam,
+  getTmbInfoByTmbId
+} from '@fastgpt/service/support/user/team/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import requestIp from 'request-ip';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { PostAdminGenerateTokenProps, AdminGenerateTokenResponse } from '@fastgpt/global/support/user/api.d';
+import type {
+  PostAdminGenerateTokenProps,
+  AdminGenerateTokenResponse
+} from '@fastgpt/global/support/user/api.d';
 
 /**
  * 管理员接口：为指定用户生成登录 Token

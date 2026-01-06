@@ -20,7 +20,9 @@ import {
 } from '@/web/core/app/api/train';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
+import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import { cardStyles } from '../constants';
+import EnhancedErrorDisplay from './components/EnhancedErrorDisplay';
 
 const AutoLearn = () => {
   const { t } = useTranslation();
@@ -29,6 +31,10 @@ const AutoLearn = () => {
 
   // 排序状态管理
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // 错误详情 Modal 状态
+  const [selectedError, setSelectedError] = useState<EnhancedErrorMessage | null>(null);
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
   // 空状态组件
   const EmptyTipDom = useMemo(() => <EmptyTip mt={0} text={t('app:auto_learn_no_records')} />, [t]);
@@ -93,16 +99,27 @@ const AutoLearn = () => {
     async (taskId: string) => {
       if (!taskId) throw new Error('Task ID is required');
 
-      // 使用 GET 请求，taskId 作为查询参数
-      const response = await fetch(
-        `/api/core/train/rerank/task/eval-dataset/download?taskId=${encodeURIComponent(taskId)}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      // 准备国际化的列名
+      const headers = {
+        question: t('app:eval_detail_question_column'),
+        bestMatchContext: t('app:eval_detail_best_match_context_column'),
+        collectionName: t('app:eval_detail_collection_name_column'),
+        rankBefore: t('app:eval_detail_rank_before_column'),
+        rankAfter: t('app:eval_detail_rank_after_column'),
+        improvement: t('app:eval_detail_improvement_column')
+      };
+
+      // 使用 POST 请求，传递 taskId 和 headers
+      const response = await fetch(`/api/core/train/rerank/task/eval-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          taskId,
+          headers
+        })
+      });
 
       // 检查响应状态
       if (!response.ok) {
@@ -117,17 +134,28 @@ const AutoLearn = () => {
         throw new Error(errorMessage);
       }
 
-      // 检查 Content-Type，确保是文件下载响应
+      // 检查 Content-Type，确保是 Excel 文件下载响应
       const contentType = response.headers.get('Content-Type');
       if (
-        !contentType?.includes('application/jsonl') &&
+        !contentType?.includes(
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ) &&
         !contentType?.includes('application/octet-stream')
       ) {
         throw new Error(t('下载失败') + ': ' + t('无效的响应格式'));
       }
 
       // 只有响应成功时才触发下载
-      const filename = `eval_dataset_${taskId}_${new Date().toISOString().split('T')[0]}.jsonl`;
+      // 尝试从 Content-Disposition 头中提取文件名，如果失败则使用默认名称
+      let filename = `eval-results-${taskId}.xlsx`;
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
 
@@ -226,17 +254,38 @@ const AutoLearn = () => {
 
   /**
    * 提取评测指标数据
+   * 指标数据位于 evalResult.detailed_results 中
    */
   const extractMetrics = useCallback((task: RerankTrainTaskListItem) => {
     const baseEvalResult = task.result?.baseModelEvalResult ?? {};
     const tunedEvalResult = task.result?.tunedModelEvalResult ?? {};
 
+    // 从 detailed_results 中提取指标
+    const baseDetailedResults = (baseEvalResult as any)?.detailed_results ?? {};
+    const tunedDetailedResults = (tunedEvalResult as any)?.detailed_results ?? {};
+
     return {
-      precisionBefore: baseEvalResult?.rerank_top10_precision,
-      precisionAfter: tunedEvalResult?.rerank_top10_precision,
-      mrrBefore: baseEvalResult?.rerank_top10_mrr,
-      mrrAfter: tunedEvalResult?.rerank_top10_mrr
+      precisionBefore: baseDetailedResults?.rerank_top10_precision,
+      precisionAfter: tunedDetailedResults?.rerank_top10_precision,
+      mrrBefore: baseDetailedResults?.rerank_top10_mrr,
+      mrrAfter: tunedDetailedResults?.rerank_top10_mrr
     };
+  }, []);
+
+  /**
+   * 查看错误详情处理函数
+   */
+  const handleViewError = useCallback((error: EnhancedErrorMessage) => {
+    setSelectedError(error);
+    setIsErrorModalOpen(true);
+  }, []);
+
+  /**
+   * 关闭错误详情 Modal
+   */
+  const handleCloseErrorModal = useCallback(() => {
+    setIsErrorModalOpen(false);
+    setSelectedError(null);
   }, []);
 
   return (
@@ -365,6 +414,16 @@ const AutoLearn = () => {
                           {t('app:auto_learn.download_evaluation_data')}
                         </Button>
                       )}
+                      {task.status === RerankTrainTaskStatusEnum.failed && task.errorMsg && (
+                        <Button
+                          size={'sm'}
+                          variant={'whiteBase'}
+                          leftIcon={<MyIcon name="common/errorFill" w={'14px'} />}
+                          onClick={() => handleViewError(task.errorMsg as EnhancedErrorMessage)}
+                        >
+                          {t('app:view_error')}
+                        </Button>
+                      )}
                     </Td>
                   </Tr>
                 );
@@ -373,6 +432,15 @@ const AutoLearn = () => {
           </Table>
         </ScrollData>
       </Box>
+
+      {/* 错误详情 Modal */}
+      {selectedError && (
+        <EnhancedErrorDisplay
+          isOpen={isErrorModalOpen}
+          onClose={handleCloseErrorModal}
+          error={selectedError}
+        />
+      )}
     </Flex>
   );
 };

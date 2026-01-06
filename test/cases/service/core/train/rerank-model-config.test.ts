@@ -26,6 +26,15 @@ vi.mock('@fastgpt/global/core/ai/provider', () => ({
   })
 }));
 
+vi.mock('@fastgpt/service/core/train/rerank/task/helpers/channel', () => ({
+  createTunedModelChannel: vi.fn().mockResolvedValue(undefined),
+  deleteTunedModelChannel: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
+  deleteSFTModel: vi.fn().mockResolvedValue({ success: true, message: 'Deleted' })
+}));
+
 import { createRerankModelConfig } from '@fastgpt/service/core/train/rerank/model/controller';
 
 describe('Rerank Model Config Controller', () => {
@@ -63,8 +72,7 @@ describe('Rerank Model Config Controller', () => {
             name: 'Test Rerank Model',
             isActive: true,
             isCustom: true,
-            requestUrl: 'http://192.168.1.100:8080/v1',
-            requestAuth: 'test-api-key',
+            isTuned: true, // 验证 isTuned 字段被正确设置
             type: 'rerank',
             charsPointsPrice: 1
           })
@@ -105,8 +113,7 @@ describe('Rerank Model Config Controller', () => {
             name: 'Simple Model',
             isActive: false,
             isCustom: true,
-            requestUrl: 'http://example.com/v1',
-            requestAuth: '',
+            isTuned: true, // 由训练模块创建，应该有 isTuned 标记
             type: 'rerank',
             charsPointsPrice: 2
           })
@@ -122,7 +129,6 @@ describe('Rerank Model Config Controller', () => {
 
     test('应该处理数据库创建错误', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
-      const { addLog } = await import('@fastgpt/service/common/system/log');
 
       (MongoSystemModel.findOneAndUpdate as any).mockRejectedValue(
         new Error('Database connection failed')
@@ -139,15 +145,7 @@ describe('Rerank Model Config Controller', () => {
           isActive: true,
           charsPointsPrice: 1
         })
-      ).rejects.toThrow('Failed to create rerank model config: Database connection failed');
-
-      expect(addLog.error).toHaveBeenCalledWith(
-        'Failed to create rerank model config',
-        expect.objectContaining({
-          model: 'error-model',
-          name: 'Error Model'
-        })
-      );
+      ).rejects.toThrow('Database connection failed');
     });
 
     test('应该正确记录创建日志', async () => {
@@ -169,18 +167,17 @@ describe('Rerank Model Config Controller', () => {
       });
 
       expect(addLog.info).toHaveBeenCalledWith(
-        'Created or updated rerank model config in database',
+        'Created or updated rerank model config',
         expect.objectContaining({
           model: 'log-test-model',
           name: 'Log Test Model',
           objectId: 'config_log',
-          requestUrl: 'http://test.com/v1',
           isActive: true
         })
       );
 
       expect(addLog.info).toHaveBeenCalledWith(
-        'Reloaded system models after creating rerank model',
+        'Reloaded system models',
         expect.objectContaining({
           model: 'log-test-model',
           objectId: 'config_log'

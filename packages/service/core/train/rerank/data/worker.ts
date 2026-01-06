@@ -2,7 +2,11 @@ import { getWorker, QueueNames } from '../../../../common/bullmq';
 import { addLog } from '../../../../common/system/log';
 import { type RerankTrainDataGenerateJobData } from './mq';
 import { rerankTrainDataGenerateProcessor } from './processor';
-import { DEFAULT_WORKER_STALLED_INTERVAL } from '../constants';
+import {
+  DEFAULT_WORKER_STALLED_INTERVAL,
+  DEFAULT_TRAIN_DATA_GENERATE_CONCURRENCY,
+  DEFAULT_WORKER_MAX_STALLED_COUNT
+} from '../constants';
 
 export function initRerankTrainDataWorker() {
   const worker = getWorker<RerankTrainDataGenerateJobData>(
@@ -10,8 +14,11 @@ export function initRerankTrainDataWorker() {
     rerankTrainDataGenerateProcessor,
     {
       stalledInterval: DEFAULT_WORKER_STALLED_INTERVAL,
-      maxStalledCount: 3,
-      concurrency: 2
+      maxStalledCount:
+        global.systemEnv?.trainConfig?.maxStalledCount || DEFAULT_WORKER_MAX_STALLED_COUNT,
+      concurrency:
+        global.systemEnv?.trainConfig?.dataGenerateConcurrency ||
+        DEFAULT_TRAIN_DATA_GENERATE_CONCURRENCY
     }
   );
 

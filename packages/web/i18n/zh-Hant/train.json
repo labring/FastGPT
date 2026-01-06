@@ -15,6 +15,7 @@
   "task_cannot_delete": "進行中的任務不能刪除",
   "eval_dataset_not_generated": "評測資料集尚未生成，請等待訓練任務完成",
   "eval_dataset_empty": "評測資料集為空",
+  "eval_results_not_found": "評測結果未找到，請確保訓練任務已完成評測階段",
   "diting_service_error": "DiTing 服務調用失敗",
   "sft_bridge_service_error": "SFT Bridge 服務調用失敗"
 }

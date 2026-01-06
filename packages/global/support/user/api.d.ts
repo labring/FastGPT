@@ -2,7 +2,7 @@ import type { MemberGroupSchemaType } from 'support/permission/memberGroup/type'
 import { MemberGroupListItemType } from 'support/permission/memberGroup/type';
 import type { OAuthEnum } from './constant';
 import type { TrackRegisterParams } from './login/api';
-import { TeamMemberStatusEnum } from './team/constant';
+import type { TeamMemberStatusEnum } from './team/constant';
 import type { OrgType } from './team/org/type';
 import type { TeamMemberItemType } from './team/type';
 

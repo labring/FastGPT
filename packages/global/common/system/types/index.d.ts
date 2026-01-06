@@ -147,6 +147,9 @@ export type SystemEnvType = {
   // Evaluation configurations
   evalConfig?: EvaluationConfigType;
 
+  // Training configurations
+  trainConfig?: TrainingConfigType;
+
   // Correction search similarity threshold
   correctionSimilarityThreshold?: number;
 
@@ -175,6 +178,12 @@ export type EvaluationConfigType = {
   datasetDataSynthesizeConcurrency?: number;
   datasetSmartGenerateConcurrency?: number;
   maxStalledCount?: number;
+};
+
+export type TrainingConfigType = {
+  taskConcurrency?: number; // Training task worker concurrency
+  dataGenerateConcurrency?: number; // Training data generation worker concurrency
+  maxStalledCount?: number; // Max stalled count for BullMQ workers
 };
 
 export type HypeParamsType = {
