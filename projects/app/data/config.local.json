@@ -17,7 +17,11 @@
       "topK": 20, // 召回的文档数量
       "rerank": false, // 是否使用重排序
       "min_rerank_threshold": 0.85 // 重排序最小阈值
-    }
+    },
+    "assistantRetrievalLimit": 20, // Assistant场景：检索结果数量限制（默认：20）
+    "assistantFinalResultLimit": 10, // Assistant场景：最终返回的检索结果数量限制（默认：10）
+    "correctionSimilarityThreshold": 0.95, // Assistant场景：校正数据相似度阈值，命中后直接返回（默认：0.95）
+    "faqSimilarityThreshold": 0.95 // Assistant场景：FAQ数据相似度阈值，命中后直接返回（默认：0.95）
   },
   "llmModels": [
     {

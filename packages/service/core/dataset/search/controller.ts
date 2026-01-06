@@ -76,7 +76,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchRerankMethod]?: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
-  /* 
+  /*
     {
       tags: {
         $and: ["str1","str2"],
@@ -89,6 +89,8 @@ export type SearchDatasetDataProps = {
     }
   */
   collectionFilterMatch?: string;
+
+  isAssistant?: boolean; // 新增：标记是否为assistant场景
 };
 
 export type SearchDatabaseDataProps = {
@@ -112,6 +114,11 @@ export type SearchDatasetDataResponse = {
   usingSimilarityFilter: boolean;
   isFaqResult?: boolean; // 标记是否为 FAQ 检索结果
 
+  retrievalTime?: number; // 新增：检索耗时(s)，统计到进入reranker之前，保留2位小数（仅assistant场景）
+  rerankTime?: number; // 新增：重排耗时(s)，仅当 usingReRank=true 时有值，保留2位小数（仅assistant场景）
+  retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
+  retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
+
   queryExtensionResult?: {
     model: string;
     inputTokens: number;
@@ -121,6 +128,7 @@ export type SearchDatasetDataResponse = {
       standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
       coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
     };
+    rewriteTime?: number; // 新增：问题改写耗时(s)，保留2位小数（仅assistant场景）
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
 
@@ -237,6 +245,9 @@ export const filterDatasetDataByMaxTokens = async (
 export async function searchDatasetData(
   props: SearchDatasetDataProps
 ): Promise<SearchDatasetDataResponse> {
+  // 【新增】检索开始计时（在函数入口处）
+  const retrievalStartTime = Date.now();
+
   let {
     teamId,
     reRankQuery,
@@ -251,7 +262,8 @@ export async function searchDatasetData(
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
-    collectionFilterMatch
+    collectionFilterMatch,
+    isAssistant = false // 新增：获取isAssistant参数
   } = props;
   // Constants data
   const datasetDataSelectField =
@@ -888,6 +900,14 @@ export async function searchDatasetData(
     fullTextLimit
   });
 
+  // 【新增】仅assistant场景下计算检索耗时（在进入reranker之前）
+  const retrievalTime = isAssistant
+    ? +((Date.now() - retrievalStartTime) / 1000).toFixed(2)
+    : undefined;
+
+  // 【新增】仅assistant场景下重排开始计时（包含reranker调用、RRF合并、去重、过滤、截断）
+  const rerankStartTime = isAssistant && usingReRank ? Date.now() : undefined;
+
   // ReRank results
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
     if (!usingReRank) {
@@ -911,11 +931,20 @@ export async function searchDatasetData(
       set.add(str);
       return true;
     });
+
+    // 【新增】仅assistant场景下限制进入reranker的数据量
+    const dataForRerank = isAssistant
+      ? (() => {
+          const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
+          return filterSameDataResults.slice(0, retrievalLimit);
+        })()
+      : filterSameDataResults;
+
     try {
       return await datasetDataReRank({
         rerankModel,
         query: reRankQuery,
-        data: filterSameDataResults,
+        data: dataForRerank,
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
@@ -936,6 +965,75 @@ export async function searchDatasetData(
     { k: embK, list: embeddingRecallResults },
     { k: fullTextK, list: fullTextRecallResults }
   ]);
+
+  // 【新增】仅assistant场景下保存检索结果（包含 embedding、fullText、RRF 三种分数）
+  const retrievalResults = isAssistant
+    ? (() => {
+        const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
+        addLog.debug('Assistant Config - assistantRetrievalLimit', { retrievalLimit });
+        const limitedResults = rrfSearchResult.slice(0, retrievalLimit);
+
+        // 构建 id -> embedding score 映射
+        const embeddingScoreMap = new Map<string, number>();
+        embeddingRecallResults.forEach((item) => {
+          const embScore = item.score.find((s) => s.type === SearchScoreTypeEnum.embedding);
+          if (embScore) {
+            embeddingScoreMap.set(item.id, embScore.value);
+          }
+        });
+
+        // 构建 id -> fullText score 映射
+        const fullTextScoreMap = new Map<string, number>();
+        fullTextRecallResults.forEach((item) => {
+          const ftScore = item.score.find((s) => s.type === SearchScoreTypeEnum.fullText);
+          if (ftScore) {
+            fullTextScoreMap.set(item.id, ftScore.value);
+          }
+        });
+
+        // 为每个结果添加完整的 score 数组（embedding、fullText、rrf）
+        return limitedResults.map((item, index) => {
+          const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
+
+          // 添加 embedding 分数（如果存在）
+          const embScore = embeddingScoreMap.get(item.id);
+          if (embScore !== undefined) {
+            scores.push({
+              type: SearchScoreTypeEnum.embedding,
+              value: embScore,
+              index
+            });
+          }
+
+          // 添加 fullText 分数（如果存在）
+          const ftScore = fullTextScoreMap.get(item.id);
+          if (ftScore !== undefined) {
+            scores.push({
+              type: SearchScoreTypeEnum.fullText,
+              value: ftScore,
+              index
+            });
+          }
+
+          // 添加 RRF 分数（从 item.score 中获取）
+          const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+          if (rrfScore) {
+            scores.push({
+              type: SearchScoreTypeEnum.rrf,
+              value: rrfScore.value,
+              index
+            });
+          }
+
+          // 返回完整的结果，只替换 score 数组
+          return {
+            ...item,
+            score: scores
+          };
+        });
+      })()
+    : undefined;
+
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
@@ -986,15 +1084,33 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  // 【新增】重排结束计时
+  const rerankTime =
+    rerankStartTime !== undefined ? +((Date.now() - rerankStartTime) / 1000).toFixed(2) : undefined;
+
+  // 【新增】仅assistant场景下限制最终结果数量
+  const finalResults = isAssistant
+    ? (() => {
+        const finalResultLimit = global.systemEnv?.assistantFinalResultLimit ?? 10;
+        addLog.debug('Assistant Config - assistantFinalResultLimit', { finalResultLimit });
+        return filterMaxTokensResult.length > finalResultLimit
+          ? filterMaxTokensResult.slice(0, finalResultLimit)
+          : filterMaxTokensResult;
+      })()
+    : filterMaxTokensResult;
+
   return {
-    searchRes: filterMaxTokensResult,
+    searchRes: finalResults,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
     limit: maxTokens,
     similarity,
     usingReRank,
-    usingSimilarityFilter
+    usingSimilarityFilter,
+    ...(isAssistant && retrievalTime !== undefined ? { retrievalTime } : {}), // 新增：检索耗时（仅assistant场景）
+    ...(isAssistant && rerankTime !== undefined ? { rerankTime } : {}), // 新增：重排耗时（仅assistant场景）
+    ...(isAssistant && retrievalResults ? { retrievalResults } : {}) // 新增：检索结果（仅assistant场景）
   };
 }
 
@@ -1024,7 +1140,7 @@ export const defaultSearchDatasetData = async ({
     ? getLLMModel(datasetSearchExtensionModel)
     : undefined;
 
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
+  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult, rewriteTime } =
     await datasetSearchQueryExtension({
       query,
       extensionModel,
@@ -1034,6 +1150,9 @@ export const defaultSearchDatasetData = async ({
       teamId: props.teamId,
       datasetIds
     });
+
+  // 新增：检索开始计时（问题改写之后）
+  const retrievalStartTime = Date.now();
 
   // ===== 校正数据优先检索（移动到这里）=====
   if (isAssistant && appId && datasetIds && datasetIds.length > 0) {
@@ -1053,11 +1172,17 @@ export const defaultSearchDatasetData = async ({
         vectorModel
       });
 
+      const correctionThreshold = global.systemEnv?.correctionSimilarityThreshold ?? 0.95;
+      addLog.debug('Assistant Config - correctionSimilarityThreshold', { correctionThreshold });
+
       if (
         correctionResult &&
-        correctionResult.similarity > (global.systemEnv?.correctionSimilarityThreshold ?? 0.95) &&
+        correctionResult.similarity > correctionThreshold &&
         correctionResult.correctedAnswer
       ) {
+        // 新增：计算检索时间
+        const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
         // 创建校正数据块
         const correctionChunk: SearchDataResponseItemType = {
           id: `correction_quote_${correctionResult.correctionId}`,
@@ -1087,13 +1212,16 @@ export const defaultSearchDatasetData = async ({
           similarity: correctionResult.similarity,
           usingReRank: false,
           usingSimilarityFilter: true,
+          retrievalTime, // 新增：检索总耗时
+          retrievalType: 'correction' as const, // 新增：标记为 correction 命中
           queryExtensionResult: aiExtensionResult
             ? {
                 model: aiExtensionResult.model,
                 inputTokens: aiExtensionResult.inputTokens,
                 outputTokens: aiExtensionResult.outputTokens,
                 query: extensionQueries.join('\n'),
-                synonymRewriteResult: aiExtensionResult.synonymRewriteResult
+                synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+                rewriteTime // 新增：问题改写耗时（仅assistant场景）
               }
             : undefined,
           correctionData: {
@@ -1127,8 +1255,11 @@ export const defaultSearchDatasetData = async ({
     });
 
     if (faqResult) {
+      // 新增：计算检索时间
+      const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
       // FAQ 命中 (已通过 >= faqSimilarityThreshold 阈值过滤), 直接返回
-      addLog.info('FAQ Search - Match found and returning', {
+      addLog.debug('FAQ Search - Match found and returning', {
         teamId: props.teamId,
         dataId: faqResult.id,
         similarity: faqResult.score?.[0]?.value
@@ -1144,13 +1275,16 @@ export const defaultSearchDatasetData = async ({
         usingReRank: false,
         usingSimilarityFilter: true,
         isFaqResult: true, // 标记为 FAQ 检索结果
+        retrievalTime, // 新增：检索总耗时
+        retrievalType: 'faq' as const, // 新增：标记为 FAQ 命中
         queryExtensionResult: aiExtensionResult
           ? {
               model: aiExtensionResult.model,
               inputTokens: aiExtensionResult.inputTokens,
               outputTokens: aiExtensionResult.outputTokens,
               query: extensionQueries.join('\n'),
-              synonymRewriteResult: aiExtensionResult.synonymRewriteResult
+              synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+              rewriteTime // 新增：问题改写耗时（仅assistant场景）
             }
           : undefined
       };
@@ -1162,9 +1296,11 @@ export const defaultSearchDatasetData = async ({
     ...props,
     reRankQuery: rewriteQuery,
     queries: concatQueries,
-    datasetIds
+    datasetIds,
+    isAssistant // 新增：传递isAssistant参数
   });
 
+  // 注意：retrievalTime 已在 searchDatasetData 中计算（统计到进入reranker前）
   return {
     ...result,
     queryExtensionResult: aiExtensionResult
@@ -1173,7 +1309,8 @@ export const defaultSearchDatasetData = async ({
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           query: extensionQueries.join('\n'),
-          synonymRewriteResult: aiExtensionResult.synonymRewriteResult
+          synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+          rewriteTime // 新增：问题改写耗时（仅assistant场景）
         }
       : undefined
   };
@@ -1570,6 +1707,13 @@ async function searchFAQData({
 }): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
   const startTime = Date.now();
   const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
+  addLog.debug('Assistant Config - faqSimilarityThreshold', { faqThreshold });
+
+  addLog.debug('FAQ Search - Starting', {
+    teamId,
+    datasetIds,
+    query: rewriteQuery
+  });
 
   try {
     // 1. 获取所有 FAQ collection (trainingType='template')
@@ -1584,6 +1728,10 @@ async function searchFAQData({
     ).lean();
 
     if (faqCollections.length === 0) {
+      addLog.debug('FAQ Search - No FAQ collections found', {
+        teamId,
+        duration: `${Date.now() - startTime}ms`
+      });
       return null;
     }
 
@@ -1608,6 +1756,10 @@ async function searchFAQData({
     });
 
     if (!recallResult.results || recallResult.results.length === 0) {
+      addLog.debug('FAQ Search - No recall results', {
+        teamId,
+        duration: `${Date.now() - startTime}ms`
+      });
       return null;
     }
 
@@ -1615,6 +1767,12 @@ async function searchFAQData({
     const filteredByThreshold = recallResult.results.filter((r) => (r.score || 0) >= faqThreshold);
 
     if (filteredByThreshold.length === 0) {
+      addLog.debug('FAQ Search - No results above threshold', {
+        teamId,
+        threshold: faqThreshold,
+        topScore: recallResult.results[0]?.score || 0,
+        duration: `${Date.now() - startTime}ms`
+      });
       return null;
     }
 
@@ -1632,6 +1790,11 @@ async function searchFAQData({
       .exec();
 
     if (dataDocs.length === 0) {
+      addLog.debug('FAQ Search - No data documents found', {
+        teamId,
+        thresholdResultsCount: filteredByThreshold.length,
+        duration: `${Date.now() - startTime}ms`
+      });
       return null;
     }
 
@@ -1695,7 +1858,7 @@ async function searchFAQData({
       embeddingTokens: tokens
     };
 
-    addLog.info('FAQ Search - Match found', {
+    addLog.debug('FAQ Search - Match found', {
       teamId,
       dataId: faqData.id,
       similarity,

@@ -98,7 +98,20 @@ export async function saveChat({
                 sourceName: quote.sourceName,
                 score: quote.score,
                 tokens: quote.tokens
-              }))
+              })),
+              // 新增：过滤 retrievalResults 字段（仅保留必要的元数据）
+              ...(responseItem.retrievalResults && {
+                retrievalResults: responseItem.retrievalResults.map((result: any) => ({
+                  id: result.id,
+                  chunkIndex: result.chunkIndex,
+                  datasetId: result.datasetId,
+                  collectionId: result.collectionId,
+                  sourceId: result.sourceId,
+                  sourceName: result.sourceName,
+                  score: result.score,
+                  tokens: result.tokens
+                }))
+              })
             };
           }
           return responseItem;

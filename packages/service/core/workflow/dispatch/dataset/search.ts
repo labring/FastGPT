@@ -155,6 +155,7 @@ export async function dispatchDatasetSearch(
   // 获取 faqAnswerMode 配置
   // const faqAnswerMode = chatConfig?.faqAnswerMode; 这样是undefined
   const faqAnswerMode = getFaqAnswerMode(chatConfig?.variables, variables);
+  console.log('faqAnswerMode', faqAnswerMode);
   // 获取所有知识库ID（用于同义词检索）
   const datasetIds = datasets.map((d) => d.datasetId);
 
@@ -232,6 +233,10 @@ export async function dispatchDatasetSearch(
       | { correctionId: string; correctedAnswer: string; question: string; similarity: number }
       | undefined = undefined;
     let faqAnswer: string | undefined = undefined; // FAQ 匹配成功时的答案
+    let rerankTime: number | undefined = undefined; // 新增：重排耗时（仅assistant场景）
+    let retrievalTime: number | undefined = undefined; // 新增：检索总耗时（仅assistant场景）
+    let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 新增：检索结果（仅assistant场景）
+    let retrievalType: 'correction' | 'faq' | undefined = undefined; // 新增：检索类型（仅correction/faq命中时有值）
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -427,6 +432,14 @@ export async function dispatchDatasetSearch(
       deepSearchResult = commonResult.deepSearchResult;
       // 提取校正数据信息
       correctionData = commonResult.correctionData;
+      // 新增：提取重排耗时
+      rerankTime = commonResult.rerankTime;
+      // 新增：提取检索总耗时
+      retrievalTime = commonResult.retrievalTime;
+      // 新增：提取检索结果（仅assistant场景）
+      retrievalResults = commonResult.retrievalResults;
+      // 新增：提取检索类型（仅correction/faq命中时有值）
+      retrievalType = commonResult.retrievalType;
       // 提取 FAQ 数据信息
       if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
         faqAnswer = commonResult.searchRes[0].a;
@@ -577,6 +590,14 @@ export async function dispatchDatasetSearch(
       quoteList: searchRes,
       queryExtensionResult,
       deepSearchResult,
+      // 新增：重排耗时（仅assistant场景）
+      ...(rerankTime !== undefined && { rerankTime }),
+      // 新增：检索总耗时（仅assistant场景）
+      ...(retrievalTime !== undefined && { retrievalTime }),
+      // 新增：检索结果（仅assistant场景）
+      ...(isAssistant && retrievalResults && { retrievalResults }),
+      // 新增：检索类型（仅correction/faq命中时有值）
+      ...(retrievalType && { retrievalType }),
       // 校正数据搜索结果
       ...(correctionData && {
         correctSearchResult: [
@@ -630,7 +651,7 @@ export async function searchCorrectionData({
   vectorModel
 }: SearchCorrectionDataProps): Promise<SearchCorrectionDataResult> {
   try {
-    addLog.info('Correction Search - Starting', {
+    addLog.debug('Correction Search - Starting', {
       appId,
       userChatInput
     });
@@ -677,7 +698,7 @@ export async function searchCorrectionData({
     ]);
 
     if (!corrections.length) {
-      addLog.info('Correction Search - No corrections found', { appId });
+      addLog.debug('Correction Search - No corrections found', { appId });
       return null;
     }
 
@@ -725,7 +746,7 @@ export async function searchCorrectionData({
 
     // 检查是否有搜索结果
     if (vectorSearchResults.length === 0) {
-      addLog.info('Correction Search - No similarity match found', {
+      addLog.debug('Correction Search - No similarity match found', {
         appId,
         threshold: global.systemEnv?.correctionSimilarityThreshold ?? 0.95,
         totalVectors: questionVectorIds.length
@@ -750,7 +771,7 @@ export async function searchCorrectionData({
       .sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
 
     if (matchedCorrections.length === 0) {
-      addLog.info('Correction Search - No correction data found for vectors', {
+      addLog.debug('Correction Search - No correction data found for vectors', {
         appId,
         topScore,
         matchCount: topScoreResults.length,
@@ -773,7 +794,7 @@ export async function searchCorrectionData({
       embeddingTokens: embeddingTokens || 0 // 使用实际的向量生成token数量
     };
 
-    addLog.info('Correction Search - Result found', {
+    addLog.debug('Correction Search - Result found', {
       appId,
       similarity: result.similarity,
       correctionId: result.correctionId,

@@ -175,6 +175,10 @@ export type DispatchNodeResponseType = {
   rerankWeight?: number;
   reRankInputTokens?: number;
   searchUsingReRank?: boolean;
+  retrievalTime?: number; // 新增：检索耗时(s)，仅assistant场景
+  rerankTime?: number; // 新增：重排耗时(s)，仅assistant场景
+  retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
+  retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
   queryExtensionResult?: {
     model: string;
     inputTokens: number;
