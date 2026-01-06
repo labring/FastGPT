@@ -369,7 +369,13 @@ const Standard = ({
                             : (matchedCoupon.discount * item.price).toFixed(1)
                           : item.price}
                         {isWecomTeam && item.level !== StandardSubLevelEnum.free && (
-                          <Box fontSize={'md'} color={'myGray.600'}>
+                          <Box
+                            h={[8, '38px']}
+                            color={'myGray.600'}
+                            fontSize={'18px'}
+                            fontWeight={'500'}
+                            whiteSpace={'nowrap'}
+                          >
                             {t('common:support.wallet.subscription.per_year')}
                           </Box>
                         )}

@@ -70,6 +70,9 @@ const UserSchema = new Schema({
     type: [String],
     enum: UserTagsEnum.enum
   },
+  meta: {
+    type: Object
+  },
   /** @deprecated */
   avatar: String
 });

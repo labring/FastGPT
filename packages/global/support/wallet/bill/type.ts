@@ -26,9 +26,7 @@ export const BillSchema = z.object({
       standSubLevel: z.enum(StandardSubLevelEnum).optional().meta({ description: '订阅等级' }),
       month: z.number().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
-      extraPoints: z.number().optional().meta({ description: '额外积分' }),
-      wecomOrderId: z.string().optional().meta({ description: '企微订单 ID' }),
-      wecomOrderUrl: z.string().optional().meta({ description: '企微订单 URL' })
+      extraPoints: z.number().optional().meta({ description: '额外积分' })
     })
     .meta({ description: '元数据' }),
   refundData: z

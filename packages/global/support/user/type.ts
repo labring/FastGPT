@@ -8,6 +8,10 @@ import z from 'zod';
 export const UserTagsEnum = z.enum(['wecom']);
 export type UserTagsEnum = z.infer<typeof UserTagsEnum>;
 
+export type UserMetaType = {
+  isActivatedWecomLicense?: boolean;
+};
+
 export type UserModelSchema = {
   _id: string;
   username: string;
@@ -26,6 +30,7 @@ export type UserModelSchema = {
   };
   contact?: string;
   tags: UserTagsEnum[];
+  meta?: UserMetaType;
 };
 
 export type UserType = {
