@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  SmoothStepEdge,
-  getSmoothStepPath,
+  BaseEdge,
   EdgeLabelRenderer,
   type EdgeProps,
   type ConnectionLineComponentProps
@@ -17,6 +16,7 @@ import {
 } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { getCustomStepPath } from '../utils/edge';
 
 export const CustomConnectionLine = ({
   fromX,
@@ -26,7 +26,7 @@ export const CustomConnectionLine = ({
   toY,
   toPosition
 }: ConnectionLineComponentProps) => {
-  const [path] = getSmoothStepPath({
+  const [path] = getCustomStepPath({
     sourceX: fromX,
     sourceY: fromY,
     sourcePosition: fromPosition,
@@ -45,7 +45,7 @@ export const CustomConnectionLine = ({
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
-  const { onEdgesChange, getNodeById, foldedNodesMap } = useContextSelector(
+  const { onEdgesChange, getNodeById, foldedNodesMap, edges, getNodes } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -86,6 +86,34 @@ const ButtonEdge = (props: EdgeProps) => {
     return node ? 2002 : 0;
   }, [getNodeById, source]);
 
+  // Offset edges from same source horizontally to avoid visual overlap
+  const edgeStepOffset = useMemo(() => {
+    const sameSourceEdges = edges.filter((e) => e.source === source);
+    if (sameSourceEdges.length <= 1) return 0;
+
+    const nodesMap = new Map(getNodes().map((n) => [n.id, n]));
+
+    // Sort edges by target node Y position
+    const sortedEdges = [...sameSourceEdges].sort((a, b) => {
+      const nodeA = nodesMap.get(a.target);
+      const nodeB = nodesMap.get(b.target);
+      return (nodeA?.position?.y ?? 0) - (nodeB?.position?.y ?? 0);
+    });
+
+    const index = sortedEdges.findIndex((e) => e.id === id);
+    const total = sortedEdges.length;
+    const spacing = 20;
+    const midPoint = Math.ceil(total / 2);
+
+    const offset =
+      index < midPoint
+        ? (index - Math.floor(midPoint / 2)) * spacing
+        : (Math.floor((total - midPoint) / 2) - (index - midPoint)) * spacing;
+
+    const maxOffset = Math.abs(targetX - sourceX) * 0.25;
+    return Math.max(-maxOffset, Math.min(maxOffset, offset));
+  }, [edges, source, id, getNodes, sourceX, targetX]);
+
   const onDelConnect = useCallback(
     (id: string) => {
       onEdgesChange([
@@ -112,14 +140,14 @@ const ButtonEdge = (props: EdgeProps) => {
     }
   );
 
-  const [, labelX, labelY] = getSmoothStepPath({
+  const [, labelX, labelY] = getCustomStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
-    borderRadius: 20
+    stepOffset: edgeStepOffset
   });
 
   const isToolEdge = sourceHandleId === NodeOutputKeyEnum.selectedTools;
@@ -252,14 +280,21 @@ const ButtonEdge = (props: EdgeProps) => {
       };
     })();
 
+    const [path] = getCustomStepPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX: newTargetX,
+      targetY: newTargetY,
+      targetPosition,
+      borderRadius: 60,
+      stepOffset: edgeStepOffset
+    });
+
     return (
-      <SmoothStepEdge
-        {...props}
-        targetX={newTargetX}
-        targetY={newTargetY}
-        pathOptions={{
-          borderRadius: 50
-        }}
+      <BaseEdge
+        id={id}
+        path={path}
         style={{
           ...edgeStyle,
           stroke: edgeColor,
@@ -269,10 +304,15 @@ const ButtonEdge = (props: EdgeProps) => {
     );
   }, [
     workflowDebugData?.runtimeEdges,
-    props,
+    id,
+    sourceX,
+    sourceY,
+    sourcePosition,
     newTargetX,
     newTargetY,
+    targetPosition,
     edgeColor,
+    edgeStepOffset,
     source,
     target,
     style,

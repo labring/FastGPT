@@ -28,7 +28,7 @@ const ContextMenu = () => {
     (v) => v.getParentNodeSizeAndPosition
   );
 
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -214,6 +214,9 @@ const ContextMenu = () => {
         newNodes.forEach((node) => {
           const parentId = node.data.parentNodeId;
           if (parentId) {
+            // Skip children without valid dimensions (not yet rendered)
+            if (!node.width || !node.height) return;
+
             childNodesIdSet.add(parentId);
             if (!childNodesMap[parentId]) {
               childNodesMap[parentId] = [];
@@ -278,9 +281,10 @@ const ContextMenu = () => {
     });
 
     setTimeout(() => {
-      fitView({ padding: 0.3 });
+      const validNodes = getNodes().filter((node) => node.width && node.height);
+      fitView({ nodes: validNodes, padding: 0.3 });
     });
-  }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
+  }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)
