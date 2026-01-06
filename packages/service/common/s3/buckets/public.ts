@@ -97,7 +97,7 @@ export class S3PublicBucket extends S3BaseBucket {
         }
 
         client.ensurePublicBucketPolicy().catch((error) => {
-          addLog.error(`Failed to ensure public bucket policy "${client.bucketName}":`, error);
+          addLog.info(`Failed to ensure public bucket policy "${client.bucketName}":`, { error });
         });
       })
       .catch((error) => {
@@ -112,10 +112,9 @@ export class S3PublicBucket extends S3BaseBucket {
         }
 
         externalClient.ensurePublicBucketPolicy().catch((error) => {
-          addLog.error(
-            `Failed to ensure public bucket policy "${externalClient.bucketName}":`,
+          addLog.info(`Failed to ensure public bucket policy "${externalClient.bucketName}":`, {
             error
-          );
+          });
         });
       })
       .catch((error) => {
