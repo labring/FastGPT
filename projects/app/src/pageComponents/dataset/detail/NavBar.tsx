@@ -215,7 +215,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           </Box>
 
           {/* 训练情况hover弹窗 */}
-          {!isDatabaseDataset(datasetDetail.type) && (
+          {/* {!isDatabaseDataset(datasetDetail.type) && (
             <MyPopover
               placement="bottom-end"
               visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
@@ -302,7 +302,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 </Box>
               )}
             </MyPopover>
-          )}
+          )} */}
         </Flex>
       ) : (
         <Box mb={2}>

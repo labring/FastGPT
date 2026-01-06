@@ -151,7 +151,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   return (
     <MyModal
       isOpen={isOpen}
-      iconSrc="common/folderImport"
+      iconSrc="core/dataset/tableCollection"
       iconColor="primary.500"
       title={title || t('dataset:add_file')}
       w={'500px'}
@@ -162,19 +162,14 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
         <VStack spacing={3} alignItems="stretch" w={'100%'} gap={0}>
           {/* 模板下载区域 */}
           <HStack>
-            <VStack spacing={1} align="start" w={'100%'}>
-              <Box fontSize={'sm'} fontWeight={500} color={'myGray.900'}>
-                {t('dataset:upload_by_template_format')}
-              </Box>
-              <Button
-                variant={'whiteBase'}
-                w={'100%'}
-                leftIcon={<MyIcon name={'common/download'} w={4} />}
-                onClick={handleDownloadTemplate}
-              >
-                {t('dataset:download_csv_template')}
-              </Button>
-            </VStack>
+            <Button
+              variant={'whiteBase'}
+              w={'100%'}
+              leftIcon={<MyIcon name={'common/download'} w={4} />}
+              onClick={handleDownloadTemplate}
+            >
+              {t('dataset:download_template')}
+            </Button>
           </HStack>
 
           {/* 文件选择区域 */}

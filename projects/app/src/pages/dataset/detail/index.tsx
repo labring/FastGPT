@@ -22,7 +22,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const CollectionCard = dynamic(
-  () => import('@/pageComponents/dataset/detail/CollectionCard/index')
+  () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/index')
 );
 const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'));
 const FileDataCard = dynamic(() => import('@/pageComponents/dataset/detail/FileDataCard'));
