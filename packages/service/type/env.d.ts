@@ -13,10 +13,14 @@ declare global {
       MULTIPLE_DATA_TO_BASE64: string;
       MONGODB_URI: string;
       MONGODB_LOG_URI?: string;
+
+      // Vector
+      VECTOR_VQ_LEVEL: string;
       PG_URL: string;
       OCEANBASE_URL: string;
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
+
       SANDBOX_URL: string;
       FE_DOMAIN: string;
       FILE_DOMAIN: string;

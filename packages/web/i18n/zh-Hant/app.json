@@ -177,6 +177,7 @@
   "interval.6_hours": "每 6 小時",
   "interval.per_hour": "每小時",
   "invalid_json_format": "JSON 格式錯誤",
+  "json_schema_tip": "示例：\n{\n  \"name\": \"test\",\n  \"description\":\"測試\",\n  \"schema\": {\n    \"type\":\"object\",\n    \"properties\": {\n      \"test\": {\n        \"type\": \"string\",\n        \"description\": \"Text field\"\n      }\n    },\n    \"required\": [\n      \"test\"\n    ]\n  }\n}",
   "keep_the_latest": "保持最新版本",
   "llm_not_support_vision": "這個模型不支援圖片辨識",
   "llm_use_vision": "圖片辨識",
