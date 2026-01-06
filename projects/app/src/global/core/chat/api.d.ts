@@ -15,11 +15,6 @@ export type GetChatSpeechProps = OutLinkChatAuthProps & {
 };
 
 /* ---------- chat ----------- */
-export type InitChatProps = {
-  appId?: string;
-  chatId?: string;
-  loadCustomFeedbacks?: boolean;
-};
 
 export type GetChatRecordsProps = OutLinkChatAuthProps & {
   appId: string;

@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
+import type { InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
@@ -14,19 +13,10 @@ import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-): Promise<InitChatResponse | void> {
-  let { appId, chatId } = req.query as InitChatProps;
-
-  if (!appId) {
-    return jsonRes(res, {
-      code: 501,
-      message: "You don't have an app yet"
-    });
-  }
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponse> {
+  const { appId, chatId } = InitChatQuerySchema.parse(req.query);
 
   try {
     // auth app permission
@@ -99,9 +89,3 @@ async function handler(
 }
 
 export default NextAPI(handler);
-
-export const config = {
-  api: {
-    responseLimit: '10mb'
-  }
-};

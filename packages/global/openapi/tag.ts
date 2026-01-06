@@ -6,11 +6,11 @@ export const TagsMap = {
   appCommon: 'Agent 管理',
 
   // Chat - home
-  chatPage: '对话页',
-  chatController: '对话框操作',
-  chatHistory: '对话历史管理',
-  chatSetting: '门户页配置',
+  chatPage: '对话页面通用',
+  chatHistory: '历史记录管理',
+  chatController: '对话操作',
   chatFeedback: '对话反馈',
+  chatSetting: '门户页配置',
 
   // Dataset
   datasetCollection: '集合',

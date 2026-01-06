@@ -2,7 +2,6 @@ import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
-  InitChatProps,
   InitChatResponse,
   InitOutLinkChatProps,
   InitTeamChatProps
@@ -24,7 +23,10 @@ import type {
   UpdateFavouriteAppParamsType
 } from '@fastgpt/global/openapi/core/chat/favourite/api';
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
-import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/controler/api';
+import type {
+  InitChatQueryType,
+  StopV2ChatParams
+} from '@fastgpt/global/openapi/core/chat/controler/api';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
 export const getRecentlyUsedApps = () =>
@@ -33,7 +35,7 @@ export const getRecentlyUsedApps = () =>
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatInfo = (data: InitChatProps) =>
+export const getInitChatInfo = (data: InitChatQueryType) =>
   GET<InitChatResponse>(`/core/chat/init`, data);
 export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
   GET<InitChatResponse>(`/core/chat/outLink/init`, data);
