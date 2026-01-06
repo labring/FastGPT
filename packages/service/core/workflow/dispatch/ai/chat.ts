@@ -177,47 +177,55 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
 
-    const { completeMessages, reasoningText, answerText, finish_reason, responseEmptyTip, usage } =
-      await createLLMResponse({
-        body: {
-          model: modelConstantsData.model,
-          stream,
-          messages: filterMessages,
-          temperature,
-          max_tokens,
-          top_p: aiChatTopP,
-          stop: aiChatStopSign,
-          response_format: {
-            type: aiChatResponseFormat,
-            json_schema: aiChatJsonSchema
-          },
-          retainDatasetCite,
-          useVision: aiChatVision,
-          requestOrigin
+    const {
+      completeMessages,
+      reasoningText,
+      answerText,
+      finish_reason,
+      responseEmptyTip,
+      usage,
+      error
+    } = await createLLMResponse({
+      throwError: false,
+      body: {
+        model: modelConstantsData.model,
+        stream,
+        messages: filterMessages,
+        temperature,
+        max_tokens,
+        top_p: aiChatTopP,
+        stop: aiChatStopSign,
+        response_format: {
+          type: aiChatResponseFormat,
+          json_schema: aiChatJsonSchema
         },
-        userKey: externalProvider.openaiAccount,
-        isAborted: checkIsStopping,
-        onReasoning({ text }) {
-          if (!aiChatReasoning) return;
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              reasoning_content: text
-            })
-          });
-        },
-        onStreaming({ text }) {
-          if (!isResponseAnswerText) return;
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({
-              text
-            })
-          });
-        }
-      });
+        retainDatasetCite,
+        useVision: aiChatVision,
+        requestOrigin
+      },
+      userKey: externalProvider.openaiAccount,
+      isAborted: checkIsStopping,
+      onReasoning({ text }) {
+        if (!aiChatReasoning) return;
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            reasoning_content: text
+          })
+        });
+      },
+      onStreaming({ text }) {
+        if (!isResponseAnswerText) return;
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text
+          })
+        });
+      }
+    });
 
     if (responseEmptyTip) {
       return getNodeErrResponse({ error: responseEmptyTip });
@@ -231,6 +239,22 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
 
     const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
+
+    if (error) {
+      return getNodeErrResponse({
+        error,
+        responseData: {
+          model: modelName,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          query: `${userChatInput}`,
+          maxToken: max_tokens,
+          reasoningText,
+          contextTotalLen: completeMessages.length,
+          finishReason: finish_reason
+        }
+      });
+    }
 
     return {
       data: {

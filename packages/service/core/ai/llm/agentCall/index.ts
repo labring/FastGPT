@@ -55,6 +55,7 @@ type RunAgentCallProps = {
 } & ResponseEvents;
 
 type RunAgentResponse = {
+  error?: any;
   completeMessages: ChatCompletionMessageParam[]; // Step request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Step assistant response messages
   interactiveResponse?: ToolCallChildrenInteractive;
@@ -134,6 +135,7 @@ export const runAgentCall = async ({
   let inputTokens: number = 0;
   let outputTokens: number = 0;
   let finish_reason: CompletionFinishReason | undefined;
+  let requestError: any;
   const subAppUsages: ChatNodeUsageType[] = [];
 
   // 处理 tool 里的交互
@@ -213,8 +215,10 @@ export const runAgentCall = async ({
       usage,
       responseEmptyTip,
       assistantMessage: llmAssistantMessage,
-      finish_reason: finishReason
+      finish_reason: finishReason,
+      error
     } = await createLLMResponse({
+      throwError: false,
       body: {
         ...body,
         max_tokens: maxTokens,
@@ -234,7 +238,11 @@ export const runAgentCall = async ({
     });
 
     finish_reason = finishReason;
+    requestError = error;
 
+    if (requestError) {
+      break;
+    }
     if (responseEmptyTip) {
       return Promise.reject(responseEmptyTip);
     }
@@ -303,6 +311,7 @@ export const runAgentCall = async ({
   }
 
   return {
+    error: requestError,
     inputTokens,
     outputTokens,
     subAppUsages,

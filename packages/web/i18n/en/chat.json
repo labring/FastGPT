@@ -19,6 +19,7 @@
   "click_to_add_url": "Enter file link",
   "completion_finish_close": "Disconnection",
   "completion_finish_content_filter": "Trigger safe wind control",
+  "completion_finish_error": "Request error",
   "completion_finish_function_call": "Function Calls",
   "completion_finish_length": "Reply limit exceeded",
   "completion_finish_null": "unknown",

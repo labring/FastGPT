@@ -110,7 +110,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     completeMessages,
     assistantMessages,
     interactiveResponse,
-    finish_reason
+    finish_reason,
+    error
   } = await runAgentCall({
     maxRunAgentTimes: 50,
     body: {
@@ -310,6 +311,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     .flat();
 
   return {
+    error,
     toolDispatchFlowResponses: toolRunResponses,
     toolCallInputTokens: inputTokens,
     toolCallOutputTokens: outputTokens,
