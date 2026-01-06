@@ -329,7 +329,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     return getNodeErrResponse({
       error,
-      customNodeResponse: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         toolInput,
         moduleLogo: avatar
       }

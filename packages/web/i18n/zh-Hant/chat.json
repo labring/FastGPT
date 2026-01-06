@@ -19,6 +19,7 @@
   "click_to_add_url": "輸入文件鏈接",
   "completion_finish_close": "連接斷開",
   "completion_finish_content_filter": "觸發安全風控",
+  "completion_finish_error": "請求錯誤",
   "completion_finish_function_call": "函式呼叫",
   "completion_finish_length": "超出回覆限制",
   "completion_finish_null": "未知",

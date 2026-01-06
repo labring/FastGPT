@@ -203,6 +203,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         : null
     };
   } catch (error) {
-    return getNodeErrResponse({ error, customNodeResponse: { moduleLogo: plugin?.avatar } });
+    return getNodeErrResponse({
+      error,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: { moduleLogo: plugin?.avatar }
+    });
   }
 };

@@ -364,6 +364,9 @@ export const loadRequestMessages = async ({
   const loadMessages = (
     await Promise.all(
       mergeMessages.map(async (item, i) => {
+        delete item.dataId;
+        delete item.hideInUI;
+
         if (item.role === ChatCompletionRequestMessageRoleEnum.System) {
           const content = parseSystemMessage(item.content);
           if (!content) return;
