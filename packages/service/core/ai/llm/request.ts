@@ -609,9 +609,9 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
     })
   } as T;
 
-  // Filter null value
+  // Filter undefined/null value
   requestBody = Object.fromEntries(
-    Object.entries(requestBody).filter(([_, value]) => value !== null)
+    Object.entries(requestBody).filter(([_, value]) => value !== null && value !== undefined)
   ) as T;
 
   // field map
