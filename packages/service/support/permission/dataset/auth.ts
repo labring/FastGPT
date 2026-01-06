@@ -202,11 +202,13 @@ export async function authDatasetData({
     imageId: datasetData.imageId,
     imagePreivewUrl:
       datasetData.imageId && isS3ObjectKey(datasetData.imageId, 'dataset')
-        ? await getS3DatasetSource().createGetDatasetFileURL({
-            key: datasetData.imageId,
-            expiredHours: 1,
-            external: true
-          })
+        ? (
+            await getS3DatasetSource().createGetDatasetFileURL({
+              key: datasetData.imageId,
+              expiredHours: 1,
+              external: true
+            })
+          ).url
         : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,

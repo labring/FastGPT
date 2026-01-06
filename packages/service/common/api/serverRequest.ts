@@ -1,5 +1,6 @@
 import { SERVICE_LOCAL_HOST } from '../system/tools';
-import axios, { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { createProxyAxios } from './axios';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -56,7 +57,7 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = axios.create({
+const instance = createProxyAxios({
   timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json',

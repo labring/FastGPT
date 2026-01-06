@@ -1,7 +1,7 @@
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
-import axios from 'axios';
+import { axios } from '../../api/axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
