@@ -293,10 +293,28 @@ export const masterCall = async ({
           }
           if (toolId === SubAppIds.plan) {
             try {
+              let finalUserInput: string = userChatInput || userQuery || '';
+
+              if (!userQuery) {
+                const toolArgs = parseJsonArgs(call.function.arguments);
+                finalUserInput = toolArgs?.description || '';
+                console.log('[Plan Tool] finalUserInput', finalUserInput);
+
+                if (!finalUserInput) {
+                  const planTool = completionTools.find(
+                    (tool) => tool.function.name === SubAppIds.plan
+                  );
+                  finalUserInput =
+                    planTool?.function?.description || '请基于上述历史记录来规划当前任务';
+                }
+
+                console.log('[Plan Tool] userQuery 为空，使用备用输入:', finalUserInput);
+              }
+
               planResult = await dispatchPlanAgent({
                 checkIsStopping,
                 historyMessages: historiesMessages,
-                userInput: userChatInput,
+                userInput: finalUserInput,
                 completionTools,
                 getSubAppInfo,
                 systemPrompt: systemPrompt,

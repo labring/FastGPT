@@ -142,7 +142,8 @@ export const dispatchPlanAgent = async ({
           ? `<user_background>
           ${parsedSystemPrompt}
           
-          请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。
+          请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
+          如果和user_background没有任何关系则忽略参考信息。
           
           **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。
           </user_background>`
@@ -274,7 +275,8 @@ export const dispatchReplanAgent = async ({
           ? `<user_background>
             ${parsedSystemPrompt}
             
-            如果用户提供了前置规划，请按照用户的步骤安排和偏好来重新生成计划，优先遵循用户的步骤安排和偏好。如果「用户前置规划」中包含工具引用（@工具名），请优先使用这些工具，避免功能重叠。
+          请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好，如果「用户前置规划」中包含工具引用（@工具名），请优先使用这些工具，避免功能重叠。
+          如果和user_background没有任何关系则忽略参考信息。
             </user_background>`
           : ''
       ]
@@ -288,7 +290,9 @@ export const dispatchReplanAgent = async ({
   const lastMessages = requestMessages[requestMessages.length - 1];
 
   if (
-    (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
+    (interactive?.type === 'agentPlanAskUserSelect' ||
+      interactive?.type === 'agentPlanAskQuery' ||
+      interactive?.type === 'agentPlanAskUserForm') &&
     lastMessages.role === 'assistant' &&
     lastMessages.tool_calls
   ) {
@@ -297,10 +301,10 @@ export const dispatchReplanAgent = async ({
       tool_call_id: lastMessages.tool_calls[0].id,
       content: userInput
     });
-    requestMessages.push({
-      role: 'assistant',
-      content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
-    });
+    // requestMessages.push({
+    //   role: 'assistant',
+    //   content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
+    // });
   } else {
     // 获取依赖的步骤
     const { depends, usage: dependsUsage } = await getStepDependon({
@@ -329,7 +333,8 @@ export const dispatchReplanAgent = async ({
     });
   }
 
-  console.log('Replan call messages', JSON.stringify(requestMessages, null, 2));
+  console.log('Replan call messages');
+  console.dir({ requestMessages }, { depth: null });
   let {
     answerText,
     toolCalls = [],
