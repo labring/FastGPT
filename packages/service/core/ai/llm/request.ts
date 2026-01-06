@@ -195,8 +195,8 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     toolCalls,
     finish_reason,
     usage: {
-      inputTokens,
-      outputTokens
+      inputTokens: error ? 0 : inputTokens,
+      outputTokens: error ? 0 : outputTokens
     },
 
     requestMessages,

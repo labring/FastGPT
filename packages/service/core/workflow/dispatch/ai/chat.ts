@@ -244,15 +244,28 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       return getNodeErrResponse({
         error,
         responseData: {
+          totalPoints: points,
           model: modelName,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           query: `${userChatInput}`,
           maxToken: max_tokens,
           reasoningText,
+          historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
           finishReason: finish_reason
-        }
+        },
+        ...(points && {
+          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+            {
+              moduleName: name,
+              totalPoints: points,
+              model: modelName,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens
+            }
+          ]
+        })
       });
     }
 
