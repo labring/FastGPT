@@ -92,9 +92,13 @@ export class S3PublicBucket extends S3BaseBucket {
     client
       .ensureBucket()
       .then(() => {
-        if (client instanceof MinioStorageAdapter) {
-          client.ensurePublicBucketPolicy();
+        if (!(client instanceof MinioStorageAdapter)) {
+          return;
         }
+
+        client.ensurePublicBucketPolicy().catch((error) => {
+          addLog.error(`Failed to ensure public bucket policy "${client.bucketName}":`, error);
+        });
       })
       .catch((error) => {
         addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
@@ -103,9 +107,16 @@ export class S3PublicBucket extends S3BaseBucket {
     externalClient
       ?.ensureBucket()
       .then(() => {
-        if (externalClient instanceof MinioStorageAdapter) {
-          externalClient.ensurePublicBucketPolicy();
+        if (!(externalClient instanceof MinioStorageAdapter)) {
+          return;
         }
+
+        externalClient.ensurePublicBucketPolicy().catch((error) => {
+          addLog.error(
+            `Failed to ensure public bucket policy "${externalClient.bucketName}":`,
+            error
+          );
+        });
       })
       .catch((error) => {
         addLog.error(
