@@ -149,6 +149,18 @@ export const WholeResponseContent = ({
             value={formatNumber(activeModule.childTotalPoints)}
           />
         )}
+        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
+        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
+      </>
+      {/* ai chat */}
+      <>
+        {activeModule?.finishReason && (
+          <Row
+            label={t('chat:completion_finish_reason')}
+            value={t(completionFinishReasonMap[activeModule?.finishReason])}
+          />
+        )}
         <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
         {activeModule?.tokens && (
           <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
@@ -171,12 +183,6 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.context total length')}
           value={activeModule?.contextTotalLen}
         />
-        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
-        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
-      </>
-      {/* ai chat */}
-      <>
         <Row
           label={t('common:core.chat.response.module temperature')}
           value={activeModule?.temperature}
@@ -185,12 +191,6 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.module maxToken')}
           value={activeModule?.maxToken}
         />
-        {activeModule?.finishReason && (
-          <Row
-            label={t('chat:completion_finish_reason')}
-            value={t(completionFinishReasonMap[activeModule?.finishReason])}
-          />
-        )}
 
         <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
         <Row

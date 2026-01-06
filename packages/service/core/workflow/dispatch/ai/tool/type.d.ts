@@ -46,6 +46,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 };
 
 export type RunToolResponse = {
+  error?: any;
   toolDispatchFlowResponses: DispatchFlowResponse[];
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
