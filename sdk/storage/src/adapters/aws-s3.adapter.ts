@@ -54,7 +54,7 @@ export class AwsS3StorageAdapter implements IStorage {
   }
 
   constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
-    if (options.vendor !== 'aws-s3') {
+    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio') {
       throw new Error('Invalid storage vendor');
     }
 
