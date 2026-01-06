@@ -111,10 +111,7 @@ const FileSelector = ({
 
           try {
             // Get Upload Post Presigned URL
-            const {
-              url,
-              fields: { key, ...headers }
-            } = await getUploadChatFilePresignedUrl({
+            const { url, key, headers } = await getUploadChatFilePresignedUrl({
               filename: file.rawFile.name,
               appId,
               chatId,

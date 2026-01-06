@@ -116,6 +116,6 @@ export class S3PublicBucket extends S3BaseBucket {
   }
 
   createPublicUrl(objectKey: string): string {
-    return this.externalClient.generatePublicGetUrl({ key: objectKey }).publicGetUrl;
+    return this.externalClient.generatePublicGetUrl({ key: objectKey }).url;
   }
 }

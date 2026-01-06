@@ -317,7 +317,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
     return {
       key,
-      putUrl: url,
+      url: url,
       bucket: this.options.bucket,
       metadata: {
         'Content-Type': meta['Content-Type']
@@ -343,7 +343,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
     return {
       key,
-      getUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }
@@ -361,7 +361,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
     return {
       key,
-      publicGetUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }

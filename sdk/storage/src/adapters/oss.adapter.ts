@@ -32,7 +32,7 @@ import type { Readable } from 'node:stream';
 import { camelCase, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 
-export class OosStorageAdapter implements IStorage {
+export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;
 
   constructor(protected readonly options: IOssStorageOptions) {
@@ -257,7 +257,7 @@ export class OosStorageAdapter implements IStorage {
 
     return {
       key,
-      putUrl: url,
+      url: url,
       bucket: this.options.bucket,
       metadata: headersToSign
     };
@@ -274,7 +274,7 @@ export class OosStorageAdapter implements IStorage {
 
     return {
       key,
-      getUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }
@@ -296,7 +296,7 @@ export class OosStorageAdapter implements IStorage {
 
     return {
       key,
-      publicGetUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }
@@ -352,6 +352,3 @@ export class OosStorageAdapter implements IStorage {
 
   async destroy(): Promise<void> {}
 }
-
-// Backward compatible export name fix: OSS adapter (typo alias).
-export { OosStorageAdapter as OssStorageAdapter };

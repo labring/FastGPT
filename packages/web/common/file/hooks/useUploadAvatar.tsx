@@ -48,10 +48,7 @@ export const useUploadAvatar = (
           }),
           file.name
         );
-        const {
-          url,
-          fields: { key, ...headers }
-        } = await api({ filename: file.name });
+        const { url, key, headers } = await api({ filename: file.name });
 
         await putFileToS3({
           url,

@@ -85,7 +85,7 @@ async function handler(
           expiredHours: 1,
           external: true
         })
-      ).getUrl;
+      ).url;
     }
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;

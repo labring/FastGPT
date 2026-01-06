@@ -192,16 +192,9 @@ export const getFileContentFromLinks = async ({
             return Promise.reject('Url is invalid');
           }
 
-          const buildUrl = (url: string) => {
-            if (url.startsWith('http://') || url.startsWith('https://')) {
-              return url;
-            }
-            return `${serverRequestBaseUrl}/${url.replace(/^\/+/, '')}`;
-          };
-
           // Get file buffer data
           const response = await axios.get(url, {
-            url: buildUrl(url),
+            baseURL: serverRequestBaseUrl,
             responseType: 'arraybuffer'
           });
 

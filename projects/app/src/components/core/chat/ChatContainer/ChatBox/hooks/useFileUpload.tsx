@@ -175,11 +175,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
           // Get Upload Post Presigned URL
-          const {
-            url,
-            fields: { key, ...headers },
-            maxSize
-          } = await getUploadChatFilePresignedUrl({
+          const { url, key, headers, maxSize } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
             appId,
             chatId,

@@ -176,7 +176,7 @@ export const loadRequestMessages = async ({
                             key: item.key,
                             external: false
                           })
-                        ).getUrl;
+                        ).url;
                       } catch (error) {}
                     }
                     return imgUrl;

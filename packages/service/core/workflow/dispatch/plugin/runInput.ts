@@ -42,7 +42,7 @@ export const dispatchPluginInput = async (
       for (let i = 0; i < val.length; i++) {
         const fileItem = val[i];
         if (fileItem.key && !fileItem.url) {
-          const { getUrl: url } = await getS3ChatSource().createGetChatFileURL({
+          const { url } = await getS3ChatSource().createGetChatFileURL({
             key: fileItem.key,
             external: true,
             expiredHours: 1

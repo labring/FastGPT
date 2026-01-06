@@ -81,11 +81,7 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const {
-              url,
-              fields: { key, ...headers },
-              maxSize
-            } = await getUploadTempFilePresignedUrl({
+            const { url, key, headers, maxSize } = await getUploadTempFilePresignedUrl({
               filename: file.name
             });
 

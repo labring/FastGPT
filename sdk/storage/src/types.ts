@@ -218,7 +218,7 @@ export type PresignedPutUrlResult = {
   /** 对象 key。 */
   key: StorageObjectKey;
   /** 可直接访问的临时 URL。 */
-  putUrl: string;
+  url: string;
   /**
    * 与本次 PUT 直传相关的“需要带上的 header”集合。
    *
@@ -251,7 +251,7 @@ export type PresignedGetUrlResult = {
   /** 对象 key。 */
   key: StorageObjectKey;
   /** 可直接访问的临时 URL。 */
-  getUrl: string;
+  url: string;
 };
 
 /**
@@ -267,7 +267,7 @@ export type GeneratePublicGetUrlParams = {
  */
 export type GeneratePublicGetUrlResult = {
   /** 可直接访问的公共 URL。 */
-  publicGetUrl: string;
+  url: string;
   /** bucket 名称。 */
   bucket: StorageBucketName;
   /** 对象 key。 */

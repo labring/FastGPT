@@ -125,7 +125,7 @@ export class S3BaseBucket {
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
       const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
 
-      const { metadata, putUrl } = await this.externalClient.generatePresignedPutUrl({
+      const { metadata, url } = await this.externalClient.generatePresignedPutUrl({
         key: params.rawKey,
         expiredSeconds,
         contentType,
@@ -146,10 +146,10 @@ export class S3BaseBucket {
       }
 
       return {
-        url: putUrl,
-        fields: {
-          ...metadata,
-          key: params.rawKey
+        url: url,
+        key: params.rawKey,
+        headers: {
+          ...metadata
         },
         maxSize: formatMaxFileSize
       };

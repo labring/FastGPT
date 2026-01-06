@@ -39,4 +39,4 @@ export { NoSuchBucketError, NoBucketReadPermissionError, EmptyObjectError } from
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { CosStorageAdapter } from './adapters/cos.adapter';
 export { MinioStorageAdapter } from './adapters/minio.adapter';
-export { OosStorageAdapter } from './adapters/oss.adapter';
+export { OssStorageAdapter } from './adapters/oss.adapter';

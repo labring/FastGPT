@@ -1,5 +1,6 @@
 import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 
+// setup proxy for fetch client
 const fetchProxyAgent = new EnvHttpProxyAgent();
 setGlobalDispatcher(fetchProxyAgent);
 

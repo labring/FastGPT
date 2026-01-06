@@ -158,21 +158,21 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
       const putUrl = `${baseUrl}/put/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}`;
       // mock: 直接透传 metadata 作为“headers”
       const metadata: Record<string, string> = p.metadata ? { ...p.metadata } : {};
-      return { bucket: bucketName, key: p.key, putUrl, metadata };
+      return { bucket: bucketName, key: p.key, url: putUrl, metadata };
     }
   );
 
   const generatePresignedGetUrl = vi.fn(
     async (p: PresignedGetUrlParams): Promise<PresignedGetUrlResult> => {
       const getUrl = `${baseUrl}/get/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}`;
-      return { bucket: bucketName, key: p.key, getUrl };
+      return { bucket: bucketName, key: p.key, url: getUrl };
     }
   );
 
   const generatePublicGetUrl = vi.fn(
     ({ key }: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult => {
       const publicGetUrl = `${baseUrl}/public/${encodeURIComponent(bucketName)}/${encodeURIComponent(key)}`;
-      return { publicGetUrl, bucket: bucketName, key };
+      return { url: publicGetUrl, bucket: bucketName, key };
     }
   );
 

@@ -32,6 +32,23 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - `STORAGE_S3_FORCE_PATH_STYLE` 【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES` 【可选】请求最大尝试次数，默认为 3 次
 
+**完整示例**
+
+> 如果使用的是 Sealos 的对象存储服务请将 `STORAGE_VENDOR` 填写为 `aws-s3`
+
+```dotenv
+STORAGE_VENDOR=minio
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_S3_MAX_RETRIES=3
+```
+
 ### 阿里云 OSS
 
 > - [跨域配置](https://help.aliyun.com/zh/oss/user-guide/configure-cross-origin-resource-sharing/?spm=5176.8466032.console-base_help.dexternal.1bcd1450Wau6J6#b58400ec36rqf)
@@ -41,6 +58,21 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - `STORAGE_OSS_SECURE` 是否开启了 TLS，如果域名没有认证证书的话，请关闭该选项
 - `STORAGE_OSS_INTERNAL` 【可选】是否开启内网访问，如果你的服务也在阿里云的话可以开启并节省流量，默认关闭
 
+**完整示例**
+
+```dotenv
+STORAGE_VENDOR=oss
+STORAGE_REGION=oss-cn-hangzhou
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+STORAGE_OSS_CNAME=false
+STORAGE_OSS_SECURE=false
+STORAGE_OSS_INTERNAL=false
+```
+
 ### 腾讯云 COS
 
 > - [跨域配置](https://cloud.tencent.com/document/product/436/13318)
@@ -49,3 +81,18 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - `STORAGE_COS_USE_ACCELERATE` 【可选】是否启用全球加速域名，默认为 false。若改为 true，需要存储桶开启全球加速功能
 - `STORAGE_COS_CNAME_DOMAIN` 【可选】自定义域名，如 `your-domain.com`
 - `STORAGE_COS_PROXY` 【可选】代理服务器，如 `http://localhost:7897`
+
+**完整示例**
+
+```dotenv
+STORAGE_VENDOR=cos
+STORAGE_REGION=ap-shanghai
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_COS_PROTOCOL=http:
+STORAGE_COS_USE_ACCELERATE=false
+STORAGE_COS_CNAME_DOMAIN=
+STORAGE_COS_PROXY=
+```

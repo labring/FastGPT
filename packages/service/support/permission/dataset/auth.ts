@@ -208,7 +208,7 @@ export async function authDatasetData({
               expiredHours: 1,
               external: true
             })
-          ).getUrl
+          ).url
         : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,

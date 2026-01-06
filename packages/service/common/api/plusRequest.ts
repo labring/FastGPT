@@ -1,4 +1,4 @@
-import axios, {
+import {
   type Method,
   type InternalAxiosRequestConfig,
   type AxiosResponse,
@@ -6,7 +6,6 @@ import axios, {
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { ProxyAgent } from 'proxy-agent';
 import { createProxyAxios } from './axios';
 
 interface ConfigType {

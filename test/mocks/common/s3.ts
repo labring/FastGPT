@@ -53,16 +53,14 @@ const createMockS3Bucket = (bucketName = 'mock-bucket') => {
       maxSize: 100 * 1024 * 1024
     }),
     createExternalUrl: vi.fn(async (key: string) => {
-      const { getUrl } = await externalClient.generatePresignedGetUrl({ key });
-      return getUrl;
+      const { url } = await externalClient.generatePresignedGetUrl({ key });
+      return url;
     }),
     createGetPresignedUrl: vi.fn(async (key: string) => {
-      const { getUrl } = await client.generatePresignedGetUrl({ key });
-      return getUrl;
+      const { url } = await client.generatePresignedGetUrl({ key });
+      return url;
     }),
-    createPublicUrl: vi.fn(
-      (key: string) => externalClient.generatePublicGetUrl({ key }).publicGetUrl
-    )
+    createPublicUrl: vi.fn((key: string) => externalClient.generatePublicGetUrl({ key }).url)
   };
 };
 
@@ -150,21 +148,21 @@ const createMockBucketClass = (defaultName: string) => {
       };
     }
     async createExternalUrl(params: any) {
-      const { getUrl } = await this.externalClient.generatePresignedGetUrl({
+      const { url } = await this.externalClient.generatePresignedGetUrl({
         key: params.key,
         expiredSeconds: params.expires
       });
-      return getUrl;
+      return url;
     }
     async createGetPresignedUrl(params: any) {
-      const { getUrl } = await this.client.generatePresignedGetUrl({
+      const { url } = await this.client.generatePresignedGetUrl({
         key: params.key,
         expiredSeconds: params.expires
       });
-      return getUrl;
+      return url;
     }
     createPublicUrl(objectKey: string) {
-      return this.externalClient.generatePublicGetUrl({ key: objectKey }).publicGetUrl;
+      return this.externalClient.generatePublicGetUrl({ key: objectKey }).url;
     }
   };
 };

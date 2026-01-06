@@ -67,11 +67,7 @@ const SelectFile = React.memo(function SelectFile() {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
             try {
-              const {
-                url,
-                fields: { key, ...headers },
-                maxSize
-              } = await getUploadDatasetFilePresignedUrl({
+              const { url, key, headers, maxSize } = await getUploadDatasetFilePresignedUrl({
                 filename: file.name,
                 datasetId
               });

@@ -34,7 +34,8 @@ export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUr
 
 export const CreatePostPresignedUrlResultSchema = z.object({
   url: z.string().nonempty(),
-  fields: z.record(z.string(), z.string()),
+  key: z.string().nonempty(),
+  headers: z.record(z.string(), z.string()),
   maxSize: z.number().positive().optional() // bytes
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;

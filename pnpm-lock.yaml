@@ -133,8 +133,8 @@ importers:
   packages/service:
     dependencies:
       '@fastgpt-sdk/storage':
-        specifier: 0.5.7
-        version: 0.5.7(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 0.5.8
+        version: 0.5.8(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -537,8 +537,8 @@ importers:
         specifier: 11.11.0
         version: 11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1)
       '@fastgpt-sdk/storage':
-        specifier: 0.5.7
-        version: 0.5.7(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 0.5.8
+        version: 0.5.8(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -2605,8 +2605,8 @@ packages:
   '@fastgpt-sdk/plugin@0.2.17':
     resolution: {integrity: sha512-TU93FD9JIeAV+isoLVVbW+yX14J27Kgd5Sn8LPvYWkrorUEtWeVfd8rOzh/KXPd43hCgD3bSDZ1W3hC06Spnog==}
 
-  '@fastgpt-sdk/storage@0.5.7':
-    resolution: {integrity: sha512-1Eh6jbyg0UejCp1w+LgD9dBoPx/O3Ns4k16GjrgAUWxFiGWFahK1/33ukHUwX6wWkF2Wu6jWmFQsW+C0UGDOwQ==}
+  '@fastgpt-sdk/storage@0.5.8':
+    resolution: {integrity: sha512-sfjAR94b1+oBvUvnooRU84hRNlmCWkBYR40nhiR9Cw3R5cNmz0cgPdDV4/2DSZOZHtlrldTt7FTBL4W/xjUD6g==}
     engines: {node: '>=20'}
 
   '@fastify/accept-negotiator@1.1.0':
@@ -14733,7 +14733,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@fastgpt-sdk/storage@0.5.7(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.5.8(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)
@@ -14767,7 +14767,7 @@ snapshots:
       - tsx
       - yaml
 
-  '@fastgpt-sdk/storage@0.5.7(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.5.8(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)

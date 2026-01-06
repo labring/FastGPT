@@ -1,8 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../bullmq';
 import { addLog } from '../system/log';
 import path from 'path';
-import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
-import pLimit from 'p-limit';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 export type S3MQJobData = {
   key?: string;
@@ -58,7 +57,7 @@ export const startS3DelWorker = async () => {
       }
       if (keys) {
         addLog.debug(`[S3 delete] delete keys: ${keys.length}`);
-        const { keys: fails } = await bucket.client.deleteObjectsByMultiKeys({ keys });
+        await bucket.client.deleteObjectsByMultiKeys({ keys });
 
         await batchRun(keys, async (key) => {
           if (key.includes('-parsed/')) return;

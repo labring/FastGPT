@@ -380,7 +380,7 @@ export class CosStorageAdapter implements IStorage {
 
     return {
       key,
-      putUrl: url,
+      url: url,
       bucket: this.options.bucket,
       metadata: meta
     };
@@ -411,7 +411,7 @@ export class CosStorageAdapter implements IStorage {
 
     return {
       key,
-      getUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }
@@ -428,7 +428,7 @@ export class CosStorageAdapter implements IStorage {
 
     return {
       key,
-      publicGetUrl: url,
+      url: url,
       bucket: this.options.bucket
     };
   }
