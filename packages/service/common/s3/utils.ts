@@ -157,7 +157,7 @@ const getFormatedFilename = (filename?: string) => {
   const extension = path.extname(truncatedFilename); // 带.
   const name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
   return {
-    formatedFilename: `${id}-${name}`,
+    formatedFilename: `${name}_${id}`,
     extension: extension.replace('.', '')
   };
 };
