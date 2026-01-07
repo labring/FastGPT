@@ -61,7 +61,8 @@ function MemberModal({
     onPathClick,
     orgs,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    debouncedSearchKey
   } = useOrg({ withPermission: false });
 
   const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
@@ -70,11 +71,9 @@ function MemberModal({
       withPermission: true,
       withOrgs: true,
       status: 'active',
-      searchKey
+      searchKey: debouncedSearchKey
     },
-    throttleWait: 500,
-    debounceWait: 200,
-    refreshDeps: [searchKey]
+    refreshDeps: [debouncedSearchKey]
   });
 
   const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
@@ -82,12 +81,12 @@ function MemberModal({
       if (!userInfo?.team?.teamId) return [];
       return getGroupList<false>({
         withMembers: false,
-        searchKey
+        searchKey: debouncedSearchKey
       });
     },
     {
       manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
+      refreshDeps: [userInfo?.team?.teamId, debouncedSearchKey]
     }
   );
 
