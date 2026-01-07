@@ -91,7 +91,7 @@ export class S3PrivateBucket extends S3BaseBucket {
     client
       .ensureBucket()
       .then((data) => {
-        console.info(`Bucket "${client.bucketName}" exists:`, data);
+        addLog.debug(`Bucket "${client.bucketName}" exists:`, data);
       })
       .catch((error) => {
         addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
