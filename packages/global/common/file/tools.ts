@@ -61,7 +61,9 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     // Get filename from URL
     const filename = (() => {
       // Here is a S3 Object Key
-      if (url.startsWith('chat/')) return url.split('/').pop()?.split('-')[1];
+      // S3 key 格式为 name_id.ext，需要去掉 _id 部分
+      if (url.startsWith('chat/')) return url.split('/').pop() || '';
+
       return parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
     })();
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
