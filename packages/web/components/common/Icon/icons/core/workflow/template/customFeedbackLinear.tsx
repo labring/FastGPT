@@ -1,0 +1,34 @@
+import React, { useId } from 'react';
+
+type CustomFeedbackLinearLinearProps = React.SVGProps<SVGSVGElement>;
+
+const CustomFeedbackLinearLinear: React.FC<CustomFeedbackLinearLinearProps> = (props) => {
+  const gradientId = useId();
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" {...props}>
+      <path
+        d="M18 38C18 41.3137 15.3137 44 12 44C8.68629 44 6 41.3137 6 38C6 34.6863 8.68629 32 12 32C15.3137 32 18 34.6863 18 38ZM18 38H35C36.8565 38 38.637 37.2625 39.9497 35.9497C41.2625 34.637 42 32.8565 42 31C42 29.1435 41.2625 27.363 39.9497 26.0503C38.637 24.7375 36.8565 24 35 24H13C11.1435 24 9.36301 23.2625 8.05025 21.9497C6.7375 20.637 6 18.8565 6 17C6 15.1435 6.7375 13.363 8.05025 12.0503C9.36301 10.7375 11.1435 10 13 10H30M30 10C30 13.3137 32.6863 16 36 16C39.3137 16 42 13.3137 42 10C42 6.68629 39.3137 4 36 4C32.6863 4 30 6.68629 30 10Z"
+        stroke={`url(#${gradientId})`}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <defs>
+        <linearGradient
+          id={gradientId}
+          x1="24"
+          y1="4"
+          x2="24"
+          y2="44"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#B5F279" />
+          <stop offset="1" stopColor="#4BAD1D" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+};
+
+export default CustomFeedbackLinearLinear;
