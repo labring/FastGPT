@@ -6,7 +6,7 @@ export const TRAIN_DATA_SPLIT_RATIO = 0.8;
 
 // ===== DiTing Service Configuration =====
 /** DiTing API default timeout (milliseconds) */
-export const DEFAULT_DITING_TIMEOUT = 300000; // 5 minutes
+export const DEFAULT_DITING_TIMEOUT = 1800000; // 30 minutes
 /** DiTing API default concurrency */
 export const DEFAULT_DITING_CONCURRENCY = 10;
 /** DiTing API maximum concurrency */
@@ -16,9 +16,9 @@ export const MAX_DITING_CONCURRENCY = 50;
 /** SFT Bridge API default timeout (milliseconds) */
 export const DEFAULT_SFT_BRIDGE_TIMEOUT = 300000; // 5 minutes
 /** SFT Bridge task polling default interval (milliseconds) */
-export const DEFAULT_SFT_BRIDGE_POLL_INTERVAL = 5000; // 5 seconds
+export const DEFAULT_SFT_BRIDGE_POLL_INTERVAL = 60000; // 1 minute
 /** SFT Bridge task polling maximum attempts */
-export const DEFAULT_SFT_BRIDGE_MAX_POLLS = 600; // ~50 minutes total
+export const DEFAULT_SFT_BRIDGE_MAX_POLLS = 600; // ~10 hours total
 /** SFT Bridge task default learning rate */
 export const DEFAULT_SFT_BRIDGE_LEARNING_RATE = 0.0001;
 

@@ -112,16 +112,16 @@ export async function mockQuerySFTTaskStatus(
   };
 
   if (currentStatus === SFTTaskStatus.completed) {
-    response.endpoint = {
-      base_url: 'http://10.57.1.91:28624/v1',
-      model: `bge-m3-test`,
-      api_key: `GGlmUiIHZ5c2PGLg1wv2ULmJj2YMjF7fEx8P5s7vTcIHkzFotg`
-    };
     // response.endpoint = {
-    //   base_url: 'http://10.57.1.99:30083/v1',
-    //   model: `bge-reranker-v2-m3`,
-    //   api_key: `GHnjr4iM4feHS7U7wZuWTtyW3Mx3c6K6iJvArPMqbJxJzBvqeQ`
+    //   base_url: 'http://10.57.1.91:28624/v1',
+    //   model: `bge-m3-test`,
+    //   api_key: `GGlmUiIHZ5c2PGLg1wv2ULmJj2YMjF7fEx8P5s7vTcIHkzFotg`
     // };
+    response.endpoint = {
+      base_url: 'http://10.74.124.138:14766/v1',
+      model: `Qwen3-Rerank-0.6B-LoRA-20260106205301-dd598845`,
+      api_key: `GHnjr4iM4feHS7U7wZuWTtyW3Mx3c6K6iJvArPMqbJxJzBvqeQ`
+    };
   }
 
   addLog.info('[MOCK] SFT Bridge query task status', {
