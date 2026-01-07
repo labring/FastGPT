@@ -8,10 +8,7 @@ export const InitChatQuerySchema = z
   .object({
     appId: ObjectIdSchema.describe('应用ID'),
     chatId: z.string().min(1).describe('对话ID'),
-    loadCustomFeedbacks: z
-      .union([z.boolean(), z.string().transform((val) => val === 'true')])
-      .optional()
-      .describe('是否加载自定义反馈')
+    loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
   })
   .meta({
     example: {
