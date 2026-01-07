@@ -12,7 +12,6 @@ import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { getDiscountCouponList } from '@/web/support/wallet/sub/discountCoupon/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
   DiscountCouponStatusEnum,
   DiscountCouponTypeEnum
@@ -51,7 +50,6 @@ const Standard = ({
   // Check if it's a wecom team
   const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
-  // alert(`isWecomTeam: ${JSON.stringify(Object.keys(userInfo?.team))}`);
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
@@ -109,7 +107,9 @@ const Standard = ({
               ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
               ...(value.desc ? { desc: value.desc } : {}),
               ...(value.name ? { label: value.name } : {}),
-              price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
+              price: isWecomTeam
+                ? value.wecom?.price ?? value.price
+                : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
               maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
               maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
@@ -117,7 +117,9 @@ const Standard = ({
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
               annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
-              totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
+              totalPoints: isWecomTeam
+                ? value.wecom?.points ?? value.totalPoints
+                : value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
 
               // custom plan
               priceDescription: value.priceDescription,
@@ -128,6 +130,7 @@ const Standard = ({
       : [];
   }, [
     subPlans?.standard,
+    isWecomTeam,
     selectSubMode,
     myStandardPlan?.maxTeamMember,
     myStandardPlan?.maxApp,
