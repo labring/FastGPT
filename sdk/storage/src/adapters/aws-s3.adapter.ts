@@ -405,10 +405,15 @@ export class AwsS3StorageAdapter implements IStorage {
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
 
+    const encodedSourceKey = sourceKey
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
     await this.client.send(
       new CopyObjectCommand({
         Bucket: this.options.bucket,
-        CopySource: `${this.options.bucket}/${sourceKey}`,
+        CopySource: `${this.options.bucket}/${encodedSourceKey}`,
         Key: targetKey
       })
     );

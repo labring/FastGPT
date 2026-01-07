@@ -341,7 +341,12 @@ export class OssStorageAdapter implements IStorage {
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
 
-    await this.client.copy(sourceKey, targetKey);
+    const encodedSourceKey = sourceKey
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
+    await this.client.copy(encodedSourceKey, targetKey);
 
     return {
       bucket: this.options.bucket,

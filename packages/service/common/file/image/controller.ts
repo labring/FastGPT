@@ -77,10 +77,9 @@ export const copyAvatarImage = async ({
   const avatarSource = getS3AvatarSource();
   if (isS3ObjectKey(imageUrl?.slice(avatarSource.prefix.length), 'avatar')) {
     const filename = (() => {
-      const last = imageUrl.split('/').pop();
-      if (!last) return getNanoid(6).concat(path.extname(imageUrl));
-      const firstDashIndex = last.indexOf('-');
-      return `${getNanoid(6)}-${firstDashIndex === -1 ? last : last.slice(firstDashIndex + 1)}`;
+      const extname = path.extname(imageUrl);
+      if (!extname) return getNanoid(6);
+      return path.basename(imageUrl);
     })();
     const key = await getS3AvatarSource().copyAvatar({
       key: imageUrl,

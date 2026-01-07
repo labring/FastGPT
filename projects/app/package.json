@@ -20,7 +20,7 @@
     "@dagrejs/dagre": "^1.1.4",
     "@emotion/react": "11.11.1",
     "@emotion/styled": "11.11.0",
-    "@fastgpt-sdk/storage": "0.6.4",
+    "@fastgpt-sdk/storage": "0.6.6",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
