@@ -267,10 +267,12 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
               <QuestionTip
                 ml={1}
+                maxW={600}
                 label={t('workflow:quote_prompt_tip', {
                   default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
               />
+              <LightTip ml={4} text={t('workflow:quote_cite_tip')} />
             </Flex>
             <PromptEditor
               variables={quotePromptVariables}

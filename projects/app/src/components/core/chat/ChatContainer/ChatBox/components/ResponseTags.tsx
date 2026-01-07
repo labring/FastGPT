@@ -50,6 +50,7 @@ const ResponseTags = ({
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
@@ -90,6 +91,7 @@ const ResponseTags = ({
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
+
     // Dataset citations
     const datasetItems = Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -288,7 +290,7 @@ const ResponseTags = ({
             </MyTooltip>
           )}
 
-          {notSharePage && (
+          {notSharePage && showWholeResponse && (
             <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
               <MyTag
                 colorSchema="gray"
