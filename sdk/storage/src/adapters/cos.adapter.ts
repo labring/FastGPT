@@ -478,8 +478,13 @@ export class CosStorageAdapter implements IStorage {
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
 
+    const encodedSourceKey = sourceKey
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
     await new Promise<COS.SliceCopyFileResult>((resolve, reject) => {
-      const copySource = `${this.options.bucket}.cos.${this.options.region}.myqcloud.com/${sourceKey}`;
+      const copySource = `${this.options.bucket}.cos.${this.options.region}.myqcloud.com/${encodedSourceKey}`;
 
       this.client.sliceCopyFile(
         {
