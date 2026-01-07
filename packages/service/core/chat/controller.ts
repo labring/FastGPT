@@ -194,6 +194,9 @@ export async function getChatItems({
   return { histories, total, hasMorePrev, hasMoreNext };
 }
 
+// Maintain a write queue per document to avoid concurrent write conflicts
+const customFeedbackQueues = new Map<string, Promise<void>>();
+
 export const addCustomFeedbacks = async ({
   appId,
   chatId,
@@ -207,32 +210,33 @@ export const addCustomFeedbacks = async ({
 }) => {
   if (!chatId || !dataId) return;
 
-  try {
-    await mongoSessionRun(async (session) => {
-      // Add custom feedbacks to ChatItem
-      await MongoChatItem.updateOne(
-        {
-          appId,
-          chatId,
-          dataId
-        },
-        {
-          $push: { customFeedbacks: { $each: feedbacks } }
-        },
-        { session }
-      );
+  const queueKey = `${chatId}_${dataId}`;
+  const previousTask = customFeedbackQueues.get(queueKey) || Promise.resolve();
 
-      // Update ChatLog feedback statistics
-      await updateChatFeedbackCount({
-        appId,
-        chatId,
-        session
-      });
+  const task = previousTask
+    .then(() =>
+      mongoSessionRun(async (session) => {
+        await MongoChatItem.updateOne(
+          { appId, chatId, dataId },
+          { $push: { customFeedbacks: { $each: feedbacks } } },
+          { session }
+        );
+
+        await updateChatFeedbackCount({ appId, chatId, session });
+      })
+    )
+    .catch((error) => {
+      addLog.error('addCustomFeedbacks error', error);
+      throw error;
+    })
+    .finally(() => {
+      if (customFeedbackQueues.get(queueKey) === task) {
+        customFeedbackQueues.delete(queueKey);
+      }
     });
-  } catch (error) {
-    addLog.error('addCustomFeedbacks error', error);
-    throw error;
-  }
+
+  customFeedbackQueues.set(queueKey, task);
+  await task;
 };
 
 /**

@@ -225,9 +225,15 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 }) {
   const { t } = useTranslation();
 
+  // 使用 entryNodeIds 生成唯一的 storage key，避免不同表单节点共用同一个缓存
+  const uniqueStorageKey = useMemo(() => {
+    const nodeIds = interactive.entryNodeIds?.join('-') || 'unknown';
+    return `${chatItemDataId}_${nodeIds}`;
+  }, [chatItemDataId, interactive.entryNodeIds]);
+
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
-      return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
+      return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
         // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
         acc[item.key] = item.value ?? item.defaultValue;
         return acc;
@@ -239,7 +245,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const handleFormSubmit = useCallback(
     (data: Record<string, any>) => {
       const finalData: Record<string, any> = {};
-      interactive.params.inputForm?.forEach((item, index) => {
+      interactive.params.inputForm?.forEach((item) => {
         if (item.key in data) {
           finalData[item.key] = data[item.key];
         }
@@ -266,7 +272,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
             }
           }
         });
-        sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(dataToSave));
+        sessionStorage.setItem(`interactiveForm_${uniqueStorageKey}`, JSON.stringify(dataToSave));
       }
 
       onSendPrompt({
@@ -274,7 +280,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         isInteractivePrompt: true
       });
     },
-    [interactive.params.inputForm, chatItemDataId]
+    [interactive.params.inputForm, uniqueStorageKey]
   );
 
   return (
@@ -282,7 +288,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       <FormInputComponent
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
-        chatItemDataId={chatItemDataId}
+        chatItemDataId={uniqueStorageKey}
         SubmitButton={({ onSubmit, isFileUploading }) => (
           <Button
             onClick={() => onSubmit(handleFormSubmit)()}
