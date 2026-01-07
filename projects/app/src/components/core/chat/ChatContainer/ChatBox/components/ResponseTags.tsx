@@ -15,7 +15,6 @@ import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { extractCitationIdsFromText } from '@fastgpt/global/core/chat/utils';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -93,13 +92,9 @@ const ResponseTags = ({
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
 
-    const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
-    const citedIds = extractCitationIdsFromText(responseText);
-    const filteredQuoteList = quoteList.filter((quote) => citedIds.includes(quote.id));
-
     // Dataset citations
     const datasetItems = Object.values(
-      filteredQuoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
+      quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
         if (!acc[cur.collectionId]) {
           acc[cur.collectionId] = [cur];
         }
@@ -135,7 +130,7 @@ const ResponseTags = ({
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite, historyItem.value]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 

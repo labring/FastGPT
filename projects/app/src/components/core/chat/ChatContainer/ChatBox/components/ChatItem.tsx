@@ -38,7 +38,6 @@ import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { extractCitationIdsFromText } from '@fastgpt/global/core/chat/utils';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
@@ -252,16 +251,12 @@ const ChatItem = (props: Props) => {
       datasetId?: string;
       quoteId?: string;
     }) => {
-      const responseText = chat.value.map((v) => v.text?.content || '').join('');
-      const citedIds = extractCitationIdsFromText(responseText);
-      const filteredQuoteList = quoteList.filter((quote) => citedIds.includes(quote.id));
-
       const collectionIdList = item?.collectionId
         ? [item.collectionId]
-        : [...new Set(filteredQuoteList.map((item) => item.collectionId))];
+        : [...new Set(quoteList.map((item) => item.collectionId))];
 
       setCiteModalData({
-        rawSearch: filteredQuoteList,
+        rawSearch: quoteList,
         metadata:
           item?.collectionId && isShowFullText
             ? {
