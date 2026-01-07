@@ -133,8 +133,8 @@ importers:
   packages/service:
     dependencies:
       '@fastgpt-sdk/storage':
-        specifier: 0.6.5
-        version: 0.6.5(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 0.6.6
+        version: 0.6.6(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -444,7 +444,7 @@ importers:
         version: 14.2.35(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.35(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.35(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -537,8 +537,8 @@ importers:
         specifier: 11.11.0
         version: 11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1)
       '@fastgpt-sdk/storage':
-        specifier: 0.6.5
-        version: 0.6.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 0.6.6
+        version: 0.6.6(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -628,7 +628,7 @@ importers:
         version: 14.2.35(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.35(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.35(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -2608,8 +2608,8 @@ packages:
   '@fastgpt-sdk/plugin@0.2.17':
     resolution: {integrity: sha512-TU93FD9JIeAV+isoLVVbW+yX14J27Kgd5Sn8LPvYWkrorUEtWeVfd8rOzh/KXPd43hCgD3bSDZ1W3hC06Spnog==}
 
-  '@fastgpt-sdk/storage@0.6.5':
-    resolution: {integrity: sha512-HBV4q+c7Zkul1LWpbJdTkCca1oa0Hvrd5xuHrsLMTCD4OCj7vLKjrehssP9YwJ/n8NOsB5a3KlrZa6l3Tj9Kbg==}
+  '@fastgpt-sdk/storage@0.6.6':
+    resolution: {integrity: sha512-nG+DWwyJS6upfEbJ+FgTc8CGhzpW1JiPEWGO1luhm6lgYRitm0HBBeX3m0j17lYTa2S0ZTDRGJgnXYzOWpYOLg==}
     engines: {node: '>=20'}
 
   '@fastify/accept-negotiator@1.1.0':
@@ -14736,7 +14736,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@fastgpt-sdk/storage@0.6.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.6.6(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)
@@ -14771,7 +14771,7 @@ snapshots:
       - tsx
       - yaml
 
-  '@fastgpt-sdk/storage@0.6.5(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.6.6(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)
@@ -23689,7 +23689,7 @@ snapshots:
       react: 18.3.1
       react-i18next: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.35(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.35(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6

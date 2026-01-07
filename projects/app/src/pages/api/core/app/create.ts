@@ -34,6 +34,7 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -177,18 +178,11 @@ export const onCreateApp = async ({
         return template.avatar;
       }
 
-      const filename = (() => {
-        const last = template.avatar.split('/').pop();
-        if (!last) return getNanoid(6).concat(path.extname(template.avatar));
-
-        return last;
-      })();
-
-      return await s3AvatarSource.copyAvatar({
-        key: template.avatar,
+      return await copyAvatarImage({
         teamId,
-        filename,
-        temporary: true
+        imageUrl: template.avatar,
+        temporary: true,
+        session
       });
     })();
 

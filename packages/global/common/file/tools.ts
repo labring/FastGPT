@@ -3,6 +3,7 @@ import { imageFileType } from './constants';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
 import { type UserChatItemFileItemType } from '../../core/chat/type';
 import * as fs from 'fs';
+import path from 'path';
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B';
@@ -61,10 +62,20 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     // Get filename from URL
     const filename = (() => {
       // Here is a S3 Object Key
-      // S3 key 格式为 name_id.ext，需要去掉 _id 部分
-      if (url.startsWith('chat/')) return url.split('/').pop() || '';
+      if (url.startsWith('chat/')) {
+        const basename = path.basename(url);
+        // Return empty if no extension
+        return basename.includes('.') ? basename : '';
+      }
 
-      return parseUrl.searchParams.get('filename') || parseUrl.pathname.split('/').pop();
+      const fromParam = parseUrl.searchParams.get('filename');
+      if (fromParam) {
+        return fromParam;
+      }
+
+      const basename = path.basename(parseUrl.pathname);
+      // Return empty if no extension
+      return basename.includes('.') ? basename : '';
     })();
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
 

@@ -77,15 +77,9 @@ export const copyAvatarImage = async ({
   const avatarSource = getS3AvatarSource();
   if (isS3ObjectKey(imageUrl?.slice(avatarSource.prefix.length), 'avatar')) {
     const filename = (() => {
-      const last = imageUrl.split('/').pop();
-      if (!last) return getNanoid(6).concat(path.extname(imageUrl));
-      const ext = path.extname(last);
-      const nameWithId = last.replace(ext, '');
-      // S3 key 格式为 name_id.ext，取最后一个 _ 之前的部分作为原始文件名
-      const lastUnderscoreIndex = nameWithId.lastIndexOf('_');
-      const originalName =
-        lastUnderscoreIndex > 0 ? nameWithId.slice(0, lastUnderscoreIndex) + ext : last;
-      return originalName;
+      const extname = path.extname(imageUrl);
+      if (!extname) return getNanoid(6);
+      return path.basename(imageUrl);
     })();
     const key = await getS3AvatarSource().copyAvatar({
       key: imageUrl,

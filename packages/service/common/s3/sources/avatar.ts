@@ -71,7 +71,7 @@ class S3AvatarSource extends S3PublicBucket {
     temporary: boolean;
   }) {
     const from = key.slice(this.prefix.length);
-    const to = `${S3Sources.avatar}/${teamId}/${filename}`;
+    const to = getFileS3Key.avatar({ teamId, filename }).fileKey;
     await this.copy({ from, to, options: { temporary } });
     return this.prefix.concat(to);
   }
