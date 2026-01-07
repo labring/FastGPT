@@ -17,6 +17,7 @@ type ContextProps = {
   isShowCite: boolean;
   isShowFullText: boolean;
   showRunningStatus: boolean;
+  showWholeResponse: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -123,7 +124,8 @@ const ChatItemContextProvider = ({
   canDownloadSource,
   isShowCite,
   isShowFullText,
-  showRunningStatus
+  showRunningStatus,
+  showWholeResponse
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -200,6 +202,7 @@ const ChatItemContextProvider = ({
       isShowCite,
       isShowFullText,
       showRunningStatus,
+      showWholeResponse,
 
       datasetCiteData,
       setCiteModalData,
@@ -218,6 +221,7 @@ const ChatItemContextProvider = ({
     isShowCite,
     showRunningStatus,
     isShowFullText,
+    showWholeResponse,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

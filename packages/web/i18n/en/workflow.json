@@ -155,6 +155,7 @@
   "previous": "Previous",
   "question_classification": "Classify",
   "question_optimization": "Query extension",
+  "quote_cite_tip": "If you prevent prompt words from generating citation IDs, you will not be able to identify and display cited documents during conversations.",
   "quote_content_placeholder": "The structure of the reference content can be customized to better suit different scenarios. \nSome variables can be used for template configuration\n\n{{q}} - main content\n\n{{a}} - auxiliary data\n\n{{source}} - source name\n\n{{sourceId}} - source ID\n\n{{index}} - nth reference",
   "quote_content_tip": "The structure of the reference content can be customized to better suit different scenarios. Some variables can be used for template configuration:\n\n{{id}} - the unique id of the reference data\n{{q}} - main content\n{{a}} - auxiliary data\n{{source}} - source name\n{{sourceId}} - source ID\n{{index}} - nth reference\n\nThey are all optional and the following are the default values:\n\n{{default}}",
   "quote_num": "Dataset",

@@ -388,6 +388,7 @@ const Render = (props: Props) => {
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}
+        showWholeResponse={false}
         canDownloadSource={props.canDownloadSource}
         isShowCite={props.isShowCite}
         isShowFullText={props.isShowFullText}
