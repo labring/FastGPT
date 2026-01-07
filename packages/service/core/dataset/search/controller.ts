@@ -57,6 +57,7 @@ import type {
 import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
 import { queryByNL } from '../database/dative/client/dativeApiServer';
 import { searchCorrectionData } from '../../workflow/dispatch/dataset/search';
+import { searchDatasetDataForAssistant } from './customController';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -89,8 +90,6 @@ export type SearchDatasetDataProps = {
     }
   */
   collectionFilterMatch?: string;
-
-  isAssistant?: boolean; // 新增：标记是否为assistant场景
 };
 
 export type SearchDatabaseDataProps = {
@@ -245,9 +244,6 @@ export const filterDatasetDataByMaxTokens = async (
 export async function searchDatasetData(
   props: SearchDatasetDataProps
 ): Promise<SearchDatasetDataResponse> {
-  // 【新增】检索开始计时（在函数入口处）
-  const retrievalStartTime = Date.now();
-
   let {
     teamId,
     reRankQuery,
@@ -262,8 +258,7 @@ export async function searchDatasetData(
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
-    collectionFilterMatch,
-    isAssistant = false // 新增：获取isAssistant参数
+    collectionFilterMatch
   } = props;
   // Constants data
   const datasetDataSelectField =
@@ -900,14 +895,6 @@ export async function searchDatasetData(
     fullTextLimit
   });
 
-  // 【新增】仅assistant场景下计算检索耗时（在进入reranker之前）
-  const retrievalTime = isAssistant
-    ? +((Date.now() - retrievalStartTime) / 1000).toFixed(2)
-    : undefined;
-
-  // 【新增】仅assistant场景下重排开始计时（包含reranker调用、RRF合并、去重、过滤、截断）
-  const rerankStartTime = isAssistant && usingReRank ? Date.now() : undefined;
-
   // ReRank results
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
     if (!usingReRank) {
@@ -932,19 +919,11 @@ export async function searchDatasetData(
       return true;
     });
 
-    // 【新增】仅assistant场景下限制进入reranker的数据量
-    const dataForRerank = isAssistant
-      ? (() => {
-          const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
-          return filterSameDataResults.slice(0, retrievalLimit);
-        })()
-      : filterSameDataResults;
-
     try {
       return await datasetDataReRank({
         rerankModel,
         query: reRankQuery,
-        data: dataForRerank,
+        data: filterSameDataResults,
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
@@ -965,74 +944,6 @@ export async function searchDatasetData(
     { k: embK, list: embeddingRecallResults },
     { k: fullTextK, list: fullTextRecallResults }
   ]);
-
-  // 【新增】仅assistant场景下保存检索结果（包含 embedding、fullText、RRF 三种分数）
-  const retrievalResults = isAssistant
-    ? (() => {
-        const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
-        addLog.debug('Assistant Config - assistantRetrievalLimit', { retrievalLimit });
-        const limitedResults = rrfSearchResult.slice(0, retrievalLimit);
-
-        // 构建 id -> embedding score 映射
-        const embeddingScoreMap = new Map<string, number>();
-        embeddingRecallResults.forEach((item) => {
-          const embScore = item.score.find((s) => s.type === SearchScoreTypeEnum.embedding);
-          if (embScore) {
-            embeddingScoreMap.set(item.id, embScore.value);
-          }
-        });
-
-        // 构建 id -> fullText score 映射
-        const fullTextScoreMap = new Map<string, number>();
-        fullTextRecallResults.forEach((item) => {
-          const ftScore = item.score.find((s) => s.type === SearchScoreTypeEnum.fullText);
-          if (ftScore) {
-            fullTextScoreMap.set(item.id, ftScore.value);
-          }
-        });
-
-        // 为每个结果添加完整的 score 数组（embedding、fullText、rrf）
-        return limitedResults.map((item, index) => {
-          const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
-
-          // 添加 embedding 分数（如果存在）
-          const embScore = embeddingScoreMap.get(item.id);
-          if (embScore !== undefined) {
-            scores.push({
-              type: SearchScoreTypeEnum.embedding,
-              value: embScore,
-              index
-            });
-          }
-
-          // 添加 fullText 分数（如果存在）
-          const ftScore = fullTextScoreMap.get(item.id);
-          if (ftScore !== undefined) {
-            scores.push({
-              type: SearchScoreTypeEnum.fullText,
-              value: ftScore,
-              index
-            });
-          }
-
-          // 添加 RRF 分数（从 item.score 中获取）
-          const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
-          if (rrfScore) {
-            scores.push({
-              type: SearchScoreTypeEnum.rrf,
-              value: rrfScore.value,
-              index
-            });
-          }
-
-          // 返回完整的结果，只替换 score 数组
-          return {
-            ...item,
-            score: scores
-          };
-        });
-      })()
-    : undefined;
 
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
@@ -1084,33 +995,15 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
-  // 【新增】重排结束计时
-  const rerankTime =
-    rerankStartTime !== undefined ? +((Date.now() - rerankStartTime) / 1000).toFixed(2) : undefined;
-
-  // 【新增】仅assistant场景下限制最终结果数量
-  const finalResults = isAssistant
-    ? (() => {
-        const finalResultLimit = global.systemEnv?.assistantFinalResultLimit ?? 10;
-        addLog.debug('Assistant Config - assistantFinalResultLimit', { finalResultLimit });
-        return filterMaxTokensResult.length > finalResultLimit
-          ? filterMaxTokensResult.slice(0, finalResultLimit)
-          : filterMaxTokensResult;
-      })()
-    : filterMaxTokensResult;
-
   return {
-    searchRes: finalResults,
+    searchRes: filterMaxTokensResult,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
     limit: maxTokens,
     similarity,
     usingReRank,
-    usingSimilarityFilter,
-    ...(isAssistant && retrievalTime !== undefined ? { retrievalTime } : {}), // 新增：检索耗时（仅assistant场景）
-    ...(isAssistant && rerankTime !== undefined ? { rerankTime } : {}), // 新增：重排耗时（仅assistant场景）
-    ...(isAssistant && retrievalResults ? { retrievalResults } : {}) // 新增：检索结果（仅assistant场景）
+    usingSimilarityFilter
   };
 }
 
@@ -1292,13 +1185,20 @@ export const defaultSearchDatasetData = async ({
   }
   // ===== FAQ 检索结束 =====
 
-  const result = await searchDatasetData({
-    ...props,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries,
-    datasetIds,
-    isAssistant // 新增：传递isAssistant参数
-  });
+  // 根据 isAssistant 选择调用哪个函数
+  const result = isAssistant
+    ? await searchDatasetDataForAssistant({
+        ...props,
+        reRankQuery: rewriteQuery,
+        queries: concatQueries,
+        datasetIds
+      })
+    : await searchDatasetData({
+        ...props,
+        reRankQuery: rewriteQuery,
+        queries: concatQueries,
+        datasetIds
+      });
 
   // 注意：retrievalTime 已在 searchDatasetData 中计算（统计到进入reranker前）
   return {

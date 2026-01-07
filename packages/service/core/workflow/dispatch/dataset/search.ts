@@ -155,7 +155,6 @@ export async function dispatchDatasetSearch(
   // 获取 faqAnswerMode 配置
   // const faqAnswerMode = chatConfig?.faqAnswerMode; 这样是undefined
   const faqAnswerMode = getFaqAnswerMode(chatConfig?.variables, variables);
-  console.log('faqAnswerMode', faqAnswerMode);
   // 获取所有知识库ID（用于同义词检索）
   const datasetIds = datasets.map((d) => d.datasetId);
 
@@ -235,6 +234,7 @@ export async function dispatchDatasetSearch(
     let faqAnswer: string | undefined = undefined; // FAQ 匹配成功时的答案
     let rerankTime: number | undefined = undefined; // 新增：重排耗时（仅assistant场景）
     let retrievalTime: number | undefined = undefined; // 新增：检索总耗时（仅assistant场景）
+    let sqlRetrievalTime: number | undefined = undefined; // 新增：SQL数据库检索耗时（仅assistant场景）
     let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 新增：检索结果（仅assistant场景）
     let retrievalType: 'correction' | 'faq' | undefined = undefined; // 新增：检索类型（仅correction/faq命中时有值）
 
@@ -262,6 +262,9 @@ export async function dispatchDatasetSearch(
     };
     // Database search for database datasets - search each dataset individually and generate SQL
     if (databaseDatasetIds.length > 0) {
+      // 新增：SQL数据库检索开始计时（仅assistant场景）
+      const sqlRetrievalStartTime = isAssistant ? Date.now() : undefined;
+
       const sqlLLM = getLLMModel(generateSqlModel);
       // Calculate dynamic limit based on generateSqlModel's maxContext
       const dynamicLimit = calculateDynamicLimit({
@@ -372,6 +375,12 @@ export async function dispatchDatasetSearch(
           }
         })
       );
+
+      // 新增：SQL数据库检索结束计时（仅assistant场景）
+      if (isAssistant && sqlRetrievalStartTime !== undefined) {
+        sqlRetrievalTime = +((Date.now() - sqlRetrievalStartTime) / 1000).toFixed(2);
+        addLog.debug('Dataset Search - SQL Retrieval Time', { sqlRetrievalTime });
+      }
     }
     if (commonDatasetIds.length > 0) {
       const searchData = {
@@ -594,6 +603,8 @@ export async function dispatchDatasetSearch(
       ...(rerankTime !== undefined && { rerankTime }),
       // 新增：检索总耗时（仅assistant场景）
       ...(retrievalTime !== undefined && { retrievalTime }),
+      // 新增：SQL数据库检索耗时（仅assistant场景）
+      ...(sqlRetrievalTime !== undefined && { sqlRetrievalTime }),
       // 新增：检索结果（仅assistant场景）
       ...(isAssistant && retrievalResults && { retrievalResults }),
       // 新增：检索类型（仅correction/faq命中时有值）
