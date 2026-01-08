@@ -73,6 +73,8 @@ export const FlowNodeCommonTypeSchema = z.object({
   abandon: z.boolean().optional(), // abandon node
 
   avatar: z.string().optional(), // avatar
+  avatarLinear: z.string().optional(), // avatar linear
+  colorSchema: z.string().optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
   toolDescription: z.string().optional(), // tool description

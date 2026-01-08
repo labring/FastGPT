@@ -31,6 +31,11 @@ export const filterGPTMessageByMaxContext = async ({
   const chatStartIndex = messages.findIndex(
     (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
   );
+
+  if (chatStartIndex === -1) {
+    return messages;
+  }
+
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 

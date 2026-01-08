@@ -6,7 +6,6 @@ import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vit
 import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
-import { delay } from '@fastgpt/global/common/system/utils';
 
 vi.stubEnv('NODE_ENV', 'test');
 
@@ -62,5 +61,3 @@ beforeEach(async () => {
     }
   });
 });
-
-delay(1000);
