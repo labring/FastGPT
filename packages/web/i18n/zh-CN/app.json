@@ -60,6 +60,8 @@
   "auto_execute_tip": "开启后，用户进入对话界面将自动触发工作流。执行顺序：1、对话开场白；2、全局变量；3、自动执行。",
   "auto_save": "自动保存",
   "change_app_type": "更改应用类型",
+  "chat.collapse_deleted_items": "收起已删除记录",
+  "chat.expand_deleted_items": "展开已删除记录",
   "chat_debug": "调试预览",
   "chat_logs": "对话日志",
   "chat_logs_tips": "日志会记录该应用的在线、分享和 API（需填写 chatId）对话记录",

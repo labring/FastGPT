@@ -19,7 +19,8 @@ export async function getChatItems({
   offset,
   initialId,
   prevId,
-  nextId
+  nextId,
+  includeDeleted = false
 }: {
   appId: string;
   chatId?: string;
@@ -30,6 +31,7 @@ export async function getChatItems({
   initialId?: string;
   prevId?: string;
   nextId?: string;
+  includeDeleted?: boolean;
 }): Promise<{
   histories: ChatItemType[];
   total: number;
@@ -40,10 +42,10 @@ export async function getChatItems({
     return { histories: [], total: 0, hasMorePrev: false, hasMoreNext: false };
   }
 
-  // Extend dataId
-  field = `dataId ${field}`;
+  // Extend dataId and deleteTime if needed
+  field = includeDeleted ? `dataId ${field} deleteTime` : `dataId ${field}`;
 
-  const baseCondition = { appId, chatId };
+  const baseCondition = includeDeleted ? { appId, chatId } : { appId, chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
     // Mode 1: offset pagination (original logic)
@@ -260,6 +262,7 @@ export async function updateChatFeedbackCount({
           $match: {
             appId: new Types.ObjectId(appId),
             chatId,
+            deleteTime: null,
             obj: ChatRoleEnum.AI
           }
         },

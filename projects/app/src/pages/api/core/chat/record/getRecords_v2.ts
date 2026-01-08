@@ -38,7 +38,8 @@ async function handler(
     pageSize,
     initialId,
     nextId,
-    prevId
+    prevId,
+    includeDeleted = false
   } = req.body;
 
   if (!appId || !chatId) {
@@ -81,7 +82,8 @@ async function handler(
     limit: pageSize,
     initialId,
     prevId,
-    nextId
+    nextId,
+    includeDeleted
   });
 
   // Presign file urls

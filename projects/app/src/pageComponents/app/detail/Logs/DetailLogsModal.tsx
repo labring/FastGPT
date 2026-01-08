@@ -253,7 +253,8 @@ const Render = (props: Props) => {
       chatId,
       appId,
       loadCustomFeedbacks: true,
-      type: GetChatTypeEnum.normal
+      type: GetChatTypeEnum.normal,
+      includeDeleted: true
     };
   }, [appId, chatId]);
 

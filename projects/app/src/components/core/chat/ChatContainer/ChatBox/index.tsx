@@ -76,6 +76,9 @@ const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVa
 const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
+const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
+
+import { groupChatItemsByDeleteStatus } from '../utils';
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -125,6 +128,7 @@ const ChatBox = ({
   const [feedbackId, setFeedbackId] = useState<string>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
+  const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<number[]>([]);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -1011,8 +1015,163 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
+  // Toggle deleted group expansion
+  const toggleDeletedGroup = useCallback((groupIndex: number) => {
+    setExpandedDeletedGroups((prev) => {
+      if (prev.includes(groupIndex)) {
+        return prev.filter((i) => i !== groupIndex);
+      } else {
+        return [...prev, groupIndex];
+      }
+    });
+  }, []);
+
+  // Render single chat item (reusable for all chat types)
+  const renderChatItem = useCallback(
+    (item: ChatSiteItemType, index: number, items: ChatSiteItemType[], isLastChild: boolean) => {
+      const previousItemText = formatChatValue2InputType(items[index - 1]?.value)?.text;
+
+      return (
+        <Box py={item.hideInUI ? 0 : 6}>
+          {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
+            <ChatItem
+              type={item.obj}
+              avatar={userAvatar}
+              chat={item}
+              onRetry={retryInput(item.dataId)}
+              onDelete={delOneMessage(item.dataId)}
+              isLastChild={isLastChild}
+            />
+          )}
+          {item.obj === ChatRoleEnum.AI && (
+            <ChatItem
+              type={item.obj}
+              avatar={appAvatar}
+              chat={item}
+              isLastChild={isLastChild}
+              {...{
+                showVoiceIcon,
+                statusBoxData,
+                questionGuides,
+                onMark: onMark(item, previousItemText),
+                onAddUserLike: onAddUserLike(item),
+                onAddUserDislike: onAddUserDislike(item),
+                onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
+              }}
+            >
+              {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                <Box>
+                  <ChatBoxDivider
+                    icon={'core/app/customFeedback'}
+                    text={t('common:core.app.feedback.Custom feedback')}
+                  />
+                  {item.customFeedbacks.map((text, i) => (
+                    <Box key={i}>
+                      <MyTooltip label={t('common:core.app.feedback.close custom feedback')}>
+                        <Checkbox
+                          onChange={onCloseCustomFeedback(item, i)}
+                          icon={<MyIcon name={'common/check'} w={'12px'} />}
+                        >
+                          {text}
+                        </Checkbox>
+                      </MyTooltip>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              {showMarkIcon && item.adminFeedback && (
+                <Box fontSize={'sm'}>
+                  <ChatBoxDivider
+                    icon="core/app/markLight"
+                    text={t('common:core.chat.Admin Mark Content')}
+                  />
+                  <Box whiteSpace={'pre-wrap'}>
+                    <Box color={'black'}>{item.adminFeedback.q}</Box>
+                    <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                  </Box>
+                </Box>
+              )}
+            </ChatItem>
+          )}
+        </Box>
+      );
+    },
+    [
+      userAvatar,
+      appAvatar,
+      showVoiceIcon,
+      statusBoxData,
+      questionGuides,
+      showMarkIcon,
+      t,
+      retryInput,
+      delOneMessage,
+      onMark,
+      onAddUserLike,
+      onAddUserDislike,
+      onToggleFeedbackReadStatus,
+      onCloseCustomFeedback
+    ]
+  );
+
   //chat history
   const RecordsBox = useMemo(() => {
+    // For log type, use grouping with collapse
+    if (chatType === ChatTypeEnum.log) {
+      const groups = groupChatItemsByDeleteStatus(chatRecords);
+      let deletedGroupIndex = -1;
+
+      return (
+        <Box id={'history'}>
+          {groups.map((group, groupIdx) => {
+            if (group.type === 'deleted') {
+              deletedGroupIndex++;
+              const currentDeletedGroupIndex = deletedGroupIndex;
+
+              return (
+                <DeletedItemsCollapse
+                  key={`deleted-${groupIdx}`}
+                  count={group.items.length}
+                  isExpanded={expandedDeletedGroups.includes(currentDeletedGroupIndex)}
+                  onToggle={() => toggleDeletedGroup(currentDeletedGroupIndex)}
+                >
+                  {group.items.map((item, index) => (
+                    <Box
+                      key={item.dataId}
+                      ref={(e) => {
+                        itemRefs.current.set(item.dataId, e);
+                      }}
+                    >
+                      {renderChatItem(item, index, group.items, false)}
+                    </Box>
+                  ))}
+                </DeletedItemsCollapse>
+              );
+            }
+
+            // Normal messages
+            return group.items.map((item, index) => (
+              <Box
+                key={item.dataId}
+                ref={(e) => {
+                  itemRefs.current.set(item.dataId, e);
+                }}
+              >
+                {index !== 0 &&
+                  item.time &&
+                  group.items[index - 1].time !== undefined &&
+                  new Date(item.time).getTime() - new Date(group.items[index - 1].time!).getTime() >
+                    10 * 60 * 1000 && <TimeBox time={item.time} />}
+
+                {renderChatItem(item, index, group.items, index === group.items.length - 1)}
+              </Box>
+            ));
+          })}
+        </Box>
+      );
+    }
+
+    // Default rendering for non-log types
     return (
       <Box id={'history'}>
         {chatRecords.map((item, index) => (
@@ -1029,95 +1188,12 @@ const ChatBox = ({
               new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
                 10 * 60 * 1000 && <TimeBox time={item.time} />}
 
-            <Box py={item.hideInUI ? 0 : 6}>
-              {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
-                <ChatItem
-                  type={item.obj}
-                  avatar={userAvatar}
-                  chat={item}
-                  onRetry={retryInput(item.dataId)}
-                  onDelete={delOneMessage(item.dataId)}
-                  isLastChild={index === chatRecords.length - 1}
-                />
-              )}
-              {item.obj === ChatRoleEnum.AI && (
-                <ChatItem
-                  type={item.obj}
-                  avatar={appAvatar}
-                  chat={item}
-                  isLastChild={index === chatRecords.length - 1}
-                  {...{
-                    showVoiceIcon,
-                    statusBoxData,
-                    questionGuides,
-                    onMark: onMark(
-                      item,
-                      formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
-                    ),
-                    onAddUserLike: onAddUserLike(item),
-                    onAddUserDislike: onAddUserDislike(item),
-                    onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
-                  }}
-                >
-                  {/* custom feedback */}
-                  {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                    <Box>
-                      <ChatBoxDivider
-                        icon={'core/app/customFeedback'}
-                        text={t('common:core.app.feedback.Custom feedback')}
-                      />
-                      {item.customFeedbacks.map((text, i) => (
-                        <Box key={i}>
-                          <MyTooltip label={t('common:core.app.feedback.close custom feedback')}>
-                            <Checkbox
-                              onChange={onCloseCustomFeedback(item, i)}
-                              icon={<MyIcon name={'common/check'} w={'12px'} />}
-                            >
-                              {text}
-                            </Checkbox>
-                          </MyTooltip>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  {/* admin mark content */}
-                  {showMarkIcon && item.adminFeedback && (
-                    <Box fontSize={'sm'}>
-                      <ChatBoxDivider
-                        icon="core/app/markLight"
-                        text={t('common:core.chat.Admin Mark Content')}
-                      />
-                      <Box whiteSpace={'pre-wrap'}>
-                        <Box color={'black'}>{item.adminFeedback.q}</Box>
-                        <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
-                      </Box>
-                    </Box>
-                  )}
-                </ChatItem>
-              )}
-            </Box>
+            {renderChatItem(item, index, chatRecords, index === chatRecords.length - 1)}
           </Box>
         ))}
       </Box>
     );
-  }, [
-    chatRecords,
-    userAvatar,
-    retryInput,
-    delOneMessage,
-    appAvatar,
-    showVoiceIcon,
-    statusBoxData,
-    questionGuides,
-    onMark,
-    onAddUserLike,
-    onAddUserDislike,
-    onToggleFeedbackReadStatus,
-    t,
-    showMarkIcon,
-    itemRefs,
-    onCloseCustomFeedback
-  ]);
+  }, [chatType, chatRecords, expandedDeletedGroups, toggleDeletedGroup, itemRefs, renderChatItem]);
 
   // Child box
   const AppChatRenderBox = useMemo(() => {
