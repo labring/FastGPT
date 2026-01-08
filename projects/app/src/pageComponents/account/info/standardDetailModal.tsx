@@ -27,13 +27,15 @@ import {
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 type packageStatus = 'active' | 'inactive' | 'expired';
 
 const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const { subPlans, userInfo } = useSystemStore();
+  const { subPlans } = useSystemStore();
+  const { userInfo } = useUserStore();
   const isWecomTeam = !!userInfo?.team.isWecomTeam;
 
   const { data: teamPlans = [], loading: isLoading } = useRequest2(
