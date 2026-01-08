@@ -156,6 +156,10 @@ export type SystemEnvType = {
   // FAQ search similarity threshold
   faqSimilarityThreshold?: number;
 
+  // Assistant场景专用配置
+  assistantRetrievalLimit?: number; // 检索结果数量限制
+  assistantFinalResultLimit?: number; // 最终返回的检索结果数量限制
+
   // Hype index parameters
   hypeParams?: HypeParamsType;
 };

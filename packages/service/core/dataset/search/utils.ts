@@ -21,6 +21,9 @@ export const datasetSearchQueryExtension = async ({
   teamId?: string;
   datasetIds?: string[];
 }) => {
+  // 仅assistant场景下统计整个问题改写流程的耗时
+  const startTime = isAssistant && extensionModel ? Date.now() : undefined;
+
   const filterSamQuery = (queries: string[]) => {
     const set = new Set<string>();
     const filterSameQueries = queries.filter((item) => {
@@ -94,12 +97,17 @@ export const datasetSearchQueryExtension = async ({
     rewriteQuery = queries.join(';');
   }
 
+  // 计算问题改写耗时（仅assistant场景且实际执行了改写逻辑）
+  const rewriteTime =
+    startTime !== undefined ? +((Date.now() - startTime) / 1000).toFixed(2) : undefined;
+
   return {
     // 知识库检索的问题优化处回显
     extensionQueries,
     concatQueries: queries,
     rewriteQuery,
-    aiExtensionResult
+    aiExtensionResult,
+    rewriteTime // 新增：问题改写耗时（s），仅assistant场景
   };
 };
 
