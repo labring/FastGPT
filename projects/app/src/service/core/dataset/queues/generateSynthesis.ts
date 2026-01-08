@@ -206,6 +206,7 @@ export async function generateSynthesis(): Promise<any> {
             mode: nextMode,
             data: [
               {
+                ...(data.dataId && { id: String(data.dataId) }), // Preserve custom ID
                 q: data.q,
                 a: data.a,
                 chunkIndex: data.chunkIndex,
