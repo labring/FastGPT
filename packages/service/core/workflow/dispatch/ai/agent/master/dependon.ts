@@ -27,7 +27,7 @@ export const getStepDependon = async ({
 }> => {
   const startTime = Date.now();
   const modelData = getLLMModel(model);
-  addLog.debug('GetStepResponse start', { model, step });
+  // addLog.debug('GetStepResponse start', { model, step });
   const historySummary = steps
     .filter((item) => item.summary)
     .map((item) => `- ${item.id}: ${item.summary}`)

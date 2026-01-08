@@ -4,11 +4,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
-import {
-  getPlanAgentSystemPrompt,
-  getReplanAgentSystemPrompt,
-  getReplanAgentUserPrompt
-} from './prompt';
+import { getInitialPlanPrompt, getContinuePlanPrompt } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -21,7 +17,6 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import { AIAskAnswerSchema, AIAskTool } from './ask/constants';
 import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
-import { getStepDependon } from '../../master/dependon';
 import { parseSystemPrompt } from '../../utils';
 import { addLog } from '../../../../../../../common/system/log';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -36,6 +31,8 @@ type PlanAgentConfig = {
   stream?: boolean;
 };
 
+type PlanMode = 'initial' | 'continue';
+
 type DispatchPlanAgentProps = PlanAgentConfig & {
   checkIsStopping: () => boolean;
 
@@ -47,6 +44,8 @@ type DispatchPlanAgentProps = PlanAgentConfig & {
 
   completionTools: ChatCompletionTool[];
   getSubAppInfo: GetSubAppInfoFnType;
+
+  mode?: PlanMode; // 'initial' | 'continue', 默认为 'initial'
 };
 
 export type DispatchPlanAgentResponse = {
@@ -124,26 +123,31 @@ export const dispatchPlanAgent = async ({
   completionTools,
   getSubAppInfo,
   systemPrompt,
-  model
+  model,
+  mode = 'initial'
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const modelData = getLLMModel(model);
 
   const parsedSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
 
+  // 根据 mode 选择对应的提示词
+  const planPrompt =
+    mode === 'continue'
+      ? getContinuePlanPrompt({ getSubAppInfo, completionTools })
+      : getInitialPlanPrompt({ getSubAppInfo, completionTools });
+
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: [
-        getPlanAgentSystemPrompt({
-          getSubAppInfo,
-          completionTools
-        }),
+        planPrompt,
         parsedSystemPrompt
           ? `<user_background>
           ${parsedSystemPrompt}
-          
-          请按照用户提供的背景信息来重新生成计划，优先遵循用户的步骤安排和偏好。
-          
+
+          请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
+          如果和user_background没有任何关系则忽略参考信息。
+
           **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。
           </user_background>`
           : ''
@@ -156,6 +160,7 @@ export const dispatchPlanAgent = async ({
 
   // 分类：query/user select/user form
   const lastMessages = requestMessages[requestMessages.length - 1];
+
   // 上一轮是 Ask 模式，进行工具调用拼接
   if (
     (interactive?.type === 'agentPlanAskUserForm' ||
@@ -173,15 +178,25 @@ export const dispatchPlanAgent = async ({
     //   role: 'assistant',
     //   content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
     // });
-  } else {
+  }
+  // else {
+  //   requestMessages.push({
+  //     role: 'user',
+  //     content: userInput
+  //   });
+  // }
+
+  if (mode === 'continue') {
     requestMessages.push({
       role: 'user',
       content: userInput
     });
   }
-
   console.log('Plan request messages');
   console.dir({ requestMessages }, { depth: null });
+  console.log('userInput:', userInput, 'mode:', mode, 'interactive?.type:', interactive?.type);
+  // console.log('lastMessages', JSON.stringify(lastMessages, null, 2))
+
   let {
     answerText,
     toolCalls = [],
@@ -235,152 +250,5 @@ export const dispatchPlanAgent = async ({
         outputTokens: usage.outputTokens
       }
     ]
-  };
-};
-
-export const dispatchReplanAgent = async ({
-  checkIsStopping,
-  historyMessages,
-  interactive,
-  completionTools,
-  getSubAppInfo,
-  userInput,
-  plan,
-  background,
-  systemPrompt,
-
-  model,
-  temperature,
-  top_p,
-  stream
-}: DispatchPlanAgentProps & {
-  plan: AgentPlanType;
-}): Promise<DispatchPlanAgentResponse> => {
-  const usages: ChatNodeUsageType[] = [];
-  const modelData = getLLMModel(model);
-
-  // 解析 systemPrompt（如果存在）
-  const parsedSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
-
-  const requestMessages: ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: [
-        getReplanAgentSystemPrompt({
-          getSubAppInfo,
-          completionTools
-        }),
-        parsedSystemPrompt
-          ? `<user_background>
-            ${parsedSystemPrompt}
-            
-            如果用户提供了前置规划，请按照用户的步骤安排和偏好来重新生成计划，优先遵循用户的步骤安排和偏好。如果「用户前置规划」中包含工具引用（@工具名），请优先使用这些工具，避免功能重叠。
-            </user_background>`
-          : ''
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    },
-    ...historyMessages
-  ];
-
-  // 分类：query/user select/user form
-  const lastMessages = requestMessages[requestMessages.length - 1];
-
-  if (
-    (interactive?.type === 'agentPlanAskUserSelect' || interactive?.type === 'agentPlanAskQuery') &&
-    lastMessages.role === 'assistant' &&
-    lastMessages.tool_calls
-  ) {
-    requestMessages.push({
-      role: 'tool',
-      tool_call_id: lastMessages.tool_calls[0].id,
-      content: userInput
-    });
-    requestMessages.push({
-      role: 'assistant',
-      content: '请基于以上收集的用户信息，对 PLAN 进行重新规划，并严格按照 JSON Schema 输出。'
-    });
-  } else {
-    // 获取依赖的步骤
-    const { depends, usage: dependsUsage } = await getStepDependon({
-      checkIsStopping,
-      model,
-      steps: plan.steps,
-      step: {
-        id: '',
-        title: '重新规划决策依据：需要依赖哪些步骤的判断',
-        description: '本步骤分析先前的执行结果，以确定重新规划时需要依赖哪些特定步骤。'
-      }
-    });
-
-    if (dependsUsage) {
-      usages.push(dependsUsage);
-    }
-    const replanSteps = plan.steps.filter((step) => depends.includes(step.id));
-
-    requestMessages.push({
-      role: 'user',
-      content: getReplanAgentUserPrompt({
-        task: userInput,
-        dependsSteps: replanSteps,
-        background
-      })
-    });
-  }
-
-  console.log('Replan call messages', JSON.stringify(requestMessages, null, 2));
-  let {
-    answerText,
-    toolCalls = [],
-    usage,
-    getEmptyResponseTip,
-    completeMessages
-  } = await createLLMResponse({
-    isAborted: checkIsStopping,
-    body: {
-      model: modelData.model,
-      temperature,
-      messages: requestMessages,
-      top_p,
-      stream: true,
-      tools: [AIAskTool],
-      tool_choice: 'auto',
-      toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
-      parallel_tool_calls: false
-    }
-  });
-
-  if (!answerText && !toolCalls.length) {
-    return Promise.reject(getEmptyResponseTip());
-  }
-
-  /* 
-    正常输出情况：
-    1. text: 正常生成plan
-    2. toolCall: 调用ask工具
-    3. text + toolCall: 可能生成 plan + 调用ask工具
-  */
-  const rePlan = await parsePlan(answerText);
-  const askInteractive = await parseAskInteractive(toolCalls);
-
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: modelData.model,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens
-  });
-  usages.push({
-    moduleName: '重新规划',
-    model: modelName,
-    totalPoints,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens
-  });
-
-  return {
-    askInteractive,
-    plan: rePlan,
-    completeMessages,
-    usages
   };
 };

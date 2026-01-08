@@ -12,11 +12,13 @@ import type {
 import type { CreateLLMResponseProps, ResponseEvents } from '../request';
 import { createLLMResponse } from '../request';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { compressRequestMessages } from '../compress';
+import { compressRequestMessages, compressToolResponse } from '../compress';
 import { computedMaxToken } from '../../utils';
 import { filterGPTMessageByMaxContext } from '../utils';
 import { getLLMModel } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
+import { addLog } from '../../../../common/system/log';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
@@ -332,13 +334,22 @@ export const runAgentCall = async ({
       });
 
       // 5. Add tool response to messages
+      // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
+      const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+
       const toolMessage: ChatCompletionMessageParam = {
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: response
+        content: await compressToolResponse({
+          response,
+          model: modelData,
+          currentMessagesTokens,
+          reservedTokens: 8000 // 预留 8k tokens 给输出
+        })
       };
       assistantMessages.push(toolMessage);
-      requestMessages.push(toolMessage); // 请求的 Request 只需要工具响应，不需要工具中 assistant 的内容，所以不推送 toolAssistantMessages
+      requestMessages.push(toolMessage);
+
       assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
       childrenUsages.push(...usages);
