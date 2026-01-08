@@ -681,6 +681,14 @@ export async function searchDatasetDataForAssistant(
       fullTextRecallResults.map((list) => ({ k: 60, list }))
     ).slice(0, fullTextLimit);
 
+    // 打印召回统计日志
+    addLog.debug('Assistant Recall Statistics', {
+      embeddingIndexLimit: embeddingLimit,
+      fullTextIndexLimit: fullTextLimit,
+      embeddingChunkCount: rrfEmbRecall.length,
+      fullTextChunkCount: rrfFTRecall.length
+    });
+
     return {
       tokens,
       embeddingRecallResults: rrfEmbRecall,

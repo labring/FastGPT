@@ -47,6 +47,106 @@
       "topK": 20, // 召回的文档数量
       "rerank": false, // 是否使用重排序
       "min_rerank_threshold": 0.85 // 重排序最小阈值
+    },
+    "customTemplateImport": {
+      "defaultActivateMode": "default", // 默认激活的模式
+      "modes": [
+        {
+          "name": "default", // 模式名称
+          "enabled": true, // 是否启用此模式
+          "contentDetection": {
+            // 内容探测规则（预留，用于根据内容自动选择模式）
+            "rules": []
+          },
+          "enhanceConfig": {
+            "autoIndexes": true, // 是否开启AI自动索引生成
+            "small2bigIndexes": true, // 是否开启small2big索引
+            "syntheticIndex": true, // 是否开启合成索引（默认开启）
+            "hypeIndexes": false, // 是否开启超参数索引
+            "hypeIndexPrompt": "", // 超参数索引的自定义prompt
+            "small2bigConfig": {}, // small2big配置
+            "autoIndexesPrompt": "", // 自动索引的自定义prompt
+            "imageIndexPrompt": "" // 图片索引的自定义prompt
+          }
+        }
+      ]
+    },
+    "customFileImport": {
+      "defaultActivateMode": "default", // 默认激活的模式
+      "modes": [
+        {
+          "name": "default", // 模式名称
+          "enabled": true, // 是否启用此模式
+          "fileTypes": ["txt", "md", "html", "pdf", "docx", "pptx", "xlsx", "csv"], // 适用的文件类型
+          "contentDetection": {
+            "rules": [] // 内容探测规则（预留）
+          },
+          "parseConfig": {
+            "customPdfParse": true // PDF 增强解析（会根据系统配置自动调整）
+          },
+          "chunkConfig": {
+            "trainingType": "chunk", // 训练类型：chunk 或 qa
+            "chunkTriggerType": "minSize", // 分块触发类型
+            "chunkTriggerMinSize": 1000, // 触发分块的最小长度
+            "chunkSettingMode": "auto", // 分块设置模式
+            "chunkSplitMode": "paragraph", // 分块切分模式
+            "paragraphChunkAIMode": "forbid", // 段落分块AI模式
+            "paragraphChunkDeep": 5, // 段落分块深度
+            "paragraphChunkMinSize": 100, // 段落分块最小长度
+            "chunkSize": 1000, // 分块大小
+            "chunkSplitter": "", // 自定义分块分隔符
+            "indexSize": 1024 // 索引大小
+          },
+          "enhanceConfig": {
+            "dataEnhanceCollectionName": false, // 数据增强集合名称
+            "imageIndex": false, // 图片自动索引（会根据VLM模型配置自动调整）
+            "autoIndexes": true, // AI自动索引（会根据Agent模型配置自动调整）
+            "hypeIndexes": false, // 超参数索引
+            "indexPrefixTitle": false, // 索引前缀标题
+            "small2bigIndexes": false, // small2big索引
+            "syntheticIndex": false // 合成索引（会根据Agent模型配置自动调整）
+          },
+          "promptConfig": {
+            "autoIndexesPrompt": "", // 自动索引prompt
+            "hypeIndexPrompt": "", // 超参数索引prompt
+            "imageIndexPrompt": "", // 图片索引prompt
+            "qaPrompt": "" // QA模式prompt
+          }
+        }
+      ]
+    },
+    "customLinkImport": {
+      "defaultActivateMode": "default", // 默认激活的模式
+      "modes": [
+        {
+          "name": "default", // 模式名称
+          "enabled": true, // 是否启用此模式
+          "contentDetection": {
+            "rules": [] // 内容探测规则（预留）
+          },
+          "parseConfig": {
+            "webPageSelector": "" // 网页选择器
+          },
+          "chunkConfig": {
+            "trainingType": "chunk", // 训练类型
+            "chunkTriggerType": "minSize", // 分块触发类型
+            "chunkTriggerMinSize": 1000, // 触发分块的最小长度
+            "chunkSettingMode": "auto", // 分块设置模式
+            "chunkSplitMode": "paragraph", // 分块切分模式
+            "chunkSize": 1000, // 分块大小
+            "indexSize": 1024 // 索引大小
+          },
+          "enhanceConfig": {
+            "autoIndexes": true, // AI自动索引（会根据Agent模型配置自动调整）
+            "hypeIndexes": false, // 超参数索引
+            "imageIndex": false // 图片索引（会根据VLM模型配置自动调整）
+          },
+          "promptConfig": {
+            "autoIndexesPrompt": "", // 自动索引prompt
+            "hypeIndexPrompt": "" // 超参数索引prompt
+          }
+        }
+      ]
     }
   }
 }

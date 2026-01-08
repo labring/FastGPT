@@ -9,6 +9,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 /* 
   检查chat的权限：
@@ -236,7 +237,71 @@ export const authCollectionInChat = async ({
         chatItem
       };
     }
-  } catch (error) {}
+  } catch (error) {
+    addLog.warn('authCollectionInChat error', {
+      error,
+      collectionIds,
+      appId,
+      chatId,
+      chatItemDataId
+    });
+  }
+  return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+};
+
+/**
+ * 使用 retrievalResults 字段校验集合权限（用于 getRetrievalResults 接口）
+ */
+export const authCollectionInChatForRetrievalResult = async ({
+  collectionIds,
+  appId,
+  chatId,
+  chatItemDataId
+}: {
+  collectionIds: string[];
+  appId: string;
+  chatId: string;
+  chatItemDataId: string;
+}): Promise<{
+  chatItem: { time: Date; responseData?: ChatHistoryItemResType[] };
+}> => {
+  try {
+    const chatItem = (await MongoChatItem.findOne(
+      {
+        appId,
+        chatId,
+        dataId: chatItemDataId
+      },
+      'responseData time'
+    ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
+
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+
+    // 找 responseData 里的 retrievalResults，是否有该集合 id
+    const flatResData = getFlatAppResponses(chatItem.responseData || []);
+
+    // 从 retrievalResults 中提取 collectionId
+    const retrievalCollectionSet = new Set(
+      flatResData
+        .map((item) => item.retrievalResults?.map((result) => String(result.collectionId)) || [])
+        .flat()
+        .filter(Boolean)
+    );
+
+    if (collectionIds.every((id) => retrievalCollectionSet.has(String(id)))) {
+      return {
+        chatItem
+      };
+    }
+  } catch (error) {
+    addLog.warn('authCollectionInChatForRetrievalResult error', {
+      error,
+      collectionIds,
+      appId,
+      chatId,
+      chatItemDataId
+    });
+  }
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
 

@@ -25,14 +25,65 @@ import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getEmbeddingModel } from '../../ai/model';
 import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
+import { detectAndDecodeBuffer } from '../../../common/file/encoding';
+import { addLog } from '../../../common/system/log';
 
-// 同义词词汇缓存，key 为 datasetId，value 为词汇列表和过期时间
+// 同义词词汇缓存，key 为 datasetId，value 为词汇列表、过期时间和访问时间
 interface SynonymWordsCache {
   words: string[];
   expireAt: number;
+  lastAccessTime: number; // 用于LRU淘汰
 }
 const synonymWordsCache = new Map<string, SynonymWordsCache>();
 const CACHE_TTL = 5 * 60 * 1000; // 5分钟过期
+const MAX_CACHE_SIZE = 1000; // 最大缓存项数
+
+/**
+ * 清理过期的缓存项
+ */
+function cleanExpiredCache() {
+  const now = Date.now();
+  const expiredKeys: string[] = [];
+
+  for (const [key, value] of synonymWordsCache.entries()) {
+    if (value.expireAt <= now) {
+      expiredKeys.push(key);
+    }
+  }
+
+  expiredKeys.forEach((key) => synonymWordsCache.delete(key));
+
+  if (expiredKeys.length > 0) {
+    addLog.info(`cleanExpiredCache: Cleaned ${expiredKeys.length} expired cache items`);
+  }
+}
+
+/**
+ * 确保缓存不超过最大大小限制，使用LRU策略淘汰
+ */
+function ensureCacheSize() {
+  if (synonymWordsCache.size >= MAX_CACHE_SIZE) {
+    // 先尝试清理过期项
+    cleanExpiredCache();
+
+    // 如果仍然超过限制，使用LRU策略删除最早访问的项
+    if (synonymWordsCache.size >= MAX_CACHE_SIZE) {
+      const entries = Array.from(synonymWordsCache.entries());
+      // 按最后访问时间排序，找到最早访问的项
+      entries.sort((a, b) => a[1].lastAccessTime - b[1].lastAccessTime);
+
+      // 删除最早的10%项
+      const deleteCount = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1));
+      for (let i = 0; i < deleteCount; i++) {
+        synonymWordsCache.delete(entries[i][0]);
+      }
+
+      addLog.info(
+        `ensureCacheSize: Cache full, cleaned ${deleteCount} least recently used cache items using LRU strategy`
+      );
+    }
+  }
+}
 
 /**
  * CSV同义词文件解析结果
@@ -191,62 +242,9 @@ export async function readSynonymFileFromGridFS(fileId: string): Promise<string>
 
   const buffer = await gridFsStream2Buffer(fileStream as unknown as NodeJS.ReadableStream);
 
-  // 检测并处理BOM (Byte Order Mark)
-  let offset = 0;
-  let encoding: string = 'utf-8';
-
-  // UTF-8 BOM: EF BB BF
-  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
-    offset = 3;
-    encoding = 'utf-8';
-  }
-  // UTF-16 LE BOM: FF FE
-  else if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
-    offset = 2;
-    encoding = 'utf-16le';
-  }
-  // UTF-16 BE BOM: FE FF
-  else if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
-    offset = 2;
-    encoding = 'utf-16be';
-  }
-  // 无BOM，尝试检测编码
-  else {
-    // 使用启发式方法检测编码
-    const sample = buffer.slice(0, Math.min(buffer.length, 1024));
-
-    // 尝试UTF-8解码，检查是否有效
-    const utf8Decoded = iconv.decode(sample, 'utf-8');
-    const utf8Valid = !utf8Decoded.includes('�') && !utf8Decoded.includes('\uFFFD');
-
-    if (utf8Valid) {
-      encoding = 'utf-8';
-    } else {
-      // 检测是否为GBK编码（常见中文编码）
-      // GBK的第一个字节范围: 0x81-0xFE，第二个字节范围: 0x40-0xFE
-      let gbkLikeCount = 0;
-      for (let i = 0; i < sample.length - 1; i++) {
-        if (
-          sample[i] >= 0x81 &&
-          sample[i] <= 0xfe &&
-          sample[i + 1] >= 0x40 &&
-          sample[i + 1] <= 0xfe
-        ) {
-          gbkLikeCount++;
-          i++; // 跳过第二个字节
-        }
-      }
-
-      // 如果GBK特征明显（超过30%的字节符合GBK编码规则），使用GBK
-      if (gbkLikeCount > sample.length * 0.15) {
-        encoding = 'gbk';
-      }
-    }
-  }
-
-  // 跳过BOM并解码
-  const contentBuffer = offset > 0 ? buffer.slice(offset) : buffer;
-  return iconv.decode(contentBuffer, encoding);
+  // 使用公共方法进行编码检测和解码
+  const { content } = detectAndDecodeBuffer(buffer);
+  return content;
 }
 
 /**
@@ -463,13 +461,13 @@ export async function uploadSynonymFile({
 
         if (!hasNext) break;
       } catch (error) {
-        console.error('创建同义词训练任务失败:', error);
+        addLog.error('Failed to create synonym training task:', error);
       }
     }
 
     // 12. 清除同义词词汇缓存
     synonymWordsCache.delete(datasetId);
-    console.log(`uploadSynonymFile: 已清除缓存 datasetId=${datasetId}`);
+    addLog.info(`uploadSynonymFile: Cleared cache for datasetId=${datasetId}`);
 
     return result.toObject();
   } catch (error) {
@@ -482,7 +480,7 @@ export async function uploadSynonymFile({
         });
       } catch (cleanupError) {
         // 清理失败只记录，不影响原始错误的抛出
-        console.error('Failed to cleanup uploaded file:', cleanupError);
+        addLog.error('Failed to cleanup uploaded file:', cleanupError);
       }
     }
     throw error;
@@ -603,7 +601,7 @@ export async function deleteSynonymFile({
 
       if (!hasNext) break;
     } catch (error) {
-      console.error('创建同义词恢复任务失败:', error);
+      addLog.error('Failed to create synonym restore task:', error);
     }
   }
 
@@ -630,7 +628,7 @@ export async function deleteSynonymFile({
 
   // 10. 清除同义词词汇缓存
   synonymWordsCache.delete(datasetId);
-  console.log(`deleteSynonymFile: 已清除缓存 datasetId=${datasetId}`);
+  addLog.info(`deleteSynonymFile: Cleared cache for datasetId=${datasetId}`);
 }
 
 /**
@@ -753,10 +751,11 @@ export async function searchSynonymMappings({
     let customWords: string[] = [];
 
     if (cached && cached.expireAt > now) {
-      // 缓存命中
+      // 缓存命中，更新访问时间
       customWords = cached.words;
-      console.log(
-        `searchSynonymMappings 缓存命中: datasetId=${datasetId}, 词汇数=${customWords.length}`
+      cached.lastAccessTime = now;
+      addLog.info(
+        `searchSynonymMappings cache hit: datasetId=${datasetId}, words count=${customWords.length}`
       );
     } else {
       // 缓存未命中或已过期，查询数据库
@@ -778,20 +777,24 @@ export async function searchSynonymMappings({
         }
       });
 
+      // 在添加新缓存前确保不超过大小限制
+      ensureCacheSize();
+
       // 更新缓存
       synonymWordsCache.set(datasetId, {
         words: customWords,
-        expireAt: now + CACHE_TTL
+        expireAt: now + CACHE_TTL,
+        lastAccessTime: now
       });
 
-      console.log(
-        `searchSynonymMappings 缓存更新: datasetId=${datasetId}, 词汇数=${customWords.length}`
+      addLog.info(
+        `searchSynonymMappings cache updated: datasetId=${datasetId}, words count=${customWords.length}`
       );
     }
 
     // 如果没有同义词数据，直接返回空数组
     if (customWords.length === 0) {
-      console.log(`searchSynonymMappings: 知识库无同义词数据 datasetId=${datasetId}`);
+      addLog.info(`searchSynonymMappings: No synonym data for datasetId=${datasetId}`);
       return [];
     }
 
@@ -803,17 +806,17 @@ export async function searchSynonymMappings({
 
     // 如果分词结果为空，返回空数组
     if (!searchQuery || searchQuery.trim().length === 0) {
-      console.log(`searchSynonymMappings: 分词结果为空 query=${query}`);
+      addLog.info(`searchSynonymMappings: Empty segmentation result for query=${query}`);
       return [];
     }
 
     // 打印函数入参
-    console.log('searchSynonymMappings 函数入参:', {
+    addLog.info('searchSynonymMappings input params:', {
       teamId,
       datasetId,
-      原始query: query,
-      自定义词汇数量: customWords.length,
-      分词后query: searchQuery,
+      originalQuery: query,
+      customWordsCount: customWords.length,
+      segmentedQuery: searchQuery,
       limit
     });
 
@@ -840,15 +843,15 @@ export async function searchSynonymMappings({
     }));
 
     // 打印返回内容
-    console.log('searchSynonymMappings 函数返回结果:', {
-      查询到的映射数量: mappings.length,
-      返回结果数量: result.length,
-      返回数据: result
+    addLog.info('searchSynonymMappings result:', {
+      mappingsCount: mappings.length,
+      resultCount: result.length,
+      data: result
     });
 
     return result;
   } catch (error) {
-    console.error('searchSynonymMappings 错误:', {
+    addLog.error('searchSynonymMappings error:', {
       datasetId,
       query,
       error: error instanceof Error ? error.message : String(error),
