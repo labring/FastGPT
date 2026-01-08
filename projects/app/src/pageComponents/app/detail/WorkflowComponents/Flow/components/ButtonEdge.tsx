@@ -7,7 +7,7 @@ import {
 } from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
 import {
@@ -176,9 +176,9 @@ const ButtonEdge = (props: EdgeProps) => {
 
     // debug mode
     const colorMap = {
-      [RuntimeEdgeStatusEnum.active]: '#487FFF',
-      [RuntimeEdgeStatusEnum.waiting]: '#5E8FFF',
-      [RuntimeEdgeStatusEnum.skipped]: '#8A95A7'
+      active: '#487FFF',
+      waiting: '#5E8FFF',
+      skipped: '#8A95A7'
     };
     return colorMap[targetEdge.status];
   }, [highlightEdge, sourceHandleId, targetHandleId, workflowDebugData?.runtimeEdges]);

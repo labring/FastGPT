@@ -9,7 +9,7 @@ import { type FieldValues } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
@@ -18,7 +18,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -98,7 +98,6 @@ const PluginRunContextProvider = ({
           ) {
             if (!lastValue || !lastValue.text) {
               const newValue: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.text,
                 text: {
                   content: text
                 }
@@ -116,19 +115,13 @@ const PluginRunContextProvider = ({
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.tool,
               tools: [tool]
             };
             return {
               ...item,
               value: item.value.concat(val)
             };
-          } else if (
-            event === SseResponseEventEnum.toolParams &&
-            tool &&
-            lastValue.type === ChatItemValueTypeEnum.tool &&
-            lastValue?.tools
-          ) {
+          } else if (event === SseResponseEventEnum.toolParams && tool && lastValue?.tools) {
             lastValue.tools = lastValue.tools.map((item) => {
               if (item.id === tool.id) {
                 item.params += tool.params;
@@ -144,7 +137,7 @@ const PluginRunContextProvider = ({
             return {
               ...item,
               value: item.value.map((val) => {
-                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
+                if (val.tools) {
                   const tools = val.tools.map((item) =>
                     item.id === tool.id ? { ...item, response: tool.response } : item
                   );
@@ -209,7 +202,6 @@ const PluginRunContextProvider = ({
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: ''
               }

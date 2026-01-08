@@ -1,4 +1,4 @@
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -13,12 +13,11 @@ export const addPreviewUrlToChatItems = async (
 ) => {
   async function addToChatflow(item: ChatItemType) {
     for await (const value of item.value) {
-      if (value.type === ChatItemValueTypeEnum.file && value.file && value.file.key) {
-        const { url } = await s3ChatSource.createGetChatFileURL({
+      if ('file' in value && value.file && value.file.key) {
+        value.file.url = await s3ChatSource.createGetChatFileURL({
           key: value.file.key,
           external: true
         });
-        value.file.url = url;
       }
     }
   }
@@ -28,7 +27,7 @@ export const addPreviewUrlToChatItems = async (
 
     for (let j = 0; j < item.value.length; j++) {
       const value = item.value[j];
-      if (value.type !== ChatItemValueTypeEnum.text) continue;
+      if (!('text' in value)) continue;
       const inputValueString = value.text?.content || '';
       const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
 

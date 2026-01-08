@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -154,7 +154,7 @@ export class MCPClient {
   }
 }
 
-export const getMCPChildren = async (app: AppSchema) => {
+export const getMCPChildren = async (app: AppSchemaType) => {
   const isNewMcp = !!app.modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
 

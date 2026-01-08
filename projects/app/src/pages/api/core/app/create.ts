@@ -4,7 +4,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import {
   OwnerRoleVal,
@@ -42,9 +42,9 @@ export type CreateAppBody = {
   avatar?: string;
   intro?: string;
   type?: AppTypeEnum;
-  modules: AppSchema['modules'];
-  edges?: AppSchema['edges'];
-  chatConfig?: AppSchema['chatConfig'];
+  modules: AppSchemaType['modules'];
+  edges?: AppSchemaType['edges'];
+  chatConfig?: AppSchemaType['chatConfig'];
 
   templateId?: string;
   utmParams?: ShortUrlParams;
@@ -143,13 +143,13 @@ export const onCreateApp = async ({
   name?: string;
   avatar?: string;
   type: AppTypeEnum;
-  modules?: AppSchema['modules'];
-  edges?: AppSchema['edges'];
-  chatConfig?: AppSchema['chatConfig'];
+  modules?: AppSchemaType['modules'];
+  edges?: AppSchemaType['edges'];
+  chatConfig?: AppSchemaType['chatConfig'];
   intro?: string;
   teamId: string;
   tmbId: string;
-  pluginData?: AppSchema['pluginData'];
+  pluginData?: AppSchemaType['pluginData'];
   username?: string;
   userAvatar?: string;
   templateId?: string;

@@ -2,7 +2,10 @@ import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/consta
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '../../../useUserStore';
-import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -90,7 +93,8 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     refreshDeps: [path]
   });
 
-  const onPathClick = (path: string) => {
+  const onPathClick = (path: ParentIdType) => {
+    path = path || '';
     const pathIds = path.split('/');
     setOrgStack(orgStack.filter((org) => pathIds.includes(org.pathId)));
     setSearchKey('');

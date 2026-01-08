@@ -32,6 +32,7 @@ import FileSelector, {
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
 import { useRouter } from 'next/router';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const QuickCreateDatasetModal = ({
   onClose,
@@ -40,7 +41,7 @@ const QuickCreateDatasetModal = ({
 }: {
   onClose: () => void;
   onSuccess: (dataset: SelectedDatasetType) => void;
-  parentId: string;
+  parentId: ParentIdType;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();

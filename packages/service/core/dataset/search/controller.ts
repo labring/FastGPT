@@ -30,7 +30,7 @@ import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';

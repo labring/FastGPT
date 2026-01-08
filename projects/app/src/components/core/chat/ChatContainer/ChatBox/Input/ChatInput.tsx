@@ -21,6 +21,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { postStopV2Chat } from '@/web/core/chat/api';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -32,12 +33,14 @@ const fileTypeFilter = (file: File) => {
 };
 
 const ChatInput = ({
+  lastInteractive,
   onSendMessage,
   onStop,
   TextareaDom,
   resetInputVal,
   chatForm
 }: {
+  lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
@@ -120,11 +123,12 @@ const ChatInput = ({
 
       onSendMessage({
         text: textareaValue.trim(),
-        files: fileList
+        files: fileList,
+        interactive: lastInteractive
       });
       replaceFiles([]);
     },
-    [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [TextareaDom, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest2(async () => {
     try {
