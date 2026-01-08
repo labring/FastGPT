@@ -1236,6 +1236,7 @@
   "support.wallet.subscription.Extra dataset unit": "组/1个月",
   "support.wallet.subscription.Extra plan": "额外资源包",
   "support.wallet.subscription.Extra plan tip": "标准套餐不够时，您可以购买额外资源包继续使用",
+  "support.wallet.subscription.extra_plan_disabled_tip": "如需购买额外资源包，请先订阅套餐。",
   "support.wallet.subscription.FAQ": "常见问题",
   "support.wallet.subscription.Month amount": "月数",
   "support.wallet.subscription.Next plan": "未来套餐",

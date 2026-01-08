@@ -49,6 +49,7 @@ const Standard = ({
 
   // Check if it's a wecom team
   const isWecomTeam = !!userInfo?.team?.isWecomTeam;
+  console.log('isWecomTeam', isWecomTeam, userInfo);
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
