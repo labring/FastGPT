@@ -135,6 +135,7 @@
   "code_error.app_error.not_exist": "The app does not exist.",
   "code_error.app_error.un_auth_app": "You do not have permission to perform operations on the app.",
   "code_error.chat_error.un_auth": "You do not have permission to perform operations on the chat record.",
+  "code_error.chat_error.model_name_required": "Model name is required.",
   "code_error.error_code.400": "Request failed.",
   "code_error.error_code.401": "You do not have access permission.",
   "code_error.error_code.403": "Access denied",
