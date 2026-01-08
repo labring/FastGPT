@@ -17,13 +17,13 @@ import { calculateTrainsetStats } from '../../data/controller';
 /**
  * Poll and wait for trainset to be ready
  * @param trainsetId Trainset ID
- * @param maxAttempts Max polling attempts (default: 120 for 10 minutes)
- * @param interval Polling interval in ms (default: 5000ms = 5s)
+ * @param maxAttempts Max polling attempts (default: 360 for 60 minutes)
+ * @param interval Polling interval in ms (default: 10000ms = 10s)
  */
 async function waitForTrainsetReady(
   trainsetId: string,
-  maxAttempts: number = 120,
-  interval: number = 5000
+  maxAttempts: number = 360,
+  interval: number = 10000
 ): Promise<void> {
   let attempts = 0;
 
@@ -143,25 +143,10 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
 
     for await (const data of cursor) {
       const jsonLine = JSON.stringify({
-        messages: [
-          {
-            role: 'user',
-            content: data.query,
-            loss: null
-          }
-        ],
-        positive_messages: data.positiveDocs.map((doc) => [
-          {
-            role: 'assistant',
-            content: doc
-          }
-        ]),
-        negative_messages: data.negativeDocs.map((doc) => [
-          {
-            role: 'assistant',
-            content: doc
-          }
-        ])
+        query: data.query,
+        pos: data.positiveDocs,
+        neg: data.negativeDocs,
+        id: String(dataCount)
       });
 
       writeStream.write(jsonLine + '\n');

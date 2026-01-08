@@ -98,6 +98,8 @@ export type RerankTrainsetSchemaType = {
   status: `${RerankTrainsetStatusEnum}`;
   errorMsg?: string;
 
+  jobId?: string;
+
   createTime: Date;
   updateTime: Date;
 

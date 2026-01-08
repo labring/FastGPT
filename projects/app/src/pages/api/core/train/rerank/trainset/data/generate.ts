@@ -7,6 +7,7 @@ import {
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
+import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -76,6 +77,9 @@ async function handler(
     datasetIds: targetDatasetIds,
     generateConfig // Pass config directly, defaults handled by controller and DiTing service
   });
+
+  // 6. Save jobId to trainset for retry functionality
+  await MongoRerankTrainset.updateOne({ _id: trainset._id }, { jobId: job.id as string });
 
   return {
     jobId: job.id as string,
