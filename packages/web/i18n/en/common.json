@@ -1226,6 +1226,7 @@
   "support.wallet.subscription.Extra dataset unit": " Groups/1 Month",
   "support.wallet.subscription.Extra plan": "Extra Resource Pack",
   "support.wallet.subscription.Extra plan tip": "When the standard package is not enough, you can purchase extra resource packs to continue using",
+  "support.wallet.subscription.extra_plan_disabled_tip": "Please subscribe to a plan first before purchasing extra resource packs.",
   "support.wallet.subscription.FAQ": "FAQ",
   "support.wallet.subscription.Month amount": "Months",
   "support.wallet.subscription.Next plan": "Future Package",
