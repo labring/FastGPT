@@ -209,9 +209,10 @@ const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) 
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
-      showNodeStatus
+      canDownloadSource={true}
+      isShowCite={true}
+      isShowFullText={true}
+      showRunningStatus={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest

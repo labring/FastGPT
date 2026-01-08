@@ -83,7 +83,10 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: true
     };
-  } else if (finalInteractive.type === 'agentPlanAskQuery') {
+  } else if (
+    finalInteractive.type === 'agentPlanAskQuery' ||
+    finalInteractive.type === 'agentPlanAskUserForm'
+  ) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
@@ -117,6 +120,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
     return histories.slice(0, -2);
   })();
 
+  console.log(formatHistories);
   const newHistories = formatHistories.map((item, i) => {
     if (i !== formatHistories.length - 1) return item;
 
@@ -127,6 +131,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
+      console.log(finalInteractive);
       if (
         finalInteractive.type === 'userSelect' ||
         finalInteractive.type === 'agentPlanAskUserSelect'

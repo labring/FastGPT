@@ -27,7 +27,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
-import { MasterSystemPrompt } from './prompt';
+import { getMasterSystemPrompt } from './prompt';
 
 type Response = {
   stepResponse?: {
@@ -42,23 +42,25 @@ type Response = {
 };
 
 export const masterCall = async ({
-  historiesMessages,
+  systemPrompt,
+  defaultMessages,
   getSubAppInfo,
   completionTools,
   filesMap,
   subAppsMap,
-  userQuery,
+  initialRequest,
   steps,
   step,
   ...props
 }: DispatchAgentModuleProps & {
-  historiesMessages: ChatCompletionMessageParam[];
+  systemPrompt?: string;
+  defaultMessages: ChatCompletionMessageParam[];
   getSubAppInfo: GetSubAppInfoFnType;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
   subAppsMap: Map<string, SubAppRuntimeType>;
 
-  userQuery?: string;
+  initialRequest?: boolean;
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
@@ -73,7 +75,7 @@ export const masterCall = async ({
     stream,
     workflowStreamResponse,
     usagePush,
-    params: { userChatInput, systemPrompt, model, temperature, aiChatTopP }
+    params: { model }
   } = props;
 
   const startTime = Date.now();
@@ -144,25 +146,9 @@ export const masterCall = async ({
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: MasterSystemPrompt
+        content: getMasterSystemPrompt(systemPrompt)
       },
-      ...(systemPrompt
-        ? [
-            {
-              role: 'system' as const,
-              content: systemPrompt
-            }
-          ]
-        : []),
-      ...historiesMessages
-      // ...(userQuery
-      //   ? [
-      //       {
-      //         role: 'user' as const,
-      //         content: userQuery
-      //       }
-      //     ]
-      //   : [])
+      ...defaultMessages
     ];
     return {
       requestMessages: messages
@@ -170,9 +156,7 @@ export const masterCall = async ({
   })();
 
   let planResult: DispatchPlanAgentResponse | undefined;
-  // console.log('Master request messages');
-  // console.dir({ requestMessages }, { depth: null });
-  // console.log('Master tools', isStepCall ? completionTools.filter(item => item.function.name !== SubAppIds.plan) : completionTools);
+
   const {
     model: agentModel,
     assistantMessages,
@@ -185,9 +169,7 @@ export const masterCall = async ({
     body: {
       messages: requestMessages,
       model: getLLMModel(model),
-      temperature,
       stream: true,
-      top_p: aiChatTopP,
       tools: isStepCall
         ? completionTools.filter((item) => item.function.name !== SubAppIds.plan)
         : completionTools
@@ -297,34 +279,19 @@ export const masterCall = async ({
           }
           if (toolId === SubAppIds.plan) {
             try {
-              let finalUserInput: string = userChatInput || userQuery || '';
+              const toolArgs = parseJsonArgs<{ description: string }>(call.function.arguments);
+              const query = toolArgs?.description;
 
-              if (!userQuery) {
-                const toolArgs = parseJsonArgs(call.function.arguments);
-                finalUserInput = toolArgs?.description || '';
-                console.log('[Plan Tool] finalUserInput', finalUserInput);
-
-                if (!finalUserInput) {
-                  const planTool = completionTools.find(
-                    (tool) => tool.function.name === SubAppIds.plan
-                  );
-                  finalUserInput =
-                    planTool?.function?.description || '请基于上述历史记录来规划当前任务';
-                }
-
-                console.log('[Plan Tool] userQuery 为空，使用备用输入:', finalUserInput);
-              }
-              // TODO 过滤 plan 的工具
               planResult = await dispatchPlanAgent({
                 checkIsStopping,
-                historyMessages: historiesMessages,
-                userInput: finalUserInput,
-                completionTools: completionTools,
+                defaultMessages,
+                userInput: initialRequest ? undefined : query,
+                completionTools,
                 getSubAppInfo,
-                systemPrompt: systemPrompt,
+                systemPrompt,
                 model,
                 stream,
-                mode: userQuery ? 'initial' : 'continue' //  目前不支持深层 plan 调用的话，step Call 的情况下不会调用到 plan agent
+                mode: initialRequest ? 'initial' : 'continue' //  目前不支持深层 plan 调用的话，step Call 的情况下不会调用到 plan agent
               });
 
               return {

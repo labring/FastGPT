@@ -32,6 +32,7 @@ import { addLog } from '../../../../../common/system/log';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { parseUserSystemPrompt } from './sub/plan/prompt';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -148,6 +149,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
+    const formatedSystemPrompt = parseUserSystemPrompt({
+      userSystemPrompt: systemPrompt,
+      getSubAppInfo
+    });
     // console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
     // console.dir(agentSubAppsMap, {depth:null});
 
@@ -188,17 +193,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const planCallFn = async () => {
       const result = await dispatchPlanAgent({
         checkIsStopping,
-        historyMessages: planHistoryMessages || historiesMessages,
+        defaultMessages: planHistoryMessages || historiesMessages,
         userInput: lastInteractive ? interactiveInput : userChatInput,
         interactive: lastInteractive,
-        completionTools: agentCompletionTools.filter(
-          (item) => item.function.name !== SubAppIds.plan
-        ),
+        completionTools: agentCompletionTools,
         getSubAppInfo,
-        systemPrompt: systemPrompt,
+        systemPrompt: formatedSystemPrompt,
         model,
-        temperature,
-        top_p: aiChatTopP,
         stream,
         mode: 'initial' // 初始规划模式
       });
@@ -238,19 +239,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         const result = await dispatchPlanAgent({
           checkIsStopping,
-          historyMessages: [...historiesMessages, ...userInputMessage, ...currentMessages],
-          // userInput: userChatInput,
+          defaultMessages: [...historiesMessages, ...userInputMessage, ...currentMessages],
           userInput:
             '请基于已执行的步骤结果，根据系统提示词来判断是否需要继续规划、生成总结报告步骤、还是任务已完成，或者遇到问题直接返回',
           interactive: lastInteractive,
-          completionTools: agentCompletionTools.filter(
-            (item) => item.function.name !== SubAppIds.plan
-          ),
+          completionTools: agentCompletionTools,
           getSubAppInfo,
-          systemPrompt,
+          systemPrompt: formatedSystemPrompt,
           model,
-          temperature,
-          top_p: aiChatTopP,
           stream,
           mode: 'continue' // 继续规划模式
         });
@@ -289,14 +285,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     };
 
+    // 首轮任务
+    let initialRequest = true;
     // 执行 Plan
     if (!!planHistoryMessages?.length) {
+      initialRequest = false;
       const result = await planCallFn();
       // 有 result 代表 plan 有交互响应（ask）
       if (result) return result;
     }
 
-    let userQuery: string | undefined = userChatInput;
     while (true) {
       if (checkIsStopping()) {
         break;
@@ -333,7 +331,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             // Step call
             const result = await masterCall({
               ...props,
-              historiesMessages: [],
+              systemPrompt: formatedSystemPrompt,
+              defaultMessages: [],
               getSubAppInfo,
               completionTools: agentCompletionTools,
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
@@ -362,6 +361,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           }
         }
 
+        if (checkIsStopping()) {
+          break;
+        }
+
         // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
         planIterationCount++;
 
@@ -380,7 +383,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         if (!agentPlan) {
           addLog.debug(`Planning complete, hand over to master agent`);
-          userQuery = undefined;
+          initialRequest = false;
           continue;
         }
       } else {
@@ -392,16 +395,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
 
         // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        const userInputMessage = userChatInput
-          ? [{ role: 'user' as const, content: userChatInput }]
-          : [];
+        const userInputMessage =
+          userChatInput && initialRequest
+            ? [{ role: 'user' as const, content: userChatInput }]
+            : [];
 
         // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)
         // addLog.debug(`Master agent message:${JSON.stringify(messages, null, 2)}`)
         const result = await masterCall({
           ...props,
-          userQuery: userQuery,
-          historiesMessages: [...historiesMessages, ...userInputMessage, ...messages],
+          systemPrompt: formatedSystemPrompt,
+          initialRequest,
+          defaultMessages: [...historiesMessages, ...userInputMessage, ...messages],
           getSubAppInfo,
           completionTools: agentCompletionTools,
           filesMap,

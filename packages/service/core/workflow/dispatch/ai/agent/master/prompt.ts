@@ -1,10 +1,22 @@
 import { SubAppIds } from '../sub/constants';
 
-export const MasterSystemPrompt = `<!-- Master Agent 决策系统 -->
+export const getMasterSystemPrompt = (systemPrompt?: string) => {
+  return `<!-- Master Agent 决策系统 -->
 
 <role>
 你是任务路由专家，根据上下文状态和任务特性，决定执行策略。
 </role>
+
+${
+  systemPrompt
+    ? `<user_background>
+优先参考用户的要求来完成任务：
+
+${systemPrompt}
+</user_background>`
+    : ''
+}
+
 
 <decision_paths>
 三种执行路径：
@@ -92,3 +104,4 @@ export const MasterSystemPrompt = `<!-- Master Agent 决策系统 -->
 - 工具模式：调用最合适的工具
 - 规划模式：调用 ${SubAppIds.plan}，让规划系统接管
 </output_guidelines>`;
+};
