@@ -2,13 +2,24 @@ import type { StreamResponseType } from '@/web/common/api/fetch';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
-  ToolModuleResponseItemType
+  StepTitleItemType,
+  type AIChatItemValueItemType,
+  type ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  UserInputInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
+import type { GeneratedSkillDataType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
+  responseValueId?: string;
+  stepId?: string;
+
   text?: string;
   reasoningText?: string;
   name?: string;
@@ -18,6 +29,15 @@ export type generatingMessageProps = {
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
+
+  // Agent
+  plan?: AgentPlanType;
+  stepTitle?: StepTitleItemType;
+
+  // HelperBot
+  collectionForm?: UserInputInteractive;
+  formData?: TopAgentFormDataType;
+  generatedSkill?: GeneratedSkillDataType;
 };
 
 export type StartChatFnProps = {

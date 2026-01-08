@@ -34,7 +34,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   toolSetNode,
   lang = 'en'
 }: {
-  toolSetNode: RuntimeNodeItemType;
+  toolSetNode: Pick<RuntimeNodeItemType, 'toolConfig' | 'inputs' | 'nodeId'>;
   lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;

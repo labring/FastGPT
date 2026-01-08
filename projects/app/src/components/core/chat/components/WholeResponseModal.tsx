@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -109,7 +109,7 @@ export const WholeResponseContent = ({
           label={label}
           mb={isObject ? 0 : 1}
           {...(isObject
-            ? { py: 2, transform: 'translateY(-3px)' }
+            ? { my: 2, transform: 'translateY(-3px)' }
             : value
               ? { px: 3, py: 2, border: 'base' }
               : {})}
@@ -143,10 +143,18 @@ export const WholeResponseContent = ({
             value={formatNumber(activeModule.totalPoints)}
           />
         )}
-        {activeModule?.childTotalPoints !== undefined && (
+        {(activeModule?.childrenResponses ||
+          activeModule.toolDetail ||
+          activeModule.pluginDetail) && (
           <Row
             label={t('chat:response.child total points')}
-            value={formatNumber(activeModule.childTotalPoints)}
+            value={formatNumber(
+              [
+                ...(activeModule.childrenResponses || []),
+                ...(activeModule.toolDetail || []),
+                ...(activeModule.pluginDetail || [])
+              ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
+            )}
           />
         )}
         <Row label={t('workflow:response.Error')} value={activeModule?.error} />
@@ -630,6 +638,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
             }
+            if (Array.isArray(item.childrenResponses)) {
+              helper(item.childrenResponses);
+            }
           }
         });
       }
@@ -657,10 +668,14 @@ export const ResponseBox = React.memo(function ResponseBox({
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
-        if (!!(item?.toolDetail || item?.pluginDetail || item?.loopDetail)) {
+        if (
+          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
+        ) {
           if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
           if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
           if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+          if (item?.childrenResponses)
+            children.push(...pretreatmentResponse(item?.childrenResponses));
         }
 
         return {

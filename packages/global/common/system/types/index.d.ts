@@ -8,7 +8,7 @@ import type {
   AudioSpeechModels,
   STTModelType,
   RerankModelItemType
-} from '../../../core/ai/model.d';
+} from '../../../core/ai/model';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
 export type NavbarItemType = {

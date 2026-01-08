@@ -15,7 +15,16 @@ export type S3Metadata = z.infer<typeof S3MetadataSchema>;
 export type ContentType = (typeof Mimes)[keyof typeof Mimes];
 export type ExtensionType = keyof typeof Mimes;
 
-export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp', 'rawText']);
+export type S3OptionsType = typeof defaultS3Options;
+
+export const S3SourcesSchema = z.enum([
+  'avatar',
+  'chat',
+  'dataset',
+  'temp',
+  'rawText',
+  'helperBot'
+]);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 

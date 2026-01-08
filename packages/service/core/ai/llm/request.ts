@@ -26,23 +26,23 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
 import { addLog } from '../../../common/system/log';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 
 export type ResponseEvents = {
-  onStreaming?: ({ text }: { text: string }) => void;
-  onReasoning?: ({ text }: { text: string }) => void;
-  onToolCall?: ({ call }: { call: ChatCompletionMessageToolCall }) => void;
-  onToolParam?: ({ tool, params }: { tool: ChatCompletionMessageToolCall; params: string }) => void;
+  onStreaming?: (e: { text: string }) => void;
+  onReasoning?: (e: { text: string }) => void;
+  onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
+  onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
 export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
   throwError?: boolean;
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
-  isAborted?: () => boolean | undefined;
+  isAborted?: () => boolean | undefined | null;
   custonHeaders?: Record<string, string>;
 } & ResponseEvents;
 
@@ -225,7 +225,7 @@ export const createStreamResponse = async ({
   onToolParam
 }: CompleteParams & {
   response: StreamChatType;
-  isAborted?: () => boolean | undefined;
+  isAborted?: CreateLLMResponseProps['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
   const modelData = getLLMModel(model);

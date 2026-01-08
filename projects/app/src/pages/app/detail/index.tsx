@@ -11,7 +11,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 
-const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
+const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
+const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
@@ -23,11 +27,11 @@ const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/HTTPTools'), {
+const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/HTTPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
@@ -57,6 +61,7 @@ const AppDetail = () => {
         ) : (
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
+            {appDetail.type === AppTypeEnum.chatAgent && <AgentEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.workflowTool && <Plugin />}
             {appDetail.type === AppTypeEnum.mcpToolSet && <MCPTools />}

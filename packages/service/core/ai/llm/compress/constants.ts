@@ -63,14 +63,13 @@ export const COMPRESSION_CONFIG = {
   /**
    * === 分块压缩 ===
    *
-   * 触发场景：当内容需要分块处理时（超过 LLM 单次处理能力）
-   * 用途：将超大内容切分成多个块，分别压缩后合并
+   * 用途：当单个 tool response 超过限制时，将内容分块并行压缩
    *
    * 示例（maxContext=100k）：
-   * - 单块最大：40k tokens
-   * - 50k 内容 → 切分成 2 块，每块约 25k
+   * - 单块最大：50k tokens
+   * - 120k 内容 → 切分成 3 块，每块约 40k
    */
-  CHUNK_SIZE_RATIO: 0.5 // 40%（单块不超过此比例）
+  CHUNK_SIZE_RATIO: 0.5 // 单块不超过 maxContext 的 50%
 } as const;
 
 /**
