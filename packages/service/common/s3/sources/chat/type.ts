@@ -16,3 +16,14 @@ export const DelChatFileByPrefixSchema = z.object({
   uId: z.string().nonempty().optional()
 });
 export type DelChatFileByPrefixParams = z.infer<typeof DelChatFileByPrefixSchema>;
+
+export const UploadChatFileSchema = z.object({
+  appId: ObjectIdSchema,
+  chatId: z.string().nonempty(),
+  uId: z.string().nonempty(),
+  filename: z.string().nonempty(),
+  buffer: z.instanceof(Buffer),
+  contentType: z.string().optional()
+});
+
+export type UploadFileParams = z.infer<typeof UploadChatFileSchema>;

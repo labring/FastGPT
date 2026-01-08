@@ -1,7 +1,8 @@
 export enum EventNameEnum {
   sendQuestion = 'sendQuestion',
   editQuestion = 'editQuestion',
-  openQuoteReader = 'openQuoteReader'
+  openQuoteReader = 'openQuoteReader',
+  refreshFeedback = 'refreshFeedback'
 }
 
 export const eventBus = {

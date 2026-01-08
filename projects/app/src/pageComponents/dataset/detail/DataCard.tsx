@@ -38,6 +38,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -128,6 +129,21 @@ const DataCard = () => {
     }
   });
 
+  const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest2(
+    async (collectionId: string) => {
+      await downloadFetch({
+        url: '/api/core/dataset/collection/export',
+        filename: `${collection?.name}.csv`,
+        body: {
+          collectionId
+        }
+      });
+    },
+    {
+      manual: true
+    }
+  );
+
   return (
     <MyBox py={[1, 0]} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
@@ -155,6 +171,19 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
+
+          <Button
+            variant={'whitePrimary'}
+            size={['sm', 'md']}
+            isDisabled={!collection}
+            isLoading={isExportChunksLoading}
+            onClick={() => {
+              onExportAllChunks(collection?._id!);
+            }}
+          >
+            {t('dataset:collection.export_all_chunks')}
+          </Button>
+
           {datasetDetail.type !== 'websiteDataset' &&
             !!collection?.chunkSize &&
             collection.permission?.hasWritePer && (
@@ -382,6 +411,7 @@ const DataCard = () => {
                       </>
                     )}
                   </Flex>
+
                   {canWrite && (
                     <PopoverConfirm
                       Trigger={

@@ -230,6 +230,7 @@ const SecretInputModal = ({
                                 {showInput ? (
                                   <Input
                                     bg={'myGray.50'}
+                                    placeholder={item.description}
                                     {...register(inputKey, {
                                       required: item.required
                                     })}

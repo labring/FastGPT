@@ -5,7 +5,7 @@
 如果您发现了 FastGPT 的安全漏洞，请按照以下步骤进行报告：
 
 1. **报告方式**
-   发送邮件至：yujinlong@sealos.io
+   发送邮件至：archer@fastgpt.io
    请备注版本以及您的 GitHub 账号
 
 3. **响应时间**

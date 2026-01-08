@@ -8,6 +8,7 @@ import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { getRedisCache, setRedisCache } from '../../redis/cache';
+import { differenceInDays } from 'date-fns';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -154,6 +155,54 @@ export const pushTrack = {
       key: `${TrackEnum.teamChatQPM}_${data.teamId}`,
       data: {
         teamId: data.teamId
+      }
+    });
+  },
+
+  // Admin cron job tracks
+  subscriptionDeleted: (data: {
+    teamId: string;
+    subscriptionType: string;
+    totalPoints: number;
+    usedPoints: number;
+    startTime: Date;
+    expiredTime: Date;
+  }) => {
+    return createTrack({
+      event: TrackEnum.subscriptionDeleted,
+      data: {
+        teamId: data.teamId,
+        subscriptionType: data.subscriptionType,
+        totalPoints: data.totalPoints,
+        usedPoints: data.usedPoints,
+        activeDays: differenceInDays(data.expiredTime, data.startTime)
+      }
+    });
+  },
+  freeAccountCleanup: (data: { teamId: string; expiredTime: Date }) => {
+    return createTrack({
+      event: TrackEnum.freeAccountCleanup,
+      data: {
+        teamId: data.teamId,
+        expiredTime: data.expiredTime
+      }
+    });
+  },
+  auditLogCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.auditLogCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
+      }
+    });
+  },
+  chatHistoryCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.chatHistoryCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
       }
     });
   }

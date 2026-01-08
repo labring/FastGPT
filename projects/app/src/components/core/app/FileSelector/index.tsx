@@ -30,6 +30,7 @@ import { POST } from '@/web/common/api/request';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const FileSelector = ({
   value,
@@ -53,7 +54,7 @@ const FileSelector = ({
 }) => {
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -491,7 +492,7 @@ const FileSelector = ({
                   </HStack>
                   {file?.error && (
                     <Box mt={1} fontSize={'xs'} color={'red.600'}>
-                      {file?.error}
+                      {t(file.error)}
                     </Box>
                   )}
                 </Box>

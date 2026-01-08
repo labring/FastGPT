@@ -30,21 +30,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     type: UserAuthTypeEnum.login
   });
 
-  // 检测用户是否存在
-  const authCert = await MongoUser.findOne(
-    {
-      username
-    },
-    'status'
-  );
-  if (!authCert) {
-    return Promise.reject(UserErrEnum.account_psw_error);
-  }
-
-  if (authCert.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
-
   const user = await MongoUser.findOne({
     username,
     password
@@ -53,16 +38,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!user) {
     return Promise.reject(UserErrEnum.account_psw_error);
   }
+  if (user.status === UserStatusEnum.forbidden) {
+    return Promise.reject('Invalid account!');
+  }
 
   const userDetail = await getUserDetail({
     tmbId: user?.lastLoginTmbId,
     userId: user._id
   });
 
-  MongoUser.findByIdAndUpdate(user._id, {
-    lastLoginTmbId: userDetail.team.tmbId,
-    language
-  });
+  user.lastLoginTmbId = userDetail.team.tmbId;
+  user.language = language;
+  await user.save();
 
   const token = await createUserSession({
     userId: user._id,

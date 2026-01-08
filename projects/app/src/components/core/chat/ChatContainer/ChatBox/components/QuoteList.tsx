@@ -26,7 +26,7 @@ const QuoteList = React.memo(function QuoteList({
     chatId: v.chatId,
     ...(v.outLinkAuthData || {})
   }));
-  const showRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
   const showRouteToDatasetDetail = useContextSelector(
     ChatItemContext,
     (v) => v.showRouteToDatasetDetail
@@ -87,7 +87,7 @@ const QuoteList = React.memo(function QuoteList({
         >
           <QuoteItem
             quoteItem={item}
-            canViewSource={showRawSource}
+            canDownloadSource={canDownloadSource}
             canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}

@@ -10,7 +10,12 @@ import type {
   StreamChatType,
   UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
-import { computedTemperature, parseLLMStreamResponse, parseReasoningContent } from '../utils';
+import {
+  computedMaxToken,
+  computedTemperature,
+  parseLLMStreamResponse,
+  parseReasoningContent
+} from '../utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -34,6 +39,7 @@ export type ResponseEvents = {
 };
 
 export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
+  throwError?: boolean;
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
   isAborted?: () => boolean | undefined;
@@ -41,12 +47,13 @@ export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBo
 } & ResponseEvents;
 
 type LLMResponse = {
+  error?: any;
   isStreamResponse: boolean;
   answerText: string;
   reasoningText: string;
   toolCalls?: ChatCompletionMessageToolCall[];
   finish_reason: CompletionFinishReason;
-  getEmptyResponseTip: () => string;
+  responseEmptyTip?: string;
   usage: {
     inputTokens: number;
     outputTokens: number;
@@ -64,7 +71,7 @@ type LLMResponse = {
 export const createLLMResponse = async <T extends CompletionsBodyType>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
-  const { body, custonHeaders, userKey } = args;
+  const { throwError = true, body, custonHeaders, userKey } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
 
   // Messages process
@@ -87,7 +94,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   });
 
   // console.log(JSON.stringify(requestBody, null, 2));
-  const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
+  const { response, isStreamResponse } = await createChatCompletion({
     body: requestBody,
     modelData,
     userKey,
@@ -99,7 +106,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     }
   });
 
-  const { answerText, reasoningText, toolCalls, finish_reason, usage } = await (async () => {
+  let { answerText, reasoningText, toolCalls, finish_reason, usage, error } = await (async () => {
     if (isStreamResponse) {
       return createStreamResponse({
         response,
@@ -146,16 +153,50 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     usage?.prompt_tokens || (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
   const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(assistantMessage));
 
+  if (error) {
+    finish_reason = 'error';
+
+    if (throwError) {
+      throw error;
+    }
+  }
+
+  const getEmptyResponseTip = () => {
+    if (userKey?.baseUrl) {
+      addLog.warn(`User LLM response empty`, {
+        baseUrl: userKey?.baseUrl,
+        requestBody,
+        finish_reason
+      });
+      return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
+    } else {
+      addLog.error(`LLM response empty`, {
+        message: '',
+        data: requestBody,
+        finish_reason
+      });
+    }
+    return i18nT('chat:LLM_model_response_empty');
+  };
+  const isNotResponse =
+    !answerText &&
+    !reasoningText &&
+    !toolCalls?.length &&
+    !error &&
+    (finish_reason === 'stop' || !finish_reason);
+  const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
+
   return {
+    error,
     isStreamResponse,
-    getEmptyResponseTip,
+    responseEmptyTip,
     answerText,
     reasoningText,
     toolCalls,
     finish_reason,
     usage: {
-      inputTokens,
-      outputTokens
+      inputTokens: error ? 0 : inputTokens,
+      outputTokens: error ? 0 : outputTokens
     },
 
     requestMessages,
@@ -171,6 +212,7 @@ type CompleteResponse = Pick<
   'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
 > & {
   usage?: CompletionUsage;
+  error?: any;
 };
 
 export const createStreamResponse = async ({
@@ -188,13 +230,174 @@ export const createStreamResponse = async ({
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
   const modelData = getLLMModel(model);
 
-  const { parsePart, getResponseData, updateFinishReason } = parseLLMStreamResponse();
+  const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 
   if (tools?.length) {
     if (toolCallMode === 'toolChoice') {
       let callingTool: ChatCompletionMessageToolCall['function'] | null = null;
       const toolCalls: ChatCompletionMessageToolCall[] = [];
 
+      try {
+        for await (const part of response) {
+          if (isAborted?.()) {
+            response.controller?.abort();
+            updateFinishReason('close');
+            break;
+          }
+
+          const { reasoningContent, responseContent } = parsePart({
+            part,
+            parseThinkTag: modelData.reasoning,
+            retainDatasetCite
+          });
+
+          if (reasoningContent) {
+            onReasoning?.({ text: reasoningContent });
+          }
+          if (responseContent) {
+            onStreaming?.({ text: responseContent });
+          }
+
+          const responseChoice = part.choices?.[0]?.delta;
+
+          // Parse tool calls
+          if (responseChoice?.tool_calls?.length) {
+            responseChoice.tool_calls.forEach((toolCall, i) => {
+              const index = toolCall.index ?? i;
+
+              // Call new tool
+              const hasNewTool = toolCall?.function?.name || callingTool;
+              if (hasNewTool) {
+                // Call new tool
+                if (toolCall?.function?.name) {
+                  callingTool = {
+                    name: toolCall.function?.name || '',
+                    arguments: toolCall.function?.arguments || ''
+                  };
+                } else if (callingTool) {
+                  // Continue call(Perhaps the name of the previous function was incomplete)
+                  callingTool.name += toolCall.function?.name || '';
+                  callingTool.arguments += toolCall.function?.arguments || '';
+                }
+
+                // New tool, add to list.
+                if (tools.find((item) => item.function.name === callingTool!.name)) {
+                  const call: ChatCompletionMessageToolCall = {
+                    id: getNanoid(),
+                    type: 'function',
+                    function: callingTool!
+                  };
+                  toolCalls[index] = call;
+                  onToolCall?.({ call });
+                  callingTool = null;
+                }
+              } else {
+                /* arg 追加到当前工具的参数里 */
+                const arg: string = toolCall?.function?.arguments ?? '';
+                const currentTool = toolCalls[index];
+                if (currentTool && arg) {
+                  currentTool.function.arguments += arg;
+
+                  onToolParam?.({ tool: currentTool, params: arg });
+                }
+              }
+            });
+          }
+        }
+      } catch (error: any) {
+        updateError(error?.error || error);
+      }
+
+      const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
+
+      return {
+        error,
+        answerText: content,
+        reasoningText: reasoningContent,
+        finish_reason,
+        usage,
+        toolCalls: toolCalls.filter((call) => !!call)
+      };
+    } else {
+      let startResponseWrite = false;
+      let answer = '';
+
+      try {
+        for await (const part of response) {
+          if (isAborted?.()) {
+            response.controller?.abort();
+            updateFinishReason('close');
+            break;
+          }
+
+          const { reasoningContent, content, responseContent } = parsePart({
+            part,
+            parseThinkTag: modelData.reasoning,
+            retainDatasetCite
+          });
+          answer += content;
+
+          if (reasoningContent) {
+            onReasoning?.({ text: reasoningContent });
+          }
+
+          if (content) {
+            if (startResponseWrite) {
+              if (responseContent) {
+                onStreaming?.({ text: responseContent });
+              }
+            } else if (answer.length >= 3) {
+              answer = answer.trimStart();
+
+              // Not call tool
+              if (/0(:|：)/.test(answer)) {
+                startResponseWrite = true;
+
+                // find first : index
+                const firstIndex =
+                  answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
+                answer = answer.substring(firstIndex + 2).trim();
+
+                onStreaming?.({ text: answer });
+              }
+              // Not response tool
+              else if (/1(:|：)/.test(answer)) {
+              }
+              // Not start 1/0, start response
+              else {
+                startResponseWrite = true;
+                onStreaming?.({ text: answer });
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        updateError(error?.error || error);
+      }
+
+      const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
+      const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
+
+      if (streamAnswer) {
+        onStreaming?.({ text: streamAnswer });
+      }
+
+      toolCalls?.forEach((call) => {
+        onToolCall?.({ call });
+      });
+
+      return {
+        error,
+        answerText: llmAnswer,
+        reasoningText: reasoningContent,
+        finish_reason,
+        usage,
+        toolCalls
+      };
+    }
+  } else {
+    // Not use tool
+    try {
       for await (const part of response) {
         if (isAborted?.()) {
           response.controller?.abort();
@@ -214,161 +417,15 @@ export const createStreamResponse = async ({
         if (responseContent) {
           onStreaming?.({ text: responseContent });
         }
-
-        const responseChoice = part.choices?.[0]?.delta;
-
-        // Parse tool calls
-        if (responseChoice?.tool_calls?.length) {
-          responseChoice.tool_calls.forEach((toolCall, i) => {
-            const index = toolCall.index ?? i;
-
-            // Call new tool
-            const hasNewTool = toolCall?.function?.name || callingTool;
-            if (hasNewTool) {
-              // Call new tool
-              if (toolCall?.function?.name) {
-                callingTool = {
-                  name: toolCall.function?.name || '',
-                  arguments: toolCall.function?.arguments || ''
-                };
-              } else if (callingTool) {
-                // Continue call(Perhaps the name of the previous function was incomplete)
-                callingTool.name += toolCall.function?.name || '';
-                callingTool.arguments += toolCall.function?.arguments || '';
-              }
-
-              // New tool, add to list.
-              if (tools.find((item) => item.function.name === callingTool!.name)) {
-                const call: ChatCompletionMessageToolCall = {
-                  id: getNanoid(),
-                  type: 'function',
-                  function: callingTool!
-                };
-                toolCalls[index] = call;
-                onToolCall?.({ call });
-                callingTool = null;
-              }
-            } else {
-              /* arg 追加到当前工具的参数里 */
-              const arg: string = toolCall?.function?.arguments ?? '';
-              const currentTool = toolCalls[index];
-              if (currentTool && arg) {
-                currentTool.function.arguments += arg;
-
-                onToolParam?.({ tool: currentTool, params: arg });
-              }
-            }
-          });
-        }
       }
-
-      const { reasoningContent, content, finish_reason, usage } = getResponseData();
-
-      return {
-        answerText: content,
-        reasoningText: reasoningContent,
-        finish_reason,
-        usage,
-        toolCalls: toolCalls.filter((call) => !!call)
-      };
-    } else {
-      let startResponseWrite = false;
-      let answer = '';
-
-      for await (const part of response) {
-        if (isAborted?.()) {
-          response.controller?.abort();
-          updateFinishReason('close');
-          break;
-        }
-
-        const { reasoningContent, content, responseContent } = parsePart({
-          part,
-          parseThinkTag: modelData.reasoning,
-          retainDatasetCite
-        });
-        answer += content;
-
-        if (reasoningContent) {
-          onReasoning?.({ text: reasoningContent });
-        }
-
-        if (content) {
-          if (startResponseWrite) {
-            if (responseContent) {
-              onStreaming?.({ text: responseContent });
-            }
-          } else if (answer.length >= 3) {
-            answer = answer.trimStart();
-
-            // Not call tool
-            if (/0(:|：)/.test(answer)) {
-              startResponseWrite = true;
-
-              // find first : index
-              const firstIndex =
-                answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-              answer = answer.substring(firstIndex + 2).trim();
-
-              onStreaming?.({ text: answer });
-            }
-            // Not response tool
-            else if (/1(:|：)/.test(answer)) {
-            }
-            // Not start 1/0, start response
-            else {
-              startResponseWrite = true;
-              onStreaming?.({ text: answer });
-            }
-          }
-        }
-      }
-
-      const { reasoningContent, content, finish_reason, usage } = getResponseData();
-      const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
-
-      if (streamAnswer) {
-        onStreaming?.({ text: streamAnswer });
-      }
-
-      toolCalls?.forEach((call) => {
-        onToolCall?.({ call });
-      });
-
-      return {
-        answerText: llmAnswer,
-        reasoningText: reasoningContent,
-        finish_reason,
-        usage,
-        toolCalls
-      };
-    }
-  } else {
-    // Not use tool
-    for await (const part of response) {
-      if (isAborted?.()) {
-        response.controller?.abort();
-        updateFinishReason('close');
-        break;
-      }
-
-      const { reasoningContent, responseContent } = parsePart({
-        part,
-        parseThinkTag: modelData.reasoning,
-        retainDatasetCite
-      });
-
-      if (reasoningContent) {
-        onReasoning?.({ text: reasoningContent });
-      }
-      if (responseContent) {
-        onStreaming?.({ text: responseContent });
-      }
+    } catch (error: any) {
+      updateError(error?.error || error);
     }
 
-    const { reasoningContent, content, finish_reason, usage } = getResponseData();
+    const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
 
     return {
+      error,
       answerText: content,
       reasoningText: reasoningContent,
       finish_reason,
@@ -450,6 +507,7 @@ export const createCompleteResponse = async ({
   }
 
   return {
+    error: response.error,
     reasoningText: formatReasonContent,
     answerText: formatContent,
     toolCalls,
@@ -525,8 +583,15 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   })();
   const stop = body.stop ?? undefined;
 
-  const requestBody = {
+  const maxTokens = computedMaxToken({
+    model: modelData,
+    maxToken: body.max_tokens || undefined
+  });
+
+  const formatStop = stop?.split('|').filter((item) => !!item.trim());
+  let requestBody = {
     ...body,
+    max_tokens: maxTokens,
     model: modelData.model,
     temperature:
       typeof body.temperature === 'number'
@@ -535,15 +600,19 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
             temperature: body.temperature
           })
         : undefined,
-    ...modelData?.defaultConfig,
     response_format,
-    stop: stop?.split('|'),
+    stop: formatStop?.length ? formatStop : undefined,
     ...(toolCallMode === 'toolChoice' && {
       tools,
       tool_choice,
       parallel_tool_calls
     })
   } as T;
+
+  // Filter undefined/null value
+  requestBody = Object.fromEntries(
+    Object.entries(requestBody).filter(([_, value]) => value !== null && value !== undefined)
+  ) as T;
 
   // field map
   if (modelData.fieldMap) {
@@ -554,6 +623,11 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
       delete requestBody[sourceKey];
     });
   }
+
+  requestBody = {
+    ...requestBody,
+    ...modelData?.defaultConfig
+  };
 
   return {
     requestBody: requestBody as unknown as InferCompletionsBody<T>,
@@ -567,33 +641,26 @@ const createChatCompletion = async ({
   timeout,
   options
 }: {
-  modelData?: LLMModelItemType;
+  modelData: LLMModelItemType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
   options?: OpenAI.RequestOptions;
 }): Promise<
-  {
-    getEmptyResponseTip: () => string;
-  } & (
-    | {
-        response: StreamChatType;
-        isStreamResponse: true;
-      }
-    | {
-        response: UnStreamChatType;
-        isStreamResponse: false;
-      }
-  )
+  | {
+      response: StreamChatType;
+      isStreamResponse: true;
+    }
+  | {
+      response: UnStreamChatType;
+      isStreamResponse: false;
+    }
 > => {
   try {
-    // Rewrite model
-    const modelConstantsData = modelData || getLLMModel(body.model);
-
-    if (!modelConstantsData) {
+    if (!modelData) {
       return Promise.reject(`${body.model} not found`);
     }
-    body.model = modelConstantsData.model;
+    body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;
     const ai = getAIApi({
@@ -607,12 +674,10 @@ const createChatCompletion = async ({
 
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),
+      ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelConstantsData.requestAuth
-          ? { Authorization: `Bearer ${modelConstantsData.requestAuth}` }
-          : {})
+        ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
       }
     });
 
@@ -621,38 +686,30 @@ const createChatCompletion = async ({
       response !== null &&
       ('iterator' in response || 'controller' in response);
 
-    const getEmptyResponseTip = () => {
-      addLog.warn(`LLM response empty`, {
-        baseUrl: userKey?.baseUrl,
-        requestBody: body
-      });
-      if (userKey?.baseUrl) {
-        return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
-      }
-      return i18nT('chat:LLM_model_response_empty');
-    };
-
     if (isStreamResponse) {
       return {
         response,
-        isStreamResponse: true,
-        getEmptyResponseTip
+        isStreamResponse: true
       };
     }
 
     return {
       response,
-      isStreamResponse: false,
-      getEmptyResponseTip
+      isStreamResponse: false
     };
   } catch (error) {
-    addLog.error(`LLM response error`, error);
-    addLog.warn(`LLM response error`, {
-      baseUrl: userKey?.baseUrl,
-      requestBody: body
-    });
     if (userKey?.baseUrl) {
+      addLog.warn(`User ai api error`, {
+        message: getErrText(error),
+        baseUrl: userKey?.baseUrl,
+        data: body
+      });
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
+    } else {
+      addLog.error(`LLM response error`, {
+        message: getErrText(error),
+        data: body
+      });
     }
     return Promise.reject(error);
   }

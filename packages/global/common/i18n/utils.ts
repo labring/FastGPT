@@ -16,3 +16,10 @@ export const parseI18nString = (str: I18nStringType | string = '', lang = 'en') 
   // 最后回退到英文
   return str['en'] || '';
 };
+
+export const formatI18nLocationToZhEn = (locale: localeType = 'zh-CN'): 'zh' | 'en' => {
+  if (locale.toLocaleLowerCase().startsWith('zh')) {
+    return 'zh';
+  }
+  return 'en';
+};

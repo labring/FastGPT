@@ -1,5 +1,5 @@
 import { detect } from 'jschardet';
-import { documentFileType } from './constants';
+import { imageFileType } from './constants';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
 import { type UserChatItemFileItemType } from '../../core/chat/type';
 import * as fs from 'fs';
@@ -66,18 +66,17 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     })();
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
 
-    // If it's a document type, return as file, otherwise treat as image
-    if (extension && documentFileType.includes(extension)) {
+    if (extension && imageFileType.includes(extension)) {
+      // Default to file type for non-extension files
       return {
-        type: ChatFileTypeEnum.file,
+        type: ChatFileTypeEnum.image,
         name: filename || 'null',
         url
       };
     }
-
-    // Default to image type for non-document files
+    // If it's a document type, return as file, otherwise treat as image
     return {
-      type: ChatFileTypeEnum.image,
+      type: ChatFileTypeEnum.file,
       name: filename || 'null',
       url
     };

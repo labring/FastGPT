@@ -22,6 +22,7 @@ import {
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
 
 let isOauthLogging = false;
 
@@ -34,13 +35,13 @@ const provider = () => {
   const { toast } = useToast();
 
   const lastRoute = loginStore?.lastRoute
-    ? decodeURIComponent(loginStore.lastRoute)
+    ? validateRedirectUrl(loginStore.lastRoute)
     : '/dashboard/agent';
   const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponse) => {
-      const decodeLastRoute = decodeURIComponent(lastRoute);
+      const decodeLastRoute = validateRedirectUrl(lastRoute);
       setUserInfo(res.user);
 
       const navigateTo = await (async () => {
@@ -57,16 +58,12 @@ const provider = () => {
           }
         }
 
-        return decodeLastRoute &&
-          !decodeLastRoute.includes('/login') &&
-          decodeLastRoute.startsWith('/')
-          ? lastRoute
-          : '/dashboard/agent';
+        return decodeLastRoute;
       })();
 
       navigateTo && router.replace(navigateTo);
     },
-    [setUserInfo, router, lastRoute]
+    [setUserInfo, router, lastRoute, t, toast]
   );
 
   const authProps = useCallback(

@@ -25,6 +25,7 @@ import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -293,22 +294,34 @@ export const rewriteRuntimeWorkFlow = async ({
 export const getNodeErrResponse = ({
   error,
   customErr,
-  customNodeResponse
+  responseData,
+  nodeDispatchUsages,
+  runTimes,
+  newVariables,
+  system_memories
 }: {
   error: any;
   customErr?: Record<string, any>;
-  customNodeResponse?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
+  [DispatchNodeResponseKeyEnum.runTimes]?: number;
+  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
   const errorText = getErrText(error);
 
   return {
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: nodeDispatchUsages,
+    [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.memories]: system_memories,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,
       ...(typeof customErr === 'object' ? customErr : {})
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       errorText,
-      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+      ...(typeof responseData === 'object' ? responseData : {})
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
       error: errorText,

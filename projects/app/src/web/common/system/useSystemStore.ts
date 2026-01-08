@@ -29,7 +29,8 @@ export type NotSufficientModalType =
   | TeamErrEnum.aiPointsNotEnough
   | TeamErrEnum.datasetAmountNotEnough
   | TeamErrEnum.teamMemberOverSize
-  | TeamErrEnum.appAmountNotEnough;
+  | TeamErrEnum.appAmountNotEnough
+  | TeamErrEnum.ticketNotAvailable;
 
 type State = {
   initd: boolean;
@@ -125,7 +126,7 @@ export const useSystemStore = create<State>()(
           return null;
         },
 
-        gitStar: 25000,
+        gitStar: 26500,
         async loadGitStar() {
           if (!get().feConfigs?.show_git) return;
           try {
@@ -255,6 +256,8 @@ export const useSystemStore = create<State>()(
       {
         name: 'globalStore',
         partialize: (state) => ({
+          gitStar: state.gitStar,
+
           loginStore: state.loginStore,
           initDataBufferId: state.initDataBufferId,
           feConfigs: state.feConfigs,

@@ -372,8 +372,10 @@ const CollectionCard = () => {
                                         </Flex>
                                       ),
                                       onClick: () =>
-                                        openSyncConfirm(() => {
-                                          onclickStartSync(collection._id);
+                                        openSyncConfirm({
+                                          onConfirm: () => {
+                                            onclickStartSync(collection._id);
+                                          }
                                         })()
                                     }
                                   ]
@@ -423,13 +425,15 @@ const CollectionCard = () => {
                                 ),
                                 type: 'danger',
                                 onClick: () =>
-                                  openDeleteConfirm(
-                                    () => onDelCollection([collection._id]),
-                                    undefined,
-                                    collection.type === DatasetCollectionTypeEnum.folder
-                                      ? t('common:dataset.collections.Confirm to delete the folder')
-                                      : t('common:dataset.Confirm to delete the file')
-                                  )()
+                                  openDeleteConfirm({
+                                    onConfirm: () => onDelCollection([collection._id]),
+                                    customContent:
+                                      collection.type === DatasetCollectionTypeEnum.folder
+                                        ? t(
+                                            'common:dataset.collections.Confirm to delete the folder'
+                                          )
+                                        : t('common:dataset.Confirm to delete the file')
+                                  })()
                               }
                             ]
                           }
@@ -446,21 +450,21 @@ const CollectionCard = () => {
         </TableContainer>
 
         <FloatingActionBar
+          pt={4}
           Controler={
             <HStack>
               <Button
                 variant={'whiteBase'}
                 onClick={() =>
-                  openDeleteConfirm(
-                    () =>
+                  openDeleteConfirm({
+                    onConfirm: () =>
                       onDelCollection(selectedItems.map((e) => e._id)).then(() =>
                         setSelectedItems([])
                       ),
-                    undefined,
-                    t('dataset:confirm_delete_collection', {
+                    customContent: t('dataset:confirm_delete_collection', {
                       num: selectedItems.length
                     })
-                  )()
+                  })()
                 }
               >
                 {t('dataset:batch_delete')}

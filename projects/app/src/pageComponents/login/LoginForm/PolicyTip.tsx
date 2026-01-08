@@ -19,7 +19,7 @@ const PolicyTip = ({ isCenter }: { isCenter: boolean }) => {
           whiteSpace={'pre-wrap'}
         >
           <Trans
-            i18nKey={'login:policy_tip'}
+            i18nKey="login:policy_tip"
             components={{
               div: <Flex justifyContent={'center'} />,
               termsLink: (

@@ -74,10 +74,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={
-                feConfigs.openAPIDocUrl ||
-                getDocPath('/docs/use-cases/external-integration/dingtalk/')
-              }
+              href={getDocPath('/docs/use-cases/external-integration/dingtalk/')}
               target={'_blank'}
               color={'primary.500'}
               fontSize={'sm'}
@@ -189,7 +186,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                                 name: item.name,
                                 limit: item.limit,
                                 app: item.app,
-                                responseDetail: item.responseDetail,
+                                showCite: item.showCite,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });

@@ -14,6 +14,8 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/reply',
+  avatarLinear: 'core/workflow/template/replyLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:assigned_reply'),
   intro: i18nT('workflow:intro_assigned_reply'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/reply/',

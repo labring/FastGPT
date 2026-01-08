@@ -18,6 +18,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
     res,
+    checkIsStopping,
     requestOrigin,
     runtimeNodes,
     runtimeEdges,
@@ -109,7 +110,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     completeMessages,
     assistantMessages,
     interactiveResponse,
-    finish_reason
+    finish_reason,
+    error
   } = await runAgentCall({
     maxRunAgentTimes: 50,
     body: {
@@ -129,7 +131,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       retainDatasetCite,
       useVision: aiChatVision
     },
-    isAborted: () => res?.closed,
+    isAborted: checkIsStopping,
     userKey: externalProvider.openaiAccount,
     onReasoning({ text }) {
       if (!aiChatReasoning) return;
@@ -309,6 +311,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     .flat();
 
   return {
+    error,
     toolDispatchFlowResponses: toolRunResponses,
     toolCallInputTokens: inputTokens,
     toolCallOutputTokens: outputTokens,

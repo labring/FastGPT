@@ -57,6 +57,16 @@ const PriceBox = () => {
     };
   }, [teamSubPlan?.standard?.teamId]);
 
+  const handleBack = () => {
+    // Check if there is history to go back to
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      // No history, navigate to home page
+      router.push('/dashboard/agent');
+    }
+  };
+
   const onPaySuccess = () => {
     setTimeout(() => {
       router.reload();
@@ -81,7 +91,7 @@ const PriceBox = () => {
           variant={'transparentBase'}
           color={'primary.700'}
           leftIcon={<MyIcon name={'core/workflow/undo'} w={4} />}
-          onClick={() => router.back()}
+          onClick={handleBack}
           alignSelf={'flex-start'}
           mt={-8}
         >
@@ -98,7 +108,7 @@ const PriceBox = () => {
           w={9}
           h={9}
           icon={<MyIcon name={'core/workflow/undo'} w={4} />}
-          onClick={() => router.back()}
+          onClick={handleBack}
         />
       )}
 

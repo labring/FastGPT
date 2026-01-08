@@ -14,6 +14,8 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/variableUpdate',
+  avatarLinear: 'core/workflow/template/variableUpdateLinear',
+  colorSchema: 'coral',
   name: i18nT('workflow:variable_update'),
   intro: i18nT('workflow:update_specified_node_output_or_global_variable'),
   showStatus: false,

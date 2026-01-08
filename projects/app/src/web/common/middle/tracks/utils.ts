@@ -35,5 +35,11 @@ export const webPushTrack = {
       event: TrackEnum.closeOperationalAd,
       data
     });
+  },
+  clientError: (data: { route: string; log: string }) => {
+    return createTrack({
+      event: TrackEnum.clientError,
+      data
+    });
   }
 };

@@ -26,15 +26,15 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 
-type Props = {
+export type Props = {
   chatId: string;
   appId: string;
+  versionId?: string;
   teamId: string;
   tmbId: string;
   nodes: StoreNodeItemType[];
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
-  isUpdateUseTime: boolean;
   newTitle: string;
   source: `${ChatSourceEnum}`;
   sourceName?: string;
@@ -212,12 +212,12 @@ export async function saveChat(props: Props) {
   const {
     chatId,
     appId,
+    versionId,
     teamId,
     tmbId,
     nodes,
     appChatConfig,
     variables,
-    isUpdateUseTime,
     newTitle,
     source,
     sourceName,
@@ -299,6 +299,7 @@ export async function saveChat(props: Props) {
             teamId,
             tmbId,
             appId,
+            appVersionId: versionId,
             chatId,
             variableList,
             welcomeText,
@@ -311,6 +312,9 @@ export async function saveChat(props: Props) {
             outLinkUid,
             metadata: metadataUpdate,
             updateTime: new Date()
+          },
+          $setOnInsert: {
+            createTime: new Date()
           }
         },
         {
@@ -386,18 +390,6 @@ export async function saveChat(props: Props) {
       );
     } catch (error) {
       addLog.error('Push chat log error', error);
-    }
-
-    if (isUpdateUseTime) {
-      await MongoApp.updateOne(
-        { _id: appId },
-        {
-          updateTime: new Date()
-        },
-        {
-          ...writePrimary
-        }
-      ).catch();
     }
   } catch (error) {
     addLog.error(`update chat history error`, error);

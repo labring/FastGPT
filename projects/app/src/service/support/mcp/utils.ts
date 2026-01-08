@@ -37,7 +37,6 @@ import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
-import { clone } from 'lodash';
 
 export const pluginNodes2InputSchema = (
   nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
@@ -175,7 +174,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Get app latest version
-    const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
+    const { versionId, nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
 
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
@@ -252,12 +251,12 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     await saveChat({
       chatId,
       appId: app._id,
+      versionId,
       teamId: app.teamId,
       tmbId: app.tmbId,
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: false, // owner update use time
       newTitle,
       source: ChatSourceEnum.mcp,
       userContent: userQuestion,

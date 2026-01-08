@@ -68,6 +68,7 @@ const PromptEditor = ({
           onChangeText={onChange}
           onBlur={onBlurInput}
           onKeyDown={onKeyDown}
+          isDisabled={isDisabled}
         />
         {isDisabled && (
           <Box
@@ -76,10 +77,11 @@ const PromptEditor = ({
             left={0}
             right={0}
             bottom={0}
-            bg="rgba(255, 255, 255, 0.4)"
+            bg="rgba(255, 255, 255, 0.5)"
             borderRadius="md"
             zIndex={1}
             cursor="not-allowed"
+            pointerEvents="none"
           />
         )}
       </Box>
@@ -92,17 +94,34 @@ const PromptEditor = ({
         w={'full'}
       >
         <ModalBody>
-          <Editor
-            {...props}
-            minH={400}
-            maxH={400}
-            showOpenModal={false}
-            value={formattedValue}
-            onChange={onChangeInput}
-            onChangeText={onChange}
-            onBlur={onBlurInput}
-            onKeyDown={onKeyDown}
-          />
+          <Box position="relative">
+            <Editor
+              {...props}
+              minH={400}
+              maxH={400}
+              showOpenModal={false}
+              value={formattedValue}
+              onChange={onChangeInput}
+              onChangeText={onChange}
+              onBlur={onBlurInput}
+              onKeyDown={onKeyDown}
+              isDisabled={isDisabled}
+            />
+            {isDisabled && (
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                bg="rgba(255, 255, 255, 0.5)"
+                borderRadius="md"
+                zIndex={1}
+                cursor="not-allowed"
+                pointerEvents="none"
+              />
+            )}
+          </Box>
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>

@@ -11,7 +11,7 @@ import {
   SubModeEnum,
   SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
-import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 
 export const subCollectionName = 'team_subscriptions';
 
@@ -64,20 +64,15 @@ const SubSchema = new Schema({
   appRegistrationCount: Number,
   auditLogStoreDuration: Number,
   ticketResponseTime: Number,
+  customDomain: Number,
 
   // stand sub and extra points sub. Plan total points
-  totalPoints: {
-    type: Number
-  },
-  surplusPoints: {
-    // plan surplus points
-    type: Number
-  },
+  totalPoints: Number,
+  // plan surplus points
+  surplusPoints: Number,
 
   // extra dataset size
-  currentExtraDatasetSize: {
-    type: Number
-  }
+  currentExtraDatasetSize: Number
 });
 
 try {
@@ -105,4 +100,4 @@ try {
   console.log(error);
 }
 
-export const MongoTeamSub = getMongoModel<TeamSubSchema>(subCollectionName, SubSchema);
+export const MongoTeamSub = getMongoModel<TeamSubSchemaType>(subCollectionName, SubSchema);

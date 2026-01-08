@@ -12,21 +12,16 @@ type PaginationResponse<T = {}> = {
   list: T[];
 };
 
-type LinkedPaginationProps<T = {}> = T & {
+type LinkedPaginationProps<T = {}, A = any> = T & {
   pageSize: number;
-} & RequireOnlyOne<{
-    initialId: string;
-    nextId: string;
-    prevId: string;
-  }> &
-  RequireOnlyOne<{
-    initialIndex: number;
-    nextIndex: number;
-    prevIndex: number;
-  }>;
+  anchor?: A;
+  initialId?: string;
+  nextId?: string;
+  prevId?: string;
+};
 
-type LinkedListResponse<T = {}> = {
-  list: Array<T & { _id: string; index: number }>;
+type LinkedListResponse<T = {}, A = any> = {
+  list: Array<T & { id: string; anchor?: A }>;
   hasMorePrev: boolean;
   hasMoreNext: boolean;
 };

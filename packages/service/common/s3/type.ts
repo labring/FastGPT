@@ -56,6 +56,13 @@ export const UploadImage2S3BucketParamsSchema = z.object({
 });
 export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
+export const UploadFileByBufferSchema = z.object({
+  buffer: z.instanceof(Buffer),
+  contentType: z.string().optional(),
+  key: z.string().nonempty()
+});
+export type UploadFileByBufferParams = z.infer<typeof UploadFileByBufferSchema>;
+
 declare global {
   var s3BucketMap: {
     [key: string]: S3BaseBucket;

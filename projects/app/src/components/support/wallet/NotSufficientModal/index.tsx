@@ -33,7 +33,8 @@ const NotSufficientModal = () => {
     [TeamErrEnum.appAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
     [TeamErrEnum.pluginAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
     [TeamErrEnum.websiteSyncNotEnough]: t('common:code_error.team_error.website_sync_not_enough'),
-    [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough')
+    [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough'),
+    [TeamErrEnum.ticketNotAvailable]: t('common:code_error.team_error.ticket_not_available')
   };
 
   return type ? (
@@ -134,7 +135,7 @@ export const RechargeModal = ({
               <Box
                 fontSize={'14px'}
                 fontWeight={'medium'}
-              >{`${teamPlanStatus?.usedPoints || 0} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
+              >{`${Math.round(teamPlanStatus?.usedPoints || 0)} / ${teamPlanStatus?.totalPoints ?? t('common:Unlimited')}`}</Box>
             </Flex>
             <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
               <Box

@@ -1,20 +1,12 @@
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import {
   Button,
-  ButtonGroup,
   Flex,
   HStack,
   IconButton,
   Input,
   InputGroup,
   InputLeftElement,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
   useDisclosure
 } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -68,7 +60,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
 
   const searchAppTagValue = watchSearchValue('tag');
   // apps' tags options
-  const tagOptions = useContextSelector(ChatSettingContext, (v) => {
+  const tagOptions = useContextSelector(ChatPageContext, (v) => {
     const tags = v.chatSettings?.favouriteTags || [];
     return [
       { label: t('chat:setting.favourite.category_all'), value: '' },
@@ -76,7 +68,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
     ];
   });
   // app's tags cache map
-  const tagMap = useContextSelector(ChatSettingContext, (v) =>
+  const tagMap = useContextSelector(ChatPageContext, (v) =>
     (v.chatSettings?.favouriteTags || []).reduce<Record<string, ChatFavouriteTagType>>(
       (acc, tag) => {
         acc[tag.id] = { ...tag };

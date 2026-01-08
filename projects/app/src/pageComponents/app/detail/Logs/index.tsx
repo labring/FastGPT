@@ -33,14 +33,7 @@ const Logs = () => {
   } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
 
   return (
-    <Flex
-      flexDirection={'column'}
-      h={'full'}
-      rounded={'lg'}
-      bg={'myGray.25'}
-      boxShadow={3.5}
-      py={[4, 6]}
-    >
+    <Flex flexDirection={'column'} h={'full'} rounded={'lg'} py={[4, 6]}>
       <Flex px={[4, 8]}>
         <Flex
           w={'full'}

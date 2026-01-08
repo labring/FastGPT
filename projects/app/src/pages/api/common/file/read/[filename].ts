@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const [file, fileStream] = await Promise.all([
       getS3DatasetSource().getFileMetadata(fileId),
-      getS3DatasetSource().getDatasetFileStream(fileId)
+      getS3DatasetSource().getFileStream(fileId)
     ]);
 
     if (!file) {

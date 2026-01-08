@@ -64,6 +64,7 @@ export type ChatResponse = DispatchNodeResultType<
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
+    checkIsStopping,
     requestOrigin,
     stream = false,
     retainDatasetCite = true,
@@ -181,9 +182,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       reasoningText,
       answerText,
       finish_reason,
-      getEmptyResponseTip,
-      usage
+      responseEmptyTip,
+      usage,
+      error
     } = await createLLMResponse({
+      throwError: false,
       body: {
         model: modelConstantsData.model,
         stream,
@@ -201,7 +204,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         requestOrigin
       },
       userKey: externalProvider.openaiAccount,
-      isAborted: () => res?.closed,
+      isAborted: checkIsStopping,
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
         workflowStreamResponse?.({
@@ -224,8 +227,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       }
     });
 
-    if (!answerText && !reasoningText) {
-      return getNodeErrResponse({ error: getEmptyResponseTip() });
+    if (responseEmptyTip) {
+      return getNodeErrResponse({ error: responseEmptyTip });
     }
 
     const { totalPoints, modelName } = formatModelChars2Points({
@@ -236,6 +239,35 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
 
     const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
+
+    if (error) {
+      return getNodeErrResponse({
+        error,
+        responseData: {
+          totalPoints: points,
+          model: modelName,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          query: `${userChatInput}`,
+          maxToken: max_tokens,
+          reasoningText,
+          historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
+          contextTotalLen: completeMessages.length,
+          finishReason: finish_reason
+        },
+        ...(points && {
+          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+            {
+              moduleName: name,
+              totalPoints: points,
+              model: modelName,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens
+            }
+          ]
+        })
+      });
+    }
 
     return {
       data: {

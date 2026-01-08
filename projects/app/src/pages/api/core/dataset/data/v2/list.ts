@@ -50,7 +50,7 @@ async function handler(
 
   const [list, total] = await Promise.all([
     MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId teamId')
-      .sort({ chunkIndex: 1, _id: -1 })
+      .sort({ chunkIndex: 1, _id: 1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
@@ -82,7 +82,10 @@ async function handler(
 
     const s3ImageIds = imageIds.filter((id) => isS3ObjectKey(id, 'dataset'));
     for (const id of s3ImageIds) {
-      imageSizeMap.set(id, (await getS3DatasetSource().getFileMetadata(id)).contentLength);
+      const metadata = await getS3DatasetSource().getFileMetadata(id);
+      if (metadata) {
+        imageSizeMap.set(id, metadata.contentLength);
+      }
     }
   }
 

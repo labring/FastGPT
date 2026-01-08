@@ -1,57 +1,30 @@
 import type { OpenAPIPath } from '../../type';
 import { ChatSettingPath } from './setting';
 import { ChatFavouriteAppPath } from './favourite/index';
-import { z } from 'zod';
-import { CreatePostPresignedUrlResultSchema } from '../../../../service/common/s3/type';
-import { PresignChatFileGetUrlSchema, PresignChatFilePostUrlSchema } from '../../../core/chat/api';
+import { ChatFeedbackPath } from './feedback/index';
+import { ChatHistoryPath } from './history/index';
+import { GetRecentlyUsedAppsResponseSchema } from './api';
 import { TagsMap } from '../../tag';
+import { ChatControllerPath } from './controler';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
+  ...ChatFeedbackPath,
+  ...ChatHistoryPath,
+  ...ChatControllerPath,
 
-  '/core/chat/presignChatFileGetUrl': {
-    post: {
-      summary: '获取对话文件预签名 URL',
-      description: '获取对话文件的预签名 URL',
+  '/core/chat/recentlyUsed': {
+    get: {
+      summary: '获取最近使用的应用',
+      description: '获取最近使用的应用',
       tags: [TagsMap.chatPage],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: PresignChatFileGetUrlSchema
-          }
-        }
-      },
       responses: {
         200: {
-          description: '成功获取对话文件预签名 URL',
+          description: '成功返回最近使用的应用',
           content: {
             'application/json': {
-              schema: z.string()
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/presignChatFilePostUrl': {
-    post: {
-      summary: '上传对话文件预签名 URL',
-      description: '上传对话文件的预签名 URL',
-      tags: [TagsMap.chatPage],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: PresignChatFilePostUrlSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功上传对话文件预签名 URL',
-          content: {
-            'application/json': {
-              schema: CreatePostPresignedUrlResultSchema
+              schema: GetRecentlyUsedAppsResponseSchema
             }
           }
         }

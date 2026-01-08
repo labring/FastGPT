@@ -72,6 +72,29 @@
   box-shadow: 0px 0px 0px 2.4px rgba(244, 69, 46, 0.15);
 }
 
+.contentEditable_disabled {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  border: 1px solid rgb(232, 235, 240);
+  border-radius: var(--chakra-radii-sm);
+  padding: 8px 12px;
+
+  font-size: var(--chakra-fontSizes-sm);
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    color: var(--chakra-colors-myGray-100);
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--chakra-colors-myGray-200) !important;
+    cursor: pointer;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--chakra-colors-myGray-250) !important;
+  }
+}
+
 .variable {
   color: var(--chakra-colors-primary-600);
   padding: 0 2px;

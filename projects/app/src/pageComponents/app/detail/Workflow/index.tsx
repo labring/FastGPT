@@ -36,8 +36,13 @@ const WorkflowEdit = () => {
 
   useMount(() => {
     if (!isV2Workflow) {
-      openConfirm(() => {
-        initData(JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))), true);
+      openConfirm({
+        onConfirm: () => {
+          initData(
+            JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))),
+            true
+          );
+        }
       })();
     } else {
       initData(
@@ -57,7 +62,7 @@ const WorkflowEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Flow />
       ) : (
-        <Flex flexDirection={'column'} h={'100%'} px={4} pb={4}>
+        <Flex flexDirection={'column'} h={'100%'} mt={'72px'} px={4} pb={4} bg={'white'}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Flex>

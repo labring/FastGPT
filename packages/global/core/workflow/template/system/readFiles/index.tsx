@@ -20,6 +20,8 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/readFiles',
+  avatarLinear: 'core/workflow/template/readFilesLinear',
+  colorSchema: 'green',
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,

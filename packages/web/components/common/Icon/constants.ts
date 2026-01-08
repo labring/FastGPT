@@ -61,6 +61,7 @@ export const iconPaths = {
   'common/gitFill': () => import('./icons/common/gitFill.svg'),
   'common/gitInlight': () => import('./icons/common/gitInlight.svg'),
   'common/gitLight': () => import('./icons/common/gitLight.svg'),
+  'common/globalLine': () => import('./icons/common/globalLine.svg'),
   'common/googleFill': () => import('./icons/common/googleFill.svg'),
   'common/help': () => import('./icons/common/help.svg'),
   'common/importLight': () => import('./icons/common/importLight.svg'),
@@ -261,7 +262,7 @@ export const iconPaths = {
   'core/dataset/yuqueDatasetColor': () => import('./icons/core/dataset/yuqueDatasetColor.svg'),
   'core/dataset/yuqueDatasetOutline': () => import('./icons/core/dataset/yuqueDatasetOutline.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
-  'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
+  'core/modules/fitView': () => import('./icons/core/modules/fitView.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),
   'core/modules/previewLight': () => import('./icons/core/modules/previewLight.svg'),
   'core/modules/systemPlugin': () => import('./icons/core/modules/systemPlugin.svg'),
@@ -310,6 +311,7 @@ export const iconPaths = {
   'core/workflow/inputType/timeRangeSelect': () =>
     import('./icons/core/workflow/inputType/timeRangeSelect.svg'),
   'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
+  'core/workflow/present': () => import('./icons/core/workflow/present.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
   'core/workflow/revertVersion': () => import('./icons/core/workflow/revertVersion.svg'),
@@ -320,66 +322,116 @@ export const iconPaths = {
   'core/workflow/template/BI': () => import('./icons/core/workflow/template/BI.svg'),
   'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
+  'core/workflow/template/aiChatLinear': () =>
+    import('./icons/core/workflow/template/aiChatLinear.svg'),
   'core/workflow/template/baseChart': () => import('./icons/core/workflow/template/baseChart.svg'),
   'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/bocha': () => import('./icons/core/workflow/template/bocha.svg'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
+  'core/workflow/template/codeRunLinear': () =>
+    import('./icons/core/workflow/template/codeRunLinear.svg'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),
+  'core/workflow/template/customFeedbackLinear': () =>
+    import('./icons/core/workflow/template/customFeedbackLinear.svg'),
   'core/workflow/template/datasetConcat': () =>
     import('./icons/core/workflow/template/datasetConcat.svg'),
+  'core/workflow/template/datasetConcatLinear': () =>
+    import('./icons/core/workflow/template/datasetConcatLinear.svg'),
   'core/workflow/template/datasetSearch': () =>
     import('./icons/core/workflow/template/datasetSearch.svg'),
+  'core/workflow/template/datasetSearchLinear': () =>
+    import('./icons/core/workflow/template/datasetSearchLinear.svg'),
   'core/workflow/template/datasource': () =>
     import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/duckduckgo': () =>
     import('./icons/core/workflow/template/duckduckgo.svg'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
+  'core/workflow/template/extractJsonLinear': () =>
+    import('./icons/core/workflow/template/extractJsonLinear.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
+  'core/workflow/template/formInputLinear': () =>
+    import('./icons/core/workflow/template/formInputLinear.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
+  'core/workflow/template/httpRequestLinear': () =>
+    import('./icons/core/workflow/template/httpRequestLinear.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
+  'core/workflow/template/ifelseLinear': () =>
+    import('./icons/core/workflow/template/ifelseLinear.svg'),
   'core/workflow/template/lafDispatch': () =>
     import('./icons/core/workflow/template/lafDispatch.svg'),
   'core/workflow/template/loop': () => import('./icons/core/workflow/template/loop.svg'),
   'core/workflow/template/loopEnd': () => import('./icons/core/workflow/template/loopEnd.svg'),
+  'core/workflow/template/loopEndLinear': () =>
+    import('./icons/core/workflow/template/loopEndLinear.svg'),
+  'core/workflow/template/loopLinear': () =>
+    import('./icons/core/workflow/template/loopLinear.svg'),
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
+  'core/workflow/template/loopStartLinear': () =>
+    import('./icons/core/workflow/template/loopStartLinear.svg'),
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
+  'core/workflow/template/pluginOutputLinear': () =>
+    import('./icons/core/workflow/template/pluginOutputLinear.svg'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),
+  'core/workflow/template/queryExtensionLinear': () =>
+    import('./icons/core/workflow/template/queryExtensionLinear.svg'),
   'core/workflow/template/questionClassify': () =>
     import('./icons/core/workflow/template/questionClassify.svg'),
+  'core/workflow/template/questionClassifyLinear': () =>
+    import('./icons/core/workflow/template/questionClassifyLinear.svg'),
   'core/workflow/template/readFiles': () => import('./icons/core/workflow/template/readFiles.svg'),
+  'core/workflow/template/readFilesLinear': () =>
+    import('./icons/core/workflow/template/readFilesLinear.svg'),
   'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
+  'core/workflow/template/replyLinear': () =>
+    import('./icons/core/workflow/template/replyLinear.svg'),
   'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
   'core/workflow/template/searxng': () => import('./icons/core/workflow/template/searxng.svg'),
   'core/workflow/template/sleep': () => import('./icons/core/workflow/template/sleep.svg'),
   'core/workflow/template/stopTool': () => import('./icons/core/workflow/template/stopTool.svg'),
+  'core/workflow/template/stopToolLinear': () =>
+    import('./icons/core/workflow/template/stopToolLinear.svg'),
   'core/workflow/template/systemConfig': () =>
     import('./icons/core/workflow/template/systemConfig.svg'),
+  'core/workflow/template/systemConfigLinear': () =>
+    import('./icons/core/workflow/template/systemConfigLinear.svg'),
   'core/workflow/template/textConcat': () =>
     import('./icons/core/workflow/template/textConcat.svg'),
+  'core/workflow/template/textConcatLinear': () =>
+    import('./icons/core/workflow/template/textConcatLinear.svg'),
   'core/workflow/template/toolCall': () => import('./icons/core/workflow/template/toolCall.svg'),
+  'core/workflow/template/toolCallLinear': () =>
+    import('./icons/core/workflow/template/toolCallLinear.svg'),
   'core/workflow/template/toolParams': () =>
     import('./icons/core/workflow/template/toolParams.svg'),
+  'core/workflow/template/toolParamsLinear': () =>
+    import('./icons/core/workflow/template/toolParamsLinear.svg'),
   'core/workflow/template/toolkitActive': () =>
     import('./icons/core/workflow/template/toolkitActive.svg'),
   'core/workflow/template/toolkitInactive': () =>
     import('./icons/core/workflow/template/toolkitInactive.svg'),
   'core/workflow/template/userSelect': () =>
     import('./icons/core/workflow/template/userSelect.svg'),
+  'core/workflow/template/userSelectLinear': () =>
+    import('./icons/core/workflow/template/userSelectLinear.svg'),
   'core/workflow/template/variable': () => import('./icons/core/workflow/template/variable.svg'),
   'core/workflow/template/variableUpdate': () =>
     import('./icons/core/workflow/template/variableUpdate.svg'),
+  'core/workflow/template/variableUpdateLinear': () =>
+    import('./icons/core/workflow/template/variableUpdateLinear.svg'),
   'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
   'core/workflow/template/workflowStart': () =>
     import('./icons/core/workflow/template/workflowStart.svg'),
+  'core/workflow/template/workflowStartLinear': () =>
+    import('./icons/core/workflow/template/workflowStartLinear.svg'),
   'core/workflow/touchTable': () => import('./icons/core/workflow/touchTable.svg'),
   'core/workflow/undo': () => import('./icons/core/workflow/undo.svg'),
   'core/workflow/upload': () => import('./icons/core/workflow/upload.svg'),
@@ -472,6 +524,12 @@ export const iconPaths = {
   star: () => import('./icons/star.svg'),
   stop: () => import('./icons/stop.svg'),
   'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
+  'support/account/customDomain/provider/aliyun': () =>
+    import('./icons/support/account/customDomain/provider/aliyun.svg'),
+  'support/account/customDomain/provider/tencent': () =>
+    import('./icons/support/account/customDomain/provider/tencent.svg'),
+  'support/account/customDomain/provider/volcengine': () =>
+    import('./icons/support/account/customDomain/provider/volcengine.svg'),
   'support/account/laf': () => import('./icons/support/account/laf.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),

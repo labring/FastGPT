@@ -14,7 +14,6 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { addLog } from '../../../../common/system/log';
-import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import { createLLMResponse } from '../../../ai/llm/request';
 
 type Props = ModuleDispatchProps<{

@@ -14,7 +14,7 @@ export const workflowBoxStyles: FlexProps = {
   left: 0,
   flexDirection: 'column',
   zIndex: 200,
-  bg: 'myGray.100'
+  bg: '#FCFCFD'
 };
 
 export const publishStatusStyle = {

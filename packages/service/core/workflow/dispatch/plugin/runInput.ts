@@ -56,6 +56,8 @@ export const dispatchPluginInput = async (
   return {
     data: {
       ...params,
+
+      // 旧版本适配
       [NodeOutputKeyEnum.userFiles]: files
         .map((item) => {
           return item?.url ?? '';

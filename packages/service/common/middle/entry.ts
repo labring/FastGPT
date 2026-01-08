@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
 import { addLog } from '../system/log';
+import { ZodError } from 'zod';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -49,6 +50,16 @@ export const NextEntry = ({
           });
         }
       } catch (error) {
+        // Handle Zod validation errors
+        if (error instanceof ZodError) {
+          return jsonRes(res, {
+            code: 400,
+            message: 'Data validation error',
+            error,
+            url: req.url
+          });
+        }
+
         return jsonRes(res, {
           code: 500,
           error,

@@ -8,7 +8,7 @@ const createMockS3Bucket = () => ({
   exist: vi.fn().mockResolvedValue(true),
   delete: vi.fn().mockResolvedValue(undefined),
   putObject: vi.fn().mockResolvedValue(undefined),
-  getObject: vi.fn().mockResolvedValue(null),
+  getFileStream: vi.fn().mockResolvedValue(null),
   statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
   move: vi.fn().mockResolvedValue(undefined),
   copy: vi.fn().mockResolvedValue(undefined),
@@ -39,7 +39,7 @@ const createMockMinioClient = vi.hoisted(() => {
     copyObject: vi.fn().mockResolvedValue(undefined),
     removeObject: vi.fn().mockResolvedValue(undefined),
     putObject: vi.fn().mockResolvedValue({ etag: 'mock-etag' }),
-    getObject: vi.fn().mockResolvedValue(null),
+    getFileStream: vi.fn().mockResolvedValue(null),
     statObject: vi.fn().mockResolvedValue({ size: 0, etag: 'mock-etag' }),
     presignedGetObject: vi.fn().mockResolvedValue('http://localhost:9000/mock-bucket/mock-object'),
     presignedPostPolicy: vi.fn().mockResolvedValue({
@@ -81,7 +81,7 @@ const createMockBucketClass = (defaultName: string) => {
     }
     async delete() {}
     async putObject() {}
-    async getObject() {
+    async getFileStream() {
       return null;
     }
     async statObject() {
@@ -151,7 +151,16 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset/index', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat/index', () => ({
-  S3ChatSource: vi.fn()
+  S3ChatSource: vi.fn(),
+  getS3ChatSource: vi.fn(() => ({
+    createUploadChatFileURL: vi.fn().mockResolvedValue({
+      url: 'http://localhost:9000/mock-bucket',
+      fields: { key: 'mock-key' },
+      maxSize: 5 * 1024 * 1024
+    }),
+    deleteChatFilesByPrefix: vi.fn().mockResolvedValue(undefined),
+    deleteChatFile: vi.fn().mockResolvedValue(undefined)
+  }))
 }));
 
 // Mock S3 initialization
@@ -164,4 +173,10 @@ vi.mock('@fastgpt/service/common/s3', () => ({
     } as any;
   }),
   initS3MQWorker: vi.fn().mockResolvedValue(undefined)
+}));
+
+// Mock S3 MQ (Message Queue) operations
+vi.mock('@fastgpt/service/common/s3/mq', () => ({
+  prefixDel: vi.fn().mockResolvedValue(undefined),
+  addDeleteJob: vi.fn().mockResolvedValue(undefined)
 }));

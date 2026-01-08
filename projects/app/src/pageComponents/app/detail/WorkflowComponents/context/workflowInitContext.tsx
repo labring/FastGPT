@@ -153,6 +153,7 @@ const WorkflowInitContextProvider = ({
         version: node.data.version,
         versionLabel: node.data.versionLabel,
         isLatestVersion: node.data.isLatestVersion,
+        isFolded: node.data.isFolded,
         inputs: node.data.inputs.map((input) => {
           return {
             key: input.key,
@@ -194,7 +195,7 @@ const WorkflowInitContextProvider = ({
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
-      if (!node.data.isFolded) {
+      if (!node.data.isFolded && flowNodeType !== FlowNodeTypeEnum.comment) {
         allNodeFolded = false;
       }
 

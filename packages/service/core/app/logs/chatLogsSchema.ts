@@ -75,6 +75,9 @@ ChatLogSchema.index({ isFirstChat: 1, teamId: 1, appId: 1, source: 1, createTime
 // Get userStats
 ChatLogSchema.index({ teamId: 1, appId: 1, userId: 1 });
 
+// Admin get chat form data - optimized for aggregation with appId/chatId grouping
+ChatLogSchema.index({ createTime: -1, appId: 1, chatId: 1 });
+
 // Init shell
 ChatLogSchema.index({ teamId: 1, appId: 1, chatId: 1 });
 

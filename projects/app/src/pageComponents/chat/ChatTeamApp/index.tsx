@@ -13,7 +13,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
@@ -29,7 +29,7 @@ const MyApps = () => {
     (v) => v
   );
 
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 

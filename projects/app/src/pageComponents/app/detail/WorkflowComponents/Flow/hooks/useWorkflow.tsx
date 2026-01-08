@@ -827,10 +827,27 @@ export const useWorkflow = () => {
       // Prevent native context menu from showing
       e.preventDefault();
 
-      setMenu({
-        top: e.clientY - 64,
-        left: e.clientX - 12
-      });
+      // Context menu dimensions
+      const contextMenuWidth = 120;
+      const contextMenuHeight = 120;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const margin = 10;
+
+      let top = e.clientY + 6;
+      let left = e.clientX - 12;
+
+      // Check right boundary
+      if (left + contextMenuWidth + margin > viewportWidth) {
+        left = Math.max(margin, e.clientX - contextMenuWidth);
+      }
+
+      // Check bottom boundary
+      if (top + contextMenuHeight + margin > viewportHeight) {
+        top = Math.max(margin, viewportHeight - contextMenuHeight - margin);
+      }
+      setMenu({ top, left });
     },
     [setMenu]
   );

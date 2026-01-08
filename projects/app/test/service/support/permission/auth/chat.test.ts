@@ -80,9 +80,10 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -116,9 +117,10 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'user1',
         chat: mockChat,
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -145,9 +147,10 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -186,9 +189,9 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: true,
-          showNodeStatus: true,
-          showRawSource: true
+          showCite: true,
+          showRunningStatus: true,
+          canDownloadSource: true
         },
         uid: 'user1',
         appId: 'app1'
@@ -206,19 +209,20 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: false,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.outLink
       });
     });
 
-    it('should auth outLink with default showNodeStatus and showRawSource', async () => {
+    it('should auth outLink with default showRunningStatus and canDownloadSource', async () => {
       vi.mocked(authOutLink).mockResolvedValue({
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: false,
+          showCite: false,
           shareId: 'share1',
           outLinkUid: 'user1'
         },
@@ -238,9 +242,9 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        responseDetail: false,
-        showNodeStatus: true, // default
-        showRawSource: false, // default
+        showCite: false,
+        showRunningStatus: true, // default
+        canDownloadSource: false, // default
         authType: AuthUserTypeEnum.outLink
       });
     });
@@ -255,9 +259,9 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: true,
-          showNodeStatus: true,
-          showRawSource: true
+          showCite: true,
+          showRunningStatus: true,
+          canDownloadSource: true
         },
         uid: 'user1',
         appId: 'app1'
@@ -281,9 +285,10 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'user1',
         chat: mockChat,
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: false,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.outLink
       });
     });
@@ -293,9 +298,9 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: true,
-          showNodeStatus: false,
-          showRawSource: true
+          showCite: true,
+          showRunningStatus: false,
+          canDownloadSource: true
         },
         uid: 'user1',
         appId: 'app1'
@@ -318,9 +323,10 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
-        responseDetail: true,
-        showNodeStatus: false,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: false,
+        showFullText: false,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.outLink
       });
     });
@@ -335,7 +341,10 @@ describe('authChatCrud', () => {
         outLinkConfig: {
           teamId: 'team1',
           tmbId: 'tmb1',
-          responseDetail: true
+          showCite: true,
+          showFullText: true,
+          showRunningStatus: true,
+          canDownloadSource: true
         },
         uid: 'user1',
         appId: 'app1'
@@ -428,9 +437,10 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'tmb1',
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -467,9 +477,10 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'tmb1',
         chat: mockChat,
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -507,9 +518,10 @@ describe('authChatCrud', () => {
         tmbId: 'tmb1',
         uid: 'tmb1',
         chat: mockChat,
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });
@@ -539,9 +551,10 @@ describe('authChatCrud', () => {
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'tmb1',
-        responseDetail: true,
-        showNodeStatus: true,
-        showRawSource: true,
+        showCite: true,
+        showRunningStatus: true,
+        showFullText: true,
+        canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
     });

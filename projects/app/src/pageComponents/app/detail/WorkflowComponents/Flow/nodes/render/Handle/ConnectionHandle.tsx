@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getHandleId, getElseIFLabel } from '@fastgpt/global/core/workflow/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -28,24 +29,48 @@ export const ConnectionSourceHandle = ({
     })();
 
     const RightHandle = (() => {
+      // When the node is folded and has multiple branches, only render the first output.
+      if (node?.isFolded) {
+        const firstHandleId = (() => {
+          if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
+            const options = node?.inputs?.find(
+              (input) => input.key === NodeInputKeyEnum.userSelectOptions
+            )?.value;
+            if (options && options.length > 0) {
+              return getHandleId(nodeId, 'source', options[0].key);
+            }
+          } else if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+            return getHandleId(nodeId, 'source', getElseIFLabel(0));
+          } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+            const options = node?.inputs?.find(
+              (input) => input.key === NodeInputKeyEnum.agents
+            )?.value;
+            if (options && options.length > 0) {
+              return getHandleId(nodeId, 'source', options[0].key);
+            }
+          }
+        })();
+
+        if (firstHandleId) {
+          return (
+            <MySourceHandle
+              nodeId={nodeId}
+              handleId={firstHandleId}
+              position={Position.Right}
+              translate={[4, 0]}
+            />
+          );
+        }
+      }
+
       const handleId = getHandleId(nodeId, sourceType, Position.Right);
       const rightTargetConnected = edges.some(
         (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
       );
 
-      /* 
-        If the node is folded and has outputs, must show the handle
-        hide handle when:
-          - not folded
-          - not node
-          - not sourceHandle
-          - already connected
-      */
-      if (
-        !(node?.isFolded && node?.outputs.length) &&
-        (!node || !node?.showSourceHandle || rightTargetConnected)
-      )
+      if (!node || !node?.showSourceHandle || rightTargetConnected) {
         return null;
+      }
 
       return (
         <MySourceHandle

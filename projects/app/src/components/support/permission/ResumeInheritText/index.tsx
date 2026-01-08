@@ -23,17 +23,16 @@ const ResumeInherit = ({
         cursor={'pointer'}
         _hover={{ color: 'primary.600' }}
         onClick={() => {
-          openCommonConfirm(
-            () =>
+          openCommonConfirm({
+            onConfirm: () =>
               onResume()?.then(() => {
                 toast({
                   title: t('common:permission.Resume InheritPermission Success'),
                   status: 'success'
                 });
               }),
-            undefined,
-            t('common:permission.Resume InheritPermission Confirm')
-          )();
+            customContent: t('common:permission.Resume InheritPermission Confirm')
+          })();
         }}
       >
         {t('common:click_to_resume')}

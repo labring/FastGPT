@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
@@ -73,7 +73,7 @@ const VariableInputForm = ({
     internalVariableList.length > 0 ||
     externalVariableList.length > 0;
 
-  const isDisabled = chatType === ChatTypeEnum.log;
+  const isUnChange = chatType === ChatTypeEnum.log;
 
   return hasVariables ? (
     <Box py={3}>
@@ -105,7 +105,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
-                  isDisabled={isDisabled}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -148,7 +148,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
-                  isDisabled={isDisabled}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -190,7 +190,7 @@ const VariableInputForm = ({
               return (
                 <LabelAndFormRender
                   {...item}
-                  isDisabled={isDisabled}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}

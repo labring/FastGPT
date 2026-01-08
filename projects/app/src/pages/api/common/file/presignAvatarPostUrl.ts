@@ -18,8 +18,13 @@ async function handler(
   _: ApiResponseType<updateAvatarResponse>
 ): Promise<updateAvatarResponse> {
   const { filename, autoExpired } = req.body;
+
   const { teamId } = await authCert({ req, authToken: true });
-  return await getS3AvatarSource().createUploadAvatarURL({ teamId, filename, autoExpired });
+  return await getS3AvatarSource().createUploadAvatarURL({
+    teamId,
+    filename,
+    autoExpired
+  });
 }
 
 export default NextAPI(handler);

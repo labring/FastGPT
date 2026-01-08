@@ -29,8 +29,9 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
       maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
+    const filename = decodeURIComponent(result.fileMetadata.originalname);
 
-    if (!isCSVFile(result.fileMetadata.originalname)) {
+    if (!isCSVFile(filename)) {
       return Promise.reject('File must be a CSV file');
     }
 
@@ -58,7 +59,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
       datasetId: dataset._id,
       stream: result.getReadStream(),
       size: result.fileMetadata.size,
-      filename: result.fileMetadata.originalname
+      filename: filename
     });
 
     await createCollectionAndInsertData({
@@ -69,7 +70,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
         teamId,
         tmbId,
         datasetId: dataset._id,
-        name: result.fileMetadata.originalname,
+        name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.backup

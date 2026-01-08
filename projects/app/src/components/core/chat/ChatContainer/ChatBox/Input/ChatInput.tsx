@@ -19,6 +19,8 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { postStopV2Chat } from '@/web/core/chat/api';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -124,6 +126,19 @@ const ChatInput = ({
     },
     [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
+  const { runAsync: handleStop, loading: isStopping } = useRequest2(async () => {
+    try {
+      if (isChatting) {
+        await postStopV2Chat({
+          appId,
+          chatId,
+          outLinkAuthData
+        }).catch();
+      }
+    } finally {
+      onStop();
+    }
+  });
 
   const RenderTextarea = useMemo(
     () => (
@@ -329,7 +344,9 @@ const ChatInput = ({
 
           {/* Send Button Container */}
           <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
-            <Flex
+            <MyBox
+              isLoading={isStopping}
+              display={'flex'}
               alignItems={'center'}
               justifyContent={'center'}
               w={[7, 9]}
@@ -343,7 +360,7 @@ const ChatInput = ({
               onClick={(e) => {
                 e.stopPropagation();
                 if (isChatting) {
-                  return onStop();
+                  return handleStop();
                 }
                 return handleSend();
               }}
@@ -355,7 +372,7 @@ const ChatInput = ({
                   <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
                 </MyTooltip>
               )}
-            </Flex>
+            </MyBox>
           </Flex>
         </Flex>
       </Flex>
@@ -370,12 +387,13 @@ const ChatInput = ({
     whisperConfig?.open,
     inputValue,
     t,
+    isStopping,
     isChatting,
     canSendMessage,
     onOpenSelectFile,
     onSelectFile,
     handleSend,
-    onStop
+    handleStop
   ]);
 
   const activeStyles: FlexProps = {

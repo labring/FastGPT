@@ -260,7 +260,7 @@ const EvaluationCreating = () => {
                     FileTypeNode={
                       <Box fontSize={'xs'}>
                         <Trans
-                          i18nKey={'dashboard_evaluation:template_csv_file_select_tip'}
+                          i18nKey="dashboard_evaluation:template_csv_file_select_tip"
                           values={{
                             fileType: '.csv'
                           }}

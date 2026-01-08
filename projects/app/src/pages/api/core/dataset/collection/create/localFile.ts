@@ -27,13 +27,13 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     });
 
     const { fileMetadata, collectionMetadata, ...collectionData } = result.data;
-    const collectionName = result.fileMetadata.originalname;
+    const collectionName = decodeURIComponent(result.fileMetadata.originalname);
 
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,
       stream: result.getReadStream(),
       size: result.fileMetadata.size,
-      filename: result.fileMetadata.originalname
+      filename: collectionName
     });
 
     const { collectionId, insertResults } = await createCollectionAndInsertData({

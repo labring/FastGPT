@@ -235,11 +235,13 @@ const Header = ({
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
-                  w={'30px'}
+                  w={'34px'}
+                  h={'34px'}
                   variant={'whitePrimary'}
                   onClick={setIsShowHistories}
                 />
                 <SaveButton
+                  colorSchema="primary"
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => {

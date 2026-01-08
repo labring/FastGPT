@@ -43,19 +43,21 @@ const OutLinkSchema = new Schema({
     type: Date
   },
 
-  responseDetail: {
+  showRunningStatus: {
     type: Boolean,
     default: false
   },
-  showNodeStatus: {
+  showCite: {
     type: Boolean,
-    default: true
+    default: false
   },
-  // showFullText: {
-  //   type: Boolean
-  // },
-  showRawSource: {
-    type: Boolean
+  showFullText: {
+    type: Boolean,
+    default: false
+  },
+  canDownloadSource: {
+    type: Boolean,
+    default: false
   },
   limit: {
     maxUsagePoints: {
@@ -83,7 +85,12 @@ const OutLinkSchema = new Schema({
   },
   defaultResponse: {
     type: String
-  }
+  },
+
+  //@deprecated
+  responseDetail: Boolean,
+  showNodeStatus: Boolean,
+  showRawSource: Boolean
 });
 
 OutLinkSchema.virtual('associatedApp', {

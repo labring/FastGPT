@@ -1,5 +1,5 @@
 // 工作流工具函数层
-import React, { type ReactNode, useCallback, useMemo } from 'react';
+import React, { type ReactNode, useCallback, useMemo, useContext } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
@@ -109,7 +109,7 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { fitView } = useReactFlow();
+  const { fitView, getViewport, setViewport } = useReactFlow();
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
@@ -117,7 +117,10 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     (v) => v
   );
   const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { onRemoveError, onUpdateNodeError } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const { onRemoveError, onUpdateNodeError, onChangeNode } = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v
+  );
 
   // 优化为单次遍历,分类输出项
   const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
@@ -192,7 +195,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
         // View move to the node that failed
         fitView({
-          nodes: nodes.filter((node) => checkResults.includes(node.data.nodeId))
+          nodes: nodes.filter((node) => checkResults.includes(node.data.nodeId)),
+          padding: 0.3
         });
 
         toast({

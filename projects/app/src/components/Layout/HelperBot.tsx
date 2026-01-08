@@ -6,9 +6,9 @@ import { useRouter } from 'next/router';
 import { useState, useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useTranslation } from 'next-i18next';
 import { getWorkorderURL } from '@/web/common/workorder/api';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const BotShowRouter: { [key: string]: boolean } = {
   '/dashboard/agent': true,
@@ -28,21 +28,22 @@ const HelperBot = () => {
   const [showChat, setShowChat] = useToggle(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { feConfigs, subPlans } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
-  const isPlanUser = useMemo(() => {
-    if (!teamPlanStatus) return false;
-    if (teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free) return true;
-    if (teamPlanStatus.datasetMaxSize !== subPlans?.standard?.free?.maxDatasetSize) return true;
-    if (teamPlanStatus.totalPoints !== subPlans?.standard?.free?.totalPoints) return true;
-    return false;
+
+  const hasTicketAccess = useMemo(() => {
+    const plan = teamPlanStatus?.standard?.currentSubLevel
+      ? subPlans?.standard?.[teamPlanStatus?.standard?.currentSubLevel]
+      : undefined;
+    const ticketResponseTime =
+      teamPlanStatus?.standard?.ticketResponseTime ?? plan?.ticketResponseTime;
+    return !!ticketResponseTime;
   }, [
-    subPlans?.standard?.free?.maxDatasetSize,
-    subPlans?.standard?.free?.totalPoints,
-    teamPlanStatus
+    subPlans?.standard,
+    teamPlanStatus?.standard?.currentSubLevel,
+    teamPlanStatus?.standard?.ticketResponseTime
   ]);
 
-  const showWorkorder = feConfigs?.show_workorder && isPlanUser;
   const botIframeUrl = feConfigs?.botIframeUrl;
 
   useEffect(() => {
@@ -54,6 +55,11 @@ const HelperBot = () => {
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'workorderRequest') {
+        if (!hasTicketAccess) {
+          setNotSufficientModalType(TeamErrEnum.ticketNotAvailable);
+          return;
+        }
+
         try {
           const data = await getWorkorderURL();
           if (data?.redirectUrl) {
@@ -67,7 +73,7 @@ const HelperBot = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [hasTicketAccess, setNotSufficientModalType]);
 
   if (!botIframeUrl || !BotShowRouter[router.pathname]) {
     return null;
@@ -122,7 +128,7 @@ const HelperBot = () => {
           {/* iframe */}
           <Box
             as="iframe"
-            src={`${botIframeUrl}&showWorkorder=${showWorkorder ? '1' : '0'}`}
+            src={`${botIframeUrl}&showWorkorder=1`}
             w={'100%'}
             h={'100%'}
             border={'none'}

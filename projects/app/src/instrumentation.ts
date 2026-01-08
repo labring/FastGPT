@@ -6,6 +6,8 @@ import { exit } from 'process';
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+      await import('@fastgpt/service/common/proxy');
+
       // 基础系统初始化
       const [
         { connectMongo },

@@ -83,7 +83,6 @@ import type {
   DatasetCreateWithFilesBody,
   DatasetCreateWithFilesResponse
 } from '@/pages/api/core/dataset/createWithFiles';
-import type { PresignDatasetFileGetUrlParams } from '@fastgpt/global/core/dataset/v2/api';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

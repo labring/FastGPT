@@ -11,7 +11,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import {
+  AppFolderTypeList,
+  AppTypeEnum,
+  AppTypeList,
+  ToolTypeList
+} from '@fastgpt/global/core/app/constants';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -35,7 +40,6 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { type CreateAppType } from '@/pages/dashboard/create';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
@@ -96,7 +100,7 @@ const List = () => {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm(async () => onPutAppById(dragId, { parentId: targetId }))();
+      openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
     }
   });
 
@@ -183,6 +187,9 @@ const List = () => {
         >
           {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
           {myApps.map((app, index) => {
+            const isAgent = AppTypeList.includes(app.type);
+            const isTool = ToolTypeList.includes(app.type);
+            const isFolder = AppFolderTypeList.includes(app.type);
             return (
               <MyTooltip
                 key={app._id}
@@ -397,7 +404,9 @@ const List = () => {
                                           type: 'grayBg' as MenuItemType,
                                           label: t('app:copy_one_app'),
                                           onClick: () =>
-                                            openConfirmCopy(() => onclickCopy({ appId: app._id }))()
+                                            openConfirmCopy({
+                                              onConfirm: () => onclickCopy({ appId: app._id })
+                                            })()
                                         }
                                       ]
                                     }
@@ -411,13 +420,17 @@ const List = () => {
                                           icon: 'delete',
                                           label: t('common:Delete'),
                                           onClick: () =>
-                                            openConfirmDel(
-                                              () => onclickDelApp(app._id),
-                                              undefined,
-                                              app.type === AppTypeEnum.folder
-                                                ? t('app:confirm_delete_folder_tip')
-                                                : t('app:confirm_del_app_tip', { name: app.name })
-                                            )()
+                                            openConfirmDel({
+                                              onConfirm: () => onclickDelApp(app._id),
+                                              inputConfirmText: app.name,
+                                              customContent: (() => {
+                                                if (isFolder)
+                                                  return t('app:confirm_delete_folder_tip');
+                                                if (isAgent) return t('app:confirm_del_app_tip');
+                                                if (isTool) return t('app:confirm_del_tool_tip');
+                                                return t('app:confirm_del_app_tip');
+                                              })()
+                                            })()
                                         }
                                       ]
                                     }
@@ -499,8 +512,11 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    appType !== 'all' && appType in createAppTypeMap
+      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
+      : router.pathname.includes('/agent')
+        ? AppTypeEnum.workflow
+        : AppTypeEnum.workflowTool;
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -528,7 +544,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
     >
       <Box
         as="img"
-        src={getWebReqUrl('/imgs/app/createButton.png')}
+        src={getWebReqUrl('/imgs/app/createButton.jpg')}
         alt="operational advertisement"
         width="100%"
         maxW="100%"
@@ -571,8 +587,11 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
   const createAppType =
-    createAppTypeMap[appType as CreateAppType]?.type ||
-    (router.pathname.includes('/agent') ? AppTypeEnum.workflow : AppTypeEnum.workflowTool);
+    appType !== 'all' && appType in createAppTypeMap
+      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
+      : router.pathname.includes('/agent')
+        ? AppTypeEnum.workflow
+        : AppTypeEnum.workflowTool;
 
   return (
     <MyBox

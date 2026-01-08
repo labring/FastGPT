@@ -2,8 +2,7 @@
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { getVectorsByText } from '../../core/ai/embedding';
-import type { EmbeddingRecallCtrlProps } from './controller.d';
-import { type DelDatasetVectorCtrlProps, type InsertVectorProps } from './controller.d';
+import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
@@ -60,34 +59,14 @@ const teamVectorCache = {
 const Vector = getVectorObj();
 
 export const initVectorStore = Vector.init;
-export const recallFromVectorStore = (props: EmbeddingRecallCtrlProps) =>
+export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
   retryFn(() => Vector.embRecall(props));
-export const getVectorDataByTime = Vector.getVectorDataByTime;
-
-export const getVectorCountByTeamId = async (teamId: string) => {
-  const cacheCount = await teamVectorCache.get(teamId);
-  if (cacheCount !== undefined) {
-    return cacheCount;
-  }
-
-  const count = await Vector.getVectorCountByTeamId(teamId);
-
-  teamVectorCache.set({
-    teamId,
-    count
-  });
-
-  return count;
-};
-
-export const getVectorCountByDatasetId = Vector.getVectorCountByDatasetId;
-export const getVectorCountByCollectionId = Vector.getVectorCountByCollectionId;
 
 export const insertDatasetDataVector = async ({
   model,
   inputs,
   ...props
-}: InsertVectorProps & {
+}: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: string[];
   model: EmbeddingModelItemType;
 }) => {
@@ -111,8 +90,28 @@ export const insertDatasetDataVector = async ({
   };
 };
 
-export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
+export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
   const result = await retryFn(() => Vector.delete(props));
   teamVectorCache.delete(props.teamId);
   return result;
 };
+
+export const getVectorDataByTime = Vector.getVectorDataByTime;
+
+// Count vector
+export const getVectorCountByTeamId = async (teamId: string) => {
+  const cacheCount = await teamVectorCache.get(teamId);
+  if (cacheCount !== undefined) {
+    return cacheCount;
+  }
+
+  const count = await Vector.getVectorCount({ teamId });
+
+  teamVectorCache.set({
+    teamId,
+    count
+  });
+
+  return count;
+};
+export const getVectorCount = Vector.getVectorCount;

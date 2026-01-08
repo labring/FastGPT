@@ -1,9 +1,10 @@
 import { createDocument } from 'zod-openapi';
 import { ChatPath } from './core/chat';
-import { ApiKeyPath } from './support/openapi';
 import { TagsMap } from './tag';
 import { PluginPath } from './core/plugin';
-import { WalletPath } from './support/wallet';
+import { AppPath } from './core/app';
+import { SupportPath } from './support';
+import { DatasetPath } from './core/dataset';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -13,32 +14,47 @@ export const openAPIDocument = createDocument({
     description: 'FastGPT API 文档'
   },
   paths: {
+    ...AppPath,
     ...ChatPath,
-    ...ApiKeyPath,
+    ...DatasetPath,
     ...PluginPath,
-    ...WalletPath
+    ...SupportPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
-      name: '对话',
-      tags: [TagsMap.chatSetting, TagsMap.chatPage]
+      name: 'Agent 应用',
+      tags: [TagsMap.appCommon, TagsMap.appLog, TagsMap.publishChannel]
     },
     {
-      name: '插件相关',
+      name: '对话管理',
+      tags: [
+        TagsMap.chatPage,
+        TagsMap.chatHistory,
+        TagsMap.chatController,
+        TagsMap.chatFeedback,
+        TagsMap.chatSetting
+      ]
+    },
+    {
+      name: '知识库',
+      tags: [TagsMap.datasetCollection]
+    },
+    {
+      name: '插件系统',
       tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
     },
     {
-      name: '插件-管理员',
+      name: '用户体系',
+      tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+    },
+    {
+      name: '通用-辅助功能',
+      tags: [TagsMap.customDomain, TagsMap.apiKey]
+    },
+    {
+      name: '管理员-插件管理',
       tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
-    },
-    {
-      name: 'ApiKey',
-      tags: [TagsMap.apiKey]
-    },
-    {
-      name: '支付',
-      tags: [TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     }
   ]
 });

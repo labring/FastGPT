@@ -47,6 +47,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 
 const InputTypeConfig = ({
   form,
@@ -118,15 +119,15 @@ const InputTypeConfig = ({
       ? defaultValue?.[1]
       : undefined;
 
-  const maxFiles = watch('maxFiles');
+  const maxFiles = watch('maxFiles') ?? 5;
   const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
-  const canSelectFile = watch('canSelectFile');
+  const canSelectFile = watch('canSelectFile') ?? true;
   const canSelectImg = watch('canSelectImg');
   const canSelectVideo = watch('canSelectVideo');
   const canSelectAudio = watch('canSelectAudio');
   const canSelectCustomFileExtension = watch('canSelectCustomFileExtension');
   const customFileExtensionList = watch('customFileExtensionList');
-  const canLocalUpload = watch('canLocalUpload');
+  const canLocalUpload = watch('canLocalUpload') ?? true;
   const canUrlUpload = watch('canUrlUpload');
 
   const {
@@ -265,15 +266,15 @@ const InputTypeConfig = ({
           commonData.customInputConfig = data.customInputConfig;
           break;
         case FlowNodeInputTypeEnum.fileSelect:
-          commonData.canSelectFile = data.canSelectFile;
+          commonData.canLocalUpload = data.canLocalUpload ?? true;
+          commonData.canUrlUpload = data.canUrlUpload;
+          commonData.canSelectFile = data.canSelectFile ?? true;
           commonData.canSelectImg = data.canSelectImg;
           commonData.canSelectVideo = data.canSelectVideo;
           commonData.canSelectAudio = data.canSelectAudio;
           commonData.canSelectCustomFileExtension = data.canSelectCustomFileExtension;
           commonData.customFileExtensionList = data.customFileExtensionList;
-          commonData.canLocalUpload = data.canLocalUpload;
-          commonData.canUrlUpload = data.canUrlUpload;
-          commonData.maxFiles = data.maxFiles;
+          commonData.maxFiles = data.maxFiles ?? 5;
           break;
         case FlowNodeInputTypeEnum.timePointSelect:
         case FlowNodeInputTypeEnum.timeRangeSelect:
@@ -886,6 +887,55 @@ const InputTypeConfig = ({
         {(inputType === FlowNodeInputTypeEnum.fileSelect ||
           inputType === VariableInputEnum.file) && (
           <>
+            <Flex alignItems={'center'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:upload_method')}
+              </FormLabel>
+              <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'} flex={1}>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canLocalUpload}
+                  onChange={(e) => setValue('canLocalUpload', e.target.checked)}
+                >
+                  <Box fontSize={'sm'}>{t('app:local_upload')}</Box>
+                </Checkbox>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canUrlUpload ?? false}
+                  onChange={(e) => setValue('canUrlUpload', e.target.checked)}
+                >
+                  <Box fontSize={'sm'}>{t('app:url_upload')}</Box>
+                </Checkbox>
+              </Grid>
+            </Flex>
+            <Flex alignItems={'center'}>
+              <HStack flex={'0 0 132px'} gap={1}>
+                <FormLabel fontWeight={'medium'}>{t('app:upload_file_max_amount')}</FormLabel>
+                <QuestionTip label={t('app:upload_file_max_amount_tip')} />
+              </HStack>
+
+              <Box flex={'1 0 0'}>
+                <InputSlider
+                  min={1}
+                  max={maxSelectFiles}
+                  step={1}
+                  value={maxFiles}
+                  onChange={(val) => {
+                    setValue('maxFiles', val);
+                  }}
+                />
+              </Box>
+            </Flex>
             <Box alignItems={'flex-start'}>
               <FormLabel fontWeight={'medium'}>{t('app:upload_file_extension_types')}</FormLabel>
               <Stack
@@ -914,60 +964,6 @@ const InputTypeConfig = ({
                   }}
                 />
               </Stack>
-            </Box>
-            <Flex alignItems={'flex-start'} minH={'40px'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:upload_method')}
-              </FormLabel>
-              <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'} flex={1}>
-                <Checkbox
-                  p={'3'}
-                  h={'32px'}
-                  alignItems={'center'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  borderRadius={'md'}
-                  isChecked={canLocalUpload ?? true}
-                  onChange={(e) => setValue('canLocalUpload', e.target.checked)}
-                >
-                  <Box fontSize={'sm'}>{t('app:local_upload')}</Box>
-                </Checkbox>
-                <Checkbox
-                  p={'3'}
-                  h={'32px'}
-                  alignItems={'center'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  borderRadius={'md'}
-                  isChecked={canUrlUpload ?? false}
-                  onChange={(e) => setValue('canUrlUpload', e.target.checked)}
-                >
-                  <Box fontSize={'sm'}>{t('app:url_upload')}</Box>
-                </Checkbox>
-              </Grid>
-            </Flex>
-            <Box>
-              <HStack>
-                <FormLabel fontWeight={'medium'}>{t('app:upload_file_max_amount')}</FormLabel>
-                <QuestionTip label={t('app:upload_file_max_amount_tip')} />
-              </HStack>
-
-              <Box mt={5}>
-                <MySlider
-                  markList={[
-                    { label: '1', value: 1 },
-                    { label: `${maxSelectFiles}`, value: maxSelectFiles }
-                  ]}
-                  width={'100%'}
-                  min={1}
-                  max={maxSelectFiles}
-                  step={1}
-                  value={maxFiles ?? 5}
-                  onChange={(e) => {
-                    setValue('maxFiles', e);
-                  }}
-                />
-              </Box>
             </Box>
           </>
         )}

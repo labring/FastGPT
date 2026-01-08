@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { AppSchema } from '../../core/app/type';
 import type { PublishChannelEnum } from './constant';
 import { RequireOnlyOne } from '../../common/type/utils';
@@ -20,11 +21,15 @@ export interface DingtalkAppType {
 }
 
 export interface WecomAppType {
-  AgentId: string;
-  CorpId: string;
-  SuiteSecret: string;
   CallbackToken: string;
   CallbackEncodingAesKey: string;
+
+  /** @deprecated */
+  // AgentId: string;
+  /** @deprecated */
+  // CorpId: string;
+  /** @deprecated */
+  // SuiteSecret: string;
 }
 
 // TODO: unused
@@ -59,14 +64,14 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   lastTime: Date;
   type: PublishChannelEnum;
 
-  // whether the response content is detailed
-  responseDetail: boolean;
-  // whether to hide the node status
-  showNodeStatus?: boolean;
-  // wheter to show the full text reader
-  // showFullText?: boolean;
-  // whether to show the complete quote
-  showRawSource?: boolean;
+  // whether to show the quote
+  showCite: boolean;
+  // whether to show the running status
+  showRunningStatus: boolean;
+  // whether to show the full text reader
+  showFullText: boolean;
+  // whether can download source
+  canDownloadSource: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -83,16 +88,21 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   };
 
   app: T;
+
+  //@deprecated
+  responseDetail?: boolean;
+  showNodeStatus?: boolean;
+  showRawSource?: boolean;
 };
 
 // Edit the Outlink
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  responseDetail?: OutLinkSchema<T>['responseDetail'];
-  showNodeStatus?: OutLinkSchema<T>['showNodeStatus'];
-  // showFullText?: OutLinkSchema<T>['showFullText'];
-  showRawSource?: OutLinkSchema<T>['showRawSource'];
+  showCite?: OutLinkSchema<T>['showCite'];
+  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
+  showFullText?: OutLinkSchema<T>['showFullText'];
+  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
@@ -102,3 +112,12 @@ export type OutLinkEditType<T = undefined> = {
   // config for specific platform
   app?: T;
 };
+
+export const PlaygroundVisibilityConfigSchema = z.object({
+  showRunningStatus: z.boolean(),
+  showCite: z.boolean(),
+  showFullText: z.boolean(),
+  canDownloadSource: z.boolean()
+});
+
+export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

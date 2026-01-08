@@ -2,18 +2,13 @@
 import { DatasetVectorTableName } from '../constants';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
-import {
-  type DelDatasetVectorCtrlProps,
-  type EmbeddingRecallCtrlProps,
-  type EmbeddingRecallResponse,
-  type InsertVectorControllerProps
-} from '../controller.d';
+import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
 
-export class ObVectorCtrl {
+export class ObVectorCtrl implements VectorControllerType {
   constructor() {}
-  init = async () => {
+  init: VectorControllerType['init'] = async () => {
     try {
       await ObClient.query(`
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
@@ -41,7 +36,7 @@ export class ObVectorCtrl {
     }
   };
 
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+  insert: VectorControllerType['insert'] = async (props) => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
     const values = vectors.map((vector) => [
@@ -63,7 +58,7 @@ export class ObVectorCtrl {
       insertIds
     };
   };
-  delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
+  delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
@@ -98,7 +93,7 @@ export class ObVectorCtrl {
       where: [where]
     });
   };
-  embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
+  embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
 
@@ -158,7 +153,7 @@ export class ObVectorCtrl {
       }))
     };
   };
-  getVectorDataByTime = async (start: Date, end: Date) => {
+  getVectorDataByTime: VectorControllerType['getVectorDataByTime'] = async (start, end) => {
     const rows = await ObClient.query<
       ({
         id: string;
@@ -180,33 +175,30 @@ export class ObVectorCtrl {
       datasetId: item.dataset_id
     }));
   };
-  getVectorCountByTeamId = async (teamId: string) => {
-    const total = await ObClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)]]
-    });
 
-    return total;
-  };
-  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const total = await ObClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
-    });
+  getVectorCount: VectorControllerType['getVectorCount'] = async (props) => {
+    const { teamId, datasetId, collectionId } = props;
 
-    return total;
-  };
-  getVectorCountByCollectionId = async (
-    teamId: string,
-    datasetId: string,
-    collectionId: string
-  ) => {
+    // Build where conditions dynamically
+    const whereConditions: any[] = [];
+
+    if (teamId) {
+      whereConditions.push(['team_id', String(teamId)]);
+    }
+
+    if (datasetId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['dataset_id', String(datasetId)]);
+    }
+
+    if (collectionId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['collection_id', String(collectionId)]);
+    }
+
+    // If no conditions provided, count all
     const total = await ObClient.count(DatasetVectorTableName, {
-      where: [
-        ['team_id', String(teamId)],
-        'and',
-        ['dataset_id', String(datasetId)],
-        'and',
-        ['collection_id', String(collectionId)]
-      ]
+      where: whereConditions.length > 0 ? whereConditions : undefined
     });
 
     return total;

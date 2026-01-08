@@ -25,7 +25,7 @@ const MCPTools = () => {
   const [currentTool, setCurrentTool] = useState<McpToolConfigType>(toolSetData.toolList[0]);
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} bg={'myGray.25'}>
       <Header url={url} toolList={toolList} headerSecret={headerSecret} />
       <Edit
         url={url}

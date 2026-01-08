@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useTranslation } from 'next-i18next';
@@ -160,40 +160,51 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
 
   const Render = useMemo(() => {
     return (
-      <HStack>
-        <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
-        <Box>
-          <InfoMenu>
-            <HStack
-              spacing={1}
-              cursor={'pointer'}
-              pl={1}
-              ml={-1}
-              borderRadius={'xs'}
-              _hover={{ bg: 'myGray.150' }}
-            >
+      <HStack flex={1} justifyContent={'space-between'}>
+        <HStack>
+          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
+          <Box>
+            <HStack spacing={1}>
               <Box color={'myGray.900'}>{appDetail.name}</Box>
-              <MyIcon name={'common/select'} w={'1rem'} color={'myGray.500'} />
             </HStack>
-          </InfoMenu>
-          {showSaveStatus && (
-            <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
-              <MyTag
-                py={0}
-                px={1}
-                showDot
-                bg={'transparent'}
-                colorSchema={
-                  isSaved
-                    ? publishStatusStyle.published.colorSchema
-                    : publishStatusStyle.unPublish.colorSchema
-                }
-              >
-                {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
-              </MyTag>
-            </Flex>
-          )}
-        </Box>
+            {showSaveStatus && (
+              <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
+                <MyTag
+                  py={0}
+                  px={1}
+                  showDot
+                  bg={'transparent'}
+                  colorSchema={
+                    isSaved
+                      ? publishStatusStyle.published.colorSchema
+                      : publishStatusStyle.unPublish.colorSchema
+                  }
+                >
+                  {t(
+                    isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text
+                  )}
+                </MyTag>
+              </Flex>
+            )}
+          </Box>
+        </HStack>
+
+        <InfoMenu>
+          <IconButton
+            aria-label="Expand"
+            icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
+            w={'34px'}
+            h={'34px'}
+            bg={'white'}
+            border={'1px solid'}
+            borderColor={'myGray.250'}
+            borderRadius={'sm'}
+            boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+            _hover={{
+              bg: 'myGray.50'
+            }}
+          />
+        </InfoMenu>
 
         {isOpenImport && <ImportSettings onClose={onCloseImport} />}
       </HStack>

@@ -15,7 +15,7 @@ import AppTypeTag from '@/pageComponents/chat/ChatTeamApp/TypeTag';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import UserBox from '@fastgpt/web/components/common/UserBox';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
@@ -33,7 +33,7 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         ].includes(app.type)
     )
   );
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
     <>

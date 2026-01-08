@@ -186,10 +186,7 @@ export const FileTypeSelectorPanel = ({
               borderColor="myGray.200"
               pb={3}
               cursor="pointer"
-              isChecked={
-                value[type as FileExtensionKeyType] ??
-                (type === 'canSelectFile' || type === 'canSelectImg')
-              }
+              isChecked={value[type as FileExtensionKeyType]}
               onChange={(e) => handleTypeChange(type as FileExtensionKeyType, e.target.checked)}
             >
               <Box color={'myGray.900'} lineHeight={1}>

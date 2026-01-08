@@ -33,25 +33,3 @@ export type AppItemType = {
   modules: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
-
-export type AppLogsListItemType = {
-  _id: string;
-  id: string;
-  source: string;
-  createTime: Date;
-  updateTime: Date;
-  title: string;
-  customTitle: string;
-  messageCount: number;
-  userGoodFeedbackCount: number;
-  userBadFeedbackCount: number;
-  customFeedbacksCount: number;
-  markCount: number;
-  averageResponseTime: number;
-  errorCount: number;
-  totalPoints: number;
-  outLinkUid?: string;
-  tmbId: string;
-  sourceMember: SourceMember;
-  region?: string;
-};

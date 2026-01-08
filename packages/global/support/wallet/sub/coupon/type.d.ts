@@ -12,6 +12,7 @@ export type CustomSubConfig = {
   appRegistrationCount: number;
   auditLogStoreDuration: number;
   ticketResponseTime: number;
+  customDomain: number;
 };
 
 export type TeamCouponSub = {

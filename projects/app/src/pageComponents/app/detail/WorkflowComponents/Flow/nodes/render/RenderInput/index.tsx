@@ -22,7 +22,7 @@ const RenderList: Record<
     Component: dynamic(() => import('./templates/Reference'))
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
-    Component: dynamic(() => import('./templates/Reference'))
+    Component: dynamic(() => import('./templates/FileSelect'))
   },
   [FlowNodeInputTypeEnum.selectApp]: {
     Component: dynamic(() => import('./templates/SelectApp'))

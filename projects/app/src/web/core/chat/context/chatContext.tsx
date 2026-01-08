@@ -7,19 +7,15 @@ import {
   delChatHistoryById,
   putChatHistory,
   getChatHistories
-} from '../api';
+} from '../history/api';
 import { type ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
-import { type UpdateHistoryProps } from '@/global/core/chat/api';
 import { type BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 
-type UpdateHistoryParams = {
-  chatId: UpdateHistoryProps['chatId'];
-  customTitle?: UpdateHistoryProps['customTitle'];
-  top?: UpdateHistoryProps['top'];
-};
+type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
 type ChatContextValueType = {
   params: Record<string, string | number | boolean>;

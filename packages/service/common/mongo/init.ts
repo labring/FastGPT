@@ -31,26 +31,13 @@ export async function connectMongo(props: {
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      console.log('mongo error', error);
-      try {
-        if (db.connection.readyState !== 0) {
-          RemoveListeners();
-          await db.disconnect();
-          await delay(1000);
-          await connectMongo(props);
-        }
-      } catch (error) {}
+      console.error('mongo error', error);
+    });
+    db.connection.on('connected', async () => {
+      console.log('mongo connected');
     });
     db.connection.on('disconnected', async () => {
-      console.log('mongo disconnected');
-      try {
-        if (db.connection.readyState !== 0) {
-          RemoveListeners();
-          await db.disconnect();
-          await delay(1000);
-          await connectMongo(props);
-        }
-      } catch (error) {}
+      console.error('mongo disconnected');
     });
 
     await db.connect(url, {
@@ -64,9 +51,9 @@ export async function connectMongo(props: {
       maxIdleTimeMS: 300000, // 空闲连接超时: 5分钟,防止空闲连接长时间占用资源
       retryWrites: true, // 重试写入: 重试写入失败的操作
       retryReads: true, // 重试读取: 重试读取失败的操作
-      serverSelectionTimeoutMS: 10000 // 服务器选择超时: 10秒,防止副本集故障时长时间阻塞
+      serverSelectionTimeoutMS: 10000, // 服务器选择超时: 10秒,防止副本集故障时长时间阻塞
+      heartbeatFrequencyMS: 5000 // 5s 进行一次健康检查
     });
-    console.log('mongo connected');
 
     connectedCb?.();
 

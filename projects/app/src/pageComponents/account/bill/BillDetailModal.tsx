@@ -71,7 +71,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
       items.push({
         key: i18nT('account:max_dataset_size'),
         value: config.maxDatasetSize,
-        unit: 'GB'
+        unit: ''
       });
     }
     if (config.chatHistoryStoreDuration !== undefined) {
@@ -107,6 +107,13 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
         key: i18nT('account:ticket_response_time'),
         value: config.ticketResponseTime,
         unit: 'h'
+      });
+    }
+    if (config.customDomain !== undefined) {
+      items.push({
+        key: i18nT('account:custom_domain'),
+        value: config.customDomain,
+        unit: ''
       });
     }
 

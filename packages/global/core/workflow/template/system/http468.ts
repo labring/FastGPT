@@ -22,6 +22,8 @@ export const HttpNode468: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/httpRequest',
+  avatarLinear: 'core/workflow/template/httpRequestLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,

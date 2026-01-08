@@ -10,6 +10,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type UpdateHttpPluginBody = {
   appId: string;
@@ -50,6 +51,7 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       },
       { session }
     );
+
     await MongoAppVersion.updateOne(
       { appId },
       {
@@ -59,6 +61,9 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       },
       { session }
     );
+  });
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
   });
 }
 

@@ -26,6 +26,8 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   showSourceHandle: false,
   showTargetHandle: true,
   avatar: 'core/workflow/template/questionClassify',
+  avatarLinear: 'core/workflow/template/questionClassifyLinear',
+  colorSchema: 'purple',
   name: i18nT('workflow:question_classification'),
   intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,

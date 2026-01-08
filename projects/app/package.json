@@ -24,7 +24,7 @@
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
-    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@node-rs/jieba": "2.0.1",
     "@scalar/api-reference-react": "^0.8.1",
     "@tanstack/react-query": "^4.24.10",
@@ -48,7 +48,7 @@
     "mermaid": "^10.9.4",
     "minio": "^8.0.5",
     "nanoid": "^5.1.3",
-    "next": "14.2.32",
+    "next": "14.2.35",
     "next-i18next": "15.4.2",
     "nprogress": "^0.2.0",
     "p-limit": "^7.2.0",
@@ -92,6 +92,6 @@
     "eslint-config-next": "14.2.26",
     "tsx": "^4.20.6",
     "typescript": "^5.1.3",
-    "vitest": "^3.0.2"
+    "vitest": "^3.0.9"
   }
 }

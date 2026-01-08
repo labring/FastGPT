@@ -31,7 +31,6 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
-import { getFileS3Key } from '../../../../../common/s3/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -188,7 +187,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolCallOutputTokens,
       completeMessages = [], // The actual message sent to AI(just save text)
       assistantResponses = [], // FastGPT system store assistant.value response
-      finish_reason
+      finish_reason,
+      error
     } = await (async () => {
       const adaptMessages = chats2GPTMessages({
         messages,
@@ -224,6 +224,46 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     // Preview assistant responses
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+
+    if (error) {
+      return getNodeErrResponse({
+        error,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          totalPoints: totalPointsUsage,
+          toolCallInputTokens: toolCallInputTokens,
+          toolCallOutputTokens: toolCallOutputTokens,
+          childTotalPoints: toolTotalPoints,
+          model: modelName,
+          query: userChatInput,
+          historyPreview: getHistoryPreview(
+            GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
+            10000,
+            useVision
+          ),
+          toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
+          mergeSignId: nodeId,
+          finishReason: finish_reason
+        },
+        [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
+          (sum, item) => sum + item.runTimes,
+          0
+        ),
+        ...(totalPointsUsage && {
+          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+            // 模型本身的积分消耗
+            {
+              moduleName: name,
+              model: modelName,
+              totalPoints: modelUsage,
+              inputTokens: toolCallInputTokens,
+              outputTokens: toolCallOutputTokens
+            },
+            // 工具的消耗
+            ...toolUsages
+          ]
+        })
+      });
+    }
 
     return {
       data: {

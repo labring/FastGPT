@@ -13,10 +13,10 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
-  isShowReadRawSource: boolean;
-  isResponseDetail: boolean;
-  // isShowFullText: boolean;
-  showNodeStatus: boolean;
+  canDownloadSource: boolean;
+  isShowCite: boolean;
+  isShowFullText: boolean;
+  showRunningStatus: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -72,7 +72,7 @@ type ChatItemContextType = {
   pluginRunTab: PluginRunBoxTabEnum;
   setPluginRunTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
   resetVariables: (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }) => void;
   clearChatRecords: () => void;
@@ -95,7 +95,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
     throw new Error('Function not implemented.');
   },
   resetVariables: function (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }): void {
     throw new Error('Function not implemented.');
@@ -120,10 +120,10 @@ export const ChatItemContext = createContext<ChatItemContextType>({
 const ChatItemContextProvider = ({
   children,
   showRouteToDatasetDetail,
-  isShowReadRawSource,
-  isResponseDetail,
-  // isShowFullText,
-  showNodeStatus
+  canDownloadSource,
+  isShowCite,
+  isShowFullText,
+  showRunningStatus
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -144,17 +144,24 @@ const ChatItemContextProvider = ({
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
       const { variables = {}, variableList = [] } = props || {};
 
-      const varValues: Record<string, any> = {};
-
-      variableList.forEach((item) => {
-        varValues[item.key] = variables[item.key] ?? variables[item.label] ?? item.defaultValue;
-      });
       const values = variablesForm.getValues();
 
-      variablesForm.reset({
-        ...values,
-        variables: varValues
-      });
+      if (variableList.length) {
+        const varValues: Record<string, any> = {};
+        variableList.forEach((item) => {
+          varValues[item.key] = variables[item.key] ?? variables[item.label] ?? item.defaultValue;
+        });
+
+        variablesForm.reset({
+          ...values,
+          variables: varValues
+        });
+      } else {
+        variablesForm.reset({
+          ...values,
+          variables
+        });
+      }
     },
     [variablesForm]
   );
@@ -189,10 +196,10 @@ const ChatItemContextProvider = ({
       resetVariables,
       clearChatRecords,
       showRouteToDatasetDetail,
-      isShowReadRawSource,
-      isResponseDetail,
-      // isShowFullText,
-      showNodeStatus,
+      canDownloadSource,
+      isShowCite,
+      isShowFullText,
+      showRunningStatus,
 
       datasetCiteData,
       setCiteModalData,
@@ -207,10 +214,10 @@ const ChatItemContextProvider = ({
     resetVariables,
     clearChatRecords,
     showRouteToDatasetDetail,
-    isShowReadRawSource,
-    isResponseDetail,
-    // isShowFullText,
-    showNodeStatus,
+    canDownloadSource,
+    isShowCite,
+    showRunningStatus,
+    isShowFullText,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

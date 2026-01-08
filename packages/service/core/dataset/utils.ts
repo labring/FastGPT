@@ -53,10 +53,9 @@ export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime:
   if (!documentQuoteText || typeof documentQuoteText !== 'string')
     return documentQuoteText as string;
 
-  const prefixPattern = Object.values(S3Sources)
-    .map((pattern) => `${pattern}\\/[^\\s)]+`)
-    .join('|');
-  const regex = new RegExp(String.raw`(!?)\[([^\]]*)\]\((?!https?:\/\/)(${prefixPattern})\)`, 'g');
+  const prefixes = Object.values(S3Sources);
+  const pattern = prefixes.map((p) => `${p}\\/[^)]+`).join('|');
+  const regex = new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(${pattern})\s*\)`, 'g');
 
   const matches = Array.from(documentQuoteText.matchAll(regex));
   let content = documentQuoteText;

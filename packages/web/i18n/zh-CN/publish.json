@@ -35,11 +35,16 @@
   "wecom.bot_desc": "通过 API 直接接入企业微信机器人",
   "wecom.create_modal_title": "创建企微机器人",
   "wecom.edit_modal_title": "编辑企微机器人",
+  "wecom.create_modal.step.1": "配置参数",
+  "wecom.create_modal.step.2": "填写回调地址",
   "wecom.title": "发布到企业微信机器人",
   "dingtalk.bot": "钉钉机器人",
   "dingtalk.bot_desc": "通过 API 直接接入钉钉机器人",
   "dingtalk.create_modal_title": "创建钉钉机器人",
   "dingtalk.edit_modal_title": "编辑钉钉机器人",
   "dingtalk.title": "发布到钉钉机器人",
-  "dingtalk.api": "钉钉 API"
+  "dingtalk.api": "钉钉 API",
+  "use_default_domain": "使用默认域名",
+  "ip_whitelist": "IP 白名单",
+  "custom_domain_management": "自定义域名管理"
 }

@@ -29,6 +29,7 @@ import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -44,6 +45,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   ) as FlowNodeInputItemType;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
+  const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
@@ -64,23 +66,25 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ]}
                 value={codeType?.value}
                 onChange={(newLang) => {
-                  openSwitchLangConfirm(() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: NodeInputKeyEnum.codeType,
-                      value: { ...codeType, value: newLang }
-                    });
+                  openSwitchLangConfirm({
+                    onConfirm: () => {
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: NodeInputKeyEnum.codeType,
+                        value: { ...codeType, value: newLang }
+                      });
 
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: SANDBOX_CODE_TEMPLATE[newLang]
-                      }
-                    });
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: item.key,
+                        value: {
+                          ...item,
+                          value: SANDBOX_CODE_TEMPLATE[newLang]
+                        }
+                      });
+                    }
                   })();
                 }}
               />
@@ -109,25 +113,29 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 }
               />
             </Flex>
-            <CodeEditor
-              bg={'white'}
-              borderRadius={'sm'}
-              value={item.value}
-              onChange={(e) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: item.key,
-                  value: { ...item, value: e }
-                });
-              }}
-              language={codeType.value}
-            />
+            {presentationMode ? (
+              <Box h={'200px'} />
+            ) : (
+              <CodeEditor
+                bg={'white'}
+                borderRadius={'sm'}
+                value={item.value}
+                onChange={(e) => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: item.key,
+                    value: { ...item, value: e }
+                  });
+                }}
+                language={codeType.value}
+              />
+            )}
           </Box>
         );
       }
     };
-  }, [codeType, nodeId, t]);
+  }, [codeType, nodeId, t, presentationMode, onChangeNode]);
 
   const { isTool, commonInputs } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),

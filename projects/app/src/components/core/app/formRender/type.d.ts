@@ -13,7 +13,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 type CommonRenderProps = {
   placeholder?: string;
   value: any;
-  onChange: (value: any) => void;
+  onChange?: (value: any) => void;
 
   isDisabled?: boolean;
   isInvalid?: boolean;

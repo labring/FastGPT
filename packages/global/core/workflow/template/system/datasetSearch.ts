@@ -26,6 +26,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/datasetSearch',
+  avatarLinear: 'core/workflow/template/datasetSearchLinear',
+  colorSchema: 'blueLight',
   name: i18nT('workflow:template.dataset_search'),
   intro: Dataset_SEARCH_DESC,
   showStatus: true,

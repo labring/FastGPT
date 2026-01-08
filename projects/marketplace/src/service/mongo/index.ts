@@ -3,6 +3,7 @@ import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
+const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
 declare global {
   var mongodb: Mongoose | undefined;
@@ -52,49 +53,30 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     db.connection.removeAllListeners('disconnected');
     db.set('strictQuery', 'throw');
 
-    db.connection.on('error', async (error: any) => {
-      addLog.error('mongo error', error);
-      try {
-        if (db.connection.readyState !== 0) {
-          await db.disconnect();
-          await delay(1000);
-          await connectMongo(db, url);
-        }
-      } catch (_error) {
-        addLog.error('Error during reconnection:', _error);
-      }
+    db.connection.on('error', async (error) => {
+      console.error('mongo error', error);
     });
-
+    db.connection.on('connected', async () => {
+      console.log('mongo connected');
+    });
     db.connection.on('disconnected', async () => {
-      addLog.warn('mongo disconnected');
-      try {
-        if (db.connection.readyState !== 0) {
-          await db.disconnect();
-          await delay(1000);
-          await connectMongo(db, url);
-        }
-      } catch (_error) {
-        addLog.error('Error during reconnection:', _error);
-      }
+      console.error('mongo disconnected');
     });
 
-    const options = {
+    await db.connect(url, {
       bufferCommands: true,
-      maxPoolSize: Math.max(30, Number(process.env.MONGO_MAX_LINK || 20)),
-      minPoolSize: 20,
-      connectTimeoutMS: 60000,
-      waitQueueTimeoutMS: 60000,
-      socketTimeoutMS: 60000,
-      maxIdleTimeMS: 300000,
-      retryWrites: true,
-      retryReads: true,
-      serverSelectionTimeoutMS: 60000,
-      heartbeatFrequencyMS: 20000,
-      maxStalenessSeconds: 120
-    };
-
-    await db.connect(url, options);
-    addLog.info('mongo connected');
+      maxConnecting: maxConnecting, // 最大连接数: 防止连接数过多时无法满足需求
+      maxPoolSize: maxConnecting, // 最大连接池大小: 防止连接池过大时无法满足需求
+      minPoolSize: 20, // 最小连接数: 20,防止连接数过少时无法满足需求
+      connectTimeoutMS: 60000, // 连接超时: 60秒,防止连接失败时长时间阻塞
+      waitQueueTimeoutMS: 60000, // 等待队列超时: 60秒,防止等待队列长时间阻塞
+      socketTimeoutMS: 60000, // Socket 超时: 60秒,防止Socket连接失败时长时间阻塞
+      maxIdleTimeMS: 300000, // 空闲连接超时: 5分钟,防止空闲连接长时间占用资源
+      retryWrites: true, // 重试写入: 重试写入失败的操作
+      retryReads: true, // 重试读取: 重试读取失败的操作
+      serverSelectionTimeoutMS: 10000, // 服务器选择超时: 10秒,防止副本集故障时长时间阻塞
+      heartbeatFrequencyMS: 5000 // 5s 进行一次健康检查
+    });
     return db;
   } catch (error) {
     addLog.error('Mongo connect error', error);

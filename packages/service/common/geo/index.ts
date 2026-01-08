@@ -2,11 +2,13 @@ import fs from 'node:fs';
 import type { ReaderModel } from '@maxmind/geoip2-node';
 import { Reader } from '@maxmind/geoip2-node';
 import { cleanupIntervalMs, dbPath, privateOrOtherLocationName } from './constants';
-import type { I18nName, LocationName } from './type';
+import type { LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
 import { addLog } from '../system/log';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
 
 let reader: ReaderModel | null = null;
 
@@ -25,21 +27,23 @@ export function getGeoReader() {
   return reader;
 }
 
-export function getLocationFromIp(ip?: string, locale: keyof I18nName = 'zh') {
+export function getLocationFromIp(ip?: string, locale: localeType = 'zh-CN') {
+  const formatedLocale = formatI18nLocationToZhEn(locale);
+
   if (!ip) {
-    return privateOrOtherLocationName.country?.[locale];
+    return privateOrOtherLocationName.country?.[formatedLocale];
   }
   const reader = getGeoReader();
 
   let locationName = locationIpMap.get(ip);
   if (locationName) {
     return [
-      locationName.country?.[locale],
-      locationName.province?.[locale],
-      locationName.city?.[locale]
+      locationName.country?.[formatedLocale],
+      locationName.province?.[formatedLocale],
+      locationName.city?.[formatedLocale]
     ]
       .filter(Boolean)
-      .join(locale === 'zh' ? '，' : ',');
+      .join(formatedLocale === 'zh' ? '，' : ',');
   }
 
   try {
@@ -62,15 +66,15 @@ export function getLocationFromIp(ip?: string, locale: keyof I18nName = 'zh') {
     locationIpMap.set(ip, locationName);
 
     return [
-      locationName.country?.[locale],
-      locationName.province?.[locale],
-      locationName.city?.[locale]
+      locationName.country?.[formatedLocale],
+      locationName.province?.[formatedLocale],
+      locationName.city?.[formatedLocale]
     ]
       .filter(Boolean)
-      .join(locale === 'zh' ? '，' : ', ');
+      .join(formatedLocale === 'zh' ? '，' : ', ');
   } catch (error) {
     locationIpMap.set(ip, privateOrOtherLocationName);
-    return privateOrOtherLocationName.country?.[locale];
+    return privateOrOtherLocationName.country?.[formatedLocale];
   }
 }
 

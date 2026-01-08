@@ -1,5 +1,6 @@
 import openai from 'openai';
 import type {
+  ChatCompletion as SdkChatCompletion,
   ChatCompletionMessageToolCall,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
@@ -70,10 +71,16 @@ export type ChatCompletionMessageFunctionCall =
   };
 
 // Stream response
-export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk>;
+export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk & { error?: any }>;
 export type UnStreamChatType = openai.Chat.Completions.ChatCompletion;
 
+// UnStream response
+export type ChatCompletion = SdkChatCompletion & {
+  error?: any;
+};
+
 export type CompletionFinishReason =
+  | 'error'
   | 'close'
   | 'stop'
   | 'length'

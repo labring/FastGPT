@@ -1,9 +1,9 @@
 import dynamic from 'next/dynamic';
-import ButtonEdge from './components/ButtonEdge';
+import ButtonEdge, { CustomConnectionLine } from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 import 'reactflow/dist/style.css';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
+import { defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
@@ -72,7 +72,7 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { reactFlowWrapper, workflowControlMode, menu } = useContextSelector(
+  const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -112,38 +112,37 @@ const Workflow = () => {
       >
         {/* open module template */}
         <>
-          <IconButton
-            position={'absolute'}
-            top={6}
-            left={6}
-            size={'mdSquare'}
-            borderRadius={'50%'}
-            icon={<MyIcon name="common/addLight" w={'26px'} />}
-            transition={'0.2s ease'}
-            aria-label={''}
-            zIndex={1}
-            boxShadow={
-              '0px 4px 10px 0px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.50)'
-            }
-            onClick={() => {
-              isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
-            }}
-          />
+          <Box position={'absolute'} top={20} left={6} zIndex={1}>
+            <IconButton
+              icon={<MyIcon name="common/addLight" w={6} />}
+              w={9}
+              h={9}
+              borderRadius={'50%'}
+              bg={'black'}
+              _hover={{ bg: 'myGray.700' }}
+              aria-label={''}
+              boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
+              onClick={() => {
+                isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
+              }}
+            />
+          </Box>
           <SearchButton />
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
           <NodeTemplatesPopover />
         </>
 
         <ReactFlow
-          ref={reactFlowWrapper}
+          ref={reactFlowWrapperCallback}
           fitView
+          fitViewOptions={{ padding: 0.3 }}
           nodes={nodes}
           edges={edges}
           minZoom={minZoom}
           maxZoom={maxZoom}
           defaultEdgeOptions={defaultEdgeOptions}
           elevateEdgesOnSelect
-          connectionLineStyle={connectionLineStyle}
+          connectionLineComponent={CustomConnectionLine}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionRadius={50}
@@ -158,6 +157,7 @@ const Workflow = () => {
           onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           snapToGrid
+          style={{ background: '#F7F8FA' }}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,

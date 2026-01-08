@@ -40,6 +40,7 @@ export type ExternalProviderType = {
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  checkIsStopping: () => boolean;
   lang?: localeType;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
@@ -63,7 +64,7 @@ export type ChatDispatchProps = {
   };
   uid: string; // Who run this workflow
 
-  chatId?: string;
+  chatId: string;
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>; // global variable
@@ -76,7 +77,7 @@ export type ChatDispatchProps = {
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
-  version?: 'v1' | 'v2';
+  apiVersion?: 'v1' | 'v2';
 
   workflowDispatchDeep: number;
 
@@ -209,14 +210,15 @@ export type DispatchNodeResponseType = {
   headers?: Record<string, any>;
   httpResult?: Record<string, any>;
 
-  // plugin output
+  // Tool
+  toolInput?: Record<string, any>;
   pluginOutput?: Record<string, any>;
   pluginDetail?: ChatHistoryItemResType[];
 
   // if-else
   ifElseResult?: string;
 
-  // tool
+  // tool call
   toolCallInputTokens?: number;
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
@@ -224,9 +226,6 @@ export type DispatchNodeResponseType = {
 
   // code
   codeLog?: string;
-
-  // plugin
-  pluginOutput?: Record<string, any>;
 
   // read files
   readFilesResult?: string;

@@ -29,6 +29,8 @@ export const AgentNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/toolCall',
+  avatarLinear: 'core/workflow/template/toolCallLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:template.agent'),
   intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,

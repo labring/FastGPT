@@ -150,7 +150,8 @@ export async function initSystemConfig() {
       show_coupon: process.env.SHOW_COUPON === 'true',
       show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
-      show_batch_eval: licenseData?.functions?.batchEval
+      show_batch_eval: licenseData?.functions?.batchEval,
+      payFormUrl: process.env.PAY_FORM_URL || ''
     },
     systemEnv: {
       ...fileRes.systemEnv,

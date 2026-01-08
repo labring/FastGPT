@@ -256,3 +256,50 @@ export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
   [FlowNodeTypeEnum.tool]: true,
   [FlowNodeTypeEnum.toolSet]: true
 };
+
+export const NodeGradients = {
+  pink: 'linear-gradient(180deg, rgba(255, 161, 206, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  blue: 'linear-gradient(180deg, rgba(104, 192, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  blueLight: 'linear-gradient(180deg, rgba(85, 184, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  blueDark: 'linear-gradient(180deg, rgba(125, 153, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  orange: 'linear-gradient(180deg, rgba(255, 199, 90, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  purple: 'linear-gradient(180deg, rgba(235, 120, 254, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  teal: 'linear-gradient(180deg, rgba(97, 210, 196, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  green: 'linear-gradient(180deg, rgba(62, 217, 170, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  greenLight:
+    'linear-gradient(180deg, rgba(94, 209, 128, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  indigo: 'linear-gradient(180deg, rgba(120, 147, 254, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  coral: 'linear-gradient(180deg, rgba(252, 162, 143, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  lime: 'linear-gradient(0deg, rgba(255, 255, 255, 0.00) 0%, rgba(92, 216, 201, 0.25) 100%)',
+  violet: 'linear-gradient(180deg, rgba(155, 142, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  violetDeep:
+    'linear-gradient(180deg, rgba(212, 117, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  yellowGreen:
+    'linear-gradient(180deg, rgba(166, 218, 114, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  lafTeal: 'linear-gradient(180deg, rgba(72, 213, 186, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
+};
+
+export const NodeBorderColors = {
+  pink: 'rgba(255, 161, 206, 0.6)',
+  blue: 'rgba(104, 192, 255, 0.6)',
+  blueLight: 'rgba(85, 184, 255, 0.6)',
+  blueDark: 'rgba(125, 153, 255, 0.6)',
+  orange: 'rgba(255, 199, 90, 0.6)',
+  purple: 'rgba(235, 120, 254, 0.6)',
+  teal: 'rgba(97, 210, 196, 0.6)',
+  green: 'rgba(62, 217, 170, 0.6)',
+  greenLight: 'rgba(94, 209, 128, 0.6)',
+  indigo: 'rgba(120, 147, 254, 0.6)',
+  coral: 'rgba(252, 162, 143, 0.6)',
+  lime: 'rgba(92, 216, 201, 0.6)',
+  violet: 'rgba(155, 142, 255, 0.6)',
+  violetDeep: 'rgba(212, 117, 255, 0.6)',
+  yellowGreen: 'rgba(166, 218, 114, 0.6)',
+  lafTeal: 'rgba(72, 213, 186, 0.6)',
+  skyBlue: 'rgba(137, 229, 255, 0.6)',
+  salmon: 'rgba(255, 160, 160, 0.6)',
+  gray: 'rgba(136, 136, 136, 0.6)'
+};

@@ -28,6 +28,7 @@ import {
   FlowNodeTypeEnum,
   AppNodeFlowNodeTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
+import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { workflowSystemNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
@@ -233,7 +234,11 @@ const NodeTemplateList = ({
         const templateNode = await (async () => {
           try {
             if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
-              return await getToolPreviewNode({ appId: template.id });
+              const node = await getToolPreviewNode({ appId: template.id });
+              return {
+                ...node,
+                colorSchema: node.colorSchema ?? getColorSchemaByFlowNodeType(node.flowNodeType)
+              };
             }
 
             const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);

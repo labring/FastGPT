@@ -1,4 +1,4 @@
-import type { OutLinkChatAuthProps } from '../../support/permission/chat.d';
+import type { OutLinkChatAuthProps } from '../../support/permission/chat';
 
 export type preUploadImgProps = OutLinkChatAuthProps & {
   // expiredTime?: Date;

@@ -1,4 +1,11 @@
-import { Client, type RemoveOptions, type CopyConditions, S3Error } from 'minio';
+import {
+  Client,
+  type RemoveOptions,
+  type CopyConditions,
+  S3Error,
+  InvalidObjectNameError,
+  InvalidXMLError
+} from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -10,11 +17,32 @@ import {
 import { defaultS3Options, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addHours, addMinutes } from 'date-fns';
 import { addLog } from '../../system/log';
 import { addS3DelJob } from '../mq';
 import { type Readable } from 'node:stream';
+import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+
+// Check if the error is a "file not found" type error, which should be treated as success
+export const isFileNotFoundError = (error: any): boolean => {
+  if (error instanceof S3Error) {
+    // Handle various "not found" error codes
+    return (
+      error.code === 'NoSuchKey' ||
+      error.code === 'InvalidObjectName' ||
+      error.message === 'Not Found' ||
+      error.message ===
+        'The request signature we calculated does not match the signature you provided. Check your key and signing method.' ||
+      error.message.includes('Resource name contains bad components') ||
+      error.message.includes('Object name contains unsupported characters.')
+    );
+  }
+  if (error instanceof InvalidObjectNameError || error instanceof InvalidXMLError) {
+    return true;
+  }
+  return false;
+};
 
 export class S3BaseBucket {
   private _client: Client;
@@ -26,7 +54,7 @@ export class S3BaseBucket {
    * @param options the options for the s3 client
    */
   constructor(
-    private readonly bucketName: string,
+    public readonly bucketName: string,
     public options: Partial<S3OptionsType> = defaultS3Options
   ) {
     options = { ...defaultS3Options, ...options };
@@ -51,23 +79,23 @@ export class S3BaseBucket {
         accessKey: options.accessKey,
         secretKey: options.secretKey,
         pathStyle: options.pathStyle,
-        transportAgent: options.transportAgent
+        region: options.region
       });
     }
 
     const init = async () => {
-      if (!(await this.exist())) {
+      // Not exists bucket, create it
+      if (!(await this.client.bucketExists(this.bucketName))) {
         await this.client.makeBucket(this.bucketName);
       }
       await this.options.afterInit?.();
-      console.log(`S3 init success: ${this.name}`);
+      console.log(`S3 init success: ${this.bucketName}`);
     };
-    init();
+    if (this.options.init) {
+      init();
+    }
   }
 
-  get name(): string {
-    return this.bucketName;
-  }
   get client(): Client {
     return this._client;
   }
@@ -93,7 +121,7 @@ export class S3BaseBucket {
         temporary: false
       }
     });
-    await this.delete(from);
+    await this.removeObject(from);
   }
 
   async copy({
@@ -108,62 +136,67 @@ export class S3BaseBucket {
       copyConditions?: CopyConditions;
     };
   }): ReturnType<Client['copyObject']> {
-    const bucket = this.name;
+    const bucket = this.bucketName;
     if (options?.temporary) {
       await MongoS3TTL.create({
         minioKey: to,
-        bucketName: this.name,
+        bucketName: this.bucketName,
         expiredTime: addHours(new Date(), 24)
       });
     }
     return this.client.copyObject(bucket, to, `${bucket}/${from}`, options?.copyConditions);
   }
 
-  exist(): Promise<boolean> {
-    return this.client.bucketExists(this.name);
+  async removeObject(objectKey: string, options?: RemoveOptions): Promise<void> {
+    return this.client.removeObject(this.bucketName, objectKey, options).catch((err) => {
+      if (isFileNotFoundError(err)) {
+        return Promise.resolve();
+      }
+      addLog.error(`[S3 delete error]`, {
+        message: err.message,
+        data: { code: err.code, key: objectKey }
+      });
+      throw err;
+    });
   }
 
-  async delete(objectKey: string, options?: RemoveOptions): Promise<void> {
+  // 列出文件
+  listObjectsV2(
+    ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
+  ) {
+    return this.client.listObjectsV2(this.bucketName, ...params);
+  }
+
+  // 上传文件
+  putObject(...params: Parameters<Client['putObject']> extends [string, ...infer R] ? R : never) {
+    return this.client.putObject(this.bucketName, ...params);
+  }
+
+  // 获取文件流
+  getFileStream(
+    ...params: Parameters<Client['getObject']> extends [string, ...infer R] ? R : never
+  ) {
+    return this.client.getObject(this.bucketName, ...params);
+  }
+
+  // 获取文件状态
+  async statObject(
+    ...params: Parameters<Client['statObject']> extends [string, ...infer R] ? R : never
+  ) {
     try {
-      if (!objectKey) return Promise.resolve();
-
-      // 把连带的 parsed 数据一起删除
-      const fileParsedPrefix = `${path.dirname(objectKey)}/${path.basename(objectKey, path.extname(objectKey))}-parsed`;
-      await this.addDeleteJob({ prefix: fileParsedPrefix });
-
-      return await this.client.removeObject(this.name, objectKey, options);
+      return await this.client.statObject(this.bucketName, ...params);
     } catch (error) {
-      if (error instanceof S3Error) {
-        if (error.code === 'InvalidObjectName') {
-          addLog.warn(`${this.name} delete object not found: ${objectKey}`, error);
-          return Promise.resolve();
-        }
+      if (error instanceof S3Error && error.message === 'Not Found') {
+        return null;
       }
       return Promise.reject(error);
     }
   }
 
-  listObjectsV2(
-    ...params: Parameters<Client['listObjectsV2']> extends [string, ...infer R] ? R : never
-  ) {
-    return this.client.listObjectsV2(this.name, ...params);
-  }
-
-  putObject(...params: Parameters<Client['putObject']> extends [string, ...infer R] ? R : never) {
-    return this.client.putObject(this.name, ...params);
-  }
-
-  getObject(...params: Parameters<Client['getObject']> extends [string, ...infer R] ? R : never) {
-    return this.client.getObject(this.name, ...params);
-  }
-
-  statObject(...params: Parameters<Client['statObject']> extends [string, ...infer R] ? R : never) {
-    return this.client.statObject(this.name, ...params);
-  }
-
+  // 判断文件是否存在
   async isObjectExists(key: string): Promise<boolean> {
     try {
-      await this.client.statObject(this.name, key);
+      await this.client.statObject(this.bucketName, key);
       return true;
     } catch (err) {
       if (err instanceof S3Error && err.message === 'Not Found') {
@@ -173,6 +206,7 @@ export class S3BaseBucket {
     }
   }
 
+  // 将文件流转换为Buffer
   async fileStreamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
@@ -182,7 +216,7 @@ export class S3BaseBucket {
   }
 
   addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {
-    return addS3DelJob({ ...params, bucketName: this.name });
+    return addS3DelJob({ ...params, bucketName: this.bucketName });
   }
 
   async createPostPresignedUrl(
@@ -200,7 +234,7 @@ export class S3BaseBucket {
 
       const policy = this.externalClient.newPostPolicy();
       policy.setKey(key);
-      policy.setBucket(this.name);
+      policy.setBucket(this.bucketName);
       policy.setContentType(contentType);
       if (formatMaxFileSize) {
         policy.setContentLengthRange(1, formatMaxFileSize);
@@ -218,7 +252,7 @@ export class S3BaseBucket {
       if (expiredHours) {
         await MongoS3TTL.create({
           minioKey: key,
-          bucketName: this.name,
+          bucketName: this.bucketName,
           expiredTime: addHours(new Date(), expiredHours)
         });
       }
@@ -240,7 +274,7 @@ export class S3BaseBucket {
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.externalClient.presignedGetObject(this.name, key, expires);
+    return await this.externalClient.presignedGetObject(this.bucketName, key, expires);
   }
 
   async createPreviewUrl(params: createPreviewUrlParams) {
@@ -249,6 +283,45 @@ export class S3BaseBucket {
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.client.presignedGetObject(this.name, key, expires);
+    return await this.client.presignedGetObject(this.bucketName, key, expires);
+  }
+
+  async uploadFileByBuffer(params: UploadFileByBufferParams) {
+    const { key, buffer, contentType } = UploadFileByBufferSchema.parse(params);
+
+    await MongoS3TTL.create({
+      minioKey: key,
+      bucketName: this.bucketName,
+      expiredTime: addHours(new Date(), 1)
+    });
+    await this.putObject(key, buffer, undefined, {
+      'Content-Type': contentType || 'application/octet-stream'
+    });
+
+    return {
+      key,
+      accessUrl: await this.createExternalUrl({
+        key,
+        expiredHours: 2
+      })
+    };
+  }
+
+  // 对外包装的方法
+  // 获取文件元数据
+  async getFileMetadata(key: string) {
+    const stat = await this.statObject(key);
+    if (!stat) return;
+
+    const contentLength = stat.size;
+    const filename: string = decodeURIComponent(stat.metaData['origin-filename']);
+    const extension = parseFileExtensionFromUrl(filename);
+    const contentType: string = stat.metaData['content-type'];
+    return {
+      filename,
+      extension,
+      contentType,
+      contentLength
+    };
   }
 }

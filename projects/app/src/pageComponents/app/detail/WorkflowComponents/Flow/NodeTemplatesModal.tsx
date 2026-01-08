@@ -68,7 +68,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         zIndex={3}
         flexDirection={'column'}
         position={'absolute'}
-        top={'10px'}
+        top={20}
         left={0}
         pt={5}
         pb={4}

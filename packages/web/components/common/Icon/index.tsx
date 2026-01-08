@@ -3,7 +3,6 @@ import type { IconProps } from '@chakra-ui/react';
 import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
 import type { IconNameType } from './type.d';
-import { useRefresh } from '../../../hooks/useRefresh';
 
 const iconCache: Record<string, any> = {};
 

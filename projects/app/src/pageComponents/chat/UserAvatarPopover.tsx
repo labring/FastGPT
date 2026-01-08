@@ -46,7 +46,7 @@ const UserAvatarPopover = ({
         {({ onClose }) => {
           const onLogout = useCallback(() => {
             onClose();
-            openConfirm(handleLogout)();
+            openConfirm({ onConfirm: handleLogout })();
           }, [onClose]);
 
           return (

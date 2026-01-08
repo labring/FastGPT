@@ -556,11 +556,20 @@ const Checkbox = checkBoxMultiStyle({
           bg: 'myGray.100',
           borderColor: 'transparent',
           color: 'myGray.400',
-          outline: 'none'
+          outline: 'none',
+          _hover: {
+            bg: 'myGray.100',
+            borderColor: 'transparent'
+          }
         }
       },
       _hover: {
         borderColor: 'primary.400'
+      },
+      _disabled: {
+        _hover: {
+          borderColor: 'inherit'
+        }
       }
     }
   }),

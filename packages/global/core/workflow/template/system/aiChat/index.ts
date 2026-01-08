@@ -49,6 +49,8 @@ export const AiChatModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/aiChat',
+  avatarLinear: 'core/workflow/template/aiChatLinear',
+  colorSchema: 'blueDark',
   name: i18nT('workflow:template.ai_chat'),
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,

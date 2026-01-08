@@ -12,6 +12,8 @@ export const PluginInputModule: FlowNodeTemplateType = {
   unique: true,
   forbidDelete: true,
   avatar: 'core/workflow/template/workflowStart',
+  avatarLinear: 'core/workflow/template/workflowStartLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:plugin_input'),
   intro: i18nT('workflow:intro_plugin_input'),
   showStatus: false,

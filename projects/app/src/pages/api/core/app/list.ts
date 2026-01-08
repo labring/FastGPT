@@ -11,7 +11,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppDefaultRoleVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -24,7 +23,6 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 export type ListAppBody = {
   parentId?: ParentIdType;
   type?: AppTypeEnum | AppTypeEnum[];
-  getRecentlyChat?: boolean;
   searchKey?: string;
 };
 
@@ -39,7 +37,7 @@ export type ListAppBody = {
 */
 
 async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemType[]> {
-  const { parentId, type, getRecentlyChat, searchKey } = req.body;
+  const { parentId, type, searchKey } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -95,14 +93,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   );
 
   const findAppsQuery = (() => {
-    if (getRecentlyChat) {
-      return {
-        // get all chat app, excluding hidden apps
-        teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.workflowTool] }
-      };
-    }
-
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
@@ -154,13 +144,12 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     };
   })();
   const limit = (() => {
-    if (getRecentlyChat) return 15;
     if (searchKey) return 50;
     return;
   })();
 
   const myApps = await MongoApp.find(
-    findAppsQuery,
+    { ...findAppsQuery, deleteTime: null },
     '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
     {
       limit: limit

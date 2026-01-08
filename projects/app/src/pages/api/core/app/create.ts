@@ -33,6 +33,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -242,6 +243,10 @@ export const onCreateApp = async ({
     });
 
     await getS3AvatarSource().refreshAvatar(_avatar, undefined, session);
+
+    updateParentFoldersUpdateTime({
+      parentId
+    });
 
     (async () => {
       addAuditLog({

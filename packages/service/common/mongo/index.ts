@@ -49,17 +49,34 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     schema.post(op, function (this: any, result: any, next) {
       if (this._startTime) {
         const duration = Date.now() - this._startTime;
-        const warnLogData = {
-          collectionName: this.collection?.name,
-          op: this.op,
-          ...(this._query && { query: this._query }),
-          ...(this._update && { update: this._update }),
-          ...(this._delete && { delete: this._delete }),
-          duration
+
+        const getLogData = () => {
+          const collectionName = this.model?.collection?.name || this._model?.collection?.name;
+          const op = (() => {
+            if (this.op) return this.op;
+            if (this._pipeline) {
+              return 'aggregate';
+            }
+            if (this.constructor?.name === 'model') {
+              return 'save/create';
+            }
+            return this.constructor?.name || 'unknown';
+          })();
+          return {
+            duration,
+            collectionName,
+            op,
+            ...(this._query && { query: this._query }),
+            ...(this._pipeline && { pipeline: this._pipeline }),
+            ...(this._update && { update: this._update }),
+            ...(this._delete && { delete: this._delete })
+          };
         };
 
-        if (duration > 1000) {
-          addLog.warn(`Slow operation ${duration}ms`, warnLogData);
+        if (duration > 2000) {
+          addLog.warn(`[Mongo Slow] Level2`, getLogData());
+        } else if (duration > 500) {
+          addLog.warn(`[Mongo Slow] Level1`, getLogData());
         }
       }
       next();
@@ -112,7 +129,6 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionLogMongo.models[name]) return connectionLogMongo.models[name] as Model<T>;
   console.log('Load model======', name);
-  // addCommonMiddleware(schema); 
 
   const model = connectionLogMongo.model<T>(name, schema);
 

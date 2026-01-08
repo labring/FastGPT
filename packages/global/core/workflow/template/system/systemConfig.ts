@@ -10,6 +10,8 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   showSourceHandle: false,
   showTargetHandle: false,
   avatar: 'core/workflow/template/systemConfig',
+  avatarLinear: 'core/workflow/template/systemConfigLinear',
+  colorSchema: 'pink',
   name: i18nT('workflow:template.system_config'),
   intro: '',
   unique: true,

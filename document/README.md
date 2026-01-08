@@ -1,6 +1,6 @@
 # FastGPT 文档
 
-这是FastGPT的官方文档，采用fumadoc框架。
+这是FastGPT的官方文档，采用 fumadoc 框架。
 ## 运行项目
 
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
@@ -12,7 +12,7 @@ FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 你可以在FastGPT项目根目录下执行以下命令来运行文档。
 
 ```bash
-npm install #只能npm install，不能pnpm
+npm install # 只能 npm install，不能 pnpm
 npm run dev
 ```
 项目会默认跑在`http:localhost:3000`端口

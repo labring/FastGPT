@@ -23,6 +23,8 @@ import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
+import { useContextSelector } from 'use-context-selector';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const CollectionReader = ({
   rawSearch,
@@ -37,6 +39,8 @@ const CollectionReader = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
 
+  const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
+
   const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
@@ -49,7 +53,12 @@ const CollectionReader = ({
   const filterResults = useMemo(() => {
     const res = rawSearch
       .filter((item) => item.collectionId === collectionId)
-      .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+      .sort((a, b) => {
+        const chunkDiff = (a.chunkIndex || 0) - (b.chunkIndex || 0);
+        if (chunkDiff !== 0) return chunkDiff;
+
+        return a.id.localeCompare(b.id);
+      });
 
     if (quoteId) {
       setQuoteIndex(res.findIndex((item) => item.id === quoteId));
@@ -65,7 +74,7 @@ const CollectionReader = ({
     if (item) {
       return {
         id: item.id,
-        index: item.chunkIndex,
+        anchor: item.chunkIndex,
         score: item.score
       };
     }
@@ -170,11 +179,13 @@ const CollectionReader = ({
               {sourceName || t('common:unknow_source')}
             </Box>
             <Box ml={3}>
-              <DownloadButton
-                canAccessRawData={true}
-                onDownload={handleDownload}
-                onRead={handleRead}
-              />
+              {canDownloadSource && (
+                <DownloadButton
+                  canAccessRawData={true}
+                  onDownload={handleDownload}
+                  onRead={handleRead}
+                />
+              )}
             </Box>
           </Flex>
           <MyIconButton

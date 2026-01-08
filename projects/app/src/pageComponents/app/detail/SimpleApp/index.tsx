@@ -82,7 +82,7 @@ const SimpleEdit = () => {
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
-          fileSelectConfig: appDetail.chatConfig.fileSelectConfig || {
+          fileSelectConfig: appDetail.chatConfig?.fileSelectConfig || {
             ...defaultAppSelectFileConfig,
             canSelectFile: true
           }
@@ -123,7 +123,7 @@ const SimpleEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
+        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]} bg={'white'} borderRadius={'lg'}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>

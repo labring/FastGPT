@@ -9,7 +9,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useTranslation } from 'react-i18next';
 import { useMount } from 'ahooks';
@@ -43,8 +43,8 @@ const ChatSetting = () => {
   );
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   const handleTabChange = useCallback(
     (tab: ChatSettingTabOptionEnum) => {

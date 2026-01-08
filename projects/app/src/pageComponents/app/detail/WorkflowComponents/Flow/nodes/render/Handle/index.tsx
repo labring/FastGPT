@@ -13,9 +13,9 @@ import { Box, Flex } from '@chakra-ui/react';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
-const handleSizeConnected = 16;
-const handleSizeConnecting = 30;
-const handleAddIconSize = 22;
+const handleSizeConnected = 24;
+const handleSizeConnecting = 32;
+const handleAddIconSize = 24;
 
 const sourceCommonStyle = {
   backgroundColor: 'white',
@@ -27,7 +27,8 @@ const handleConnectedStyle = {
   borderWidth: '3px',
   borderColor: '#94B5FF',
   width: handleSizeConnected,
-  height: handleSizeConnected
+  height: handleSizeConnected,
+  zIndex: 15
 };
 
 const handleHighLightStyle = {
@@ -38,7 +39,8 @@ const handleHighLightStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   width: handleSizeConnecting,
-  height: handleSizeConnecting
+  height: handleSizeConnecting,
+  zIndex: 15
 };
 
 type Props = {
@@ -63,12 +65,10 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 
   const edgesData = useContextSelector(WorkflowBufferDataContext, (v) => {
     return {
-      connected: v.edges.some((edge) => edge.sourceHandle === handleId),
-      nodeFolded: node?.isFolded && v.edges.some((edge) => edge.source === nodeId)
+      connected: v.edges.some((edge) => edge.sourceHandle === handleId)
     };
   });
   const connected = edgesData.connected;
-  const nodeFolded = edgesData.nodeFolded;
 
   const nodeIsHover = hoverNodeId === nodeId;
   const active = useMemo(
@@ -79,7 +79,8 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   const translateStr = useMemo(() => {
     if (!translate) return '';
     if (position === Position.Right) {
-      return `${active ? translate[0] + 6 : translate[0]}px, -50%`;
+      const offset = active ? 8 : 5;
+      return `${translate[0] + offset}px, -50%`;
     }
   }, [active, position, translate]);
 
@@ -94,7 +95,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       };
     }
 
-    if (connected || nodeFolded) {
+    if (connected) {
       return {
         styles: {
           ...handleConnectedStyle,
@@ -110,7 +111,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       },
       showAddIcon: false
     };
-  }, [active, connected, nodeFolded, translateStr]);
+  }, [active, connected, translateStr]);
 
   if (!node) return null;
   if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
@@ -153,7 +154,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 });
 
 export const MyTargetHandle = React.memo(function MyTargetHandle({
-  nodeId,
+  nodeId: _nodeId,
   handleId,
   position,
   translate,
@@ -170,7 +171,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
     if (!translate) return '';
 
     if (position === Position.Left) {
-      return `${connectingEdge ? translate[0] - 6 : translate[0]}px, -50%`;
+      const offset = connectingEdge ? -8 : -5;
+      return `${translate[0] + offset}px, -50%`;
     }
   }, [connectingEdge, position, translate]);
 
@@ -195,7 +197,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
       };
     }
     return {
-      visibility: 'hidden' as const
+      visibility: 'hidden' as const,
+      zIndex: 15
     };
   }, [connected, connectingEdge, showHandle, translateStr]);
 

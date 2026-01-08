@@ -25,6 +25,32 @@ export const BillListResponseSchema = z.object({
 });
 export type GetBillListResponseType = z.infer<typeof BillListResponseSchema>;
 
+// Bill detail
+export const BillDetailQuerySchema = z.object({
+  billId: ObjectIdSchema.meta({ description: '订单 ID' })
+});
+export type BillDetailQueryType = z.infer<typeof BillDetailQuerySchema>;
+export const BillDetailResponseSchema = BillSchema.safeExtend({
+  discountCouponName: z.string().optional(),
+  couponDetail: z
+    .object({
+      key: z.string(),
+      type: z.enum(CouponTypeEnum),
+      subscriptions: z.array(
+        z.object({
+          type: z.enum(SubTypeEnum),
+          durationDay: z.number(),
+          totalPoints: z.number().optional(),
+          level: z.enum(StandardSubLevelEnum).optional(),
+          extraDatasetSize: z.number().optional(),
+          customConfig: z.record(z.string(), z.any()).optional()
+        })
+      )
+    })
+    .optional()
+});
+export type BillDetailResponseType = z.infer<typeof BillDetailResponseSchema>;
+
 // Create
 export const CreateStandPlanBillSchema = z
   .object({
@@ -88,30 +114,14 @@ export const CheckPayResultResponseSchema = z.object({
 });
 export type CheckPayResultResponseType = z.infer<typeof CheckPayResultResponseSchema>;
 
-// Bill detail
-export const BillDetailResponseSchema = BillSchema.safeExtend({
-  discountCouponName: z.string().optional(),
-  couponDetail: z
-    .object({
-      key: z.string(),
-      type: z.enum(CouponTypeEnum),
-      subscriptions: z.array(
-        z.object({
-          type: z.enum(SubTypeEnum),
-          durationDay: z.number(),
-          totalPoints: z.number().optional(),
-          level: z.enum(StandardSubLevelEnum).optional(),
-          extraDatasetSize: z.number().optional(),
-          customConfig: z.record(z.string(), z.any()).optional()
-        })
-      )
-    })
-    .optional()
-});
-export type BillDetailResponseType = z.infer<typeof BillDetailResponseSchema>;
-
 // Cancel bill
 export const CancelBillPropsSchema = z.object({
   billId: ObjectIdSchema.meta({ description: '订单 ID' })
 });
 export type CancelBillPropsType = z.infer<typeof CancelBillPropsSchema>;
+
+// Check pay result
+export const CheckPayResultQuerySchema = z.object({
+  payId: ObjectIdSchema.meta({ description: '订单 ID' })
+});
+export type CheckPayResultQueryType = z.infer<typeof CheckPayResultQuerySchema>;

@@ -433,7 +433,7 @@ const TestResults = React.memo(function TestResults({
               similarity={datasetTestItem.similarity}
               limit={datasetTestItem.limit}
               usingReRank={datasetTestItem.usingReRank}
-              datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
+              usingExtensionQuery={!!datasetTestItem.queryExtensionModel}
               queryExtensionModel={datasetTestItem.queryExtensionModel}
             />
           </Box>
@@ -449,7 +449,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource canEditData />
+                <QuoteItem quoteItem={item} canDownloadSource canEditData />
               </Box>
             ))}
           </Box>

@@ -269,7 +269,7 @@ export function useScrollPagination<
       } catch (error: any) {
         if (showErrorToast) {
           toast({
-            title: getErrText(error, t('common:core.chat.error.data_error')),
+            title: t(getErrText(error, t('common:core.chat.error.data_error'))),
             status: 'error'
           });
         }

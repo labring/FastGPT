@@ -59,10 +59,11 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { clone } from 'lodash';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
+import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 
 type Props = Omit<
   ChatDispatchProps,
-  'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'cloneVariables'
+  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'cloneVariables'
 > & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
@@ -87,7 +88,17 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive, histories, query } = data;
+  const {
+    res,
+    stream,
+    runningUserInfo,
+    runningAppInfo,
+    lastInteractive,
+    histories,
+    query,
+    chatId,
+    apiVersion
+  } = data;
 
   // Check url valid
   const invalidInput = query.some((item) => {
@@ -101,6 +112,8 @@ export async function dispatchWorkFlow({
     addLog.info('[Workflow run] Invalid file url');
     return Promise.reject(new UserError('Invalid file url'));
   }
+
+  /* Init function */
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
@@ -120,7 +133,22 @@ export async function dispatchWorkFlow({
         });
       }
       return usageId;
-    })()
+    })(),
+    // Add preview url to chat items
+    await addPreviewUrlToChatItems(histories, 'chatFlow'),
+    // Add preview url to query
+    ...query.map(async (item) => {
+      if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) return;
+      item.file.url = await getS3ChatSource().createGetChatFileURL({
+        key: item.file.key,
+        external: true
+      });
+    }),
+    // Remove stopping sign
+    delAgentRuntimeStopSign({
+      appId: runningAppInfo.id,
+      chatId
+    })
   ]);
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
@@ -152,16 +180,6 @@ export async function dispatchWorkFlow({
     }
   }
 
-  // Add preview url to chat items
-  await addPreviewUrlToChatItems(histories, 'chatFlow');
-  for (const item of query) {
-    if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) continue;
-    item.file.url = await getS3ChatSource().createGetChatFileURL({
-      key: item.file.key,
-      external: true
-    });
-  }
-
   // Get default variables
   const cloneVariables = clone(data.variables);
   const defaultVariables = {
@@ -173,12 +191,34 @@ export async function dispatchWorkFlow({
       timezone
     }))
   };
-
+  // MCP
   let mcpClientMemory = {} as Record<string, MCPClient>;
+  // Stop sign(没有 apiVersion，说明不会有暂停)
+  let stopping = false;
+  const checkIsStopping = (): boolean => {
+    if (apiVersion === 'v2') {
+      return stopping;
+    }
+    if (apiVersion === 'v1') {
+      if (!res) return false;
+      return res.closed || !!res.errored;
+    }
+    return false;
+  };
+  const checkStoppingTimer =
+    apiVersion === 'v2'
+      ? setInterval(async () => {
+          stopping = await shouldWorkflowStop({
+            appId: runningAppInfo.id,
+            chatId
+          });
+        }, 100)
+      : undefined;
 
   // Init some props
   return runWorkflow({
     ...data,
+    checkIsStopping,
     query,
     histories,
     timezone,
@@ -189,14 +229,23 @@ export async function dispatchWorkFlow({
     concatUsage,
     mcpClientMemory,
     cloneVariables
-  }).finally(() => {
+  }).finally(async () => {
     if (streamCheckTimer) {
       clearInterval(streamCheckTimer);
+    }
+    if (checkStoppingTimer) {
+      clearInterval(checkStoppingTimer);
     }
 
     // Close mcpClient connections
     Object.values(mcpClientMemory).forEach((client) => {
       client.closeConnection();
+    });
+
+    // 工作流完成后删除 Redis 记录
+    await delAgentRuntimeStopSign({
+      appId: runningAppInfo.id,
+      chatId
     });
   });
 }
@@ -210,14 +259,14 @@ type RunWorkflowProps = ChatDispatchProps & {
 };
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   let {
-    res,
+    apiVersion,
+    checkIsStopping,
     runtimeNodes = [],
     runtimeEdges = [],
     histories = [],
     variables = {},
     externalProvider,
     retainDatasetCite = true,
-    version = 'v1',
     responseDetail = true,
     responseAllData = true,
     usageId,
@@ -328,10 +377,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       });
     }
 
-    get connectionIsActive(): boolean {
-      return !res?.closed && !res?.errored;
-    }
-
     // Add active node to queue (if already in the queue, it will not be added again)
     addActiveNode(nodeId: string) {
       if (this.activeRunQueue.has(nodeId)) {
@@ -342,7 +387,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.processActiveNode();
     }
     // Process next active node
-    private processActiveNode() {
+    private async processActiveNode() {
       // Finish
       if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
         if (isDebugMode) {
@@ -369,6 +414,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
+      await surrenderProcess();
       const nodeId = this.activeRunQueue.keys().next().value;
       const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
 
@@ -383,10 +429,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.processActiveNode();
         });
       }
-      // 兜底，除非极端情况，否则不可能触发
-      else {
-        this.processActiveNode();
-      }
     }
 
     private addSkipNode(node: RuntimeNodeItemType, skippedNodeIdList: Set<string>) {
@@ -398,8 +440,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       this.skipNodeQueue.set(node.nodeId, { node, skippedNodeIdList: concatSkippedNodeIdList });
     }
-    private processSkipNodes() {
+    private async processSkipNodes() {
       // 取一个 node，并且从队列里删除
+      await surrenderProcess();
       const skipItem = this.skipNodeQueue.values().next().value;
       if (skipItem) {
         this.skipNodeQueue.delete(skipItem.node.nodeId);
@@ -585,7 +628,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       })();
 
       // Response node response
-      if (version === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
+      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
         data.workflowStreamResponse?.({
           event: SseResponseEventEnum.flowNodeResponse,
           data: responseAllData
@@ -813,17 +856,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         });
         return;
       }
-      if (!this.connectionIsActive) {
-        addLog.warn('Request is closed/errored', {
+      if (checkIsStopping()) {
+        addLog.warn('Workflow stopped', {
           appId: data.runningAppInfo.id,
           nodeId: node.nodeId,
           nodeName: node.name
         });
         return;
       }
-
-      // Thread avoidance
-      await surrenderProcess();
 
       addLog.debug(`Run node`, { maxRunTimes: data.maxRunTimes, appId: data.runningAppInfo.id });
 
@@ -836,6 +876,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const nodeRunResult = await (async () => {
         if (status === 'run') {
+          // All source edges status to waiting
+          runtimeEdges.forEach((item) => {
+            if (item.target === node.nodeId) {
+              item.status = 'waiting';
+            }
+          });
+
           const blanceCheckResult = await this.checkTeamBlance();
           if (blanceCheckResult) {
             return {
@@ -844,13 +891,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               result: blanceCheckResult
             };
           }
-
-          // All source edges status to waiting
-          runtimeEdges.forEach((item) => {
-            if (item.target === node.nodeId) {
-              item.status = 'waiting';
-            }
-          });
 
           addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return this.nodeRunWithActive(node);

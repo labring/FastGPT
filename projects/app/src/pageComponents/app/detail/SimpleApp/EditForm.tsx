@@ -282,7 +282,7 @@ const EditForm = ({
                 similarity={appForm.dataset.similarity}
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
-                datasetSearchUsingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
+                usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
                 queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
               />
             </Box>

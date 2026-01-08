@@ -9,8 +9,8 @@ import { WorkflowBufferDataContext } from '../../../../context/workflowInitConte
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
-const handleSize = '16px';
-const activeHandleSize = '20px';
+const handleSize = '20px';
+const activeHandleSize = '24px';
 const handleId = NodeOutputKeyEnum.selectedTools;
 
 type ToolHandleProps = BoxProps & {
@@ -44,7 +44,8 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: '-10px',
+          top: active ? '-14px' : '-10px',
+          zIndex: 30,
           ...(showHandle ? {} : { visibility: 'hidden' })
         }}
         type="target"
@@ -109,7 +110,8 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bottom: '-10px'
+            bottom: active ? '-14px' : '-10px',
+            zIndex: 30
           }}
           type="source"
           id={NodeOutputKeyEnum.selectedTools}

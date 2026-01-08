@@ -10,17 +10,17 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  Checkbox
 } from '@chakra-ui/react';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
-import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -41,16 +41,24 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api/log';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { AppLogsListItemType } from '@/types/app';
+import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
+import FeedbackTypeFilter from './FeedbackTypeFilter';
+import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { I18nName } from '@fastgpt/service/common/geo/type';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
+import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -65,10 +73,14 @@ const LogTable = ({
   showSourceSelector = true,
   px = [4, 8]
 }: HeaderControlProps) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
+  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+  const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
 
   // source
   const sourceList = useMemo(
@@ -141,39 +153,35 @@ const LogTable = ({
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
-  const { runAsync: exportLogs } = useRequest2(
-    async () => {
-      const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
-      await downloadFetch({
-        url: '/api/core/app/exportChatLogs',
-        filename: 'chat_logs.csv',
-        body: {
-          appId,
-          dateStart: dayjs(dateRange.from || new Date()).format(),
-          dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
-          sources: isSelectAllSource ? undefined : chatSources,
-          tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
-          chatSearch,
-          locale: i18n.language === 'zh-CN' ? 'zh' : 'en',
-          title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
-          logKeys: enabledKeys,
-          sourcesMap: Object.fromEntries(
-            Object.entries(ChatSourceMap).map(([key, config]) => [
-              key,
-              {
-                label: t(config.name as any)
-              }
-            ])
-          )
-        }
-      });
-    },
-    {
-      refreshDeps: [chatSources]
-    }
-  );
-  const params = useMemo(
+  const { runAsync: exportLogs } = useRequest2(async () => {
+    const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
+    const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+    await downloadFetch({
+      url: '/api/core/app/logs/exportLogs',
+      filename: t('app:export_log_filename', { name: appName }),
+      body: {
+        appId,
+        dateStart: dayjs(dateRange.from || new Date()).format(),
+        dateEnd: dayjs(dateRange.to || new Date()).format(),
+        sources: isSelectAllSource ? undefined : chatSources,
+        tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
+        chatSearch,
+        title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
+        logKeys: enabledKeys,
+        sourcesMap: Object.fromEntries(
+          Object.entries(ChatSourceMap).map(([key, config]) => [
+            key,
+            {
+              label: t(config.name as any)
+            }
+          ])
+        ),
+        feedbackType,
+        unreadOnly
+      }
+    });
+  });
+  const params = useMemoEnhance(
     () => ({
       appId,
       dateStart: dateRange.from!,
@@ -181,7 +189,8 @@ const LogTable = ({
       sources: isSelectAllSource ? undefined : chatSources,
       tmbIds: isSelectAllTmb ? undefined : selectTmbIds,
       chatSearch,
-      locale: (i18n.language === 'zh-CN' ? 'zh' : 'en') as keyof I18nName
+      feedbackType,
+      unreadOnly: feedbackType === 'all' ? undefined : unreadOnly
     }),
     [
       appId,
@@ -192,7 +201,8 @@ const LogTable = ({
       selectTmbIds,
       isSelectAllTmb,
       chatSearch,
-      i18n.language
+      feedbackType,
+      unreadOnly
     ]
   );
 
@@ -210,7 +220,34 @@ const LogTable = ({
     refreshDeps: [params]
   });
 
-  const HeaderRenderMap = useMemo(
+  const {
+    selectedItems,
+    toggleSelect,
+    isSelected,
+    FloatingActionBar,
+    isSelecteAll,
+    selectAllTrigger
+  } = useTableMultipleSelect({
+    list: logs,
+    getItemId: (item) => item._id
+  });
+  const chatIds = useMemoEnhance(() => selectedItems.map((item) => item.chatId), [selectedItems]);
+
+  const { openConfirm: openConfirmDelete, ConfirmModal: ConfirmDeleteModal } = useConfirm({
+    type: 'delete'
+  });
+
+  const { runAsync: handleDelete } = useRequest2(
+    async (chatIds: string[]) => {
+      await batchDeleteChatHistories({ appId, chatIds });
+      await getData(pageNum);
+    },
+    {
+      successToast: t('common:delete_success')
+    }
+  );
+
+  const HeaderRenderMap = useMemoEnhance(
     () => ({
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -222,7 +259,22 @@ const LogTable = ({
         </Th>
       ),
       [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
-      [AppLogKeysEnum.REGION]: <Th key={AppLogKeysEnum.REGION}>{t('app:logs_keys_region')}</Th>,
+      [AppLogKeysEnum.REGION]: (
+        <Th key={AppLogKeysEnum.REGION}>
+          <UserIpTypeFilter
+            userIpType={userIpType}
+            setUserIpType={setUserIpType}
+            menuButtonProps={{
+              fontSize: '12.8px',
+              fontWeight: 'medium',
+              color: 'myGray.600',
+              px: 0,
+              _hover: {},
+              _active: {}
+            }}
+          />
+        </Th>
+      ),
       [AppLogKeysEnum.TITLE]: <Th key={AppLogKeysEnum.TITLE}>{t('app:logs_title')}</Th>,
       [AppLogKeysEnum.SESSION_ID]: (
         <Th key={AppLogKeysEnum.SESSION_ID}>{t('app:logs_keys_sessionId')}</Th>
@@ -230,7 +282,25 @@ const LogTable = ({
       [AppLogKeysEnum.MESSAGE_COUNT]: (
         <Th key={AppLogKeysEnum.MESSAGE_COUNT}>{t('app:logs_message_total')}</Th>
       ),
-      [AppLogKeysEnum.FEEDBACK]: <Th key={AppLogKeysEnum.FEEDBACK}>{t('app:feedback_count')}</Th>,
+      [AppLogKeysEnum.FEEDBACK]: (
+        <Th key={AppLogKeysEnum.FEEDBACK}>
+          <FeedbackTypeFilter
+            feedbackType={feedbackType}
+            setFeedbackType={setFeedbackType}
+            unreadOnly={unreadOnly}
+            setUnreadOnly={setUnreadOnly}
+            placement="right"
+            menuButtonProps={{
+              fontSize: '12.8px',
+              fontWeight: 'medium',
+              color: 'myGray.600',
+              px: 0,
+              _hover: {},
+              _active: {}
+            }}
+          />
+        </Th>
+      ),
       [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
         <Th key={AppLogKeysEnum.CUSTOM_FEEDBACK}>
           {t('common:core.app.feedback.Custom feedback')}
@@ -250,101 +320,115 @@ const LogTable = ({
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
       ),
-      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>
+      [AppLogKeysEnum.POINTS]: <Th key={AppLogKeysEnum.POINTS}>{t('app:logs_points')}</Th>,
+      [AppLogKeysEnum.VERSION_NAME]: (
+        <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
+      )
     }),
-    [t]
+    [t, feedbackType, setFeedbackType, unreadOnly, setUnreadOnly, userIpType, setUserIpType]
   );
 
-  const getCellRenderMap = (item: AppLogsListItemType) => ({
-    [AppLogKeysEnum.SOURCE]: (
-      <Td key={AppLogKeysEnum.SOURCE}>
-        {/* @ts-ignore */}
-        {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
-      </Td>
-    ),
-    [AppLogKeysEnum.CREATED_TIME]: (
-      <Td key={AppLogKeysEnum.CREATED_TIME}>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
-    ),
-    [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
-      <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
-        {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
-      </Td>
-    ),
-    [AppLogKeysEnum.USER]: (
-      <Td key={AppLogKeysEnum.USER}>
-        <Box>
-          {!!item.outLinkUid ? item.outLinkUid : <UserBox sourceMember={item.sourceMember} />}
-        </Box>
-      </Td>
-    ),
-    [AppLogKeysEnum.REGION]: <Td key={AppLogKeysEnum.REGION}>{item.region || '-'}</Td>,
-    [AppLogKeysEnum.TITLE]: (
-      <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-        {item.customTitle || item.title}
-      </Td>
-    ),
-    [AppLogKeysEnum.SESSION_ID]: (
-      <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
-        {item.id || '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.MESSAGE_COUNT]: <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>,
-    [AppLogKeysEnum.FEEDBACK]: (
-      <Td key={AppLogKeysEnum.FEEDBACK} w={'100px'}>
-        {!!item?.userGoodFeedbackCount && (
-          <Flex
-            mb={item?.userGoodFeedbackCount ? 1 : 0}
-            bg={'green.100'}
-            color={'green.600'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.600'} w={'14px'} />
-            {item.userGoodFeedbackCount}
+  const getCellRenderMap = useCallback(
+    (item: AppLogsListItemType) => ({
+      [AppLogKeysEnum.SOURCE]: (
+        <Td key={AppLogKeysEnum.SOURCE}>
+          {/* @ts-ignore */}
+          {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+        </Td>
+      ),
+      [AppLogKeysEnum.CREATED_TIME]: (
+        <Td key={AppLogKeysEnum.CREATED_TIME}>
+          {dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}
+        </Td>
+      ),
+      [AppLogKeysEnum.LAST_CONVERSATION_TIME]: (
+        <Td key={AppLogKeysEnum.LAST_CONVERSATION_TIME}>
+          {dayjs(item.updateTime).format('YYYY/MM/DD HH:mm')}
+        </Td>
+      ),
+      [AppLogKeysEnum.USER]: (
+        <Td key={AppLogKeysEnum.USER}>
+          <Box>
+            {!!item.outLinkUid ? (
+              item.outLinkUid
+            ) : item.sourceMember ? (
+              <UserBox sourceMember={item.sourceMember} />
+            ) : (
+              '-'
+            )}
+          </Box>
+        </Td>
+      ),
+      [AppLogKeysEnum.REGION]: (
+        <Td key={AppLogKeysEnum.REGION}>
+          {userIpType === 'only_ip'
+            ? item.originIp || '-'
+            : userIpType === 'only_region'
+              ? item.originIp !== item.region
+                ? item.region || '-'
+                : '-'
+              : item.originIp
+                ? `${item.region || '-'}: ${item.originIp}`
+                : '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.TITLE]: (
+        <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
+          {item.customTitle || item.title}
+        </Td>
+      ),
+      [AppLogKeysEnum.SESSION_ID]: (
+        <Td key={AppLogKeysEnum.SESSION_ID} className="textEllipsis" maxW={'200px'}>
+          {item.chatId || '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.MESSAGE_COUNT]: (
+        <Td key={AppLogKeysEnum.MESSAGE_COUNT}>{item.messageCount}</Td>
+      ),
+      [AppLogKeysEnum.FEEDBACK]: (
+        <Td key={AppLogKeysEnum.FEEDBACK}>
+          <Flex gap={3} px={1}>
+            {!!item?.userGoodFeedbackCount && (
+              <Flex alignItems={'center'}>
+                <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.500'} w={4} />
+                {item.userGoodFeedbackCount}
+              </Flex>
+            )}
+            {!!item?.userBadFeedbackCount && (
+              <Flex alignItems={'center'}>
+                <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'yellow.500'} w={4} />
+                {item.userBadFeedbackCount}
+              </Flex>
+            )}
+            {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
           </Flex>
-        )}
-        {!!item?.userBadFeedbackCount && (
-          <Flex
-            bg={'#FFF2EC'}
-            color={'#C96330'}
-            px={3}
-            py={1}
-            alignItems={'center'}
-            justifyContent={'center'}
-            borderRadius={'md'}
-            fontWeight={'bold'}
-          >
-            <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'#C96330'} w={'14px'} />
-            {item.userBadFeedbackCount}
-          </Flex>
-        )}
-        {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
-      </Td>
-    ),
-    [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
-      <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.ANNOTATED_COUNT]: (
-      <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
-    ),
-    [AppLogKeysEnum.RESPONSE_TIME]: (
-      <Td key={AppLogKeysEnum.RESPONSE_TIME}>
-        {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
-      </Td>
-    ),
-    [AppLogKeysEnum.ERROR_COUNT]: (
-      <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
-    ),
-    [AppLogKeysEnum.POINTS]: (
-      <Td key={AppLogKeysEnum.POINTS}>
-        {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
-      </Td>
-    )
-  });
+        </Td>
+      ),
+      [AppLogKeysEnum.CUSTOM_FEEDBACK]: (
+        <Td key={AppLogKeysEnum.CUSTOM_FEEDBACK}>{item.customFeedbacksCount || '-'}</Td>
+      ),
+      [AppLogKeysEnum.ANNOTATED_COUNT]: (
+        <Td key={AppLogKeysEnum.ANNOTATED_COUNT}>{item.markCount}</Td>
+      ),
+      [AppLogKeysEnum.RESPONSE_TIME]: (
+        <Td key={AppLogKeysEnum.RESPONSE_TIME}>
+          {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.ERROR_COUNT]: (
+        <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
+      ),
+      [AppLogKeysEnum.POINTS]: (
+        <Td key={AppLogKeysEnum.POINTS}>
+          {item.totalPoints ? `${item.totalPoints.toFixed(2)}` : '-'}
+        </Td>
+      ),
+      [AppLogKeysEnum.VERSION_NAME]: (
+        <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
+      )
+    }),
+    [t, userIpType]
+  );
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
@@ -480,9 +564,13 @@ const LogTable = ({
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
+              <Th>
+                <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+              </Th>
               {logKeys
                 .filter((logKey) => logKey.enable)
                 .map((logKey) => HeaderRenderMap[logKey.key])}
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'xs'}>
@@ -493,12 +581,28 @@ const LogTable = ({
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
-                  title={t('common:core.view_chat_detail')}
-                  onClick={() => setDetailLogsId(item.id)}
+                  onClick={() => setDetailLogsId(item.chatId)}
                 >
+                  <Td>
+                    <HStack onClick={(e) => e.stopPropagation()}>
+                      <Checkbox isChecked={isSelected(item)} onChange={() => toggleSelect(item)} />
+                    </HStack>
+                  </Td>
                   {logKeys
                     .filter((logKey) => logKey.enable)
                     .map((logKey) => cellRenderMap[logKey.key as AppLogKeysEnum])}
+                  <Td onClick={(e) => e.stopPropagation()}>
+                    <PopoverConfirm
+                      content={t('app:confirm_delete_chat_content')}
+                      type="delete"
+                      onConfirm={() => handleDelete([item.chatId])}
+                      Trigger={
+                        <Flex>
+                          <MyIconButton icon={'delete'} hoverColor={'red.600'} hoverBg="red.100" />
+                        </Flex>
+                      }
+                    />
+                  </Td>
                 </Tr>
               );
             })}
@@ -507,11 +611,32 @@ const LogTable = ({
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
       </TableContainer>
 
-      {total >= pageSize && (
-        <Flex mt={3} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
+      <FloatingActionBar
+        pb={0}
+        Controler={
+          <HStack>
+            <Button
+              variant={'whiteDanger'}
+              onClick={() =>
+                openConfirmDelete({
+                  onConfirm: () => handleDelete(chatIds),
+                  customContent: t('app:confirm_delete_chats', {
+                    n: chatIds.length
+                  })
+                })()
+              }
+            >
+              {t('common:Delete')} ({chatIds.length})
+            </Button>
+          </HStack>
+        }
+      >
+        {total > pageSize && (
+          <Flex justifyContent={'center'}>
+            <Pagination />
+          </Flex>
+        )}
+      </FloatingActionBar>
 
       {!!detailLogsId && (
         <DetailLogsModal
@@ -523,6 +648,8 @@ const LogTable = ({
           }}
         />
       )}
+
+      <ConfirmDeleteModal />
     </MyBox>
   );
 };

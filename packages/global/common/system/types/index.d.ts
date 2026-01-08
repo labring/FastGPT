@@ -128,6 +128,18 @@ export type FastGPTFeConfigsType = {
     alipay?: boolean;
     bank?: boolean;
   };
+  payFormUrl?: string;
+  fileUrlWhitelist?: string[];
+  customDomain?: {
+    enable?: boolean;
+    domain?: {
+      aliyun?: string;
+      tencent?: string;
+      volcengine?: string;
+    };
+  };
+
+  ip_whitelist?: string;
 };
 
 export type SystemEnvType = {
@@ -147,12 +159,38 @@ export type SystemEnvType = {
 
   customPdfParse?: customPdfParseType;
   fileUrlWhitelist?: string[];
+  customDomain?: customDomainType;
+};
+
+export type customDomainType = {
+  kc?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  domain?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  issuerServiceName?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
+  nginxServiceName?: {
+    aliyun?: string;
+    tencent?: string;
+    volcengine?: string;
+  };
 };
 
 export type customPdfParseType = {
   url?: string;
   key?: string;
   doc2xKey?: string;
+  textinAppId?: string;
+  textinSecretCode?: string;
   price?: number;
 };
 

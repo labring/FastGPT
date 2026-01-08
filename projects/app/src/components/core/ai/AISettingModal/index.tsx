@@ -396,7 +396,10 @@ const AIChatSettingsModal = ({
         {responseFormat === 'json_schema' && (
           <Flex {...FlexItemStyles} h="auto">
             <Box {...LabelStyles}>
-              <Flex alignItems={'center'}>JSON Schema</Flex>
+              <Flex alignItems={'center'}>
+                <Box>JSON Schema</Box>
+                <QuestionTip label={t('app:json_schema_tip')} />
+              </Flex>
             </Box>
             <Box flex={'1 0 0'}>
               <JsonEditor

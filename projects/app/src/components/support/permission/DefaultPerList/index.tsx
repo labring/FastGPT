@@ -51,11 +51,10 @@ const DefaultPermissionList = ({
           value={per}
           onChange={(per) => {
             if (isInheritPermission && hasParent) {
-              openConfirm(
-                () => onRequestChange(per),
-                undefined,
-                t('common:permission.Remove InheritPermission Confirm')
-              )();
+              openConfirm({
+                onConfirm: () => onRequestChange(per),
+                customContent: t('common:permission.Remove InheritPermission Confirm')
+              })();
             } else {
               return onRequestChange(per);
             }

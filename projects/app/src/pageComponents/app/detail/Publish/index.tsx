@@ -19,6 +19,7 @@ const FeiShu = dynamic(() => import('./FeiShu'));
 const DingTalk = dynamic(() => import('./DingTalk'));
 const Wecom = dynamic(() => import('./Wecom'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
+const Playground = dynamic(() => import('./Playground'));
 
 const OutLink = () => {
   const { t } = useTranslation();
@@ -85,7 +86,14 @@ const OutLink = () => {
             isProFn: true
           }
         ]
-      : [])
+      : []),
+    {
+      icon: 'core/chat/sidebar/home',
+      title: t('common:navbar.Chat'),
+      desc: t('app:publish.chat_desc'),
+      value: PublishChannelEnum.playground,
+      isProFn: false
+    }
   ]);
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
@@ -98,7 +106,7 @@ const OutLink = () => {
       h={'100%'}
       flexDirection={'column'}
     >
-      <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
+      <Box mx={[4, 8]} py={[4, 6]} borderBottom={'1px solid'} borderColor={'myGray.150'}>
         <MyRadio
           gridTemplateColumns={[
             'repeat(1,1fr)',
@@ -124,15 +132,7 @@ const OutLink = () => {
         />
       </Box>
 
-      <Flex
-        flexDirection={'column'}
-        {...cardStyles}
-        boxShadow={3.5}
-        mt={4}
-        px={[4, 8]}
-        py={[4, 6]}
-        flex={1}
-      >
+      <Flex flexDirection={'column'} mt={2} px={[4, 8]} py={[4, 6]} flex={1}>
         {linkType === PublishChannelEnum.share && (
           <Link appId={appId} type={PublishChannelEnum.share} />
         )}
@@ -141,6 +141,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
+        {linkType === PublishChannelEnum.playground && <Playground appId={appId} />}
       </Flex>
     </Box>
   );

@@ -44,3 +44,10 @@ export function splitCombineToolId(id: string) {
   }
   return { source, pluginId: id };
 }
+
+export const getToolRawId = (id: string) => {
+  const toolId = splitCombineToolId(id).pluginId;
+
+  // 兼容 toolset
+  return toolId.split('/')[0];
+};

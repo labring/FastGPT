@@ -8,7 +8,17 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 
 export const useUploadAvatar = (
   api: (params: { filename: string }) => Promise<CreatePostPresignedUrlResult>,
-  { onSuccess }: { onSuccess?: (avatar: string) => void } = {}
+  {
+    onSuccess,
+    maxW = 300,
+    maxH = 300,
+    maxSize = 1024 * 500 // 500KB
+  }: {
+    onSuccess?: (avatar: string) => void;
+    maxW?: number;
+    maxH?: number;
+    maxSize?: number;
+  } = {}
 ) => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -32,8 +42,9 @@ export const useUploadAvatar = (
         const compressed = base64ToFile(
           await compressBase64Img({
             base64Img: await fileToBase64(file),
-            maxW: 300,
-            maxH: 300
+            maxW,
+            maxH,
+            maxSize
           }),
           file.name
         );
