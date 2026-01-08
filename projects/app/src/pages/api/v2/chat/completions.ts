@@ -9,7 +9,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type {
   ChatCompletionCreateParams,
   ChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -22,9 +22,10 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  saveChat,
+  pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
@@ -42,7 +43,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -92,7 +93,7 @@ export type Props = ChatCompletionCreateParams &
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  app: AppSchema;
+  app: AppSchemaType;
   showCite?: boolean;
   showRunningStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
@@ -342,8 +343,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -356,6 +355,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memories: system_memories
     };
 
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
     const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,
@@ -381,7 +381,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isInteractiveRequest) {
       await updateInteractiveChat(params);
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
@@ -12,7 +12,7 @@ import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template
 import {
   type FlowNodeInputItemType,
   type ReferenceItemValueType
-} from '@fastgpt/global/core/workflow/type/io.d';
+} from '@fastgpt/global/core/workflow/type/io';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';

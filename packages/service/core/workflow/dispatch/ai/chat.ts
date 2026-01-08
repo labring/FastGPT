@@ -1,9 +1,9 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType
@@ -20,10 +20,9 @@ import {
   getQuotePrompt,
   getDocumentQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
-import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -175,8 +174,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })()
     ]);
 
-    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
-
     const {
       completeMessages,
       reasoningText,
@@ -208,7 +205,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             reasoning_content: text
@@ -218,7 +214,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onStreaming({ text }) {
         if (!isResponseAnswerText) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             text
@@ -352,7 +347,7 @@ async function getMultiInput({
   runningUserInfo
 }: {
   histories: ChatItemType[];
-  inputFiles: UserChatItemValueItemType['file'][];
+  inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
@@ -404,7 +399,9 @@ async function getMultiInput({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
+    userFiles: fileLinks
+      .map((url) => parseUrlToFileType(url))
+      .filter(Boolean) as UserChatItemFileItemType[]
   };
 }
 
@@ -435,7 +432,7 @@ async function getChatMessages({
   systemPrompt: string;
   userChatInput: string;
 
-  userFiles: UserChatItemValueItemType['file'][];
+  userFiles: UserChatItemFileItemType[];
   documentQuoteText?: string; // document quote
 }) {
   // Dataset prompt ====>

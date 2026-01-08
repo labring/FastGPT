@@ -1,5 +1,5 @@
 import type { SystemDefaultModelType, SystemModelItemType } from '../type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoSystemModel } from './schema';
 import {
   type LLMModelItemType,
@@ -7,7 +7,7 @@ import {
   type TTSModelType,
   type STTModelType,
   type RerankModelItemType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model';
 import { debounce } from 'lodash';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';

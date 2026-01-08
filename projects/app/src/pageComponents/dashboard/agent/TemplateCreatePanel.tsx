@@ -22,9 +22,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useLocalStorageState } from 'ahooks';
 import { useState } from 'react';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { form2AppWorkflow } from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { appTypeTagMap } from '../constant';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
@@ -74,7 +75,10 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
       const templateDetail = await getTemplateMarketItemDetail(templateId);
 
       if (templateDetail.type === AppTypeEnum.simple) {
-        const completeWorkflow = form2AppWorkflow(templateDetail.workflow, t);
+        const completeWorkflow = form2AppWorkflow(
+          templateDetail.workflow as unknown as AppFormEditFormType,
+          t
+        );
         templateDetail.workflow = completeWorkflow;
       }
 

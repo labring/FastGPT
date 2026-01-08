@@ -6,6 +6,7 @@ import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
+import type Stream from 'node:stream';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -175,7 +176,7 @@ export function responseWriteController({
   readStream
 }: {
   res: NextApiResponse;
-  readStream: any;
+  readStream: Stream.Readable;
 }) {
   res.on('drain', () => {
     readStream?.resume?.();
@@ -191,16 +192,14 @@ export function responseWriteController({
 
 export function responseWrite({
   res,
-  write,
   event,
   data
 }: {
   res?: NextApiResponse;
-  write?: (text: string) => void;
   event?: string;
   data: string;
 }) {
-  const Write = write || res?.write;
+  const Write = res?.write;
 
   if (!Write) return;
 

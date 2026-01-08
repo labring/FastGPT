@@ -29,7 +29,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const buffer = await fs.promises.readFile(path);
 
-  return readS3FileContentByBuffer({
+  return readFileContentByBuffer({
     extension,
     customPdfParse: params.customPdfParse,
     getFormatText: params.getFormatText,
@@ -45,7 +45,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
   });
 };
 
-export const readS3FileContentByBuffer = async ({
+export const readFileContentByBuffer = async ({
   teamId,
   tmbId,
 

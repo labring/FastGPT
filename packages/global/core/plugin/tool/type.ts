@@ -12,36 +12,38 @@ export const SystemToolBasicConfigSchema = z.object({
   pluginOrder: z.number().optional()
 });
 
-export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.extend({
-  pluginId: z.string(),
-  customConfig: z
-    .object({
-      name: z.string(),
-      avatar: z.string().optional(),
-      intro: z.string().optional(),
-      toolDescription: z.string().optional(),
-      version: z.string(),
-      tags: z.array(z.string()).nullish(),
-      associatedPluginId: z.string().optional(),
-      userGuide: z.string().optional(),
-      author: z.string().optional()
-    })
-    .optional(),
-  inputListVal: z.record(z.string(), z.any()).optional(),
-
-  // @deprecated
-  isActive: z.boolean().optional(),
-  inputConfig: z
-    .array(
-      z.object({
-        key: z.string(),
-        label: z.string(),
-        description: z.string().optional(),
-        value: z.any().optional()
+export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.and(
+  z.object({
+    pluginId: z.string(),
+    customConfig: z
+      .object({
+        name: z.string(),
+        avatar: z.string().optional(),
+        intro: z.string().optional(),
+        toolDescription: z.string().optional(),
+        version: z.string(),
+        tags: z.array(z.string()).nullish(),
+        associatedPluginId: z.string().optional(),
+        userGuide: z.string().optional(),
+        author: z.string().optional()
       })
-    )
-    .optional()
-});
+      .optional(),
+    inputListVal: z.record(z.string(), z.any()).optional(),
+
+    // @deprecated
+    isActive: z.boolean().optional(),
+    inputConfig: z
+      .array(
+        z.object({
+          key: z.string(),
+          label: z.string(),
+          description: z.string().optional(),
+          value: z.any().optional()
+        })
+      )
+      .optional()
+  })
+);
 export type SystemPluginToolCollectionType = z.infer<typeof SystemPluginToolCollectionSchema>;
 
 // TODO: 移动到 plugin sdk 里

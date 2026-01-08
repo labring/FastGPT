@@ -6,7 +6,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -27,15 +27,15 @@ export const filterGPTMessageByMaxContext = async ({
     return [];
   }
 
-  // If the text length is less than half of the maximum token, no calculation is required
-  if (messages.length < 4) {
-    return messages;
-  }
-
   // filter startWith system prompt
   const chatStartIndex = messages.findIndex(
     (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
   );
+
+  if (chatStartIndex === -1) {
+    return messages;
+  }
+
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 

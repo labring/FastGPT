@@ -11,10 +11,10 @@ import type {
   AIChatItemValueItemType,
   ChatSiteItemType,
   UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -36,15 +36,11 @@ import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   getInteractiveByHistories,
   formatChatValue2InputType,
-  setInteractiveResultToHistories
+  rewriteHistoriesByInteractiveResponse
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -67,6 +63,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { clone, cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -154,7 +151,10 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
+  const { interactive: lastInteractive, canSendQuery } = useMemo(
+    () => getInteractiveByHistories(chatRecords),
+    [chatRecords]
+  );
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -240,6 +240,7 @@ const ChatBox = ({
 
   const generatingMessage = useMemoizedFn(
     ({
+      responseValueId,
       event,
       text = '',
       reasoningText,
@@ -247,21 +248,33 @@ const ChatBox = ({
       name,
       tool,
       interactive,
-      autoTTSResponse,
+      plan,
+      stepId,
+      stepTitle,
       variables,
       nodeResponse,
-      durationSeconds
+      durationSeconds,
+      autoTTSResponse
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
 
-          autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
+          if (autoTTSResponse) {
+            splitText2Audio(formatChatValue2InputType(item.value).text || '');
+          }
 
-          const lastValue: AIChatItemValueItemType = JSON.parse(
-            JSON.stringify(item.value[item.value.length - 1])
-          );
+          const updateIndex = (() => {
+            if (!responseValueId) return item.value.length - 1;
+            const index = item.value.findIndex((item) => item.id === responseValueId);
+            if (index !== -1) return index;
+            return item.value.length - 1;
+          })();
+          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+          if (stepId) {
+            updateValue.stepId = stepId;
+          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -270,100 +283,144 @@ const ChatBox = ({
                 ? [...item.responseData, nodeResponse]
                 : [nodeResponse]
             };
-          } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
+          }
+          if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {
               ...item,
               status,
               moduleName: name
             };
-          } else if (reasoningText) {
-            if (lastValue.type === ChatItemValueTypeEnum.reasoning && lastValue.reasoning) {
-              lastValue.reasoning.content += reasoningText;
-              return {
-                ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
-              };
-            } else {
-              const val: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.reasoning,
-                reasoning: {
-                  content: reasoningText
-                }
-              };
-              return {
-                ...item,
-                value: item.value.concat(val)
-              };
-            }
-          } else if (
-            (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
-            text
-          ) {
-            if (!lastValue || !lastValue.text) {
-              const newValue: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content: text
-                }
-              };
-              return {
-                ...item,
-                value: item.value.concat(newValue)
-              };
-            } else {
-              lastValue.text.content += text;
-              return {
-                ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
-              };
-            }
-          } else if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.tool,
-              tools: [tool]
-            };
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          } else if (
-            event === SseResponseEventEnum.toolParams &&
-            tool &&
-            lastValue.type === ChatItemValueTypeEnum.tool &&
-            lastValue?.tools
-          ) {
-            lastValue.tools = lastValue.tools.map((item) => {
-              if (item.id === tool.id) {
-                item.params += tool.params;
+          }
+          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+            if (reasoningText) {
+              if (updateValue?.reasoning && updateValue.stepId === stepId) {
+                updateValue.reasoning.content += reasoningText;
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              } else {
+                const val: AIChatItemValueItemType = {
+                  id: responseValueId,
+                  reasoning: {
+                    content: reasoningText
+                  }
+                };
+                return {
+                  ...item,
+                  value: [...item.value, val]
+                };
               }
-              return item;
-            });
-            return {
-              ...item,
-              value: item.value.slice(0, -1).concat(lastValue)
-            };
-          } else if (event === SseResponseEventEnum.toolResponse && tool) {
-            // replace tool response
-            return {
-              ...item,
-              value: item.value.map((val) => {
-                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
-                  const tools = val.tools.map((item) =>
-                    item.id === tool.id ? { ...item, response: tool.response } : item
-                  );
-                  return {
-                    ...val,
-                    tools
-                  };
-                }
-                return val;
-              })
-            };
-          } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
-          } else if (event === SseResponseEventEnum.interactive) {
+            }
+            if (text) {
+              if (updateValue?.text && updateValue.stepId === stepId) {
+                updateValue.text.content += text;
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              } else {
+                const newValue: AIChatItemValueItemType = {
+                  id: responseValueId,
+                  text: {
+                    content: text
+                  }
+                };
+                return {
+                  ...item,
+                  value: item.value.concat(newValue)
+                };
+              }
+            }
+          }
+
+          // Tool call
+          if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.interactive,
+              id: responseValueId,
+              tool
+            };
+            return {
+              ...item,
+              value: [...item.value, val]
+            };
+          }
+          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tool) {
+            if (tool.params) {
+              updateValue.tool.params += tool.params;
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
+              };
+            }
+            return item;
+          }
+          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tool) {
+            if (tool.response) {
+              // replace tool response
+              if (typeof updateValue.tool.response !== 'string') {
+                updateValue.tool.response = '';
+              }
+              updateValue.tool.response += tool.response;
+
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
+              };
+            }
+            return item;
+          }
+          if (event === SseResponseEventEnum.plan && plan) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  plan
+                }
+              ]
+            };
+          }
+          if (event === SseResponseEventEnum.stepTitle && stepTitle) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  stepTitle: {
+                    ...stepTitle,
+                    folded: false
+                  }
+                }
+              ]
+            };
+          }
+
+          if (event === SseResponseEventEnum.updateVariables && variables) {
+            resetVariables({ variables });
+          }
+          if (event === SseResponseEventEnum.interactive && interactive) {
+            const val: AIChatItemValueItemType = {
               interactive
             };
 
@@ -371,7 +428,9 @@ const ChatBox = ({
               ...item,
               value: item.value.concat(val)
             };
-          } else if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+          }
+
+          if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
             return {
               ...item,
               durationSeconds: item.durationSeconds
@@ -388,7 +447,7 @@ const ChatBox = ({
       generatingScroll(forceScroll);
     }
   );
-
+  console.log(chatRecords, 'chatRecords');
   // 重置输入内容
   const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
     if (!TextareaDom.current) return;
@@ -446,8 +505,8 @@ const ChatBox = ({
       text = '',
       files = [],
       history = chatRecords,
+      interactive,
       autoTTSResponse = false,
-      isInteractivePrompt = false,
       hideInUI = false
     }) => {
       variablesForm.handleSubmit(
@@ -520,7 +579,6 @@ const ChatBox = ({
               hideInUI,
               value: [
                 ...files.map((file) => ({
-                  type: ChatItemValueTypeEnum.file,
                   file: {
                     type: file.type,
                     name: file.name,
@@ -532,7 +590,6 @@ const ChatBox = ({
                 ...(text
                   ? [
                       {
-                        type: ChatItemValueTypeEnum.text,
                         text: {
                           content: text
                         }
@@ -548,7 +605,6 @@ const ChatBox = ({
               obj: ChatRoleEnum.AI,
               value: [
                 {
-                  type: ChatItemValueTypeEnum.text,
                   text: {
                     content: ''
                   }
@@ -560,9 +616,13 @@ const ChatBox = ({
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
-            isInteractivePrompt
+            interactive
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setInteractiveResultToHistories(newChatList.slice(0, -2), text)
+                rewriteHistoriesByInteractiveResponse({
+                  histories: newChatList,
+                  interactive,
+                  interactiveVal: text
+                })
               : newChatList
           );
 
@@ -626,7 +686,7 @@ const ChatBox = ({
                 };
               });
 
-              const lastInteractive = getInteractiveByHistories(state);
+              const { interactive: lastInteractive } = getInteractiveByHistories(state);
               if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
                 setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
               }
@@ -636,7 +696,7 @@ const ChatBox = ({
 
             setTimeout(() => {
               // If there is no interactive mode, create a question guide
-              if (!getInteractiveByHistories(newChatHistories)) {
+              if (!getInteractiveByHistories(newChatHistories).interactive) {
                 createQuestionGuide();
               }
 
@@ -904,7 +964,7 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
 
   // Add listener
   useEffect(() => {
@@ -917,9 +977,12 @@ const ChatBox = ({
     };
     window.addEventListener('message', windowMessage);
 
-    const fn: SendPromptFnType = (e) => {
-      if (canSendPrompt || e.isInteractivePrompt) {
-        sendPrompt(e);
+    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
+      if (canSendPrompt || focus) {
+        sendPrompt({
+          ...e,
+          interactive: lastInteractive
+        });
       }
     };
     eventBus.on(EventNameEnum.sendQuestion, fn);
@@ -933,7 +996,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
   // Auto send prompt
   useDebounceEffect(
@@ -1012,6 +1075,8 @@ const ChatBox = ({
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
   //chat history
+  const hasPlanCheck =
+    lastInteractive?.type === 'agentPlanCheck' && !lastInteractive.params.confirmed;
   const RecordsBox = useMemo(() => {
     return (
       <Box id={'history'}>
@@ -1032,7 +1097,6 @@ const ChatBox = ({
             <Box py={item.hideInUI ? 0 : 6}>
               {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                 <ChatItem
-                  type={item.obj}
                   avatar={userAvatar}
                   chat={item}
                   onRetry={retryInput(item.dataId)}
@@ -1042,10 +1106,10 @@ const ChatBox = ({
               )}
               {item.obj === ChatRoleEnum.AI && (
                 <ChatItem
-                  type={item.obj}
                   avatar={appAvatar}
                   chat={item}
                   isLastChild={index === chatRecords.length - 1}
+                  hasPlanCheck={hasPlanCheck}
                   {...{
                     showVoiceIcon,
                     statusBoxData,
@@ -1116,7 +1180,8 @@ const ChatBox = ({
     t,
     showMarkIcon,
     itemRefs,
-    onCloseCustomFeedback
+    onCloseCustomFeedback,
+    hasPlanCheck
   ]);
 
   // Child box
@@ -1207,6 +1272,7 @@ const ChatBox = ({
 
               <ChatInput
                 onSendMessage={sendPrompt}
+                lastInteractive={lastInteractive}
                 onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}

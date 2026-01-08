@@ -1,14 +1,14 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import {
-  type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
   type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
@@ -24,8 +24,9 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import type { WorkflowResponseType } from './type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -40,18 +41,8 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  return ({
-    write,
-    event,
-    data
-  }: {
-    write?: (text: string) => void;
-    event: SseResponseEventEnum;
-    data: Record<string, any>;
-  }) => {
-    const useStreamResponse = streamResponse;
-
-    if (!res || res.closed || !useStreamResponse) return;
+  const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
+    if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -71,10 +62,28 @@ export const getWorkflowResponseWrite = ({
 
     responseWrite({
       res,
-      write,
       event: detail ? event : undefined,
-      data: JSON.stringify(data)
+      data: JSON.stringify({
+        ...data,
+        ...(stepId && detail && { stepId }),
+        ...(id && detail && { responseValueId: id })
+      })
     });
+  };
+  return fn;
+};
+export const getWorkflowChildResponseWrite = ({
+  id,
+  stepId,
+  fn
+}: {
+  id: string;
+  stepId: string;
+  fn?: WorkflowResponseType;
+}): WorkflowResponseType | undefined => {
+  if (!fn) return;
+  return (e: Parameters<WorkflowResponseType>[0]) => {
+    return fn({ ...e, id, stepId });
   };
 };
 

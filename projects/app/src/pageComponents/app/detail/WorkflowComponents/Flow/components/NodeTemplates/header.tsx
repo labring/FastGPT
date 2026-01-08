@@ -29,7 +29,7 @@ export type NodeTemplateListHeaderProps = {
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   onUpdateTemplateType: (type: TemplateTypeEnum) => void;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: ParentIdType) => void;
 
   selectedTagIds: string[];
   setSelectedTagIds: (e: string[]) => any;

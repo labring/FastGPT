@@ -1,7 +1,7 @@
 import type {
   NodeToolConfigType,
   FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeInputTypeEnum,
@@ -45,7 +45,7 @@ import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/tem
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPChildren } from '../mcp';
 import { cloneDeep } from 'lodash';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -70,7 +70,7 @@ export const getSystemToolsWithInstalled = async ({
 }: {
   teamId: string;
   isRoot: boolean;
-}) => {
+}): Promise<(AppToolTemplateItemType & { installed: boolean })[]> => {
   const [tools, { installedSet, uninstalledSet }] = await Promise.all([
     getSystemTools(),
     MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')
@@ -227,6 +227,7 @@ export async function getChildAppPreviewNode({
     if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
+      if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
 
       const version = await getAppVersionById({ appId: pluginId, versionId, app: item });
 
