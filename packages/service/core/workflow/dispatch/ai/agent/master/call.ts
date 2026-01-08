@@ -154,15 +154,15 @@ export const masterCall = async ({
             }
           ]
         : []),
-      ...historiesMessages,
-      ...(userQuery
-        ? [
-            {
-              role: 'user' as const,
-              content: userQuery
-            }
-          ]
-        : [])
+      ...historiesMessages
+      // ...(userQuery
+      //   ? [
+      //       {
+      //         role: 'user' as const,
+      //         content: userQuery
+      //       }
+      //     ]
+      //   : [])
     ];
     return {
       requestMessages: messages
@@ -170,7 +170,9 @@ export const masterCall = async ({
   })();
 
   let planResult: DispatchPlanAgentResponse | undefined;
-
+  // console.log('Master request messages');
+  // console.dir({ requestMessages }, { depth: null });
+  // console.log('Master tools', isStepCall ? completionTools.filter(item => item.function.name !== SubAppIds.plan) : completionTools);
   const {
     model: agentModel,
     assistantMessages,
@@ -186,7 +188,9 @@ export const masterCall = async ({
       temperature,
       stream: true,
       top_p: aiChatTopP,
-      tools: completionTools
+      tools: isStepCall
+        ? completionTools.filter((item) => item.function.name !== SubAppIds.plan)
+        : completionTools
     },
 
     userKey: externalProvider.openaiAccount,
@@ -310,16 +314,17 @@ export const masterCall = async ({
 
                 console.log('[Plan Tool] userQuery 为空，使用备用输入:', finalUserInput);
               }
-
+              // TODO 过滤 plan 的工具
               planResult = await dispatchPlanAgent({
                 checkIsStopping,
                 historyMessages: historiesMessages,
                 userInput: finalUserInput,
-                completionTools,
+                completionTools: completionTools,
                 getSubAppInfo,
                 systemPrompt: systemPrompt,
                 model,
-                stream
+                stream,
+                mode: userQuery ? 'initial' : 'continue' //  目前不支持深层 plan 调用的话，step Call 的情况下不会调用到 plan agent
               });
 
               return {
@@ -339,7 +344,7 @@ export const masterCall = async ({
             const tool = subAppsMap.get(toolId);
             if (!tool) {
               return {
-                response: 'Can not find the tool',
+                response: `Can not find the tool ${toolId}`,
                 usages: []
               };
             }

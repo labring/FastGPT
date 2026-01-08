@@ -14,7 +14,6 @@ export type AgentStepItemType = z.infer<typeof AgentStepItemSchema>;
 export const AgentPlanSchema = z.object({
   planId: z.string().default(getNanoid(6)),
   task: z.string(),
-  replan: z.boolean().nullish(),
   steps: z.array(AgentStepItemSchema)
 });
 export type AgentPlanType = z.infer<typeof AgentPlanSchema>;
