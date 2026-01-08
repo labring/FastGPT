@@ -24,7 +24,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const CollectionCard = dynamic(
   () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/index')
 );
-const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'));
+const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/RefinedDataCard/index'));
 const FileDataCard = dynamic(() => import('@/pageComponents/dataset/detail/FileDataCard'));
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
 const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
@@ -75,7 +75,9 @@ const Detail = ({ datasetId, currentTab }: Props) => {
       {isPc ? (
         <Flex h={'100%'} py={3} pl={1} pr={3} gap={2}>
           <Flex flex={1} w={0} bg={'white'} flexDir={'column'} boxShadow={'2'} borderRadius={'md'}>
-            {currentTab !== TabEnum.import && <NavBar currentTab={currentTab} />}
+            {![TabEnum.import, TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab) && (
+              <NavBar currentTab={currentTab} />
+            )}
             <Box flex={'1'} overflowY={'auto'}>
               {currentTab === TabEnum.collectionCard && (
                 <CollectionPageContextProvider>
@@ -92,11 +94,6 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 
           {/* Slider */}
           <>
-            {[TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab) && (
-              <Flex {...sliderStyles} flex={'0 0 20rem'}>
-                <MetaDataCard datasetId={datasetId} />
-              </Flex>
-            )}
             {[TabEnum.collectionCard, TabEnum.test, TabEnum.synonym].includes(currentTab) && (
               <Flex {...sliderStyles} flex={'0 0 17rem'}>
                 <Info datasetId={datasetId} />
