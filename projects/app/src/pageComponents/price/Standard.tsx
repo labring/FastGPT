@@ -137,6 +137,8 @@ const Standard = ({
     myStandardPlan?.maxDataset
   ]);
 
+  // console.log(standardSubList);
+
   // Pay code
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 

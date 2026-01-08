@@ -3,7 +3,6 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { WecomFreePlan } from '@fastgpt/global/support/wallet/sub/wecom';
 import { Box, Flex, Grid, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -40,7 +39,6 @@ const StandardPlanContentList = ({
 
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
-    const isWecomFreePlan = isWecomTeam && level === 'free';
 
     return {
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
@@ -48,16 +46,16 @@ const StandardPlanContentList = ({
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
       annualBonusPoints:
         mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
-      totalPoints: isWecomFreePlan
-        ? WecomFreePlan.totalPoints
-        : standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
+      totalPoints:
+        standplan?.totalPoints ??
+        (isWecomTeam
+          ? plan.wecom?.points ?? 2000
+          : plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
       maxDatasetAmount: standplan?.maxDataset ?? plan.maxDatasetAmount,
-      maxDatasetSize: isWecomFreePlan
-        ? WecomFreePlan.maxDatasetSize
-        : standplan?.maxDatasetSize ?? plan.maxDatasetSize,
+      maxDatasetSize: standplan?.maxDatasetSize ?? plan.maxDatasetSize,
       websiteSyncPerDataset: standplan?.websiteSyncPerDataset ?? plan.websiteSyncPerDataset,
       chatHistoryStoreDuration:
         standplan?.chatHistoryStoreDuration ?? plan.chatHistoryStoreDuration,
