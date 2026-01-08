@@ -217,19 +217,11 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   );
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
-  interactive,
-  chatItemDataId
+  interactive
 }: {
   interactive: InteractiveBasicType & UserInputInteractive;
-  chatItemDataId: string;
 }) {
   const { t } = useTranslation();
-
-  // 使用 entryNodeIds 生成唯一的 storage key，避免不同表单节点共用同一个缓存
-  const uniqueStorageKey = useMemo(() => {
-    const nodeIds = interactive.entryNodeIds?.join('-') || 'unknown';
-    return `${chatItemDataId}_${nodeIds}`;
-  }, [chatItemDataId, interactive.entryNodeIds]);
 
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
@@ -251,36 +243,12 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         }
       });
 
-      if (typeof window !== 'undefined') {
-        const dataToSave = { ...data };
-        interactive.params.inputForm?.forEach((item) => {
-          if (
-            item.type === 'fileSelect' &&
-            Array.isArray(dataToSave[item.key]) &&
-            dataToSave[item.key].length > 0
-          ) {
-            const files = dataToSave[item.key];
-            if (files[0]?.url !== undefined) {
-              dataToSave[item.key] = files
-                .map((file: any) => ({
-                  url: file.url,
-                  key: file.key,
-                  name: file.name,
-                  type: file.type
-                }))
-                .filter((file: any) => file.url);
-            }
-          }
-        });
-        sessionStorage.setItem(`interactiveForm_${uniqueStorageKey}`, JSON.stringify(dataToSave));
-      }
-
       onSendPrompt({
         text: JSON.stringify(finalData),
         isInteractivePrompt: true
       });
     },
-    [interactive.params.inputForm, uniqueStorageKey]
+    [interactive.params.inputForm]
   );
 
   return (
@@ -288,7 +256,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       <FormInputComponent
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
-        chatItemDataId={uniqueStorageKey}
         SubmitButton={({ onSubmit, isFileUploading }) => (
           <Button
             onClick={() => onSubmit(handleFormSubmit)()}
@@ -372,9 +339,7 @@ const AIResponseBox = ({
       return <RenderUserSelectInteractive interactive={finalInteractive} />;
     }
     if (finalInteractive.type === 'userInput') {
-      return (
-        <RenderUserFormInteractive interactive={finalInteractive} chatItemDataId={chatItemDataId} />
-      );
+      return <RenderUserFormInteractive interactive={finalInteractive} />;
     }
     if (finalInteractive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={finalInteractive} />;

@@ -194,8 +194,8 @@ export async function getChatItems({
   return { histories, total, hasMorePrev, hasMoreNext };
 }
 
-// Maintain a write queue per document to avoid concurrent write conflicts
-const customFeedbackQueues = new Map<string, Promise<void>>();
+// Maintain a global write queue to avoid concurrent write conflicts
+let customFeedbackQueue = Promise.resolve();
 
 export const addCustomFeedbacks = async ({
   appId,
@@ -210,10 +210,8 @@ export const addCustomFeedbacks = async ({
 }) => {
   if (!chatId || !dataId) return;
 
-  const queueKey = `${chatId}_${dataId}`;
-  const previousTask = customFeedbackQueues.get(queueKey) || Promise.resolve();
-
-  const task = previousTask
+  // Queue all feedback operations sequentially
+  customFeedbackQueue = customFeedbackQueue
     .then(() =>
       mongoSessionRun(async (session) => {
         await MongoChatItem.updateOne(
@@ -228,15 +226,9 @@ export const addCustomFeedbacks = async ({
     .catch((error) => {
       addLog.error('addCustomFeedbacks error', error);
       throw error;
-    })
-    .finally(() => {
-      if (customFeedbackQueues.get(queueKey) === task) {
-        customFeedbackQueues.delete(queueKey);
-      }
     });
 
-  customFeedbackQueues.set(queueKey, task);
-  await task;
+  await customFeedbackQueue;
 };
 
 /**

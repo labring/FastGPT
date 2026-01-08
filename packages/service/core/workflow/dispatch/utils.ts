@@ -1,9 +1,10 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type.d';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -120,12 +121,10 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 /* remove system variable */
 export const runtimeSystemVar2StoreType = ({
   variables,
-  cloneVariables,
   removeObj = {},
   userVariablesConfigs = []
 }: {
   variables: Record<string, any>;
-  cloneVariables: Record<string, any>;
   removeObj?: Record<string, string>;
   userVariablesConfigs?: VariableItemType[];
 }) => {
@@ -155,9 +154,33 @@ export const runtimeSystemVar2StoreType = ({
         };
       }
     }
-    // Remove URL from file variables
+    // Handle file variables
     else if (item.type === VariableInputEnum.file) {
-      copyVariables[item.key] = cloneVariables[item.key];
+      const currentValue = copyVariables[item.key];
+
+      copyVariables[item.key] = currentValue
+        .map((url: string) => {
+          try {
+            const urlObj = new URL(url);
+            // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
+            const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
+            const filename = key.split('/').pop() || 'file';
+            const extension = filename.split('.').pop()?.toLowerCase() || '';
+
+            // Check if it's an image type
+            const isImage = extension && imageFileType.includes(`.${extension}`);
+
+            return {
+              id: filename.replace(/\.[^.]+$/, ''), // Use filename without extension as id
+              key,
+              name: filename,
+              type: isImage ? ChatFileTypeEnum.image : ChatFileTypeEnum.file
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((file: any) => file !== null);
     }
   });
 

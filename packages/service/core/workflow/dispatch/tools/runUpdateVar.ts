@@ -25,7 +25,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     chatConfig,
     params,
     variables,
-    cloneVariables,
     runtimeNodes,
     workflowStreamResponse,
     externalProvider,
@@ -95,7 +94,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       event: SseResponseEventEnum.updateVariables,
       data: runtimeSystemVar2StoreType({
         variables,
-        cloneVariables,
         removeObj: externalProvider.externalWorkflowVariables,
         userVariablesConfigs: chatConfig?.variables
       })

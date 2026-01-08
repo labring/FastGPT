@@ -119,7 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     retainDatasetCite = false,
     messages = [],
     variables = {},
-    responseChatItemId: userProvidedChatItemId,
+    responseChatItemId,
     metadata
   } = req.body as Props;
 
@@ -263,17 +263,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const interactive = getLastInteractiveValue(newHistories) || undefined;
 
     const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const responseChatItemId = (() => {
-      // For interactive request, use the last AI ChatItem dataId
-      if (isInteractiveRequest) {
-        const lastAiChat = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
-        if (lastAiChat?.dataId) {
-          return lastAiChat.dataId;
-        }
-      }
 
-      return userProvidedChatItemId || getNanoid();
-    })();
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {

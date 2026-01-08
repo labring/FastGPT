@@ -68,7 +68,6 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>; // global variable
-  cloneVariables: Record<string, any>;
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
