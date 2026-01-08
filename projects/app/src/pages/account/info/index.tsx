@@ -378,6 +378,8 @@ const PlanUsage = () => {
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
+      return 'common:support.wallet.subscription.standardSubLevel.trial';
 
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||

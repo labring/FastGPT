@@ -21,7 +21,6 @@ import {
   CacheKeyEnumTime,
   incrValueToCache
 } from '../../../common/redis/cache';
-import { WecomFreePlan } from '@fastgpt/global/support/wallet/sub/wecom';
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -92,7 +91,7 @@ export const initTeamFreePlan = async ({
   session?: ClientSession;
 }) => {
   const freePoints = isWecomTeam
-    ? WecomFreePlan.totalPoints
+    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
     : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
@@ -129,7 +128,7 @@ export const initTeamFreePlan = async ({
       freePlan.maxDataset = basicPlanConfig.maxDatasetAmount;
       freePlan.requestsPerMinute = basicPlanConfig.requestsPerMinute;
       freePlan.chatHistoryStoreDuration = basicPlanConfig.chatHistoryStoreDuration;
-      freePlan.maxDatasetSize = WecomFreePlan.maxDatasetSize;
+      freePlan.maxDatasetSize = basicPlanConfig.maxDatasetAmount;
       freePlan.websiteSyncPerDataset = basicPlanConfig.websiteSyncPerDataset;
       freePlan.appRegistrationCount = basicPlanConfig.appRegistrationCount;
       freePlan.auditLogStoreDuration = basicPlanConfig.auditLogStoreDuration;
@@ -162,7 +161,7 @@ export const initTeamFreePlan = async ({
             maxDataset: basicPlanConfig.maxDatasetAmount,
             requestsPerMinute: basicPlanConfig.requestsPerMinute,
             chatHistoryStoreDuration: basicPlanConfig.chatHistoryStoreDuration,
-            maxDatasetSize: WecomFreePlan.maxDatasetSize,
+            maxDatasetSize: basicPlanConfig.maxDatasetSize,
             websiteSyncPerDataset: basicPlanConfig.websiteSyncPerDataset,
             appRegistrationCount: basicPlanConfig.appRegistrationCount,
             auditLogStoreDuration: basicPlanConfig.auditLogStoreDuration,
