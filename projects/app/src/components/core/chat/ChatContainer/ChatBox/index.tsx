@@ -449,7 +449,7 @@ const ChatBox = ({
       generatingScroll(forceScroll);
     }
   );
-  console.log(chatRecords, 'chatRecords');
+  console.log(chatRecords, lastInteractive, 'chatRecords');
   // 重置输入内容
   const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
     if (!TextareaDom.current) return;
@@ -615,7 +615,7 @@ const ChatBox = ({
               status: ChatStatusEnum.loading
             }
           ];
-
+          console.log(interactive, 1212);
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
             interactive
@@ -973,7 +973,8 @@ const ChatBox = ({
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
         sendPrompt({
-          text: data.text
+          text: data.text,
+          interactive: lastInteractive
         });
       }
     };
@@ -1012,7 +1013,8 @@ const ChatBox = ({
       ) {
         sendPrompt({
           text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
-          hideInUI: true
+          hideInUI: true,
+          interactive: lastInteractive
         });
       }
     },
