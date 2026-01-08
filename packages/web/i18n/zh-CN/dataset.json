@@ -388,5 +388,21 @@
   "chunk_count": "分块数",
   "processing": "处理中",
   "view_original": "查看原文",
-  "download_file": "下载文件"
+  "download_file": "下载文件",
+  "confirm_delete_index": "确认删除该索引？",
+  "confirm_delete_faq": "确认删除该 FAQ？",
+  "confirm_delete_chunk": "确认删除该分块？",
+  "expand_all": "展开全部",
+  "collapse": "收起",
+  "faq_total": "FAQ（{{total}}）",
+  "chunk_total": "分块（{{total}}）",
+  "search": "搜索",
+  "content_index_total": "内容索引（{{total}}）",
+  "add_index": "新增",
+  "no_indexes": "暂无索引",
+  "input_knowledge_point": "请输入知识点",
+  "edit_faq": "编辑 FAQ",
+  "edit_chunk": "编辑分块",
+  "question": "问题",
+  "answer": "答案"
 }

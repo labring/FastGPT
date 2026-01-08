@@ -138,47 +138,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           borderColor={'myGray.200'}
           position={'relative'}
         >
-          {!showNavTab ? (
-            <>
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                py={'0.38rem'}
-                px={2}
-                ml={0}
-                borderRadius={'md'}
-                _hover={{ bg: 'myGray.05' }}
-                fontSize={'sm'}
-                fontWeight={500}
-                onClick={() => {
-                  router.replace({
-                    query: {
-                      datasetId: router.query.datasetId,
-                      parentId: router.query.parentId,
-                      currentTab: TabEnum.collectionCard
-                    }
-                  });
-                }}
-              >
-                <IconButton
-                  p={2}
-                  mr={2}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  boxShadow={'1'}
-                  icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
-                  bg={'white'}
-                  size={'xsSquare'}
-                  borderRadius={'50%'}
-                  aria-label={''}
-                  _hover={'none'}
-                />
-                <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
-                  {datasetDetail.name}
-                </Box>
-              </Flex>
-            </>
-          ) : (
+          {showNavTab && (
             <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
               <FolderPath
                 paths={paths}
