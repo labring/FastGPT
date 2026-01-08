@@ -194,9 +194,6 @@ export async function getChatItems({
   return { histories, total, hasMorePrev, hasMoreNext };
 }
 
-// Maintain a global write queue to avoid concurrent write conflicts
-let customFeedbackQueue = Promise.resolve();
-
 export const addCustomFeedbacks = async ({
   appId,
   chatId,
@@ -208,27 +205,26 @@ export const addCustomFeedbacks = async ({
   dataId?: string;
   feedbacks: string[];
 }) => {
-  if (!chatId || !dataId) return;
+  if (!chatId || !dataId || !feedbacks || feedbacks.length === 0) return;
 
-  // Queue all feedback operations sequentially
-  customFeedbackQueue = customFeedbackQueue
-    .then(() =>
-      mongoSessionRun(async (session) => {
-        await MongoChatItem.updateOne(
-          { appId, chatId, dataId },
-          { $push: { customFeedbacks: { $each: feedbacks } } },
-          { session }
-        );
+  try {
+    await mongoSessionRun(async (session) => {
+      await MongoChatItem.updateOne(
+        {
+          appId: new Types.ObjectId(appId),
+          chatId,
+          dataId
+        },
+        { $push: { customFeedbacks: { $each: feedbacks } } },
+        { session }
+      );
 
-        await updateChatFeedbackCount({ appId, chatId, session });
-      })
-    )
-    .catch((error) => {
-      addLog.error('addCustomFeedbacks error', error);
-      throw error;
+      await updateChatFeedbackCount({ appId, chatId, session });
     });
-
-  await customFeedbackQueue;
+  } catch (error) {
+    addLog.error('addCustomFeedbacks error', error);
+    throw error;
+  }
 };
 
 /**

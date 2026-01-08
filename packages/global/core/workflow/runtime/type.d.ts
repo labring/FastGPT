@@ -273,6 +273,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
+  [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
 
   data?: T;
   error?: ERR;

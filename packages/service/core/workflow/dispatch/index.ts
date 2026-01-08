@@ -42,6 +42,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
+import { addCustomFeedbacks } from '../../chat/controller';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
 import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -350,6 +351,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
       | undefined;
     system_memories: Record<string, any> = {}; // Workflow node memories
+    customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
     // Debug
     debugNextStepRunNodes: RuntimeNodeItemType[] = []; // 记录 Debug 模式下，下一个阶段需要执行的节点。
@@ -727,7 +729,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         assistantResponses,
         rewriteHistories,
         runTimes = 1,
-        system_memories: newMemories
+        system_memories: newMemories,
+        customFeedbacks
       }: NodeResponseCompleteType) => {
         // Add run times
         this.workflowRunTimes += runTimes;
@@ -742,6 +745,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         if (responseData) {
           this.chatResponses.push(responseData);
+        }
+
+        // Collect custom feedbacks
+        if (customFeedbacks && Array.isArray(customFeedbacks)) {
+          this.customFeedbackList = this.customFeedbackList.concat(customFeedbacks);
         }
 
         // Push usage in real time. Avoid a workflow usage a large number of points
@@ -1115,6 +1123,25 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
+  if (
+    isRootRuntime &&
+    !isDebugMode &&
+    workflowQueue.customFeedbackList.length > 0 &&
+    data.chatId &&
+    data.responseChatItemId
+  ) {
+    setTimeout(() => {
+      addCustomFeedbacks({
+        appId: data.runningAppInfo.id,
+        chatId: data.chatId,
+        dataId: data.responseChatItemId,
+        feedbacks: workflowQueue.customFeedbackList
+      }).catch((error) => {
+        addLog.error('Add custom feedbacks error', error);
+      });
+    }, 500);
+  }
+
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -1134,6 +1161,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
         : undefined,
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      workflowQueue.customFeedbackList.length > 0 ? workflowQueue.customFeedbackList : undefined,
     durationSeconds
   };
 };
