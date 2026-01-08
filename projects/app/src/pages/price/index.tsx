@@ -118,9 +118,11 @@ const PriceBox = () => {
           {t('common:support.wallet.subscription.Sub plan')}
         </Box>
         <Box fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
-          {t('common:support.wallet.subscription.Sub plan tip', {
-            title: feConfigs?.systemTitle
-          })}
+          {userInfo?.team?.isWecomTeam
+            ? t('common:support.wallet.subscription.Sub plan tip wecom')
+            : t('common:support.wallet.subscription.Sub plan tip', {
+                title: feConfigs?.systemTitle
+              })}
         </Box>
         <StandardPlan standardPlan={teamSubPlan?.standard} onPaySuccess={onPaySuccess} />
         <HStack mt={8} color={'blue.700'} ml={8}>

@@ -1243,6 +1243,7 @@
   "support.wallet.subscription.Stand plan level": "订阅套餐",
   "support.wallet.subscription.Sub plan": "订阅套餐",
   "support.wallet.subscription.Sub plan tip": "免费使用【{{title}}】或升级更高的套餐",
+  "support.wallet.subscription.Sub plan tip wecom": "购买套餐以享受应用服务",
   "support.wallet.subscription.Team plan and usage": "套餐与用量",
   "support.wallet.subscription.Training weight": "训练优先级：{{weight}}",
   "support.wallet.subscription.Update extra ai points": "额外 AI 积分",

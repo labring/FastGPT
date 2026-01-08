@@ -30,7 +30,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
-import { GetSearchUserGroupOrg, postSyncMembers } from '@/web/support/user/api';
+import { postSyncMembers } from '@/web/support/user/api';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum
@@ -224,7 +224,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:sync_immediately')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && !isSyncMode && (
+          {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
             <Button
               variant={'primary'}
               size="md"
@@ -264,7 +264,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:export_members')}
             </Button>
           )}
-          {!userInfo?.team.permission.isOwner && !isSyncMode && (
+          {!userInfo?.team.permission.isOwner && !isSyncMode && !isWecomTeam && (
             <PopoverConfirm
               Trigger={
                 <Button
