@@ -559,7 +559,7 @@ const PlanUsage = () => {
               {t('account_info:account_knowledge_base_cleanup_warning')}
             </Box>
           )}
-          {standardPlan.currentSubLevel !== StandardSubLevelEnum.free && (
+          {(standardPlan.currentSubLevel !== StandardSubLevelEnum.free || isWecomTeam) && (
             <Flex mt="2" color={'#485264'} fontSize="xs">
               <Box>{t('account_info:package_expiry_time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>

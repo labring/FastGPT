@@ -1235,6 +1235,7 @@
   "support.wallet.subscription.Stand plan level": "Subscription Package",
   "support.wallet.subscription.Sub plan": "Subscription Package",
   "support.wallet.subscription.Sub plan tip": "Free to use [{{title}}] or upgrade to a higher package",
+  "support.wallet.subscription.Sub plan tip wecom": "Purchase a plan to enjoy application services",
   "support.wallet.subscription.Team plan and usage": "Package and Usage",
   "support.wallet.subscription.Training weight": "Training Priority: {{weight}}",
   "support.wallet.subscription.Update extra ai points": "Extra AI Points",

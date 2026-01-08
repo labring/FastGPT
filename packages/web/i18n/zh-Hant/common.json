@@ -1231,6 +1231,7 @@
   "support.wallet.subscription.Stand plan level": "訂閱方案",
   "support.wallet.subscription.Sub plan": "訂閱方案",
   "support.wallet.subscription.Sub plan tip": "免費使用【{{title}}】或升級更進階的方案",
+  "support.wallet.subscription.Sub plan tip wecom": "購買方案以享受應用服務",
   "support.wallet.subscription.Team plan and usage": "方案與使用量",
   "support.wallet.subscription.Training weight": "訓練優先權：{{weight}}",
   "support.wallet.subscription.Update extra ai points": "額外 AI 點數",
