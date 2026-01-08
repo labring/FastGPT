@@ -119,7 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     retainDatasetCite = false,
     messages = [],
     variables = {},
-    responseChatItemId,
+    responseChatItemId = getNanoid(),
     metadata
   } = req.body as Props;
 

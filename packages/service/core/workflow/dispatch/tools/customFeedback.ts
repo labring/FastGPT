@@ -30,7 +30,7 @@ export const dispatchCustomFeedback = (props: Record<string, any>): Response => 
       dataId,
       feedbacks: [feedbackText]
     });
-  }, 600);
+  }, 60000);
 
   if (stream) {
     if (!chatId || !dataId) {
