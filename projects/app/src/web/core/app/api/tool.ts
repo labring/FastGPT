@@ -47,7 +47,9 @@ export const getTeamAppTemplates = async (data?: {
         ...item,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        appType: app.type,
+        isFolder: false
       }));
       // handle http toolset
     } else if (app.type === AppTypeEnum.httpToolSet) {
@@ -59,7 +61,9 @@ export const getTeamAppTemplates = async (data?: {
         name: item.name,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        appType: app.type,
+        isFolder: false
       }));
     }
   }
@@ -87,7 +91,8 @@ export const getTeamAppTemplates = async (data?: {
       showStatus: false,
       version: app.pluginData?.nodeVersion,
       isTool: true,
-      sourceMember: app.sourceMember
+      sourceMember: app.sourceMember,
+      appType: app.type
     }))
   );
 };

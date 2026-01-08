@@ -2,7 +2,7 @@ import dynamic from 'next/dynamic';
 import ButtonEdge, { CustomConnectionLine } from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 import 'reactflow/dist/style.css';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
@@ -49,8 +49,9 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./nodes/NodePluginIO/PluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
-  [FlowNodeTypeEnum.agent]: dynamic(() => import('./nodes/NodeAgent')),
   [FlowNodeTypeEnum.stopTool]: NodeStopTool,
+  [FlowNodeTypeEnum.agent]: undefined,
+  [FlowNodeTypeEnum.toolCall]: dynamic(() => import('./nodes/NodeToolCall')),
   [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),

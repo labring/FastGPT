@@ -23,10 +23,10 @@ import {
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -54,13 +54,18 @@ const LabelStyles: BoxProps = {
   mr: 5
 };
 
-export type AIChatSettingsModalProps = {};
+export type AIChatSettingsModalProps = {
+  showStopSign?: boolean;
+  showResponseFormat?: boolean;
+};
 
 const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = []
+  llmModels = [],
+  showStopSign = true,
+  showResponseFormat = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -335,7 +340,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportStopSign && (
+        {showStopSign && llmSupportStopSign && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -360,7 +365,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportResponseFormat && selectedModel?.responseFormatList && (
+        {showResponseFormat && llmSupportResponseFormat && selectedModel?.responseFormatList && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
@@ -393,7 +398,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {/* Json schema */}
-        {responseFormat === 'json_schema' && (
+        {showResponseFormat && responseFormat === 'json_schema' && (
           <Flex {...FlexItemStyles} h="auto">
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>

@@ -130,6 +130,7 @@ export const iconPaths = {
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
   'common/wallet': () => import('./icons/common/wallet.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
+  'common/warningFill': () => import('./icons/common/warningFill.svg'),
   'common/wechat': () => import('./icons/common/wechat.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
   'common/wecom': () => import('./icons/common/wecom.svg'),

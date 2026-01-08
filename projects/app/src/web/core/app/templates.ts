@@ -1,6 +1,6 @@
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -13,7 +13,15 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
+// TODO: 需要做一个类型强制约束
 export const emptyTemplates = {
+  [AppTypeEnum.chatAgent]: {
+    avatar: 'core/app/type/simpleFill',
+    name: 'Agent',
+    nodes: [],
+    edges: [],
+    chatConfig: {}
+  },
   [AppTypeEnum.simple]: {
     avatar: 'core/app/type/simpleFill',
     name: i18nT('app:template.simple_robot'),
@@ -409,9 +417,9 @@ export const emptyTemplates = {
 export const parsePluginFromCurlString = (
   curl: string
 ): {
-  nodes: AppSchema['modules'];
-  edges: AppSchema['edges'];
-  chatConfig: AppSchema['chatConfig'];
+  nodes: AppSchemaType['modules'];
+  edges: AppSchemaType['edges'];
+  chatConfig: AppSchemaType['chatConfig'];
 } => {
   const { url, method, headers, body, params, bodyArray } = parseCurl(curl);
 

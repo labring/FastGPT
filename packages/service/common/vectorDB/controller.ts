@@ -3,7 +3,7 @@ import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { getVectorsByText } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
 import {

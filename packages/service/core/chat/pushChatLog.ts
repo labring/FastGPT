@@ -3,7 +3,6 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { axios } from '../../common/api/axios';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type Metadata = {
   [key: string]: {
@@ -94,9 +93,9 @@ const pushChatLogInternal = async ({
     // Pop last two items
     const question = chatItemHuman.value
       .map((item) => {
-        if (item.type === ChatItemValueTypeEnum.text) {
+        if (item.text) {
           return item.text?.content;
-        } else if (item.type === ChatItemValueTypeEnum.file) {
+        } else if (item.file) {
           if (item.file?.type === 'image') {
             return `![${item.file?.name}](${item.file?.url})`;
           }

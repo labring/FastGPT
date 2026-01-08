@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -58,7 +58,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const userInputFiles = (() => {
     if (fileUrlList) {
-      return fileUrlList.map((url) => parseUrlToFileType(url)).filter(Boolean);
+      return fileUrlList
+        .map((url) => parseUrlToFileType(url))
+        .filter((file): file is NonNullable<typeof file> => Boolean(file));
     }
     // Adapt version 4.8.13 upgrade
     return files;

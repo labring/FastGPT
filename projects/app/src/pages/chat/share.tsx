@@ -35,7 +35,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -419,7 +419,7 @@ export async function getServerSideProps(context: any) {
         },
         'appId canDownloadSource showCite showFullText showRunningStatus'
       )
-        .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
+        .populate<{ associatedApp: AppSchemaType }>('associatedApp', 'name avatar intro')
         .lean();
     } catch (error) {
       addLog.error('getServerSideProps', error);
