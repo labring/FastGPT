@@ -60,7 +60,7 @@ services:
           '--authenticationDatabase',
           'admin',
           '--eval',
-          "db.adminCommand('ping')",
+          "db.adminCommand('ping')"
         ]
       interval: 10s
       timeout: 5s
@@ -162,8 +162,6 @@ services:
       - fastgpt
     environment:
       - AUTH_TOKEN=token
-      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true
-      - REDIS_URL=redis://default:mypassword@redis:6379
       # @see https://fastgpt.cn/docs/introduction/development/object-storage
       - STORAGE_VENDOR=minio # minio | aws-s3 | cos | oss
       - STORAGE_REGION=us-east-1
@@ -175,6 +173,8 @@ services:
       - STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
       - STORAGE_S3_FORCE_PATH_STYLE=true
       - STORAGE_S3_MAX_RETRIES=3
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin&directConnection=true
+      - REDIS_URL=redis://default:mypassword@redis:6379
     depends_on:
       fastgpt-minio:
         condition: service_healthy
