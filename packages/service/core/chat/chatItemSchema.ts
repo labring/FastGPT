@@ -83,8 +83,7 @@ const ChatItemSchema = new Schema({
   isFeedbackRead: Boolean,
   deleteTime: {
     type: Date,
-    default: null,
-    select: false
+    default: null
   },
 
   // @deprecated

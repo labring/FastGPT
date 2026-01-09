@@ -7,19 +7,33 @@ export type DeletedItemsCollapseProps = {
   count: number;
   isExpanded: boolean;
   onToggle: () => void;
-  children: React.ReactNode;
+  position?: 'top' | 'bottom';
 };
 
 const DeletedItemsCollapse: React.FC<DeletedItemsCollapseProps> = ({
   count,
   isExpanded,
   onToggle,
-  children
+  position = 'top'
 }) => {
   const { t } = useTranslation();
+
+  // 折叠状态：只在 top 位置显示展开按钮
+  if (!isExpanded && position !== 'top') {
+    return null;
+  }
+
+  // 展开状态 + top 位置：只显示一条横线
+  if (isExpanded && position === 'top') {
+    return (
+      <Box my={4}>
+        <Box h="1px" bg="myGray.200" />
+      </Box>
+    );
+  }
+
   return (
     <Box my={4}>
-      {/* Collapse toggle bar */}
       <Flex
         align="center"
         cursor="pointer"
@@ -45,13 +59,6 @@ const DeletedItemsCollapse: React.FC<DeletedItemsCollapseProps> = ({
         </Flex>
         <Box flex={1} h="1px" bg="myGray.200" />
       </Flex>
-
-      {/* Collapsed content */}
-      {isExpanded && (
-        <Box mt={2} opacity={0.6}>
-          {children}
-        </Box>
-      )}
     </Box>
   );
 };

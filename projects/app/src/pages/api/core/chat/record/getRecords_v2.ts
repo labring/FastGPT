@@ -69,7 +69,7 @@ async function handler(
 
   const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead' : ''}`,
+    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead' : ''} ${includeDeleted ? 'deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
     [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
@@ -82,8 +82,7 @@ async function handler(
     limit: pageSize,
     initialId,
     prevId,
-    nextId,
-    includeDeleted
+    nextId
   });
 
   // Presign file urls
