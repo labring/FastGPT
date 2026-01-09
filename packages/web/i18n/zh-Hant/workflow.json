@@ -143,7 +143,7 @@
   "only_the_reference_type_is_supported": "僅支援引用類型",
   "optional_value_type": "可選的資料類型",
   "optional_value_type_tip": "可以指定一或多個資料類型，使用者在動態新增欄位時，只能選擇已設定的類型",
-  "pan_priority": "觸控板優先\n- 點選可批次選取\n- 使用兩指移動畫布",
+  "pan_priority": "觸控板優先\n- 單指拖曳框選節點\n- 雙指滑動移動畫布",
   "pass_returned_object_as_output_to_next_nodes": "將程式碼中 return 的物件作為輸出，傳遞給後續的節點。變數名稱需要對應 return 的鍵值",
   "please_enter_node_name": "請輸入節點名稱",
   "plugin.Instruction_Tip": "您可以設定一段說明來解釋這個外掛程式的用途。每次使用外掛程式前，都會顯示這段說明。支援標準 Markdown 語法。",
