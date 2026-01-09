@@ -148,11 +148,13 @@ export const compressToolResponse = async ({
   response,
   model,
   currentMessagesTokens = 0,
+  toolLength = 1,
   reservedTokens = 8000
 }: {
   response: string;
   model: LLMModelItemType;
   currentMessagesTokens?: number;
+  toolLength?: number;
   reservedTokens?: number; // 预留给输出的 token 数
 }): Promise<string> => {
   function splitIntoChunks(content: string, chunkSize: number): string[] {
@@ -208,6 +210,7 @@ export const compressToolResponse = async ({
     }
     return answerText.trim();
   }
+
   async function chunkAndCompress(params: {
     content: string;
     maxTokens: number;
@@ -272,8 +275,11 @@ export const compressToolResponse = async ({
   // 动态计算可用的最大 token 数
   const staticMaxTokens = calculateCompressionThresholds(model.maxContext).singleTool.threshold;
 
-  // 计算可用空间 = maxContext - 当前已使用 - 预留
-  const availableSpace = Math.max(0, model.maxContext - currentMessagesTokens - reservedTokens);
+  // 计算可用空间 = (maxContext - 当前已使用 - 预留) / toolLength, 预防多个 tool 同时返回的数据打爆上下文
+  const availableSpace = Math.max(
+    0,
+    Math.floor((model.maxContext - currentMessagesTokens - reservedTokens) / toolLength)
+  );
 
   // 取静态阈值和动态可用空间的较小值
   const maxTokens = Math.min(staticMaxTokens, availableSpace);

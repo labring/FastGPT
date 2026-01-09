@@ -344,6 +344,7 @@ export const runAgentCall = async ({
           response,
           model: modelData,
           currentMessagesTokens,
+          toolLength: toolCalls.length,
           reservedTokens: 8000 // 预留 8k tokens 给输出
         })
       };

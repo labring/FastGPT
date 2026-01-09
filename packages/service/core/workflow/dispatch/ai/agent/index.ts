@@ -232,10 +232,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           reserveTool: true
         });
 
-        // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        const userInputMessage = userChatInput
-          ? [{ role: 'user' as const, content: userChatInput }]
-          : [];
+        // 构建完整上下文：历史消息 + 用户输入(根据场景) + 本轮所有的AI响应
+        const userInputMessage =
+          lastInteractive && interactiveInput
+            ? [{ role: 'user' as const, content: interactiveInput }]
+            : [];
 
         const result = await dispatchPlanAgent({
           checkIsStopping,
@@ -395,9 +396,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
 
         // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        const userInputMessage =
-          userChatInput && initialRequest
+        // 如果是首轮直接输入用户的消息，如果是非首轮且有交互内容，则输入交互的内容
+        const userInputMessage = initialRequest
+          ? userChatInput
             ? [{ role: 'user' as const, content: userChatInput }]
+            : []
+          : lastInteractive && interactiveInput
+            ? [{ role: 'user' as const, content: interactiveInput }]
             : [];
 
         // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)
