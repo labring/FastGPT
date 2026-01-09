@@ -67,7 +67,6 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { useDeletedGroups } from './hooks/useDeletedGroups';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -127,6 +126,7 @@ const ChatBox = ({
   const [feedbackId, setFeedbackId] = useState<string>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
+  const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<number[]>([]);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -1013,7 +1013,75 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
-  const { processedRecords, toggleDeletedGroup } = useDeletedGroups(chatRecords);
+  const toggleDeletedGroup = useCallback((groupIndex: number) => {
+    setExpandedDeletedGroups((prev) => {
+      if (prev.includes(groupIndex)) {
+        return prev.filter((i) => i !== groupIndex);
+      } else {
+        return [...prev, groupIndex];
+      }
+    });
+  }, []);
+
+  // 预处理聊天记录：根据类型生成统一的数据结构
+  const processedRecords = useMemo(() => {
+    // Log 类型：计算删除分组信息
+    if (chatType === ChatTypeEnum.log) {
+      let deletedGroupIndex = -1;
+      let isInDeletedGroup = false;
+      let currentGroupCount = 0;
+
+      return chatRecords.map((item, index) => {
+        const isDeleted = !!item.deleteTime;
+        const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
+        const nextIsDeleted =
+          index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
+
+        const enteringDeletedGroup = isDeleted && !prevIsDeleted;
+        const leavingDeletedGroup = !isDeleted && prevIsDeleted;
+        const isLastInDeletedGroup = isDeleted && !nextIsDeleted;
+
+        if (enteringDeletedGroup) {
+          deletedGroupIndex++;
+          isInDeletedGroup = true;
+          currentGroupCount = 0;
+          for (let i = index; i < chatRecords.length; i++) {
+            if (chatRecords[i].deleteTime) currentGroupCount++;
+            else break;
+          }
+        } else if (leavingDeletedGroup) {
+          isInDeletedGroup = false;
+          currentGroupCount = 0;
+        }
+
+        const currentDeletedGroupIndex = deletedGroupIndex;
+        const isExpanded = expandedDeletedGroups.includes(currentDeletedGroupIndex);
+
+        return {
+          item,
+          index,
+          enteringDeletedGroup,
+          isLastInDeletedGroup,
+          deletedGroupIndex: currentDeletedGroupIndex,
+          isExpanded,
+          deletedCount: currentGroupCount,
+          shouldRender: !isInDeletedGroup || isExpanded
+        };
+      });
+    }
+
+    // 普通类型：包装成统一结构，但不需要删除逻辑
+    return chatRecords.map((item, index) => ({
+      item,
+      index,
+      enteringDeletedGroup: false,
+      isLastInDeletedGroup: false,
+      deletedGroupIndex: -1,
+      isExpanded: false,
+      deletedCount: 0,
+      shouldRender: true
+    }));
+  }, [chatType, chatRecords, expandedDeletedGroups]);
 
   //chat history
   const RecordsBox = useMemo(() => {
