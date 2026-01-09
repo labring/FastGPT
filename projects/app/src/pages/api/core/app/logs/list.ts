@@ -141,9 +141,7 @@ async function handler(
                     }
                   },
                   customFeedback: {
-                    $sum: {
-                      $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
-                    }
+                    $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
                   },
                   errorCountFromChatItem: {
                     $sum: {

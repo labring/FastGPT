@@ -99,16 +99,6 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
 
-  const responseChatItemId = (() => {
-    if (!!lastInteractive) {
-      const lastAiChat = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
-      if (lastAiChat?.dataId) {
-        return lastAiChat.dataId;
-      }
-    }
-    return data.responseChatItemId;
-  })();
-
   // Check url valid
   const invalidInput = query.some((item) => {
     if (item.type === ChatItemValueTypeEnum.file && item.file?.url) {
@@ -197,8 +187,7 @@ export async function dispatchWorkFlow({
       ...data,
       query,
       histories,
-      timezone,
-      responseChatItemId
+      timezone
     }))
   };
   // MCP
@@ -228,7 +217,6 @@ export async function dispatchWorkFlow({
   // Init some props
   return runWorkflow({
     ...data,
-    responseChatItemId,
     checkIsStopping,
     query,
     histories,
