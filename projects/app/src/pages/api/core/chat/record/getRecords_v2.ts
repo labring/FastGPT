@@ -38,7 +38,8 @@ async function handler(
     pageSize,
     initialId,
     nextId,
-    prevId
+    prevId,
+    includeDeleted = false
   } = req.body;
 
   if (!appId || !chatId) {
@@ -68,13 +69,14 @@ async function handler(
 
   const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead' : ''}`,
+    [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
     [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
   };
 
   const result = await getChatItems({
+    includeDeleted,
     appId,
     chatId,
     field: fieldMap[type],

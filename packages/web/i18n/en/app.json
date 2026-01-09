@@ -58,6 +58,8 @@
   "auto_execute_tip": "After turning it on, the workflow will be automatically triggered when the user enters the conversation interface. \nExecution order: 1. Dialogue starter; 2. Global variables; 3. Automatic execution.",
   "auto_save": "Auto save",
   "change_app_type": "Change App Type",
+  "chat.collapse_deleted_items": "Collapse deleted records",
+  "chat.expand_deleted_items": "Expand deleted records",
   "chat_debug": "Chat Preview",
   "chat_logs": "Logs",
   "chat_logs_tips": "Logs will record the online, shared, and API (requires chatId) conversation records of this app.",
