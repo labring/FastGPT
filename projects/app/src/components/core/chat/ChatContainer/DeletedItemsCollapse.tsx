@@ -18,11 +18,6 @@ const DeletedItemsCollapse: React.FC<DeletedItemsCollapseProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 折叠状态：只在 top 位置显示展开按钮
-  if (!isExpanded && position !== 'top') {
-    return null;
-  }
-
   // 展开状态 + top 位置：只显示一条横线
   if (isExpanded && position === 'top') {
     return (
