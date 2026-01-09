@@ -98,7 +98,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             {feConfigs?.docUrl && (
               <Link
                 href={
-                  feConfigs.openAPIDocUrl || getDocPath('/docs/introduction/development/openapi')
+                  feConfigs.openAPIDocUrl ||
+                  getDocPath('/docs/introduction/development/openapi/intro')
                 }
                 target={'_blank'}
                 ml={1}

@@ -297,11 +297,23 @@ const JSONEditor = ({
         wrapperProps={{
           onBlur
         }}
-        onMount={() => {
+        onMount={(editor) => {
           if (!value) {
             setPlaceholderDisplay('block');
           } else {
             setPlaceholderDisplay('none');
+          }
+
+          // Prevent browser autofill from causing getModifierState errors
+          const editorDom = editor.getDomNode();
+          if (editorDom) {
+            const textarea = editorDom.querySelector('textarea');
+            if (textarea) {
+              textarea.setAttribute('autocomplete', 'off');
+              textarea.setAttribute('autocorrect', 'off');
+              textarea.setAttribute('autocapitalize', 'off');
+              textarea.setAttribute('spellcheck', 'false');
+            }
           }
         }}
       />

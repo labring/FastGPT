@@ -57,7 +57,9 @@ export const authCode = async ({
       return Promise.reject(new UserError(i18nT('common:error.code_error')));
     }
 
-    await result.deleteOne({ session });
+    setTimeout(async () => {
+      await result.deleteOne({ session }).catch();
+    }, 60000);
 
     return 'SUCCESS';
   });

@@ -105,91 +105,90 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ appId: 1, tmbId: 1, outLinkUid: 1 });
-
   ChatSchema.index({ chatId: 1 });
+  // Delete by appid; init chat; update chat; auth chat;
+  ChatSchema.index({ appId: 1, chatId: 1 }, { unique: true });
+
+  // Clear history(share),Init 4121
+  ChatSchema.index(
+    { appId: 1, outLinkUid: 1, tmbId: 1 },
+    {
+      partialFilterExpression: {
+        outLinkUid: { $exists: true }
+      }
+    }
+  );
+
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
   // get share chat history
-  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
-
-  // delete by appid; clear history; init chat; update chat; auth chat; get chat;
-  ChatSchema.index({ appId: 1, chatId: 1 });
+  ChatSchema.index(
+    { shareId: 1, outLinkUid: 1, updateTime: -1 },
+    {
+      partialFilterExpression: {
+        shareId: { $exists: true }
+      }
+    }
+  );
 
   /* get chat logs */
-  // 1. No feedback filter
-  ChatSchema.index({ teamId: 1, appId: 1, source: 1, tmbId: 1, deleteTime: 1, updateTime: -1 });
+  // 1. Common get
+  ChatSchema.index({ appId: 1, updateTime: -1 });
+  // Get history(tmbId)
+  ChatSchema.index({ appId: 1, tmbId: 1, updateTime: -1 });
+  // clearHistory(API)
+  ChatSchema.index({ appId: 1, source: 1, tmbId: 1, updateTime: -1 });
 
   /* 反馈过滤的索引 */
   // 2. Has good feedback filter
   ChatSchema.index(
     {
-      teamId: 1,
       appId: 1,
-      source: 1,
-      tmbId: 1,
       hasGoodFeedback: 1,
-      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasGoodFeedback: true,
-        deleteTime: null
+        hasGoodFeedback: true
       }
     }
   );
-  // 3. Has bad feedback filter
+  // Has bad feedback filter
   ChatSchema.index(
     {
-      teamId: 1,
       appId: 1,
-      source: 1,
-      tmbId: 1,
       hasBadFeedback: 1,
-      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasBadFeedback: true,
-        deleteTime: null
+        hasBadFeedback: true
       }
     }
   );
-  // 4. Has unread good feedback filter
+  // 3. Has unread good feedback filter
   ChatSchema.index(
     {
-      teamId: 1,
       appId: 1,
-      source: 1,
-      tmbId: 1,
       hasUnreadGoodFeedback: 1,
-      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasUnreadGoodFeedback: true,
-        deleteTime: null
+        hasUnreadGoodFeedback: true
       }
     }
   );
-  // 5. Has unread bad feedback filter
+  // Has unread bad feedback filter
   ChatSchema.index(
     {
-      teamId: 1,
       appId: 1,
-      source: 1,
-      tmbId: 1,
       hasUnreadBadFeedback: 1,
-      deleteTime: 1,
       updateTime: -1
     },
     {
       partialFilterExpression: {
-        hasUnreadBadFeedback: true,
-        deleteTime: null
+        hasUnreadBadFeedback: true
       }
     }
   );

@@ -20,7 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // auth app permission
   const [chat, app] = await Promise.all([
-    MongoChat.findOne({ appId, chatId, shareId }).lean(),
+    MongoChat.findOne({ appId, chatId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
 
