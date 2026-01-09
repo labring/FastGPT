@@ -28,11 +28,12 @@ x-share-db-config: &x-share-db-config
 x-vec-config: &x-vec-config
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
 
+
 version: '3.3'
 services:
   # Vector DB
   vectorDB:
-    image: oceanbase/oceanbase-ce:4.3.5-lts
+    image:  oceanbase/oceanbase-ce:4.3.5-lts
     container_name: ob
     restart: always
     # ports: # 生产环境建议不要暴露
@@ -60,13 +61,14 @@ services:
       # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
       test:
         [
-          'CMD-SHELL',
-          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
+          "CMD-SHELL",
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
         ]
       interval: 30s
       timeout: 10s
       retries: 1000
       start_period: 10s
+
 
   mongo:
     image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
@@ -81,19 +83,7 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test:
-        [
-          'CMD',
-          'mongo',
-          '-u',
-          'myusername',
-          '-p',
-          'mypassword',
-          '--authenticationDatabase',
-          'admin',
-          '--eval',
-          "db.adminCommand('ping')"
-        ]
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -167,7 +157,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.4 # git
+    image: ghcr.io/labring/fastgpt:v4.14.5 # git
     ports:
       - 3000:3000
     networks:
@@ -219,13 +209,13 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.4
+    image: ghcr.io/labring/fastgpt-sandbox:v4.14.5
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.4
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.5
     networks:
       - fastgpt
     ports:
@@ -234,7 +224,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.3.4
+    image: ghcr.io/labring/fastgpt-plugin:v0.4.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -305,3 +295,4 @@ configs:
     name: init_sql
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
+    
