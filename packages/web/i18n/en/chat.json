@@ -96,6 +96,7 @@
   "response_embedding_model_tokens": "Vector Model Tokens",
   "response_hybrid_weight": "Embedding : Full text = {{emb}} : {{text}}",
   "response_rerank_tokens": "Rearrange Model Tokens",
+  "response_search_results": "Search results({{len}})",
   "search_results": "Search results",
   "select": "Select",
   "select_file": "Upload File",

@@ -155,6 +155,7 @@
   "previous": "上一個",
   "question_classification": "問題分類",
   "question_optimization": "問題最佳化",
+  "quote_cite_tip": "若阻止提示詞生成引文 id，將無法在對話時識別和顯示引用文檔",
   "quote_content_placeholder": "可以自訂引用內容的結構，以便更好地適應不同場景。可以使用一些變數來設定範本\n{{q}} - 主要內容\n{{a}} - 輔助資料\n{{source}} - 來源名稱\n{{sourceId}} - 來源 ID\n{{index}} - 第 n 個引用",
   "quote_content_tip": "可以自訂引用內容的結構，以更好的適合不同場景。\n可以使用一些變數來進行範本設定\n\n{{id}} - 引用資料唯一 id\n\n{{q}} - 主要內容\n\n{{a}} - 輔助資料\n\n{{source}} - 來源名\n\n{{sourceId}} - 來源 ID\n\n{{index}} - 第 n 個引用\n\n他們都是可選的，下面是預設值：\n\n{{default}}",
   "quote_num": "引用數量",

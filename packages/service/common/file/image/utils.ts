@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { axios } from '../../api/axios';
 import { addLog } from '../../system/log';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -101,8 +101,7 @@ export const getImageBase64 = async (url: string) => {
     const response = await retryFn(() =>
       axios.get(url, {
         baseURL: serverRequestBaseUrl,
-        responseType: 'arraybuffer',
-        proxy: false
+        responseType: 'arraybuffer'
       })
     );
 

@@ -5,7 +5,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
-import { postS3UploadFile } from '@/web/common/file/api';
 import {
   getPkgPluginUploadURL,
   parseUploadedPkgPlugin,
@@ -18,6 +17,7 @@ import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error' | 'duplicate';
@@ -55,21 +55,23 @@ const ImportPluginModal = ({
         )
       );
 
-      const presignedData = await getPkgPluginUploadURL({ filename: file.name });
-
-      const formData = new FormData();
-      Object.entries(presignedData.formData).forEach(([key, value]) => {
-        formData.append(key, value);
+      const { formData, objectName, postURL } = await getPkgPluginUploadURL({
+        filename: file.name
       });
-      formData.append('file', file.file);
 
-      await postS3UploadFile(presignedData.postURL, formData);
+      await putFileToS3({
+        url: postURL,
+        headers: formData,
+        file: file.file,
+        t,
+        onSuccess: () => {
+          setUploadedFiles((prev) =>
+            prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
+          );
+        }
+      });
 
-      setUploadedFiles((prev) =>
-        prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
-      );
-
-      const parseResult = await parseUploadedPkgPlugin({ objectName: presignedData.objectName });
+      const parseResult = await parseUploadedPkgPlugin({ objectName });
 
       const parentId = parseResult.find((item) => !item.parentId)?.toolId;
       if (!parentId) {

@@ -25,7 +25,7 @@ class S3AvatarSource extends S3PublicBucket {
   }) {
     const { fileKey } = getFileS3Key.avatar({ teamId, filename });
 
-    return this.createPostPresignedUrl(
+    return this.createPresignedPutUrl(
       { filename, rawKey: fileKey },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
@@ -71,7 +71,7 @@ class S3AvatarSource extends S3PublicBucket {
     temporary: boolean;
   }) {
     const from = key.slice(this.prefix.length);
-    const to = `${S3Sources.avatar}/${teamId}/${filename}`;
+    const to = getFileS3Key.avatar({ teamId, filename }).fileKey;
     await this.copy({ from, to, options: { temporary } });
     return this.prefix.concat(to);
   }

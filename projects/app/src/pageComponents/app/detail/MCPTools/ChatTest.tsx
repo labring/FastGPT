@@ -186,6 +186,7 @@ const Render = ({
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />

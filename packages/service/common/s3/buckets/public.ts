@@ -1,51 +1,131 @@
 import { S3BaseBucket } from './base';
-import { S3Buckets } from '../constants';
-import { type S3OptionsType } from '../type';
+import { createDefaultStorageOptions } from '../constants';
+import {
+  type IAwsS3CompatibleStorageOptions,
+  type ICosStorageOptions,
+  type IOssStorageOptions,
+  createStorage,
+  MinioStorageAdapter,
+  type IStorageOptions
+} from '@fastgpt-sdk/storage';
+import { addLog } from '../../system/log';
 
 export class S3PublicBucket extends S3BaseBucket {
-  constructor(options?: Partial<S3OptionsType>) {
-    super(S3Buckets.public, {
-      ...options,
-      afterInit: async () => {
-        const bucket = this.bucketName;
-        const policy = JSON.stringify({
-          Version: '2012-10-17',
-          Statement: [
-            {
-              Effect: 'Allow',
-              Principal: '*',
-              Action: 's3:GetObject',
-              Resource: `arn:aws:s3:::${bucket}/*`
-            }
-          ]
-        });
-        try {
-          await this.client.setBucketPolicy(bucket, policy);
-        } catch (error) {
-          // NOTE: maybe it was a cloud S3 that doesn't allow us to set the policy, so that cause the error,
-          // maybe we can ignore the error, or we have other plan to handle this.
-          console.error('Failed to set bucket policy:', error);
-        }
+  constructor() {
+    const { vendor, publicBucket, externalBaseUrl, credentials, region, ...options } =
+      createDefaultStorageOptions();
+
+    const { config, externalConfig } = (() => {
+      if (vendor === 'minio') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          forcePathStyle: true,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'aws-s3') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          endpoint: options.endpoint!,
+          maxRetries: options.maxRetries!,
+          forcePathStyle: options.forcePathStyle
+        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalBaseUrl
+          }
+        };
+      } else if (vendor === 'cos') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            proxy: options.proxy,
+            domain: options.domain,
+            protocol: options.protocol,
+            useAccelerate: options.useAccelerate
+          } as Omit<ICosStorageOptions, 'bucket'>
+        };
+      } else if (vendor === 'oss') {
+        return {
+          config: {
+            region,
+            vendor,
+            credentials,
+            endpoint: options.endpoint!,
+            cname: options.cname,
+            internal: options.internal,
+            secure: options.secure,
+            enableProxy: options.enableProxy
+          } as Omit<IOssStorageOptions, 'bucket'>
+        };
       }
-    });
+      throw new Error(`Unsupported storage vendor: ${vendor}`);
+    })();
+
+    const client = createStorage({ bucket: publicBucket, ...config });
+
+    let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
+    if (externalBaseUrl) {
+      externalClient = createStorage({
+        bucket: publicBucket,
+        ...externalConfig
+      } as IStorageOptions);
+    }
+
+    super(client, externalClient);
+
+    client
+      .ensureBucket()
+      .then(() => {
+        if (!(client instanceof MinioStorageAdapter)) {
+          return;
+        }
+
+        client.ensurePublicBucketPolicy().catch((error) => {
+          addLog.info(`Failed to ensure public bucket policy "${client.bucketName}":`, { error });
+        });
+      })
+      .catch((error) => {
+        addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
+      });
+
+    externalClient
+      ?.ensureBucket()
+      .then(() => {
+        if (!(externalClient instanceof MinioStorageAdapter)) {
+          return;
+        }
+
+        externalClient.ensurePublicBucketPolicy().catch((error) => {
+          addLog.info(`Failed to ensure public bucket policy "${externalClient.bucketName}":`, {
+            error
+          });
+        });
+      })
+      .catch((error) => {
+        addLog.error(
+          `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
+          error
+        );
+      });
   }
 
   createPublicUrl(objectKey: string): string {
-    const protocol = this.options.useSSL ? 'https' : 'http';
-    const hostname = this.options.endPoint;
-    const port = this.options.port;
-    const bucket = this.bucketName;
-
-    const url = new URL(`${protocol}://${hostname}:${port}/${bucket}/${objectKey}`);
-
-    if (this.options.externalBaseURL) {
-      const externalBaseURL = new URL(this.options.externalBaseURL);
-
-      url.port = externalBaseURL.port;
-      url.hostname = externalBaseURL.hostname;
-      url.protocol = externalBaseURL.protocol;
-    }
-
-    return url.toString();
+    return this.externalClient.generatePublicGetUrl({ key: objectKey }).url;
   }
 }

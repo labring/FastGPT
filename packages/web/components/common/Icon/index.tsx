@@ -37,7 +37,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
       {...props}
     />
   ) : (
-    <Box w={w} h={'1px'}></Box>
+    <Box w={w} h={'1px'} />
   );
 };
 

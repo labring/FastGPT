@@ -14,8 +14,6 @@ import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { runtimeSystemVar2StoreType } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { z } from 'zod';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -27,7 +25,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     chatConfig,
     params,
     variables,
-    cloneVariables,
     runtimeNodes,
     workflowStreamResponse,
     externalProvider,
@@ -36,7 +33,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   const { updateList } = params;
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
-  const urlSchema = z.string().url();
 
   const result = updateList.map((item) => {
     const variable = item.variable;
@@ -66,19 +62,11 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
         return valueTypeFormat(val, item.valueType);
       } else {
-        const val = getReferenceVariableValue({
+        return getReferenceVariableValue({
           value: item.value,
           variables,
           nodes: runtimeNodes
         });
-
-        if (
-          Array.isArray(val) &&
-          val.every((url) => typeof url === 'string' && urlSchema.safeParse(url).success)
-        ) {
-          return val.map((url) => parseUrlToFileType(url)).filter(Boolean);
-        }
-        return val;
       }
     })();
 
@@ -106,7 +94,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       event: SseResponseEventEnum.updateVariables,
       data: runtimeSystemVar2StoreType({
         variables,
-        cloneVariables,
         removeObj: externalProvider.externalWorkflowVariables,
         userVariablesConfigs: chatConfig?.variables
       })

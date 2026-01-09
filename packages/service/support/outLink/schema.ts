@@ -59,6 +59,10 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: false
   },
+  showWholeResponse: {
+    type: Boolean,
+    default: true
+  },
   limit: {
     maxUsagePoints: {
       type: Number,

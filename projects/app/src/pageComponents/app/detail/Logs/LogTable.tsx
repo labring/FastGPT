@@ -463,7 +463,7 @@ const LogTable = ({
             onSuccess={(date) => {
               setDateRange(date);
             }}
-            bg={'myGray.25'}
+            bg={'white'}
             h={10}
             flex={'0 1 250px'}
             rounded={'8px'}
@@ -515,7 +515,7 @@ const LogTable = ({
           pl={3}
         >
           <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
-            {t('common:chat')}
+            {t('common:Search')}
           </Box>
           <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
           <Input

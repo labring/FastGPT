@@ -1,6 +1,6 @@
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getSecretValue } from '../../common/secret/utils';
-import axios from 'axios';
+import { axios } from '../../common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
@@ -156,10 +156,7 @@ export const runHTTPTool = async ({
       headers,
       data: body,
       params: queryParams,
-      timeout: 300000,
-      httpsAgent: new (require('https').Agent)({
-        rejectUnauthorized: false
-      })
+      timeout: 300000
     });
 
     return { data };

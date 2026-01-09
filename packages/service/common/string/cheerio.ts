@@ -1,6 +1,6 @@
 import { type UrlFetchParams, type UrlFetchResponse } from '@fastgpt/global/common/file/api';
 import * as cheerio from 'cheerio';
-import axios from 'axios';
+import { axios } from '../api/axios';
 import { htmlToMarkdown } from './utils';
 import { isInternalAddress } from '../system/utils';
 

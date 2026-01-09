@@ -2,6 +2,7 @@ import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constan
 import { MongoUserAuth } from './schema';
 import { i18nT } from '../../../../web/i18n/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const addAuthCode = async ({
   key,
@@ -53,10 +54,12 @@ export const authCode = async ({
     );
 
     if (!result) {
-      return Promise.reject(i18nT('common:error.code_error'));
+      return Promise.reject(new UserError(i18nT('common:error.code_error')));
     }
 
-    await result.deleteOne({ session });
+    setTimeout(async () => {
+      await result.deleteOne({ session }).catch();
+    }, 60000);
 
     return 'SUCCESS';
   });

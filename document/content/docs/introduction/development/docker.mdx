@@ -200,7 +200,14 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 
 ### 3. 修改环境变量
 
-1. 修改 yml 文件顶部的`S3_EXTERNAL_BASE_URL`变量，改成 S3 的可访问地址（要求使用者可以访问）
+1. 修改`STORAGE_EXTERNAL_ENDPOINT`变量，改成客户端和FastGPT 服务均可访问的地址。
+
+**重要：**
+
+> 填入的地址不可为`127.0.0.1`或者`localhost`等本地回环地址，可填 Docker 部署时的宿主机本地IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
+>
+> 具体查看 [对象存储配置及常见问题](/docs/introduction/development/object-storage)
+
 2. 按照您的需求自行修改环境变量，建议在生产环境修改账号密码等。
 3. 对于 Zilliz 版本 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
 
@@ -219,9 +226,9 @@ docker-compose up -d
 
 ### 6. 访问 FastGPT
 
-可通过第二步开放的端口/域名访问 FastGPT。  
-登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。  
-每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致）。  
+可通过第二步开放的端口/域名访问 FastGPT。
+登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
+每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致）。
 
 ### 7. 配置模型
 
