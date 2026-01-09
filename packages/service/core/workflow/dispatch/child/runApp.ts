@@ -131,7 +131,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       assistantResponses,
       runTimes,
       workflowInteractiveResponse,
-      system_memories
+      system_memories,
+      customFeedbacks
     } = await runWorkflow({
       ...props,
       usageId: undefined,
@@ -205,7 +206,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           totalPoints: usagePoints
         }
       ],
-      [DispatchNodeResponseKeyEnum.toolResponses]: text
+      [DispatchNodeResponseKeyEnum.toolResponses]: text,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {
     return getNodeErrResponse({ error });

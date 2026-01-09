@@ -195,47 +195,6 @@ export async function getChatItems({
   return { histories, total, hasMorePrev, hasMoreNext };
 }
 
-export const addCustomFeedbacks = async ({
-  appId,
-  chatId,
-  dataId,
-  feedbacks
-}: {
-  appId: string;
-  chatId?: string;
-  dataId?: string;
-  feedbacks: string[];
-}) => {
-  if (!chatId || !dataId) return;
-
-  try {
-    await mongoSessionRun(async (session) => {
-      // Add custom feedbacks to ChatItem
-      await MongoChatItem.updateOne(
-        {
-          appId,
-          chatId,
-          dataId
-        },
-        {
-          $push: { customFeedbacks: { $each: feedbacks } }
-        },
-        { session }
-      );
-
-      // Update ChatLog feedback statistics
-      await updateChatFeedbackCount({
-        appId,
-        chatId,
-        session
-      });
-    });
-  } catch (error) {
-    addLog.error('addCustomFeedbacks error', error);
-    throw error;
-  }
-};
-
 /**
  * Update feedback count statistics for a chat in Chat table
  * This method aggregates feedback data from chatItems and updates the Chat table

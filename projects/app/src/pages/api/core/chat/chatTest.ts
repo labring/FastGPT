@@ -180,39 +180,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const { flowResponses, assistantResponses, system_memories, newVariables, durationSeconds } =
-      await dispatchWorkFlow({
-        apiVersion: 'v2',
-        res,
-        lang: getLocale(req),
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        usageSource: UsageSourceEnum.fastgpt,
+    const {
+      flowResponses,
+      assistantResponses,
+      system_memories,
+      newVariables,
+      durationSeconds,
+      customFeedbacks
+    } = await dispatchWorkFlow({
+      apiVersion: 'v2',
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      usageSource: UsageSourceEnum.fastgpt,
 
-        uid: tmbId,
+      uid: tmbId,
 
-        runningAppInfo: {
-          id: appId,
-          name: appName,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+      runningAppInfo: {
+        id: appId,
+        name: appName,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig,
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        responseDetail: true
-      });
+      chatId,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      responseDetail: true
+    });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -239,7 +245,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      customFeedbacks
     };
     const params = {
       chatId,

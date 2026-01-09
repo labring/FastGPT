@@ -24,7 +24,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -57,13 +57,12 @@ import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/u
 import type { MCPClient } from '../../app/mcp';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
-import { clone } from 'lodash';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 
 type Props = Omit<
   ChatDispatchProps,
-  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'cloneVariables'
+  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider'
 > & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
@@ -182,7 +181,6 @@ export async function dispatchWorkFlow({
   }
 
   // Get default variables
-  const cloneVariables = clone(data.variables);
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...(await getSystemVariables({
@@ -228,8 +226,7 @@ export async function dispatchWorkFlow({
     workflowDispatchDeep: 0,
     usageId: newUsageId,
     concatUsage,
-    mcpClientMemory,
-    cloneVariables
+    mcpClientMemory
   }).finally(async () => {
     if (streamCheckTimer) {
       clearInterval(streamCheckTimer);
@@ -273,8 +270,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     usageId,
     concatUsage,
     runningUserInfo: { teamId },
-    mcpClientMemory,
-    cloneVariables
+    mcpClientMemory
   } = data;
 
   // Over max depth
@@ -296,7 +292,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
       [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
         variables,
-        cloneVariables,
         removeObj: externalProvider.externalWorkflowVariables,
         userVariablesConfigs: data.chatConfig?.variables
       }),
@@ -343,6 +338,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
       | undefined;
     system_memories: Record<string, any> = {}; // Workflow node memories
+    customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
     // Debug
     debugNextStepRunNodes: RuntimeNodeItemType[] = []; // 记录 Debug 模式下，下一个阶段需要执行的节点。
@@ -720,7 +716,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         assistantResponses,
         rewriteHistories,
         runTimes = 1,
-        system_memories: newMemories
+        system_memories: newMemories,
+        customFeedbacks
       }: NodeResponseCompleteType) => {
         // Add run times
         this.workflowRunTimes += runTimes;
@@ -735,6 +732,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         if (responseData) {
           this.chatResponses.push(responseData);
+        }
+
+        // Collect custom feedbacks
+        if (customFeedbacks && Array.isArray(customFeedbacks)) {
+          this.customFeedbackList = this.customFeedbackList.concat(customFeedbacks);
         }
 
         // Push usage in real time. Avoid a workflow usage a large number of points
@@ -1120,7 +1122,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
     [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
       variables,
-      cloneVariables,
       removeObj: externalProvider.externalWorkflowVariables,
       userVariablesConfigs: data.chatConfig?.variables
     }),
@@ -1128,6 +1129,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
         : undefined,
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      workflowQueue.customFeedbackList.length > 0 ? workflowQueue.customFeedbackList : undefined,
     durationSeconds
   };
 };
