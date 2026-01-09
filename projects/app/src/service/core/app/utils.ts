@@ -84,13 +84,15 @@ export const getScheduleTriggerApp = async () => {
         durationSeconds = 0,
         assistantResponses = [],
         flowResponses = [],
-        system_memories
+        system_memories,
+        customFeedbacks
       }: {
         error?: any;
         durationSeconds?: number;
         assistantResponses?: AIChatItemValueItemType[];
         flowResponses?: ChatHistoryItemResType[];
         system_memories?: Record<string, any>;
+        customFeedbacks?: string[];
       }) =>
         saveChat({
           chatId,
@@ -111,37 +113,43 @@ export const getScheduleTriggerApp = async () => {
             obj: ChatRoleEnum.AI,
             value: assistantResponses,
             [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
-            memories: system_memories
+            memories: system_memories,
+            customFeedbacks
           },
           durationSeconds,
           errorMsg: getErrText(error)
         });
 
       try {
-        const { assistantResponses, flowResponses, durationSeconds, system_memories } =
-          await retryFn(async () => {
-            return dispatchWorkFlow({
-              chatId,
-              mode: 'chat',
-              usageId,
-              runningAppInfo: {
-                id: String(app._id),
-                name: app.name,
-                teamId: String(app.teamId),
-                tmbId: String(app.tmbId)
-              },
-              runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-              uid: String(app.tmbId),
-              runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-              runtimeEdges: storeEdges2RuntimeEdges(edges),
-              variables: {},
-              query: userQuery,
-              chatConfig,
-              histories: [],
-              stream: false,
-              maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-            });
+        const {
+          assistantResponses,
+          flowResponses,
+          durationSeconds,
+          system_memories,
+          customFeedbacks
+        } = await retryFn(async () => {
+          return dispatchWorkFlow({
+            chatId,
+            mode: 'chat',
+            usageId,
+            runningAppInfo: {
+              id: String(app._id),
+              name: app.name,
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
+            runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
+            uid: String(app.tmbId),
+            runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+            runtimeEdges: storeEdges2RuntimeEdges(edges),
+            variables: {},
+            query: userQuery,
+            chatConfig,
+            histories: [],
+            stream: false,
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES
           });
+        });
 
         const error = flowResponses[flowResponses.length - 1]?.error;
 
@@ -151,7 +159,8 @@ export const getScheduleTriggerApp = async () => {
           durationSeconds,
           assistantResponses,
           flowResponses,
-          system_memories
+          system_memories,
+          customFeedbacks
         });
       } catch (error) {
         addLog.error('[Schedule app] run error', error);

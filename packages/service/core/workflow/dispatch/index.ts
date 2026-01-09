@@ -42,7 +42,6 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
-import { addCustomFeedbacks } from '../../chat/controller';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
 import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -1121,25 +1120,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       event: SseResponseEventEnum.workflowDuration,
       data: { durationSeconds }
     });
-  }
-
-  if (
-    isRootRuntime &&
-    !isDebugMode &&
-    workflowQueue.customFeedbackList.length > 0 &&
-    data.chatId &&
-    data.responseChatItemId
-  ) {
-    setTimeout(() => {
-      addCustomFeedbacks({
-        appId: data.runningAppInfo.id,
-        chatId: data.chatId,
-        dataId: data.responseChatItemId,
-        feedbacks: workflowQueue.customFeedbackList
-      }).catch((error) => {
-        addLog.error('Add custom feedbacks error', error);
-      });
-    }, 500);
   }
 
   return {

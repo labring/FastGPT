@@ -1,3 +1,4 @@
+import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type.d';
@@ -164,14 +165,14 @@ export const runtimeSystemVar2StoreType = ({
             const urlObj = new URL(url);
             // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
             const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
-            const filename = key.split('/').pop() || 'file';
-            const extension = filename.split('.').pop()?.toLowerCase() || '';
+            const filename = path.basename(key) || 'file';
+            const extname = path.extname(key).toLowerCase(); // includes the dot, e.g., ".jpg"
 
             // Check if it's an image type
-            const isImage = extension && imageFileType.includes(`.${extension}`);
+            const isImage = extname && imageFileType.includes(extname);
 
             return {
-              id: filename.replace(/\.[^.]+$/, ''), // Use filename without extension as id
+              id: path.basename(key, path.extname(key)), // filename without extension
               key,
               name: filename,
               type: isImage ? ChatFileTypeEnum.image : ChatFileTypeEnum.file
