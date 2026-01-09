@@ -15,10 +15,6 @@ const ChatSchema = new Schema({
     type: String,
     require: true
   },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -97,11 +93,15 @@ const ChatSchema = new Schema({
   hasUnreadGoodFeedback: Boolean,
   hasUnreadBadFeedback: Boolean,
 
+  searchKey: String,
   deleteTime: {
     type: Date,
     default: null,
     select: false
-  }
+  },
+
+  // @deprecated
+  userId: Schema.Types.ObjectId
 });
 
 try {
