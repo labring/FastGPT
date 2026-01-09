@@ -132,7 +132,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       runTimes,
       workflowInteractiveResponse,
       system_memories,
-      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
+      customFeedbacks
     } = await runWorkflow({
       ...props,
       usageId: undefined,
