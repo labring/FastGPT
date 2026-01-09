@@ -879,6 +879,7 @@
   "extraction_results": "提取結果",
   "failed": "失敗",
   "field_name": "欄位名稱",
+  "filter_sensitive_info": "過濾敏感信息",
   "folder.empty": "此目錄中沒有更多項目了",
   "folder.open_dataset": "開啟知識庫",
   "folder_description": "資料夾描述",
