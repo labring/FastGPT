@@ -256,7 +256,7 @@ const SystemToolConfigModal = ({
                 </>
               )}
 
-              {feConfigs?.showSystemToolUserTagsControl && (
+              {feConfigs?.showWecomConfig && (
                 <>
                   <Box>
                     <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
@@ -403,7 +403,7 @@ const SystemToolConfigModal = ({
               </>
             )}
 
-            {feConfigs?.showSystemToolUserTagsControl && (
+            {feConfigs?.showWecomConfig && (
               <>
                 <Box>
                   <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
