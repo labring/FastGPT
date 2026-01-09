@@ -11,6 +11,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 export async function getChatItems({
+  includeDeleted = false,
   appId,
   chatId,
   field,
@@ -21,6 +22,7 @@ export async function getChatItems({
   prevId,
   nextId
 }: {
+  includeDeleted?: boolean;
   appId: string;
   chatId?: string;
   field: string;
@@ -42,8 +44,6 @@ export async function getChatItems({
 
   // Extend dataId
   field = `dataId ${field}`;
-
-  const includeDeleted = field.includes('deleteTime');
   const baseCondition = includeDeleted ? { appId, chatId } : { appId, chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {

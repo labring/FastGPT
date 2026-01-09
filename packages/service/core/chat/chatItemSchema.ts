@@ -93,17 +93,15 @@ const ChatItemSchema = new Schema({
 /*
   delete by app;
   delete by chat id;
-  get chat list;
-  get chat logs;
   close custom feedback;
 */
-ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1, deleteTime: 1 });
-// Anchor filter
-ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1, _id: -1 });
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+// Get histories
+ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
+// get chatitem list,Anchor filter
+ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
 // Query by role (AI/Human), get latest chat item, permission check
 ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
-// timer, clear history
-ChatItemSchema.index({ teamId: 1, deleteTime: 1, time: -1 });
 
 export const MongoChatItem = getMongoModel<ChatItemSchemaType>(
   ChatItemCollectionName,

@@ -67,6 +67,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -126,7 +127,7 @@ const ChatBox = ({
   const [feedbackId, setFeedbackId] = useState<string>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
-  const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<number[]>([]);
+  const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -1013,97 +1014,119 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
-  const toggleDeletedGroup = useCallback((groupIndex: number) => {
+  const toggleDeletedGroup = useCallback((dataIds: string[]) => {
     setExpandedDeletedGroups((prev) => {
-      if (prev.includes(groupIndex)) {
-        return prev.filter((i) => i !== groupIndex);
+      const newSet = new Set(prev);
+      // Check if all dataIds are in the set
+      const allExpanded = dataIds.every((id) => newSet.has(id));
+
+      if (allExpanded) {
+        // Collapse: remove all dataIds
+        dataIds.forEach((id) => newSet.delete(id));
       } else {
-        return [...prev, groupIndex];
+        // Expand: add all dataIds
+        dataIds.forEach((id) => newSet.add(id));
       }
+
+      return newSet;
     });
   }, []);
 
-  // 预处理聊天记录：根据类型生成统一的数据结构
-  const processedRecords = useMemo(() => {
-    // Log 类型：计算删除分组信息
-    if (chatType === ChatTypeEnum.log) {
-      let deletedGroupIndex = -1;
-      let isInDeletedGroup = false;
-      let currentGroupCount = 0;
-
-      return chatRecords.map((item, index) => {
-        const isDeleted = !!item.deleteTime;
-        const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
-        const nextIsDeleted =
-          index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-
-        const enteringDeletedGroup = isDeleted && !prevIsDeleted;
-        const leavingDeletedGroup = !isDeleted && prevIsDeleted;
-        const isLastInDeletedGroup = isDeleted && !nextIsDeleted;
-
-        if (enteringDeletedGroup) {
-          deletedGroupIndex++;
-          isInDeletedGroup = true;
-          currentGroupCount = 0;
-          for (let i = index; i < chatRecords.length; i++) {
-            if (chatRecords[i].deleteTime) currentGroupCount++;
-            else break;
-          }
-        } else if (leavingDeletedGroup) {
-          isInDeletedGroup = false;
-          currentGroupCount = 0;
-        }
-
-        const currentDeletedGroupIndex = deletedGroupIndex;
-        const isExpanded = expandedDeletedGroups.includes(currentDeletedGroupIndex);
-
-        return {
-          item,
-          index,
-          enteringDeletedGroup,
-          isLastInDeletedGroup,
-          deletedGroupIndex: currentDeletedGroupIndex,
-          isExpanded,
-          deletedCount: currentGroupCount,
-          shouldRender: !isInDeletedGroup || isExpanded
-        };
-      });
+  // 预处理聊天记录：Log 模式下扩展 chatRecords，添加折叠信息
+  const processedRecords = useMemoEnhance(() => {
+    // 非 Log 类型：直接返回原始数据
+    if (chatType !== ChatTypeEnum.log) {
+      return chatRecords;
     }
 
-    // 普通类型：包装成统一结构，但不需要删除逻辑
-    return chatRecords.map((item, index) => ({
-      item,
-      index,
-      enteringDeletedGroup: false,
-      isLastInDeletedGroup: false,
-      deletedGroupIndex: -1,
-      isExpanded: false,
-      deletedCount: 0,
-      shouldRender: true
-    }));
+    // Log 类型：一次遍历完成删除分组信息计算和 chatRecords 扩展
+    const result: ChatSiteItemType[] = [];
+    let currentGroup: {
+      items: ChatSiteItemType[];
+      dataIds: string[];
+    } | null = null;
+
+    chatRecords.forEach((item, index) => {
+      const isDeleted = !!item.deleteTime;
+      const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
+      const nextIsDeleted =
+        index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
+      console.log(isDeleted, 2323);
+      if (isDeleted && !prevIsDeleted) {
+        // 开始新的删除组
+        currentGroup = {
+          items: [],
+          dataIds: []
+        };
+      }
+
+      if (currentGroup && isDeleted) {
+        // 收集当前删除组的 item 和 dataId
+        currentGroup.items.push(item);
+        currentGroup.dataIds.push(item.dataId);
+      }
+
+      if (currentGroup && (!nextIsDeleted || index === chatRecords.length - 1)) {
+        // 删除组结束，处理整组
+        const isExpanded = currentGroup.dataIds.every((id) => expandedDeletedGroups.has(id));
+        const count = currentGroup.dataIds.length;
+
+        currentGroup.items.forEach((groupItem, groupIndex) => {
+          const extendedItem: ChatSiteItemType = { ...groupItem };
+
+          // 第一个 item 添加 collapseTop
+          if (groupIndex === 0) {
+            extendedItem.collapseTop = {
+              count,
+              dataIds: currentGroup!.dataIds,
+              isExpanded
+            };
+          }
+
+          // 最后一个 item 添加 collapseBottom
+          if (groupIndex === currentGroup!.items.length - 1) {
+            extendedItem.collapseBottom = {
+              count,
+              dataIds: currentGroup!.dataIds,
+              isExpanded
+            };
+          }
+
+          result.push(extendedItem);
+        });
+
+        currentGroup = null;
+      } else if (!isDeleted) {
+        // 非删除 item，直接添加
+        result.push(item);
+      }
+    });
+
+    return result;
   }, [chatType, chatRecords, expandedDeletedGroups]);
 
   //chat history
   const RecordsBox = useMemo(() => {
     return (
       <Box id={'history'}>
-        {processedRecords.map((record) => {
-          const { item, index, deletedGroupIndex, isExpanded, deletedCount } = record;
+        {processedRecords.map((item, index) => {
+          // 判断是否应该渲染：非删除 或 dataId 在展开集合中
+          const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
 
           return (
-            <React.Fragment key={item.dataId}>
-              {/* 进入删除状态时，插入顶部分隔符/展开按钮 */}
-              {record.enteringDeletedGroup && (
+            <Box key={item.dataId}>
+              {/* 顶部折叠按钮：有 collapseTop 信息时显示 */}
+              {item.collapseTop && (
                 <DeletedItemsCollapse
-                  count={deletedCount}
-                  isExpanded={isExpanded}
-                  onToggle={() => toggleDeletedGroup(deletedGroupIndex)}
+                  count={item.collapseTop.count}
+                  isExpanded={item.collapseTop.isExpanded}
+                  onToggle={() => toggleDeletedGroup(item.collapseTop!.dataIds)}
                   position="top"
                 />
               )}
 
-              {/* 渲染消息：如果在删除组内且未展开，则隐藏 */}
-              {record.shouldRender && (
+              {/* 渲染消息：根据 shouldRender 判断 */}
+              {shouldRender && (
                 <Box
                   ref={(e) => {
                     itemRefs.current.set(item.dataId, e);
@@ -1112,9 +1135,9 @@ const ChatBox = ({
                   {/* 时间间隔显示逻辑：相邻消息时间差超过10分钟则显示时间 */}
                   {index !== 0 &&
                     item.time &&
-                    chatRecords[index - 1].time !== undefined &&
+                    processedRecords[index - 1].time !== undefined &&
                     new Date(item.time).getTime() -
-                      new Date(chatRecords[index - 1].time!).getTime() >
+                      new Date(processedRecords[index - 1].time!).getTime() >
                       10 * 60 * 1000 && <TimeBox time={item.time} />}
 
                   <Box py={item.hideInUI ? 0 : 6}>
@@ -1125,7 +1148,7 @@ const ChatBox = ({
                         chat={item}
                         onRetry={retryInput(item.dataId)}
                         onDelete={delOneMessage(item.dataId)}
-                        isLastChild={index === chatRecords.length - 1}
+                        isLastChild={index === processedRecords.length - 1}
                       />
                     )}
                     {item.obj === ChatRoleEnum.AI && (
@@ -1133,14 +1156,14 @@ const ChatBox = ({
                         type={item.obj}
                         avatar={appAvatar}
                         chat={item}
-                        isLastChild={index === chatRecords.length - 1}
+                        isLastChild={index === processedRecords.length - 1}
                         {...{
                           showVoiceIcon,
                           statusBoxData,
                           questionGuides,
                           onMark: onMark(
                             item,
-                            formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
+                            formatChatValue2InputType(processedRecords[index - 1]?.value)?.text
                           ),
                           onAddUserLike: onAddUserLike(item),
                           onAddUserDislike: onAddUserDislike(item),
@@ -1187,25 +1210,25 @@ const ChatBox = ({
                 </Box>
               )}
 
-              {/* 离开删除状态时（删除组的最后一项），插入底部收起按钮 */}
-              {record.isLastInDeletedGroup && isExpanded && (
+              {/* 底部折叠按钮：有 collapseBottom 信息且展开时显示 */}
+              {item.collapseBottom && item.collapseBottom.isExpanded && (
                 <DeletedItemsCollapse
-                  count={deletedCount}
-                  isExpanded={isExpanded}
-                  onToggle={() => toggleDeletedGroup(deletedGroupIndex)}
+                  count={item.collapseBottom.count}
+                  isExpanded={item.collapseBottom.isExpanded}
+                  onToggle={() => toggleDeletedGroup(item.collapseBottom!.dataIds)}
                   position="bottom"
                 />
               )}
-            </React.Fragment>
+            </Box>
           );
         })}
       </Box>
     );
   }, [
     processedRecords,
+    expandedDeletedGroups,
     toggleDeletedGroup,
     itemRefs,
-    chatRecords,
     userAvatar,
     appAvatar,
     showVoiceIcon,

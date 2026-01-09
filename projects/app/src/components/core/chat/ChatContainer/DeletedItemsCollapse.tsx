@@ -41,7 +41,7 @@ const DeletedItemsCollapse: React.FC<DeletedItemsCollapseProps> = ({
       >
         <Box flex={1} h="1px" bg="myGray.200" />
         <Flex align="center" px={3} gap={2}>
-          <Text fontSize="sm" color="myGray.600" userSelect="none">
+          <Text fontSize="sm" color="myGray.500" userSelect="none">
             {isExpanded ? t('app:chat.collapse_deleted_items') : t('app:chat.expand_deleted_items')}{' '}
             ({count})
           </Text>

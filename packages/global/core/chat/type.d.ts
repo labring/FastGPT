@@ -173,6 +173,16 @@ export type ChatSiteItemType = ChatItemMergeType & {
   durationSeconds?: number;
   errorMsg?: string;
   deleteTime?: Date | null;
+  collapseTop?: {
+    count: number;
+    dataIds: string[];
+    isExpanded: boolean;
+  };
+  collapseBottom?: {
+    count: number;
+    dataIds: string[];
+    isExpanded: boolean;
+  };
 } & ChatBoxInputType &
   ResponseTagItemType;
 
