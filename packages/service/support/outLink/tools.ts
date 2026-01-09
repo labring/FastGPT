@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { axios } from '../../common/api/axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';

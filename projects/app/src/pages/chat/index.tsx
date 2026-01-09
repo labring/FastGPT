@@ -93,6 +93,7 @@ type ChatPageProps = {
   showCite: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
+  showWholeResponse: boolean;
 };
 
 const ChatContent = (props: ChatPageProps) => {
@@ -153,6 +154,7 @@ const ChatContent = (props: ChatPageProps) => {
         canDownloadSource={props.canDownloadSource}
         isShowCite={props.showCite}
         isShowFullText={props.showFullText}
+        showWholeResponse={props.showWholeResponse}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <Chat />
@@ -184,7 +186,7 @@ export async function getServerSideProps(context: any) {
           appId,
           type: PublishChannelEnum.playground
         },
-        'showRunningStatus showCite showFullText canDownloadSource'
+        'showRunningStatus showCite showFullText canDownloadSource showWholeResponse'
       ).lean();
 
       return config;
@@ -201,6 +203,7 @@ export async function getServerSideProps(context: any) {
       showCite: chatQuoteReaderConfig?.showCite ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
+      showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };

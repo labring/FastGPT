@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/support/outLink/api.d';
 
 async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody, {}>) {
-  const { appId, showRunningStatus, showCite, showFullText, canDownloadSource } =
+  const { appId, showRunningStatus, showCite, showFullText, canDownloadSource, showWholeResponse } =
     UpdatePlaygroundVisibilityConfigBodySchema.parse(req.body);
 
   const { teamId, tmbId } = await authApp({
@@ -35,7 +35,8 @@ async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody
         showRunningStatus: showRunningStatus,
         showCite: showCite,
         showFullText: showFullText,
-        canDownloadSource: canDownloadSource
+        canDownloadSource: canDownloadSource,
+        showWholeResponse: showWholeResponse
       }
     },
     { upsert: true }

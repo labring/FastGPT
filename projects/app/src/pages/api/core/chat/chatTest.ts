@@ -52,6 +52,7 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -135,7 +136,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType;
       if (!latestHumanChat) {
-        return Promise.reject('User question is empty');
+        return Promise.reject(new UserError('User question is empty'));
       }
       return latestHumanChat;
     })();
@@ -179,39 +180,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const { flowResponses, assistantResponses, system_memories, newVariables, durationSeconds } =
-      await dispatchWorkFlow({
-        apiVersion: 'v2',
-        res,
-        lang: getLocale(req),
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        usageSource: UsageSourceEnum.fastgpt,
+    const {
+      flowResponses,
+      assistantResponses,
+      system_memories,
+      newVariables,
+      durationSeconds,
+      customFeedbacks
+    } = await dispatchWorkFlow({
+      apiVersion: 'v2',
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      usageSource: UsageSourceEnum.fastgpt,
 
-        uid: tmbId,
+      uid: tmbId,
 
-        runningAppInfo: {
-          id: appId,
-          name: appName,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+      runningAppInfo: {
+        id: appId,
+        name: appName,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig,
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        responseDetail: true
-      });
+      chatId,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      responseDetail: true
+    });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -238,7 +245,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      customFeedbacks
     };
     const params = {
       chatId,

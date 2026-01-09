@@ -10,6 +10,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export type GetQuoteDataResponse = {
   collection: DatasetCollectionSchemaType;
@@ -48,7 +49,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
       const datasetData = await MongoDatasetData.findById(dataId).lean();
       if (!datasetData) {
-        return Promise.reject(i18nT('common:data_not_found'));
+        return Promise.reject(new UserError(i18nT('common:data_not_found')));
       }
 
       const [collection, { showCite }] = await Promise.all([
@@ -71,10 +72,10 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
         })
       ]);
       if (!collection) {
-        return Promise.reject('Can not find the collection');
+        return Promise.reject(new UserError('Can not find the collection'));
       }
       if (!showCite) {
-        return Promise.reject(ChatErrEnum.unAuthChat);
+        return Promise.reject(new UserError(ChatErrEnum.unAuthChat));
       }
 
       return {

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Grid, Switch } from '@chakra-ui/react';
+import { Box, Flex, Switch } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -18,7 +18,8 @@ const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showRunningStatus: true,
   showCite: true,
   showFullText: true,
-  canDownloadSource: true
+  canDownloadSource: true,
+  showWholeResponse: true
 };
 
 const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
@@ -33,6 +34,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
   const showRunningStatus = watch('showRunningStatus');
+  const showWholeResponse = watch('showWholeResponse');
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -47,7 +49,8 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
         showRunningStatus: data.showRunningStatus,
         showCite: data.showCite,
         showFullText: data.showFullText,
-        canDownloadSource: data.canDownloadSource
+        canDownloadSource: data.canDownloadSource,
+        showWholeResponse: data.showWholeResponse
       });
     },
     manual: false
@@ -106,78 +109,99 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
         {t('publish:private_config')}
       </Box>
 
-      <Grid templateColumns={'1fr 1fr'} gap={4} mt={4} w={'400px'}>
-        <Flex alignItems={'center'}>
-          <FormLabel fontSize={'12px'} flex={'0 0 127px'}>
-            {t('publish:show_node')}
-          </FormLabel>
-          <Switch
-            {...register('showRunningStatus', {
-              onChange: autoSave
-            })}
-            isChecked={showRunningStatus}
-          />
-        </Flex>
-        <Flex>
-          <Flex alignItems={'center'} flex={'0 0 158px'}>
-            <FormLabel fontSize={'12px'}>
-              {t('common:support.outlink.share.Response Quote')}
+      <Flex flexDirection="column" gap={4} mt={4}>
+        <Flex gap={4} flexWrap={'wrap'}>
+          <Flex alignItems={'center'}>
+            <FormLabel fontSize={'12px'} flex={'0 0 127px'}>
+              {t('publish:show_node')}
             </FormLabel>
-            <QuestionTip ml={1} label={t('common:support.outlink.share.Response Quote tips')} />
+            <Switch
+              {...register('showRunningStatus', {
+                onChange: autoSave
+              })}
+              isChecked={showRunningStatus}
+            />
           </Flex>
-          <Switch
-            {...register('showCite', {
-              onChange(e) {
-                if (!e.target.checked) {
-                  setValue('showFullText', false);
-                  setValue('canDownloadSource', false);
-                }
-                autoSave();
-              }
-            })}
-            isChecked={showCite}
-          />
-        </Flex>
-        <Flex>
-          <Flex alignItems={'center'} flex={'0 0 127px'}>
-            <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>
-            <QuestionTip ml={1} label={t('common:support.outlink.share.Show full text tips')} />
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={'0 0 127px'}>
+              <FormLabel fontSize={'12px'}>
+                {t('common:core.chat.response.Read complete response')}
+              </FormLabel>
+              <QuestionTip
+                ml={1}
+                label={t('common:core.chat.response.Read complete response tips')}
+              />
+            </Flex>
+            <Switch
+              {...register('showWholeResponse', {
+                onChange: autoSave
+              })}
+              isChecked={showWholeResponse}
+            />
           </Flex>
-          <Switch
-            {...register('showFullText', {
-              onChange(e) {
-                if (!e.target.checked) {
-                  setValue('canDownloadSource', false);
-                } else {
-                  setValue('showCite', true);
-                }
-                autoSave();
-              }
-            })}
-            isChecked={showFullText}
-          />
         </Flex>
-        <Flex>
-          <Flex alignItems={'center'} flex={'0 0 158px'}>
-            <FormLabel fontSize={'12px'} fontWeight={'medium'}>
-              {t('common:core.app.share.Download source')}
-            </FormLabel>
-            <QuestionTip ml={1} label={t('common:support.outlink.share.Download source tips')} />
+        <Flex gap={4} flexWrap={'wrap'}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={'0 0 127px'}>
+              <FormLabel fontSize={'12px'}>
+                {t('common:support.outlink.share.Response Quote')}
+              </FormLabel>
+              <QuestionTip ml={1} label={t('common:support.outlink.share.Response Quote tips')} />
+            </Flex>
+            <Switch
+              {...register('showCite', {
+                onChange(e) {
+                  if (!e.target.checked) {
+                    setValue('showFullText', false);
+                    setValue('canDownloadSource', false);
+                  }
+                  autoSave();
+                }
+              })}
+              isChecked={showCite}
+            />
           </Flex>
-          <Switch
-            {...register('canDownloadSource', {
-              onChange(e) {
-                if (e.target.checked) {
-                  setValue('showFullText', true);
-                  setValue('showCite', true);
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={'0 0 127px'}>
+              <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>
+              <QuestionTip ml={1} label={t('common:support.outlink.share.Show full text tips')} />
+            </Flex>
+            <Switch
+              {...register('showFullText', {
+                onChange(e) {
+                  if (!e.target.checked) {
+                    setValue('canDownloadSource', false);
+                  } else {
+                    setValue('showCite', true);
+                  }
+                  autoSave();
                 }
-                autoSave();
-              }
-            })}
-            isChecked={canDownloadSource}
-          />
+              })}
+              isChecked={showFullText}
+            />
+          </Flex>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={'0 0 127px'}>
+              <FormLabel fontSize={'12px'} fontWeight={'medium'}>
+                {t('common:core.app.share.Download source')}
+              </FormLabel>
+              <QuestionTip ml={1} label={t('common:support.outlink.share.Download source tips')} />
+            </Flex>
+            <Switch
+              {...register('canDownloadSource', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showFullText', true);
+                    setValue('showCite', true);
+                  }
+                  autoSave();
+                }
+              })}
+              isChecked={canDownloadSource}
+            />
+          </Flex>
         </Flex>
-      </Grid>
+      </Flex>
     </Flex>
   );
 };

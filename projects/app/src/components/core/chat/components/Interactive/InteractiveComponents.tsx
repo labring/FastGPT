@@ -69,59 +69,24 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
 export const FormInputComponent = React.memo(function FormInputComponent({
   interactiveParams: { description, inputForm, submitted },
   defaultValues = {},
-  chatItemDataId,
   SubmitButton
 }: {
   interactiveParams: UserInputInteractive['params'];
   defaultValues?: Record<string, any>;
-  chatItemDataId?: string;
   SubmitButton: (e: {
     onSubmit: UseFormHandleSubmit<Record<string, any>>;
     isFileUploading: boolean;
   }) => React.JSX.Element;
 }) {
   const { t } = useTranslation();
-  const savedFormData = React.useMemo(() => {
-    const saved = sessionStorage.getItem(`interactiveForm_${chatItemDataId}`);
-    if (saved) {
-      try {
-        const parsedData = JSON.parse(saved);
-        inputForm?.forEach((item) => {
-          if (
-            item.type === 'fileSelect' &&
-            Array.isArray(parsedData[item.key]) &&
-            parsedData[item.key].length > 0
-          ) {
-            const files = parsedData[item.key];
-            if (files[0]?.url && !files[0]?.id) {
-              parsedData[item.key] = files.map((file: any) => ({
-                id: file.key || `${Date.now()}-${Math.random()}`,
-                type: file.type || 'file',
-                name: file.name || 'file',
-                url: file.url,
-                key: file.key,
-                icon: file.type === 'image' ? file.url : 'common/file',
-                status: 1
-              }));
-            }
-          }
-        });
-        return parsedData;
-      } catch (e) {}
-    }
-    return defaultValues;
-  }, [chatItemDataId, defaultValues, inputForm]);
 
-  const { handleSubmit, control, watch, reset, setValue } = useForm({
-    defaultValues: savedFormData
+  const { handleSubmit, control, watch, setValue } = useForm({
+    defaultValues
   });
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-
-  React.useEffect(() => {
-    reset(savedFormData);
-  }, [savedFormData, reset]);
+  const formValues = watch();
 
   // 刷新文件 URL（处理 TTL 过期）
   useEffect(() => {
@@ -129,8 +94,8 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 
     const refreshFileUrls = async () => {
       for (const item of inputForm) {
-        if (item.type === 'fileSelect' && savedFormData[item.key]) {
-          const files = savedFormData[item.key];
+        if (item.type === 'fileSelect' && defaultValues[item.key]) {
+          const files = defaultValues[item.key];
           if (Array.isArray(files) && files.length > 0 && files[0]?.key) {
             try {
               const refreshedFiles = await Promise.all(
@@ -160,14 +125,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     };
 
     refreshFileUrls();
-  }, [submitted, inputForm, savedFormData, appId, outLinkAuthData, setValue]);
-
-  const formValues = watch();
-  useEffect(() => {
-    if (typeof window !== 'undefined' && chatItemDataId && !submitted) {
-      sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(formValues));
-    }
-  }, [formValues, chatItemDataId, submitted]);
+  }, [submitted, inputForm, defaultValues, appId, outLinkAuthData, setValue]);
 
   const isFileUploading = React.useMemo(() => {
     return inputForm.some((input) => {

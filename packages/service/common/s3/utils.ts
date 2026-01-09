@@ -121,10 +121,14 @@ export async function uploadImage2S3Bucket(
   const base64Data = base64Img.split(',')[1] || base64Img;
   const buffer = Buffer.from(base64Data, 'base64');
 
-  await bucket.putObject(uploadKey, buffer, buffer.length, {
-    'content-type': mimetype,
-    'upload-time': new Date().toISOString(),
-    'origin-filename': encodeURIComponent(filename)
+  await bucket.client.uploadObject({
+    key: uploadKey,
+    body: buffer,
+    contentType: mimetype,
+    metadata: {
+      uploadTime: new Date().toISOString(),
+      originFilename: encodeURIComponent(filename)
+    }
   });
 
   const now = new Date();
@@ -139,7 +143,7 @@ export async function uploadImage2S3Bucket(
   return uploadKey;
 }
 
-const getFormatedFilename = (filename?: string) => {
+export const getFormatedFilename = (filename?: string) => {
   if (!filename) {
     return {
       formatedFilename: getNanoid(12),
@@ -150,10 +154,19 @@ const getFormatedFilename = (filename?: string) => {
   const id = getNanoid(6);
   // 先截断文件名，再进行格式化
   const truncatedFilename = truncateFilename(filename);
-  const extension = path.extname(truncatedFilename); // 带.
-  const name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
+  // 移除扩展名
+  const extension = path.extname(truncatedFilename);
+  let name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
+
+  // 移除末尾的 (_随机数)
+  const splitName = name.split('_');
+  if (splitName.length > 1 && splitName[splitName.length - 1]?.length === 6) {
+    splitName.pop();
+    name = splitName.join('_');
+  }
+
   return {
-    formatedFilename: `${id}-${name}`,
+    formatedFilename: `${name}_${id}`,
     extension: extension.replace('.', '')
   };
 };
@@ -194,7 +207,7 @@ export const getFileS3Key = {
     chatId: string;
     uId: string;
     appId: string;
-    filename: string;
+    filename?: string;
   }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
     const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
@@ -221,6 +234,14 @@ export const getFileS3Key = {
   },
 
   s3Key: (key: string) => {
+    // 特殊处理，不包含/的key，认为是根级别的key
+    if (!key.includes('/')) {
+      return {
+        fileKey: key,
+        fileParsedPrefix: `${path.basename(key, path.extname(key))}-parsed`
+      };
+    }
+
     const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
     return {
       fileKey: key,

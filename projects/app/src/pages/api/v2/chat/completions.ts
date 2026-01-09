@@ -261,6 +261,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories) || undefined;
+
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
+
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
@@ -288,7 +291,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       assistantResponses,
       newVariables,
       durationSeconds,
-      system_memories
+      system_memories,
+      customFeedbacks
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -342,8 +346,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -353,7 +355,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
-      memories: system_memories
+      memories: system_memories,
+      customFeedbacks
     };
 
     const params: SaveChatProps = {

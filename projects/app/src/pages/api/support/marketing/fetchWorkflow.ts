@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 import { type NextApiResponse } from 'next';

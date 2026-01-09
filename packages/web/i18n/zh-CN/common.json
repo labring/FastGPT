@@ -886,6 +886,7 @@
   "extraction_results": "提取结果",
   "failed": "失败",
   "field_name": "字段名",
+  "filter_sensitive_info": "过滤敏感信息",
   "folder.empty": "这个目录已经没东西可选了~",
   "folder.open_dataset": "打开知识库",
   "folder_description": "文件夹描述",

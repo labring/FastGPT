@@ -96,6 +96,7 @@
   "response_embedding_model_tokens": "向量模型 Tokens",
   "response_hybrid_weight": "语义检索 : 全文检索 = {{emb}} : {{text}}",
   "response_rerank_tokens": "重排模型 Tokens",
+  "response_search_results": "搜索结果({{len}})",
   "search_results": "搜索结果",
   "select": "选择",
   "select_file": "上传文件",

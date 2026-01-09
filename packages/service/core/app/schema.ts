@@ -134,6 +134,8 @@ const AppSchema = new Schema(
 
 AppSchema.index({ teamId: 1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
+
+// Schedule
 AppSchema.index(
   { scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 },
   {
@@ -142,8 +144,11 @@ AppSchema.index(
     }
   }
 );
+
 // Admin count
 AppSchema.index({ type: 1 });
 AppSchema.index({ deleteTime: 1 });
+// Admin search
+AppSchema.index({ name: 1 });
 
 export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

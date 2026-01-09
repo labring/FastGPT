@@ -57,6 +57,7 @@ import {
 } from '@fastgpt/global/core/plugin/type';
 import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppPermission } from '@/web/core/app/api';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -436,7 +437,15 @@ const NodeTitleSection = React.memo<{
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const childAppId = useMemo(() => (appId ? getToolRawId(appId) : undefined), [appId]);
+  const childAppId = useMemo(() => {
+    if (!appId) return;
+    const rawId = getToolRawId(appId);
+    const result = ObjectIdSchema.safeParse(rawId);
+    if (result.success) {
+      return rawId;
+    }
+    return undefined;
+  }, [appId]);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
