@@ -27,8 +27,8 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 > MinIO 这类产品对 AWS S3 协议支持比较完整，因此使用 Minio 和AWS S3 配置几乎可以是相同的，只是因为服务商提供和自部署的区别，会有额外的配置。
 > 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
 
-- `STORAGE_S3_ENDPOINT` 连接端点，填写一个完整的、带协议和端口的主机名，比如 `http://localhost:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` 【可选】如果是自己部署的对象存储服务（如 Docker 部署 MinIO）且前端无法访问到你的对象存储服务时，请填写该变量，并保证是一个外部可访问的域名，比如 `https://your-domain.com` 或者 `http://{ip}:9000` 等
+- `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 id 连接，比如 `http://fastgpt-minio:9000`
+- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该地址用于签发文件上传 URL 时使用。
 - `STORAGE_S3_FORCE_PATH_STYLE` 【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES` 【可选】请求最大尝试次数，默认为 3 次
 

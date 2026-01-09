@@ -1,8 +1,46 @@
 ---
-title: 'V4.14.5(进行中)'
+title: 'V4.14.5'
 description: 'FastGPT V4.14.5 更新说明'
 ---
 
+## 更新指南
+
+### 1. 修改存储桶环境变量
+
+该版本除了支持 minio 以外，还增加支持了原生 OSS 和 COS, 所以需要修改相关环境变量修改成新的命名。
+
+**新增变量**
+
+```
+STORAGE_VENDOR=minio 
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://192.168.0.2:9000 # 一个服务器和客户端均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)
+STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
+```
+
+**移除旧的变量**
+
+* S3_EXTERNAL_BASE_URL  
+* S3_ENDPOINT  
+* S3_PORT  
+* S3_USE_SSL  
+* S3_ACCESS_KEY  
+* S3_SECRET_KEY  
+* S3_PUBLIC_BUCKET  
+* S3_PRIVATE_BUCKET  
+
+### 2. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.14.5
+- 更新 FastGPT 商业版镜像tag: v4.14.5
+- 更新 fastgpt-plugin 镜像 tag: v0.4.0
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
 
 ## 🚀 新增内容
 
@@ -42,6 +80,5 @@ description: 'FastGPT V4.14.5 更新说明'
 10. 代码运行节点切换语言后，AI 仍使用旧语言生成代码。
 11. 多个自定义反馈节点并发写入触发数据库写入冲突。
 12. 交互节点后续的自定义反馈节点写入失败。
-
 
 ## 插件
