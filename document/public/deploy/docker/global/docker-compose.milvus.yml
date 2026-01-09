@@ -19,7 +19,7 @@ x-share-db-config: &x-share-db-config
   STORAGE_SECRET_ACCESS_KEY: minioadmin
   STORAGE_PUBLIC_BUCKET: fastgpt-public
   STORAGE_PRIVATE_BUCKET: fastgpt-private
-  STORAGE_EXTERNAL_ENDPOINT: https://minio.com # 一个公开的、前端和用户可以直接访问的对象存储连接
+  STORAGE_EXTERNAL_ENDPOINT: http://192.168.0.2:9000 # 一个公开的、完整的携带协议和端口的、前端和用户可以直接访问的、固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址
   STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
@@ -28,7 +28,7 @@ x-share-db-config: &x-share-db-config
 x-vec-config: &x-vec-config
   MILVUS_ADDRESS: http://milvusStandalone:19530
   MILVUS_TOKEN: none
-
+    
 
 version: '3.3'
 services:
@@ -226,6 +226,8 @@ services:
       CHAT_FILE_EXPIRE_TIME: 7
       # 服务器接收请求，最大大小，单位 MB
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # HTML 转换最大字符数
+      MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
   sandbox:
