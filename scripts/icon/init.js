@@ -14,7 +14,7 @@ function findSvgFiles(dir, relativePath = '') {
     if (item.isDirectory()) {
       const nestedSvgs = findSvgFiles(fullPath, relativeItemPath);
       svgFiles = svgFiles.concat(nestedSvgs);
-    } else if (item.isFile() && item.name.endsWith('.svg')) {
+    } else if (item.isFile() && (item.name.endsWith('.svg') || item.name.endsWith('.tsx'))) {
       svgFiles.push(relativeItemPath);
     }
   }

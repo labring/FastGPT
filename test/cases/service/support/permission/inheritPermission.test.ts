@@ -14,7 +14,7 @@ import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
 import { describe, it, expect } from 'vitest';
 
-describe('syncChildrenPermission', () => {
+describe.sequential('syncChildrenPermission', () => {
   const createApp = async ({
     user,
     name,

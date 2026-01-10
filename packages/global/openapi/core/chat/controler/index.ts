@@ -35,7 +35,7 @@ export const ChatControllerPath: OpenAPIPath = {
       }
     }
   },
-  '/core/chat/presignChatFilePostUrl': {
+  '/core/chat/file/presignChatFilePostUrl': {
     post: {
       summary: '获取文件上传 URL',
       description: '获取文件上传 URL',
@@ -59,7 +59,7 @@ export const ChatControllerPath: OpenAPIPath = {
       }
     }
   },
-  '/core/chat/presignChatFileGetUrl': {
+  '/core/chat/file/presignChatFileGetUrl': {
     post: {
       summary: '获取文件预览地址',
       description: '获取文件预览地址',

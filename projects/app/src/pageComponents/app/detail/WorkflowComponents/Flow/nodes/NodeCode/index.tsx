@@ -147,6 +147,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCopilot
         key="copilot"
         nodeId={nodeId}
+        inputs={inputs}
+        outputs={outputs}
         trigger={
           <Button
             variant={'grayGhost'}
@@ -159,7 +161,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       />
     ];
-  }, [t]);
+  }, [t, nodeId, inputs, outputs]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>

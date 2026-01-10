@@ -48,14 +48,16 @@ export const UploadParamsSchema = z.union([
   z.object({
     datasetId: ObjectIdSchema,
     filename: z.string().nonempty(),
-    buffer: z.instanceof(Buffer)
+    buffer: z.instanceof(Buffer),
+    contentType: z.string().optional()
   }),
 
   z.object({
     datasetId: ObjectIdSchema,
     filename: z.string().nonempty(),
     stream: z.instanceof(ReadStream),
-    size: z.int().positive().optional()
+    size: z.int().positive().optional(),
+    contentType: z.string().optional()
   })
 ]);
 export type UploadParams = z.input<typeof UploadParamsSchema>;

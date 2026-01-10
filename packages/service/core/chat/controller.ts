@@ -11,6 +11,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 export async function getChatItems({
+  includeDeleted = false,
   appId,
   chatId,
   field,
@@ -21,6 +22,7 @@ export async function getChatItems({
   prevId,
   nextId
 }: {
+  includeDeleted?: boolean;
   appId: string;
   chatId?: string;
   field: string;
@@ -42,8 +44,7 @@ export async function getChatItems({
 
   // Extend dataId
   field = `dataId ${field}`;
-
-  const baseCondition = { appId, chatId };
+  const baseCondition = includeDeleted ? { appId, chatId } : { appId, chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
     // Mode 1: offset pagination (original logic)
@@ -193,47 +194,6 @@ export async function getChatItems({
 
   return { histories, total, hasMorePrev, hasMoreNext };
 }
-
-export const addCustomFeedbacks = async ({
-  appId,
-  chatId,
-  dataId,
-  feedbacks
-}: {
-  appId: string;
-  chatId?: string;
-  dataId?: string;
-  feedbacks: string[];
-}) => {
-  if (!chatId || !dataId) return;
-
-  try {
-    await mongoSessionRun(async (session) => {
-      // Add custom feedbacks to ChatItem
-      await MongoChatItem.updateOne(
-        {
-          appId,
-          chatId,
-          dataId
-        },
-        {
-          $push: { customFeedbacks: { $each: feedbacks } }
-        },
-        { session }
-      );
-
-      // Update ChatLog feedback statistics
-      await updateChatFeedbackCount({
-        appId,
-        chatId,
-        session
-      });
-    });
-  } catch (error) {
-    addLog.error('addCustomFeedbacks error', error);
-    throw error;
-  }
-};
 
 /**
  * Update feedback count statistics for a chat in Chat table

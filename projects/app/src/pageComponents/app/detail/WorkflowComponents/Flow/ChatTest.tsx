@@ -210,6 +210,7 @@ const Render = (Props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest {...Props} chatId={chatId} />

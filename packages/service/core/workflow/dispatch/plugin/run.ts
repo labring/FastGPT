@@ -132,35 +132,41 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       appId: String(plugin.id),
       ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
     };
-    const { flowResponses, flowUsages, assistantResponses, runTimes, system_memories } =
-      await runWorkflow({
-        ...props,
-        usageId: undefined,
-        // Rewrite stream mode
-        ...(system_forbid_stream
-          ? {
-              stream: false,
-              workflowStreamResponse: undefined
-            }
-          : {}),
-        runningAppInfo: {
-          id: String(plugin.id),
-          name: plugin.name,
-          // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-          teamId: plugin.teamId || runningAppInfo.teamId,
-          tmbId: plugin.tmbId || runningAppInfo.tmbId,
-          isChildApp: true
-        },
+    const {
+      flowResponses,
+      flowUsages,
+      assistantResponses,
+      runTimes,
+      system_memories,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
+    } = await runWorkflow({
+      ...props,
+      usageId: undefined,
+      // Rewrite stream mode
+      ...(system_forbid_stream
+        ? {
+            stream: false,
+            workflowStreamResponse: undefined
+          }
+        : {}),
+      runningAppInfo: {
+        id: String(plugin.id),
+        name: plugin.name,
+        // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
+        teamId: plugin.teamId || runningAppInfo.teamId,
+        tmbId: plugin.tmbId || runningAppInfo.tmbId,
+        isChildApp: true
+      },
+      variables: runtimeVariables,
+      query: serverGetWorkflowToolRunUserQuery({
+        pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
         variables: runtimeVariables,
-        query: serverGetWorkflowToolRunUserQuery({
-          pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
-          variables: runtimeVariables,
-          files
-        }).value,
-        chatConfig: {},
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(plugin.edges)
-      });
+        files
+      }).value,
+      chatConfig: {},
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(plugin.edges)
+    });
     const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
 
     const usagePoints = await computedAppToolUsage({
@@ -200,7 +206,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
               acc[key] = output.pluginOutput![key];
               return acc;
             }, {})
-        : null
+        : null,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {
     return getNodeErrResponse({

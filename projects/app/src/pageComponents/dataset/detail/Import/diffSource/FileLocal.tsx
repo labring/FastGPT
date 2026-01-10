@@ -14,8 +14,7 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
-import { POST } from '@/web/common/api/request';
-import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -68,16 +67,16 @@ const SelectFile = React.memo(function SelectFile() {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
             try {
-              const { url, fields, maxSize } = await getUploadDatasetFilePresignedUrl({
+              const { url, key, headers, maxSize } = await getUploadDatasetFilePresignedUrl({
                 filename: file.name,
                 datasetId
               });
 
               // Upload File to S3
-              const formData = new FormData();
-              Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-              formData.set('file', file);
-              await POST(url, formData, {
+              await putFileToS3({
+                url,
+                file,
+                headers,
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);
@@ -94,23 +93,22 @@ const SelectFile = React.memo(function SelectFile() {
                     )
                   );
                 },
-                timeout: 5 * 60 * 1000 // 5 minutes
-              })
-                .then(() => {
+                t,
+                onSuccess: () => {
                   setSelectFiles((state) =>
                     state.map((item) =>
                       item.id === fileId
                         ? {
                             ...item,
-                            dbFileId: fields.key,
+                            dbFileId: key,
                             isUploading: false,
                             uploadedFileRate: 100
                           }
                         : item
                     )
                   );
-                })
-                .catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
+                }
+              });
             } catch (error) {
               setSelectFiles((state) =>
                 state.map((item) =>

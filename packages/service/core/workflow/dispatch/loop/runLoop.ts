@@ -51,6 +51,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
   const loopResponseDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
+  const customFeedbacks: string[] = [];
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
@@ -116,6 +117,11 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     assistantResponses.push(...response.assistantResponses);
     totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
 
+    // Collect custom feedbacks
+    if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
+      customFeedbacks.push(...response[DispatchNodeResponseKeyEnum.customFeedbacks]);
+    }
+
     // Concat new variables
     newVariables = {
       ...newVariables,
@@ -163,6 +169,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
           }
         ]
       : [],
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      customFeedbacks.length > 0 ? customFeedbacks : undefined
   };
 };

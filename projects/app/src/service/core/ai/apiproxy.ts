@@ -1,10 +1,11 @@
 import { addLog } from '@fastgpt/service/common/system/log';
-import axios, { type Method } from 'axios';
+import { type Method } from 'axios';
+import { createProxyAxios } from '@fastgpt/service/common/api/axios';
 
 const url = process.env.API_PROXY_URL;
 const token = process.env.API_PROXY_TOKEN;
 
-const instance = axios.create({
+const instance = createProxyAxios({
   baseURL: url,
   timeout: 60000, // 超时时间
   headers: {

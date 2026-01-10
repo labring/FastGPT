@@ -7,7 +7,7 @@ import type {
   ChatCompletionMessageParam,
   SdkChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/type.d';
-import axios from 'axios';
+import { axios } from '../../../common/api/axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';
 import { addLog } from '../../../common/system/log';
@@ -171,10 +171,12 @@ export const loadRequestMessages = async ({
                   const url = await (async () => {
                     if (item.key) {
                       try {
-                        return await getS3ChatSource().createGetChatFileURL({
-                          key: item.key,
-                          external: false
-                        });
+                        return (
+                          await getS3ChatSource().createGetChatFileURL({
+                            key: item.key,
+                            external: false
+                          })
+                        ).url;
                       } catch (error) {}
                     }
                     return imgUrl;

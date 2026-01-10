@@ -72,6 +72,8 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   showFullText: boolean;
   // whether can download source
   canDownloadSource: boolean;
+  // whether to show the whole response button
+  showWholeResponse: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -117,7 +119,8 @@ export const PlaygroundVisibilityConfigSchema = z.object({
   showRunningStatus: z.boolean(),
   showCite: z.boolean(),
   showFullText: z.boolean(),
-  canDownloadSource: z.boolean()
+  canDownloadSource: z.boolean(),
+  showWholeResponse: z.boolean()
 });
 
 export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

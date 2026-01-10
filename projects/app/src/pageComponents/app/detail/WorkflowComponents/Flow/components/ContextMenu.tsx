@@ -14,6 +14,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { getHandleIndex } from '../utils/edge';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ const ContextMenu = () => {
     (v) => v.getParentNodeSizeAndPosition
   );
 
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -45,8 +46,8 @@ const ContextMenu = () => {
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
         rankdir: 'LR',
-        nodesep: 80, // Horizontal space
-        ranksep: 120 // Vertical space
+        nodesep: 80,
+        ranksep: 200
       });
 
       nodes.forEach((node) => {
@@ -88,6 +89,7 @@ const ContextMenu = () => {
       });
 
       // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
       nodesByRank.forEach((nodesInRank) => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
@@ -96,12 +98,41 @@ const ContextMenu = () => {
           minLeft = Math.min(minLeft, left);
         });
 
-        // Apply positions: same left for vertical alignment, center Y for horizontal alignment
-        nodesInRank.forEach(({ node, dagreNode }) => {
-          node.position = {
-            x: minLeft + offsetX, // Left-aligned for vertical stacking
-            y: dagreNode.y - node.height! / 2 + offsetY // Center-aligned for horizontal placement
-          };
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
+        nodesInRank.sort((a, b) => {
+          const edgeA = edges.find((e) => e.target === a.node.id);
+          const edgeB = edges.find((e) => e.target === b.node.id);
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+          }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
+        });
+
+        // Assign Y positions in sorted order
+        let currentY =
+          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
+          offsetY;
+        nodesInRank.forEach(({ node }) => {
+          node.position = { x: minLeft + offsetX, y: currentY };
+          currentY += node.height! + 80;
         });
       });
     };
@@ -123,8 +154,8 @@ const ContextMenu = () => {
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
         rankdir: 'LR',
-        nodesep: 80, // Horizontal space
-        ranksep: 120 // Vertical space
+        nodesep: 80,
+        ranksep: 200
       });
 
       nodes.forEach((node) => {
@@ -133,14 +164,13 @@ const ContextMenu = () => {
       });
 
       // Find connected nodes
+      const filteredEdges = edges.filter(
+        (edge) => !childNodeIdsSet.has(edge.source) && !childNodeIdsSet.has(edge.target)
+      );
       const connectedNodeIds = new Set<string>();
-      edges.forEach((edge) => {
-        if (childNodeIdsSet.has(edge.source)) return;
-        if (childNodeIdsSet.has(edge.target)) return;
-
+      filteredEdges.forEach((edge) => {
         connectedNodeIds.add(edge.source);
         connectedNodeIds.add(edge.target);
-
         dagreGraph.setEdge(edge.source, edge.target);
       });
 
@@ -170,6 +200,7 @@ const ContextMenu = () => {
       });
 
       // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
       nodesByRank.forEach((nodesInRank) => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
@@ -178,19 +209,47 @@ const ContextMenu = () => {
           minLeft = Math.min(minLeft, left);
         });
 
-        // Apply positions: same left for vertical alignment, center Y for horizontal alignment
-        nodesInRank.forEach(({ node, dagreNode }) => {
-          const targetX = minLeft + offsetX; // Left-aligned for vertical stacking
-          const targetY = dagreNode.y - node.height! / 2 + offsetY; // Center-aligned for horizontal placement
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
+        nodesInRank.sort((a, b) => {
+          const edgeA = filteredEdges.find((e) => e.target === a.node.id);
+          const edgeB = filteredEdges.find((e) => e.target === b.node.id);
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+          }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
+        });
+
+        // Assign Y positions in sorted order
+        let currentY =
+          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
+          offsetY;
+        nodesInRank.forEach(({ node }) => {
+          const targetX = minLeft + offsetX;
           const diffX = targetX - node.position.x;
-          const diffY = targetY - node.position.y;
+          const diffY = currentY - node.position.y;
 
-          node.position = {
-            x: targetX,
-            y: targetY
-          };
+          node.position = { x: targetX, y: currentY };
+          currentY += node.height! + 80;
 
-          // Update child nodes position
+          // Sync child nodes position
           nodes.forEach((childNode) => {
             if (childNode.data.parentNodeId === node.data.nodeId) {
               childNode.position = {
@@ -214,6 +273,9 @@ const ContextMenu = () => {
         newNodes.forEach((node) => {
           const parentId = node.data.parentNodeId;
           if (parentId) {
+            // Skip children without valid dimensions (not yet rendered)
+            if (!node.width || !node.height) return;
+
             childNodesIdSet.add(parentId);
             if (!childNodesMap[parentId]) {
               childNodesMap[parentId] = [];
@@ -278,9 +340,10 @@ const ContextMenu = () => {
     });
 
     setTimeout(() => {
-      fitView({ padding: 0.3 });
+      const validNodes = getNodes().filter((node) => node.width && node.height);
+      fitView({ nodes: validNodes, padding: 0.3 });
     });
-  }, [fitView, getParentNodeSizeAndPosition, setEdges, setNodes]);
+  }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)

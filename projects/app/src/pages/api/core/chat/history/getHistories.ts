@@ -48,7 +48,6 @@ export async function handler(
     if (appId && teamId && teamToken) {
       const { uid } = await authTeamSpaceToken({ teamId, teamToken });
       return {
-        teamId,
         appId,
         outLinkUid: uid,
         source: ChatSourceEnum.team
@@ -57,8 +56,8 @@ export async function handler(
     if (appId) {
       const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
       return {
-        tmbId,
         appId,
+        tmbId,
         ...(source && { source })
       };
     }

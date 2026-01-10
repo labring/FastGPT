@@ -64,6 +64,9 @@ const VariableEditModal = ({
       if (typeEnum === VariableInputEnum.datasetSelect && !value.datasetOptions) {
         setValue('datasetOptions', []);
       }
+      if (typeEnum === VariableInputEnum.file) {
+        setValue('canLocalUpload', true);
+      }
 
       setValue('type', typeEnum);
     },

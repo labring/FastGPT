@@ -25,7 +25,7 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
   const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const {
@@ -197,7 +197,10 @@ const FlowController = React.memo(function FlowController() {
           {/* fit view */}
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
-              onClick={() => fitView({ padding: 0.3 })}
+              onClick={() => {
+                const validNodes = getNodes().filter((node) => node.width && node.height);
+                fitView({ nodes: validNodes, padding: 0.3 });
+              }}
               style={buttonStyle}
               className={`custom-workflow-fix_view ${styles.customControlButton}`}
             >
@@ -219,7 +222,8 @@ const FlowController = React.memo(function FlowController() {
     canRedo,
     setWorkflowControlMode,
     presentationMode,
-    fitView
+    fitView,
+    getNodes
   ]);
 
   return Render;

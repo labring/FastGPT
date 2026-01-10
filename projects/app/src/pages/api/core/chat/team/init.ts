@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
 
   const [team, chat, app] = await Promise.all([
     MongoTeam.findById(teamId, 'name avatar').lean(),
-    MongoChat.findOne({ teamId, appId, chatId }).lean(),
+    MongoChat.findOne({ appId, chatId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
 

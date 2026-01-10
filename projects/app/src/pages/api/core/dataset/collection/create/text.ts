@@ -26,7 +26,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   const key = await s3DatasetSource.upload({
     datasetId: String(dataset._id),
     buffer: Buffer.from(text),
-    filename
+    filename,
+    contentType: 'text/plain; charset=UTF-8'
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({

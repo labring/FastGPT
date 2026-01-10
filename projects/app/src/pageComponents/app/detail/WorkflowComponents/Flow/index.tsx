@@ -135,7 +135,10 @@ const Workflow = () => {
         <ReactFlow
           ref={reactFlowWrapperCallback}
           fitView
-          fitViewOptions={{ padding: 0.3 }}
+          fitViewOptions={{
+            padding: 0.3,
+            nodes: nodes.filter((node) => node.width && node.height)
+          }}
           nodes={nodes}
           edges={edges}
           minZoom={minZoom}

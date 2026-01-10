@@ -32,6 +32,28 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
     })
     .flat();
 };
+
+const extractCitationIdsFromText = (text: string): string[] => {
+  if (!text) return [];
+
+  // Match [24-bit hexadecimal ID](CITE) format
+  const citeRegex = /\[([a-f0-9]{24})\]\(CITE\)/gi;
+  const matches = text.match(citeRegex);
+
+  if (!matches) return [];
+
+  // Extract ID part (24-bit hexadecimal in brackets)
+  const ids = matches
+    .map((match) => {
+      const idMatch = match.match(/\[([a-f0-9]{24})\]/);
+      return idMatch ? idMatch[1] : null;
+    })
+    .filter((id): id is string => id !== null);
+
+  // Deduplicate
+  return Array.from(new Set(ids));
+};
+
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
@@ -84,10 +106,15 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
       }
     );
 
+  // Filter quote list to only include citations actually referenced in the response text
+  const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
+  const citedIds = extractCitationIdsFromText(responseText);
+  const filteredQuoteList = totalQuoteList.filter((quote) => citedIds.includes(quote.id));
+
   return {
     ...historyItem,
     llmModuleAccount,
-    totalQuoteList,
+    totalQuoteList: filteredQuoteList,
     historyPreviewLength,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {})
   };

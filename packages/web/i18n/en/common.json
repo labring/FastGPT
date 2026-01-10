@@ -880,6 +880,7 @@
   "extraction_results": "Extraction Results",
   "failed": "Failed",
   "field_name": "Field Name",
+  "filter_sensitive_info": "Filter sensitive information",
   "folder.empty": "No More Items in This Directory",
   "folder.open_dataset": "Open Dataset",
   "folder_description": "Folder Description",

@@ -253,7 +253,8 @@ const Render = (props: Props) => {
       chatId,
       appId,
       loadCustomFeedbacks: true,
-      type: GetChatTypeEnum.normal
+      type: GetChatTypeEnum.normal,
+      includeDeleted: true
     };
   }, [appId, chatId]);
 
@@ -268,6 +269,7 @@ const Render = (props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
         <DetailLogsModal

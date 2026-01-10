@@ -41,7 +41,8 @@ export const TagsMap = {
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
   // Data
-  adminDashboard: '管理员仪表盘',
+  adminDashboard: '仪表盘',
   // Inform
-  adminInform: '管理员通知管理'
+  adminInform: '通知管理',
+  adminApps: '应用管理'
 };

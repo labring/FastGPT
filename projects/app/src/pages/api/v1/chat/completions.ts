@@ -288,7 +288,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       assistantResponses,
       newVariables,
       durationSeconds,
-      system_memories
+      system_memories,
+      customFeedbacks
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -351,7 +352,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
-      memories: system_memories
+      memories: system_memories,
+      customFeedbacks
     };
 
     const params: SaveChatProps = {

@@ -38,7 +38,7 @@ async function handler(
   }
 
   // 凭证校验
-  const { teamId } = await authApp({
+  await authApp({
     req,
     authToken: true,
     appId,
@@ -46,10 +46,7 @@ async function handler(
   });
 
   const where = {
-    teamId: new Types.ObjectId(teamId),
     appId: new Types.ObjectId(appId),
-    source: sources ? { $in: sources } : { $exists: true },
-    tmbId: tmbIds ? { $in: tmbIds.map((item) => new Types.ObjectId(item)) } : { $exists: true },
     // Feedback type filtering (BEFORE pagination for performance)
     ...(feedbackType === 'has_feedback' &&
       !unreadOnly && {
@@ -75,6 +72,8 @@ async function handler(
       unreadOnly && {
         hasUnreadBadFeedback: true
       }),
+    ...(sources && { source: { $in: sources } }),
+    ...(tmbIds && { tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) } }),
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
@@ -142,9 +141,7 @@ async function handler(
                     }
                   },
                   customFeedback: {
-                    $sum: {
-                      $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
-                    }
+                    $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
                   },
                   errorCountFromChatItem: {
                     $sum: {
@@ -215,20 +212,12 @@ async function handler(
             as: 'chatItemResponsesData'
           }
         },
-        // Match app versions
+        // Match app versions (use simple lookup for better performance with index)
         {
           $lookup: {
             from: AppVersionCollectionName,
             localField: 'appVersionId',
             foreignField: '_id',
-            pipeline: [
-              {
-                $project: {
-                  versionName: 1,
-                  _id: 0 // 排除 _id 字段，只返回 versionName
-                }
-              }
-            ],
             as: 'versionData'
           }
         },

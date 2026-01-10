@@ -18,21 +18,20 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { postCreateDatasetWithFiles, getDatasetById } from '@/web/core/dataset/api';
+import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
-import { POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 import FileSelector, {
   type SelectFileItemType
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
 import { useRouter } from 'next/router';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 const QuickCreateDatasetModal = ({
   onClose,
@@ -82,15 +81,14 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const { url, fields, maxSize } = await getUploadTempFilePresignedUrl({
+            const { url, key, headers, maxSize } = await getUploadTempFilePresignedUrl({
               filename: file.name
             });
 
-            const formData = new FormData();
-            Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-            formData.set('file', file);
-
-            await POST(url, formData, {
+            await putFileToS3({
+              url,
+              file,
+              headers,
               onUploadProgress: (e) => {
                 if (!e.total) return;
                 const percent = Math.round((e.loaded / e.total) * 100);
@@ -107,23 +105,23 @@ const QuickCreateDatasetModal = ({
                   )
                 );
               },
-              timeout: 5 * 60 * 1000 // 5 minutes
-            })
-              .then(() => {
+              t,
+              maxSize,
+              onSuccess: () => {
                 setSelectFiles((state) =>
                   state.map((item) =>
                     item.id === fileId
                       ? {
                           ...item,
-                          dbFileId: fields.key,
+                          dbFileId: key,
                           isUploading: false,
                           uploadedFileRate: 100
                         }
                       : item
                   )
                 );
-              })
-              .catch((error) => Promise.reject(parseS3UploadError({ t, error, maxSize })));
+              }
+            });
           } catch (error) {
             setSelectFiles((state) =>
               state.map((item) =>

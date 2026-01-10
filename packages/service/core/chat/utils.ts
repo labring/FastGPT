@@ -14,13 +14,15 @@ export const addPreviewUrlToChatItems = async (
   async function addToChatflow(item: ChatItemType) {
     for await (const value of item.value) {
       if (value.type === ChatItemValueTypeEnum.file && value.file && value.file.key) {
-        value.file.url = await s3ChatSource.createGetChatFileURL({
+        const { url } = await s3ChatSource.createGetChatFileURL({
           key: value.file.key,
           external: true
         });
+        value.file.url = url;
       }
     }
   }
+
   async function addToWorkflowTool(item: ChatItemType) {
     if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) return;
 
@@ -39,7 +41,7 @@ export const addPreviewUrlToChatItems = async (
 
         for (const file of input.value) {
           if (!file.key) continue;
-          const url = await getS3ChatSource().createGetChatFileURL({
+          const { url } = await getS3ChatSource().createGetChatFileURL({
             key: file.key,
             external: true
           });
@@ -85,7 +87,7 @@ export const presignVariablesFileUrls = async ({
             val.map(async (item) => {
               if (!item.key) return item;
 
-              const url = await getS3ChatSource().createGetChatFileURL({
+              const { url } = await getS3ChatSource().createGetChatFileURL({
                 key: item.key,
                 external: true
               });

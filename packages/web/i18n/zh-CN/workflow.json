@@ -155,6 +155,7 @@
   "previous": "上一个",
   "question_classification": "问题分类",
   "question_optimization": "问题优化",
+  "quote_cite_tip": "若阻止提示词生成引文 id，将无法在对话时识别和显示引用文档",
   "quote_content_placeholder": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置\n{{q}} - 主要内容\n{{a}} - 辅助数据\n{{source}} - 来源名\n{{sourceId}} - 来源ID\n{{index}} - 第 n 个引用",
   "quote_content_tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置\n{{id}} - 引用数据唯一id\n{{q}} - 主要内容\n{{a}} - 辅助数据\n{{source}} - 来源名\n{{sourceId}} - 来源ID\n{{index}} - 第 n 个引用\n他们都是可选的，下面是默认值：\n{{default}}",
   "quote_num": "引用",

@@ -1,6 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
+import type { getResDataQuery } from '@/pages/api/core/chat/record/getResData';
 import type {
   InitChatResponse,
   InitOutLinkChatProps,
@@ -11,7 +11,7 @@ import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 import type {
   getChatRecordsBody,
   getChatRecordsResponse
-} from '@/pages/api/core/chat/getRecords_v2';
+} from '@/pages/api/core/chat/record/getRecords_v2';
 import type { GetQuoteProps, GetQuotesRes } from '@/pages/api/core/chat/quote/getQuote';
 import type {
   GetCollectionQuoteProps,
@@ -49,7 +49,7 @@ export const getChatResData = (data: getResDataQuery) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 
 export const getChatRecords = (data: getChatRecordsBody) =>
-  POST<getChatRecordsResponse>('/core/chat/getRecords_v2', data);
+  POST<getChatRecordsResponse>('/core/chat/record/getRecords_v2', data);
 
 /**
  * delete one chat record

@@ -1,4 +1,4 @@
-import { base64ToFile, fileToBase64 } from '../utils';
+import { base64ToFile, fileToBase64, putFileToS3 } from '../utils';
 import { compressBase64Img } from '../img';
 import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
@@ -48,14 +48,17 @@ export const useUploadAvatar = (
           }),
           file.name
         );
-        const { url, fields } = await api({ filename: file.name });
-        const formData = new FormData();
-        Object.entries(fields).forEach(([k, v]) => formData.set(k, v));
-        formData.set('file', compressed);
-        const res = await fetch(url, { method: 'POST', body: formData }); // 204
-        if (res.ok && res.status === 204) {
-          onSuccess?.(`${imageBaseUrl}${fields.key}`);
-        }
+        const { url, key, headers } = await api({ filename: file.name });
+
+        await putFileToS3({
+          url,
+          file: compressed,
+          headers,
+          onSuccess() {
+            onSuccess?.(`${imageBaseUrl}${key}`);
+          },
+          t
+        });
       });
     },
     [t, toast, api, onSuccess]

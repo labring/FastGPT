@@ -5,8 +5,9 @@ import type {
   FeishuServer
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import axios, { type Method } from 'axios';
+import { type Method } from 'axios';
 import { addLog } from '../../../../common/system/log';
+import { createProxyAxios, axios } from '../../../../common/api/axios';
 
 type ResponseDataType = {
   success: boolean;
@@ -32,7 +33,7 @@ type FeishuFileListResponse = {
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
-  const instance = axios.create({
+  const instance = createProxyAxios({
     baseURL: feishuBaseUrl,
     timeout: 60000
   });

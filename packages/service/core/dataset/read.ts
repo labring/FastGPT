@@ -4,7 +4,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
-import axios from 'axios';
+import { axios } from '../../common/api/axios';
 import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';

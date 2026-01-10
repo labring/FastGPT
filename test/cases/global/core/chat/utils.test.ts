@@ -98,9 +98,15 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('should calculate statistics correctly', () => {
+    const quoteId = '507f1f77bcf86cd799439011'; // Valid 24-bit hex ID
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: { content: `test response with citation [${quoteId}](CITE)` }
+        }
+      ],
       responseData: [
         {
           ...mockResponseData,
@@ -111,7 +117,7 @@ describe('addStatisticalDataToHistoryItem', () => {
         {
           ...mockResponseData,
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          quoteList: [{ id: '1', q: 'test', a: 'answer' }],
+          quoteList: [{ id: quoteId, q: 'test', a: 'answer' }],
           runningTime: 0.5
         },
         {
@@ -133,7 +139,7 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(result).toEqual({
       ...item,
       llmModuleAccount: 3,
-      totalQuoteList: [{ id: '1', q: 'test', a: 'answer' }],
+      totalQuoteList: [{ id: quoteId, q: 'test', a: 'answer' }],
       historyPreviewLength: 1
     });
   });

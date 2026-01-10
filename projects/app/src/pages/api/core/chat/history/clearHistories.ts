@@ -27,29 +27,25 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const match = await (async () => {
     if (shareId && outLinkUid && authType === 'outLink') {
       return {
-        teamId: chatTeamId,
         appId,
         outLinkUid: uid
       };
     }
     if (teamId && teamToken && authType === 'teamDomain') {
       return {
-        teamId: chatTeamId,
         appId,
         outLinkUid: uid
       };
     }
     if (authType === 'token') {
       return {
-        teamId: chatTeamId,
-        tmbId,
         appId,
+        tmbId,
         source: ChatSourceEnum.online
       };
     }
     if (authType === 'apikey') {
       return {
-        teamId: chatTeamId,
         appId,
         source: ChatSourceEnum.api
       };
