@@ -66,10 +66,12 @@ export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool)
 
 export const getSystemToolsWithInstalled = async ({
   teamId,
-  isRoot
+  isRoot,
+  userTags = []
 }: {
   teamId: string;
   isRoot: boolean;
+  userTags?: string[];
 }) => {
   const [tools, { installedSet, uninstalledSet }] = await Promise.all([
     getSystemTools(),
@@ -91,12 +93,25 @@ export const getSystemToolsWithInstalled = async ({
 
   return tools.map((tool) => {
     const installed = (() => {
+      // 优先级1: 明确记录
       if (installedSet.has(tool.id)) {
         return true;
       }
+      // 优先级2: Root用户
       if (isRoot && !uninstalledSet.has(tool.id)) {
         return true;
       }
+      // 优先级3: 基于 promoteTags 的自动预安装
+      if (
+        tool.promoteTags &&
+        tool.promoteTags.length > 0 &&
+        userTags.length > 0 &&
+        !uninstalledSet.has(tool.id)
+      ) {
+        const shouldAutoInstall = tool.promoteTags.some((tag) => userTags.includes(tag));
+        if (shouldAutoInstall) return true;
+      }
+      // 优先级4: 全局默认安装
       if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
         return true;
       }

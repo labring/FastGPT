@@ -32,7 +32,7 @@ async function handler(
     const userDetail = await getUserDetail({ tmbId });
     const userTags = userDetail.tags || [];
 
-    const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
+    const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
 
     return (
       tools

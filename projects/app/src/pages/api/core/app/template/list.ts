@@ -50,14 +50,16 @@ async function handler(
     return false;
   });
 
-  // Filter based on hideTags
+  // Filter based on hideTags and promoteTags
   filteredItems = filteredItems.filter((item) => {
+    // Priority 1: hideTags - hide templates with matching tags
     if (item.hideTags && item.hideTags.length > 0 && userTags.length > 0) {
       const hasHideTag = item.hideTags.some((hideTag) => userTags.includes(hideTag));
       if (hasHideTag) {
         return false; // Hide this template from user
       }
     }
+
     return true;
   });
 
@@ -93,14 +95,21 @@ async function handler(
       userTags.length > 0 &&
       item.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
 
+    // If user tags match promoteTags, add 'recommendation' to tags array
+    const tags = item.tags || [];
+    const finalTags =
+      isPromotedForUser && !tags.includes('recommendation')
+        ? [...tags, 'recommendation']
+        : [...tags.filter((tag) => tag !== 'recommendation')];
+
     return {
       templateId: item.templateId,
       name: item.name,
       intro: item.intro,
       recommendText: item.recommendText,
-      isPromoted: item.isPromoted || isPromotedForUser, // Merge global and tag-based promotion
+      isPromoted: item.isPromoted, // Keep global promotion, don't depend on promoteTags
       avatar: item.avatar,
-      tags: item.tags,
+      tags: finalTags, // Use modified tags
       type: item.type,
       author: item.author,
       userGuide: item.userGuide,
