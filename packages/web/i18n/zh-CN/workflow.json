@@ -143,7 +143,7 @@
   "only_the_reference_type_is_supported": "仅支持引用类型",
   "optional_value_type": "可选的数据类型",
   "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在动态添加字段时，仅可选择配置的类型",
-  "pan_priority": "触摸板优先\n- 单击批量选择\n- 双指移动画布",
+  "pan_priority": "触摸板优先\n- 单指拖拽框选节点\n- 双指滑动移动画布",
   "pass_returned_object_as_output_to_next_nodes": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
   "please_enter_node_name": "请输入节点名称",
   "plugin.Instruction_Tip": "可以配置一段说明，以解释该插件的用途。每次使用插件前，会显示该段说明。支持标准 Markdown 语法。",
