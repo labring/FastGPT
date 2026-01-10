@@ -145,7 +145,7 @@ def detect_dangerous_imports(code):
         "os", "sys", "subprocess", "shutil", "socket", "ctypes", 
         "multiprocessing", "threading", "pickle",
         # Additional modules that can write files
-        "tempfile", "pathlib", "io", "fileinput"
+        "tempfile", "pathlib", "io", "fileinput", "importlib", "inspect"
     ]
     tree = ast.parse(code)
     for node in ast.walk(tree):
@@ -156,6 +156,16 @@ def detect_dangerous_imports(code):
         elif isinstance(node, ast.ImportFrom):
             if node.module in dangerous_modules:
                 return node.module
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id == "__import__":
+                    return "__import__"
+                if node.func.id == "eval":
+                    return "eval"
+                if node.func.id == "exec":
+                    return "exec"
+                if node.func.id == "open":
+                    return "open"
     return None
 
 def detect_file_write_operations(code):
@@ -211,10 +221,9 @@ def run_pythonCode(data:dict):
     
     # Create a safe main function call with error handling
     output_code = '''if __name__ == '__main__':
-    import inspect
     try:
-        # Get main function signature
-        sig = inspect.signature(main)
+        # Use pre-imported safe inspect
+        sig = _safe_inspect.signature(main)
         params = list(sig.parameters.keys())
         
         # Create arguments dict from available variables
@@ -230,7 +239,7 @@ def run_pythonCode(data:dict):
             else:
                 # Check if parameter has default value
                 param = sig.parameters[param_name]
-                if param.default is not inspect.Parameter.empty:
+                if param.default is not _safe_inspect.Parameter.empty:
                     break  # Stop adding positional args, rest will use defaults
                 else:
                     raise TypeError(f"main() missing required argument: '{param_name}'. Available variables: {list(available_vars.keys())}")
@@ -245,7 +254,38 @@ def run_pythonCode(data:dict):
     except Exception as e:
         print({"error": f"Error calling main function: {str(e)}"})
 '''
-    code = imports + "\\n" + seccomp_prefix + "\\n" + var_def + "\\n" + code + "\\n" + output_code
+
+    runtime_restrictions = """
+import builtins
+import inspect as _safe_inspect
+
+# Disable open
+def _restricted_open(*args, **kwargs):
+    raise PermissionError("Runtime restriction: open() is disabled")
+builtins.open = _restricted_open
+
+# Wrap __import__
+_original_import = builtins.__import__
+_blocked_modules = {
+    "os", "sys", "subprocess", "shutil", "socket", "ctypes", 
+    "multiprocessing", "threading", "pickle", "tempfile", 
+    "pathlib", "io", "fileinput", "importlib", "inspect"
+}
+
+def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name in _blocked_modules:
+        raise ImportError(f"Runtime restriction: Import of '{name}' is not allowed")
+    
+    # Check for submodules
+    base_name = name.split('.')[0]
+    if base_name in _blocked_modules:
+        raise ImportError(f"Runtime restriction: Import of '{name}' is not allowed")
+        
+    return _original_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = _restricted_import
+"""
+    code = imports + "\\n" + seccomp_prefix + "\\n" + runtime_restrictions + "\\n" + var_def + "\\n" + code + "\\n" + output_code
     
     # Note: We still need to create the subprocess file for execution,
     # but user code cannot write additional files
