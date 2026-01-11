@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { AlertTitle, Box, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -9,7 +9,6 @@ import { useTranslation } from 'next-i18next';
 
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
-import { cardStyles } from '../constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';

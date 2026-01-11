@@ -21,6 +21,7 @@ import { deleteTeamAllDatasets } from '../../../../core/dataset/delete/processor
 import { onDelAllApp } from './utils';
 import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
 import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
+import { MongoTeamSub } from 'support/wallet/sub/schema';
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
   const { teamId } = job.data;
@@ -78,6 +79,10 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     // 5. 删除财务相关
     // 删除优惠券
     await MongoDiscountCoupon.deleteMany({
+      teamId
+    });
+
+    await MongoTeamSub.deleteMany({
       teamId
     });
     // 删除使用记录（不删除，等待自动过期）
