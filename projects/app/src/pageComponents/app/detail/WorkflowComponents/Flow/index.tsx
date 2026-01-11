@@ -174,7 +174,9 @@ const Workflow = () => {
               }
             : {})}
           onNodeDragStop={onNodeDragStop}
-          noWheelClassName={!movingCanvas || workflowControlMode === 'drag' ? 'nowheel' : 'bbb'}
+          noWheelClassName={
+            !movingCanvas || workflowControlMode === 'drag' ? 'nowheel' : 'nowheel-moving'
+          }
           onMoveStart={() => {
             setMovingCanvas(true);
           }}
