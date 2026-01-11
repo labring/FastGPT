@@ -1,4 +1,4 @@
-name: Auto Close Stale Issues (Ignore PRs & Exclude features)
+name: Auto Close Stale Issues
 
 on:
   schedule:
@@ -8,6 +8,9 @@ on:
 jobs:
   stale:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
