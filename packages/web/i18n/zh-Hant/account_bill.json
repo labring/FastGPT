@@ -41,5 +41,6 @@
   "type": "類型",
   "unit_code": "統一信用代碼",
   "unit_code_void": "統一信用代碼格式錯誤",
-  "update": "更新"
+  "update": "更新",
+  "wecom_not_pay_tip": "未支付，即將跳轉支付地址"
 }

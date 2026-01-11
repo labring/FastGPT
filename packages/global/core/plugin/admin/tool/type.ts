@@ -1,6 +1,7 @@
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { SystemToolBasicConfigSchema, ToolSecretInputItemSchema } from '../../tool/type';
 import z from 'zod';
+import { UserTagsEnum } from '../../../../support/user/type';
 
 export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.extend({
   id: z.string(),
@@ -33,6 +34,8 @@ export const AdminSystemToolDetailSchema = AdminSystemToolListItemSchema.omit({
   userGuide: z.string().nullish(),
   inputList: z.array(ToolSecretInputItemSchema).optional(),
   inputListVal: z.record(z.string(), z.any()).nullish(),
-  childTools: z.array(ToolsetChildSchema).optional()
+  childTools: z.array(ToolsetChildSchema).optional(),
+  promoteTags: z.array(UserTagsEnum).nullish().describe('对拥有这些 Tag 的用户推荐, 排序到前面'),
+  hideTags: z.array(UserTagsEnum).nullish().describe('对拥有这些 Tag 的用户隐藏')
 });
 export type AdminSystemToolDetailType = z.infer<typeof AdminSystemToolDetailSchema>;

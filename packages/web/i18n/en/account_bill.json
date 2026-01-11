@@ -41,5 +41,6 @@
   "type": "type",
   "unit_code": "unified credit code",
   "unit_code_void": "Unified credit code format error",
-  "update": "renew"
+  "update": "renew",
+  "wecom_not_pay_tip": "Not paid, payment address will be redirected soon"
 }
