@@ -4,6 +4,56 @@ import type {
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum
 } from './constants';
+import type { EnhancedErrorMessage } from './error';
+
+/**
+ * Detailed evaluation results from DiTing
+ * Contains various ranking metrics at different k values
+ */
+export interface DiTingDetailedResults {
+  rerank_top5_mrr?: number;
+  rerank_top5_ndcg?: number;
+  rerank_top5_map?: number;
+  rerank_top5_precision?: number;
+  rerank_top10_mrr?: number;
+  rerank_top10_ndcg?: number;
+  rerank_top10_map?: number;
+  rerank_top10_precision?: number;
+  rerank_top10_recall?: number;
+  rerank_top15_mrr?: number;
+  rerank_top15_ndcg?: number;
+  rerank_top15_map?: number;
+  rerank_top15_precision?: number;
+  overall_mrr?: number;
+  overall_ndcg?: number;
+  overall_map?: number;
+  overall_precision?: number;
+  [key: string]: any;
+}
+
+/**
+ * Rerank evaluation result
+ * Contains the complete runLogs structure from DiTing evaluation response
+ * This is what gets returned by evaluation stages and stored in checkpoint/result
+ */
+export interface RerankEvalResult {
+  detailed_results: DiTingDetailedResults;
+  mrr_scores?: Record<string, number[]>;
+  ndcg_scores?: Record<string, number[]>;
+  map_scores?: Record<string, number[]>;
+  /**
+   * Retrieval ranks for each case (case-by-case)
+   * Outer array: each evaluation case
+   * Inner array: ranks of each retrieved document (position in original retrieval list)
+   * Example: [[1, 3, 2, 5, 4], [2, 1, 4, 3, 5]]
+   *   - Case 1: expected doc was at position 1, 3, etc. in retrieval list
+   *   - Case 2: expected doc was at position 2, 1, etc. in retrieval list
+   */
+  retrieval_ranks?: number[][];
+  column_stats?: Record<string, any>;
+  total_rows?: number;
+  expect_count?: number;
+}
 
 /** Trainset statistics (dynamically calculated, not stored in DB) */
 export interface TrainsetStatistics {
@@ -47,6 +97,8 @@ export type RerankTrainsetSchemaType = {
 
   status: `${RerankTrainsetStatusEnum}`;
   errorMsg?: string;
+
+  jobId?: string;
 
   createTime: Date;
   updateTime: Date;
@@ -139,14 +191,15 @@ export type RerankTrainTaskSchemaType = {
 
       evaluating?: {
         evalDatasetId?: string;
-        baseModelEvalResult?: Record<string, any>;
-        tunedModelEvalResult?: Record<string, any>;
+        baseModelEvalResult?: RerankEvalResult;
+        tunedModelEvalResult?: RerankEvalResult;
       };
 
       applying?: {
         versionId?: string;
         versionName?: string;
         previousModelConfigId?: string;
+        previousTaskId?: string;
         updatedNodesCount?: number;
       };
     };
@@ -164,15 +217,16 @@ export type RerankTrainTaskSchemaType = {
     trainDatasetFilePath: string;
     tunedModelConfigId: string;
     evalDatasetId: string;
-    baseModelEvalResult: Record<string, any>;
-    tunedModelEvalResult: Record<string, any>;
+    baseModelEvalResult: RerankEvalResult;
+    tunedModelEvalResult: RerankEvalResult;
     versionId: string;
     versionName: string;
     previousModelConfigId: string;
+    previousTaskId: string;
     updatedNodesCount: number;
   };
 
-  errorMsg?: string;
+  errorMsg?: EnhancedErrorMessage;
 
   jobId?: string;
 

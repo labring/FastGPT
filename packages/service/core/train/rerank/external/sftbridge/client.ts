@@ -4,7 +4,9 @@ import type {
   CreateSFTTaskRequest,
   CreateSFTTaskResponse,
   QuerySFTTaskStatusRequest,
-  QuerySFTTaskStatusResponse
+  QuerySFTTaskStatusResponse,
+  DeleteSFTTaskRequest,
+  DeleteSFTTaskResponse
 } from './types';
 import { SFTTaskStatus } from './types';
 import { addLog } from '../../../../../common/system/log';
@@ -165,6 +167,61 @@ export async function querySFTTaskStatus(
         status: SFTTaskStatus.failed,
         message: 'Task not found',
         error: 'The specified task ID does not exist'
+      };
+    }
+
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || error.message;
+      throw new Error(`SFT Bridge API error: ${errorMessage}`);
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Delete SFT task
+ * Calls SFT Bridge platform /api/v1/optimization/tasks/{task_id} endpoint
+ *
+ * @param request - Contains task ID to delete
+ * @returns Deletion confirmation with task_id and message
+ */
+export async function deleteSFTTask(request: DeleteSFTTaskRequest): Promise<DeleteSFTTaskResponse> {
+  const endpoint = getSFTBridgeEndpoint();
+  const url = `${endpoint}/api/v1/optimization/tasks/${encodeURIComponent(request.taskId)}`;
+
+  addLog.info('SFT Bridge delete task', {
+    url,
+    taskId: request.taskId
+  });
+
+  try {
+    const response = await axios.delete(url, {
+      timeout: getSFTBridgeTimeout()
+    });
+
+    const apiResponse = response.data;
+
+    addLog.info('SFT Bridge delete task completed', {
+      taskId: request.taskId,
+      response: apiResponse
+    });
+
+    return {
+      task_id: apiResponse.task_id,
+      message: apiResponse.message || 'Task deleted successfully'
+    };
+  } catch (error) {
+    addLog.error('SFT Bridge delete task failed', {
+      taskId: request.taskId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      // Task not found - return success with appropriate message
+      return {
+        task_id: request.taskId,
+        message: 'Task not found or already deleted'
       };
     }
 

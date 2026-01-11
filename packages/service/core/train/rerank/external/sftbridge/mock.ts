@@ -3,7 +3,9 @@ import type {
   CreateSFTTaskRequest,
   CreateSFTTaskResponse,
   QuerySFTTaskStatusRequest,
-  QuerySFTTaskStatusResponse
+  QuerySFTTaskStatusResponse,
+  DeleteSFTTaskRequest,
+  DeleteSFTTaskResponse
 } from './types';
 import { addLog } from '../../../../../common/system/log';
 
@@ -110,10 +112,15 @@ export async function mockQuerySFTTaskStatus(
   };
 
   if (currentStatus === SFTTaskStatus.completed) {
+    // response.endpoint = {
+    //   base_url: 'http://10.57.1.91:28624/v1',
+    //   model: `bge-m3-test`,
+    //   api_key: `GGlmUiIHZ5c2PGLg1wv2ULmJj2YMjF7fEx8P5s7vTcIHkzFotg`
+    // };
     response.endpoint = {
-      base_url: 'http://10.57.1.91:28624/v1',
-      model: `bge-m3-test`,
-      api_key: `GGlmUiIHZ5c2PGLg1wv2ULmJj2YMjF7fEx8P5s7vTcIHkzFotg`
+      base_url: 'http://10.74.124.138:14766/v1',
+      model: `Qwen3-Rerank-0.6B-LoRA-20260106205301-dd598845`,
+      api_key: `GHnjr4iM4feHS7U7wZuWTtyW3Mx3c6K6iJvArPMqbJxJzBvqeQ`
     };
   }
 
@@ -125,4 +132,26 @@ export async function mockQuerySFTTaskStatus(
   });
 
   return response;
+}
+
+/**
+ * Mock implementation of SFT task deletion
+ * Real implementation should call SFT Bridge platform's delete_task API
+ *
+ * @param request - Contains task ID to delete
+ * @returns Deletion confirmation with task_id and message
+ */
+export async function mockDeleteSFTTask(
+  request: DeleteSFTTaskRequest
+): Promise<DeleteSFTTaskResponse> {
+  addLog.info('[MOCK] SFT Bridge delete task', {
+    taskId: request.taskId
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 500));
+
+  return {
+    task_id: request.taskId,
+    message: `Task ${request.taskId} deleted successfully (mock)`
+  };
 }

@@ -644,5 +644,8 @@
   "hype_rerank": "啟用重新排序",
   "hype_rerank_desc": "是否使用重排序模型進行二次排序(啟用後產生問題品質更高但耗時增加,需配置重排序模型)",
   "hype_min_rerank_threshold": "重新排序分數閾值",
-  "hype_min_rerank_threshold_desc": "重排序後的最低分數要求(取值範圍(0,1),值越大產生的問題品質越高但數量越少,僅在啟用重排序時生效)"
+  "hype_min_rerank_threshold_desc": "重排序後的最低分數要求(取值範圍(0,1),值越大產生的問題品質越高但數量越少,僅在啟用重排序時生效)",
+  "confirm_delete_user_warning": "確認刪除該使用者？刪除後使用者帳號及其建立的資源都會清除。",
+  "delete_user": "刪除使用者",
+  "user_deleted": "使用者已刪除"
 }

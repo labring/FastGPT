@@ -40,10 +40,11 @@ export type {
   DiTingEvaluateRerankResponse
 } from './diting/types';
 
-import { mockCreateSFTTask, mockQuerySFTTaskStatus } from './sftbridge/mock';
+import { mockCreateSFTTask, mockQuerySFTTaskStatus, mockDeleteSFTTask } from './sftbridge/mock';
 import {
   createSFTTask as realCreateSFTTask,
-  querySFTTaskStatus as realQuerySFTTaskStatus
+  querySFTTaskStatus as realQuerySFTTaskStatus,
+  deleteSFTTask as realDeleteSFTTask
 } from './sftbridge/client';
 
 const useSFTBridgeMock = process.env.USE_SFT_BRIDGE_MOCK === 'true';
@@ -54,11 +55,15 @@ export const querySFTTaskStatus = useSFTBridgeMock
   ? mockQuerySFTTaskStatus
   : realQuerySFTTaskStatus;
 
+export const deleteSFTTask = useSFTBridgeMock ? mockDeleteSFTTask : realDeleteSFTTask;
+
 export type {
   CreateSFTTaskRequest,
   CreateSFTTaskResponse,
   QuerySFTTaskStatusRequest,
-  QuerySFTTaskStatusResponse
+  QuerySFTTaskStatusResponse,
+  DeleteSFTTaskRequest,
+  DeleteSFTTaskResponse
 } from './sftbridge/types';
 
 export { SFTTaskStatus } from './sftbridge/types';

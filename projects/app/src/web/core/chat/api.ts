@@ -34,6 +34,14 @@ import type {
   GetCollectionQuoteProps,
   GetCollectionQuoteRes
 } from '@/pages/api/core/chat/quote/getCollectionQuote';
+import type {
+  AssistantGetQuoteProps,
+  AssistantGetQuotesRes
+} from '@/pages/api/core/chat/assistant/getQuote';
+import type {
+  AssistantGetRetrievalResultsProps,
+  AssistantGetRetrievalResultsRes
+} from '@/pages/api/core/chat/assistant/getRetrievalResults';
 
 /**
  * 获取初始化聊天内容
@@ -119,3 +127,16 @@ export const getChatSetting = () => {
 export const updateChatSetting = (data: ChatSettingUpdateParams) => {
   return POST<ChatSettingSchema>('/proApi/core/chat/setting/update', data);
 };
+
+/*---------- assistant chat ------------*/
+/**
+ * get assistant quote list with source type
+ */
+export const getAssistantQuoteList = (data: AssistantGetQuoteProps) =>
+  POST<AssistantGetQuotesRes>(`/core/chat/assistant/getQuote`, data);
+
+/**
+ * get assistant retrieval results with source type
+ */
+export const getAssistantRetrievalResults = (data: AssistantGetRetrievalResultsProps) =>
+  POST<AssistantGetRetrievalResultsRes>(`/core/chat/assistant/getRetrievalResults`, data);

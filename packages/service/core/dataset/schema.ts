@@ -172,8 +172,13 @@ const DatasetSchema = new Schema({
       },
       schema: {
         type: String,
-        required: function (this: any) {
-          return this.databaseConfig?.clientType === DatabaseTypeEnum.postgresql;
+        validate: {
+          validator: function (this: any) {
+            return (
+              this.databaseConfig?.clientType === DatabaseTypeEnum.postgresql ||
+              this.databaseConfig?.clientType === DatabaseTypeEnum.mssql
+            );
+          }
         }
       },
       user: {
@@ -186,7 +191,15 @@ const DatasetSchema = new Schema({
       },
       encrypt: {
         type: Boolean,
-        default: false
+        default: true
+      },
+      trustServerCertificate: {
+        type: Boolean,
+        validate: {
+          validator: function (this: any) {
+            return this.databaseConfig?.clientType === DatabaseTypeEnum.mssql;
+          }
+        }
       },
       poolSize: {
         type: Number,

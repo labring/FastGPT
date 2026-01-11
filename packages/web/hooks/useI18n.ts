@@ -51,7 +51,11 @@ export const useI18nLng = () => {
     setLang(lang);
 
     if (lang === LangEnum.zh_CN || lang === LangEnum.zh_Hant) {
-      window?.location?.reload?.();
+      // 确保 localStorage 写入完成后再刷新页面
+      // 使用 setTimeout 0 让 setLang 的同步/异步操作完成
+      setTimeout(() => {
+        window?.location?.reload?.();
+      }, 0);
       return;
     }
 

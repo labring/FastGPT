@@ -38,6 +38,7 @@
   "support_file_type": "Supported: {{fileType}}",
   "support_max_count": "Maximum: {{maxCount}} files, ",
   "support_max_size": "{{maxSize}} or less per file",
+  "faq_read_tip": ", only read the first sheet",
   "template_csv_file_select_tip": "Supported: {{fileType}} file <highlight>strictly consistent with the template</highlight>",
   "template_strict_highlight": "Strictly consistent with the template",
   "total_files": "Total files: {{selectFiles.length}}",

@@ -12,6 +12,10 @@
     "tokenWorkers": 30, // Token 计算线程保持数，会持续占用内存，不能设置太大。
     "hnswEfSearch": 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
     "hnswMaxScanTuples": 100000, // 向量搜索最大扫描数据量，仅对 PG生效。
+    "assistantRetrievalLimit": 20, // Assistant场景：检索结果数量限制（默认：20）
+    "assistantFinalResultLimit": 10, // Assistant场景：最终返回的检索结果数量限制（默认：10）
+    "correctionSimilarityThreshold": 0.95, // Assistant场景：校正数据相似度阈值，命中后直接返回（默认：0.95）
+    "faqSimilarityThreshold": 0.95, // Assistant场景：FAQ数据相似度阈值，命中后直接返回（默认：0.95）
     "customPdfParse": {
       "url": "", // 自定义 PDF 解析服务地址
       "key": "", // 自定义 PDF 解析服务密钥
@@ -27,6 +31,11 @@
       "dataQualityConcurrency": 2,
       "datasetDataSynthesizeConcurrency": 5,
       "datasetSmartGenerateConcurrency": 2,
+      "maxStalledCount": 3
+    },
+    "trainConfig": {
+      "taskConcurrency": 1,
+      "dataGenerateConcurrency": 3,
       "maxStalledCount": 3
     },
     "hypeParams": {

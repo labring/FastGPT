@@ -33,6 +33,9 @@ const RerankTrainsetSchema = new connectionMongo.Schema({
   errorMsg: {
     type: String
   },
+  jobId: {
+    type: String
+  },
   createTime: {
     type: Date,
     default: () => new Date()
@@ -47,6 +50,7 @@ const RerankTrainsetSchema = new connectionMongo.Schema({
 RerankTrainsetSchema.index({ appId: 1, createTime: -1 }); // Support querying all trainsets for an app, sorted by creation time
 RerankTrainsetSchema.index({ teamId: 1, updateTime: -1 });
 RerankTrainsetSchema.index({ status: 1 });
+RerankTrainsetSchema.index({ jobId: 1 });
 
 export const MongoRerankTrainset = getMongoModel<RerankTrainsetSchemaType>(
   'rerank_trainset',

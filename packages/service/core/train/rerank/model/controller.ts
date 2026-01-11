@@ -4,28 +4,32 @@ import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { deleteSFTTask } from '../external';
+import { deleteTunedModelChannel, createTunedModelChannel } from '../task/helpers/channel';
 
 /**
- * Create rerank model configuration
+ * Create rerank model configuration (idempotent)
  *
- * Integrates with FastGPT model management system to create real model configuration.
+ * Integrates with FastGPT model management system to create model configuration and AI Proxy channel.
+ * Architecture: Model config contains metadata only, channel contains access credentials.
+ * Order: 1) Create model config first, 2) Create channel second.
  *
  * @param params - Model configuration parameters
  * @param params.name - Model alias name
  * @param params.endpoint - Model endpoint configuration
- * @param params.endpoint.base_url - Optional OpenAI API base URL
- * @param params.endpoint.api_key - Optional API key
+ * @param params.endpoint.base_url - OpenAI API base URL (stored in channel only)
+ * @param params.endpoint.api_key - API key (stored in channel only)
  * @param params.endpoint.model - Model name
  * @param params.isActive - Whether to activate the model
  * @param params.charsPointsPrice - Character points price
  * @returns Model configuration object ID
- * @throws {Error} When model creation or update fails
+ * @throws {Error} When model config or channel creation fails
  */
 export async function createRerankModelConfig(params: {
   name: string;
   endpoint: {
-    base_url?: string;
-    api_key?: string;
+    base_url: string;
+    api_key: string;
     model: string;
   };
   isActive: boolean;
@@ -33,63 +37,118 @@ export async function createRerankModelConfig(params: {
 }): Promise<string> {
   const { name, endpoint, isActive, charsPointsPrice } = params;
   const model = endpoint.model;
+  const channelName = `${model}-ch`;
 
+  // Step 1: Create or update model configuration in database (idempotent with upsert)
+  // Model config contains metadata only, no credentials
   const modelConfig: RerankModelItemType = {
-    provider: getModelProvider('OpenAI').id, // TODO: Replace by Sangfor AICP in future
+    provider: getModelProvider('OpenAI').id,
     model,
     name,
     isActive: isActive ?? true,
     isCustom: true,
-    requestUrl: endpoint.base_url,
-    requestAuth: endpoint.api_key,
+    isTuned: true, // Mark as fine-tuned model created by training module
+    // Do NOT store requestUrl and requestAuth - these are in the channel
     type: ModelTypeEnum.rerank,
     charsPointsPrice
   };
 
-  try {
-    const result = await MongoSystemModel.findOneAndUpdate(
-      { model },
-      {
-        model,
-        metadata: modelConfig
-      },
-      {
-        upsert: true,
-        new: true
-      }
-    );
-
-    if (!result) {
-      throw new Error('Failed to create or update model config');
+  const result = await MongoSystemModel.findOneAndUpdate(
+    { model },
+    {
+      model,
+      metadata: modelConfig
+    },
+    {
+      upsert: true,
+      new: true
     }
+  );
 
-    const objectId = String(result._id);
+  if (!result) {
+    throw new Error('Failed to create or update model config');
+  }
 
-    addLog.info('Created or updated rerank model config in database', {
-      model,
-      name,
-      objectId,
-      requestUrl: endpoint.base_url,
-      isActive
+  const objectId = String(result._id);
+
+  addLog.info('Created or updated rerank model config', {
+    model,
+    name,
+    objectId,
+    isActive
+  });
+
+  // Step 2: Create or update AI Proxy channel (idempotent)
+  // Channel stores access credentials (base_url and api_key)
+  await createTunedModelChannel({
+    channelName,
+    endpoint,
+    modelConfigId: model
+  });
+
+  // Reload system models
+  await updatedReloadSystemModel();
+  addLog.info('Reloaded system models', { model, objectId });
+
+  return objectId;
+}
+
+/**
+ * Delete rerank model configuration
+ *
+ * Deletes model from AI Proxy channel, FastGPT system, and SFT Bridge platform.
+ * Order: 1) Delete channel first, 2) Delete model config, 3) Delete from SFT Bridge.
+ *
+ * @param modelConfigId - Model configuration ID (same as endpoint.model)
+ * @param sftTaskId - Optional SFT Bridge task ID for cleanup (if available)
+ * @returns Promise that resolves when deletion is complete
+ * @throws {Error} When channel or model deletion fails (SFT Bridge errors are non-blocking)
+ */
+export async function deleteRerankModelConfig(
+  modelConfigId: string,
+  sftTaskId?: string
+): Promise<void> {
+  addLog.info('Deleting rerank model config', { modelConfigId, sftTaskId });
+
+  // Step 1: Delete AI Proxy channel first (contains access credentials)
+  await deleteTunedModelChannel(modelConfigId);
+  addLog.info('Deleted AI Proxy channel', { modelConfigId });
+
+  // Step 2: Delete model configuration from FastGPT database
+  const deleteResult = await MongoSystemModel.deleteOne({ model: modelConfigId });
+
+  if (deleteResult.deletedCount === 0) {
+    addLog.warn('No model config found to delete in FastGPT', { modelConfigId });
+  } else {
+    addLog.info('Deleted rerank model config from FastGPT', {
+      modelConfigId,
+      deletedCount: deleteResult.deletedCount
     });
 
+    // Reload system models after deletion
     await updatedReloadSystemModel();
+    addLog.info('Reloaded system models', { modelConfigId });
+  }
 
-    addLog.info('Reloaded system models after creating rerank model', {
-      model,
-      objectId
-    });
-
-    return objectId;
-  } catch (error) {
-    addLog.error('Failed to create rerank model config', {
-      model,
-      name,
-      error: error instanceof Error ? error.message : String(error)
-    });
-
-    throw new Error(
-      `Failed to create rerank model config: ${error instanceof Error ? error.message : String(error)}`
-    );
+  // Step 3: Delete from SFT Bridge platform (non-blocking, errors are logged but don't throw)
+  // Only attempt deletion if sftTaskId is provided
+  if (sftTaskId) {
+    try {
+      const sftResult = await deleteSFTTask({ taskId: sftTaskId });
+      addLog.info('Successfully deleted SFT task from SFT Bridge', {
+        modelConfigId,
+        sftTaskId,
+        taskId: sftResult.task_id,
+        message: sftResult.message
+      });
+    } catch (sftError) {
+      addLog.warn('Error calling SFT Bridge delete task API', {
+        modelConfigId,
+        sftTaskId,
+        error: sftError instanceof Error ? sftError.message : String(sftError)
+      });
+    }
+  } else {
+    addLog.info('No sftTaskId provided, skipping SFT Bridge deletion', { modelConfigId });
   }
 }

@@ -139,7 +139,12 @@ export type PostgresqlConfigType = DativeDBConfigType & {
   conn_pool_size?: number;
 };
 
-export type MssqlConfigType = DativeDBConfigType & { type: DatabaseTypeEnum.mssql };
+export type MssqlConfigType = DativeDBConfigType & {
+  type: DatabaseTypeEnum.mssql;
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
+  ns_name?: string;
+};
 
 export type SqliteConfigType = DativeDBConfigType & {
   type: DatabaseTypeEnum.sqlite;

@@ -116,9 +116,9 @@ const FileInfo: React.FC<FileInfoProps> = ({
               <Text fontSize={'16px'} fontWeight={500} color={'myGray.900'} noOfLines={1}>
                 {name}
               </Text>
-              <HStack gap={4} mt={1} fontSize={'sm'} color={'myGray.500'}>
+              <HStack gap={'40px'} mt={2} fontSize={'sm'} color={'myGray.500'}>
                 <Flex alignItems={'center'}>
-                  <MyIcon name={'common/list'} w={'14px'} h={'14px'} mr={1} />
+                  <MyIcon name={'common/list'} color={'myGray.600'} w={'14px'} h={'14px'} mr={1} />
                   {size}
                 </Flex>
                 <Flex alignItems={'center'}>

@@ -14,6 +14,7 @@ import type { ClientSession } from '../../../../common/mongo';
 import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
 import { extractModelFromApp, buildModelEndpoint } from '../utils';
+import { deleteRerankModelConfig } from '../model/controller';
 
 /**
  * Create rerank training task (only creates record, does not start execution)
@@ -212,6 +213,33 @@ export async function deleteRerankTrainTask(
   }
 
   const tempFilePath = task.result?.trainDatasetFilePath;
+
+  // Optimization 1: Delete associated tuned model when deleting task
+  const tunedModelConfigId = task.checkpoint?.data?.registering?.tunedModelConfigId;
+  const sftTaskId = task.checkpoint?.data?.finetuning?.sftTaskId;
+  if (tunedModelConfigId) {
+    addLog.info('Deleting tuned model associated with task', {
+      taskId,
+      tunedModelConfigId,
+      sftTaskId
+    });
+
+    try {
+      await deleteRerankModelConfig(tunedModelConfigId, sftTaskId);
+      addLog.info('Successfully deleted tuned model', {
+        taskId,
+        tunedModelConfigId,
+        sftTaskId
+      });
+    } catch (error) {
+      addLog.warn('Failed to delete tuned model, continuing with task deletion', {
+        taskId,
+        tunedModelConfigId,
+        sftTaskId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
 
   const evalCollections = await MongoEvalDatasetCollection.find(
     {

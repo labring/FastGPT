@@ -147,8 +147,18 @@ export type SystemEnvType = {
   // Evaluation configurations
   evalConfig?: EvaluationConfigType;
 
+  // Training configurations
+  trainConfig?: TrainingConfigType;
+
   // Correction search similarity threshold
   correctionSimilarityThreshold?: number;
+
+  // FAQ search similarity threshold
+  faqSimilarityThreshold?: number;
+
+  // Assistant场景专用配置
+  assistantRetrievalLimit?: number; // 检索结果数量限制
+  assistantFinalResultLimit?: number; // 最终返回的检索结果数量限制
 
   // Hype index parameters
   hypeParams?: HypeParamsType;
@@ -172,6 +182,12 @@ export type EvaluationConfigType = {
   datasetDataSynthesizeConcurrency?: number;
   datasetSmartGenerateConcurrency?: number;
   maxStalledCount?: number;
+};
+
+export type TrainingConfigType = {
+  taskConcurrency?: number; // Training task worker concurrency
+  dataGenerateConcurrency?: number; // Training data generation worker concurrency
+  maxStalledCount?: number; // Max stalled count for BullMQ workers
 };
 
 export type HypeParamsType = {

@@ -79,6 +79,9 @@ export type DatabaseConfig = {
   poolSize?: number;
   // PostgreSQL specific
   schema?: string;
+  // MSSQL specific
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
 };
 
 // Database table schema types
@@ -397,6 +400,17 @@ export type DatasetCiteItemType = {
   updateTime: DatasetDataSchemaType['updateTime'];
   index: DatasetDataSchemaType['chunkIndex'];
   updated?: boolean;
+};
+
+/* ============= assistant source type =============== */
+export type AssistantSourceType = 'faq' | 'sql' | 'correction' | 'chunk';
+
+export type AssistantDatasetCiteItemType = DatasetCiteItemType & {
+  sourceType: AssistantSourceType;
+};
+
+export type AssistantSearchDataResponseItemType = SearchDataResponseItemType & {
+  sourceType: AssistantSourceType;
 };
 
 /* ============= synonym =============== */

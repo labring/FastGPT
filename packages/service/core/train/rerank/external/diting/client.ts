@@ -9,6 +9,7 @@ import type {
   DiTingEvaluateRerankResponse
 } from './types';
 import { addLog } from '../../../../../common/system/log';
+import { DEFAULT_DITING_TIMEOUT } from '../../constants';
 
 /**
  * DiTing service real client for training data generation and evaluation
@@ -17,7 +18,7 @@ import { addLog } from '../../../../../common/system/log';
 function getDiTingConfig() {
   return {
     url: process.env.DITING_BASE_URL || 'http://diting:3000',
-    timeout: Number(process.env.DITING_TIMEOUT) || 300000
+    timeout: Number(process.env.DITING_TIMEOUT) || DEFAULT_DITING_TIMEOUT
   };
 }
 

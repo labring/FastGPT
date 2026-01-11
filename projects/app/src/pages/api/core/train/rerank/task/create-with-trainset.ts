@@ -74,17 +74,23 @@ async function handler(
     trainsetId: String(trainsetId)
   });
 
-  await rerankTrainDataGenerateQueue.add(`auto-generate-${trainsetId}-${Date.now()}`, {
-    appId,
-    trainsetId: String(trainsetId),
-    datasetIds: undefined, // Use all datasets associated with the app
-    generateConfig: {
-      forceRegenerate: false,
-      minNegativeSamples: 1,
-      maxNegativeSamples: 7,
-      includeOriginalQ: true
+  const dataGenJob = await rerankTrainDataGenerateQueue.add(
+    `auto-generate-${trainsetId}-${Date.now()}`,
+    {
+      appId,
+      trainsetId: String(trainsetId),
+      datasetIds: undefined, // Use all datasets associated with the app
+      generateConfig: {
+        forceRegenerate: false,
+        minNegativeSamples: 1,
+        maxNegativeSamples: 7,
+        includeOriginalQ: true
+      }
     }
-  });
+  );
+
+  // Save jobId to trainset for retry functionality
+  await MongoRerankTrainset.updateOne({ _id: trainsetId }, { jobId: dataGenJob.id as string });
 
   // 5. Create train task with trainsetId
   // Note: Trainset may still be generating. The task processor will wait for it to be ready.

@@ -1,3 +1,5 @@
+import type { RerankEvalResult } from '@fastgpt/global/core/train/rerank/type';
+
 /** DiTing synthesize training data request (plural) */
 export type DiTingSyntheticRerankTrainDatasRequest = {
   samples: Array<{
@@ -113,33 +115,7 @@ export type DiTingEvaluateRerankResponse = {
     metricName: string;
     score: number;
     reason: string;
-    runLogs: {
-      detailed_results: {
-        rerank_top5_mrr?: number;
-        rerank_top5_ndcg?: number;
-        rerank_top5_map?: number;
-        rerank_top5_precision?: number;
-        rerank_top10_mrr?: number;
-        rerank_top10_ndcg?: number;
-        rerank_top10_map?: number;
-        rerank_top10_precision?: number;
-        rerank_top10_recall?: number;
-        rerank_top15_mrr?: number;
-        rerank_top15_ndcg?: number;
-        rerank_top15_map?: number;
-        rerank_top15_precision?: number;
-        overall_mrr?: number;
-        overall_ndcg?: number;
-        overall_map?: number;
-        [key: string]: any;
-      };
-      mrr_scores?: Record<string, number[]>;
-      ndcg_scores?: Record<string, number[]>;
-      map_scores?: Record<string, number[]>;
-      column_stats?: Record<string, any>;
-      total_rows?: number;
-      expect_count?: number;
-    };
+    runLogs: RerankEvalResult;
   };
   usages?: Array<{
     modelType: string;

@@ -89,6 +89,7 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
           versionId: String,
           versionName: String,
           previousModelConfigId: String,
+          previousTaskId: String,
           updatedNodesCount: Number
         }
       },
@@ -117,11 +118,12 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
       versionId: String,
       versionName: String,
       previousModelConfigId: String,
+      previousTaskId: String,
       updatedNodesCount: Number
     }
   },
   errorMsg: {
-    type: String
+    type: connectionMongo.Schema.Types.Mixed
   },
   jobId: {
     type: String

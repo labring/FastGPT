@@ -46,8 +46,10 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const SfDatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
 
 // 样式常量
@@ -236,13 +238,13 @@ const EditForm = ({
   );
 
   const updateVariableValue = useCallback(
-    (newValue: any) => {
+    (key: keyof AppChatConfigType, newValue: any) => {
       setAppForm((state) => {
         return {
           ...state,
           chatConfig: {
             ...state.chatConfig,
-            fallbackReply: newValue
+            [key]: newValue
           }
         };
       });
@@ -368,7 +370,7 @@ const EditForm = ({
               />
             </Box>
 
-            {/* <FormItem
+            <FormItem
               label={t('app:smart_customer_service_faq_answer_mode')}
               tooltip={t('app:smart_customer_service_faq_answer_mode_tooltip')}
             >
@@ -376,17 +378,14 @@ const EditForm = ({
                 list={FAQ_OPTIONS}
                 px={3}
                 py={2.5}
-                value={getVariableValue(
-                  VARIABLE_KEYS.FAQ_ANSWER_MODE,
-                  DEFAULT_VALUES.FAQ_ANSWER_MODE
-                )}
-                onChange={(value) => updateVariableValue(VARIABLE_KEYS.FAQ_ANSWER_MODE, value)}
+                value={appForm.chatConfig.faqAnswerMode || FAQAnswerModeEnum.Quote}
+                onChange={(e) => updateVariableValue('faqAnswerMode', e)}
                 flex={1}
                 defaultBg="white"
                 activeBg="white"
                 gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
               />
-            </FormItem> */}
+            </FormItem>
 
             <FormItem
               label={t('app:smart_customer_service_welcome_text')}
@@ -410,7 +409,7 @@ const EditForm = ({
               <MyTextarea
                 value={appForm.chatConfig.fallbackReply}
                 rows={3}
-                onChange={(e) => updateVariableValue(e.target.value)}
+                onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
               />
             </Flex>
           </AccordionSection>
@@ -442,7 +441,7 @@ const EditForm = ({
               <FormLabel minW={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}>
                 {t('app:smart_customer_service_deep_thinking')}
               </FormLabel>
-              <MyTooltip label={!isReasoningSupported ? t('所选 AI 模型不支持深度思考') : ''}>
+              <MyTooltip label={!isReasoningSupported ? t('app:model_not_support_reasoning') : ''}>
                 <Switch
                   isChecked={appForm.aiSettings.aiChatReasoning ?? false}
                   onChange={(e) => updateAISettings({ aiChatReasoning: e.target.checked })}
@@ -474,7 +473,7 @@ const EditForm = ({
       </Box>
 
       {isOpenDatasetSelect && (
-        <DatasetSelectModal
+        <SfDatasetSelectModal
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,

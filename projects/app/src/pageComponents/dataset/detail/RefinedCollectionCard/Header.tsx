@@ -1,0 +1,776 @@
+import React, { useMemo, useCallback } from 'react';
+import {
+  Box,
+  Flex,
+  MenuButton,
+  Button,
+  Link,
+  useDisclosure,
+  HStack,
+  Alert,
+  AlertIcon,
+  useToast,
+  AlertDescription,
+  AlertTitle,
+  CloseButton
+} from '@chakra-ui/react';
+import {
+  getDatasetCollectionPathById,
+  postDatasetCollection,
+  putDatasetCollectionById,
+  postDetectDatabaseChanges
+} from '@/web/core/dataset/api';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyInput from '@/components/MyInput';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRouter } from 'next/router';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  DatasetTypeMap,
+  DatasetStatusEnum,
+  ApiDatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
+import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
+import { TabEnum } from '../../../../pages/dataset/detail/index';
+import FolderPath from '@/components/common/folder/Path';
+import dynamic from 'next/dynamic';
+
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { useContextSelector } from 'use-context-selector';
+import { CollectionPageContext } from '../CollectionCard/Context';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import HeaderTagPopOver from '../CollectionCard/HeaderTagPopOver';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import Icon from '@fastgpt/web/components/common/Icon';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
+import { postCreateStructureCollection } from '@/web/core/dataset/api';
+
+const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
+const FileUploadModal = dynamic(() => import('../components/FileUploadModal/index'));
+const BackupImportModal = dynamic(() => import('../CollectionCard/BackupImportModal'));
+const TemplateImportModal = dynamic(() => import('../CollectionCard/TemplateImportModal'));
+const FaqImportModal = dynamic(() => import('./FaqImportModal'));
+const GeneralImportModal = dynamic(() => import('./GeneralImportModal'));
+
+const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
+  const { t, i18n } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const isDatabase = useContextSelector(DatasetPageContext, (v) => v.isDatabaseType);
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
+
+  const router = useRouter();
+  const { parentId = '' } = router.query as { parentId: string };
+
+  const {
+    searchText,
+    setSearchText,
+    total,
+    getData,
+    pageNum,
+    onOpenWebsiteModal,
+    openDatasetSyncConfirm,
+    hasDatabaseConfig,
+    handleOpenConfigPage
+  } = useContextSelector(CollectionPageContext, (v) => v);
+
+  const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
+    refreshDeps: [parentId],
+    manual: false
+  });
+
+  const { editFolderData, setEditFolderData } = useEditFolder();
+  const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
+    useEditTitle({
+      title: t('common:dataset.Create manual collection'),
+      tip: t('common:dataset.Manual collection Tip'),
+      canEmpty: false
+    });
+
+  // Import collection
+  const {
+    isOpen: isOpenFileSourceSelector,
+    onOpen: onOpenFileSourceSelector,
+    onClose: onCloseFileSourceSelector
+  } = useDisclosure();
+
+  // File upload modal for structure documents
+  const {
+    isOpen: isOpenFileUploadModal,
+    onOpen: onOpenFileUploadModal,
+    onClose: onCloseFileUploadModal
+  } = useDisclosure();
+  // Backup import modal
+  const {
+    isOpen: isOpenBackupImportModal,
+    onOpen: onOpenBackupImportModal,
+    onClose: onCloseBackupImportModal
+  } = useDisclosure();
+  // Template import modal
+  const {
+    isOpen: isOpenTemplateImportModal,
+    onOpen: onOpenTemplateImportModal,
+    onClose: onCloseTemplateImportModal
+  } = useDisclosure();
+  // FAQ import modal
+  const {
+    isOpen: isOpenFaqImportModal,
+    onOpen: onOpenFaqImportModal,
+    onClose: onCloseFaqImportModal
+  } = useDisclosure();
+  // General import modal
+  const {
+    isOpen: isOpenGeneralImportModal,
+    onOpen: onOpenGeneralImportModal,
+    onClose: onCloseGeneralImportModal
+  } = useDisclosure();
+
+  const { runAsync: onCreateCollection } = useRequest2(
+    async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
+      const id = await postDatasetCollection({
+        parentId,
+        datasetId: datasetDetail._id,
+        name,
+        type
+      });
+      return id;
+    },
+    {
+      onSuccess() {
+        getData(pageNum);
+      },
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
+    }
+  );
+
+  // File upload handler for structure documents
+  const handleFileUpload = useCallback(
+    async (file: File, onProgress?: (progress: number) => void) => {
+      try {
+        const result = await postCreateStructureCollection({
+          file,
+          datasetId: datasetDetail._id,
+          percentListen: onProgress
+        });
+
+        return result;
+      } catch (error) {
+        console.error('File upload error:', error);
+        throw error;
+      }
+    },
+    [datasetDetail._id]
+  );
+
+  const { runAsync: onDetectDatabaseChanges, loading: isDetecting } = useRequest2(
+    async () => {
+      const result = await postDetectDatabaseChanges({ datasetId: datasetDetail._id });
+      return result;
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  const getTips = (data: DetectChangesResponse) => {
+    const { summary } = data;
+    if (summary?.modifiedTables > 0 && summary?.deletedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_modified_and_deleted', {
+            modifiedTables: summary.modifiedTables,
+            deletedTables: summary.deletedTables
+          })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+    if (summary?.modifiedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_with_column_changes', { modifiedTablesCount: summary.modifiedTables })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+    if (summary?.deletedTables > 0) {
+      return (
+        <>
+          {t('dataset:tables_not_exist', { delTablesCount: summary.deletedTables })}
+          {t('dataset:check_latest_data')}
+        </>
+      );
+    }
+  };
+
+  const titleLabel = useMemo(
+    () =>
+      isDatabase
+        ? t('dataset:database_tables')
+        : t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any),
+    [isDatabase, t, datasetDetail?.type]
+  );
+
+  const handleRefreshDataSource = async () => {
+    try {
+      const result = await onDetectDatabaseChanges();
+
+      const toastId = toast({
+        position: 'bottom-right',
+        duration: null,
+        render: () => (
+          <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
+            <AlertIcon w={6} h={6} />
+            <Box flex={1} color={'myGray.900'}>
+              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
+              {(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) && (
+                <AlertDescription fontSize={'14px'}>
+                  <Box>
+                    {getTips(result)}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      color="blue.500"
+                      p={0}
+                      ml={1}
+                      onClick={() => {
+                        toast.close(toastId);
+                        handleOpenConfigPage('edit');
+                      }}
+                    >
+                      {t('dataset:config')}
+                    </Button>
+                  </Box>
+                </AlertDescription>
+              )}
+            </Box>
+            <CloseButton
+              position="relative"
+              color={'black'}
+              right={-1}
+              top={-1}
+              onClick={() => toast.close(toastId)}
+            />
+          </Alert>
+        )
+      });
+    } catch (error: any) {
+      const toastId = toast({
+        position: 'bottom-right',
+        duration: null,
+        render: () => (
+          <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
+            <Box mr={3}>
+              <MyIcon name="core/workflow/runError" w={6} h={6}></MyIcon>
+            </Box>
+            <Box flex={1} color={'myGray.900'}>
+              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_failed')}</AlertTitle>
+              <AlertDescription fontSize={'14px'}>
+                {t(error?.message) || t('dataset:unknown_error')}
+              </AlertDescription>
+            </Box>
+            <CloseButton
+              position="relative"
+              color={'black'}
+              right={-1}
+              top={-1}
+              onClick={() => toast.close(toastId)}
+            />
+          </Alert>
+        )
+      });
+    }
+  };
+
+  const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
+
+  const showHeaderTagPopOver = React.useMemo(
+    () =>
+      ![
+        DatasetTypeEnum.websiteDataset,
+        DatasetTypeEnum.database,
+        DatasetTypeEnum.structureDocument
+      ].includes(datasetDetail.type as DatasetTypeEnum) &&
+      datasetDetail.permission.hasWritePer &&
+      feConfigs?.isPlus,
+    [datasetDetail.type, datasetDetail.permission.hasWritePer, feConfigs?.isPlus]
+  );
+
+  const toast = useToast();
+
+  return (
+    <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
+      <HStack flex={1}>
+        <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
+          <FolderPath
+            paths={paths.map((path, i) => ({
+              parentId: path.parentId,
+              parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
+            }))}
+            FirstPathDom={
+              <Flex
+                flexDir={'column'}
+                justify={'center'}
+                h={'100%'}
+                fontSize={isWebSite ? 'sm' : 'md'}
+                fontWeight={'500'}
+                color={'myGray.600'}
+              >
+                <Flex align={'center'}>
+                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
+                  {titleLabel}
+                  {i18n.language === 'en' ? '  ' : ''}({total})
+                </Flex>
+                {/* Website sync */}
+                {datasetDetail?.websiteConfig?.url && (
+                  <Flex fontSize={'mini'}>
+                    <Box>{t('common:core.dataset.website.Base Url')}:</Box>
+                    <Link
+                      className="textEllipsis"
+                      maxW={'300px'}
+                      ml={1}
+                      href={datasetDetail.websiteConfig.url}
+                      target="_blank"
+                      color={'blue.700'}
+                    >
+                      {datasetDetail.websiteConfig.url}
+                    </Link>
+                  </Flex>
+                )}
+              </Flex>
+            }
+            onClick={(e) => {
+              router.replace({
+                query: {
+                  ...router.query,
+                  parentId: e
+                }
+              });
+            }}
+          />
+        </Box>
+        {/* search input */}
+        {isPc && (
+          <MyInput
+            maxW={'250px'}
+            flex={1}
+            size={'sm'}
+            h={'36px'}
+            placeholder={
+              isDatabase ? t('dataset:search_name_or_description') : t('dataset:search_name') || ''
+            }
+            value={searchText}
+            leftIcon={
+              <MyIcon
+                name="common/searchLight"
+                position={'absolute'}
+                w={'16px'}
+                color={'myGray.500'}
+              />
+            }
+            onChange={(e) => {
+              setSearchText(e.target.value);
+            }}
+          />
+        )}
+
+        {/* Tag */}
+        {showHeaderTagPopOver && <HeaderTagPopOver />}
+      </HStack>
+
+      {/* diff collection button */}
+      {datasetDetail.permission.hasWritePer && (
+        <Box mt={[3, 0]}>
+          {datasetDetail?.type === DatasetTypeEnum.dataset && (
+            <MyMenu
+              offset={[0, 5]}
+              Button={
+                <MenuButton
+                  _hover={{
+                    color: 'primary.500'
+                  }}
+                  fontSize={['sm', 'md']}
+                >
+                  <Flex
+                    px={3.5}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    bg={'primary.500'}
+                    overflow={'hidden'}
+                    color={'white'}
+                  >
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('dataset:add')}
+                    </Box>
+                  </Flex>
+                </MenuButton>
+              }
+              menuList={[
+                {
+                  children: [
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'core/dataset/fileCollection'} w={'20px'} mr={2} />
+                          {t('dataset:general_dataset_type')}
+                        </Flex>
+                      ),
+                      onClick: onOpenGeneralImportModal
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'core/dataset/tableCollection'} w={'20px'} mr={2} />
+                          {t('dataset:faq_dataset_type')}
+                        </Flex>
+                      ),
+                      onClick: onOpenFaqImportModal
+                    }
+                  ]
+                },
+                {
+                  children: [
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
+                          {t('common:Folder')}
+                        </Flex>
+                      ),
+                      onClick: () => setEditFolderData({})
+                    }
+                  ]
+                }
+              ]}
+            />
+          )}
+          {datasetDetail?.type === DatasetTypeEnum.websiteDataset && (
+            <>
+              {datasetDetail?.websiteConfig?.url ? (
+                <>
+                  {datasetDetail.status === DatasetStatusEnum.active && (
+                    <HStack gap={2}>
+                      {!hasTrainingData && feConfigs?.isPlus && (
+                        <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
+                          {t('dataset:immediate_sync')}
+                        </Button>
+                      )}
+                      <Button onClick={onOpenWebsiteModal}>{t('dataset:params_config')}</Button>
+                    </HStack>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.syncing && (
+                    <MyTag
+                      colorSchema="purple"
+                      showDot
+                      px={3}
+                      h={'36px'}
+                      DotStyles={{
+                        w: '8px',
+                        h: '8px',
+                        animation: 'zoomStopIcon 0.5s infinite alternate'
+                      }}
+                    >
+                      {t('common:core.dataset.status.syncing')}
+                    </MyTag>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.waiting && (
+                    <MyTag
+                      colorSchema="gray"
+                      showDot
+                      px={3}
+                      h={'36px'}
+                      DotStyles={{
+                        w: '8px',
+                        h: '8px',
+                        animation: 'zoomStopIcon 0.5s infinite alternate'
+                      }}
+                    >
+                      {t('common:core.dataset.status.waiting')}
+                    </MyTag>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.error && (
+                    <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                      <HStack spacing={1}>
+                        <Box>{t('dataset:status_error')}</Box>
+                        <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                      </HStack>
+                    </MyTag>
+                  )}
+                </>
+              ) : (
+                <Button onClick={onOpenWebsiteModal}>
+                  {t('common:core.dataset.Set Website Config')}
+                </Button>
+              )}
+            </>
+          )}
+          {datasetDetail?.type === DatasetTypeEnum.externalFile && (
+            <MyMenu
+              offset={[0, 5]}
+              Button={
+                <MenuButton
+                  _hover={{
+                    color: 'primary.500'
+                  }}
+                  fontSize={['sm', 'md']}
+                >
+                  <Flex
+                    px={3.5}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    bg={'primary.500'}
+                    overflow={'hidden'}
+                    color={'white'}
+                  >
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('common:dataset.collections.Create And Import')}
+                    </Box>
+                  </Flex>
+                </MenuButton>
+              }
+              menuList={[
+                {
+                  children: [
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
+                          {t('common:Folder')}
+                        </Flex>
+                      ),
+                      onClick: () => setEditFolderData({})
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Text collection')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.externalFile
+                          }
+                        })
+                    }
+                  ]
+                }
+              ]}
+            />
+          )}
+          {isDatabase && (
+            <>
+              {hasDatabaseConfig ? (
+                <>
+                  <Button
+                    mr={3}
+                    ml={1}
+                    variant="outline"
+                    onClick={handleRefreshDataSource}
+                    isLoading={isDetecting}
+                  >
+                    {t('dataset:refresh_datasource')}
+                  </Button>
+                  <Button onClick={() => handleOpenConfigPage('edit')}>
+                    {t('dataset:database_config')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button ml={1} onClick={() => handleOpenConfigPage('create')}>
+                    {t('common:core.dataset.Set Website Config')}
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+          {isStructureDocument && (
+            <Button ml={1} onClick={onOpenFileUploadModal}>
+              {t('dataset:add_file')}
+            </Button>
+          )}
+          {/* apiDataset */}
+          {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
+            <>
+              {datasetDetail.status === DatasetStatusEnum.active && (
+                <HStack gap={2}>
+                  <Flex
+                    px={3.5}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    bg={'primary.500'}
+                    overflow={'hidden'}
+                    color={'white'}
+                    onClick={() =>
+                      router.replace({
+                        query: {
+                          ...router.query,
+                          currentTab: TabEnum.import,
+                          source: ImportDataSourceEnum.apiDataset
+                        }
+                      })
+                    }
+                  >
+                    {!hasTrainingData && feConfigs?.isPlus && (
+                      <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
+                        {t('dataset:immediate_sync')}
+                      </Button>
+                    )}
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('dataset:add_file')}
+                    </Box>
+                  </Flex>
+                </HStack>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.syncing && (
+                <MyTag
+                  colorSchema="purple"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.syncing')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.waiting && (
+                <MyTag
+                  colorSchema="gray"
+                  showDot
+                  px={3}
+                  h={'36px'}
+                  DotStyles={{
+                    w: '8px',
+                    h: '8px',
+                    animation: 'zoomStopIcon 0.5s infinite alternate'
+                  }}
+                >
+                  {t('common:core.dataset.status.waiting')}
+                </MyTag>
+              )}
+              {datasetDetail.status === DatasetStatusEnum.error && (
+                <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                  <HStack spacing={1}>
+                    <Box>{t('dataset:status_error')}</Box>
+                    <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                  </HStack>
+                </MyTag>
+              )}
+            </>
+          )}
+        </Box>
+      )}
+
+      {/* modal */}
+      {!!editFolderData && (
+        <EditFolderModal
+          onClose={() => setEditFolderData(undefined)}
+          editCallback={async (name) => {
+            try {
+              if (editFolderData.id) {
+                await putDatasetCollectionById({
+                  id: editFolderData.id,
+                  name
+                });
+                getData(pageNum);
+              } else {
+                onCreateCollection({
+                  name,
+                  type: DatasetCollectionTypeEnum.folder
+                });
+              }
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
+          isEdit={!!editFolderData.id}
+          name={editFolderData.name}
+        />
+      )}
+      <EditCreateVirtualFileModal
+        iconSrc={'modal/manualDataset'}
+        closeBtnText={t('common:Cancel')}
+      />
+      {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
+
+      {/* File Upload Modal for Structure Documents */}
+      {isOpenFileUploadModal && (
+        <FileUploadModal
+          isOpen={isOpenFileUploadModal}
+          onClose={onCloseFileUploadModal}
+          onSuccess={() => {
+            getData(pageNum); // 刷新列表
+          }}
+          uploadApi={handleFileUpload}
+          maxFiles={10}
+          maxFileSize={50 * 1024 * 1024} // 50MB
+          acceptedTypes={['.xlsx', '.xls', '.csv']}
+          concurrency={1}
+          confirmText={t('common:Confirm')}
+        />
+      )}
+
+      {isOpenBackupImportModal && (
+        <BackupImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseBackupImportModal}
+        />
+      )}
+      {isOpenTemplateImportModal && (
+        <TemplateImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseTemplateImportModal}
+        />
+      )}
+      {isOpenFaqImportModal && (
+        <FaqImportModal
+          onFinish={() => {
+            getData(1);
+          }}
+          onClose={onCloseFaqImportModal}
+        />
+      )}
+      {isOpenGeneralImportModal && (
+        <GeneralImportModal
+          isOpen={isOpenGeneralImportModal}
+          onClose={onCloseGeneralImportModal}
+          datasetId={datasetDetail._id}
+          onConfirm={(data) => {
+            console.log('General import data:', data);
+            // TODO: Handle the import data (links and files)
+            // You may want to call an API here to process the imported data
+            getData(1);
+          }}
+        />
+      )}
+    </MyBox>
+  );
+};
+
+export default Header;

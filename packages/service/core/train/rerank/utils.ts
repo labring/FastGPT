@@ -10,6 +10,11 @@ import {
   DEFAULT_SEARCH_LIMIT,
   TRAIN_DATA_SPLIT_RATIO
 } from './constants';
+import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
+import type {
+  TrainTaskErrorType,
+  EnhancedErrorMessage
+} from '@fastgpt/global/core/train/rerank/error';
 
 /**
  * Concurrency control utility using promise limiting
@@ -401,4 +406,83 @@ export function buildModelEndpoint(modelConfig: {
   }
 
   return endpoint;
+}
+
+/**
+ * Stage name mapping (English)
+ */
+const STAGE_NAME_MAP: Record<RerankTaskCheckpointStageEnum, string> = {
+  [RerankTaskCheckpointStageEnum.preparing]: 'Data Preparation',
+  [RerankTaskCheckpointStageEnum.finetuning]: 'Model Finetuning',
+  [RerankTaskCheckpointStageEnum.registering]: 'Model Registration',
+  [RerankTaskCheckpointStageEnum.evaluating]: 'Model Evaluation',
+  [RerankTaskCheckpointStageEnum.applying]: 'App Update'
+};
+
+/**
+ * Format training task error message
+ *
+ * Formats error message into a unified, instructive string format
+ *
+ * @param error - Enhanced error message object
+ * @returns Formatted error message string
+ *
+ * @example
+ * const errorMsg = formatTrainTaskError({
+ *   stage: RerankTaskCheckpointStageEnum.preparing,
+ *   type: TrainTaskErrorType.DATA_EMPTY,
+ *   message: 'Training data is empty, cannot start training',
+ *   suggestion: 'Please generate training data or manually add training samples first'
+ * });
+ * // Returns: "[Stage: Data Preparation] [Type: Insufficient Data] Training data is empty, cannot start training. Suggestion: Please generate training data or manually add training samples first"
+ */
+export function formatTrainTaskError(error: EnhancedErrorMessage): string {
+  const parts: string[] = [];
+
+  // Add stage information
+  if (error.stage) {
+    const stageName = STAGE_NAME_MAP[error.stage] || error.stage;
+    parts.push(`[Stage: ${stageName}]`);
+  }
+
+  // Add error type
+  parts.push(`[Type: ${error.type}]`);
+
+  // Add detailed error message
+  parts.push(error.message);
+
+  // Add resolution suggestion
+  if (error.suggestion) {
+    parts.push(`Suggestion: ${error.suggestion}`);
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Create enhanced error message from Error object or string
+ *
+ * Helper function to quickly convert plain Error object or string to enhanced error message
+ *
+ * @param stage - Current stage
+ * @param type - Error type
+ * @param message - Error message string
+ * @param suggestion - Optional resolution suggestion
+ * @param originalError - Optional original error stack or message for debugging
+ * @returns Enhanced error message object
+ */
+export function createEnhancedError(
+  stage: RerankTaskCheckpointStageEnum | null,
+  type: TrainTaskErrorType | string,
+  message: string,
+  suggestion?: string,
+  originalError?: string
+): EnhancedErrorMessage {
+  return {
+    stage,
+    type,
+    message,
+    suggestion,
+    originalError
+  };
 }

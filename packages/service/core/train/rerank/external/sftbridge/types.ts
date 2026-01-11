@@ -47,3 +47,14 @@ export type QuerySFTTaskStatusResponse = {
 
   error?: string;
 };
+
+/** Delete SFT task request */
+export type DeleteSFTTaskRequest = {
+  taskId: string; // SFT Bridge task ID
+};
+
+/** Delete SFT task response */
+export type DeleteSFTTaskResponse = {
+  task_id: string;
+  message: string;
+};

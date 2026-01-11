@@ -2,7 +2,8 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
   SearchScoreTypeEnum,
-  RerankMethodEnum
+  RerankMethodEnum,
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   recallFromVectorStore,
@@ -55,6 +56,8 @@ import type {
 } from '@fastgpt/global/core/dataset/database/api';
 import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
 import { queryByNL } from '../database/dative/client/dativeApiServer';
+import { searchCorrectionData } from '../../workflow/dispatch/dataset/search';
+import { searchDatasetDataForAssistant } from './customController';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -74,7 +77,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchRerankMethod]?: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
-  /* 
+  /*
     {
       tags: {
         $and: ["str1","str2"],
@@ -108,6 +111,12 @@ export type SearchDatasetDataResponse = {
   similarity: number;
   usingReRank: boolean;
   usingSimilarityFilter: boolean;
+  isFaqResult?: boolean; // 标记是否为 FAQ 检索结果
+
+  retrievalTime?: number; // 新增：检索耗时(s)，统计到进入reranker之前，保留2位小数（仅assistant场景）
+  rerankTime?: number; // 新增：重排耗时(s)，仅当 usingReRank=true 时有值，保留2位小数（仅assistant场景）
+  retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
+  retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
 
   queryExtensionResult?: {
     model: string;
@@ -118,8 +127,17 @@ export type SearchDatasetDataResponse = {
       standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
       coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
     };
+    rewriteTime?: number; // 新增：问题改写耗时(s)，保留2位小数（仅assistant场景）
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+
+  // 校正数据结果
+  correctionData?: {
+    correctionId: string;
+    correctedAnswer: string;
+    question: string;
+    similarity: number;
+  };
 };
 
 export type SearchDatabaseDataResponse = {
@@ -900,6 +918,7 @@ export async function searchDatasetData(
       set.add(str);
       return true;
     });
+
     try {
       return await datasetDataReRank({
         rerankModel,
@@ -925,6 +944,7 @@ export async function searchDatasetData(
     { k: embK, list: embeddingRecallResults },
     { k: fullTextK, list: fullTextRecallResults }
   ]);
+
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
@@ -993,6 +1013,8 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   isAssistant?: boolean;
   datasetIds?: string[];
+  appId?: string; // 用于校正数据检索
+  faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
@@ -1000,6 +1022,8 @@ export const defaultSearchDatasetData = async ({
   datasetSearchExtensionBg,
   isAssistant,
   datasetIds,
+  appId,
+  faqAnswerMode,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
@@ -1009,7 +1033,7 @@ export const defaultSearchDatasetData = async ({
     ? getLLMModel(datasetSearchExtensionModel)
     : undefined;
 
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
+  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult, rewriteTime } =
     await datasetSearchQueryExtension({
       query,
       extensionModel,
@@ -1020,13 +1044,163 @@ export const defaultSearchDatasetData = async ({
       datasetIds
     });
 
-  const result = await searchDatasetData({
-    ...props,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries,
-    datasetIds
-  });
+  // 新增：检索开始计时（问题改写之后）
+  const retrievalStartTime = Date.now();
 
+  // ===== 校正数据优先检索（移动到这里）=====
+  if (isAssistant && appId && datasetIds && datasetIds.length > 0) {
+    // 获取向量模型
+    const vectorModel = getEmbeddingModel(
+      (await MongoDataset.findById(datasetIds[0], 'vectorModel').lean())?.vectorModel
+    );
+
+    if (vectorModel) {
+      // 优先使用指代消解后的标准化查询，如果没有则使用原始查询
+      const searchQuery = aiExtensionResult?.synonymRewriteResult?.standardizedQuery || query;
+
+      const correctionResult = await searchCorrectionData({
+        appId,
+        userChatInput: searchQuery,
+        teamId: props.teamId,
+        vectorModel
+      });
+
+      const correctionThreshold = global.systemEnv?.correctionSimilarityThreshold ?? 0.95;
+      addLog.debug('Assistant Config - correctionSimilarityThreshold', { correctionThreshold });
+
+      if (
+        correctionResult &&
+        correctionResult.similarity > correctionThreshold &&
+        correctionResult.correctedAnswer
+      ) {
+        // 新增：计算检索时间
+        const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
+        // 创建校正数据块
+        const correctionChunk: SearchDataResponseItemType = {
+          id: `correction_quote_${correctionResult.correctionId}`,
+          updateTime: new Date(),
+          q: correctionResult.question,
+          a: correctionResult.correctedAnswer,
+          chunkIndex: 0,
+          datasetId: appId,
+          collectionId: `correction_quote_${correctionResult.correctionId}`,
+          sourceName: 'Correction Data',
+          sourceId: correctionResult.correctionId,
+          score: [
+            {
+              type: SearchScoreTypeEnum.embedding,
+              value: correctionResult.similarity,
+              index: 0
+            }
+          ]
+        };
+
+        return {
+          searchRes: [correctionChunk],
+          embeddingTokens: correctionResult.embeddingTokens || 0,
+          reRankInputTokens: 0,
+          searchMode: DatasetSearchModeEnum.embedding,
+          limit: props.limit,
+          similarity: correctionResult.similarity,
+          usingReRank: false,
+          usingSimilarityFilter: true,
+          retrievalTime, // 新增：检索总耗时
+          retrievalType: 'correction' as const, // 新增：标记为 correction 命中
+          queryExtensionResult: aiExtensionResult
+            ? {
+                model: aiExtensionResult.model,
+                inputTokens: aiExtensionResult.inputTokens,
+                outputTokens: aiExtensionResult.outputTokens,
+                query: extensionQueries.join('\n'),
+                synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+                rewriteTime // 新增：问题改写耗时（仅assistant场景）
+              }
+            : undefined,
+          correctionData: {
+            correctionId: correctionResult.correctionId,
+            correctedAnswer: correctionResult.correctedAnswer,
+            question: correctionResult.question,
+            similarity: correctionResult.similarity
+          }
+        };
+      }
+    }
+  }
+  // ===== 校正数据检索结束 =====
+
+  // ===== 新增: FAQ 数据优先检索（仅 faqAnswerMode 为 quote 时执行）=====
+  if (
+    isAssistant &&
+    faqAnswerMode === 'quote' &&
+    aiExtensionResult?.synonymRewriteResult &&
+    datasetIds &&
+    datasetIds.length > 0
+  ) {
+    // 使用指代消解后的标准化查询
+    const searchQuery = aiExtensionResult.synonymRewriteResult.standardizedQuery;
+
+    const faqResult = await searchFAQData({
+      teamId: props.teamId,
+      datasetIds,
+      rewriteQuery: searchQuery,
+      model: props.model
+    });
+
+    if (faqResult) {
+      // 新增：计算检索时间
+      const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
+      // FAQ 命中 (已通过 >= faqSimilarityThreshold 阈值过滤), 直接返回
+      addLog.debug('FAQ Search - Match found and returning', {
+        teamId: props.teamId,
+        dataId: faqResult.id,
+        similarity: faqResult.score?.[0]?.value
+      });
+
+      return {
+        searchRes: [faqResult],
+        embeddingTokens: faqResult.embeddingTokens || 0,
+        reRankInputTokens: 0,
+        searchMode: DatasetSearchModeEnum.embedding,
+        limit: props.limit,
+        similarity: faqResult.score?.[0]?.value || 0.95,
+        usingReRank: false,
+        usingSimilarityFilter: true,
+        isFaqResult: true, // 标记为 FAQ 检索结果
+        retrievalTime, // 新增：检索总耗时
+        retrievalType: 'faq' as const, // 新增：标记为 FAQ 命中
+        queryExtensionResult: aiExtensionResult
+          ? {
+              model: aiExtensionResult.model,
+              inputTokens: aiExtensionResult.inputTokens,
+              outputTokens: aiExtensionResult.outputTokens,
+              query: extensionQueries.join('\n'),
+              synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+              rewriteTime // 新增：问题改写耗时（仅assistant场景）
+            }
+          : undefined
+      };
+    }
+  }
+  // ===== FAQ 检索结束 =====
+
+  // 根据 isAssistant 选择调用哪个函数
+  const result = isAssistant
+    ? await searchDatasetDataForAssistant({
+        ...props,
+        reRankQuery: rewriteQuery,
+        queries: concatQueries,
+        datasetIds
+      })
+    : await searchDatasetData({
+        ...props,
+        reRankQuery: rewriteQuery,
+        queries: concatQueries,
+        datasetIds
+      });
+
+  // 注意：retrievalTime 已在 searchDatasetData 中计算（统计到进入reranker前）
   return {
     ...result,
     queryExtensionResult: aiExtensionResult
@@ -1035,7 +1209,8 @@ export const defaultSearchDatasetData = async ({
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           query: extensionQueries.join('\n'),
-          synonymRewriteResult: aiExtensionResult.synonymRewriteResult
+          synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+          rewriteTime // 新增：问题改写耗时（仅assistant场景）
         }
       : undefined
   };
@@ -1391,7 +1566,8 @@ export const generateAndExecuteSQL = async ({
       username: dbConfig.user,
       password: dbConfig.password,
       db_name: dbConfig.database,
-      ns_name: dbConfig?.schema
+      ns_name: dbConfig?.schema,
+      encrypt: dbConfig?.encrypt
     } as DativeSourceConfigType,
     generate_sql_llm,
     evaluate_sql_llm,
@@ -1412,3 +1588,192 @@ export const generateAndExecuteSQL = async ({
     return Promise.reject(DatabaseErrEnum.dativeServiceError);
   }
 };
+
+/**
+ * 搜索 FAQ 数据
+ * 仅检索 trainingType='template' 的 collection 数据
+ * @returns 返回相似度最高且 a 不为空的 FAQ 数据（如果满足阈值要求）
+ */
+async function searchFAQData({
+  teamId,
+  datasetIds,
+  rewriteQuery,
+  model
+}: {
+  teamId: string;
+  datasetIds: string[];
+  rewriteQuery: string;
+  model: string;
+}): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
+  const startTime = Date.now();
+  const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
+  addLog.debug('Assistant Config - faqSimilarityThreshold', { faqThreshold });
+
+  addLog.debug('FAQ Search - Starting', {
+    teamId,
+    datasetIds,
+    query: rewriteQuery
+  });
+
+  try {
+    // 1. 获取所有 FAQ collection (trainingType='template')
+    const faqCollections = await MongoDatasetCollection.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        trainingType: DatasetCollectionDataProcessModeEnum.template,
+        forbid: { $ne: true }
+      },
+      '_id'
+    ).lean();
+
+    if (faqCollections.length === 0) {
+      addLog.debug('FAQ Search - No FAQ collections found', {
+        teamId,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    const faqCollectionIds = faqCollections.map((c) => String(c._id));
+
+    // 2. 获取向量
+    const vectorModel = getEmbeddingModel(model);
+    const { vectors, tokens } = await getVectorsByText({
+      model: vectorModel,
+      input: [rewriteQuery],
+      type: 'query'
+    });
+
+    // 3. 向量检索 (仅在 FAQ collections 中，取 top 1000)
+    const recallResult = await recallFromVectorStore({
+      teamId,
+      datasetIds,
+      vector: vectors[0],
+      limit: 1000,
+      forbidCollectionIdList: [],
+      filterCollectionIdList: faqCollectionIds // 只在 FAQ collections 中检索
+    });
+
+    if (!recallResult.results || recallResult.results.length === 0) {
+      addLog.debug('FAQ Search - No recall results', {
+        teamId,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 4. 先过滤相似度 >= 阈值的结果（短路优化）
+    const filteredByThreshold = recallResult.results.filter((r) => (r.score || 0) >= faqThreshold);
+
+    if (filteredByThreshold.length === 0) {
+      addLog.debug('FAQ Search - No results above threshold', {
+        teamId,
+        threshold: faqThreshold,
+        topScore: recallResult.results[0]?.score || 0,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 5. 只对满足阈值的数据查询 MongoDB（查询量大幅减少）
+    const thresholdDataIds = new Set(filteredByThreshold.map((r) => r.id)); // 直接生成 Set 优化后续查找性能
+    const dataDocs = await MongoDatasetData.find(
+      {
+        teamId,
+        'indexes.dataId': { $in: Array.from(thresholdDataIds) },
+        a: { $exists: true, $ne: '' } // 只获取 a 不为空的数据
+      },
+      '_id datasetId collectionId updateTime q a chunkIndex indexes'
+    )
+      .lean()
+      .exec();
+
+    if (dataDocs.length === 0) {
+      addLog.debug('FAQ Search - No data documents found', {
+        teamId,
+        thresholdResultsCount: filteredByThreshold.length,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 6. 构建 dataId -> dataDoc 的映射
+    const dataIdToDocMap = new Map<string, (typeof dataDocs)[0]>();
+    for (const doc of dataDocs) {
+      for (const index of doc.indexes) {
+        if (thresholdDataIds.has(index.dataId)) {
+          dataIdToDocMap.set(index.dataId, doc);
+        }
+      }
+    }
+
+    // 7. 获取最高相似度分数，处理多个相同分数的情况
+    const topScore = filteredByThreshold[0].score || 0;
+
+    // 找出所有相似度等于最高分的结果
+    const topScoreResults = filteredByThreshold.filter((r) => r.score === topScore);
+
+    // 将结果与数据文档关联，并按更新时间排序
+    const matchedDocs = topScoreResults
+      .map((result) => {
+        const dataDoc = dataIdToDocMap.get(result.id);
+        return dataDoc ? { result, dataDoc } : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      // 按更新时间降序排序，取最新的
+      .sort(
+        (a, b) =>
+          new Date(b.dataDoc.updateTime).getTime() - new Date(a.dataDoc.updateTime).getTime()
+      );
+
+    if (matchedDocs.length === 0) {
+      return null;
+    }
+
+    // 取更新时间最新的 FAQ 数据
+    const { result: topResult, dataDoc } = matchedDocs[0];
+    const similarity = topResult.score || 0;
+
+    // 单独查询 collection（只查一次）
+    const collection = await MongoDatasetCollection.findById(dataDoc.collectionId, 'name').lean();
+
+    const faqData: SearchDataResponseItemType & { embeddingTokens: number } = {
+      id: String(dataDoc._id),
+      updateTime: dataDoc.updateTime,
+      q: dataDoc.q,
+      a: dataDoc.a || '',
+      chunkIndex: dataDoc.chunkIndex,
+      datasetId: String(dataDoc.datasetId),
+      collectionId: String(dataDoc.collectionId),
+      sourceName: collection?.name || 'FAQ',
+      sourceId: String(dataDoc._id),
+      score: [
+        {
+          type: SearchScoreTypeEnum.embedding,
+          value: similarity,
+          index: 0
+        }
+      ],
+      embeddingTokens: tokens
+    };
+
+    addLog.debug('FAQ Search - Match found', {
+      teamId,
+      dataId: faqData.id,
+      similarity,
+      question: dataDoc.q,
+      updateTime: dataDoc.updateTime,
+      matchedCount: matchedDocs.length,
+      duration: `${Date.now() - startTime}ms`
+    });
+
+    return faqData;
+  } catch (error) {
+    addLog.error('FAQ Search - Error occurred', {
+      error,
+      duration: `${Date.now() - startTime}ms`
+    });
+    return null;
+  }
+}

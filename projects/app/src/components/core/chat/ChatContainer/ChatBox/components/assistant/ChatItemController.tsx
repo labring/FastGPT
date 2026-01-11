@@ -26,8 +26,8 @@ export type ChatItemControllerProps = {
 
 // 统一的图标按钮样式
 const iconButtonStyle = {
-  w: '26px',
-  h: '26px',
+  w: '24px',
+  h: '24px',
   borderRadius: '4px',
   border: '1px solid',
   borderColor: 'myGray.200',
@@ -36,8 +36,8 @@ const iconButtonStyle = {
 
 // 图标样式
 const iconStyle = {
-  w: '14px',
-  color: 'rgba(102, 112, 133, 1)'
+  w: '12px',
+  color: 'myGray.600'
 };
 
 // 纠错按钮样式
@@ -50,7 +50,8 @@ const correctButtonStyle = {
   border: '1px solid',
   cursor: 'pointer',
   fontSize: '0.85rem',
-  borderColor: 'myGray.200'
+  borderColor: 'myGray.200',
+  height: '24px'
 };
 
 // 图标按钮组件
@@ -132,7 +133,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
       controls.push(
         <Box key="correct" {...correctButtonStyle} onClick={() => onCorrectError?.()}>
           <MyIcon {...iconStyle} p={0} mr={1} name={'kbTest'} />
-          <Text lineHeight={'16px'} h="16px" fontSize={'0.85rem'}>
+          <Text fontSize={'11px'} color={'myGray.600'}>
             {t('app:chat_item_correct_error')}
           </Text>
         </Box>
@@ -146,8 +147,10 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
             ml={1}
             type={'borderFill'}
             fontSize={'10px'}
+            height={'22px'}
             showDot
             colorSchema="green"
+            border={'none'}
             borderRadius={'22px'}
           >
             {t('app:chat_item_optimized')}
@@ -156,7 +159,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
       }
     }
 
-    return <Flex>{controls}</Flex>;
+    return <Flex alignItems={'center'}>{controls}</Flex>;
   };
 
   // 渲染右侧反馈和时间信息
