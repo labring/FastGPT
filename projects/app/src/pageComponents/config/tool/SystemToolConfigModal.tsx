@@ -32,6 +32,9 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import { UserTagsEnum } from '@fastgpt/global/support/user/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
@@ -45,6 +48,7 @@ const SystemToolConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { register, reset, handleSubmit, setValue, watch, control } =
     useForm<AdminSystemToolDetailType>();
 
@@ -55,16 +59,25 @@ const SystemToolConfigModal = ({
     manual: false
   });
 
-  const [inputList, status, defaultInstalled, inputListVal, childTools] = watch([
-    'inputList',
-    'status',
-    'defaultInstalled',
-    'inputListVal',
-    'childTools'
-  ]);
+  const [inputList, status, defaultInstalled, inputListVal, childTools, promoteTags, hideTags] =
+    watch([
+      'inputList',
+      'status',
+      'defaultInstalled',
+      'inputListVal',
+      'childTools',
+      'promoteTags',
+      'hideTags'
+    ]);
 
   // 是否显示系统密钥配置
   const showSystemSecretInput = !!inputList && inputList.length > 0;
+
+  // 准备用户标签列表
+  const userTagsList = UserTagsEnum.options.map((tag) => ({
+    label: tag,
+    value: tag
+  }));
 
   const { runAsync: onSubmit, loading: submitting } = useRequest(
     (formData: AdminSystemToolDetailType) =>
@@ -242,6 +255,42 @@ const SystemToolConfigModal = ({
                   {systemConfigSection}
                 </>
               )}
+
+              {feConfigs?.showWecomConfig && (
+                <>
+                  <Box>
+                    <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                      {t('app:toolkit_promote_tags')}
+                    </Box>
+                    <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                      {t('app:toolkit_promote_tags_tip')}
+                    </Box>
+                    <MultipleSelect
+                      list={userTagsList}
+                      value={promoteTags || []}
+                      onSelect={(val) => setValue('promoteTags', val)}
+                      placeholder={t('app:toolkit_select_user_tags')}
+                      w={'100%'}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                      {t('app:toolkit_hide_tags')}
+                    </Box>
+                    <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                      {t('app:toolkit_hide_tags_tip')}
+                    </Box>
+                    <MultipleSelect
+                      list={userTagsList}
+                      value={hideTags || []}
+                      onSelect={(val) => setValue('hideTags', val)}
+                      placeholder={t('app:toolkit_select_user_tags')}
+                      w={'100%'}
+                    />
+                  </Box>
+                </>
+              )}
             </Flex>
 
             <Flex flex={'3 0 0'} flexDirection={'column'}>
@@ -351,6 +400,42 @@ const SystemToolConfigModal = ({
                   />
                 </HStack>
                 {systemConfigSection}
+              </>
+            )}
+
+            {feConfigs?.showWecomConfig && (
+              <>
+                <Box>
+                  <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                    {t('app:toolkit_promote_tags')}
+                  </Box>
+                  <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                    {t('app:toolkit_promote_tags_tip')}
+                  </Box>
+                  <MultipleSelect
+                    list={userTagsList}
+                    value={promoteTags || []}
+                    onSelect={(val) => setValue('promoteTags', val)}
+                    placeholder={t('app:toolkit_select_user_tags')}
+                    w={'100%'}
+                  />
+                </Box>
+
+                <Box>
+                  <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                    {t('app:toolkit_hide_tags')}
+                  </Box>
+                  <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
+                    {t('app:toolkit_hide_tags_tip')}
+                  </Box>
+                  <MultipleSelect
+                    list={userTagsList}
+                    value={hideTags || []}
+                    onSelect={(val) => setValue('hideTags', val)}
+                    placeholder={t('app:toolkit_select_user_tags')}
+                    w={'100%'}
+                  />
+                </Box>
               </>
             )}
           </Flex>

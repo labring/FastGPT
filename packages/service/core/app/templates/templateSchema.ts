@@ -1,5 +1,6 @@
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
+import { UserTagsEnum } from '@fastgpt/global/support/user/type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_templates';
@@ -20,6 +21,14 @@ const AppTemplateSchema = new Schema({
   type: String,
   isActive: Boolean,
   isPromoted: Boolean,
+  promoteTags: {
+    type: [String],
+    enum: UserTagsEnum.enum
+  },
+  hideTags: {
+    type: [String],
+    enum: UserTagsEnum.enum
+  },
   recommendText: String,
   userGuide: Object,
   isQuickTemplate: Boolean,

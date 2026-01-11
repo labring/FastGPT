@@ -355,6 +355,9 @@ const PlanUsage = () => {
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
+
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
@@ -375,12 +378,14 @@ const PlanUsage = () => {
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
+      return 'common:support.wallet.subscription.standardSubLevel.trial';
 
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
+  }, [teamPlanStatus?.standard?.currentSubLevel, isWecomTeam, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
@@ -554,7 +559,7 @@ const PlanUsage = () => {
               {t('account_info:account_knowledge_base_cleanup_warning')}
             </Box>
           )}
-          {standardPlan.currentSubLevel !== StandardSubLevelEnum.free && (
+          {(standardPlan.currentSubLevel !== StandardSubLevelEnum.free || isWecomTeam) && (
             <Flex mt="2" color={'#485264'} fontSize="xs">
               <Box>{t('account_info:package_expiry_time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
