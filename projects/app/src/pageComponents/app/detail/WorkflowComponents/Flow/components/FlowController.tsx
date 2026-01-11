@@ -220,10 +220,11 @@ const FlowController = React.memo(function FlowController() {
     canUndo,
     redo,
     canRedo,
-    setWorkflowControlMode,
     presentationMode,
-    fitView,
-    getNodes
+    setWorkflowControlMode,
+    setPresentationMode,
+    getNodes,
+    fitView
   ]);
 
   return Render;
