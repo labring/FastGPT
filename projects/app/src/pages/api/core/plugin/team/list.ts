@@ -41,9 +41,9 @@ async function handler(
       .map((tool) => {
         // Check if this tool should be promoted for current user
         const isPromotedForUser =
+          userTags.length > 0 &&
           tool.promoteTags &&
           tool.promoteTags.length > 0 &&
-          userTags.length > 0 &&
           tool.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
 
         return TeamPluginListItemSchema.parse({

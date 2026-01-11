@@ -94,7 +94,7 @@ export const getSystemToolsWithInstalled = async ({
   return tools
     .filter((tool) => {
       // Filter out tools hidden by hideTags
-      if (tool.hideTags && tool.hideTags.length > 0 && userTags.length > 0) {
+      if (userTags.length > 0 && tool.hideTags && tool.hideTags.length > 0) {
         return !tool.hideTags.some((hideTag) => userTags.includes(hideTag));
       }
       return true;
