@@ -16,18 +16,18 @@ jobs:
         uses: actions/stale@v9
         with:
           # 6个月≈180天，标记Issue为过时
-          days-before-issue-stale: 180
+          days-before-issue-stale: 90
           # 标记后7天无活动，自动关闭Issue（缓冲期，可设为0立即关闭）
-          days-before-issue-close: 7
+          days-before-issue-close: 0
 
           # Issue相关提示与标签
-          stale-issue-message: >
-            该Issue已超过6个月未更新，标记为过时。
-            若7天内仍无活动，将被自动关闭。如需继续跟进，请回复此Issue。
+          # stale-issue-message: >
+          #   This issue has not been updated for more than 6 months and is marked as stale.
+          #   If there is no further activity within 7 days, it will be automatically closed. Please reply to this issue if you need to continue following up on it.
           close-issue-message: >
-            该Issue因长期未活跃（超过6个月+7天缓冲期），已自动关闭。
-            若仍需解决，可重新打开此Issue并补充相关信息。
-          stale-issue-label: 'stale'
+            This issue has been automatically closed due to prolonged inactivity (more than 6 months plus a 7-day grace period).
+            If this issue still needs to be resolved, you can reopen it and supplement the relevant information.
+          # stale-issue-label: 'stale'
           close-issue-label: 'auto-closed'
 
           # 核心修改：添加features标签到豁免列表，排除该标签的Issue
