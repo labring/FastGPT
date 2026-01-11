@@ -36,7 +36,11 @@ async function handler(
 
     return tools
       .filter((tool) => {
-        return !tool.parentId;
+        // Only return the top-level tools
+        if (tool.parentId) return false;
+        // Uninstall & Offline tool, filter out
+        if (!tool.installed && tool.status !== PluginStatusEnum.Normal) return false;
+        return true;
       })
       .map((tool) => {
         // Check if this tool should be promoted for current user
@@ -52,13 +56,13 @@ async function handler(
           intro: parseI18nString(tool.intro, lang),
           isPromoted: isPromotedForUser
         });
-      })
-      .filter((tool) => {
-        // All installed plugins are returned
-        if (tool.installed) return true;
-        if (tool.status !== PluginStatusEnum.Normal) return false;
-        return true;
       });
+    // .filter((tool) => {
+    //   // All installed plugins are returned
+    //   if (tool.installed) return true;
+    //   if (tool.status !== PluginStatusEnum.Normal) return false;
+    //   return true;
+    // });
   }
 
   return [];
