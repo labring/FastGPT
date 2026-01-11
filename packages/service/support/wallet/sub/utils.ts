@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
-import { addMonths } from 'date-fns';
+import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
   setRedisCache,
@@ -83,18 +83,27 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
 export const initTeamFreePlan = async ({
   teamId,
+  isWecomTeam = false,
   session
 }: {
   teamId: string;
+  isWecomTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
+  const freePoints = isWecomTeam
+    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
     type: SubTypeEnum.standard,
     currentSubLevel: StandardSubLevelEnum.free
   });
+
+  // Get basic plan config for wecom mode
+  const basicPlanConfig = isWecomTeam
+    ? global?.subPlans?.standard?.[StandardSubLevelEnum.basic]
+    : null;
 
   // Reset one month free plan
   if (freePlan) {
@@ -111,6 +120,22 @@ export const initTeamFreePlan = async ({
       freePlan.surplusPoints && freePlan.surplusPoints < 0
         ? freePlan.surplusPoints + freePoints
         : freePoints;
+
+    // Apply basic plan config for wecom, but with limited points and dataset size
+    if (isWecomTeam && basicPlanConfig) {
+      freePlan.maxTeamMember = basicPlanConfig.maxTeamMember;
+      freePlan.maxApp = basicPlanConfig.maxAppAmount;
+      freePlan.maxDataset = basicPlanConfig.maxDatasetAmount;
+      freePlan.requestsPerMinute = basicPlanConfig.requestsPerMinute;
+      freePlan.chatHistoryStoreDuration = basicPlanConfig.chatHistoryStoreDuration;
+      freePlan.maxDatasetSize = basicPlanConfig.maxDatasetAmount;
+      freePlan.websiteSyncPerDataset = basicPlanConfig.websiteSyncPerDataset;
+      freePlan.appRegistrationCount = basicPlanConfig.appRegistrationCount;
+      freePlan.auditLogStoreDuration = basicPlanConfig.auditLogStoreDuration;
+      freePlan.ticketResponseTime = basicPlanConfig.ticketResponseTime;
+      freePlan.customDomain = basicPlanConfig.customDomain;
+    }
+
     return freePlan.save({ session });
   }
 
@@ -122,13 +147,27 @@ export const initTeamFreePlan = async ({
         currentMode: SubModeEnum.month,
         nextMode: SubModeEnum.month,
         startTime: new Date(),
-        expiredTime: addMonths(new Date(), 1),
+        expiredTime: isWecomTeam ? addDays(new Date(), 15) : addMonths(new Date(), 1),
 
         currentSubLevel: StandardSubLevelEnum.free,
         nextSubLevel: StandardSubLevelEnum.free,
 
         totalPoints: freePoints,
-        surplusPoints: freePoints
+        surplusPoints: freePoints,
+        ...(isWecomTeam &&
+          !!basicPlanConfig && {
+            maxTeamMember: basicPlanConfig.maxTeamMember,
+            maxApp: basicPlanConfig.maxAppAmount,
+            maxDataset: basicPlanConfig.maxDatasetAmount,
+            requestsPerMinute: basicPlanConfig.requestsPerMinute,
+            chatHistoryStoreDuration: basicPlanConfig.chatHistoryStoreDuration,
+            maxDatasetSize: basicPlanConfig.maxDatasetSize,
+            websiteSyncPerDataset: basicPlanConfig.websiteSyncPerDataset,
+            appRegistrationCount: basicPlanConfig.appRegistrationCount,
+            auditLogStoreDuration: basicPlanConfig.auditLogStoreDuration,
+            ticketResponseTime: basicPlanConfig.ticketResponseTime,
+            customDomain: basicPlanConfig.customDomain
+          })
       }
     ],
     { session, ordered: true }

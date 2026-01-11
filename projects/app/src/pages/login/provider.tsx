@@ -104,7 +104,16 @@ const provider = () => {
       }
       setLoginStore(undefined);
     },
-    [errorRedirectPage, loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
+    [
+      errorRedirectPage,
+      i18n.language,
+      loginStore?.provider,
+      loginSuccess,
+      router,
+      setLoginStore,
+      t,
+      toast
+    ]
   );
 
   useEffect(() => {

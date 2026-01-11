@@ -14,7 +14,7 @@ import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 const TeamPlanStatusCard = () => {
   const { t } = useTranslation();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, userInfo } = useUserStore();
   const { operationalAd, loadOperationalAd, feConfigs, subPlans } = useSystemStore();
   const router = useRouter();
 
@@ -40,8 +40,12 @@ const TeamPlanStatusCard = () => {
     }
   );
 
+  const isWecomTeam = userInfo?.team.isWecomTeam;
+
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
+    if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
+      return 'common:support.wallet.subscription.standardSubLevel.trial';
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label

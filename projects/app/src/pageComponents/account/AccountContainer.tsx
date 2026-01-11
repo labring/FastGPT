@@ -9,6 +9,7 @@ import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export enum TabEnum {
   'info' = 'info',
@@ -135,6 +136,8 @@ const AccountContainer = ({
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('account:confirm_logout')
   });
+
+  const { toast } = useToast();
 
   const setCurrentTab = useCallback(
     (tab: string) => {

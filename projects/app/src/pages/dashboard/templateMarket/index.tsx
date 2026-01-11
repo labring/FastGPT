@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -45,7 +46,11 @@ const TemplateMarket = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { userInfo } = useUserStore();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
 
   const {
     parentId,
