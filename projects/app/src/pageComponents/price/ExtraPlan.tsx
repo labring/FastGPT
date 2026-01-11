@@ -66,6 +66,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       });
       setQRPayData({
         tip: t('common:button.extra_dataset_size_tip'),
+        billId: res.billId!,
         ...res
       });
     },
@@ -103,6 +104,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
       setQRPayData({
         tip: t('common:button.extra_points_tip'),
+        billId: res.billId!,
         ...res
       });
     },

@@ -151,7 +151,10 @@ const Standard = ({
         return;
       }
       // For other payment methods, show QR code modal
-      setQRPayData(res);
+      setQRPayData({
+        ...res,
+        billId: res.billId!
+      });
     }
   });
 

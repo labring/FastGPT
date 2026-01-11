@@ -18,6 +18,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 
 export type QRPayProps = CreateBillResponseType & {
+  billId: string;
   tip?: string;
   discountCouponName?: string;
 };
