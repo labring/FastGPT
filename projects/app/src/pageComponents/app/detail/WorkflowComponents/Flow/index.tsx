@@ -18,7 +18,7 @@ import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/
 import type { NodeProps } from 'reactflow';
 import ReactFlow, { SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import React from 'react';
+import React, { useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
@@ -98,6 +98,8 @@ const Workflow = () => {
     onClose: onCloseTemplate
   } = useDisclosure();
 
+  const [movingCanvas, setMovingCanvas] = useState(false);
+
   return (
     <>
       <Box
@@ -172,6 +174,15 @@ const Workflow = () => {
               }
             : {})}
           onNodeDragStop={onNodeDragStop}
+          noWheelClassName={
+            !movingCanvas || workflowControlMode === 'drag' ? 'nowheel' : 'nowheel-moving'
+          }
+          onMoveStart={() => {
+            setMovingCanvas(true);
+          }}
+          onMoveEnd={() => {
+            setMovingCanvas(false);
+          }}
         >
           {!!menu && <ContextMenu />}
           <FlowController />
