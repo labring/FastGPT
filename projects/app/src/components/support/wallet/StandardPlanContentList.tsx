@@ -32,6 +32,7 @@ const StandardPlanContentList = ({
 
   const planContent = useMemo(() => {
     const isWecomTeam = !!userInfo?.team?.isWecomTeam;
+    const formatMode = isWecomTeam ? SubModeEnum.year : mode;
 
     // For wecom teams, free plan should use basic plan config
     const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
@@ -41,16 +42,18 @@ const StandardPlanContentList = ({
     // For wecom free plan (trial), use WecomFreePlan constants
 
     return {
-      price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
+      price: plan.price * (formatMode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
       annualBonusPoints:
-        mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+        formatMode === SubModeEnum.month
+          ? 0
+          : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
       totalPoints:
         standplan?.totalPoints ??
         (isWecomTeam
           ? plan.wecom?.points ?? 2000
-          : plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12)),
+          : plan.totalPoints * (formatMode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,

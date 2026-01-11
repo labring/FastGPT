@@ -24,7 +24,8 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
   const { userInfo, teamPlanStatus } = useUserStore();
 
-  const disable =
+  // For Wecom teams, free plan should not be able to buy extra plan
+  const isDisabledBuy =
     userInfo?.team.isWecomTeam &&
     teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free;
 
@@ -308,7 +309,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               selectedPackageIndex === undefined || !extraPointsPackages[selectedPackageIndex]
             }
             onClick={() => {
-              if (disable) {
+              if (isDisabledBuy) {
                 return toast({
                   status: 'warning',
                   title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
@@ -475,7 +476,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               variant={'primaryGhost'}
               isLoading={isLoadingBuyDatasetSize}
               onClick={(e) => {
-                if (disable) {
+                if (isDisabledBuy) {
                   return toast({
                     status: 'warning',
                     title: t('common:support.wallet.subscription.extra_plan_disabled_tip')

@@ -103,9 +103,9 @@ export const getSystemToolsWithInstalled = async ({
       }
       // 优先级3: 基于 promoteTags 的自动预安装
       if (
+        userTags.length > 0 &&
         tool.promoteTags &&
         tool.promoteTags.length > 0 &&
-        userTags.length > 0 &&
         !uninstalledSet.has(tool.id)
       ) {
         const shouldAutoInstall = tool.promoteTags.some((tag) => userTags.includes(tag));

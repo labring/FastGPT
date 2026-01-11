@@ -92,6 +92,10 @@ const BillTable = () => {
 
         // 企微支付直接打开 URL
         if (payWay === 'wecom' && paymentData.payUrl) {
+          toast({
+            title: t('account_bill:wecom_not_pay_tip'),
+            status: 'success'
+          });
           window.open(paymentData.payUrl, '_blank');
           return;
         }

@@ -13,13 +13,14 @@ import { MongoTeamMember } from '../teamMemberSchema';
 import { MongoTeam } from '../teamSchema';
 import { MongoTeamTags } from '../teamTagsSchema';
 import { MongoMcpKey } from '../../../mcp/schema';
-import { MongoAppChatLog } from '../../../../core/app/logs/chatLogsSchema';
 import { MongoChatSetting } from '../../../../core/chat/setting/schema';
 import { MongoChatFavouriteApp } from '../../../../core/chat/favouriteApp/schema';
 import { MongoDiscountCoupon } from '../../../wallet/discountCoupon/schema';
 import { MongoTeamAudit } from '../../audit/schema';
 import { deleteTeamAllDatasets } from '../../../../core/dataset/delete/processor';
 import { onDelAllApp } from './utils';
+import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
+import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
   const { teamId } = job.data;
@@ -38,25 +39,25 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     // 2. 先删除知识库和应用（它们内部有自己的队列）
     await deleteTeamAllDatasets(teamId);
     await onDelAllApp(teamId);
+    // 删除评估
+    await MongoEvaluation.deleteMany({
+      teamId
+    });
+    // 删除评估项
+    await MongoEvalItem.deleteMany({
+      teamId
+    });
 
-    // 3. 删除资源
-    // 删除图片
+    // 删除图片(旧的了)
     await MongoImage.deleteMany({
       teamId: teamId
     });
 
-    // 删除门户配置
+    // 3. 删除门户
     await MongoChatSetting.deleteMany({
       teamId
     });
-
-    // 删除精选应用
     await MongoChatFavouriteApp.deleteMany({
-      teamId
-    });
-
-    // 删除对话日志
-    await MongoAppChatLog.deleteMany({
       teamId
     });
 
@@ -65,12 +66,10 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     await MongoOpenApi.deleteMany({
       teamId
     });
-
     // 删除 MCP
     await MongoMcpKey.deleteMany({
       teamId
     });
-
     // 审计日志
     await MongoTeamAudit.deleteMany({
       teamId
@@ -81,6 +80,8 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     await MongoDiscountCoupon.deleteMany({
       teamId
     });
+    // 删除使用记录（不删除，等待自动过期）
+    // 充值记录不删除
 
     // 6. 删除团队信息
     // 删除权限

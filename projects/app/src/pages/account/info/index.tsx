@@ -385,7 +385,7 @@ const PlanUsage = () => {
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
+  }, [teamPlanStatus?.standard?.currentSubLevel, isWecomTeam, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
@@ -571,7 +571,7 @@ const PlanUsage = () => {
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
-              mode={isWecomTeam ? 'year' : 'month'}
+              mode={'month'}
               standplan={standardPlan}
             />
           </Box>

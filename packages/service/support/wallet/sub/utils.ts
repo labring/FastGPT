@@ -101,9 +101,25 @@ export const initTeamFreePlan = async ({
   });
 
   // Get basic plan config for wecom mode
-  const basicPlanConfig = isWecomTeam
-    ? global?.subPlans?.standard?.[StandardSubLevelEnum.basic]
-    : null;
+  const specialConfig = (() => {
+    const config = global?.subPlans?.standard?.[StandardSubLevelEnum.basic];
+    if (isWecomTeam && config) {
+      return {
+        maxTeamMember: config.maxTeamMember,
+        maxApp: config.maxAppAmount,
+        maxDataset: config.maxDatasetAmount,
+        requestsPerMinute: config.requestsPerMinute,
+        chatHistoryStoreDuration: config.chatHistoryStoreDuration,
+        maxDatasetSize: config.maxDatasetSize,
+        websiteSyncPerDataset: config.websiteSyncPerDataset,
+        appRegistrationCount: config.appRegistrationCount,
+        auditLogStoreDuration: config.auditLogStoreDuration,
+        ticketResponseTime: config.ticketResponseTime,
+        customDomain: config.customDomain
+      } as TeamSubSchemaType;
+    }
+    return null;
+  })();
 
   // Reset one month free plan
   if (freePlan) {
@@ -122,18 +138,11 @@ export const initTeamFreePlan = async ({
         : freePoints;
 
     // Apply basic plan config for wecom, but with limited points and dataset size
-    if (isWecomTeam && basicPlanConfig) {
-      freePlan.maxTeamMember = basicPlanConfig.maxTeamMember;
-      freePlan.maxApp = basicPlanConfig.maxAppAmount;
-      freePlan.maxDataset = basicPlanConfig.maxDatasetAmount;
-      freePlan.requestsPerMinute = basicPlanConfig.requestsPerMinute;
-      freePlan.chatHistoryStoreDuration = basicPlanConfig.chatHistoryStoreDuration;
-      freePlan.maxDatasetSize = basicPlanConfig.maxDatasetAmount;
-      freePlan.websiteSyncPerDataset = basicPlanConfig.websiteSyncPerDataset;
-      freePlan.appRegistrationCount = basicPlanConfig.appRegistrationCount;
-      freePlan.auditLogStoreDuration = basicPlanConfig.auditLogStoreDuration;
-      freePlan.ticketResponseTime = basicPlanConfig.ticketResponseTime;
-      freePlan.customDomain = basicPlanConfig.customDomain;
+    if (specialConfig) {
+      for (const key in specialConfig) {
+        // @ts-ignore
+        freePlan[key] = specialConfig[key];
+      }
     }
 
     return freePlan.save({ session });
@@ -154,20 +163,7 @@ export const initTeamFreePlan = async ({
 
         totalPoints: freePoints,
         surplusPoints: freePoints,
-        ...(isWecomTeam &&
-          !!basicPlanConfig && {
-            maxTeamMember: basicPlanConfig.maxTeamMember,
-            maxApp: basicPlanConfig.maxAppAmount,
-            maxDataset: basicPlanConfig.maxDatasetAmount,
-            requestsPerMinute: basicPlanConfig.requestsPerMinute,
-            chatHistoryStoreDuration: basicPlanConfig.chatHistoryStoreDuration,
-            maxDatasetSize: basicPlanConfig.maxDatasetSize,
-            websiteSyncPerDataset: basicPlanConfig.websiteSyncPerDataset,
-            appRegistrationCount: basicPlanConfig.appRegistrationCount,
-            auditLogStoreDuration: basicPlanConfig.auditLogStoreDuration,
-            ticketResponseTime: basicPlanConfig.ticketResponseTime,
-            customDomain: basicPlanConfig.customDomain
-          })
+        ...(specialConfig && specialConfig)
       }
     ],
     { session, ordered: true }

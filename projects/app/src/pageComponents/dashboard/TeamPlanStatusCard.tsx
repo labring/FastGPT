@@ -45,12 +45,12 @@ const TeamPlanStatusCard = () => {
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
     if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
-      return 'common:support.wallet.subscription.standardSubLevel.trial';
+      return t('common:support.wallet.subscription.standardSubLevel.trial');
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
       standardSubLevelMap[teamPlanStatus.standard.currentSubLevel]?.label
     );
-  }, [teamPlanStatus?.standard?.currentSubLevel, subPlans]);
+  }, [teamPlanStatus?.standard?.currentSubLevel, isWecomTeam, t, subPlans?.standard]);
 
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {

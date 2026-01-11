@@ -49,7 +49,6 @@ const Standard = ({
 
   // Check if it's a wecom team
   const isWecomTeam = !!userInfo?.team?.isWecomTeam;
-  console.log('isWecomTeam', isWecomTeam, userInfo);
 
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
@@ -108,9 +107,10 @@ const Standard = ({
               ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
               ...(value.desc ? { desc: value.desc } : {}),
               ...(value.name ? { label: value.name } : {}),
-              price: isWecomTeam
-                ? value.wecom?.price ?? value.price
-                : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
+              price:
+                isWecomTeam && value.wecom
+                  ? value.wecom.price
+                  : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
               maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
               maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
@@ -118,9 +118,10 @@ const Standard = ({
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
               annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
-              totalPoints: isWecomTeam
-                ? value.wecom?.points ?? value.totalPoints
-                : value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
+              totalPoints:
+                isWecomTeam && value.wecom
+                  ? value.wecom.points
+                  : value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
 
               // custom plan
               priceDescription: value.priceDescription,

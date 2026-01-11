@@ -33,10 +33,10 @@ export const TeamStandardSubPlanItemSchema = z.object({
   /** 企微设置 */
   wecom: z
     .object({
-      price: z.number().optional().describe('企微价格'),
-      points: z.number().optional().describe('企微积分')
+      price: z.number().describe('企微价格'),
+      points: z.number().describe('企微积分')
     })
-    .optional(),
+    .nullish(),
 
   // @deprecated
   pointPrice: z.number().optional()
