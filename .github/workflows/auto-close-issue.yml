@@ -18,6 +18,8 @@ jobs:
       - name: Mark and Close Stale Issues (No PR Handling)
         uses: actions/stale@v9
         with:
+          operations-per-run: 10000
+
           # 6个月≈180天，标记Issue为过时
           days-before-issue-stale: 90
           # 标记后7天无活动，自动关闭Issue（缓冲期，可设为0立即关闭）
