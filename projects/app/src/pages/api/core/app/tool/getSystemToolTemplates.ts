@@ -10,6 +10,7 @@ import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemToolsWithInstalled } from '@fastgpt/service/core/app/tool/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -21,12 +22,16 @@ async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
-  const { teamId, isRoot } = await authCert({ req, authToken: true });
+  const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
   const { searchKey, parentId, tags } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
+  // Get user tags for auto-install logic
+  const userDetail = await getUserDetail({ tmbId });
+  const userTags = userDetail.tags || [];
+
+  const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
 
   return tools
     .filter((tool) => {

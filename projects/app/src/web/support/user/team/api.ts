@@ -1,6 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
-  CollaboratorItemType,
   CollaboratorListType,
   DeletePermissionQuery,
   UpdateClbPermissionProps
@@ -37,6 +36,8 @@ export const postCreateTeam = (data: CreateTeamProps) =>
 export const putUpdateTeam = (data: UpdateTeamProps) => PUT(`/support/user/team/update`, data);
 export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
+export const putTransferTeamOwnership = (userId: string) =>
+  PUT(`/proApi/support/user/team/changeOwner`, { userId });
 
 /* --------------- team member ---------------- */
 export const getTeamMembers = (
