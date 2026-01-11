@@ -41,5 +41,6 @@
   "type": "类型",
   "unit_code": "统一信用代码",
   "unit_code_void": "统一信用代码格式错误",
-  "update": "更新"
+  "update": "更新",
+  "wecom_not_pay_tip": "未支付，即将跳转支付地址"
 }
