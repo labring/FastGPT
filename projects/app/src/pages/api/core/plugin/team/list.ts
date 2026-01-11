@@ -34,43 +34,31 @@ async function handler(
 
     const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
 
-    return (
-      tools
-        .filter((tool) => {
-          return !tool.parentId;
-        })
-        // Apply hideTags filtering
-        .filter((tool) => {
-          if (tool.hideTags && tool.hideTags.length > 0 && userTags.length > 0) {
-            const hasHideTag = tool.hideTags.some((hideTag) => userTags.includes(hideTag));
-            if (hasHideTag) {
-              return false; // Hide this tool from user
-            }
-          }
-          return true;
-        })
-        .map((tool) => {
-          // Check if this tool should be promoted for current user
-          const isPromotedForUser =
-            tool.promoteTags &&
-            tool.promoteTags.length > 0 &&
-            userTags.length > 0 &&
-            tool.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
+    return tools
+      .filter((tool) => {
+        return !tool.parentId;
+      })
+      .map((tool) => {
+        // Check if this tool should be promoted for current user
+        const isPromotedForUser =
+          tool.promoteTags &&
+          tool.promoteTags.length > 0 &&
+          userTags.length > 0 &&
+          tool.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
 
-          return TeamPluginListItemSchema.parse({
-            ...tool,
-            name: parseI18nString(tool.name, lang),
-            intro: parseI18nString(tool.intro, lang),
-            isPromoted: isPromotedForUser
-          });
-        })
-        .filter((tool) => {
-          // All installed plugins are returned
-          if (tool.installed) return true;
-          if (tool.status !== PluginStatusEnum.Normal) return false;
-          return true;
-        })
-    );
+        return TeamPluginListItemSchema.parse({
+          ...tool,
+          name: parseI18nString(tool.name, lang),
+          intro: parseI18nString(tool.intro, lang),
+          isPromoted: isPromotedForUser
+        });
+      })
+      .filter((tool) => {
+        // All installed plugins are returned
+        if (tool.installed) return true;
+        if (tool.status !== PluginStatusEnum.Normal) return false;
+        return true;
+      });
   }
 
   return [];

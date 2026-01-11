@@ -142,7 +142,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
           </Table>
           <Loading loading={isLoading} fixed={false} />
         </TableContainer>
-        {isWecomTeam && (
+        {!isWecomTeam && (
           <HStack mt={4} color={'primary.700'}>
             <MyIcon name={'infoRounded'} w={'1rem'} />
             <Box fontSize={'mini'} fontWeight={'500'}>

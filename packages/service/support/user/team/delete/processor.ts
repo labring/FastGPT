@@ -21,7 +21,7 @@ import { deleteTeamAllDatasets } from '../../../../core/dataset/delete/processor
 import { onDelAllApp } from './utils';
 import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
 import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
-import { MongoTeamSub } from 'support/wallet/sub/schema';
+import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
   const { teamId } = job.data;
