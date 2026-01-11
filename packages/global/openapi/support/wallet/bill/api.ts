@@ -103,7 +103,7 @@ export const UpdateBillResponseSchema = z
 export type UpdateBillResponseType = z.infer<typeof UpdateBillResponseSchema>;
 
 export const CreateBillResponseSchema = UpdateBillResponseSchema.safeExtend({
-  billId: z.string().meta({ description: '订单 ID' }),
+  billId: ObjectIdSchema.optional().meta({ description: '订单 ID' }),
   readPrice: z.number().min(0).meta({ description: '实际支付价格' }),
   payment: z.enum(BillPayWayEnum).meta({ description: '支付方式' })
 });
