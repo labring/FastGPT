@@ -23,16 +23,16 @@ jobs:
           # 6个月≈180天，标记Issue为过时
           days-before-issue-stale: 90
           # 标记后7天无活动，自动关闭Issue（缓冲期，可设为0立即关闭）
-          days-before-issue-close: 0
+          days-before-issue-close: 7
 
           # Issue相关提示与标签
-          # stale-issue-message: >
-          #   This issue has not been updated for more than 6 months and is marked as stale.
-          #   If there is no further activity within 7 days, it will be automatically closed. Please reply to this issue if you need to continue following up on it.
+          stale-issue-message: >
+            This issue has not been updated for more than 6 months and is marked as stale.
+            If there is no further activity within 7 days, it will be automatically closed. Please reply to this issue if you need to continue following up on it.
           close-issue-message: >
             This issue has been automatically closed due to prolonged inactivity (more than 6 months plus a 7-day grace period).
             If this issue still needs to be resolved, you can reopen it and supplement the relevant information.
-          # stale-issue-label: 'stale'
+          stale-issue-label: 'stale'
           close-issue-label: 'auto-closed'
 
           # 核心修改：添加features标签到豁免列表，排除该标签的Issue
