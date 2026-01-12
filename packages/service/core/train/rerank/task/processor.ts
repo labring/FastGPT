@@ -98,6 +98,107 @@ function compareEvalPerformance(
 }
 
 /**
+ * Auto-delete previous tuned model that is no longer in use
+ * This runs after the new tuned model has been successfully deployed to the app
+ *
+ * Deletes the previous model if all conditions are met:
+ * 1. It exists (app was using a model before)
+ * 2. It's a fine-tuned model created by training module (not a base model or manually created custom model)
+ * 3. Previous model is different from new tuned model (avoid self-deletion in in-place replacement scenarios)
+ * 4. New model performs better than previous model (based on evaluation metrics)
+ *
+ * @param taskId - Training task ID
+ * @param previousModelConfigId - Previous model config ID from applying stage
+ * @param previousTaskId - Previous task ID from applying stage
+ * @param tunedModelConfigId - New tuned model config ID from registering stage
+ * @param baseModelEvalResult - Previous model evaluation result (base model in this context)
+ * @param tunedModelEvalResult - New tuned model evaluation result
+ */
+export async function handlePreviousModelDeletion(
+  taskId: string,
+  previousModelConfigId: string | undefined,
+  previousTaskId: string | undefined,
+  tunedModelConfigId: string | undefined,
+  baseModelEvalResult: RerankEvalResult | null | undefined,
+  tunedModelEvalResult: RerankEvalResult | null | undefined
+): Promise<void> {
+  if (
+    !previousModelConfigId ||
+    !isTunedModel(previousModelConfigId) ||
+    previousModelConfigId === tunedModelConfigId
+  ) {
+    addLog.info('No previous fine-tuned model to delete', {
+      taskId,
+      previousModelConfigId,
+      previousTaskId,
+      tunedModelConfigId,
+      isTunedModel: previousModelConfigId ? isTunedModel(previousModelConfigId) : false,
+      reason: !previousModelConfigId
+        ? 'No previous model recorded'
+        : !isTunedModel(previousModelConfigId)
+          ? 'Previous model is not a fine-tuned model created by training module'
+          : 'Previous model is the same as new tuned model (in-place replacement)'
+    });
+    return;
+  }
+
+  // Compare evaluation performance (baseModelEvalResult is the previous tuned model's result)
+  const shouldDelete = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
+
+  if (!shouldDelete) {
+    addLog.info('Keeping previous tuned model (new model does not perform better)', {
+      taskId,
+      previousModelConfigId,
+      previousTaskId,
+      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+    });
+    return;
+  }
+
+  addLog.info('Deleting previous tuned model (new model performs better)', {
+    taskId,
+    previousModelConfigId,
+    previousTaskId,
+    baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+    baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+    tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+    tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+  });
+
+  try {
+    // Query previous task to get sftTaskId if previousTaskId is available
+    let previousSftTaskId: string | undefined;
+    if (previousTaskId) {
+      const previousTask = await MongoRerankTrainTask.findById(previousTaskId, 'checkpoint').lean();
+      previousSftTaskId = previousTask?.checkpoint?.data?.finetuning?.sftTaskId;
+      addLog.info('Found previous task sftTaskId', {
+        taskId,
+        previousTaskId,
+        previousSftTaskId
+      });
+    }
+
+    await deleteRerankModelConfig(previousModelConfigId, previousSftTaskId);
+    addLog.info('Successfully deleted previous tuned model', {
+      taskId,
+      previousModelConfigId,
+      previousTaskId,
+      previousSftTaskId
+    });
+  } catch (deleteError) {
+    addLog.warn('Failed to delete previous tuned model', {
+      taskId,
+      previousModelConfigId,
+      previousTaskId,
+      error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+    });
+  }
+}
+
+/**
  * Rerank training task processor
  *
  * Executes complete rerank model training pipeline:
@@ -303,94 +404,15 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
     await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.completed);
 
-    // Optimization 2: Auto-delete previous tuned model that is no longer in use
-    // This runs after the new tuned model has been successfully deployed to the app
-    const previousModelConfigId = finalCheckpoint.applying?.previousModelConfigId;
-    const previousTaskId = finalCheckpoint.applying?.previousTaskId;
-    const tunedModelConfigId = finalCheckpoint.registering?.tunedModelConfigId;
-    const baseModelEvalResult = finalCheckpoint.evaluating?.baseModelEvalResult;
-    const tunedModelEvalResult = finalCheckpoint.evaluating?.tunedModelEvalResult;
-
-    // Delete the previous model if all conditions are met:
-    // 1. It exists (app was using a model before)
-    // 2. It's a fine-tuned model created by training module (not a base model or manually created custom model)
-    // 3. Previous model is different from new tuned model (avoid self-deletion in in-place replacement scenarios)
-    // 4. New model performs better than previous model (based on evaluation metrics)
-    if (
-      previousModelConfigId &&
-      isTunedModel(previousModelConfigId) &&
-      previousModelConfigId !== tunedModelConfigId
-    ) {
-      // Compare evaluation performance (baseModelEvalResult is the previous tuned model's result)
-      const shouldDelete = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
-
-      if (shouldDelete) {
-        addLog.info('Deleting previous tuned model (new model performs better)', {
-          taskId,
-          previousModelConfigId,
-          previousTaskId,
-          baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-          baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-          tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-          tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
-        });
-
-        try {
-          // Query previous task to get sftTaskId if previousTaskId is available
-          let previousSftTaskId: string | undefined;
-          if (previousTaskId) {
-            const previousTask = await MongoRerankTrainTask.findById(
-              previousTaskId,
-              'checkpoint'
-            ).lean();
-            previousSftTaskId = previousTask?.checkpoint?.data?.finetuning?.sftTaskId;
-            addLog.info('Found previous task sftTaskId', {
-              taskId,
-              previousTaskId,
-              previousSftTaskId
-            });
-          }
-
-          await deleteRerankModelConfig(previousModelConfigId, previousSftTaskId);
-          addLog.info('Successfully deleted previous tuned model', {
-            taskId,
-            previousModelConfigId,
-            previousTaskId,
-            previousSftTaskId
-          });
-        } catch (deleteError) {
-          addLog.warn('Failed to delete previous tuned model', {
-            taskId,
-            previousModelConfigId,
-            previousTaskId,
-            error: deleteError instanceof Error ? deleteError.message : String(deleteError)
-          });
-        }
-      } else {
-        addLog.info('Keeping previous tuned model (new model does not perform better)', {
-          taskId,
-          previousModelConfigId,
-          previousTaskId,
-          baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-          baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-          tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-          tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
-        });
-      }
-    } else {
-      addLog.info('No previous fine-tuned model to delete', {
-        taskId,
-        previousModelConfigId,
-        previousTaskId,
-        tunedModelConfigId,
-        isTunedModel: previousModelConfigId ? isTunedModel(previousModelConfigId) : false,
-        reason: !previousModelConfigId
-          ? 'No previous model recorded'
-          : !isTunedModel(previousModelConfigId)
-            ? 'Previous model is not a fine-tuned model created by training module'
-            : 'Previous model is the same as new tuned model (in-place replacement)'
-      });
-    }
+    // Auto-delete previous tuned model that is no longer in use
+    await handlePreviousModelDeletion(
+      taskId,
+      finalCheckpoint.applying?.previousModelConfigId,
+      finalCheckpoint.applying?.previousTaskId,
+      finalCheckpoint.registering?.tunedModelConfigId,
+      finalCheckpoint.evaluating?.baseModelEvalResult,
+      finalCheckpoint.evaluating?.tunedModelEvalResult
+    );
 
     addLog.info('Rerank train task completed', { taskId });
   } catch (error) {

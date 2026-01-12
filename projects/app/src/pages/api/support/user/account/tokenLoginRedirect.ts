@@ -53,9 +53,7 @@ function isValidRedirectUrl(url: string): boolean {
   const path = url.split('?')[0].split('#')[0];
 
   // 检查是否匹配白名单前缀
-  return ALLOWED_REDIRECT_PREFIXES.some((prefix) => 
-    path === prefix || path.startsWith(prefix)
-  );
+  return ALLOWED_REDIRECT_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -84,4 +82,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default NextAPI(handler);
-

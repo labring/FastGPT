@@ -31,6 +31,24 @@ import {
   DEFAULT_DITING_TIMEOUT
 } from '../../constants';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
+import { mockRunGenerateEvalDataset } from './evaluate.mock';
+
+/**
+ * Environment variable control for evaluation dataset generation
+ * - USE_EVAL_DATASET_MOCK=true: Use mock implementation (XLSX file-based)
+ * - USE_EVAL_DATASET_MOCK=false or not set: Use real implementation (default)
+ *
+ * Mock implementation uses XLSX file configured via EVAL_DATASET_MOCK_FILE environment variable
+ */
+const useEvalDatasetMock = process.env.USE_EVAL_DATASET_MOCK === 'true';
+
+/**
+ * Generate evaluation dataset
+ * Routes to mock or real implementation based on USE_EVAL_DATASET_MOCK environment variable
+ */
+export const runGenerateEvalDataset = useEvalDatasetMock
+  ? mockRunGenerateEvalDataset
+  : realRunGenerateEvalDataset;
 
 /**
  * Generate evaluation dataset
@@ -47,7 +65,7 @@ import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors'
  * @returns Evaluation dataset collection ID
  * @throws Error if application not found, no datasets found, or no data available
  */
-export async function runGenerateEvalDataset(task: RerankTrainTaskSchemaType): Promise<string> {
+async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Promise<string> {
   addLog.info('Run generate eval dataset', { taskId: String(task._id) });
 
   const app = await MongoApp.findById(task.appId).lean();

@@ -1,5 +1,19 @@
 /** Rerank training module constants */
 
+import * as path from 'path';
+
+// ===== Training Data File Storage =====
+/**
+ * Get rerank training data file directory
+ * Priority: TRAIN_DATA_DIR env > {cwd}/data/train/rerank (default)
+ *
+ * @returns Full path to rerank training data directory
+ */
+export function getRerankTrainDataDir(): string {
+  const baseDir = process.env.TRAIN_DATA_DIR || path.join(process.cwd(), 'data', 'train');
+  return path.join(baseDir, 'rerank');
+}
+
 // ===== Data Sampling =====
 /** Default train/evaluation data split ratio (80% for training, 20% for evaluation) */
 export const TRAIN_DATA_SPLIT_RATIO = 0.8;
