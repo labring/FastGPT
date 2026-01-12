@@ -718,8 +718,11 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     const secondHeaders = extractLeadingHeadersArray(chunks[1]);
     const commonPrefixLength = getCommonHeaderPrefixLength(firstHeaders, secondHeaders);
 
+    // 只有当第二个块有更深层级的子标题时，才去除重复的父标题
     const secondChunkToMerge =
-      commonPrefixLength > 0 ? removeLeadingHeadersCount(chunks[1], commonPrefixLength) : chunks[1];
+      commonPrefixLength > 0 && commonPrefixLength < secondHeaders.length
+        ? removeLeadingHeadersCount(chunks[1], commonPrefixLength)
+        : chunks[1];
 
     chunks[1] = chunks[0] + '\n' + secondChunkToMerge;
     chunks = chunks.slice(1);
@@ -751,8 +754,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
           const nextHeaders = extractLeadingHeadersArray(nextChunk);
           const commonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
 
+          // 只有当下一个块有更深层级的子标题时，才去除重复的父标题
           const nextChunkToAdd =
-            commonPrefixLength > 0
+            commonPrefixLength > 0 && commonPrefixLength < nextHeaders.length
               ? removeLeadingHeadersCount(nextChunk, commonPrefixLength)
               : nextChunk;
 
@@ -829,8 +833,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
           const currentHeaders = extractLeadingHeadersArray(chunk);
           const nextCommonPrefixLength = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
 
+          // 只有当下一个块有更深层级的子标题时，才去除重复的父标题
           const nextChunkToAdd =
-            nextCommonPrefixLength > 0
+            nextCommonPrefixLength > 0 && nextCommonPrefixLength < nextHeaders.length
               ? removeLeadingHeadersCount(nextChunk, nextCommonPrefixLength)
               : nextChunk;
 
@@ -862,7 +867,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
       // 找出共同的父标题前缀长度
       const commonPrefixLength = getCommonHeaderPrefixLength(prevHeaders, currentHeaders);
 
-      if (commonPrefixLength > 0) {
+      // 只有当当前块有更深层级的子标题时，才说明共同前缀是真正的"父标题"，应该去重
+      // 这样可以避免将同级的独立标题（如不同章节都使用"概述"）错误地视为重复
+      if (commonPrefixLength > 0 && commonPrefixLength < currentHeaders.length) {
         // 去除当前分片中的重复父标题
         const dedupedChunk = removeLeadingHeadersCount(currentChunk, commonPrefixLength);
         finalChunks.push(dedupedChunk);
