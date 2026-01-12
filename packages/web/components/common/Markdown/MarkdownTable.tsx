@@ -43,7 +43,7 @@ const MarkdownTable = ({ children }: MarkdownTableProps) => {
         top={1}
         right={2}
         zIndex={1}
-        aria-label={t('common:Export_table')}
+        aria-label={''}
       />
       {children}
     </Box>
