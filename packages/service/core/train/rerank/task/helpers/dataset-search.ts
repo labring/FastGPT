@@ -79,11 +79,11 @@ export async function performDatasetSearch(
       embeddingWeight: searchParams.embeddingWeight,
       usingReRank: false,
       rerankModel: undefined,
-      rerankMethod: RerankMethodEnum.content,
+      rerankMethod: RerankMethodEnum.question,
       collectionFilterMatch: searchParams.collectionFilterMatch || '',
-      datasetSearchUsingExtensionQuery: searchParams.datasetSearchUsingExtensionQuery ?? false,
-      datasetSearchExtensionModel: searchParams.datasetSearchExtensionModel || '',
-      datasetSearchExtensionBg: searchParams.datasetSearchExtensionBg || ''
+      datasetSearchUsingExtensionQuery: false, // disable for ensuring the retrieval contexts stable
+      datasetSearchExtensionModel: '',
+      datasetSearchExtensionBg: ''
     }
   });
 

@@ -246,7 +246,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string",
-            "value": "content",
+            "value": "question",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -264,7 +264,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
-            "value": true,
+            "value": false,
             "debugLabel": "",
             "toolDescription": ""
           },
