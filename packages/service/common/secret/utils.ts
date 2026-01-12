@@ -39,6 +39,11 @@ export const getSecretValue = ({
     const { secret, value } = val;
     const actualValue = value || decryptSecret(secret);
 
+    // Filter out empty values to avoid invalid headers
+    if (!actualValue || !key) {
+      return acc;
+    }
+
     if (key === HeaderSecretTypeEnum.Bearer) {
       acc['Authorization'] = `Bearer ${actualValue}`;
     } else if (key === HeaderSecretTypeEnum.Basic) {
