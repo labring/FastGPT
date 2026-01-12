@@ -3,6 +3,14 @@ import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
 
+// 判断行是否为空行（所有单元格都是空字符串或只包含空白字符）
+const isEmptyRow = (row: any[]): boolean => {
+  return row.every((cell) => {
+    const cellStr = String(cell).trim();
+    return cellStr === '';
+  });
+};
+
 export const readXlsxRawText = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
@@ -11,7 +19,13 @@ export const readXlsxRawText = async ({
     defval: ''
   });
 
-  const format2Csv = result.map(({ name, data }) => {
+  // 过滤掉空行
+  const filteredResult = result.map(({ name, data }) => ({
+    name,
+    data: data.filter((row) => !isEmptyRow(row))
+  }));
+
+  const format2Csv = filteredResult.map(({ name, data }) => {
     return {
       title: `#${name}`,
       csvText: data.map((item) => item.join(',')).join('\n')
@@ -20,7 +34,7 @@ export const readXlsxRawText = async ({
 
   const rawText = format2Csv.map((item) => item.csvText).join('\n');
 
-  const formatText = result
+  const formatText = filteredResult
     .map(({ data }) => {
       const header = data[0];
       if (!header) return;
@@ -42,3 +56,4 @@ ${data
     formatText
   };
 };
+
