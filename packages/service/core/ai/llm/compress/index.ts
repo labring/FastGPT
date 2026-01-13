@@ -143,9 +143,6 @@ export const compressRequestMessages = async ({
   }
 };
 
-/**
- * 将内容分割成多个块
- */
 function splitIntoChunks(content: string, chunkSize: number): string[] {
   const chunks: string[] = [];
   const totalLength = content.length;
@@ -158,15 +155,16 @@ function splitIntoChunks(content: string, chunkSize: number): string[] {
   return chunks;
 }
 
-/**
- * 压缩单个块
- */
 async function compressSingleChunk(params: {
   chunk: string;
   targetTokens: number;
   model: LLMModelItemType;
-}): Promise<string> {
-  const { chunk, targetTokens, model } = params;
+  chunkIndex?: number;
+}): Promise<{
+  compressed: string;
+  usage: { inputTokens: number; outputTokens: number };
+}> {
+  const { chunk, targetTokens, model, chunkIndex } = params;
 
   const compressPrompt = `你是一个文本压缩专家。请将以下文本压缩到约 ${targetTokens} tokens，同时保留关键信息。
         ## 压缩原则
@@ -180,7 +178,15 @@ async function compressSingleChunk(params: {
         \`\`\`
         请直接输出压缩后的文本内容，不要包含任何解释或代码块标记。`;
 
-  const { answerText } = await createLLMResponse({
+  addLog.debug(
+    `[Chunk compression] ${chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}` : 'Single chunk'}`,
+    {
+      chunkLength: chunk.length,
+      targetTokens
+    }
+  );
+
+  const { answerText, usage } = await createLLMResponse({
     body: {
       model,
       messages: [
@@ -201,44 +207,48 @@ async function compressSingleChunk(params: {
   if (!answerText) {
     throw new Error('Empty response from LLM');
   }
-  return answerText.trim();
+  return {
+    compressed: answerText.trim(),
+    usage
+  };
 }
 
-/**
- * 分块压缩内容
- * @param content - 要压缩的内容
- * @param maxTokens - 最大 token 数
- * @param model - 模型信息
- * @returns 压缩后的内容
- */
 async function chunkAndCompress(params: {
   content: string;
   maxTokens: number;
   model: LLMModelItemType;
-}): Promise<string> {
+}): Promise<{
+  compressed: string;
+  usages: { inputTokens: number; outputTokens: number }[];
+}> {
   const { content, maxTokens, model } = params;
 
   const thresholds = calculateCompressionThresholds(model.maxContext);
-  const chunkSize = thresholds.chunkSize;
+  const chunkPerThresholds = thresholds.chunkSize;
 
-  const chunks = splitIntoChunks(content, chunkSize);
+  const chunks = splitIntoChunks(content, chunkPerThresholds);
   const chunkCount = chunks.length;
   const targetPerChunk = Math.floor(maxTokens / chunkCount);
 
   addLog.info('[LLM chunk compression] Starting', {
     chunkCount,
-    chunkSize,
+    chunkPerThresholds,
     targetPerChunk,
-    totalLength: content.length
+    originTotalLength: content.length
   });
 
-  const compressionPromises = chunks.map((chunk) =>
-    compressSingleChunk({
+  const usages: { inputTokens: number; outputTokens: number }[] = [];
+
+  const compressionPromises = chunks.map(async (chunk, index) => {
+    const result = await compressSingleChunk({
       chunk,
       targetTokens: targetPerChunk,
-      model
-    })
-  );
+      model,
+      chunkIndex: index
+    });
+    usages.push(result.usage);
+    return result.compressed;
+  });
 
   const compressedChunks = await Promise.all(compressionPromises);
 
@@ -265,7 +275,10 @@ async function chunkAndCompress(params: {
     merged = merged.substring(0, halfLength) + '\n\n... [content truncated] ...\n\n';
   }
 
-  return merged;
+  return {
+    compressed: merged,
+    usages
+  };
 }
 
 /**
@@ -275,7 +288,7 @@ async function chunkAndCompress(params: {
  * @param content - 要压缩的内容
  * @param model - 模型信息
  * @param maxTokens - 最大 token 数
- * @returns 压缩后的内容
+ * @returns 压缩后的内容和 usages
  */
 export const compressLargeContent = async ({
   content,
@@ -285,9 +298,15 @@ export const compressLargeContent = async ({
   content: string;
   model: LLMModelItemType;
   maxTokens: number;
-}): Promise<string> => {
+}): Promise<{
+  compressed: string;
+  usages: ChatNodeUsageType[];
+}> => {
   if (!content) {
-    return content;
+    return {
+      compressed: content,
+      usages: []
+    };
   }
 
   // 使用准确的 token 统计
@@ -295,7 +314,10 @@ export const compressLargeContent = async ({
 
   // 如果已经小于限制，直接返回
   if (currentTokens <= maxTokens) {
-    return content;
+    return {
+      compressed: content,
+      usages: []
+    };
   }
 
   addLog.debug('[Compress large content] Starting', {
@@ -314,7 +336,10 @@ export const compressLargeContent = async ({
 
   let tokens = await countGptMessagesTokens([{ role: 'user', content: compressed }]);
   if (tokens <= maxTokens) {
-    return compressed.trim();
+    return {
+      compressed: compressed.trim(),
+      usages: []
+    };
   }
 
   // 3. 移除 Markdown 图片标记
@@ -345,27 +370,49 @@ export const compressLargeContent = async ({
 
   tokens = await countGptMessagesTokens([{ role: 'user', content: compressed }]);
   if (tokens <= maxTokens) {
-    return compressed.trim();
+    return {
+      compressed: compressed.trim(),
+      usages: []
+    };
   }
 
   // 8. 分块 LLM 压缩
+  let compressionUsages: ChatNodeUsageType[] = [];
   try {
-    compressed = await chunkAndCompress({
+    const result = await chunkAndCompress({
       content: compressed,
       maxTokens,
       model
+    });
+
+    compressed = result.compressed;
+
+    // 格式化为 ChatNodeUsageType
+    compressionUsages = result.usages.map((usage) => {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: model.model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      });
+
+      return {
+        moduleName: i18nT('account_usage:compress_file_content'),
+        model: modelName,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      };
     });
   } catch (error) {
     addLog.error('[Chunk compression] failed, fallback to binary truncate', error);
   }
 
-  return compressed.trim();
+  return {
+    compressed: compressed.trim(),
+    usages: compressionUsages
+  };
 };
 
-/**
- * Tool response 压缩
- * 根据当前上下文动态计算可用空间，然后调用通用压缩函数
- */
 export const compressToolResponse = async ({
   response,
   model,
@@ -378,9 +425,15 @@ export const compressToolResponse = async ({
   currentMessagesTokens?: number;
   toolLength?: number;
   reservedTokens?: number; // 预留给输出的 token 数
-}): Promise<string> => {
+}): Promise<{
+  compressed: string;
+  usages: ChatNodeUsageType[];
+}> => {
   if (!response) {
-    return response;
+    return {
+      compressed: response,
+      usages: []
+    };
   }
 
   // 动态计算可用的最大 token 数

@@ -11,6 +11,7 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { compressLargeContent } from '../../../../../../ai/llm/compress';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import { addLog } from '../../../../../../../common/system/log';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -140,17 +141,22 @@ export const dispatchFileRead = async ({
   });
 
   // Compress if content exceeds threshold
+  let compressionUsages: ChatNodeUsageType[] = [];
   try {
-    responseText = await compressLargeContent({
+    const result = await compressLargeContent({
       content: responseText,
       model: llmModel,
       maxTokens
     });
 
+    responseText = result.compressed;
+    compressionUsages = result.usages;
+
     addLog.info('[File Read] Compression complete', {
       originalLength: JSON.stringify(readFilesResult).length,
       compressedLength: responseText.length,
-      compressionRatio: (responseText.length / JSON.stringify(readFilesResult).length).toFixed(2)
+      compressionRatio: (responseText.length / JSON.stringify(readFilesResult).length).toFixed(2),
+      usageCount: compressionUsages.length
     });
   } catch (error) {
     addLog.error('[File Read] Compression failed, using original content', error);
@@ -158,6 +164,6 @@ export const dispatchFileRead = async ({
 
   return {
     response: responseText,
-    usages: []
+    usages: compressionUsages
   };
 };
