@@ -237,6 +237,7 @@ export async function dispatchDatasetSearch(
     let sqlRetrievalTime: number | undefined = undefined; // 新增：SQL数据库检索耗时（仅assistant场景）
     let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 新增：检索结果（仅assistant场景）
     let retrievalType: 'correction' | 'faq' | undefined = undefined; // 新增：检索类型（仅correction/faq命中时有值）
+    let sqlChunks: SearchDataResponseItemType[] = []; // 新增：SQL检索结果转换的chunks（仅assistant场景）
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -369,7 +370,12 @@ export async function dispatchDatasetSearch(
               datasetId
             } as SqlResultWithDatasetId);
             // convertSqlResultsToChunks
-            searchRes.push(await convertSqlResultsToChunks(singleSqlResult, datasetId));
+            const sqlChunk = await convertSqlResultsToChunks(singleSqlResult, datasetId);
+            searchRes.push(sqlChunk);
+            // 仅assistant场景保存SQL检索结果到sqlChunks
+            if (isAssistant) {
+              sqlChunks.push(sqlChunk);
+            }
           } else {
             addLog.warn('Dataset Search - SQL Generation Failed', { datasetId, datasetType });
           }
@@ -453,6 +459,15 @@ export async function dispatchDatasetSearch(
       if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
         faqAnswer = commonResult.searchRes[0].a;
       }
+    }
+
+    // 合并SQL检索结果到retrievalResults（仅assistant场景）
+    if (isAssistant && sqlChunks.length > 0) {
+      retrievalResults = [...sqlChunks, ...(retrievalResults || [])];
+      addLog.debug('Dataset Search - SQL chunks merged to retrievalResults', {
+        sqlChunksCount: sqlChunks.length,
+        totalRetrievalResults: retrievalResults.length
+      });
     }
 
     // count bill results

@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import {
+  authChatCrud,
+  authCollectionInChatForRetrievalResult
+} from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -123,7 +126,12 @@ async function handler(
       teamId,
       teamToken
     }),
-    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
+    authCollectionInChatForRetrievalResult({
+      appId,
+      chatId,
+      chatItemDataId,
+      collectionIds: collectionIdList
+    })
   ]);
 
   if (!chat || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);

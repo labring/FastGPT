@@ -1,0 +1,201 @@
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum,
+  ParagraphChunkAIModeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
+import {
+  adaptiveAdjustConfig,
+  logAdaptiveAdjustments
+} from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
+import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types/index.d';
+
+// Request body type
+export type CustomFileIdImportBody = {
+  datasetId: string; // Required: Dataset ID
+  fileId: string; // Required: Uploaded file ID
+  parentId?: string; // Optional: Parent directory ID
+  name?: string; // Optional: Custom name (defaults to filename)
+  tags?: string[]; // Optional: Tags
+};
+
+// Response type
+export type CustomFileIdImportResponse = {
+  collectionId: string;
+  insertLen: number;
+  configAdjustments?: Array<{
+    field: string;
+    originalValue: any;
+    adjustedValue: any;
+    reason: string;
+  }>;
+};
+
+// Supported file extensions
+const SUPPORTED_EXTENSIONS = ['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'xlsx', 'csv'];
+const EXTERNAL_REQUIRED_EXTENSIONS = ['doc', 'ppt'];
+
+/**
+ * Get import mode configuration (use default mode from config)
+ */
+function getImportMode(): CustomFileImportModeType {
+  const config = global.systemEnv?.customFileImport;
+  const targetMode = config?.defaultActivateMode || 'default';
+
+  const mode = config?.modes?.find((m) => m.name === targetMode && m.enabled !== false);
+
+  if (!mode) {
+    throw new Error(`Import mode not found or disabled: ${targetMode}`);
+  }
+
+  return mode;
+}
+
+/**
+ * Validate file extension
+ */
+function validateFileExtension(extension: string): void {
+  const ext = extension.toLowerCase();
+
+  if (EXTERNAL_REQUIRED_EXTENSIONS.includes(ext)) {
+    if (!global.systemEnv?.customPdfParse?.url) {
+      throw new Error(
+        `File type .${ext} requires external parsing service. Please configure customPdfParse.url`
+      );
+    }
+    return;
+  }
+
+  if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+    throw new Error(
+      `Unsupported file type: .${ext}. Supported types: ${SUPPORTED_EXTENSIONS.join(', ')}`
+    );
+  }
+}
+
+async function handler(
+  req: ApiRequestProps<CustomFileIdImportBody>
+): Promise<CustomFileIdImportResponse> {
+  const { datasetId, fileId, parentId, name, tags } = req.body;
+
+  // 1. Auth
+  const { teamId, tmbId, dataset } = await authDataset({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: WritePermissionVal,
+    datasetId
+  });
+
+  // 2. Get file info
+  const file = await getFileById({
+    bucketName: BucketNameEnum.dataset,
+    fileId
+  });
+
+  if (!file) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
+
+  const filename = file.filename;
+  const extension = filename?.split('.').pop()?.toLowerCase() || '';
+
+  // 3. Validate file type
+  validateFileExtension(extension);
+
+  // 4. Get configuration mode (use default mode from config)
+  const importMode = getImportMode();
+
+  // 5. Adaptive adjust configuration based on model availability
+  const { adjustedEnhanceConfig, adjustedParseConfig, adjustments } = adaptiveAdjustConfig({
+    dataset,
+    modeConfig: importMode
+  });
+
+  // 6. Log adjustments for debugging
+  logAdaptiveAdjustments(datasetId, adjustments);
+
+  // 7. Assemble complete parameters
+  const { collectionId, insertResults } = await createCollectionAndInsertData({
+    dataset,
+    createCollectionParams: {
+      teamId,
+      tmbId,
+      datasetId,
+      parentId,
+      name: name || filename,
+      tags,
+      type: DatasetCollectionTypeEnum.file,
+      fileId,
+      metadata: {
+        relatedImgId: fileId
+      },
+
+      // Parse config (with adaptive adjustment)
+      customPdfParse:
+        adjustedParseConfig.customPdfParse ?? importMode.parseConfig?.customPdfParse ?? true,
+
+      // Chunk config - use enum values
+      trainingType:
+        importMode.chunkConfig?.trainingType === 'qa'
+          ? DatasetCollectionDataProcessModeEnum.qa
+          : DatasetCollectionDataProcessModeEnum.chunk,
+      chunkTriggerType:
+        (importMode.chunkConfig?.chunkTriggerType as ChunkTriggerConfigTypeEnum) ||
+        ChunkTriggerConfigTypeEnum.minSize,
+      chunkTriggerMinSize: importMode.chunkConfig?.chunkTriggerMinSize || 1000,
+      chunkSettingMode:
+        (importMode.chunkConfig?.chunkSettingMode as ChunkSettingModeEnum) ||
+        ChunkSettingModeEnum.auto,
+      chunkSplitMode:
+        (importMode.chunkConfig?.chunkSplitMode as DataChunkSplitModeEnum) ||
+        DataChunkSplitModeEnum.paragraph,
+      paragraphChunkAIMode:
+        (importMode.chunkConfig?.paragraphChunkAIMode as ParagraphChunkAIModeEnum) ||
+        ParagraphChunkAIModeEnum.forbid,
+      paragraphChunkDeep: importMode.chunkConfig?.paragraphChunkDeep || 5,
+      paragraphChunkMinSize: importMode.chunkConfig?.paragraphChunkMinSize || 100,
+      chunkSize: importMode.chunkConfig?.chunkSize || 1000,
+      chunkSplitter: importMode.chunkConfig?.chunkSplitter || '',
+      indexSize: importMode.chunkConfig?.indexSize || 1024,
+
+      // Enhance config (with adaptive adjustment)
+      dataEnhanceCollectionName: adjustedEnhanceConfig.dataEnhanceCollectionName ?? false,
+      imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
+      autoIndexes: adjustedEnhanceConfig.autoIndexes ?? false,
+      hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
+      indexPrefixTitle: adjustedEnhanceConfig.indexPrefixTitle ?? false,
+      small2bigIndexes: adjustedEnhanceConfig.small2bigIndexes ?? false,
+      syntheticIndex: adjustedEnhanceConfig.syntheticIndex,
+      small2bigConfig: adjustedEnhanceConfig.small2bigConfig,
+
+      // Prompt config
+      autoIndexesPrompt: importMode.promptConfig?.autoIndexesPrompt || '',
+      hypeIndexPrompt: importMode.promptConfig?.hypeIndexPrompt || '',
+      imageIndexPrompt: importMode.promptConfig?.imageIndexPrompt || '',
+      qaPrompt: importMode.promptConfig?.qaPrompt || ''
+    }
+  });
+
+  // 8. Remove buffer
+  await deleteRawTextBuffer(fileId);
+
+  return {
+    collectionId,
+    insertLen: insertResults?.insertLen ?? 0,
+    configAdjustments: adjustments.length > 0 ? adjustments : undefined
+  };
+}
+
+export default NextAPI(handler);

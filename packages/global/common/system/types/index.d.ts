@@ -10,6 +10,7 @@ import type {
   RerankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
+import type { small2bigConfigType } from '../../../core/dataset/type';
 
 export type NavbarItemType = {
   id: string;
@@ -162,6 +163,116 @@ export type SystemEnvType = {
 
   // Hype index parameters
   hypeParams?: HypeParamsType;
+
+  // Custom template import configuration
+  customTemplateImport?: {
+    modes?: Array<{
+      name: string;
+      enabled?: boolean;
+      contentDetection?: {
+        // Placeholder for content detection rules
+        rules?: any[];
+      };
+      enhanceConfig?: {
+        autoIndexes?: boolean;
+        small2bigIndexes?: boolean;
+        syntheticIndex?: boolean;
+        hypeIndexes?: boolean;
+        hypeIndexPrompt?: string;
+        small2bigConfig?: small2bigConfigType;
+        autoIndexesPrompt?: string;
+        imageIndexPrompt?: string;
+      };
+    }>;
+    defaultActivateMode?: string; // Name of default activate mode to use
+  };
+
+  // Custom file import configuration
+  customFileImport?: CustomFileImportConfigType;
+
+  // Custom link import configuration
+  customLinkImport?: CustomLinkImportConfigType;
+};
+
+// 文件解析配置
+export type CustomFileParseConfigType = {
+  customPdfParse?: boolean; // PDF 增强解析
+};
+
+// 分块配置
+export type CustomChunkConfigType = {
+  trainingType?: 'chunk' | 'qa';
+  chunkTriggerType?: 'minSize' | 'maxSize' | 'forceChunk';
+  chunkTriggerMinSize?: number;
+  chunkSettingMode?: 'auto' | 'custom';
+  chunkSplitMode?: 'paragraph' | 'size' | 'char';
+  paragraphChunkAIMode?: 'forbid' | 'auto' | 'force';
+  paragraphChunkDeep?: number;
+  paragraphChunkMinSize?: number;
+  chunkSize?: number;
+  chunkSplitter?: string;
+  indexSize?: number;
+};
+
+// 增强配置
+export type CustomEnhanceConfigType = {
+  dataEnhanceCollectionName?: boolean;
+  imageIndex?: boolean;
+  autoIndexes?: boolean;
+  hypeIndexes?: boolean;
+  indexPrefixTitle?: boolean;
+  small2bigIndexes?: boolean;
+  syntheticIndex?: boolean;
+  small2bigConfig?: small2bigConfigType;
+};
+
+// Prompt 配置
+export type CustomPromptConfigType = {
+  autoIndexesPrompt?: string;
+  hypeIndexPrompt?: string;
+  imageIndexPrompt?: string;
+  qaPrompt?: string;
+};
+
+// 文件导入模式配置
+export type CustomFileImportModeType = {
+  name: string;
+  enabled?: boolean;
+  fileTypes?: string[]; // 适用的文件类型
+  contentDetection?: {
+    rules?: any[]; // 内容探测规则（预留）
+  };
+  parseConfig?: CustomFileParseConfigType;
+  chunkConfig?: CustomChunkConfigType;
+  enhanceConfig?: CustomEnhanceConfigType;
+  promptConfig?: CustomPromptConfigType;
+};
+
+// 文件导入总配置
+export type CustomFileImportConfigType = {
+  defaultActivateMode?: string;
+  modes?: CustomFileImportModeType[];
+};
+
+// 链接导入模式配置
+export type CustomLinkImportModeType = {
+  name: string;
+  enabled?: boolean;
+  contentDetection?: {
+    rules?: any[];
+  };
+  parseConfig?: {
+    webPageSelector?: string;
+  };
+  chunkConfig?: CustomChunkConfigType;
+  enhanceConfig?: CustomEnhanceConfigType;
+  promptConfig?: CustomPromptConfigType;
+};
+
+// 链接导入总配置
+export type CustomLinkImportConfigType = {
+  defaultActivateMode?: string;
+  modes?: CustomLinkImportModeType[];
 };
 
 export type customPdfParseType = {

@@ -42,6 +42,7 @@ import {
   DBDatasetValueVectorTableName,
   DatasetVectorTableName
 } from '../../../common/vectorDB/constants';
+import { addLog } from '../../../common/system/log';
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
@@ -61,6 +62,12 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }) => {
+  addLog.debug('[createCollectionAndInsertData] Input params', {
+    rawTextLength: rawText?.length,
+    imageIdsCount: imageIds?.length,
+    collectionType: createCollectionParams.type
+  });
+
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
     createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
@@ -225,7 +232,14 @@ export const createCollectionAndInsertData = async ({
 
     // 5. insert to training queue
     const insertResults = await (async () => {
+      addLog.debug('[createCollectionAndInsertData] Checking training queue path', {
+        hasRawText: !!rawText,
+        hasImageIds: !!imageIds,
+        chunksCount: chunks.length
+      });
+
       if (rawText || imageIds) {
+        addLog.debug('[createCollectionAndInsertData] Pushing to data training queue');
         return pushDataListToTrainingQueue({
           teamId,
           tmbId,
@@ -248,6 +262,7 @@ export const createCollectionAndInsertData = async ({
           session
         });
       } else {
+        addLog.debug('[createCollectionAndInsertData] Pushing to parse queue');
         await pushDatasetToParseQueue({
           teamId,
           tmbId,
@@ -256,6 +271,7 @@ export const createCollectionAndInsertData = async ({
           billId: traingBillId,
           session
         });
+        addLog.debug('[createCollectionAndInsertData] Successfully pushed to parse queue');
         return {
           insertLen: 0
         };
