@@ -141,5 +141,18 @@
   "assistant_source_type_faq": "FAQ问答",
   "assistant_source_type_sql": "数据库查询",
   "assistant_source_type_correction": "校正数据",
-  "assistant_source_type_chunk": "知识库"
+  "assistant_source_type_chunk": "知识库",
+  "question_rewrite": "问题改写",
+  "knowledge_recall": "知识召回",
+  "knowledge_rerank": "知识重排",
+  "final_answer": "最终回答",
+  "no_recall_content": "未召回内容",
+  "fallback_reply": "兜底回复",
+  "chat_details": "对话详情",
+  "source_type_faq": "FAQ",
+  "source_type_sql": "数据库",
+  "source_type_correction": "优化记录",
+  "source_type_chunk": "分块",
+  "faq_matched_correction": "已匹配到人工优化记录",
+  "faq_matched_direct_use": "已匹配到 FAQ（已设置直接使用原文回答）"
 }
