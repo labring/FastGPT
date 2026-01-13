@@ -103,8 +103,8 @@ const Workflow = () => {
   // 异步 fitView：等待所有节点加载完成后再执行
   const { fitView } = useReactFlow();
   const fitViewDone = useRef(false);
-
   useEffect(() => {
+    // 确保仅自动布局一次。且所有节点都渲染完成。
     if (fitViewDone.current || !nodes.length || !nodes.every((node) => node.width && node.height))
       return;
 
