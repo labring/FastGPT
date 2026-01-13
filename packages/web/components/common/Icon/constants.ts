@@ -17,6 +17,9 @@ export const iconPaths = {
   collectionSolid: () => import('./icons/collectionSolid.svg'),
   comment: () => import('./icons/comment.svg'),
   mysql: () => import('./icons/mysql.svg'),
+  mssql: () => import('./icons/mssql.svg'),
+  oracle: () => import('./icons/oracle.svg'),
+  pgsql: () => import('./icons/pgsql.svg'),
   'common/add2': () => import('./icons/common/add2.svg'),
   'common/addCircleLight': () => import('./icons/common/addCircleLight.svg'),
   'common/addLight': () => import('./icons/common/addLight.svg'),
@@ -524,3 +527,4 @@ export const iconPaths = {
   visible: () => import('./icons/visible.svg'),
   wx: () => import('./icons/wx.svg')
 };
+

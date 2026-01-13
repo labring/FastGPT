@@ -1,5 +1,6 @@
 import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
+import { addLog } from '../../../../common/system/log';
 import type {
   DatabaseConfig,
   TableSchemaType,
@@ -70,9 +71,19 @@ export abstract class AsyncDB {
           encrypt: config.encrypt || false,
           trustServerCertificate: config.trustServerCertificate || false
         }
+      }),
+      // Oracle specific - 使用 database 字段作为 serviceName
+      ...(config.clientType === DatabaseTypeEnum.oracle && {
+        serviceName: config.database,
+        schema: config.schema || (config.user ? config.user.toUpperCase() : ''),
+        extra: {
+          poolMax: config.poolSize || 20,
+          poolMin: 0,
+          poolIncrement: 1
+        }
       })
     };
-    console.debug(`[AsyncDB.from_uri]:${JSON.stringify(options, null, 2)}`);
+    addLog.debug(`[AsyncDB.from_uri]:${JSON.stringify(options, null, 2)}`);
     return new DataSource(options);
   }
 
@@ -169,9 +180,25 @@ export abstract class AsyncDB {
         return `"${identifier}"`;
       case DatabaseTypeEnum.mssql:
         return `[${identifier}]`;
+      case DatabaseTypeEnum.oracle:
+        return `"${identifier}"`;
       default:
         return identifier;
     }
+  }
+
+  /**
+   * 构建采样查询 SQL，不同数据库有不同的限制行数语法
+   * 子类可以覆写此方法以使用特定数据库的语法
+   */
+  protected buildSampleQuery(tableName: string, columnName: string, limit: number): string {
+    // 默认使用 MySQL/PostgreSQL 的 LIMIT 语法
+    return `
+      SELECT DISTINCT ${this.getProtectedIdentifier(columnName)}
+      FROM ${this.getProtectedIdentifier(tableName)}
+      WHERE ${this.getProtectedIdentifier(columnName)} IS NOT NULL
+      LIMIT ${limit}
+    `;
   }
 
   async get_table_info(tableName: string, getExamples: boolean = false): Promise<TableSchemaType> {
@@ -194,12 +221,7 @@ export abstract class AsyncDB {
         let valueIndex = false;
 
         if (getExamples) {
-          const sql = `
-                    SELECT DISTINCT ${this.getProtectedIdentifier(col.name)}
-                    FROM ${this.getProtectedIdentifier(tableName)}
-                    WHERE ${this.getProtectedIdentifier(col.name)} IS NOT NULL
-                        LIMIT ${this.sample_value_num}
-                `;
+          const sql = this.buildSampleQuery(tableName, col.name, this.sample_value_num);
 
           try {
             const result = await queryRunner.query(sql);
@@ -214,7 +236,7 @@ export abstract class AsyncDB {
 
             if (isStringType(col.type as ColumnType) && examples.length > 0) valueIndex = true;
           } catch (error) {
-            console.warn(`获取列 ${col.name} 的示例数据失败:`, error);
+            addLog.warn(`Failed to get sample data for column ${col.name}:`, { error });
             examples = [];
           }
         }

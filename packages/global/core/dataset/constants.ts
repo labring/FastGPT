@@ -39,6 +39,7 @@ export enum DatabaseTypeEnum {
   mysql = 'mysql',
   postgresql = 'postgres',
   mssql = 'mssql',
+  oracle = 'oracle',
   sqlite = 'sqlite',
   duckdb = 'duckdb'
 }

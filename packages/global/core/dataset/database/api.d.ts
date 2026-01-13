@@ -146,6 +146,13 @@ export type MssqlConfigType = DativeDBConfigType & {
   ns_name?: string;
 };
 
+export type OracleConfigType = DativeDBConfigType & {
+  type: DatabaseTypeEnum.oracle;
+  serviceName?: string;
+  sid?: string;
+  ns_name?: string;
+};
+
 export type SqliteConfigType = DativeDBConfigType & {
   type: DatabaseTypeEnum.sqlite;
   db_path?: string;
@@ -168,6 +175,7 @@ export type DativeSourceConfigType =
   | DuckDBStoreConfigType
   | PostgresqlConfigType
   | MssqlConfigType
+  | OracleConfigType
   | SqliteConfigType;
 
 // SQL Generation types
@@ -255,3 +263,4 @@ export type SqlQueryResponse = {
 
 /*-------Database Metadata Types-------*/
 export type DatabaseMetadataRequest = DativeSourceConfigType;
+

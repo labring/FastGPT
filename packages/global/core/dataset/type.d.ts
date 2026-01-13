@@ -75,9 +75,8 @@ export type DatabaseConfig = {
   database: string;
   user: string;
   password: string;
-  encrypt?: boolean;
   poolSize?: number;
-  // PostgreSQL specific
+  // PostgreSQL / MSSQL / Oracle specific
   schema?: string;
   // MSSQL specific
   encrypt?: boolean;
@@ -463,3 +462,4 @@ export type TransformationRecordType = {
   // 关联信息
   synonymMappingId: string; // 关联的同义词映射记录ID（MongoSynonymMapping._id）
 };
+

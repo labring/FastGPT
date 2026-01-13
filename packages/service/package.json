@@ -55,6 +55,7 @@
     "pino-opentelemetry-transport": "^1.0.1",
     "request-ip": "^3.3.0",
     "mssql": "^11.0.1",
+    "oracledb": "^6.3.0",
     "tiktoken": "1.0.17",
     "tunnel": "^0.0.6",
     "turndown": "^7.1.2",
@@ -76,3 +77,4 @@
     "@types/turndown": "^5.0.4"
   }
 }
+

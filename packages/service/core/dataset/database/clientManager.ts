@@ -4,6 +4,7 @@ import { addLog } from '../../../common/system/log';
 import { MysqlClient } from './model/mysql';
 import { PostgresqlClient } from './model/postgresql';
 import { MssqlClient } from './model/mssql';
+import { OracleClient } from './model/oracle';
 import type { AsyncDB } from './model/asyncDB';
 import { MongoDataset } from '../schema';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -17,6 +18,8 @@ export async function createDatabaseClient(config: DatabaseConfig): Promise<Asyn
       return PostgresqlClient.fromConfig(config);
     case DatabaseTypeEnum.mssql:
       return MssqlClient.fromConfig(config);
+    case DatabaseTypeEnum.oracle:
+      return OracleClient.fromConfig(config);
     default:
       return Promise.reject(DatabaseErrEnum.notSupportType);
   }
@@ -100,3 +103,4 @@ export async function withDatabaseClientByConfig<T>(
     }
   }
 }
+

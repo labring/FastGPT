@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Box, Flex, Input, VStack, HStack, Text, Alert } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetImportContext } from '../Context';
@@ -13,11 +13,12 @@ import { databaseAddrValidator } from '../utils';
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyInput from '@/components/MyInput';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import DatabaseTypeSelector from './DatabaseTypeSelector';
+import { getDatabaseTypeConfig, getDefaultPort } from './databaseTypeConfig';
 
 export type DatabaseFormData = {
   clientType: DatabaseConfig['clientType'];
@@ -27,6 +28,8 @@ export type DatabaseFormData = {
   user: string;
   password: string;
   poolSize: number;
+  // PostgreSQL / MSSQL / Oracle specific
+  schema?: string;
 };
 
 const PORT_RANGE = [1, 65535];
@@ -48,11 +51,14 @@ const ConnectDatabaseConfig = () => {
   const defaultValues = {
     clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
     host: databaseConfig?.host || '',
-    port: databaseConfig?.port || 3306,
+    port:
+      databaseConfig?.port || getDefaultPort(databaseConfig?.clientType || DatabaseTypeEnum.mysql),
     database: databaseConfig?.database || '',
     user: databaseConfig?.user || '',
     password: databaseConfig?.password || '',
-    poolSize: databaseConfig?.poolSize || 20
+    poolSize: databaseConfig?.poolSize || 20,
+    // PostgreSQL / MSSQL / Oracle specific
+    schema: (databaseConfig as any)?.schema || ''
   };
 
   const {
@@ -61,6 +67,8 @@ const ConnectDatabaseConfig = () => {
     watch,
     getValues,
     reset,
+    control,
+    setValue,
     formState: { errors, isValid }
   } = useForm<DatabaseFormData>({
     defaultValues,
@@ -75,11 +83,14 @@ const ConnectDatabaseConfig = () => {
         const defaultValues = {
           clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
           host: databaseConfig?.host || '',
-          port: databaseConfig?.port || 3306,
+          port:
+            databaseConfig?.port ||
+            getDefaultPort(databaseConfig?.clientType || DatabaseTypeEnum.mysql),
           database: databaseConfig?.database || '',
           user: databaseConfig?.user || '',
           password: databaseConfig?.password || '',
-          poolSize: databaseConfig?.poolSize || 20
+          poolSize: databaseConfig?.poolSize || 20,
+          schema: (databaseConfig as any)?.schema || ''
         };
         reset(defaultValues);
       });
@@ -87,6 +98,19 @@ const ConnectDatabaseConfig = () => {
   }, []);
 
   const formData = watch();
+  const currentClientType = watch('clientType');
+  const currentTypeConfig = getDatabaseTypeConfig(currentClientType);
+
+  // Handle database type change - update port and default database
+  const handleDatabaseTypeChange = (type: DatabaseTypeEnum) => {
+    setValue('clientType', type);
+    setValue('port', getDefaultPort(type));
+    // Oracle 默认数据库名为 XEPDB1
+    const typeConfig = getDatabaseTypeConfig(type);
+    if (typeConfig?.defaultDatabase && !getValues('database')) {
+      setValue('database', typeConfig.defaultDatabase);
+    }
+  };
 
   const handleSuccess = async (isGoNext = true) => {
     if (isGoNext) {
@@ -116,38 +140,17 @@ const ConnectDatabaseConfig = () => {
             <FormLabel required fontSize="14px" fontWeight="medium" color="myGray.900" mb={4}>
               {t('dataset:database_type')}
             </FormLabel>
-            <Box
-              border="1px solid"
-              borderColor="blue.200"
-              borderRadius="md"
-              p={3}
-              bg="blue.50"
-              cursor="pointer"
-            >
-              <HStack spacing={3}>
-                <Flex
-                  w={'18px'}
-                  h={'18px'}
-                  borderWidth={'1px'}
-                  borderColor={'primary.600'}
-                  bg={'primary.1'}
-                  borderRadius={'50%'}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                >
-                  <Box w={'5px'} h={'5px'} borderRadius={'50%'} bg={'primary.600'}></Box>
-                </Flex>
-                <MyIcon name="mysql" w="40px" h="40px" color="blue.500" />
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="myGray.900">
-                    MySQL
-                  </Text>
-                  <Text fontSize="xs" color="myGray.600">
-                    {t('dataset:mysql_description')}
-                  </Text>
-                </Box>
-              </HStack>
-            </Box>
+            <Controller
+              name="clientType"
+              control={control}
+              render={({ field }) => (
+                <DatabaseTypeSelector
+                  value={field.value}
+                  onChange={handleDatabaseTypeChange}
+                  isDisabled={isEditMode}
+                />
+              )}
+            />
           </Box>
         )}
 
@@ -200,7 +203,7 @@ const ConnectDatabaseConfig = () => {
             >
               <Input
                 type="number"
-                placeholder="3306"
+                placeholder={String(getDefaultPort(currentClientType))}
                 bg="myGray.50"
                 isInvalid={Boolean(errors.port)}
                 {...register('port', {
@@ -215,12 +218,20 @@ const ConnectDatabaseConfig = () => {
           </Box>
         </Box>
 
-        {/* Database Name */}
+        {/* Database Name / Oracle ServiceName */}
         <Box>
           <FormLabel required mb={1}>
             {t('dataset:database_name')}
+            {currentTypeConfig?.databaseTooltipKey && (
+              <QuestionTip label={t(currentTypeConfig.databaseTooltipKey)} />
+            )}
           </FormLabel>
           <Input
+            placeholder={
+              currentTypeConfig?.databasePlaceholderKey
+                ? t(currentTypeConfig.databasePlaceholderKey) || ''
+                : ''
+            }
             bg="myGray.50"
             isInvalid={!!errors.database}
             {...register('database', {
@@ -270,22 +281,56 @@ const ConnectDatabaseConfig = () => {
           />
         </Box>
 
+        {/* Schema - for PostgreSQL, MSSQL, Oracle */}
+        {currentTypeConfig?.hasSchema && (
+          <Box>
+            <FormLabel mb={1}>
+              {t('dataset:database_schema')}
+              <QuestionTip
+                label={t(currentTypeConfig?.schemaTooltipKey || 'dataset:database_schema_tooltip')}
+              />
+            </FormLabel>
+            <Input
+              placeholder={
+                t(
+                  currentTypeConfig?.schemaPlaceholderKey || 'dataset:database_schema_placeholder'
+                ) || ''
+              }
+              bg="myGray.50"
+              {...register('schema')}
+            />
+          </Box>
+        )}
+
         {/* Connection Pool Size */}
         <Box>
           <FormLabel required mb={1}>
             {t('dataset:connection_pool_size')}
             <QuestionTip label={t('dataset:connection_pool_size_tooltip')} />
           </FormLabel>
-          <MyNumberInput
-            size={'sm'}
-            isRequired
-            min={1}
-            max={100}
-            step={1}
-            isInvalid={!!errors.poolSize}
-            register={register}
-            name="poolSize"
-          />
+          <Box
+            css={{
+              '& > span': {
+                display: 'block'
+              }
+            }}
+          >
+            <MyTooltip label={t('dataset:connection_pool_range_tip')}>
+              <Input
+                type="number"
+                placeholder="20"
+                bg="myGray.50"
+                isInvalid={!!errors.poolSize}
+                {...register('poolSize', {
+                  required: true,
+                  min: 1,
+                  max: 100,
+                  valueAsNumber: true,
+                  validate: (value) => Number.isInteger(value)
+                })}
+              />
+            </MyTooltip>
+          </Box>
         </Box>
         <FormBottomButtons
           isEditMode={isEditMode}

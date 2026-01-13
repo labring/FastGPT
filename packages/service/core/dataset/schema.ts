@@ -176,7 +176,8 @@ const DatasetSchema = new Schema({
           validator: function (this: any) {
             return (
               this.databaseConfig?.clientType === DatabaseTypeEnum.postgresql ||
-              this.databaseConfig?.clientType === DatabaseTypeEnum.mssql
+              this.databaseConfig?.clientType === DatabaseTypeEnum.mssql ||
+              this.databaseConfig?.clientType === DatabaseTypeEnum.oracle
             );
           }
         }
@@ -198,6 +199,23 @@ const DatasetSchema = new Schema({
         validate: {
           validator: function (this: any) {
             return this.databaseConfig?.clientType === DatabaseTypeEnum.mssql;
+          }
+        }
+      },
+      // Oracle specific
+      serviceName: {
+        type: String,
+        validate: {
+          validator: function (this: any) {
+            return this.databaseConfig?.clientType === DatabaseTypeEnum.oracle;
+          }
+        }
+      },
+      sid: {
+        type: String,
+        validate: {
+          validator: function (this: any) {
+            return this.databaseConfig?.clientType === DatabaseTypeEnum.oracle;
           }
         }
       },

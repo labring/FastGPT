@@ -122,13 +122,25 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   const { runAsync: testConnection, loading: isConnecting } = useRequest2(
     async () => {
       const databaseConfig: DatabaseConfig = {
-        clientType: DatabaseTypeEnum.mysql,
+        clientType: formData.clientType,
         host: formData.host,
         port: formData.port,
         database: formData.database,
         user: formData.user,
         password: formData.password,
-        poolSize: formData.poolSize
+        poolSize: formData.poolSize,
+        // PostgreSQL / MSSQL / Oracle specific
+        // Oracle: 没有填写 schema 时默认使用用户名大写
+        ...(formData.schema
+          ? { schema: formData.schema }
+          : formData.clientType === DatabaseTypeEnum.oracle
+            ? { schema: formData.user.toUpperCase() }
+            : {}),
+        // MSSQL specific - hardcoded defaults
+        ...(formData.clientType === DatabaseTypeEnum.mssql && {
+          encrypt: false,
+          trustServerCertificate: true
+        })
       };
 
       return await postCheckDatabaseConnection({
@@ -157,13 +169,25 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest2(
     async (data: any) => {
       const databaseConfig: DatabaseConfig = {
-        clientType: DatabaseTypeEnum.mysql,
+        clientType: data.clientType,
         host: data.host,
         port: data.port,
         database: data.database,
         user: data.user,
         password: data.password,
-        poolSize: data.poolSize
+        poolSize: data.poolSize,
+        // PostgreSQL / MSSQL / Oracle specific
+        // Oracle: 没有填写 schema 时默认使用用户名大写
+        ...(data.schema
+          ? { schema: data.schema }
+          : data.clientType === DatabaseTypeEnum.oracle
+            ? { schema: data.user.toUpperCase() }
+            : {}),
+        // MSSQL specific - hardcoded defaults
+        ...(data.clientType === DatabaseTypeEnum.mssql && {
+          encrypt: false,
+          trustServerCertificate: true
+        })
       };
 
       await updateDatasetConfig({
@@ -431,3 +455,4 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
 };
 
 export default FormBottomButtons;
+
