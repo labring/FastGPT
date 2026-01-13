@@ -20,10 +20,13 @@ export type readRawTextByLocalFileParams = {
   getFormatText?: boolean;
   metadata?: Record<string, any>;
 };
-export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
+export const readRawTextByLocalFile = async (
+  params: readRawTextByLocalFileParams
+): Promise<ReadFileResponse> => {
   const { path } = params;
 
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
+  const filename = path?.split(/[/\\]/).pop() || undefined;
 
   const buffer = await fs.promises.readFile(path);
 
@@ -35,7 +38,8 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata
+    metadata: params.metadata,
+    filename
   });
 };
 
@@ -48,7 +52,8 @@ export const readRawContentByFileBuffer = async ({
   encoding,
   metadata,
   customPdfParse = false,
-  getFormatText = true
+  getFormatText = true,
+  filename
 }: {
   teamId: string;
   tmbId: string;
@@ -60,9 +65,8 @@ export const readRawContentByFileBuffer = async ({
 
   customPdfParse?: boolean;
   getFormatText?: boolean;
-}): Promise<{
-  rawText: string;
-}> => {
+  filename?: string;
+}): Promise<ReadFileResponse> => {
   const systemParse = () =>
     readRawContentFromBuffer({
       extension,
@@ -81,7 +85,7 @@ export const readRawContentByFileBuffer = async ({
 
     const data = new FormData();
     data.append('file', buffer, {
-      filename: `file.${extension}`
+      filename: filename || `file.${extension}`
     });
     const { data: response } = await axios.post<{
       pages: number;
