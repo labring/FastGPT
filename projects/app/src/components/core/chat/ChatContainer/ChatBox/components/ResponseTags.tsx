@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -15,6 +15,7 @@ import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { formatChatValue2InputType } from '../utils';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -27,6 +28,7 @@ export type CitationRenderItem = {
 
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
+const AssistantDetailModal = dynamic(() => import('../../../components/AssistantDetailModal'));
 
 const ResponseTags = ({
   showTags,
@@ -48,6 +50,10 @@ const ResponseTags = ({
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
 
+  const chatText = useMemo(
+    () => formatChatValue2InputType(historyItem.value).text || '',
+    [historyItem.value]
+  );
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
   const {
@@ -63,6 +69,14 @@ const ResponseTags = ({
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
+  const isAssistantType = useContextSelector(ChatBoxContext, (v) => v.isAssistantType);
+
+  const chatBoxData = useContextSelector(ChatBoxContext, (v) => ({
+    appId: v.appId,
+    chatId: v.chatId,
+    outLinkAuthData: v.outLinkAuthData
+  }));
+
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
   const {
@@ -70,6 +84,11 @@ const ResponseTags = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
+
+  // 处理查看完整响应
+  const handleViewFullResponse = useCallback(() => {
+    onOpenWholeModal();
+  }, [onOpenWholeModal]);
   const {
     isOpen: isOpenContextModal,
     onOpen: onOpenContextModal,
@@ -293,7 +312,7 @@ const ResponseTags = ({
                 colorSchema="gray"
                 type="borderSolid"
                 cursor={'pointer'}
-                onClick={onOpenWholeModal}
+                onClick={handleViewFullResponse}
               >
                 {t('common:core.chat.response.Read complete response')}
               </MyTag>
@@ -303,7 +322,18 @@ const ResponseTags = ({
       )}
 
       {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
-      {isOpenWholeModal && (
+      {isOpenWholeModal && isAssistantType && (
+        <AssistantDetailModal
+          isOpen={isOpenWholeModal}
+          onClose={onCloseWholeModal}
+          dataId={dataId}
+          appId={chatBoxData.appId}
+          chatId={chatBoxData.chatId}
+          chatTime={chatTime}
+          outLinkAuthData={chatBoxData.outLinkAuthData}
+        />
+      )}
+      {isOpenWholeModal && !isAssistantType && (
         <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
       )}
     </>

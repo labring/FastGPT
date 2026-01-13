@@ -141,5 +141,18 @@
   "assistant_source_type_faq": "FAQ問答",
   "assistant_source_type_sql": "資料庫查詢",
   "assistant_source_type_correction": "校正資料",
-  "assistant_source_type_chunk": "知識庫"
+  "assistant_source_type_chunk": "知識庫",
+  "question_rewrite": "問題改寫",
+  "knowledge_recall": "知識召回",
+  "knowledge_rerank": "知識重排",
+  "final_answer": "最終回答",
+  "no_recall_content": "未召回內容",
+  "fallback_reply": "兜底回覆",
+  "chat_details": "對話詳情",
+  "source_type_faq": "FAQ",
+  "source_type_sql": "資料庫",
+  "source_type_correction": "優化記錄",
+  "source_type_chunk": "分塊",
+  "faq_matched_correction": "已匹配到人工優化記錄",
+  "faq_matched_direct_use": "已匹配到 FAQ（已設置直接使用原文回答）"
 }

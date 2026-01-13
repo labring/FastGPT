@@ -13,10 +13,12 @@ import { useContextSelector } from 'use-context-selector';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const StandaloneResponseModal = dynamic(
   () => import('../../../../components/StandaloneResponseModal')
 );
+const AssistantDetailModal = dynamic(() => import('../../../../components/AssistantDetailModal'));
 
 export type ChatItemControllerProps = {
   isLastChild: boolean;
@@ -84,6 +86,8 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
   const chatId = chatBoxData?.chatId;
   const outLinkAuthData = {};
 
+  const isAssistantType = chatBoxData?.app?.type === AppTypeEnum.assistant;
+
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
   // 查看详情模态框状态
@@ -97,6 +101,11 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
 
   // 判断是否为AI角色
   const isAI = chat.obj === ChatRoleEnum.AI;
+
+  // 处理查看完整响应
+  const handleViewFullResponse = useCallback(async () => {
+    onOpenWholeModal();
+  }, [onOpenWholeModal]);
 
   // 截断用户反馈内容
   const truncateFeedback = useCallback((feedback: string, maxLength: number = 20) => {
@@ -125,7 +134,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
         <IconButton
           key="view-full"
           name="common/userInfo"
-          onClick={onOpenWholeModal}
+          onClick={handleViewFullResponse}
           tooltip={t('chat:chat_response_complete')}
         />
       );
@@ -228,7 +237,18 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
       </Flex>
 
       {/* 查看详情模态框 */}
-      {isOpenWholeModal && (
+      {isOpenWholeModal && isAssistantType && (
+        <AssistantDetailModal
+          isOpen={isOpenWholeModal}
+          onClose={onCloseWholeModal}
+          dataId={chat.dataId}
+          appId={appId || ''}
+          chatId={chatId}
+          chatTime={chatTime}
+          outLinkAuthData={outLinkAuthData}
+        />
+      )}
+      {isOpenWholeModal && !isAssistantType && (
         <StandaloneResponseModal
           isOpen={isOpenWholeModal}
           onClose={onCloseWholeModal}
