@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -32,9 +32,14 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsEnum } from '@fastgpt/global/support/user/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 
@@ -47,28 +52,55 @@ const SystemToolConfigModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { register, reset, handleSubmit, setValue, watch, control } =
-    useForm<AdminSystemToolDetailType>();
+  const { toast } = useToast();
+  const { register, reset, handleSubmit, setValue, watch, control } = useForm<UpdateToolBodyType>();
 
   const { data: tool, loading } = useRequest2(() => getAdminSystemToolDetail({ toolId }), {
     onSuccess(res) {
-      reset(res);
+      // 转换 AdminSystemToolDetailType 到 UpdateToolBodyType
+      const formData: Partial<UpdateToolBodyType> = {
+        status: res.status,
+        defaultInstalled: res.defaultInstalled,
+        inputListVal: res.inputListVal,
+        systemKeyCost: res.systemKeyCost,
+        childTools: res.childTools?.map((t) => ({
+          pluginId: t.pluginId,
+          systemKeyCost: t.systemKeyCost
+        })),
+        promoteTags: res.promoteTags,
+        hideTags: res.hideTags,
+        tagIds: res.tags || []
+      };
+      reset(formData);
+      setSelectedTags(res.tags || []);
     },
     manual: false
   });
 
-  const [inputList, status, defaultInstalled, inputListVal, childTools, promoteTags, hideTags] =
-    watch([
-      'inputList',
-      'status',
-      'defaultInstalled',
-      'inputListVal',
-      'childTools',
-      'promoteTags',
-      'hideTags'
-    ]);
+  // 从表单 watch 可变数据
+  const [status, defaultInstalled, inputListVal, childTools, promoteTags, hideTags] = watch([
+    'status',
+    'defaultInstalled',
+    'inputListVal',
+    'childTools',
+    'promoteTags',
+    'hideTags'
+  ]);
+
+  // 从 tool 读取只读数据
+  const inputList = tool?.inputList;
+  const isFolder = tool?.isFolder;
+
+  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>(
+    tool?.tags ?? [],
+    false
+  );
+
+  useEffect(() => {
+    setValue('tagIds', selectedTags);
+  }, [selectedTags, setValue]);
 
   // 是否显示系统密钥配置
   const showSystemSecretInput = !!inputList && inputList.length > 0;
@@ -79,17 +111,24 @@ const SystemToolConfigModal = ({
     value: tag
   }));
 
+  const { data: toolTags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
+    manual: false
+  });
+
+  const pluginTypeSelectList = useMemo(
+    () =>
+      toolTags?.map((tag) => ({
+        label: parseI18nString(tag.tagName, i18n.language),
+        value: tag.tagId
+      })) || [],
+    [i18n.language, toolTags]
+  );
+
   const { runAsync: onSubmit, loading: submitting } = useRequest2(
-    (formData: AdminSystemToolDetailType) =>
+    (formData: UpdateToolBodyType) =>
       putAdminUpdateTool({
         ...formData,
-        pluginId: toolId,
-        childTools: formData.childTools?.map((tool) => {
-          return {
-            pluginId: tool.pluginId,
-            systemKeyCost: tool.systemKeyCost
-          };
-        })
+        pluginId: toolId
       }),
     {
       successToast: t('common:Config') + t('common:Success'),
@@ -156,7 +195,7 @@ const SystemToolConfigModal = ({
     <>
       <MyDivider my={2} />
 
-      {!tool?.isFolder && (
+      {!isFolder && (
         <HStack>
           <Box flex={1} fontSize={'sm'} fontWeight={'medium'}>
             {t('app:toolkit_system_key_cost')}
@@ -170,24 +209,24 @@ const SystemToolConfigModal = ({
           />
         </HStack>
       )}
-      {tool?.inputList?.map(renderInputField)}
+      {inputList?.map(renderInputField)}
     </>
   );
 
   return (
     <MyModal
       isOpen
-      isLoading={loading}
+      isLoading={loading || loadingTags}
       title={t('app:toolkit_tool_config', { name: tool?.name })}
       iconSrc={tool?.avatar}
       onClose={onClose}
-      width={tool?.isFolder ? '900px' : '450px'}
-      height={tool?.isFolder ? '500px' : 'auto'}
-      maxW={tool?.isFolder ? '900px' : '600px'}
+      width={isFolder ? '900px' : '450px'}
+      height={isFolder ? '500px' : 'auto'}
+      maxW={isFolder ? '900px' : '600px'}
       bg={'white'}
     >
       <ModalBody>
-        {tool?.isFolder ? (
+        {isFolder ? (
           <Flex gap={5}>
             <Flex flexDirection={'column'} gap={5} flex={'0 0 300px'}>
               <Box fontWeight={'medium'} color={'myGray.900'}>
@@ -233,6 +272,28 @@ const SystemToolConfigModal = ({
                   }}
                 />
               </HStack>
+
+              <Box>
+                <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
+                  {t('app:custom_plugin_tags_label')}
+                </Box>
+                <MultipleSelect
+                  list={pluginTypeSelectList}
+                  value={selectedTags}
+                  onSelect={(newTags) => {
+                    if (newTags.length > 3) {
+                      toast({
+                        title: t('app:custom_plugin_tags_max_limit'),
+                        status: 'warning'
+                      });
+                      return;
+                    }
+                    setSelectedTags(newTags);
+                  }}
+                  placeholder={t('app:custom_plugin_tags_label')}
+                  w={'100%'}
+                />
+              </Box>
 
               {showSystemSecretInput && (
                 <>
@@ -304,21 +365,18 @@ const SystemToolConfigModal = ({
                       <Th fontSize="xs" py={2} px={2} width="50px">
                         {t('app:toolkit_tool_name')}
                       </Th>
-                      {/* <Th fontSize="xs" py={2} px={2} width="50px">
-                        {t('common:Status')}
-                      </Th> */}
                       <Th fontSize="xs" py={2} px={2} width="50px">
                         {t('app:toolkit_key_price')}
                       </Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {childTools?.map((tool, index) => {
+                    {tool?.childTools?.map((childTool, index) => {
                       return (
-                        <Tr key={tool.pluginId}>
+                        <Tr key={childTool.pluginId}>
                           <Td fontSize="xs">
                             <Text fontSize="xs" fontWeight="medium">
-                              {parseI18nString(tool.name)}
+                              {childTool.name}
                             </Text>
                           </Td>
                           <Td fontSize="xs">
@@ -328,6 +386,11 @@ const SystemToolConfigModal = ({
                               defaultValue={0}
                               name={`childTools.${index}.systemKeyCost`}
                               {...COST_LIMITS}
+                            />
+                            <Input
+                              type="hidden"
+                              {...register(`childTools.${index}.pluginId`)}
+                              value={childTool.pluginId}
                             />
                           </Td>
                         </Tr>
@@ -391,10 +454,9 @@ const SystemToolConfigModal = ({
                     onChange={(e) => {
                       const val = e.target.checked;
                       if (val) {
-                        // @ts-ignore
                         setValue('inputListVal', {});
                       } else {
-                        setValue('inputListVal', undefined);
+                        setValue('inputListVal', null);
                       }
                     }}
                   />
@@ -402,6 +464,37 @@ const SystemToolConfigModal = ({
                 {systemConfigSection}
               </>
             )}
+
+            <HStack>
+              <Box
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                mb={2}
+              >
+                {t('app:custom_plugin_tags_label')}
+              </Box>
+              <MultipleSelect
+                list={pluginTypeSelectList}
+                value={selectedTags}
+                onSelect={(newTags) => {
+                  if (newTags.length > 3) {
+                    toast({
+                      title: t('app:custom_plugin_tags_max_limit'),
+                      status: 'warning'
+                    });
+                    return;
+                  }
+                  setSelectedTags(newTags);
+                }}
+                placeholder={t('app:custom_plugin_tags_label')}
+                maxW={270}
+                h={9}
+                borderRadius={'sm'}
+                bg={'myGray.50'}
+              />
+            </HStack>
 
             {feConfigs?.showWecomConfig && (
               <>
