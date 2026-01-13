@@ -68,7 +68,8 @@ async function handler(
           { pluginId: tool.pluginId },
           {
             pluginId: tool.pluginId,
-            systemKeyCost: tool.systemKeyCost
+            systemKeyCost: tool.systemKeyCost,
+            inputListVal: updateFields.inputListVal
           },
           { upsert: true, session }
         );
