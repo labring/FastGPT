@@ -1389,5 +1389,7 @@
   "execute_different_branches_based_on_conditions": "根据一定的条件，执行不同的分支。",
   "faq_checker_node_name": "是否命中faq数据",
   "use_faq_data_reply": "使用faq数据回复",
-  "faq_reply_node_intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。"
+  "faq_reply_node_intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+  "core.file.error.docParseRequiresCustomService": "DOC 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/DOCX 格式。",
+  "core.file.error.pptParseRequiresCustomService": "PPT 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/PPTX 格式。"
 }

@@ -9,6 +9,7 @@ import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { i18nT } from '../../../../web/i18n/utils';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -134,8 +135,8 @@ export const readRawContentByFileBuffer = async ({
       imageList
     };
   };
-  // Custom read file service
-  const pdfParseFn = async (): Promise<ReadFileResponse> => {
+  // Custom read file service (for PDF, DOC)
+  const customDocumentParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
@@ -143,12 +144,40 @@ export const readRawContentByFileBuffer = async ({
     return systemParse();
   };
 
+  // DOC file parse function
+  const docParseFn = async (): Promise<ReadFileResponse> => {
+    if (!customPdfParse) {
+      return Promise.reject(i18nT('common:core.file.error.docParseRequiresCustomService'));
+    }
+    if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
+
+    return Promise.reject(i18nT('common:core.file.error.docParseRequiresCustomService'));
+  };
+
+  // PPT file parse function (same as DOC)
+  const pptParseFn = async (): Promise<ReadFileResponse> => {
+    if (!customPdfParse) {
+      return Promise.reject(i18nT('common:core.file.error.pptParseRequiresCustomService'));
+    }
+    if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
+
+    return Promise.reject(i18nT('common:core.file.error.pptParseRequiresCustomService'));
+  };
+
   const start = Date.now();
   addLog.debug(`Start parse file`, { extension });
 
   let { rawText, formatText, imageList } = await (async () => {
     if (extension === 'pdf') {
-      return await pdfParseFn();
+      return await customDocumentParseFn();
+    }
+    if (extension === 'doc') {
+      return await docParseFn();
+    }
+    if (extension === 'ppt') {
+      return await pptParseFn();
     }
     return await systemParse();
   })();
