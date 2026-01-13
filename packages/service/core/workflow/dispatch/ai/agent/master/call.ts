@@ -120,7 +120,8 @@ export const masterCall = async ({
       const callQuery = await getStepCallQuery({
         steps,
         step,
-        model
+        model,
+        filesMap
       });
       if (callQuery.usage) {
         usagePush([callQuery.usage]);
@@ -253,7 +254,6 @@ export const masterCall = async ({
         try {
           if (toolId === SubAppIds.fileRead) {
             const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(call.function.arguments));
-
             if (!toolParams.success) {
               return {
                 response: toolParams.error.message,
@@ -270,7 +270,8 @@ export const masterCall = async ({
               files,
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+              model
             });
             return {
               response: result.response,

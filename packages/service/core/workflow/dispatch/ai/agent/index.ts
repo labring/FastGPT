@@ -33,6 +33,7 @@ import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { parseUserSystemPrompt } from './sub/plan/prompt';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -121,6 +122,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   try {
     // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+    console.log('fileUrlInput', fileUrlInput);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
@@ -149,11 +151,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
+
+    // 生成文件信息提示
+    const filesInfo =
+      Object.keys(filesMap).length > 0
+        ? `\n\n<available_files>
+        当前对话中用户已上传以下文件：
+        ${Object.entries(filesMap)
+          .map(([index, url]) => {
+            const fileInfo = parseUrlToFileType(url);
+            return `- 文件${index}: ${fileInfo?.name || 'Unknown'} (类型: ${fileInfo?.type || 'file'})`;
+          })
+          .join('\n')}
+        
+        **重要提示**：
+        - 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
+        - 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
+        </available_files>`
+        : '';
+
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: systemPrompt,
+      userSystemPrompt: systemPrompt + filesInfo,
       getSubAppInfo
     });
-    // console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
+    console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
     // console.dir(agentSubAppsMap, {depth:null});
 
     /* ===== AI Start ===== */

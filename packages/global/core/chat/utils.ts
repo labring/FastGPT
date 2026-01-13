@@ -168,13 +168,15 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
+      // 有文本内容，保留
       if (item.text?.content?.trim()) {
         return true;
       }
-      // type 为 'file' 时 key 和 url 不能同时为空
-      if (!item.file?.key && !item.file?.url) {
-        return false;
+      // 有文件且文件有 key 或 url，保留
+      if (item.file && (item.file.key || item.file.url)) {
+        return true;
       }
+      // 其他情况过滤掉
       return false;
     }) || []
   );

@@ -7,6 +7,10 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
+import { getLLMModel } from '../../../../../../ai/model';
+import { compressLargeContent } from '../../../../../../ai/llm/compress';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { addLog } from '../../../../../../../common/system/log';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -14,13 +18,15 @@ type FileReadParams = {
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  model: string;
 };
 
 export const dispatchFileRead = async ({
   files,
   teamId,
   tmbId,
-  customPdfParse
+  customPdfParse,
+  model
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   const readFilesResult = await Promise.all(
     files.map(async ({ index, url }) => {
@@ -117,8 +123,41 @@ export const dispatchFileRead = async ({
     })
   );
 
+  // Stringify the result
+  let responseText = JSON.stringify(readFilesResult);
+
+  // Check if compression is needed
+  const llmModel = getLLMModel(model);
+  const thresholds = calculateCompressionThresholds(llmModel.maxContext);
+  // const maxTokens = thresholds.fileReadResponse.threshold;
+  // Test
+  const maxTokens = 10000;
+
+  addLog.debug('[File Read] Checking if compression needed', {
+    contentLength: responseText.length,
+    maxTokens,
+    model: llmModel.model
+  });
+
+  // Compress if content exceeds threshold
+  try {
+    responseText = await compressLargeContent({
+      content: responseText,
+      model: llmModel,
+      maxTokens
+    });
+
+    addLog.info('[File Read] Compression complete', {
+      originalLength: JSON.stringify(readFilesResult).length,
+      compressedLength: responseText.length,
+      compressionRatio: (responseText.length / JSON.stringify(readFilesResult).length).toFixed(2)
+    });
+  } catch (error) {
+    addLog.error('[File Read] Compression failed, using original content', error);
+  }
+
   return {
-    response: JSON.stringify(readFilesResult),
+    response: responseText,
     usages: []
   };
 };
