@@ -41,7 +41,11 @@ async function handler(
 
     return {
       bufferId: global.systemInitBufferId,
-      feConfigs: global.feConfigs,
+      feConfigs: {
+        ...global.feConfigs,
+        uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500,
+        uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10
+      },
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: global.systemActiveDesensitizedModels,
@@ -53,7 +57,11 @@ async function handler(
     const referer = req.headers.referer;
     if (referer?.includes('/price')) {
       return {
-        feConfigs: global.feConfigs,
+        feConfigs: {
+          ...global.feConfigs,
+          uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500,
+          uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10
+        },
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
         aiproxyIdMap: global.aiproxyIdMapCache,
@@ -72,7 +80,11 @@ async function handler(
 
     return {
       bufferId: unAuthBufferId,
-      feConfigs: global.feConfigs,
+      feConfigs: {
+        ...global.feConfigs,
+        uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500,
+        uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10
+      },
       modelProviders: global.ModelProviderRawCache,
       aiproxyIdMap: global.aiproxyIdMapCache
     };

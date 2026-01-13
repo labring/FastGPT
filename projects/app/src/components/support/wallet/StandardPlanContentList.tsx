@@ -27,7 +27,8 @@ const StandardPlanContentList = ({
   standplan?: TeamSubSchemaType;
 }) => {
   const { t } = useTranslation();
-  const { subPlans } = useSystemStore();
+
+  const { subPlans, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
@@ -65,7 +66,17 @@ const StandardPlanContentList = ({
       auditLogStoreDuration: standplan?.auditLogStoreDuration ?? plan.auditLogStoreDuration,
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
-      customDomain: standplan?.customDomain ?? plan.customDomain
+      customDomain: standplan?.customDomain ?? plan.customDomain,
+      maxUploadFileSize:
+        standplan?.maxUploadFileSize ??
+        plan.maxUploadFileSize ??
+        feConfigs?.uploadFileMaxSize ??
+        500,
+      maxUploadFileCount:
+        standplan?.maxUploadFileCount ??
+        plan.maxUploadFileCount ??
+        feConfigs?.uploadFileMaxAmount ??
+        10
     };
   }, [
     subPlans?.standard,
@@ -84,7 +95,11 @@ const StandardPlanContentList = ({
     standplan?.auditLogStoreDuration,
     standplan?.appRegistrationCount,
     standplan?.ticketResponseTime,
-    standplan?.customDomain
+    standplan?.customDomain,
+    standplan?.maxUploadFileSize,
+    standplan?.maxUploadFileCount,
+    feConfigs?.uploadFileMaxSize,
+    feConfigs?.uploadFileMaxAmount
   ]);
 
   return planContent ? (
@@ -240,6 +255,15 @@ const StandardPlanContentList = ({
           <QuestionTip ml={1} label={t('common:n_custom_domain_amount_tip')} />
         </Flex>
       )}
+      <Flex alignItems={'center'}>
+        <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
+        <Box color={'myGray.600'}>
+          {t('common:n_max_upload_file_limit', {
+            count: planContent.maxUploadFileCount,
+            size: planContent.maxUploadFileSize
+          })}
+        </Box>
+      </Flex>
     </Grid>
   ) : null;
 };

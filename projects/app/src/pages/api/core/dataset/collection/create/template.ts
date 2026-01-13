@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);

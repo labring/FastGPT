@@ -8,6 +8,7 @@ import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export type SelectFileItemType = {
   file: File;
@@ -36,12 +37,18 @@ const FileSelector = ({
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
-  const systemMaxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
+  const systemMaxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    1024 *
+    1024;
   const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
-  const formatMaxCount = feConfigs.uploadFileMaxAmount
-    ? Math.min(maxCount, feConfigs.uploadFileMaxAmount)
-    : maxCount;
+  const formatMaxCount = Math.min(
+    maxCount,
+    feConfigs?.uploadFileMaxAmount ?? maxCount,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
+  );
 
   const { File, onOpen } = useSelectFile({
     fileType,

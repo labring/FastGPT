@@ -16,6 +16,7 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -53,6 +54,7 @@ const FileSelector = ({
   isDisabled?: boolean;
 }) => {
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
   const { toast } = useToast();
   const { t } = useSafeTranslation();
 
@@ -88,8 +90,14 @@ const FileSelector = ({
     canSelectCustomFileExtension,
     customFileExtensionList
   ]);
-  const maxSelectFiles = maxFiles ?? 10;
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
+  const maxSelectFiles = Math.min(
+    maxFiles ?? 10,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
+  );
+  const maxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    1024 *
+    1024;
   const canSelectFileAmount = maxSelectFiles - value.length;
   const isMaxSelected = canSelectFileAmount <= 0;
 
