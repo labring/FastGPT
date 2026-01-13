@@ -135,6 +135,7 @@
   "code_error.app_error.not_exist": "应用不存在",
   "code_error.app_error.un_auth_app": "无权操作该应用",
   "code_error.chat_error.un_auth": "没有权限操作此对话记录",
+  "code_error.chat_error.model_name_required": "模型名称不能为空",
   "code_error.error_code.400": "请求失败",
   "code_error.error_code.401": "无访问权限",
   "code_error.error_code.403": "紧张访问",

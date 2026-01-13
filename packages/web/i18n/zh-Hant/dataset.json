@@ -354,6 +354,7 @@
   "data_index_hype": "假定提示索引",
   "hype_enhanced_index": "HyPE增強索引",
   "data_index_small2big": "分段增强索引",
+  "data_index_correction": "校正索引",
   "hype_enhanced_index_tips": "使用Hypothetical Prompt Embeddings技術生成假設問,並模擬檢索召回篩選真正高質量的問題作為索引,提高檢索的精度。(數據量大時需要較長時間)",
   "template_csv_format_tip": "模板採用 CSV 格式,包含以下列:\nq: 問題列,存放用戶可能提出的問題\na: 答案列,存放對應問題的標準答案\nmetadata:元數據列,列名自定義,非必須,用於存放數據相關屬性,可在檢索後返回,根據需要調用屬性參數\nindexes: 索引列,用於存放與該問題相關的索引",
   "segment_enhanced_index": "分段增強索引",
