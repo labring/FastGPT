@@ -16,9 +16,9 @@ import HelperLines from './components/HelperLines';
 import { useWorkflow } from './hooks/useWorkflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { NodeProps } from 'reactflow';
-import ReactFlow, { SelectionMode } from 'reactflow';
+import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
@@ -100,6 +100,18 @@ const Workflow = () => {
 
   const [movingCanvas, setMovingCanvas] = useState(false);
 
+  // 异步 fitView：等待所有节点加载完成后再执行
+  const { fitView } = useReactFlow();
+  const fitViewDone = useRef(false);
+  useEffect(() => {
+    // 确保仅自动布局一次。且所有节点都渲染完成。
+    if (fitViewDone.current || !nodes.length || !nodes.every((node) => node.width && node.height))
+      return;
+
+    fitViewDone.current = true;
+    setTimeout(() => fitView({ padding: 0.3, nodes }), 0);
+  }, [nodes, fitView]);
+
   return (
     <>
       <Box
@@ -136,11 +148,6 @@ const Workflow = () => {
 
         <ReactFlow
           ref={reactFlowWrapperCallback}
-          fitView
-          fitViewOptions={{
-            padding: 0.3,
-            nodes: nodes.filter((node) => node.width && node.height)
-          }}
           nodes={nodes}
           edges={edges}
           minZoom={minZoom}

@@ -35,7 +35,7 @@ const AppTypeCard = ({
         boxShadow: '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)'
       }}
     >
-      <MyIcon name={option.icon as any} w={'6'} />
+      <MyIcon name={option.icon as any} w={'6'} borderRadius={4} />
       <Box fontWeight={'medium'} color={'myGray.900'} mt={2}>
         {t(option.title)}
       </Box>
