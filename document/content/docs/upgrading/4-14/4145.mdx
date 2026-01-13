@@ -43,6 +43,24 @@ STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
 - AIProxy 无需更新
 - mongo 5.x 版本修改成 5.0.32 版本，解决 CVE-2025-14847 漏洞。直接修改镜像 tag 成 `5.0.32`。
 
+### 3. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 重试所有失败的 S3 删除任务
+2. 为所有 share 类型的 OutLink 记录添加 showFullText 字段
+3. 重命名字段：
+  - showNodeStatus -> showRunningStatus
+  - responseDetail -> showCite
+  - showRawSource -> canDownloadSource
+
+
 ## 🚀 新增内容
 
 1. 工作流画布增加演示模式，同时优化折叠模式样式，优化工作流线重叠问题。
