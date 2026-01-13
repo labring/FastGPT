@@ -645,7 +645,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      tags: item.tags,
+      tags: dbPluginConfig?.customConfig?.tags || item.tags,
       workflow: {
         nodes: [],
         edges: []
