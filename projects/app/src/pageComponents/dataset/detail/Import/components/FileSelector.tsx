@@ -8,6 +8,7 @@ import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 
 export type SelectFileItemType = {
@@ -30,9 +31,18 @@ const FileSelector = ({
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
-  const maxCount = feConfigs?.uploadFileMaxAmount || 1000;
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
+  // 文件数量限制：取系统配置和套餐限制中的最小值
+  const maxCount = Math.min(
+    feConfigs?.uploadFileMaxAmount || 1000,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
+  );
+  // 文件大小限制：套餐限制 > 系统配置 > 默认值 500MB
+  const maxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    1024 *
+    1024;
 
   const { File, onOpen } = useSelectFile({
     fileType,

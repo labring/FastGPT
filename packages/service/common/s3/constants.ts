@@ -34,8 +34,7 @@ export const S3Buckets = {
 } as const;
 
 export const getSystemMaxFileSize = () => {
-  const config = global.feConfigs?.uploadFileMaxSize || 1024; // MB, default 1024MB
-  return config; // bytes
+  return Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500;
 };
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;

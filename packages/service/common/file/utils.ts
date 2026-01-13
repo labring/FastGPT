@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export const getFileMaxSize = () => {
-  const mb = global.feConfigs?.uploadFileMaxSize || 1000;
+  const mb = Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500;
   return mb * 1024 * 1024;
 };
 
