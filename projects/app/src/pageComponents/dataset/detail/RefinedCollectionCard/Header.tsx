@@ -761,10 +761,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           isOpen={isOpenGeneralImportModal}
           onClose={onCloseGeneralImportModal}
           datasetId={datasetDetail._id}
-          onConfirm={(data) => {
-            console.log('General import data:', data);
-            // TODO: Handle the import data (links and files)
-            // You may want to call an API here to process the imported data
+          onFinish={() => {
             getData(1);
           }}
         />

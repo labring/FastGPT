@@ -55,20 +55,43 @@ const FileSelector = ({
 
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {
-      if (selectFiles.length + files.length > maxCount) {
-        files = files.slice(0, maxCount - selectFiles.length);
+      // Check for duplicate file names
+      const existingFileNames = new Set(
+        selectFiles.filter((f) => f.file !== undefined).map((f) => f.file!.name)
+      );
+      const duplicateFiles = files.filter((f) => existingFileNames.has(f.file.name));
+
+      if (duplicateFiles.length > 0) {
         toast({
           status: 'warning',
-          title: t('file:some_file_count_exceeds_limit', { maxCount })
+          title: t('dataset:file_already_uploaded')
         });
       }
+
+      const uniqueFiles = files.filter((f) => !existingFileNames.has(f.file.name));
+
+      if (uniqueFiles.length === 0) {
+        return;
+      }
+
+      if (selectFiles.length + uniqueFiles.length > maxCount) {
+        const filteredFiles = uniqueFiles.slice(0, maxCount - selectFiles.length);
+        if (filteredFiles.length < uniqueFiles.length) {
+          toast({
+            status: 'warning',
+            title: t('file:some_file_count_exceeds_limit', { maxCount })
+          });
+        }
+        return onSelectFiles(filteredFiles);
+      }
+
       // size check
       if (!maxSize) {
-        return onSelectFiles(files);
+        return onSelectFiles(uniqueFiles);
       }
-      const filterFiles = files.filter((item) => item.file.size <= maxSize);
+      const filterFiles = uniqueFiles.filter((item) => item.file.size <= maxSize);
 
-      if (filterFiles.length < files.length) {
+      if (filterFiles.length < uniqueFiles.length) {
         toast({
           status: 'warning',
           title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
@@ -77,7 +100,7 @@ const FileSelector = ({
 
       return onSelectFiles(filterFiles);
     },
-    [t, maxCount, maxSize, onSelectFiles, selectFiles.length, toast]
+    [t, maxCount, maxSize, onSelectFiles, selectFiles, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -154,6 +177,26 @@ const FileSelector = ({
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
 
+      // Check for unsupported file types
+      const unsupportedFiles = files.filter((item) => !filterTypeReg.test(item.name));
+      if (unsupportedFiles.length > 0) {
+        const unsupportedExtensions = [
+          ...new Set(
+            unsupportedFiles
+              .map((f) => {
+                const match = f.name.match(/\.[^.]+$/);
+                return match ? match[0] : '';
+              })
+              .filter(Boolean)
+          )
+        ];
+
+        toast({
+          status: 'warning',
+          title: t('dataset:unsupported_file_format', { ext: unsupportedExtensions.join(', ') })
+        });
+      }
+
       fileList.push(
         ...files
           .filter((item) => filterTypeReg.test(item.name))
@@ -227,15 +270,39 @@ const FileSelector = ({
           </Box>
 
           <File
-            onSelect={(files) =>
+            onSelect={(files) => {
+              // Check for unsupported file types
+              const unsupportedFiles = files.filter((item) => !filterTypeReg.test(item.name));
+              if (unsupportedFiles.length > 0) {
+                const unsupportedExtensions = [
+                  ...new Set(
+                    unsupportedFiles
+                      .map((f) => {
+                        const match = f.name.match(/\.[^.]+$/);
+                        return match ? match[0] : '';
+                      })
+                      .filter(Boolean)
+                  )
+                ];
+
+                toast({
+                  status: 'warning',
+                  title: t('dataset:unsupported_file_format', {
+                    ext: unsupportedExtensions.join(', ')
+                  })
+                });
+              }
+
+              const supportedFiles = files.filter((item) => filterTypeReg.test(item.name));
+
               selectFileCallback(
-                files.map((file) => ({
+                supportedFiles.map((file) => ({
                   fileId: getNanoid(),
                   folderPath: '',
                   file
                 }))
-              )
-            }
+              );
+            }}
           />
         </>
       )}

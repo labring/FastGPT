@@ -408,5 +408,17 @@
   "edit_faq": "編輯 FAQ",
   "edit_chunk": "編輯分塊",
   "question": "問題",
-  "answer": "答案"
+  "answer": "答案",
+  "unsupported_file_format": "不支持 {{ext}} 文件格式",
+  "file_already_uploaded": "已上傳該文件",
+  "file_duplicate": "文件重複",
+  "duplicate_files_exist": "已存在以下同名文件：",
+  "skip_duplicate_files": "跳過以上文件",
+  "continue_upload": "繼續上傳",
+  "replace_duplicate_files": "替換對應文件",
+  "max_links_exceeded": "最多只能解析 {{num}} 個鏈接，當前已超出限制",
+  "invalid_link_format": "存在 {{num}} 個格式錯誤的鏈接，請檢查",
+  "max_links_limit": "最多只能解析 10 個鏈接",
+  "check_link_format": "請檢查鏈接格式是否正確",
+  "upload_other_files": "請上傳其他文件"
 }

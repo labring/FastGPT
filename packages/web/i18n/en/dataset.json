@@ -409,5 +409,17 @@
   "edit_faq": "编辑 FAQ",
   "edit_chunk": "编辑分块",
   "question": "问题",
-  "answer": "答案"
+  "answer": "答案",
+  "unsupported_file_format": "不支持 {{ext}} 文件格式",
+  "file_already_uploaded": "已上传该文件",
+  "file_duplicate": "文件重复",
+  "duplicate_files_exist": "已存在以下同名文件：",
+  "skip_duplicate_files": "跳过以上文件",
+  "continue_upload": "继续上传",
+  "replace_duplicate_files": "替换对应文件",
+  "max_links_exceeded": "最多只能解析 {{num}} 个链接，当前已超出限制",
+  "invalid_link_format": "存在 {{num}} 个格式错误的链接，请检查",
+  "max_links_limit": "最多只能解析 10 个链接",
+  "check_link_format": "请检查链接格式是否正确",
+  "upload_other_files": "请上传其他文件"
 }
