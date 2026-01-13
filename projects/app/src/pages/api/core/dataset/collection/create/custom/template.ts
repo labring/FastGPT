@@ -14,13 +14,21 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import fs from 'fs';
 
 export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
+  overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
 };
-export type CustomTemplateImportResponse = {};
+export type CustomTemplateImportResponse = {
+  overwritten?: boolean; // Whether overwrite operation was performed
+  deletedCollectionId?: string; // Deleted old collection ID (only returned when overwritten)
+};
 
 const SUPPORTED_EXTENSIONS = ['csv', 'xls', 'xlsx'];
 
@@ -107,20 +115,101 @@ async function handler(
     // 2. 验证模板格式
     validateTemplateFormat(rawText);
 
-    // 3. 上传文件到GridFS
+    // 3. 处理重名检查（在上传文件之前）
+    let fileName = file.originalname;
+    let deletedCollectionId: string | undefined;
+    let overwritten = false;
+
+    // Check if file with same name exists
+    // Note: 不检查 parentId，在整个 dataset 范围内检查重名，确保文件名全局唯一
+    const existingCollection = await MongoDatasetCollection.findOne({
+      datasetId: dataset._id,
+      name: fileName,
+      type: DatasetCollectionTypeEnum.file
+    });
+
+    if (existingCollection) {
+      if (data.overwriteDuplicate === true) {
+        // 3.1 Overwrite: delete old collection first
+        deletedCollectionId = String(existingCollection._id);
+
+        // Find all child collections
+        const collections = await findCollectionAndChild({
+          teamId,
+          datasetId: dataset._id,
+          collectionId: deletedCollectionId,
+          fields: '_id teamId datasetId fileId metadata'
+        });
+
+        // Delete collection and related data (data and training records)
+        await mongoSessionRun((session) =>
+          delCollection({
+            collections,
+            delImg: true,
+            delFile: true,
+            session
+          })
+        );
+
+        overwritten = true;
+
+        addLog.info(
+          `[TemplateImport] Overwritten collection: ${deletedCollectionId}, name: ${fileName}`
+        );
+      } else {
+        // 3.2 No overwrite: add suffix to new file name
+        const lastDotIndex = fileName.lastIndexOf('.');
+        const fileNameWithoutExt =
+          lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+        const fileExt = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
+
+        // Escape special regex characters
+        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedBase = escapeRegex(fileNameWithoutExt);
+        const escapedExt = escapeRegex(fileExt);
+
+        // Query all existing files with suffix pattern in one request
+        const existingNames = await MongoDatasetCollection.find({
+          datasetId: dataset._id,
+          name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
+          type: DatasetCollectionTypeEnum.file
+        })
+          .select('name')
+          .lean();
+
+        // Find max suffix from existing names
+        let maxSuffix = 0;
+        const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
+        for (const doc of existingNames) {
+          const match = doc.name.match(suffixRegex);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxSuffix) maxSuffix = num;
+          }
+        }
+
+        fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
+
+        addLog.info(
+          `[TemplateImport] Renamed duplicate file from '${file.originalname}' to '${fileName}'`
+        );
+      }
+    }
+
+    // 4. 上传文件到GridFS（使用处理后的文件名）
     const fileId = await uploadFile({
       teamId,
       uid: tmbId,
       bucketName: 'dataset',
       path: file.path,
-      filename: file.originalname,
+      filename: fileName,
       contentType: file.mimetype
     });
 
-    // 4. 删除临时文件
+    // 5. 删除临时文件
     removeFilesByPaths(filePaths);
 
-    // 5. 获取模式配置
+    // 6. 获取模式配置
     const customTemplateConfig = global.systemEnv?.customTemplateImport;
     const defaultModeName = customTemplateConfig?.defaultActivateMode || 'default';
 
@@ -138,7 +227,7 @@ async function handler(
 
     const enhanceConfig = selectedMode.enhanceConfig || {};
 
-    // 6. 创建集合并插入数据
+    // 7. 创建集合并插入数据
     await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -147,7 +236,7 @@ async function handler(
         teamId,
         tmbId,
         datasetId: dataset._id,
-        name: file.originalname,
+        name: fileName,
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
@@ -162,7 +251,9 @@ async function handler(
       }
     });
 
-    return {};
+    return {
+      ...(overwritten && { overwritten, deletedCollectionId })
+    };
   } catch (error) {
     addLog.error(`Custom template import error: ${error}`);
     removeFilesByPaths(filePaths);

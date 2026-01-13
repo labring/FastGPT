@@ -3,6 +3,7 @@ import {
   createOrGetCollectionTags,
   getCollectionUpdateTime
 } from '@fastgpt/service/core/dataset/collection/utils';
+import { validateCollectionNameUpdate } from '@fastgpt/service/core/dataset/collection/validateName';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -97,6 +98,17 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
     collectionId: id,
     per: WritePermissionVal
   });
+
+  // Validate collection name if name is being updated
+  if (name) {
+    await validateCollectionNameUpdate({
+      collectionId: String(id),
+      datasetId: collection.datasetId,
+      newName: name,
+      originalName: collection.name,
+      collectionType: collection.type
+    });
+  }
 
   await mongoSessionRun(async (session) => {
     const collectionTags = await createOrGetCollectionTags({
