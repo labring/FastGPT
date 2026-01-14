@@ -443,6 +443,11 @@
   "invalid_link_format": "存在 {{num}} 个格式错误的链接，请检查",
   "max_links_limit": "最多只能解析 10 个链接",
   "check_link_format": "请检查链接格式是否正确",
-  "upload_other_files": "请上传其他文件"
+  "upload_other_files": "请上传其他文件",
+  "exception_info": "异常信息",
+  "close": "关闭",
+  "retry": "重试",
+  "build_database_by_import": "通过导入文件、直连数据库形式构建数据库",
+  "database_auth_desc": "授权 MySQL、SQL server 等数据库，检索时连接数据库获取相关信息"
 }
 

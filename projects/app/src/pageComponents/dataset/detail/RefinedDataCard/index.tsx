@@ -51,6 +51,7 @@ const RefinedDataCard = () => {
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [activeDataDetail, setActiveDataDetail] = useState<DatasetDataItemType | null>(null);
   const [isAddingNewIndex, setIsAddingNewIndex] = useState(false);
@@ -59,6 +60,15 @@ const RefinedDataCard = () => {
   const [foldedCards, setFoldedCards] = useState<Record<string, boolean>>({});
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
+
+  // Debounce search text
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Filter out default type indexes
   const filteredIndexes = useMemo(() => {
@@ -107,7 +117,7 @@ const RefinedDataCard = () => {
   const handleToggleFold = useMemoizedFn((dataId: string, e: React.MouseEvent) => {
     setFoldedCards((prev) => ({
       ...prev,
-      [dataId]: !prev[dataId]
+      [dataId]: prev[dataId] === undefined ? false : !prev[dataId]
     }));
   });
 
@@ -202,9 +212,9 @@ const RefinedDataCard = () => {
     pageSizeOptions: [10, 20, 50, 100],
     params: {
       collectionId,
-      searchText
+      searchText: debouncedSearchText
     },
-    refreshDeps: [searchText, collectionId],
+    refreshDeps: [debouncedSearchText, collectionId],
     EmptyTip: EmptyTipDom
   });
 
@@ -325,7 +335,7 @@ const RefinedDataCard = () => {
   }, [editingDataId, datasetDataList]);
 
   return (
-    <MyBox p={4} h={'100%'}>
+    <MyBox py={4} pl={4} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
         {/* Back Button */}
         <Flex
@@ -339,6 +349,7 @@ const RefinedDataCard = () => {
           fontSize={'sm'}
           fontWeight={500}
           w={'fit-content'}
+          flexShrink={0}
           onClick={() => {
             router.replace({
               query: {
@@ -368,251 +379,252 @@ const RefinedDataCard = () => {
         </Flex>
 
         {/* Main Content Container */}
-        <Flex gap={0} alignItems={'stretch'} h={'100%'}>
+        <Flex gap={0} alignItems={'stretch'} flex={1} overflow={'hidden'} minH={0} mt={4}>
           {/* Left Side - Data List */}
-          <MyBox flex={1} mt={4} overflow={'hidden'}>
-            <Flex flexDirection={'column'} h={'100%'}>
-              {/* Search Bar and Info */}
-              <Flex alignItems={'center'} pb={4}>
-                <Box as={'span'} fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
-                  {collection?.trainingType === DatasetCollectionDataProcessModeEnum.template
-                    ? t('dataset:faq_total', { total })
-                    : t('dataset:chunk_total', { total })}
-                </Box>
-                <Box flex={1} mr={1} />
-                <MyInput
-                  leftIcon={
-                    <MyIcon
-                      name="common/searchLight"
-                      position={'absolute'}
-                      w={'14px'}
-                      color={'myGray.600'}
-                    />
-                  }
-                  borderColor={'myGray.200'}
-                  color={'myGray.500'}
-                  w={'200px'}
-                  placeholder={t('dataset:search')}
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value);
-                  }}
-                />
-              </Flex>
+          <MyBox flex={1} display={'flex'} flexDirection={'column'} overflow={'hidden'} h={'100%'}>
+            {/* Search Bar and Info */}
+            <Flex alignItems={'center'} pb={4} flexShrink={0} pr={4}>
+              <Box as={'span'} fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
+                {collection?.trainingType === DatasetCollectionDataProcessModeEnum.template
+                  ? t('dataset:faq_total', { total })
+                  : t('dataset:chunk_total', { total })}
+              </Box>
+              <Box flex={1} mr={1} />
+              <MyInput
+                leftIcon={
+                  <MyIcon
+                    name="common/searchLight"
+                    position={'absolute'}
+                    w={'14px'}
+                    color={'myGray.600'}
+                  />
+                }
+                borderColor={'myGray.200'}
+                color={'myGray.500'}
+                w={'200px'}
+                placeholder={t('dataset:search')}
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                }}
+              />
+            </Flex>
 
-              {/* Data List */}
-              <MyBox
-                flex={1}
-                overflow={'auto'}
-                isLoading={isLoading && datasetDataList.length === 0}
-              >
-                {datasetDataList.length === 0 ? (
-                  !isLoading && EmptyTipDom
-                ) : (
-                  <Flex flexDir={'column'} gap={2}>
-                    {datasetDataList.map((item, index) => {
-                      const isFolded =
-                        foldedCards[item._id] !== undefined ? foldedCards[item._id] : true;
-                      return (
-                        <Card
-                          key={item._id}
-                          p={3}
-                          userSelect={'none'}
-                          border={'sm'}
-                          position={'relative'}
-                          overflow={'hidden'}
-                          bg={activeCardId === item._id ? 'primary.50' : 'transparent'}
-                          borderColor={activeCardId === item._id ? 'blue.600' : 'inherit'}
-                          boxShadow={activeCardId === item._id ? 'lg' : 'none'}
-                          _hover={{
-                            bg: 'primary.50',
-                            borderColor: 'blue.600',
-                            boxShadow: 'lg',
-                            '& .footer': { visibility: 'visible' }
-                          }}
-                          onClick={() => handleCardClick(item._id)}
+            {/* Data List - Scrollable */}
+            <MyBox
+              flex={1}
+              overflow={'auto'}
+              isLoading={isLoading && datasetDataList.length === 0}
+              pr={4}
+            >
+              {datasetDataList.length === 0 ? (
+                !isLoading && EmptyTipDom
+              ) : (
+                <Flex flexDir={'column'} gap={2}>
+                  {datasetDataList.map((item, index) => {
+                    const isFolded =
+                      foldedCards[item._id] !== undefined ? foldedCards[item._id] : true;
+                    return (
+                      <Card
+                        key={item._id}
+                        p={3}
+                        userSelect={'none'}
+                        border={'sm'}
+                        position={'relative'}
+                        overflow={'hidden'}
+                        bg={activeCardId === item._id ? 'primary.50' : 'transparent'}
+                        borderColor={activeCardId === item._id ? 'blue.600' : 'inherit'}
+                        boxShadow={activeCardId === item._id ? 'lg' : 'none'}
+                        _hover={{
+                          bg: 'primary.50',
+                          borderColor: 'blue.600',
+                          boxShadow: 'lg',
+                          '& .footer': { visibility: 'visible' }
+                        }}
+                        onClick={() => handleCardClick(item._id)}
+                      >
+                        {/* Header - 序号和字符数 */}
+                        <MyTooltip
+                          label={isFolded ? t('dataset:expand_all') : t('dataset:collapse')}
                         >
-                          {/* Header - 序号和字符数 */}
-                          <MyTooltip
-                            label={isFolded ? t('dataset:expand_all') : t('dataset:collapse')}
+                          <Flex
+                            alignItems={'center'}
+                            h={'24px'}
+                            mb={2}
+                            cursor={'pointer'}
+                            borderRadius={'sm'}
+                            _hover={{
+                              bg: 'rgba(206, 221, 255, 0.3)'
+                            }}
+                            onClick={(e) => handleToggleFold(item._id, e)}
                           >
-                            <Flex
-                              alignItems={'center'}
-                              h={'24px'}
-                              mb={2}
-                              cursor={'pointer'}
-                              borderRadius={'sm'}
-                              _hover={{
-                                bg: 'rgba(206, 221, 255, 0.3)'
-                              }}
-                              onClick={(e) => handleToggleFold(item._id, e)}
-                            >
-                              <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                                #{item.chunkIndex ?? '-'}
-                              </Box>
-                              <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                                {item.imageSize ? (
-                                  <>{formatFileSize(item.imageSize)}</>
-                                ) : (
-                                  <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
-                                )}
-                              </Box>
-                              <Box flex={1} />
-                              <MyIcon
-                                name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                                w={'14px'}
-                                color={'myGray.500'}
-                              />
-                            </Flex>
-                          </MyTooltip>
+                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                              #{item.chunkIndex ?? '-'}
+                            </Box>
+                            <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                              {item.imageSize ? (
+                                <>{formatFileSize(item.imageSize)}</>
+                              ) : (
+                                <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
+                              )}
+                            </Box>
+                            <Box flex={1} />
+                            <MyIcon
+                              name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                              w={'14px'}
+                              color={'myGray.500'}
+                            />
+                          </Flex>
+                        </MyTooltip>
 
-                          {/* Data content */}
-                          <Box
-                            {...(isFolded
-                              ? {
-                                  maxH: '67px',
-                                  overflow: 'hidden'
-                                }
-                              : {
-                                  maxH: 'auto'
-                                })}
-                          >
-                            {item.imagePreviewUrl ? (
-                              <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
-                                <Box flex="1 0 0">
-                                  <MyImage
-                                    src={item.imagePreviewUrl}
-                                    alt={''}
-                                    w={'100%'}
-                                    h="100%"
-                                    maxH={'300px'}
-                                    objectFit="contain"
-                                  />
-                                </Box>
-                                <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                                  <Markdown source={item.q} isDisabled />
-                                </Box>
+                        {/* Data content */}
+                        <Box
+                          {...(isFolded
+                            ? {
+                                maxH: '67px',
+                                overflow: 'hidden'
+                              }
+                            : {
+                                maxH: 'auto'
+                              })}
+                        >
+                          {item.imagePreviewUrl ? (
+                            <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
+                              <Box flex="1 0 0">
+                                <MyImage
+                                  src={item.imagePreviewUrl}
+                                  alt={''}
+                                  w={'100%'}
+                                  h="100%"
+                                  maxH={'300px'}
+                                  objectFit="contain"
+                                />
                               </Box>
-                            ) : (
-                              <Box wordBreak={'break-all'}>
-                                {!!item.a ? (
-                                  <>
-                                    <Box
-                                      fontSize={'sm'}
-                                      fontWeight={500}
-                                      lineHeight={'20px'}
-                                      color={'myGray.900'}
-                                    >
-                                      <Markdown source={item.q} isDisabled />
-                                    </Box>
-                                    <MyDivider my={2} h={'1px'} />
-                                    <Box fontSize={'xs'} lineHeight={'20px'} color={'myGray.500'}>
-                                      <Markdown source={item.a} isDisabled />
-                                    </Box>
-                                  </>
-                                ) : (
-                                  <Box fontSize={'sm'}>
+                              <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
+                                <Markdown source={item.q} isDisabled />
+                              </Box>
+                            </Box>
+                          ) : (
+                            <Box wordBreak={'break-all'}>
+                              {!!item.a ? (
+                                <>
+                                  <Box
+                                    fontSize={'sm'}
+                                    fontWeight={500}
+                                    lineHeight={'20px'}
+                                    color={'myGray.900'}
+                                  >
                                     <Markdown source={item.q} isDisabled />
                                   </Box>
-                                )}
-                              </Box>
-                            )}
-                          </Box>
-
-                          {/* Footer - 编辑和删除按钮 */}
-                          {canWrite && (
-                            <Flex
-                              className="footer"
-                              position={'absolute'}
-                              bottom={2}
-                              right={2}
-                              overflow={'hidden'}
-                              alignItems={'center'}
-                              visibility={activeCardId === item._id ? 'visible' : 'hidden'}
-                              gap={2}
-                            >
-                              <IconButton
-                                display={'flex'}
-                                p={1}
-                                boxShadow={'1'}
-                                icon={<MyIcon name={'edit'} w={'14px'} />}
-                                variant={'whiteBase'}
-                                size={'xsSquare'}
-                                aria-label={'edit'}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingDataId(item._id);
-                                }}
-                              />
-                              <PopoverConfirm
-                                Trigger={
-                                  <IconButton
-                                    display={'flex'}
-                                    p={1}
-                                    boxShadow={'1'}
-                                    icon={<MyIcon name={'common/trash'} w={'14px'} />}
-                                    variant={'whiteDanger'}
-                                    size={'xsSquare'}
-                                    aria-label={'delete'}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                    }}
-                                  />
-                                }
-                                content={
-                                  collection?.trainingType ===
-                                  DatasetCollectionDataProcessModeEnum.template
-                                    ? t('dataset:confirm_delete_faq')
-                                    : t('dataset:confirm_delete_chunk')
-                                }
-                                type="delete"
-                                onConfirm={() => onDeleteOneData(item._id)}
-                              />
-                            </Flex>
+                                  <MyDivider my={2} h={'1px'} />
+                                  <Box fontSize={'xs'} lineHeight={'20px'} color={'myGray.500'}>
+                                    <Markdown source={item.a} isDisabled />
+                                  </Box>
+                                </>
+                              ) : (
+                                <Box fontSize={'sm'}>
+                                  <Markdown source={item.q} isDisabled />
+                                </Box>
+                              )}
+                            </Box>
                           )}
-                        </Card>
-                      );
-                    })}
-                  </Flex>
-                )}
-              </MyBox>
+                        </Box>
 
-              {/* Pagination */}
-              {total > 0 && (
-                <Box pt={4}>
-                  <Pagination />
-                </Box>
+                        {/* Footer - 编辑和删除按钮 */}
+                        {canWrite && (
+                          <Flex
+                            className="footer"
+                            position={'absolute'}
+                            bottom={2}
+                            right={2}
+                            overflow={'hidden'}
+                            alignItems={'center'}
+                            visibility={activeCardId === item._id ? 'visible' : 'hidden'}
+                            gap={2}
+                          >
+                            <IconButton
+                              display={'flex'}
+                              p={1}
+                              boxShadow={'1'}
+                              icon={<MyIcon name={'edit'} w={'14px'} />}
+                              variant={'whiteBase'}
+                              size={'xsSquare'}
+                              aria-label={'edit'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDataId(item._id);
+                              }}
+                            />
+                            <PopoverConfirm
+                              Trigger={
+                                <IconButton
+                                  display={'flex'}
+                                  p={1}
+                                  boxShadow={'1'}
+                                  icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                                  variant={'whiteDanger'}
+                                  size={'xsSquare'}
+                                  aria-label={'delete'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                />
+                              }
+                              content={
+                                collection?.trainingType ===
+                                DatasetCollectionDataProcessModeEnum.template
+                                  ? t('dataset:confirm_delete_faq')
+                                  : t('dataset:confirm_delete_chunk')
+                              }
+                              type="delete"
+                              onConfirm={() => onDeleteOneData(item._id)}
+                            />
+                          </Flex>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </Flex>
               )}
-            </Flex>
+            </MyBox>
+
+            {/* Pagination - Fixed at bottom */}
+            {total > 0 && (
+              <Box pt={4} flexShrink={0}>
+                <Pagination />
+              </Box>
+            )}
           </MyBox>
 
           {/* Vertical Divider */}
-          <MyDivider orientation={'vertical'} mx={4} my={0} h={'100%'} />
+          <MyDivider orientation={'vertical'} mx={0} my={0} h={'100%'} />
 
           {/* Right Side - Index Content */}
-          <MyBox w={'470px'} flexShrink={0} mt={4} isLoading={isLoadingDetail}>
-            {activeDataDetail && (
-              <Flex flexDirection={'column'} h={'100%'}>
-                {/* Header */}
-                <Flex alignItems={'center'} justifyContent={'space-between'} mb={4}>
-                  <FormLabel fontWeight={'500'} mb={0}>
-                    {t('dataset:content_index_total', { total: filteredIndexes.length })}
-                  </FormLabel>
-                  {canWrite && (
-                    <Button
-                      variant={'whiteBase'}
-                      size={'md'}
-                      onClick={handleAddNewIndex}
-                      isDisabled={isAddingNewIndex || isSavingNewIndex}
-                      isLoading={isSavingNewIndex}
-                    >
-                      {t('dataset:add_index')}
-                    </Button>
-                  )}
-                </Flex>
+          <MyBox w={'470px'} flexShrink={0} h={'100%'} isLoading={isLoadingDetail}>
+            <Flex flexDirection={'column'} h={'100%'}>
+              {/* Header */}
+              <Flex alignItems={'center'} justifyContent={'space-between'} mb={4} px={4}>
+                <FormLabel fontWeight={'500'} mb={0}>
+                  {t('dataset:content_index_total', {
+                    total: activeDataDetail ? filteredIndexes.length : 0
+                  })}
+                </FormLabel>
+                {canWrite && (
+                  <Button
+                    variant={'whiteBase'}
+                    size={'md'}
+                    onClick={handleAddNewIndex}
+                    isDisabled={!activeDataDetail || isAddingNewIndex || isSavingNewIndex}
+                    isLoading={isSavingNewIndex}
+                  >
+                    {t('dataset:add_index')}
+                  </Button>
+                )}
+              </Flex>
 
-                {/* Index List */}
-                <VStack spacing={3} align={'stretch'} flex={1} overflow={'auto'}>
+              {/* Index List */}
+              {activeDataDetail ? (
+                <VStack spacing={3} align={'stretch'} flex={1} overflow={'auto'} px={4} pr={2}>
                   {/* New Index Input */}
                   {isAddingNewIndex && (
                     <ContentIndexCard
@@ -644,8 +656,12 @@ const RefinedDataCard = () => {
                         </Flex>
                       )}
                 </VStack>
-              </Flex>
-            )}
+              ) : (
+                <Flex alignItems={'center'} justifyContent={'center'} flex={1} px={4}>
+                  <EmptyTip text={t('dataset:no_indexes')} />
+                </Flex>
+              )}
+            </Flex>
           </MyBox>
         </Flex>
       </Flex>

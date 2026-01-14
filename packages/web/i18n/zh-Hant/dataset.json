@@ -442,6 +442,11 @@
   "invalid_link_format": "存在 {{num}} 個格式錯誤的鏈接，請檢查",
   "max_links_limit": "最多只能解析 10 個鏈接",
   "check_link_format": "請檢查鏈接格式是否正確",
-  "upload_other_files": "請上傳其他文件"
+  "upload_other_files": "請上傳其他文件",
+  "exception_info": "異常信息",
+  "close": "關閉",
+  "retry": "重試",
+  "build_database_by_import": "通過導入文件、直連數據庫形式構建數據庫",
+  "database_auth_desc": "授權 MySQL、SQL server 等數據庫，檢索時連接數據庫獲取相關信息"
 }
 

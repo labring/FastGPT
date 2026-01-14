@@ -18,11 +18,16 @@ export interface FileItem {
   error?: string;
   result?: any;
   icon?: string; // 添加图标字段
+  overwriteDuplicate?: boolean; // 是否覆盖重名文件
 }
 
 export interface UploadConfig {
   concurrency: number;
-  uploadApi: (file: File, onProgress?: (progress: number) => void) => Promise<any>;
+  uploadApi: (
+    file: File,
+    onProgress?: (progress: number) => void,
+    overwriteDuplicate?: boolean
+  ) => Promise<any>;
 }
 
 export const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
@@ -54,11 +59,15 @@ export const useFileUpload = (config: UploadConfig) => {
           )
         );
 
-        const result = await config.uploadApi(fileItem.file, (progress) => {
-          setUploadQueue((prev) =>
-            prev.map((item) => (item.id === fileItem.id ? { ...item, progress } : item))
-          );
-        });
+        const result = await config.uploadApi(
+          fileItem.file,
+          (progress) => {
+            setUploadQueue((prev) =>
+              prev.map((item) => (item.id === fileItem.id ? { ...item, progress } : item))
+            );
+          },
+          fileItem.overwriteDuplicate // 传递 overwriteDuplicate 参数
+        );
 
         return {
           ...fileItem,
@@ -74,99 +83,120 @@ export const useFileUpload = (config: UploadConfig) => {
         };
       }
     },
-    [config.uploadApi, t]
+    [config, t]
   );
 
-  const startUpload = useCallback(async () => {
-    const pendingFiles = uploadQueue.filter((item) => item.status === FileStatus.PENDING);
+  const markFilesForReplacement = useCallback((fileNames: string[]) => {
+    setUploadQueue((prev) =>
+      prev.map((item) =>
+        fileNames.includes(item.file.name) ? { ...item, overwriteDuplicate: true } : item
+      )
+    );
+  }, []);
 
-    if (pendingFiles.length === 0) {
-      return { success: [], failed: [] };
-    }
+  const startUpload = useCallback(
+    async (replaceFileNames: string[] = []) => {
+      const pendingFiles = uploadQueue.filter((item) => item.status === FileStatus.PENDING);
 
-    setIsUploading(true);
-    setTotalCount(pendingFiles.length);
-    setCompletedCount(0);
+      if (pendingFiles.length === 0) {
+        return { success: [], failed: [] };
+      }
 
-    let allFailedFiles: FileItem[] = [];
+      setIsUploading(true);
+      setTotalCount(pendingFiles.length);
+      setCompletedCount(0);
 
-    try {
-      const chunks = chunkArray(pendingFiles, config.concurrency);
+      let allFailedFiles: FileItem[] = [];
 
-      for (const chunk of chunks) {
-        const uploadPromises = chunk.map((file) => uploadFile(file));
-        const results = await Promise.allSettled(uploadPromises);
+      try {
+        const chunks = chunkArray(pendingFiles, config.concurrency);
 
-        // 更新上传队列（由于 uploadFile 使用 try-catch，Promise 始终为 fulfilled）
+        for (const chunk of chunks) {
+          const uploadPromises = chunk.map((file) => {
+            // 检查该文件是否在替换列表中
+            const shouldOverwrite = replaceFileNames.includes(file.file.name);
 
-        setUploadQueue((prev) => {
-          const updatedQueue = [...prev];
+            // 只有在需要替换时才设置 overwriteDuplicate 属性
+            const fileItemWithOverwrite = shouldOverwrite
+              ? { ...file, overwriteDuplicate: true }
+              : file;
 
-          results.forEach((result, index) => {
-            const fileItem = chunk[index];
-            const queueIndex = updatedQueue.findIndex((item) => item.id === fileItem.id);
+            return uploadFile(fileItemWithOverwrite);
+          });
+          const results = await Promise.allSettled(uploadPromises);
 
-            if (queueIndex !== -1) {
-              // 检查 Promise 状态，只有 fulfilled 状态才有 value 属性
-              if (result.status === 'fulfilled') {
-                updatedQueue[queueIndex] = result.value;
+          // 更新上传队列（由于 uploadFile 使用 try-catch，Promise 始终为 fulfilled）
+
+          setUploadQueue((prev) => {
+            const updatedQueue = [...prev];
+
+            results.forEach((result, index) => {
+              const fileItem = chunk[index];
+              const queueIndex = updatedQueue.findIndex((item) => item.id === fileItem.id);
+
+              if (queueIndex !== -1) {
+                // 检查 Promise 状态，只有 fulfilled 状态才有 value 属性
+                if (result.status === 'fulfilled') {
+                  updatedQueue[queueIndex] = result.value;
+                }
               }
-            }
+            });
+
+            return updatedQueue;
           });
 
-          return updatedQueue;
-        });
-
-        // 检查是否有失败的文件（由于 uploadFile 使用 try-catch，Promise 始终为 fulfilled）
-        const hasFailed = results.some(
-          (result) => result.status === 'fulfilled' && result.value.status === FileStatus.FAILED
-        );
-
-        // 更新完成计数
-        const chunkCompletedCount = results.filter(
-          (result) =>
-            result.status === 'fulfilled' &&
-            (result.value.status === FileStatus.SUCCESS ||
-              result.value.status === FileStatus.FAILED)
-        ).length;
-
-        results.forEach((v) => {
-          if (v.status === 'fulfilled') {
-            v.value.status === FileStatus.FAILED && allFailedFiles.push(v.value);
-          }
-        });
-
-        setCompletedCount((prev) => prev + chunkCompletedCount);
-
-        if (hasFailed) {
-          // 获取第一个失败文件的错误信息
-          const failedResult = results.find(
+          // 检查是否有失败的文件（由于 uploadFile 使用 try-catch，Promise 始终为 fulfilled）
+          const hasFailed = results.some(
             (result) => result.status === 'fulfilled' && result.value.status === FileStatus.FAILED
           );
 
-          // 停止后续上传
-          toast({
-            status: 'error',
-            title:
-              failedResult?.status === 'fulfilled'
-                ? failedResult.value.error
-                : t('file:upload_failed')
-          });
-          break;
-        }
-      }
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: t('file:upload_failed'),
-        description: (error as Error).message || t('file:upload_error_description')
-      });
-    } finally {
-      setIsUploading(false);
-    }
+          // 更新完成计数
+          const chunkCompletedCount = results.filter(
+            (result) =>
+              result.status === 'fulfilled' &&
+              (result.value.status === FileStatus.SUCCESS ||
+                result.value.status === FileStatus.FAILED)
+          ).length;
 
-    return { failed: allFailedFiles };
-  }, [uploadQueue, config.concurrency, uploadFile, toast, t]);
+          results.forEach((v) => {
+            if (v.status === 'fulfilled') {
+              v.value.status === FileStatus.FAILED && allFailedFiles.push(v.value);
+            }
+          });
+
+          setCompletedCount((prev) => prev + chunkCompletedCount);
+
+          if (hasFailed) {
+            // 获取第一个失败文件的错误信息
+            const failedResult = results.find(
+              (result) => result.status === 'fulfilled' && result.value.status === FileStatus.FAILED
+            );
+
+            // 停止后续上传
+            toast({
+              status: 'error',
+              title:
+                failedResult?.status === 'fulfilled'
+                  ? failedResult.value.error
+                  : t('file:upload_failed')
+            });
+            break;
+          }
+        }
+      } catch (error) {
+        toast({
+          status: 'error',
+          title: t('file:upload_failed'),
+          description: (error as Error).message || t('file:upload_error_description')
+        });
+      } finally {
+        setIsUploading(false);
+      }
+
+      return { failed: allFailedFiles };
+    },
+    [uploadQueue, config.concurrency, uploadFile, toast, t]
+  );
 
   const addFiles = useCallback((files: File[], icons?: string[]) => {
     const newFileItems: FileItem[] = files.map((file, index) => ({
@@ -221,6 +251,7 @@ export const useFileUpload = (config: UploadConfig) => {
     removeFile,
     clearQueue,
     retryFailedFiles,
-    getUploadStats
+    getUploadStats,
+    markFilesForReplacement
   };
 };
