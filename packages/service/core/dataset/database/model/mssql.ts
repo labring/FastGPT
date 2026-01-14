@@ -4,6 +4,17 @@ import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import { addLog } from '../../../../common/system/log';
 
 export class MssqlClient extends AsyncDB {
+  /**
+   * MSSQL 使用 TOP 语法而非 LIMIT
+   */
+  protected override buildSampleQuery(tableName: string, columnName: string, limit: number): string {
+    return `
+      SELECT DISTINCT TOP ${limit} ${this.getProtectedIdentifier(columnName)}
+      FROM ${this.getProtectedIdentifier(tableName)}
+      WHERE ${this.getProtectedIdentifier(columnName)} IS NOT NULL
+    `;
+  }
+
   override async get_all_table_names(): Promise<Array<string>> {
     if (!this.db.isInitialized) {
       await this.db.initialize();
@@ -96,3 +107,4 @@ export class MssqlClient extends AsyncDB {
     }
   }
 }
+

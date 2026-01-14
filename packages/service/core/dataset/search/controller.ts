@@ -3,7 +3,8 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum,
   RerankMethodEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  DatabaseTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   recallFromVectorStore,
@@ -1567,7 +1568,11 @@ export const generateAndExecuteSQL = async ({
       password: dbConfig.password,
       db_name: dbConfig.database,
       ns_name: dbConfig?.schema,
-      encrypt: dbConfig?.encrypt
+      encrypt: dbConfig?.encrypt,
+      // Oracle specific - 使用 database 字段作为 serviceName
+      ...(dbConfig.clientType === DatabaseTypeEnum.oracle && {
+        serviceName: dbConfig.database
+      })
     } as DativeSourceConfigType,
     generate_sql_llm,
     evaluate_sql_llm,
