@@ -99,6 +99,18 @@ import type {
   ApplyChangesResponse
 } from '@fastgpt/global/core/dataset/database/api.d';
 import type { EnhanceConfig } from '@/pages/api/core/dataset/collection/create/template';
+import type {
+  CustomFileIdImportBody,
+  CustomFileIdImportResponse
+} from '@/pages/api/core/dataset/collection/create/custom/fileId';
+import type {
+  CustomLinkImportBody,
+  CustomLinkImportResponse
+} from '@/pages/api/core/dataset/collection/create/custom/link';
+import type {
+  CheckDuplicateFileNamesBody,
+  CheckDuplicateFileNamesResponse
+} from '@/pages/api/core/dataset/collection/check/duplicate';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -199,6 +211,42 @@ export const postTemplateDatasetCollection = ({
   });
 };
 
+/**
+ * 通过模板文件(CSV/Excel)批量导入问答对
+ */
+export const postImportFaqByTemplate = ({
+  file,
+  percentListen,
+  datasetId,
+  overwriteDuplicate
+}: {
+  file: File;
+  percentListen: (percent: number) => void;
+  datasetId: string;
+  overwriteDuplicate?: boolean;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId, overwriteDuplicate }));
+
+  return POST<{ collectionId: string }>(
+    `/core/dataset/collection/create/custom/template`,
+    formData,
+    {
+      timeout: 600000,
+      onUploadProgress: (e) => {
+        if (!e.total) return;
+
+        const percent = Math.round((e.loaded / e.total) * 100);
+        percentListen?.(percent);
+      },
+      headers: {
+        'Content-Type': 'multipart/form-data; charset=utf-8'
+      }
+    }
+  );
+};
+
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
   POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
@@ -226,6 +274,27 @@ export const postReTrainingDatasetFileCollection = (data: reTrainingDatasetFileC
   });
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
+
+/**
+ * 综合文件上传 - 通过已上传的文件ID创建知识库集合
+ * 支持多种文件格式: txt, md, html, pdf, docx, pptx, xlsx, csv, doc, ppt
+ */
+export const postCreateCustomFileIdCollection = (
+  data: CustomFileIdImportBody & { overwriteDuplicate?: boolean }
+) =>
+  POST<CustomFileIdImportResponse>(`/core/dataset/collection/create/custom/fileId`, data, {
+    timeout: 360000
+  });
+
+/**
+ * 静态网页 - 通过网页链接创建知识库集合
+ * 自动抓取网页内容并处理
+ */
+export const postCreateCustomLinkCollection = (data: CustomLinkImportBody) =>
+  POST<CustomLinkImportResponse>(`/core/dataset/collection/create/custom/link`, data, {
+    timeout: 360000
+  });
+
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
 
@@ -250,6 +319,12 @@ export const postLinkCollectionSync = (collectionId: string) =>
   POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync`, {
     collectionId
   });
+
+/**
+ * 检查集合名称是否重复
+ */
+export const postCheckDuplicateCollection = (data: CheckDuplicateFileNamesBody) =>
+  POST<CheckDuplicateFileNamesResponse>(`/core/dataset/collection/check/duplicate`, data);
 
 /* =============================== tag ==================================== */
 

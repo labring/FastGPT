@@ -21,7 +21,8 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync,
-  getCollectionSource
+  getCollectionSource,
+  getDatasetCollections
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -67,10 +68,14 @@ const CollectionCard = () => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
+  const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
 
   const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
     collectionId: string;
   }>();
+
+  // Track if current getData call is from polling (to suppress loading state)
+  const isPollingRef = useRef(false);
 
   // 格式化数据量的函数
   const formatDataAmount = (collection: any, isStructureDocument: boolean) => {
@@ -92,7 +97,9 @@ const CollectionCard = () => {
     isGetting,
     pageNum,
     pageSize,
-    handleOpenConfigPage
+    handleOpenConfigPage,
+    searchText,
+    filterTags
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   // Add file status icon
@@ -118,7 +125,7 @@ const CollectionCard = () => {
           if (collection.trainingAmount > 0) {
             return {
               statusText: t('dataset:processing'),
-              colorSchema: 'gray',
+              colorSchema: 'blue',
               statusKey: 'processing'
             };
           }
@@ -238,6 +245,30 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
+  // Check if there are any collections in processing state
+  const hasProcessingCollections = useMemo(
+    () => !!formatCollections.find((item) => item.statusKey === 'processing'),
+    [formatCollections]
+  );
+
+  // Silent polling for processing collections (10s interval) - doesn't show loading
+  useRequest2(
+    async () => {
+      if (!hasProcessingCollections) return;
+      isPollingRef.current = true;
+      await getData(pageNum);
+      isPollingRef.current = false;
+    },
+    {
+      manual: false,
+      ready: hasProcessingCollections,
+      pollingInterval: hasProcessingCollections ? 10000 : undefined,
+      errorToast: '', // Suppress error toast during polling
+      refreshDeps: [pageNum]
+    }
+  );
+
+  // Original polling for training data and dataset status (6s interval)
   useRequest2(
     async () => {
       if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
@@ -267,7 +298,7 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isGetting || isDropping;
+  const isLoading = isUpdating || isSyncing || (isGetting && !isPollingRef.current) || isDropping;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>

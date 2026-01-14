@@ -65,16 +65,40 @@ const FileSelector = ({
     [formatMaxCount, selectFiles.length]
   );
 
-  const filterTypeReg = new RegExp(
-    `(${fileType
-      .split(',')
-      .map((item) => item.trim())
-      .join('|')})$`,
-    'i'
+  const filterTypeReg = useMemo(
+    () =>
+      new RegExp(
+        `(${fileType
+          .split(',')
+          .map((item) => item.trim())
+          .join('|')})$`,
+        'i'
+      ),
+    [fileType]
   );
 
   const onSelectFile = useCallback(
     async (files: File[]) => {
+      // 检查不支持的文件格式
+      const unsupportedFiles = files.filter((file) => !filterTypeReg.test(file.name));
+
+      if (unsupportedFiles.length > 0) {
+        const unsupportedExtensions = [
+          ...new Set(
+            unsupportedFiles.map((file) => {
+              const match = file.name.match(/(\.[^.]+)$/);
+              return match ? match[1] : '';
+            })
+          )
+        ].filter(Boolean);
+
+        toast({
+          title: t('dataset:unsupported_file_format', { ext: unsupportedExtensions.join(', ') }),
+          status: 'error'
+        });
+        return;
+      }
+
       const fileList = files.map((file) => ({
         file,
         icon: getFileIcon(file.name),
@@ -86,6 +110,21 @@ const FileSelector = ({
       const existingFilesKey = new Set(
         selectFiles.map((f) => `${f.file.name}-${f.file.size}-${f.file.lastModified}`)
       );
+
+      // 检测重复文件并提示
+      const duplicateFiles = fileList.filter((newFile) =>
+        existingFilesKey.has(
+          `${newFile.file.name}-${newFile.file.size}-${newFile.file.lastModified}`
+        )
+      );
+
+      if (duplicateFiles.length > 0) {
+        toast({
+          title: t('dataset:file_already_uploaded'),
+          status: 'warning'
+        });
+      }
+
       const uniqueNewFiles = fileList.filter(
         (newFile) =>
           !existingFilesKey.has(
@@ -96,7 +135,7 @@ const FileSelector = ({
       const newFiles = [...selectFiles, ...uniqueNewFiles].slice(0, formatMaxCount);
       setSelectFiles(newFiles);
     },
-    [formatMaxCount, selectFiles, setSelectFiles]
+    [formatMaxCount, selectFiles, setSelectFiles, toast, t, filterTypeReg]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
