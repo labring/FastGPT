@@ -1,0 +1,44 @@
+name: Auto Close Stale Issues
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # 每天凌晨4点UTC运行，可调整频率
+  workflow_dispatch: # 支持手动触发测试
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Mark and Close Stale Issues (No PR Handling)
+        uses: actions/stale@v9
+        with:
+          operations-per-run: 10000
+
+          # 6个月≈180天，标记Issue为过时
+          days-before-issue-stale: 90
+          # 标记后7天无活动，自动关闭Issue（缓冲期，可设为0立即关闭）
+          days-before-issue-close: 7
+
+          # Issue相关提示与标签
+          stale-issue-message: >
+            This issue has not been updated for more than 3 months and is marked as stale.
+            If there is no further activity within 7 days, it will be automatically closed. Please reply to this issue if you need to continue following up on it.
+          close-issue-message: >
+            This issue has been automatically closed due to prolonged inactivity (more than 3 months plus a 7-day grace period).
+            If this issue still needs to be resolved, you can reopen it and supplement the relevant information.
+          stale-issue-label: 'stale'
+          close-issue-label: 'auto-closed'
+
+          # 核心修改：添加features标签到豁免列表，排除该标签的Issue
+          exempt-issue-labels: 'critical, wontstale, in-progress, feature, good feature, documentation'
+          exempt-milestones: true
+
+          # 禁用PR所有处理，保持PR状态不变
+          days-before-pr-stale: -1
+          days-before-pr-close: -1

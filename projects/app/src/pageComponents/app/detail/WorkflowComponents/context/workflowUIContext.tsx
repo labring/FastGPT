@@ -21,6 +21,9 @@ type WorkflowUIContextValue = {
   /** 鼠标是否在 Canvas 中 */
   mouseInCanvas: boolean;
 
+  /** 鼠标在 Canvas 中的屏幕位置 */
+  mousePosition: { x: number; y: number } | null;
+
   /** ReactFlow 包装器 callback ref */
   reactFlowWrapperCallback: (node: HTMLDivElement | null) => void;
 
@@ -50,6 +53,7 @@ export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
     throw new Error('Function not implemented.');
   },
   mouseInCanvas: false,
+  mousePosition: null,
   reactFlowWrapperCallback: function (_node: HTMLDivElement | null): void {
     throw new Error('Function not implemented.');
   },
@@ -74,6 +78,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
 
   // Canvas 交互
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   // 使用 ref 来存储 wrapper 引用和 cleanup 函数
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -93,16 +98,23 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       };
       const handleMouseOutCanvas = () => {
         setMouseInCanvas(false);
+        setMousePosition(null);
+      };
+      const handleMouseMove = (e: MouseEvent) => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
       };
 
       node.addEventListener('mouseenter', handleMouseInCanvas);
       node.addEventListener('mouseleave', handleMouseOutCanvas);
+      node.addEventListener('mousemove', handleMouseMove);
 
       // 存储 cleanup 函数到 ref
       cleanupRef.current = () => {
         node.removeEventListener('mouseenter', handleMouseInCanvas);
         node.removeEventListener('mouseleave', handleMouseOutCanvas);
+        node.removeEventListener('mousemove', handleMouseMove);
         setMouseInCanvas(false);
+        setMousePosition(null);
       };
     } else {
       (reactFlowWrapper as any).current = null;
@@ -139,6 +151,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       hoverEdgeId,
       setHoverEdgeId,
       mouseInCanvas,
+      mousePosition,
       reactFlowWrapperCallback,
       workflowControlMode,
       setWorkflowControlMode,
@@ -151,6 +164,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     hoverNodeId,
     hoverEdgeId,
     mouseInCanvas,
+    mousePosition,
     reactFlowWrapperCallback,
     workflowControlMode,
     setWorkflowControlMode,

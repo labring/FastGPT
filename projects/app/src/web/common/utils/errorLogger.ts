@@ -76,6 +76,16 @@ class ErrorLogger {
   private setupGlobalErrorHandlers() {
     // Capture JavaScript runtime errors
     window.addEventListener('error', (event) => {
+      const msg = event.message;
+      // Ignore html2pdf core-js errors
+      if (
+        (msg?.includes('Cannot redefine property') || msg?.includes('toString')) &&
+        event.filename?.includes('html2pdf')
+      ) {
+        event.preventDefault();
+        return;
+      }
+
       this.addLog({
         timestamp: Date.now(),
         type: 'runtime.error',

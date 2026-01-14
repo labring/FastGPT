@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await authSystemAdmin({ req });
     const { path = [], ...query } = req.query as any;
 
     const queryStr = new URLSearchParams(query).toString();

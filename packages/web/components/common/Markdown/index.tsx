@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RehypeExternalLinks from 'rehype-external-links';
 import { Box, Code as ChakraCode, Image, Link } from '@chakra-ui/react';
+import MarkdownTable from './MarkdownTable';
 
 type MarkdownProps = {
   source: string;
@@ -114,13 +115,7 @@ const Markdown = ({ source, className }: MarkdownProps) => {
       // 水平线
       hr: () => <Box as="hr" my={4} borderColor="myGray.200" />,
       // 表格
-      table: ({ children }: any) => (
-        <Box overflowX="auto" my={2}>
-          <Box as="table" w="100%" border="1px solid" borderColor="myGray.200" borderRadius="md">
-            {children}
-          </Box>
-        </Box>
-      ),
+      table: MarkdownTable as any,
       thead: ({ children }: any) => (
         <Box as="thead" bg="myGray.50">
           {children}

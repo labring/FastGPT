@@ -7,7 +7,7 @@ description: 'FastGPT V4.14.5 更新说明'
 
 ### 1. 修改存储桶环境变量
 
-该版本除了支持 minio 以外，还增加支持了原生 OSS 和 COS, 所以需要修改相关环境变量修改成新的命名。
+该版本除了支持 minio 以外，还增加支持了原生 OSS 和 COS, 所以需要修改相关环境变量修改成新的命名。下面是 Minio 的配置参数，其他厂商配置，可参考[对象存储配置问题](/docs/introduction/development/object-storage)
 
 **新增变量**
 
@@ -35,12 +35,31 @@ STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
 
 ### 2. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.5
+- 更新 FastGPT 镜像tag: v4.14.5-fix
 - 更新 FastGPT 商业版镜像tag: v4.14.5
 - 更新 fastgpt-plugin 镜像 tag: v0.4.0
 - mcp_server 无需更新
 - Sandbox 无需更新
 - AIProxy 无需更新
+- mongo 5.x 版本修改成 5.0.32 版本，解决 CVE-2025-14847 漏洞。直接修改镜像 tag 成 `5.0.32`。
+
+### 3. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 重试所有失败的 S3 删除任务
+2. 为所有 share 类型的 OutLink 记录添加 showFullText 字段
+3. 重命名字段：
+  - showNodeStatus -> showRunningStatus
+  - responseDetail -> showCite
+  - showRawSource -> canDownloadSource
+
 
 ## 🚀 新增内容
 
