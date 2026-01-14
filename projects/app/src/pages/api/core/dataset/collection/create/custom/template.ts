@@ -18,6 +18,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import DatasetErrorCode from '@fastgpt/global/common/error/code/dataset';
 import fs from 'fs';
 
 export type CustomTemplateImportQuery = {};
@@ -220,9 +222,11 @@ async function handler(
     );
 
     if (!selectedMode) {
-      throw new Error(
-        `${i18nT('dataset:template_import_mode_not_found').replace('{{modeName}}', defaultModeName)}`
-      );
+      const errorObj = DatasetErrorCode[DatasetErrEnum.templateImportModeNotFound];
+      return Promise.reject({
+        ...errorObj,
+        message: errorObj.message.replace('{{modeName}}', defaultModeName)
+      });
     }
 
     const enhanceConfig = selectedMode.enhanceConfig || {};

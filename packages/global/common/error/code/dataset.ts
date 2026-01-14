@@ -26,7 +26,9 @@ export enum DatasetErrEnum {
   // Collection name validation errors
   collectionNameDuplicate = 'collectionNameDuplicate',
   collectionNameMissingExtension = 'collectionNameMissingExtension',
-  collectionNameExtensionMismatch = 'collectionNameExtensionMismatch'
+  collectionNameExtensionMismatch = 'collectionNameExtensionMismatch',
+  // Template import errors
+  templateImportModeNotFound = 'templateImportModeNotFound'
 }
 const datasetErr = [
   {
@@ -112,6 +114,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.collectionNameExtensionMismatch,
     message: i18nT('common:core.dataset.error.collectionNameExtensionMismatch')
+  },
+  {
+    statusText: DatasetErrEnum.templateImportModeNotFound,
+    message: i18nT('dataset:template_import_mode_not_found')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {
