@@ -78,22 +78,30 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                 <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
               </Td>
               <Td py={2}>
-                <MyTooltip label={t('common:Click_to_expand')}>
-                  <MyTag
-                    showDot
-                    colorSchema={collection.colorSchema as any}
-                    type={'fill'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTrainingStatesClick(collection._id);
-                    }}
-                  >
+                {collection.statusKey === 'error' ? (
+                  <MyTooltip label={t('common:Click_to_expand')}>
+                    <MyTag
+                      colorSchema={collection.colorSchema as any}
+                      type={'fill'}
+                      h={'28px'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTrainingStatesClick(collection._id);
+                      }}
+                    >
+                      <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                        {t(collection.statusText as any)}
+                        <MyIcon name={'common/maximize'} w={'11px'} />
+                      </Flex>
+                    </MyTag>
+                  </MyTooltip>
+                ) : (
+                  <MyTag colorSchema={collection.colorSchema as any} type={'fill'} h={'28px'}>
                     <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                       {t(collection.statusText as any)}
-                      <MyIcon name={'common/maximize'} w={'11px'} />
                     </Flex>
                   </MyTag>
-                </MyTooltip>
+                )}
               </Td>
               <Td py={2} onClick={(e) => e.stopPropagation()}>
                 <Switch

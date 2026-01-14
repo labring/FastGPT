@@ -166,7 +166,7 @@ const Dataset = () => {
                         {
                           icon: 'core/dataset/datasetDb',
                           label: t('dataset:database'),
-                          description: t('dataset:file_database_desc'),
+                          description: t('dataset:build_database_by_import'),
                           menuList: [
                             {
                               children: [
@@ -180,7 +180,7 @@ const Dataset = () => {
                                 {
                                   icon: 'core/dataset/databaseColor',
                                   label: t('dataset:direct_database'),
-                                  description: t('dataset:enterprise_database_desc'),
+                                  description: t('dataset:database_auth_desc'),
                                   onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
                                 }
                               ]

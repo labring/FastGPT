@@ -47,7 +47,6 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HeaderTagPopOver from '../CollectionCard/HeaderTagPopOver';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
@@ -156,12 +155,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
 
   // File upload handler for structure documents
   const handleFileUpload = useCallback(
-    async (file: File, onProgress?: (progress: number) => void) => {
+    async (file: File, onProgress?: (progress: number) => void, overwriteDuplicate?: boolean) => {
       try {
         const result = await postCreateStructureCollection({
           file,
           datasetId: datasetDetail._id,
-          percentListen: onProgress
+          percentListen: onProgress,
+          overwriteDuplicate
         });
 
         return result;
@@ -582,7 +582,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                   <Button
                     mr={3}
                     ml={1}
-                    variant="outline"
+                    variant={'whitePrimary'}
                     onClick={handleRefreshDataSource}
                     isLoading={isDetecting}
                   >
@@ -729,6 +729,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           acceptedTypes={['.xlsx', '.xls', '.csv']}
           concurrency={1}
           confirmText={t('common:Confirm')}
+          datasetId={datasetDetail._id}
         />
       )}
 

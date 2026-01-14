@@ -480,14 +480,17 @@ export const updateDatasetConfig = (data: DatasetUpdateBody) => POST(`/core/data
 export const postCreateStructureCollection = ({
   file,
   datasetId,
-  percentListen
+  percentListen,
+  overwriteDuplicate
 }: {
   file: File;
   datasetId: string;
   percentListen?: (percent: number) => void;
+  overwriteDuplicate?: boolean;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ overwriteDuplicate }));
 
   return POST<{ collectionId: string }>(
     `/core/dataset/database/createStructureCollection?datasetId=${datasetId}`,

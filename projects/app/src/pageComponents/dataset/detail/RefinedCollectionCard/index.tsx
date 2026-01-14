@@ -54,7 +54,8 @@ import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from '../CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import TrainingStates from '../CollectionCard/TrainingStates';
+import ExceptionInfoModal from './ExceptionInfoModal';
+import DatabaseExceptionModal from './DatabaseExceptionModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 
 const Header = dynamic(() => import('./Header'));
@@ -70,7 +71,10 @@ const CollectionCard = () => {
   const { feConfigs } = useSystemStore();
   const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
 
-  const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
+  const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
+    collectionId: string;
+  }>();
+  const [databaseExceptionCollection, setDatabaseExceptionCollection] = useState<{
     collectionId: string;
   }>();
 
@@ -117,7 +121,7 @@ const CollectionCard = () => {
           }
           if (collection.hasError) {
             return {
-              statusText: t('common:core.dataset.collection.status.error'),
+              statusText: t('dataset:exception_state'),
               colorSchema: 'red',
               statusKey: 'error'
             };
@@ -321,7 +325,9 @@ const CollectionCard = () => {
             formatCollections={formatCollections}
             total={total}
             onUpdateCollection={onUpdateCollection}
-            onTrainingStatesClick={(collectionId) => setTrainingStatesCollection({ collectionId })}
+            onTrainingStatesClick={(collectionId) =>
+              setDatabaseExceptionCollection({ collectionId })
+            }
             onDataConfigClick={(databaseName, activeStep) =>
               handleOpenConfigPage('edit', databaseName, activeStep)
             }
@@ -421,7 +427,7 @@ const CollectionCard = () => {
                               h={'28px'}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setTrainingStatesCollection({ collectionId: collection._id });
+                                setExceptionInfoCollection({ collectionId: collection._id });
                               }}
                             >
                               <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
@@ -631,7 +637,7 @@ const CollectionCard = () => {
             </HStack>
           }
         >
-          {total > pageSize && (
+          {total > 0 && (
             <Flex justifyContent={'center'}>
               <Pagination />
             </Flex>
@@ -642,11 +648,21 @@ const CollectionCard = () => {
         <ConfirmSyncModal />
         <EditTitleModal />
 
-        {!!trainingStatesCollection && (
-          <TrainingStates
+        {!!exceptionInfoCollection && !isDatabase && (
+          <ExceptionInfoModal
             datasetId={datasetDetail._id}
-            collectionId={trainingStatesCollection.collectionId}
-            onClose={() => setTrainingStatesCollection(undefined)}
+            collectionId={exceptionInfoCollection.collectionId}
+            onClose={() => setExceptionInfoCollection(undefined)}
+            onSuccess={() => getData(pageNum)}
+          />
+        )}
+
+        {!!databaseExceptionCollection && isDatabase && (
+          <DatabaseExceptionModal
+            datasetId={datasetDetail._id}
+            collectionId={databaseExceptionCollection.collectionId}
+            onClose={() => setDatabaseExceptionCollection(undefined)}
+            onSuccess={() => getData(pageNum)}
           />
         )}
 
