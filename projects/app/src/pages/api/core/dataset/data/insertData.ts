@@ -1,4 +1,4 @@
-/* 
+/*
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
@@ -19,9 +19,11 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes, metadata } = req.body as InsertOneDatasetDataProps;
+  const { collectionId, q, a, indexes, metadata, id } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -29,6 +31,21 @@ async function handler(req: NextApiRequest) {
 
   if (!collectionId) {
     return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  // Validate custom ID if provided
+  if (id !== undefined) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new Error(
+        `Invalid ID format: ${id}. Must be a valid MongoDB ObjectID (24-character hexadecimal string)`
+      );
+    }
+
+    // Check for duplicate ID
+    const existing = await MongoDatasetData.findById(id);
+    if (existing) {
+      throw new Error(`Data with ID ${id} already exists`);
+    }
   }
 
   // 凭证校验
@@ -73,6 +90,7 @@ async function handler(req: NextApiRequest) {
   });
 
   const { insertId, tokens } = await insertData2Dataset({
+    id,
     teamId,
     tmbId,
     datasetId,

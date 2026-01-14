@@ -136,7 +136,8 @@ export async function generateVector(): Promise<any> {
           // Route to different processors based on mode
           if (data.mode === TrainingModeEnum.chunk && data.dataId && data.data) {
             return rebuildData({ trainingData: data });
-          } else if (data.mode === TrainingModeEnum.chunk && !data.dataId) {
+          } else if (data.mode === TrainingModeEnum.chunk) {
+            // Either no dataId (auto-generate) OR dataId without data.data (custom ID for new data)
             return insertData({ trainingData: data });
           } else if (data.mode === TrainingModeEnum.synonymStandardize) {
             // Import dynamically to avoid circular dependencies

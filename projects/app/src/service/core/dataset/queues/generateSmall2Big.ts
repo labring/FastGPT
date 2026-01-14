@@ -172,6 +172,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         billId: data.billId,
         data: [
           {
+            ...(data.dataId && { id: String(data.dataId) }), // Preserve custom ID
             q: data.q,
             a: data.a,
             indexes: allIndexes,
