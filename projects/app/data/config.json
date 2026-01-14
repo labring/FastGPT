@@ -99,12 +99,12 @@
           },
           "enhanceConfig": {
             "dataEnhanceCollectionName": false, // 数据增强集合名称
-            "imageIndex": false, // 图片自动索引（会根据VLM模型配置自动调整）
+            "imageIndex": true, // 图片自动索引（会根据VLM模型配置自动调整）
             "autoIndexes": true, // AI自动索引（会根据Agent模型配置自动调整）
             "hypeIndexes": false, // 超参数索引
             "indexPrefixTitle": false, // 索引前缀标题
             "small2bigIndexes": false, // small2big索引
-            "syntheticIndex": false // 合成索引（会根据Agent模型配置自动调整）
+            "syntheticIndex": true // 合成索引（会根据Agent模型配置自动调整）
           },
           "promptConfig": {
             "autoIndexesPrompt": "", // 自动索引prompt
@@ -147,6 +147,8 @@
           }
         }
       ]
-    }
+    },
+    "enableStandaloneSummary": true, // 是否启用独立摘要生成（Pentomino SummaryEnhancer）
+    "summaryMinLength": 500 // 独立摘要最小长度阈值（字符数），低于此长度不生成摘要，默认500（参考 Pentomino data_splitter_config.chunk_size）
   }
 }

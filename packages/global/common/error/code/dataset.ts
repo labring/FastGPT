@@ -22,7 +22,11 @@ export enum DatasetErrEnum {
   synonymFileInvalidFormat = 'synonymFileInvalidFormat',
   synonymFileNoValidData = 'synonymFileNoValidData',
   synonymFileUnsupportedFormat = 'synonymFileUnsupportedFormat',
-  synonymFileParseFailed = 'synonymFileParseFailed'
+  synonymFileParseFailed = 'synonymFileParseFailed',
+  // Collection name validation errors
+  collectionNameDuplicate = 'collectionNameDuplicate',
+  collectionNameMissingExtension = 'collectionNameMissingExtension',
+  collectionNameExtensionMismatch = 'collectionNameExtensionMismatch'
 }
 const datasetErr = [
   {
@@ -96,6 +100,18 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.synonymFileParseFailed,
     message: i18nT('common:core.dataset.error.synonymFileParseFailed')
+  },
+  {
+    statusText: DatasetErrEnum.collectionNameDuplicate,
+    message: i18nT('common:core.dataset.error.collectionNameDuplicate')
+  },
+  {
+    statusText: DatasetErrEnum.collectionNameMissingExtension,
+    message: i18nT('common:core.dataset.error.collectionNameMissingExtension')
+  },
+  {
+    statusText: DatasetErrEnum.collectionNameExtensionMismatch,
+    message: i18nT('common:core.dataset.error.collectionNameExtensionMismatch')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

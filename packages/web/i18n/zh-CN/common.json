@@ -1392,5 +1392,8 @@
   "use_faq_data_reply": "使用faq数据回复",
   "faq_reply_node_intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
   "core.file.error.docParseRequiresCustomService": "DOC 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/DOCX 格式。",
-  "core.file.error.pptParseRequiresCustomService": "PPT 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/PPTX 格式。"
+  "core.file.error.pptParseRequiresCustomService": "PPT 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/PPTX 格式。",
+  "core.dataset.error.collectionNameDuplicate": "该数据集中已存在同名文件 \"{{fileName}}\"",
+  "core.dataset.error.collectionNameMissingExtension": "不能去除文件后缀，请保留原文件后缀",
+  "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致。原后缀：{{original}}，新后缀：{{new}}"
 }

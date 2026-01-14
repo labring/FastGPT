@@ -501,6 +501,7 @@
   "core.dataset.error.synonymFileNoValidData": "No valid synonym data found in the file.",
   "core.dataset.error.synonymFileUnsupportedFormat": "Only CSV, XLSX, and XLS format files are supported for upload.",
   "core.dataset.error.synonymFileParseFailed": "Failed to parse file. Please check the file format and encoding.",
+  "core.dataset.error.collectionNameDuplicate": "A file with the same name \"{{fileName}}\" already exists in this dataset.",
   "core.dataset.externalFile": "External file database",
   "core.dataset.file": "File",
   "core.dataset.folder": "Directory",
@@ -1392,5 +1393,7 @@
   "use_faq_data_reply": "使用faq数据回复",
   "faq_reply_node_intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
   "core.file.error.docParseRequiresCustomService": "DOC file parsing requires custom parse service. Please configure customPdfParse service or convert to PDF/DOCX format.",
-  "core.file.error.pptParseRequiresCustomService": "PPT file parsing requires custom parse service. Please configure customPdfParse service or convert to PDF/PPTX format."
+  "core.file.error.pptParseRequiresCustomService": "PPT file parsing requires custom parse service. Please configure customPdfParse service or convert to PDF/PPTX format.",
+  "core.dataset.error.collectionNameMissingExtension": "File extension cannot be removed. Please keep the original file extension.",
+  "core.dataset.error.collectionNameExtensionMismatch": "File extension does not match the original. Original: {{original}}, New: {{new}}."
 }
