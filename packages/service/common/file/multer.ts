@@ -37,7 +37,7 @@ export const multer = {
       },
       preservePath: true,
       storage: this._storage
-    }).array('file', Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10);
+    }).array('file', global.feConfigs?.uploadFileMaxSize);
   },
 
   resolveFormData<T extends Record<string, any>>({

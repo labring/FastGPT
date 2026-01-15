@@ -55,11 +55,15 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectAudio ||
     showSelectCustomFileExtension;
   const maxSelectFiles = Math.min(
-    fileSelectConfig?.maxFiles ?? feConfigs?.uploadFileMaxAmount ?? 10,
+    fileSelectConfig?.maxFiles ?? Infinity,
+    feConfigs?.uploadFileMaxAmount ?? 10,
     teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
   );
   const maxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    Math.min(
+      teamPlanStatus?.standardConstants?.maxUploadFileSize ?? Infinity,
+      feConfigs?.uploadFileMaxSize ?? 500
+    ) *
     1024 *
     1024;
   const canSelectFileAmount = maxSelectFiles - fileList.length;
