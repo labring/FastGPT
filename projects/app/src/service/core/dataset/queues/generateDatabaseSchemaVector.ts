@@ -402,9 +402,10 @@ const processDatabaseSchema = async ({
         ],
         { session }
       );
-    } catch (error) {
-      addLog.error(`[DB Schema] Failed to process column ${columnName}`, error);
-      continue;
+    } catch (error: any) {
+      const originalMsg = error?.message || 'Unknown error';
+      addLog.error(`[DB Schema]Table ${tableName}, Column ${columnName} ${originalMsg}`, error);
+      throw new Error(originalMsg);
     }
   }
 

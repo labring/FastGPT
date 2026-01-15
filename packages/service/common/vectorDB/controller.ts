@@ -18,6 +18,7 @@ import {
 import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { DBDatasetVectorTableName, DBDatasetValueVectorTableName } from './constants';
+import { addLog } from '../system/log';
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (OCEANBASE_ADDRESS) return new ObVectorCtrl();
@@ -132,21 +133,38 @@ export const insertCoulmnDescriptionVector = async ({
   column_des_index: string;
 }) => {
   return retryFn(async () => {
-    const { vectors, tokens } = await getVectorsByText({
-      model,
-      input: query,
-      type: 'db'
-    });
-    const { insertIds } = await Vector.insert({
-      teamId,
-      datasetId,
-      collectionId,
-      vectors: vectors,
-      column_des_index,
-      tableName: DBDatasetVectorTableName
-    });
+    // Step 1: Get vectors from text (Embedding)
+    let vectors: number[][];
+    let tokens: number;
+    try {
+      const result = await getVectorsByText({
+        model,
+        input: query,
+        type: 'db'
+      });
+      vectors = result.vectors;
+      tokens = result.tokens;
+    } catch (error: any) {
+      throw new Error(`Embedding Error: ${error?.message || 'Unknown error'}`);
+    }
 
-    console.debug('insertCoulmnDescriptionVector', { insertIds });
+    // Step 2: Insert vectors to database
+    let insertIds: string[];
+    try {
+      const result = await Vector.insert({
+        teamId,
+        datasetId,
+        collectionId,
+        vectors: vectors,
+        column_des_index,
+        tableName: DBDatasetVectorTableName
+      });
+      insertIds = result.insertIds;
+    } catch (error: any) {
+      throw new Error(`Vector Insert Error: ${error?.message || 'Unknown error'}`);
+    }
+
+    addLog.debug('insertCoulmnDescriptionVector', { insertIds });
     onIncrCache(teamId);
 
     return {
@@ -172,20 +190,36 @@ export const insertColumnValueVector = async ({
   column_val_index: string;
 }) => {
   return retryFn(async () => {
-    const { vectors, tokens } = await getVectorsByText({
-      model,
-      input: query,
-      type: 'db'
-    });
+    // Step 1: Get vectors from text (Embedding)
+    let vectors: number[][];
+    let tokens: number;
+    try {
+      const result = await getVectorsByText({
+        model,
+        input: query,
+        type: 'db'
+      });
+      vectors = result.vectors;
+      tokens = result.tokens;
+    } catch (error: any) {
+      throw new Error(`Embedding Error: ${error?.message || 'Unknown error'}`);
+    }
 
-    const { insertIds } = await Vector.insert({
-      teamId,
-      datasetId,
-      collectionId,
-      vectors: vectors,
-      column_val_index,
-      tableName: DBDatasetValueVectorTableName
-    });
+    // Step 2: Insert vectors to database
+    let insertIds: string[];
+    try {
+      const result = await Vector.insert({
+        teamId,
+        datasetId,
+        collectionId,
+        vectors: vectors,
+        column_val_index,
+        tableName: DBDatasetValueVectorTableName
+      });
+      insertIds = result.insertIds;
+    } catch (error: any) {
+      throw new Error(`Vector Insert Error: ${error?.message || 'Unknown error'}`);
+    }
 
     return {
       tokens,
