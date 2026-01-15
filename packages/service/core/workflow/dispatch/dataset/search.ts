@@ -590,6 +590,30 @@ export async function dispatchDatasetSearch(
       nodeDispatchUsagesCount: nodeDispatchUsages.length
     });
 
+    // Debug日志：输出检索结果完整内容
+    addLog.debug('Dataset Search - Retrieved Results Detail', {
+      totalResults: searchRes.length,
+      sqlResultsCount: sqlResult.length,
+      commonResultsCount: commonSearchResult
+        ? (commonSearchResult as SearchDatasetDataResponse).searchRes.length
+        : 0,
+      retrievalResultsCount: retrievalResults?.length,
+      results: searchRes.map((item, index) => ({
+        index,
+        id: item.id,
+        datasetId: item.datasetId,
+        sourceName: item.sourceName,
+        q: item.q,
+        a: item.a,
+        score:
+          item.score?.map((s) => ({
+            type: s.type,
+            value: s.value,
+            index: s.index
+          })) || []
+      }))
+    });
+
     const responseData: DispatchNodeResponseType & { totalPoints: number } = {
       totalPoints,
       query: userChatInput,
