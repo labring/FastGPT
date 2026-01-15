@@ -65,11 +65,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                 </Box>
               </Td>
               <Td maxW={'290px'} py={2}>
-                <MyTooltip
-                  shouldWrapChildren={false}
-                  placement={'auto'}
-                  label={collection.tableSchema?.description}
-                >
+                <MyTooltip label={collection.tableSchema?.description}>
                   <Text className={'textEllipsis'}>{collection.tableSchema?.description}</Text>
                 </MyTooltip>
               </Td>

@@ -151,9 +151,11 @@ const FileDataCard = () => {
                     maxW={'150px'}
                     key={index}
                   >
-                    <Text className={'textEllipsis'} maxW={'120px'}>
-                      {col}
-                    </Text>
+                    <MyTooltip label={col || ''} shouldWrapChildren={false}>
+                      <Text className={'textEllipsis'} maxW={'120px'}>
+                        {col}
+                      </Text>
+                    </MyTooltip>
                   </Th>
                 ))}
               </Tr>

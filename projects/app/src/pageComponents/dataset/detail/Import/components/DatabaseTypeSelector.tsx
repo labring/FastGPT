@@ -53,46 +53,54 @@ const DatabaseTypeSelector: React.FC<DatabaseTypeSelectorProps> = ({
         fontWeight="normal"
       >
         <Flex alignItems="center" justifyContent="space-between">
-          <HStack spacing={3}>
+          <Box flex={1}>
             {selectedConfig && (
-              <>
-                <MyIcon name={selectedConfig.icon as any} w="32px" h="32px" />
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="myGray.900">
-                    {selectedConfig.name}
-                  </Text>
-                  <Text fontSize="xs" color="myGray.500">
-                    {t(selectedConfig.descriptionKey)}
-                  </Text>
-                </Box>
-              </>
+              <Flex alignItems="center">
+                <MyIcon name={selectedConfig.icon as any} w="16px" h="16px" mr={1} flexShrink={0} />
+                <Text fontSize="sm" color="#24282C" lineHeight="20px">
+                  {selectedConfig.name}
+                </Text>
+              </Flex>
             )}
-          </HStack>
-          <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" />
+          </Box>
+          <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" ml={2} />
         </Flex>
       </MenuButton>
 
-      <MenuList zIndex={1000}>
-        {databaseTypeConfigs.map((config) => (
+      <MenuList
+        zIndex={1000}
+        p={3}
+        borderRadius="xl"
+        bg="white"
+        boxShadow="0px 32px 64px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px 0px rgba(19, 51, 107, 0.2)"
+        border="none"
+      >
+        {databaseTypeConfigs.map((config, index) => (
           <MenuItem
             key={config.type}
             onClick={() => onChange(config.type)}
-            py={3}
-            px={4}
-            _hover={{ bg: 'myGray.50' }}
-            bg={value === config.type ? 'primary.50' : 'transparent'}
+            py={2}
+            px={2}
+            mb={index < databaseTypeConfigs.length - 1 ? 2 : 0}
+            borderRadius="md"
+            bg={value === config.type ? 'myGray.100' : 'transparent'}
+            _hover={{ bg: value === config.type ? 'myGray.100' : 'myGray.50' }}
           >
-            <HStack spacing={3} w="full">
-              <MyIcon name={config.icon as any} w="32px" h="32px" flexShrink={0} />
-              <Box flex={1}>
-                <Text fontSize="sm" fontWeight="medium" color="myGray.900">
+            <Box w="full">
+              <Flex alignItems="center" mb={1}>
+                <MyIcon name={config.icon as any} w="16px" h="16px" mr={1} flexShrink={0} />
+                <Text
+                  fontSize="sm"
+                  color={value === config.type ? 'primary.700' : '#24282C'}
+                  lineHeight="20px"
+                >
                   {config.name}
                 </Text>
-                <Text fontSize="xs" color="myGray.500">
-                  {t(config.descriptionKey)}
-                </Text>
-              </Box>
-            </HStack>
+              </Flex>
+              <Text fontSize="xs" color="myGray.500" lineHeight="16px">
+                {t(config.descriptionKey)}
+              </Text>
+            </Box>
           </MenuItem>
         ))}
       </MenuList>
@@ -101,4 +109,3 @@ const DatabaseTypeSelector: React.FC<DatabaseTypeSelectorProps> = ({
 };
 
 export default DatabaseTypeSelector;
-

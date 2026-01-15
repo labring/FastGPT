@@ -135,11 +135,26 @@ const ConnectDatabaseConfig = () => {
       {/* Form */}
       <VStack spacing={6} align="stretch">
         {/* Database Type */}
-        {!isEditMode && (
-          <Box>
-            <FormLabel required fontSize="14px" fontWeight="medium" color="myGray.900" mb={4}>
-              {t('dataset:database_type')}
-            </FormLabel>
+        <Box>
+          <FormLabel required fontSize="14px" fontWeight="medium" color="myGray.900" mb={4}>
+            {t('dataset:database_type')}
+          </FormLabel>
+          {isEditMode ? (
+            <Box>
+              <Flex alignItems="center">
+                <MyIcon
+                  name={currentTypeConfig?.icon as any}
+                  w="16px"
+                  h="16px"
+                  mr={1}
+                  flexShrink={0}
+                />
+                <Text fontSize="sm" color="#24282C" lineHeight="20px">
+                  {currentTypeConfig?.name}
+                </Text>
+              </Flex>
+            </Box>
+          ) : (
             <Controller
               name="clientType"
               control={control}
@@ -151,8 +166,8 @@ const ConnectDatabaseConfig = () => {
                 />
               )}
             />
-          </Box>
-        )}
+          )}
+        </Box>
 
         {/* Database Host */}
         <Box>
@@ -169,7 +184,6 @@ const ConnectDatabaseConfig = () => {
             <MyTooltip label={t('dataset:database_host_tooltip')}>
               <Input
                 placeholder={t('dataset:host_placeholder')}
-                bg="myGray.50"
                 isInvalid={Boolean(errors.host)}
                 {...register('host', {
                   required: true,
@@ -204,7 +218,6 @@ const ConnectDatabaseConfig = () => {
               <Input
                 type="number"
                 placeholder={String(getDefaultPort(currentClientType))}
-                bg="myGray.50"
                 isInvalid={Boolean(errors.port)}
                 {...register('port', {
                   required: true,
@@ -232,7 +245,6 @@ const ConnectDatabaseConfig = () => {
                 ? t(currentTypeConfig.databasePlaceholderKey) || ''
                 : ''
             }
-            bg="myGray.50"
             isInvalid={!!errors.database}
             {...register('database', {
               required: true
@@ -246,7 +258,6 @@ const ConnectDatabaseConfig = () => {
             {t('dataset:database_username')}
           </FormLabel>
           <Input
-            bg="myGray.50"
             isInvalid={!!errors.user}
             {...register('user', {
               required: true
@@ -272,7 +283,6 @@ const ConnectDatabaseConfig = () => {
               </>
             }
             type={showPassword ? 'text' : 'password'}
-            bg="myGray.50"
             maxLength={255}
             isInvalid={!!errors.password}
             {...register('password', {
@@ -296,7 +306,6 @@ const ConnectDatabaseConfig = () => {
                   currentTypeConfig?.schemaPlaceholderKey || 'dataset:database_schema_placeholder'
                 ) || ''
               }
-              bg="myGray.50"
               {...register('schema')}
             />
           </Box>
@@ -319,7 +328,6 @@ const ConnectDatabaseConfig = () => {
               <Input
                 type="number"
                 placeholder="20"
-                bg="myGray.50"
                 isInvalid={!!errors.poolSize}
                 {...register('poolSize', {
                   required: true,
