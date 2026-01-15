@@ -246,7 +246,8 @@ export const readFileContentFromMongo = async ({
     encoding,
     metadata: {
       relatedId: fileId
-    }
+    },
+    filename: file.filename
   });
 
   // Add buffer

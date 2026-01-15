@@ -225,7 +225,8 @@ export const getFileContentFromLinks = async ({
             buffer,
             encoding,
             customPdfParse,
-            getFormatText: true
+            getFormatText: true,
+            filename
           });
 
           // Add to buffer
