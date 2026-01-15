@@ -57,6 +57,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { addLog } from '../../../../common/system/log';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -133,6 +134,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     const chatHistories = getHistories(history, histories);
     quoteQA = checkQuoteQAValue(quoteQA);
+
+    // Debug日志：记录从知识库检索节点接收到的完整数据
+    addLog.debug('AI Chat - Received Dataset Quote Data', {
+      quoteQACount: quoteQA?.length || 0,
+      quoteQAIds: quoteQA?.map((item) => item.id) || [],
+      quoteQASummary:
+        quoteQA?.map((item, index) => ({
+          index,
+          id: item.id,
+          datasetId: item.datasetId,
+          sourceName: item.sourceName,
+          q: item.q,
+          a: item.a
+        })) || []
+    });
 
     const [{ datasetQuoteText }, { documentQuoteText, userFiles }] = await Promise.all([
       filterDatasetQuote({
@@ -399,6 +415,12 @@ async function filterDatasetQuote({
       ? `${filterQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
       : '';
 
+  // Debug日志：记录最终生成的引用文本
+  addLog.debug('AI Chat - Final Dataset Quote Text', {
+    quoteTextLength: datasetQuoteText.length,
+    quoteTextPreview: datasetQuoteText
+  });
+
   return {
     datasetQuoteText
   };
@@ -553,6 +575,18 @@ async function getChatMessages({
   const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
     maxContext: model.maxContext - maxTokens // filter token. not response maxToken
+  });
+
+  // Debug日志：记录最终发送给LLM的消息
+  addLog.debug('AI Chat - Final Messages to LLM', {
+    totalMessagesCount: filterMessages.length,
+    messages: filterMessages.map((msg, index) => ({
+      index,
+      role: msg.role,
+      contentLength:
+        typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length,
+      content: msg.content
+    }))
   });
 
   return {

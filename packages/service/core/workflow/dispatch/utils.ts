@@ -21,6 +21,7 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { addLog } from '../../../common/system/log';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -106,10 +107,33 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
   if (quoteQA.length === 0) {
     return [];
   }
-  if (quoteQA.some((item) => typeof item !== 'object' || !item.q)) {
+
+  // 过滤掉无效的item(没有q字段或q为空的),但保留有效的item
+  const validItems = quoteQA.filter((item) => typeof item === 'object' && item.q);
+
+  // Debug日志：记录过滤情况
+  const invalidItems = quoteQA.filter((item) => typeof item !== 'object' || !item.q);
+  if (invalidItems.length > 0) {
+    addLog.debug('checkQuoteQAValue - Filtered out invalid items', {
+      totalItems: quoteQA.length,
+      validItemsCount: validItems.length,
+      invalidItemsCount: invalidItems.length,
+      invalidItems: invalidItems.map((item) => ({
+        id: item?.id,
+        q: item?.q,
+        a: item?.a
+      }))
+    });
+  }
+
+  // 如果所有item都无效,返回undefined
+  if (validItems.length === 0) {
+    addLog.warn('checkQuoteQAValue - All items are invalid, returning undefined');
     return undefined;
   }
-  return quoteQA;
+
+  // 返回有效的items
+  return validItems;
 };
 
 /* remove system variable */
