@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/service/common/vectorDB/controller';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
+import { jiebaSplitWithCustomDict } from '@fastgpt/service/common/string/jieba';
 import type {
   DatasetDataSchemaType,
   DatasetTrainingSchemaType
@@ -59,6 +59,13 @@ export const processSynonymStandardize = async ({
 
   const { synonymDict, synonymMappingMap } = synonymConfig;
 
+  // 提取所有词汇（标准词 + 同义词），用于 jieba 自定义词典
+  const customWords: string[] = [];
+  Object.entries(synonymDict).forEach(([standardTerm, synonyms]) => {
+    customWords.push(standardTerm); // 标准词
+    customWords.push(...synonyms); // 同义词
+  });
+
   // 所有数据都要走增强，不再有跳过选项
   addLog.info('[SynonymStandardize] Processing all data for enhancement', {
     dataId: String(trainingData.dataId)
@@ -108,6 +115,11 @@ export const processSynonymStandardize = async ({
   }
 
   let totalTokens = 0;
+
+  // 判断 q/a 是否发生了同义词转换
+  const qaHasTransformation =
+    qStandardized.transformations.length > 0 ||
+    (aStandardized && aStandardized.transformations.length > 0);
 
   // 4. 批量更新向量 (先删后插)
   if (indexesToUpdate.length > 0) {
@@ -162,24 +174,30 @@ export const processSynonymStandardize = async ({
         { session }
       );
 
-      // 6. 更新全文检索 (使用原始 q/a)
-      const fullText = trainingData.data.a
-        ? `${trainingData.data.q}\n${trainingData.data.a}`
-        : trainingData.data.q;
-      const fullTextToken = await jiebaSplit({ text: fullText });
+      // 6. 如果 q/a 发生了同义词转换，更新全文检索
+      if (qaHasTransformation) {
+        const fullText =
+          trainingData.data.a && aStandardized
+            ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
+            : qStandardized.transformedText;
+        const fullTextToken = await jiebaSplitWithCustomDict({
+          text: fullText,
+          customWords: customWords
+        });
 
-      await MongoDatasetDataText.updateOne(
-        { dataId },
-        {
-          $set: {
-            teamId,
-            datasetId: trainingData.datasetId,
-            collectionId: trainingData.collectionId,
-            fullTextToken
-          }
-        },
-        { upsert: true, session }
-      );
+        await MongoDatasetDataText.updateOne(
+          { dataId },
+          {
+            $set: {
+              teamId,
+              datasetId: trainingData.datasetId,
+              collectionId: trainingData.collectionId,
+              fullTextToken
+            }
+          },
+          { upsert: true, session }
+        );
+      }
 
       // 7. 删除训练任务
       await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
@@ -219,25 +237,32 @@ export const processSynonymStandardize = async ({
       }
     });
   } else {
-    // 该条数据无需更新向量,但仍需更新全文检索和删除任务
+    // indexes 无需更新，但如果 q/a 发生了同义词转换，仍需更新全文检索
     await mongoSessionRun(async (session) => {
-      const fullText = aStandardized
-        ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
-        : qStandardized.transformedText;
-      const fullTextToken = await jiebaSplit({ text: fullText });
+      // 如果 q/a 发生了同义词转换，更新全文检索
+      if (qaHasTransformation) {
+        const fullText =
+          trainingData.data.a && aStandardized
+            ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
+            : qStandardized.transformedText;
+        const fullTextToken = await jiebaSplitWithCustomDict({
+          text: fullText,
+          customWords: customWords
+        });
 
-      await MongoDatasetDataText.updateOne(
-        { dataId },
-        {
-          $set: {
-            teamId,
-            datasetId: trainingData.datasetId,
-            collectionId: trainingData.collectionId,
-            fullTextToken
-          }
-        },
-        { upsert: true, session }
-      );
+        await MongoDatasetDataText.updateOne(
+          { dataId },
+          {
+            $set: {
+              teamId,
+              datasetId: trainingData.datasetId,
+              collectionId: trainingData.collectionId,
+              fullTextToken
+            }
+          },
+          { upsert: true, session }
+        );
+      }
 
       await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 

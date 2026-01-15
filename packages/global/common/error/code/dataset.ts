@@ -16,6 +16,8 @@ export enum DatasetErrEnum {
   sameApiCollection = 'sameApiCollection',
   noApiServer = 'noApiServer',
   canNotEditAdminPermission = 'canNotEditAdminPermission',
+  // Data validation errors
+  datasetIdMismatch = 'datasetIdMismatch',
   // Synonym errors
   synonymFileNotExist = 'synonymFileNotExist',
   synonymFileEmpty = 'synonymFileEmpty',
@@ -23,6 +25,7 @@ export enum DatasetErrEnum {
   synonymFileNoValidData = 'synonymFileNoValidData',
   synonymFileUnsupportedFormat = 'synonymFileUnsupportedFormat',
   synonymFileParseFailed = 'synonymFileParseFailed',
+  synonymTermDuplicate = 'synonymTermDuplicate',
   // Collection name validation errors
   collectionNameDuplicate = 'collectionNameDuplicate',
   collectionNameMissingExtension = 'collectionNameMissingExtension',
@@ -80,6 +83,10 @@ const datasetErr = [
     message: 'core.dataset.error.canNotEditAdminPermission'
   },
   {
+    statusText: DatasetErrEnum.datasetIdMismatch,
+    message: i18nT('common:core.dataset.error.datasetIdMismatch')
+  },
+  {
     statusText: DatasetErrEnum.synonymFileNotExist,
     message: i18nT('common:core.dataset.error.synonymFileNotExist')
   },
@@ -102,6 +109,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.synonymFileParseFailed,
     message: i18nT('common:core.dataset.error.synonymFileParseFailed')
+  },
+  {
+    statusText: DatasetErrEnum.synonymTermDuplicate,
+    message: i18nT('common:core.dataset.error.synonymTermDuplicate')
   },
   {
     statusText: DatasetErrEnum.collectionNameDuplicate,

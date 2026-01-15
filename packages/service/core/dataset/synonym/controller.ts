@@ -167,6 +167,11 @@ export async function parseSynonymCSV(fileContent: string): Promise<ParsedSynony
               continue;
             }
 
+            // 验证标准词不能与同义词相同
+            if (synonymTerms.includes(standardizedTerm)) {
+              return reject(new Error(DatasetErrEnum.synonymTermDuplicate));
+            }
+
             // 组合所有词用于全文检索
             const allTerms = [standardizedTerm, ...synonymTerms].join(' ');
 
