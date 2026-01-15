@@ -237,7 +237,7 @@ const Reference = ({
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
             isDisabled: isEmptyItem,
-            minW: '240px',
+            w: '240px',
             _hover: {
               borderColor: 'blue.300'
             }
