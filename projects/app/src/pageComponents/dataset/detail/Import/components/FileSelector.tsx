@@ -38,7 +38,7 @@ const FileSelector = ({
     feConfigs?.uploadFileMaxAmount || 1000,
     teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
   );
-  // 文件大小限制：套餐限制 > 系统配置 > 默认值 500MB
+  // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
   const maxSize =
     (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
     1024 *

@@ -34,7 +34,7 @@ async function handler(
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: Number(process.env.UPLOAD_FILE_MAX_SIZE) || 500
+      maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { parentId, datasetId, collectionName } = result.data;
