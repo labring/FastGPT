@@ -72,4 +72,3 @@ export const getDefaultPort = (type: DatabaseTypeEnum): number => {
   const config = getDatabaseTypeConfig(type);
   return config?.defaultPort ?? 3306;
 };
-

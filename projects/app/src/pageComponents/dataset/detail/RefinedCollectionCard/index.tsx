@@ -401,14 +401,24 @@ const CollectionCard = () => {
                         <Box>
                           <Flex alignItems={'center'}>
                             <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
-                            <MyTooltip
-                              label={t('common:click_drag_tip')}
-                              shouldWrapChildren={false}
-                            >
+                            {isStructureDocument ? (
                               <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
                                 {collection.name}
                               </Box>
-                            </MyTooltip>
+                            ) : (
+                              <MyTooltip
+                                label={t('common:click_drag_tip')}
+                                shouldWrapChildren={false}
+                              >
+                                <Box
+                                  color={'myGray.900'}
+                                  fontWeight={'500'}
+                                  className="textEllipsis"
+                                >
+                                  {collection.name}
+                                </Box>
+                              </MyTooltip>
+                            )}
                           </Flex>
                           {feConfigs?.isPlus && !!collection.tags?.length && (
                             <TagsPopOver currentCollection={collection} hoverBg={'white'} />
