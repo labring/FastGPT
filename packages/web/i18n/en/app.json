@@ -472,5 +472,9 @@
   "chat_search_results": "搜索结果",
   "select_knowledge_base": "选择知识库",
   "rerank_model_training_warning": "该模型会参与训练，应用创建后不支持修改",
-  "model_not_support_reasoning": "所选 AI 模型不支持深度思考"
+  "model_not_support_reasoning": "所选 AI 模型不支持深度思考",
+  "learning_status_abnormal": "异常",
+  "unknown_error": "未知错误",
+  "exception_info": "异常信息",
+  "retry": "重试"
 }

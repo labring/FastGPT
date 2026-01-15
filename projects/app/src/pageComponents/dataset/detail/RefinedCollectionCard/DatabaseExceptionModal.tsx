@@ -52,9 +52,15 @@ const DatabaseExceptionModal = ({
       iconSrc="common/info"
       iconColor={'primary.600'}
       title={t('dataset:exception_info')}
-      minW={['90vw', '712px']}
+      minW={['90vw', '600px']}
     >
-      <ModalBody px={9} minH={['90vh', '400px']}>
+      <ModalBody
+        px={9}
+        minH={['90vh', '400px']}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
         <ScrollData h={'400px'} isLoading={isLoading}>
           {errorList.length > 0 ? (
             <Box
@@ -62,9 +68,10 @@ const DatabaseExceptionModal = ({
               borderRadius={'8px'}
               bg={'#FEF3F2'}
               fontSize={'sm'}
-              color={'myGray.700'}
+              color={'myGray.600'}
               whiteSpace={'pre-wrap'}
               wordBreak={'break-word'}
+              minW={'506px'}
             >
               {errorList.map((item, index) => (
                 <Box key={index} mb={index < errorList.length - 1 ? 2 : 0}>

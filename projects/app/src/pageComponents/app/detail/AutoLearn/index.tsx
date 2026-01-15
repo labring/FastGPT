@@ -4,6 +4,7 @@
  */
 import React, { useMemo, useCallback, useState } from 'react';
 import { Flex, Box, Table, Thead, Tbody, Tr, Th, Td, Button, HStack, Text } from '@chakra-ui/react';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { format } from 'date-fns';
@@ -16,13 +17,15 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import {
   getRerankTrainTaskList,
-  createRerankTrainTaskWithTrainset
+  createRerankTrainTaskWithTrainset,
+  retryRerankTrainTask,
+  deleteRerankTrainTask
 } from '@/web/core/app/api/train';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import { cardStyles } from '../constants';
-import EnhancedErrorDisplay from './components/EnhancedErrorDisplay';
+import TrainExceptionModal from './TrainExceptionModal';
 
 const AutoLearn = () => {
   const { t } = useTranslation();
@@ -32,9 +35,17 @@ const AutoLearn = () => {
   // 排序状态管理
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // 错误详情 Modal 状态
-  const [selectedError, setSelectedError] = useState<EnhancedErrorMessage | null>(null);
-  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  // 错误详情 Modal 状态（包含 taskId 和错误信息）
+  const [selectedError, setSelectedError] = useState<{
+    taskId: string;
+    errorMsg: EnhancedErrorMessage;
+  } | null>(null);
+
+  // 重试任务 loading 状态集合
+  const [retryingTaskIds, setRetryingTaskIds] = useState<Set<string>>(new Set());
+
+  // 删除任务 loading 状态集合
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Set<string>>(new Set());
 
   // 空状态组件
   const EmptyTipDom = useMemo(() => <EmptyTip mt={0} text={t('app:auto_learn_no_records')} />, [t]);
@@ -94,6 +105,64 @@ const AutoLearn = () => {
     }
   );
 
+  // 使用 useRequest2 处理重试训练任务
+  const { runAsync: onRetryTask } = useRequest2(
+    async (taskId: string) => {
+      if (!taskId) throw new Error('Task ID is required');
+
+      // 添加到 loading 集合
+      setRetryingTaskIds((prev) => new Set(prev).add(taskId));
+
+      try {
+        const result = await retryRerankTrainTask({ taskId });
+        return result;
+      } finally {
+        // 无论成功或失败，都从 loading 集合中移除
+        setRetryingTaskIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(taskId);
+          return newSet;
+        });
+      }
+    },
+    {
+      errorToast: t('app:operation_failed'),
+      successToast: t('app:operation_success'),
+      onSuccess: () => {
+        refreshList();
+      }
+    }
+  );
+
+  // 使用 useRequest2 处理删除训练任务
+  const { runAsync: onDeleteTask } = useRequest2(
+    async (taskId: string) => {
+      if (!taskId) throw new Error('Task ID is required');
+
+      // 添加到 loading 集合
+      setDeletingTaskIds((prev) => new Set(prev).add(taskId));
+
+      try {
+        const result = await deleteRerankTrainTask({ taskId });
+        return result;
+      } finally {
+        // 无论成功或失败，都从 loading 集合中移除
+        setDeletingTaskIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(taskId);
+          return newSet;
+        });
+      }
+    },
+    {
+      errorToast: t('app:operation_failed'),
+      successToast: t('app:operation_success'),
+      onSuccess: () => {
+        refreshList();
+      }
+    }
+  );
+
   // 使用 useRequest2 处理下载评测数据
   const { runAsync: onDownloadData } = useRequest2(
     async (taskId: string) => {
@@ -142,7 +211,7 @@ const AutoLearn = () => {
         ) &&
         !contentType?.includes('application/octet-stream')
       ) {
-        throw new Error(t('下载失败') + ': ' + t('无效的响应格式'));
+        throw new Error('download error.');
       }
 
       // 只有响应成功时才触发下载
@@ -208,10 +277,55 @@ const AutoLearn = () => {
   );
 
   /**
+   * 关闭错误详情 Modal
+   */
+  const handleCloseErrorModal = useCallback(() => {
+    setSelectedError(null);
+  }, []);
+
+  /**
+   * 重试训练任务处理函数
+   */
+  const handleRetryTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await onRetryTask(taskId);
+      } catch (error) {
+        console.error('Retry task error:', error);
+      }
+    },
+    [onRetryTask]
+  );
+
+  /**
+   * 删除训练任务处理函数
+   */
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await onDeleteTask(taskId);
+      } catch (error) {
+        console.error('Delete task error:', error);
+      }
+    },
+    [onDeleteTask]
+  );
+
+  /**
+   * 重试处理函数 (从错误弹窗触发)
+   */
+  const handleRetry = useCallback(() => {
+    if (selectedError?.taskId) {
+      handleRetryTask(selectedError.taskId);
+    }
+    handleCloseErrorModal();
+  }, [selectedError, handleCloseErrorModal, handleRetryTask]);
+
+  /**
    * 渲染状态标签
    */
   const renderStatusTag = useCallback(
-    (status: RerankTrainTaskStatusEnum) => {
+    (status: RerankTrainTaskStatusEnum, errorMsg?: EnhancedErrorMessage, taskId?: string) => {
       const statusConfig = {
         [RerankTrainTaskStatusEnum.pending]: {
           label: t('app:learning_status_pending'),
@@ -226,7 +340,7 @@ const AutoLearn = () => {
           colorSchema: 'green' as const
         },
         [RerankTrainTaskStatusEnum.failed]: {
-          label: t('app:learning_status_failed'),
+          label: t('app:learning_status_abnormal'),
           colorSchema: 'red' as const
         },
         [RerankTrainTaskStatusEnum.cancelled]: {
@@ -236,13 +350,43 @@ const AutoLearn = () => {
       };
 
       const config = statusConfig[status];
+
+      // 只有失败状态且包含错误信息时，才显示可点击的标签
+      const isFailedWithError = status === RerankTrainTaskStatusEnum.failed && errorMsg && taskId;
+
+      if (isFailedWithError) {
+        return (
+          <MyTooltip label={t('common:Click_to_expand')}>
+            <MyTag
+              colorSchema={config.colorSchema}
+              type="fill"
+              h={'28px'}
+              cursor={'pointer'}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedError({
+                  taskId,
+                  errorMsg
+                });
+              }}
+            >
+              <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                {config.label}
+                <MyIcon name={'common/maximize'} w={'11px'} />
+              </Flex>
+            </MyTag>
+          </MyTooltip>
+        );
+      }
+
+      // 其他状态保持原样
       return (
-        <MyTag colorSchema={config.colorSchema} type="fill">
+        <MyTag colorSchema={config.colorSchema} type="fill" h={'28px'}>
           {config.label}
         </MyTag>
       );
     },
-    [t]
+    [t, setSelectedError]
   );
 
   /**
@@ -270,22 +414,6 @@ const AutoLearn = () => {
       mrrBefore: baseDetailedResults?.rerank_top10_mrr,
       mrrAfter: tunedDetailedResults?.rerank_top10_mrr
     };
-  }, []);
-
-  /**
-   * 查看错误详情处理函数
-   */
-  const handleViewError = useCallback((error: EnhancedErrorMessage) => {
-    setSelectedError(error);
-    setIsErrorModalOpen(true);
-  }, []);
-
-  /**
-   * 关闭错误详情 Modal
-   */
-  const handleCloseErrorModal = useCallback(() => {
-    setIsErrorModalOpen(false);
-    setSelectedError(null);
   }, []);
 
   return (
@@ -362,50 +490,65 @@ const AutoLearn = () => {
                     <Td color={'myGray.600'} fontSize={'sm'}>
                       {formatTime(task.createTime)}
                     </Td>
-                    <Td>{renderStatusTag(task.status)}</Td>
+                    <Td>
+                      {renderStatusTag(
+                        task.status,
+                        task.errorMsg as EnhancedErrorMessage,
+                        task._id
+                      )}
+                    </Td>
                     <Td color={'myGray.600'} fontSize={'sm'}>
                       {task.creatorName || '-'}
                     </Td>
                     <Td>
-                      <HStack spacing={1}>
-                        <Text color={'myGray.600'}>
-                          {metrics.precisionBefore !== undefined
-                            ? `${(metrics.precisionBefore * 100).toFixed(1)}%`
-                            : '-'}
-                        </Text>
-                        <MyIcon
-                          name={'common/arrowRight'}
-                          w={'16px'}
-                          h={'16px'}
-                          color={'#039855'}
-                          mx={2}
-                        />
-                        <Text color={'myGray.600'}>
-                          {metrics.precisionAfter !== undefined
-                            ? `${(metrics.precisionAfter * 100).toFixed(1)}%`
-                            : '-'}
-                        </Text>
-                      </HStack>
+                      {metrics.precisionBefore === undefined &&
+                      metrics.precisionAfter === undefined ? (
+                        <Text color={'myGray.600'}>-</Text>
+                      ) : (
+                        <HStack spacing={1}>
+                          <Text color={'myGray.600'}>
+                            {metrics.precisionBefore !== undefined
+                              ? `${(metrics.precisionBefore * 100).toFixed(1)}%`
+                              : '-'}
+                          </Text>
+                          <MyIcon
+                            name={'common/arrowRight'}
+                            w={'16px'}
+                            h={'16px'}
+                            color={'#039855'}
+                            mx={2}
+                          />
+                          <Text color={'myGray.600'}>
+                            {metrics.precisionAfter !== undefined
+                              ? `${(metrics.precisionAfter * 100).toFixed(1)}%`
+                              : '-'}
+                          </Text>
+                        </HStack>
+                      )}
                     </Td>
                     <Td>
-                      <HStack spacing={1}>
-                        <Text color={'myGray.600'}>
-                          {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(2) : '-'}
-                        </Text>
-                        <MyIcon
-                          name={'common/arrowRight'}
-                          w={'16px'}
-                          h={'16px'}
-                          color={'#039855'}
-                          mx={2}
-                        />
-                        <Text color={'myGray.600'}>
-                          {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
-                        </Text>
-                      </HStack>
+                      {metrics.mrrBefore === undefined && metrics.mrrAfter === undefined ? (
+                        <Text color={'myGray.600'}>-</Text>
+                      ) : (
+                        <HStack spacing={1}>
+                          <Text color={'myGray.600'}>
+                            {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(2) : '-'}
+                          </Text>
+                          <MyIcon
+                            name={'common/arrowRight'}
+                            w={'16px'}
+                            h={'16px'}
+                            color={'#039855'}
+                            mx={2}
+                          />
+                          <Text color={'myGray.600'}>
+                            {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
+                          </Text>
+                        </HStack>
+                      )}
                     </Td>
                     <Td>
-                      {task.status === RerankTrainTaskStatusEnum.completed && (
+                      {task.status === RerankTrainTaskStatusEnum.completed ? (
                         <Button
                           size={'sm'}
                           variant={'whitePrimary'}
@@ -413,17 +556,26 @@ const AutoLearn = () => {
                         >
                           {t('app:auto_learn.download_evaluation_data')}
                         </Button>
-                      )}
-                      {task.status === RerankTrainTaskStatusEnum.failed && task.errorMsg && (
-                        <Button
-                          size={'sm'}
-                          variant={'whiteBase'}
-                          leftIcon={<MyIcon name="common/errorFill" w={'14px'} />}
-                          onClick={() => handleViewError(task.errorMsg as EnhancedErrorMessage)}
-                        >
-                          {t('app:view_error')}
-                        </Button>
-                      )}
+                      ) : task.status === RerankTrainTaskStatusEnum.failed ? (
+                        <HStack spacing={2}>
+                          <Button
+                            size={'sm'}
+                            variant={'whitePrimary'}
+                            onClick={() => handleRetryTask(task._id)}
+                            isLoading={retryingTaskIds.has(task._id)}
+                          >
+                            {t('app:retry')}
+                          </Button>
+                          <Button
+                            size={'sm'}
+                            variant={'whiteDanger'}
+                            onClick={() => handleDeleteTask(task._id)}
+                            isLoading={deletingTaskIds.has(task._id)}
+                          >
+                            {t('common:Delete')}
+                          </Button>
+                        </HStack>
+                      ) : null}
                     </Td>
                   </Tr>
                 );
@@ -434,13 +586,11 @@ const AutoLearn = () => {
       </Box>
 
       {/* 错误详情 Modal */}
-      {selectedError && (
-        <EnhancedErrorDisplay
-          isOpen={isErrorModalOpen}
-          onClose={handleCloseErrorModal}
-          error={selectedError}
-        />
-      )}
+      <TrainExceptionModal
+        error={selectedError}
+        onClose={handleCloseErrorModal}
+        onRetry={handleRetry}
+      />
     </Flex>
   );
 };
