@@ -9,7 +9,6 @@ import type {
   DatasetTrainingSchemaType,
   small2bigConfigType
 } from '@fastgpt/global/core/dataset/type';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
@@ -26,6 +25,7 @@ type PopulateType = {
     small2bigConfig?: small2bigConfigType;
     indexSize?: number;
     autoIndexes?: boolean;
+    syntheticIndex?: boolean;
   };
 };
 
@@ -89,52 +89,12 @@ const chunkAnswerText = async ({
 const processSmall2BigTask = async (data: TrainingDataType) => {
   try {
     const answerText = data.a;
-
-    // 1. 验证 Answer 文本
-    if (!answerText || answerText.trim().length === 0) {
-      addLog.info(`[Small2Big Queue] Empty answer, converting to chunk mode`);
-
-      // 直接转为 chunk 模式
-      await mongoSessionRun(async (session) => {
-        await MongoDatasetTraining.updateOne(
-          { _id: data._id },
-          {
-            $set: {
-              mode: TrainingModeEnum.chunk,
-              lockTime: new Date('2000/1/1')
-            }
-          },
-          { session }
-        );
-      });
-      return;
-    }
+    // answer为空，或者 长度<chunkSize，进入下一阶段
 
     const childChunks = await chunkAnswerText({
       answerText,
       small2bigConfig: data.collection?.small2bigConfig
     });
-
-    // Change Mode if chunk less than 1.5 * chunkSize , No index gen
-    if (childChunks.length === 0) {
-      addLog.debug(
-        `[Small2Big Queue] Answer too short for chunking (${answerText.length} chars), converting to chunk mode`
-      );
-
-      await mongoSessionRun(async (session) => {
-        await MongoDatasetTraining.updateOne(
-          { _id: data._id },
-          {
-            $set: {
-              mode: TrainingModeEnum.chunk,
-              lockTime: new Date('2000/1/1')
-            }
-          },
-          { session }
-        );
-      });
-      return;
-    }
 
     addLog.info(
       `[Small2Big Queue] Generated ${childChunks.length} child chunks for chunk ${data.chunkIndex} (answer length: ${answerText.length})`
@@ -148,40 +108,27 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
     const allIndexes = [...originalIndexes, ...small2bigIndexes];
 
     await mongoSessionRun(async (session) => {
-      await MongoDatasetTraining.deleteOne({ _id: data._id }, { session });
-
       const nextMode = getTrainingModeByCollection({
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: data.collection?.autoIndexes,
         imageIndex: false,
         small2bigIndexes: false,
-        syntheticIndex: false
+        syntheticIndex: data.collection?.syntheticIndex
       });
 
-      // 创建下一阶段任务（auto 或 chunk）
-      await pushDataListToTrainingQueue({
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        datasetId: data.datasetId,
-        collectionId: data.collectionId,
-        agentModel: data.dataset.agentModel,
-        vectorModel: data.dataset.vectorModel,
-        vlmModel: data.dataset.vlmModel,
-        indexSize: data.collection.indexSize,
-        mode: nextMode,
-        billId: data.billId,
-        data: [
-          {
-            ...(data.dataId && { id: String(data.dataId) }), // Preserve custom ID
-            q: data.q,
-            a: data.a,
+      // 更新当前训练记录到下一阶段
+      await MongoDatasetTraining.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            mode: nextMode,
+            retryCount: 5,
             indexes: allIndexes,
-            metadata: data.dataMetadata,
-            chunkIndex: data.chunkIndex
+            lockTime: new Date('2000/1/1')
           }
-        ],
-        session
-      });
+        },
+        { session }
+      );
 
       addLog.info(
         `[Small2Big Queue] Successfully processed chunk ${data.chunkIndex} with ${small2bigIndexes.length} small2big indexes, next mode: ${nextMode}`
@@ -193,7 +140,6 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
     await MongoDatasetTraining.updateOne(
       { _id: data._id },
       {
-        $inc: { retryCount: -1 },
         errorMsg: getErrText(error, 'Small2Big processing error'),
         lockTime: new Date('2000/1/1')
       }
@@ -234,7 +180,7 @@ export async function generateSmall2Big(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'small2bigConfig indexSize autoIndexes'
+                select: 'small2bigConfig indexSize autoIndexes syntheticIndex'
               }
             ])
             .lean();
