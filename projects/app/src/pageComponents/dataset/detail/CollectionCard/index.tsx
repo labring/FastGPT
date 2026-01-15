@@ -469,23 +469,27 @@ const CollectionCard = () => {
                                   onClick: () =>
                                     setMoveCollectionData({ collectionId: collection._id })
                                 },
-                                {
-                                  label: (
-                                    <Flex alignItems={'center'}>
-                                      <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
-                                      {t('common:Rename')}
-                                    </Flex>
-                                  ),
-                                  onClick: () =>
-                                    onOpenEditTitleModal({
-                                      defaultVal: collection.name,
-                                      onSuccess: (newName) =>
-                                        onUpdateCollection({
-                                          id: collection._id,
-                                          name: newName
-                                        })
-                                    })
-                                }
+                                ...(isStructureDocument
+                                  ? []
+                                  : [
+                                      {
+                                        label: (
+                                          <Flex alignItems={'center'}>
+                                            <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
+                                            {t('common:Rename')}
+                                          </Flex>
+                                        ),
+                                        onClick: () =>
+                                          onOpenEditTitleModal({
+                                            defaultVal: collection.name,
+                                            onSuccess: (newName) =>
+                                              onUpdateCollection({
+                                                id: collection._id,
+                                                name: newName
+                                              })
+                                          })
+                                      }
+                                    ])
                               ]
                             },
                             {
