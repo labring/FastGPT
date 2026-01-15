@@ -8,7 +8,6 @@ import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
@@ -126,8 +125,6 @@ export async function generateSynthesis(): Promise<any> {
     addLog.info(`[Synthesis Queue] Start`);
 
     try {
-      const startTime = Date.now();
-
       // Call Diting API directly (simplified)
       const ditingUrl = process.env.DITING_BASE_URL || 'http://diting:3000';
       const controller = new AbortController();
@@ -180,10 +177,8 @@ export async function generateSynthesis(): Promise<any> {
         const synthesisIndexes = formatQuestionsToSynthesisIndexes({ questions });
         const allIndexes = [...(data.indexes ?? []), ...synthesisIndexes];
 
-        // Delete current task and create next stage task
+        // Update current training record to next stage
         await mongoSessionRun(async (session) => {
-          await MongoDatasetTraining.deleteOne({ _id: data._id }, { session });
-
           // Determine next mode (synthesis is done, so set syntheticIndex to false)
           const nextMode = getTrainingModeByCollection({
             trainingType: data.collection.trainingType,
@@ -193,28 +188,23 @@ export async function generateSynthesis(): Promise<any> {
             syntheticIndex: false // synthesis is done
           });
 
-          // Create next stage task (auto or chunk)
-          await pushDataListToTrainingQueue({
-            teamId: data.teamId,
-            tmbId: data.tmbId,
-            datasetId: data.datasetId,
-            collectionId: data.collectionId,
-            agentModel: data.dataset.agentModel,
-            vectorModel: data.dataset.vectorModel,
-            vlmModel: data.dataset.vlmModel,
-            billId: data.billId,
-            mode: nextMode,
-            data: [
-              {
-                ...(data.dataId && { id: String(data.dataId) }), // Preserve custom ID
-                q: data.q,
-                a: data.a,
-                chunkIndex: data.chunkIndex,
-                indexes: allIndexes
+          // Update current training record to next stage
+          await MongoDatasetTraining.updateOne(
+            { _id: data._id },
+            {
+              $set: {
+                mode: nextMode,
+                retryCount: 5,
+                indexes: allIndexes,
+                lockTime: new Date('2000/1/1')
               }
-            ],
-            session
-          });
+            },
+            { session }
+          );
+
+          addLog.info(
+            `[Synthesis Queue] Successfully processed chunk ${data.chunkIndex} with ${synthesisIndexes.length} synthesis indexes, next mode: ${nextMode}`
+          );
         });
 
         // Push usage after successful processing
