@@ -127,8 +127,16 @@ const ChunkInfoCard = ({
       </Flex>
 
       {/* Content */}
-      {isExpanded && (q || imagePreviewUrl) && (
-        <Box mt={2}>
+      {(q || imagePreviewUrl) && (
+        <Box
+          mt={2}
+          {...(isExpanded
+            ? {}
+            : {
+                maxH: '67px',
+                overflow: 'hidden'
+              })}
+        >
           {imagePreviewUrl ? (
             <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
               <Box flex="1 0 0">
