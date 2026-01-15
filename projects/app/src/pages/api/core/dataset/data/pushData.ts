@@ -102,7 +102,7 @@ async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiR
     datasetId: collection.datasetId,
     vectorModel: collection.dataset.vectorModel,
     agentModel: collection.dataset.agentModel,
-    vlmModel: collection.dataset.vlmModel,
+    vlmModel: collection.dataset.vlmModel
   });
 }
 

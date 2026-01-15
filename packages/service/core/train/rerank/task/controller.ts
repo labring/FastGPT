@@ -1,5 +1,4 @@
 import * as fs from 'fs/promises';
-import * as os from 'os';
 import * as path from 'path';
 import { MongoRerankTrainTask } from './schema';
 import { MongoApp } from '../../../app/schema';
@@ -15,6 +14,7 @@ import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalData
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
 import { extractModelFromApp, buildModelEndpoint } from '../utils';
 import { deleteRerankModelConfig } from '../model/controller';
+import { getRerankTrainDataDir } from '../constants';
 
 /**
  * Create rerank training task (only creates record, does not start execution)
@@ -328,34 +328,19 @@ export async function cleanupTempFiles(filePath?: string, taskId?: string): Prom
 
   try {
     if (filePath) {
-      try {
-        await fs.unlink(filePath);
-        addLog.info('Cleaned up temp file', { filePath });
-      } catch (error) {
-        addLog.warn('Failed to delete temp file', {
-          filePath,
-          error: (error as Error).message
-        });
-      }
+      await fs.unlink(filePath);
+      addLog.info('Cleaned up temp file', { filePath });
     } else if (taskId) {
-      const tempDir = os.tmpdir();
-      const files = await fs.readdir(tempDir);
-
+      // Use configurable training data directory
+      const trainDataDir = getRerankTrainDataDir();
+      const files = await fs.readdir(trainDataDir);
       const tempFilePattern = new RegExp(`^rerank_train_${taskId}_\\d+\\.jsonl$`);
 
       for (const file of files) {
         if (tempFilePattern.test(file)) {
-          const filePath = path.join(tempDir, file);
-          try {
-            await fs.unlink(filePath);
-            addLog.info('Cleaned up temp file', { taskId, filePath });
-          } catch (error) {
-            addLog.warn('Failed to delete temp file', {
-              taskId,
-              filePath,
-              error: (error as Error).message
-            });
-          }
+          const targetPath = path.join(trainDataDir, file);
+          await fs.unlink(targetPath);
+          addLog.info('Cleaned up temp file', { taskId, filePath: targetPath });
         }
       }
     }

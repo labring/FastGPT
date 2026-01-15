@@ -199,6 +199,9 @@ describe('Rerank Train Task Processor', () => {
     // 设置测试环境变量
     process.env.AIPROXY_API_ENDPOINT = 'http://test-aiproxy.com';
     process.env.AIPROXY_API_TOKEN = 'test-token';
+    // Set short polling intervals for faster tests
+    process.env.SFT_BRIDGE_POLL_INTERVAL = '100'; // 100ms instead of 60s
+    process.env.SFT_BRIDGE_MAX_POLLS = '10'; // Reduce max polls
 
     // Mock trainset is ready by default
     const { MongoRerankTrainset } = await import(
@@ -2359,6 +2362,7 @@ describe('Rerank Train Task Processor', () => {
                 detailed_results: {
                   overall_ndcg: 0.75,
                   overall_mrr: 0.8,
+                  overall_precision: 0.7, // Added precision
                   overall_map: 0.72
                 }
               }
@@ -2373,6 +2377,7 @@ describe('Rerank Train Task Processor', () => {
                 detailed_results: {
                   overall_ndcg: 0.85,
                   overall_mrr: 0.9,
+                  overall_precision: 0.82, // Added precision (better than base)
                   overall_map: 0.82
                 }
               }

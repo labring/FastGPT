@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
 import { MongoRerankTrainsetData } from '../../data/schema';
 import { MongoRerankTrainset } from '../../trainset/schema';
 import { addLog } from '../../../../../common/system/log';
 import { createEnhancedError } from '../../utils';
+import { getRerankTrainDataDir } from '../../constants';
 import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
 import {
   RerankTaskCheckpointStageEnum,
@@ -128,8 +128,15 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
   // Wait for trainset to be ready
   await waitForTrainsetReady(String(task.trainsetId));
 
-  const tmpDir = os.tmpdir();
-  const tmpFilePath = path.join(tmpDir, `rerank_train_${task._id}_${Date.now()}.jsonl`);
+  // Use configurable training data directory
+  const trainDataDir = getRerankTrainDataDir();
+
+  // Ensure directory exists
+  if (!fs.existsSync(trainDataDir)) {
+    fs.mkdirSync(trainDataDir, { recursive: true });
+  }
+
+  const tmpFilePath = path.join(trainDataDir, `rerank_train_${task._id}_${Date.now()}.jsonl`);
 
   let dataCount = 0;
 

@@ -55,6 +55,13 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
+  addLog.info('Apply stage: App data loaded', {
+    taskId: String(task._id),
+    appId: String(app._id),
+    modulesCount: app.modules?.length || 0,
+    baseModelConfigId: task.baseModelConfigId
+  });
+
   let updatedNodes = 0;
   let previousModelConfigId: string | undefined;
 
@@ -62,6 +69,8 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   const updatedModules = JSON.parse(JSON.stringify(app.modules || [])) as StoreNodeItemType[];
 
   // Replace rerank model configuration in the new version
+  // Replace ALL datasetSearchNode rerank models with the tuned model
+  // This handles cases where the app may have been updated by another task during training
   updatedModules.forEach((node) => {
     if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
       return;
@@ -75,35 +84,26 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
       return;
     }
 
-    // If value is empty, use system default model (consistent with workflow execution logic)
+    // Get current model config ID for logging and tracking previous model
     const currentModelConfigId = rerankModelInput.value
       ? String(rerankModelInput.value)
       : getDefaultRerankModel()?.model;
 
-    if (!currentModelConfigId) {
-      addLog.warn('Node has no rerank model configured and no default model available', {
-        taskId: String(task._id),
-        nodeId: node.nodeId
-      });
-      return;
-    }
-
-    // Record original model config ID (only once)
-    if (!previousModelConfigId) {
+    // Record original model config ID (only once, for auto-delete logic)
+    if (!previousModelConfigId && currentModelConfigId) {
       previousModelConfigId = currentModelConfigId;
     }
 
-    // Only replace nodes using the base model
-    if (currentModelConfigId === task.baseModelConfigId) {
-      rerankModelInput.value = tunedModelConfigId;
-      updatedNodes++;
-    } else {
-      addLog.info('Skipping node with different model configuration', {
-        taskId: String(task._id),
-        currentModelConfigId,
-        expectedModelConfigId: task.baseModelConfigId
-      });
-    }
+    // Replace with tuned model
+    addLog.info('Apply stage: Replacing rerank model', {
+      taskId: String(task._id),
+      nodeId: node.nodeId,
+      previousModel: currentModelConfigId || '(empty/default)',
+      newModel: tunedModelConfigId
+    });
+
+    rerankModelInput.value = tunedModelConfigId;
+    updatedNodes++;
   });
 
   if (updatedNodes === 0) {
