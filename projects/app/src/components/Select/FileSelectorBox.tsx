@@ -40,7 +40,10 @@ const FileSelector = ({
   const { teamPlanStatus } = useUserStore();
 
   const systemMaxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    Math.min(
+      teamPlanStatus?.standardConstants?.maxUploadFileSize ?? Infinity,
+      feConfigs?.uploadFileMaxSize ?? 500
+    ) *
     1024 *
     1024;
   const displayMaxSize = maxSize || formatFileSize(systemMaxSize);

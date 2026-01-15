@@ -13,9 +13,10 @@ export type PresignTempFilePostUrlParams = {
 };
 
 const authUploadLimit = (tmbId: string) => {
+  if (!global.feConfigs.uploadFileMaxAmount) return;
   return authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAmount: (Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10) * 2,
+    maxAmount: global.feConfigs?.uploadFileMaxAmount * 2,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 };

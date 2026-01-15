@@ -24,9 +24,10 @@ export type insertImagesBody = {
 export type insertImagesResponse = {};
 
 const authUploadLimit = (tmbId: string, num: number) => {
+  if (!global.feConfigs.uploadFileMaxAmount) return;
   return authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAmount: (Number(process.env.UPLOAD_FILE_MAX_AMOUNT) || 10) * 2,
+    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
     expiredTime: addSeconds(new Date(), 30), // 30s
     num
   });

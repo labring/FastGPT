@@ -92,10 +92,14 @@ const FileSelector = ({
   ]);
   const maxSelectFiles = Math.min(
     maxFiles ?? 10,
+    feConfigs?.uploadFileMaxAmount ?? Infinity,
     teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
   );
   const maxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    Math.min(
+      teamPlanStatus?.standardConstants?.maxUploadFileSize ?? Infinity,
+      feConfigs?.uploadFileMaxSize ?? 500
+    ) *
     1024 *
     1024;
   const canSelectFileAmount = maxSelectFiles - value.length;
