@@ -72,7 +72,7 @@
     "remark-math": "^6.0.0",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
-    "undici": "^7.16.0",
+    "undici": "^7.18.2",
     "use-context-selector": "^1.4.4",
     "zod": "^4.1.12"
   },
