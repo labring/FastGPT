@@ -68,9 +68,19 @@ export const DatasetSelect = ({
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
-    return isSmartGenerateScene && isDatasetDisabled(item)
-      ? t('app:no_data_for_smart_generate')
-      : '';
+    if (isSmartGenerateScene && isDatasetDisabled(item)) {
+      return t('app:no_data_for_smart_generate');
+    }
+
+    // 如果知识库被禁用且向量模型不匹配，显示详细的向量模型信息
+    if (isDatasetDisabled(item) && activeVectorModel && item.vectorModel?.model) {
+      return t('app:vector_model_mismatch', {
+        model1: item.vectorModel.model,
+        model2: activeVectorModel
+      });
+    }
+
+    return '';
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
@@ -258,16 +268,6 @@ export const DatasetSelect = ({
                 <Box flex={1} minW={0}>
                   <Box fontSize="sm" color={'myGray.900'} lineHeight={1}>
                     {item.name}
-                  </Box>
-                  <Box fontSize="xs" color="myGray.500">
-                    {item.type === DatasetTypeEnum.folder ? (
-                      <>{t('common:Folder')}</>
-                    ) : (
-                      <>
-                        {item.type !== DatasetTypeEnum.structureDocument &&
-                          t('app:Index') + ': ' + item.vectorModel?.name}
-                      </>
-                    )}
                   </Box>
                 </Box>
 

@@ -476,5 +476,6 @@
   "learning_status_abnormal": "異常",
   "unknown_error": "未知錯誤",
   "exception_info": "異常信息",
-  "retry": "重試"
+  "retry": "重試",
+  "vector_model_mismatch": "僅支持選擇同一個向量模型的知識庫。該知識庫向量模型為 {{model1}}，已選知識庫向量模型為 {{model2}}。"
 }

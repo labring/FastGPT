@@ -11,6 +11,8 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
+  PopoverArrow,
+  PopoverBody,
   useDisclosure,
   IconButton
 } from '@chakra-ui/react';
@@ -18,11 +20,36 @@ import { useDebounceFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { useTranslation } from 'next-i18next';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getKeywordQuote } from '@/web/core/app/api/log';
 import type { GetKeywordQuoteResponse } from '@fastgpt/global/core/chat/correction/api';
 import type { CorrectedQuoteItem } from '@fastgpt/global/core/chat/correction/type';
+import Markdown from '@/components/Markdown';
+
+// 悬浮层 Markdown 内容的缩放样式
+const popoverMarkdownStyles = {
+  '& .markdown': { fontSize: '13px' },
+  '& .markdown p': { fontSize: '13px', lineHeight: '1.5', margin: '6px 0' },
+  '& .markdown h1, & .markdown h2, & .markdown h3, & .markdown h4, & .markdown h5, & .markdown h6':
+    {
+      fontSize: '14px',
+      lineHeight: '1.5',
+      margin: '8px 0 6px'
+    },
+  '& .markdown ul, & .markdown ol': { fontSize: '13px', paddingLeft: '18px', margin: '6px 0' },
+  '& .markdown li': { margin: '3px 0' },
+  '& .markdown code': { fontSize: '12px', padding: '2px 4px' },
+  '& .markdown pre': { fontSize: '12px', padding: '8px', margin: '6px 0' },
+  '& .markdown table': { fontSize: '12px', width: '100%' },
+  '& .markdown table th': { fontSize: '12px', padding: '4px 8px' },
+  '& .markdown table td': { fontSize: '12px', padding: '4px 8px' },
+  '& .markdown blockquote': { fontSize: '13px', padding: '0 10px' },
+  '& .markdown dl': { fontSize: '13px' },
+  '& .markdown dl dt': { fontSize: '13px', margin: '10px 0 4px' },
+  '& .markdown dl dd': { fontSize: '13px', margin: '0 0 10px', padding: '0 10px' }
+};
 
 interface KnowledgeSelectProps {
   correctedQuoteList: CorrectedQuoteItem[];
@@ -41,6 +68,7 @@ const KnowledgeSelect = ({
 }: KnowledgeSelectProps) => {
   const { t } = useTranslation();
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [hoveredKnowledgeId, setHoveredKnowledgeId] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -211,74 +239,123 @@ const KnowledgeSelect = ({
               <ScrollData h="230px" overflowY="auto" p={3}>
                 <VStack spacing={1.5} align="stretch">
                   {knowledgeList.map((knowledge) => (
-                    <Box
+                    <Popover
                       key={knowledge.datasetDataId}
-                      p={4}
-                      border="1px solid"
-                      borderColor={
-                        selectedKnowledgeIds.includes(knowledge.datasetDataId)
-                          ? 'primary.500'
-                          : 'myGray.200'
-                      }
-                      borderRadius="md"
-                      bg={
-                        selectedKnowledgeIds.includes(knowledge.datasetDataId)
-                          ? 'primary.50'
-                          : 'white'
-                      }
-                      cursor="pointer"
-                      _hover={{
-                        borderColor: selectedKnowledgeIds.includes(knowledge.datasetDataId)
-                          ? 'primary.600'
-                          : 'myGray.300'
-                      }}
-                      onClick={() => handleKnowledgeToggle(knowledge)}
+                      isOpen={hoveredKnowledgeId === knowledge.datasetDataId}
+                      onOpen={() => setHoveredKnowledgeId(knowledge.datasetDataId)}
+                      onClose={() => setHoveredKnowledgeId(null)}
+                      placement="right"
+                      trigger="hover"
+                      openDelay={300}
+                      closeDelay={200}
                     >
-                      <Flex align={'flex-start'} gap={3}>
-                        <Box onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            isChecked={selectedKnowledgeIds.includes(knowledge.datasetDataId)}
-                            onChange={() => handleKnowledgeToggle(knowledge)}
-                            mt={0.5}
-                          />
-                        </Box>
-                        <VStack align={'stretch'} spacing={2} flex={1}>
-                          {knowledge.a ? (
-                            <>
-                              <Text
-                                fontSize={'12px'}
-                                color={'myGray.500'}
-                                className={'textEllipsis'}
-                              >
-                                {knowledge.q}
-                              </Text>
-                              <Box h="1px" bg="myGray.200" my="4px" />
-                              <Text
-                                fontSize={'12px'}
-                                color={'myGray.500'}
-                                className={'textEllipsis2'}
-                              >
-                                {knowledge.a}
-                              </Text>
-                            </>
-                          ) : (
-                            <Text
-                              fontSize={'12px'}
-                              color={'myGray.500'}
-                              className={'textEllipsis3'}
-                            >
-                              {knowledge.q}
-                            </Text>
-                          )}
-                          <Flex align="center" gap={1}>
-                            <MyIcon name="file/fill/file" w="14px" />
-                            <Text fontSize={'12px'} color="#000">
-                              {knowledge.sourceName}
-                            </Text>
+                      <PopoverTrigger>
+                        <Box
+                          p={4}
+                          border="1px solid"
+                          borderColor={
+                            selectedKnowledgeIds.includes(knowledge.datasetDataId)
+                              ? 'primary.500'
+                              : 'myGray.200'
+                          }
+                          borderRadius="md"
+                          bg={
+                            selectedKnowledgeIds.includes(knowledge.datasetDataId)
+                              ? 'primary.50'
+                              : 'white'
+                          }
+                          cursor="pointer"
+                          _hover={{
+                            borderColor: selectedKnowledgeIds.includes(knowledge.datasetDataId)
+                              ? 'primary.600'
+                              : 'myGray.300'
+                          }}
+                          onClick={() => handleKnowledgeToggle(knowledge)}
+                        >
+                          <Flex align={'flex-start'} gap={3}>
+                            <Box onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                isChecked={selectedKnowledgeIds.includes(knowledge.datasetDataId)}
+                                onChange={() => handleKnowledgeToggle(knowledge)}
+                                mt={0.5}
+                              />
+                            </Box>
+                            <VStack align={'stretch'} spacing={2} flex={1}>
+                              {knowledge.a ? (
+                                <>
+                                  <Text
+                                    fontSize={'12px'}
+                                    color={'myGray.500'}
+                                    className={'textEllipsis'}
+                                  >
+                                    <HighlightText
+                                      rawText={knowledge.q}
+                                      matchText={searchKeyword}
+                                      mode={'text'}
+                                    />
+                                  </Text>
+                                  <Box h="1px" bg="myGray.200" my="4px" />
+                                  <Text
+                                    fontSize={'12px'}
+                                    color={'myGray.500'}
+                                    className={'textEllipsis2'}
+                                  >
+                                    <HighlightText
+                                      rawText={knowledge.a}
+                                      matchText={searchKeyword}
+                                      mode={'text'}
+                                    />
+                                  </Text>
+                                </>
+                              ) : (
+                                <Text
+                                  fontSize={'12px'}
+                                  color={'myGray.500'}
+                                  className={'textEllipsis3'}
+                                >
+                                  <HighlightText
+                                    rawText={knowledge.extractiveText || knowledge.q}
+                                    matchText={searchKeyword}
+                                    mode={'text'}
+                                  />
+                                </Text>
+                              )}
+                              <Flex align="center" gap={1}>
+                                <MyIcon name="file/fill/file" w="14px" />
+                                <Text fontSize={'12px'} color="#000">
+                                  {knowledge.sourceName}
+                                </Text>
+                              </Flex>
+                            </VStack>
                           </Flex>
-                        </VStack>
-                      </Flex>
-                    </Box>
+                        </Box>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        border="1px solid"
+                        borderColor="myGray.200"
+                        borderRadius="md"
+                        boxShadow="0px 4px 12px rgba(0, 0, 0, 0.15)"
+                        bg="white"
+                      >
+                        <PopoverArrow />
+                        <PopoverBody p={3} maxH="400px" overflowY="auto">
+                          <VStack align="stretch" spacing={2}>
+                            {knowledge.a ? (
+                              <>
+                                <Box fontSize="xs" sx={popoverMarkdownStyles}>
+                                  <Markdown source={knowledge.q} />
+                                  <Markdown source={knowledge.a} />
+                                </Box>
+                              </>
+                            ) : (
+                              <Box fontSize="xs" sx={popoverMarkdownStyles}>
+                                <Markdown source={knowledge.q} />
+                              </Box>
+                            )}
+                          </VStack>
+                        </PopoverBody>
+                      </PopoverContent>
+                    </Popover>
                   ))}
                 </VStack>
               </ScrollData>
