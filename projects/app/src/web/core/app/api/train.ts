@@ -1,7 +1,11 @@
-import { POST } from '@/web/common/api/request';
+import { POST, DELETE } from '@/web/common/api/request';
 import type {
   CreateRerankTrainTaskResponse,
-  CreateRerankTrainTaskWithTrainsetRequest
+  CreateRerankTrainTaskWithTrainsetRequest,
+  RetryRerankTrainTaskRequest,
+  RetryRerankTrainTaskResponse,
+  DeleteRerankTrainTaskRequest,
+  DeleteRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
 import type { ListRerankTrainTasksRequest } from '@fastgpt/global/core/train/rerank/api';
 import type { ListRerankTrainTasksResponse } from '@fastgpt/global/core/train/rerank/api';
@@ -17,3 +21,15 @@ export const createRerankTrainTaskWithTrainset = (data: CreateRerankTrainTaskWit
  */
 export const getRerankTrainTaskList = (data: ListRerankTrainTasksRequest) =>
   POST<ListRerankTrainTasksResponse>('/core/train/rerank/task/list', data);
+
+/**
+ * 重试训练任务
+ */
+export const retryRerankTrainTask = (data: RetryRerankTrainTaskRequest) =>
+  POST<RetryRerankTrainTaskResponse>('/core/train/rerank/task/retry', data);
+
+/**
+ * 删除训练任务
+ */
+export const deleteRerankTrainTask = (data: DeleteRerankTrainTaskRequest) =>
+  DELETE<DeleteRerankTrainTaskResponse>('/core/train/rerank/task/delete', data);
