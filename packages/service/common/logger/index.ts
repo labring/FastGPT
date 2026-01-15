@@ -3,6 +3,7 @@ import type { Config } from '@logtape/logtape';
 import {
   configure,
   dispose,
+  fromAsyncSink,
   getConsoleSink,
   getLogger as getLogTapeLogger
 } from '@logtape/logtape';
@@ -10,8 +11,9 @@ import { getOpenTelemetrySink } from '@logtape/otel';
 import { getPrettyFormatter } from '@logtape/pretty';
 import dayjs from 'dayjs';
 import type { LogCategory } from './categories';
+import { mongoSink } from './sinks';
 
-type SinkId = 'console' | 'jsonl' | 'otel';
+type SinkId = 'console' | 'jsonl' | 'otel' | 'mongo';
 
 type FilterId = string;
 
@@ -33,6 +35,7 @@ export async function configureLogger() {
   const enableOtel = process.env.LOG_ENABLE_OTEL === 'true';
   const otelServiceName = process.env.LOG_OTEL_SERVICE_NAME || 'fastgpt-client';
   const otelUrl = process.env.LOG_OTEL_URL || 'http://localhost:4318/v1/logs';
+  const enableMongo = process.env.LOG_ENABLE_MONGO === 'true';
 
   const sinkConfig = {
     bufferSize: 8192,
@@ -53,6 +56,8 @@ export async function configureLogger() {
         levelStyle: 'reset',
         messageStyle: 'reset',
         categoryStyle: 'reset',
+        messageColor: 'white',
+        categoryColor: 'white',
         categorySeparator: ':',
         timestamp: () => dayjs().format('YYYY-MM-DD HH:mm:ss')
       })
@@ -72,6 +77,12 @@ export async function configureLogger() {
     console.log(`✓ Logtape OpenTelemetry URL: ${otelUrl}`);
     console.log(`✓ Logtape OpenTelemetry service name: ${otelServiceName}`);
     console.log('✓ Logtape OpenTelemetry enabled');
+  }
+
+  if (enableMongo) {
+    sinks.mongo = fromAsyncSink(mongoSink);
+    composedSinks.push('mongo');
+    console.log('✓ Logtape MongoDB sink enabled');
   }
 
   const loggers: LoggerConfig = [
