@@ -22,7 +22,7 @@ const PriceBox = () => {
   const router = useRouter();
 
   const backButtonRef = useRef<HTMLButtonElement>(null);
-  const [isButtonInView, setIsButtonInView] = useState(false);
+  const [isButtonInView, setIsButtonInView] = useState(true);
 
   const { data: userInfo, loading: userInfoLoading } = useRequest2(initUserInfo, {
     manual: false
@@ -35,13 +35,9 @@ const PriceBox = () => {
 
   // TODO: 封装成一个 hook 来判断滚动态
   useEffect(() => {
-    if (!teamSubPlan?.standard?.teamId) {
-      setIsButtonInView(false);
-      return;
-    }
-
     const observer = new IntersectionObserver(
       ([entry]) => {
+        // 当按钮在视图内时,隐藏浮动按钮;当按钮不在视图内时,显示浮动按钮
         setIsButtonInView(entry.isIntersecting);
       },
       {
@@ -50,17 +46,18 @@ const PriceBox = () => {
       }
     );
 
-    if (backButtonRef.current) {
-      observer.observe(backButtonRef.current);
+    const element = backButtonRef.current;
+    if (element) {
+      observer.observe(element);
     }
 
     return () => {
-      if (backButtonRef.current) {
-        observer.unobserve(backButtonRef.current);
+      if (element) {
+        observer.unobserve(element);
       }
       observer.disconnect();
     };
-  }, [teamSubPlan?.standard?.teamId]);
+  });
 
   const handleBack = useCallback(() => {
     // Check if there is history to go back to
@@ -112,7 +109,7 @@ const PriceBox = () => {
               {t('common:back')}
             </Button>
           )}
-          {!isButtonInView && teamSubPlan?.standard?.teamId && (
+          {(!isButtonInView || !teamSubPlan?.standard?.teamId) && (
             <IconButton
               aria-label={t('common:back')}
               position={'fixed'}
