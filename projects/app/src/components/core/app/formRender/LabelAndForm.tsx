@@ -66,14 +66,17 @@ const LabelAndFormRender = ({
         rules={{
           validate: (value) => {
             if (typeof value === 'number' || typeof value === 'boolean') return true;
-            if (inputType === InputTypeEnum.password && props.minLength) {
-              if (!value || typeof value !== 'object' || !value.value) return false;
-              if (value.value.length < props.minLength) {
+            if (!required) return true;
+            // 密码类型特殊处理：已加密的密码格式为 { value: '', secret: 'xxx' }
+            if (inputType === InputTypeEnum.password) {
+              const hasValue = value && typeof value === 'object' && (value.value || value.secret);
+              if (!hasValue) return false;
+              // 有 minLength 要求且正在输入新值时，检查长度
+              if (props.minLength && value.value && value.value.length < props.minLength) {
                 return t(`common:min_length`, { minLenth: props.minLength });
               }
               return true;
             }
-            if (!required) return true;
 
             if (inputType === InputTypeEnum.fileSelect) {
               if (!value || !Array.isArray(value) || value.length === 0) {
