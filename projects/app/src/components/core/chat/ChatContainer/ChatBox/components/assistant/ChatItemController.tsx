@@ -244,7 +244,6 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
           dataId={chat.dataId}
           appId={appId || ''}
           chatId={chatId}
-          chatTime={chatTime}
           outLinkAuthData={outLinkAuthData}
         />
       )}
