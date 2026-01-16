@@ -2,7 +2,7 @@ import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { axios } from '../../api/axios';
-import { addLog } from '../../system/log';
+import { getLogger, mod } from '../../logger';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
@@ -11,6 +11,8 @@ import { useTextinServer } from '../../../thirdProvider/textin';
 import { readRawContentFromBuffer } from '../../../worker/function';
 import { uploadImage2S3Bucket } from '../../s3/utils';
 import { Mimes } from '../../s3/constants';
+
+const logger = getLogger(mod.common);
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -86,7 +88,7 @@ export const readS3FileContentByBuffer = async ({
     if (!url) return systemParse();
 
     const start = Date.now();
-    addLog.info('Parsing files from an external service');
+    logger.info('Parsing files from an external service');
 
     const data = new FormData();
     data.append('file', buffer, {
@@ -108,7 +110,7 @@ export const readS3FileContentByBuffer = async ({
       return Promise.reject(response.error);
     }
 
-    addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
+    logger.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
 
     const rawText = response.markdown;
     const { text, imageList } = matchMdImg(rawText);
@@ -181,7 +183,7 @@ export const readS3FileContentByBuffer = async ({
   };
 
   const start = Date.now();
-  addLog.debug(`Start parse file`, { extension });
+  logger.debug(`Start parse file`, { body: { extension } });
 
   let { rawText, formatText, imageList } = await (async () => {
     if (extension === 'pdf') {
@@ -190,11 +192,11 @@ export const readS3FileContentByBuffer = async ({
     return await systemParse();
   })();
 
-  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
+  logger.debug(`Parse file success, time: ${Date.now() - start}ms. `);
 
   // markdown data format
   if (imageList && imageList.length > 0) {
-    addLog.debug(`Processing ${imageList.length} images from parsed document`);
+    logger.debug(`Processing ${imageList.length} images from parsed document`);
 
     await batchRun(imageList, async (item) => {
       const src = await (async () => {

@@ -29,7 +29,9 @@ import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
+
+const logger = getLogger(mod.coreApp);
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -229,6 +231,6 @@ export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string 
       parentId = parentApp.parentId;
     }
   }).catch((err) => {
-    addLog.error('updateParentFoldersUpdateTime error', err);
+    logger.error('updateParentFoldersUpdateTime error', { error: err });
   });
 };

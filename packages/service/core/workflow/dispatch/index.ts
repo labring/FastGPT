@@ -40,7 +40,7 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
 import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
@@ -59,6 +59,8 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+
+const logger = getLogger(mod.coreWorkflow);
 
 type Props = Omit<
   ChatDispatchProps,
@@ -108,7 +110,7 @@ export async function dispatchWorkFlow({
     }
   });
   if (invalidInput) {
-    addLog.info('[Workflow run] Invalid file url');
+    logger.info('[Workflow run] Invalid file url');
     return Promise.reject(new UserError('Invalid file url'));
   }
 
@@ -159,7 +161,7 @@ export async function dispatchWorkFlow({
     if (stream) {
       res.on('close', () => res.end());
       res.on('error', () => {
-        addLog.error('Request error');
+        logger.error('Request error');
         res.end();
       });
 
@@ -656,7 +658,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       // Error
       if (dispatchRes?.responseData?.error) {
-        addLog.warn('workflow error', { error: dispatchRes.responseData.error });
+        logger.warn('workflow error', { error: dispatchRes.responseData.error });
       }
 
       return {
@@ -854,21 +856,30 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       // Check queue status
       if (data.maxRunTimes <= 0) {
-        addLog.error('Max run times is 0', {
-          appId: data.runningAppInfo.id
+        logger.error('Max run times is 0', {
+          body: {
+            appId: data.runningAppInfo.id
+          }
         });
         return;
       }
       if (checkIsStopping()) {
-        addLog.warn('Workflow stopped', {
-          appId: data.runningAppInfo.id,
-          nodeId: node.nodeId,
-          nodeName: node.name
+        logger.warn('Workflow stopped', {
+          body: {
+            appId: data.runningAppInfo.id,
+            nodeId: node.nodeId,
+            nodeName: node.name
+          }
         });
         return;
       }
 
-      addLog.debug(`Run node`, { maxRunTimes: data.maxRunTimes, appId: data.runningAppInfo.id });
+      logger.debug(`Run node`, {
+        body: {
+          maxRunTimes: data.maxRunTimes,
+          appId: data.runningAppInfo.id
+        }
+      });
 
       // Get node run status by edges
       const status = checkNodeRunStatus({
@@ -895,7 +906,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             };
           }
 
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
+          logger.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return this.nodeRunWithActive(node);
         }
         if (status === 'skip' && !skippedNodeIdList.has(node.nodeId)) {
@@ -908,7 +919,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
           data.maxRunTimes -= 0.1;
           skippedNodeIdList.add(node.nodeId);
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
+          logger.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
           return this.nodeRunWithSkip(node);
         }
       })();

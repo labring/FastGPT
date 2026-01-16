@@ -2,8 +2,10 @@ import { jsonRes } from '../response';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
-import { addLog } from '../system/log';
+import { getLogger, http } from '../logger';
 import { ZodError } from 'zod';
+
+const logger = getLogger(http.root);
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -18,7 +20,7 @@ export const NextEntry = ({
   return (...args: NextApiHandler[]): NextApiHandler => {
     return async function api(req: ApiRequestProps, res: NextApiResponse) {
       const start = Date.now();
-      addLog.debug(`Request start ${req.url}`);
+      logger.debug(`Request start ${req.url}`);
 
       try {
         await Promise.all([
@@ -37,9 +39,9 @@ export const NextEntry = ({
         // Get request duration
         const duration = Date.now() - start;
         if (duration < 2000) {
-          addLog.debug(`Request finish ${req.url}, time: ${duration}ms`);
+          logger.debug(`Request finish ${req.url}, time: ${duration}ms`);
         } else {
-          addLog.warn(`Request finish ${req.url}, time: ${duration}ms`);
+          logger.warn(`Request finish ${req.url}, time: ${duration}ms`);
         }
 
         const contentType = res.getHeader('Content-Type');

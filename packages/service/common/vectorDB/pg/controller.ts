@@ -1,8 +1,10 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
+
+const logger = getLogger(infra.pgvector);
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -30,26 +32,26 @@ export const connectPg = async (): Promise<Pool> => {
   global.pgClient = pool;
 
   global.pgClient.on('error', async (err) => {
-    addLog.error(`[PG] error`, err);
+    logger.error(`[PG] error`, { error: err });
   });
   global.pgClient.on('connect', async () => {
-    addLog.info(`[PG] connect`);
+    logger.info(`[PG] connect`);
   });
   global.pgClient.on('remove', async (client) => {
-    addLog.warn('[PG] Connection removed from pool');
+    logger.warn('[PG] Connection removed from pool');
   });
 
   try {
     await global.pgClient.connect();
     return global.pgClient;
   } catch (error) {
-    addLog.error(`[PG] connect error`, error);
+    logger.error(`[PG] connect error`, { error });
     global.pgClient?.removeAllListeners();
     global.pgClient?.end();
     global.pgClient = null;
 
     await delay(1000);
-    addLog.warn(`[PG] retry connect`);
+    logger.warn(`[PG] retry connect`);
 
     return connectPg();
   }
@@ -126,10 +128,10 @@ class PgClass {
 
       if (time > 1000) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        addLog.warn(`[PG slow 2] time: ${time}ms, sql: ${safeSql}`);
+        logger.warn(`[PG slow 2] time: ${time}ms, sql: ${safeSql}`);
       } else if (time > 300) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        addLog.warn(`[PG slow 1] time: ${time}ms, sql: ${safeSql}`);
+        logger.warn(`[PG slow 1] time: ${time}ms, sql: ${safeSql}`);
       }
 
       return res;

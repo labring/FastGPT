@@ -3,9 +3,11 @@ import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
+
+const logger = getLogger(mod.coreAi);
 
 export async function createQuestionGuide({
   messages,
@@ -45,7 +47,7 @@ export async function createQuestionGuide({
   const end = answer.lastIndexOf(']');
 
   if (start === -1 || end === -1) {
-    addLog.warn('Create question guide error', { answer });
+    logger.warn('Create question guide error', { body: { answer } });
     return {
       result: [],
       inputTokens,

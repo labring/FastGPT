@@ -14,7 +14,9 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
+
+const logger = getLogger(mod.coreWorkflow);
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
@@ -281,7 +283,7 @@ export async function dispatchDatasetSearch(
           : 'No results'
     };
   } catch (error) {
-    addLog.error(`[Dataset search] error`, error);
+    logger.error(`[Dataset search] error`, { error });
     return getNodeErrResponse({ error });
   }
 }

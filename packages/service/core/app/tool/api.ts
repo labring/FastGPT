@@ -1,8 +1,10 @@
 import { RunToolWithStream } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { pluginClient, PLUGIN_BASE_URL, PLUGIN_TOKEN } from '../../../thirdProvider/fastgptPlugin';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(mod.coreApp);
 
 export async function APIGetSystemToolList() {
   const res = await pluginClient.tool.list();
@@ -37,7 +39,7 @@ export const getSystemToolTags = () => {
       return toolTypes;
     }
 
-    addLog.error('Get system tool type error', res.body);
+    logger.error('Get system tool type error', { body: res.body });
     return [];
   });
 };

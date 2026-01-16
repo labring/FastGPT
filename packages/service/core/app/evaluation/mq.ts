@@ -1,6 +1,8 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
+
+const logger = getLogger(mod.coreApp);
 
 export type EvaluationJobData = {
   evalId: string;
@@ -43,7 +45,7 @@ export const checkEvaluationJobActive = async (evalId: string): Promise<boolean>
     const jobState = await job.getState();
     return ['waiting', 'delayed', 'prioritized', 'active'].includes(jobState);
   } catch (error) {
-    addLog.error('Failed to check evaluation job status', { evalId, error });
+    logger.error('Failed to check evaluation job status', { body: { evalId }, error });
     return false;
   }
 };
@@ -53,13 +55,13 @@ export const removeEvaluationJob = async (evalId: string): Promise<boolean> => {
   try {
     const jobId = await evaluationQueue.getDeduplicationJobId(formatEvalId);
     if (!jobId) {
-      addLog.warn('No job found to remove', { evalId });
+      logger.warn('No job found to remove', { body: { evalId } });
       return false;
     }
 
     const job = await evaluationQueue.getJob(jobId);
     if (!job) {
-      addLog.warn('Job not found in queue', { evalId, jobId });
+      logger.warn('Job not found in queue', { body: { evalId, jobId } });
       return false;
     }
 
@@ -67,14 +69,14 @@ export const removeEvaluationJob = async (evalId: string): Promise<boolean> => {
 
     if (['waiting', 'delayed', 'prioritized'].includes(jobState)) {
       await job.remove();
-      addLog.info('Evaluation job removed successfully', { evalId, jobId, jobState });
+      logger.info('Evaluation job removed successfully', { body: { evalId, jobId, jobState } });
       return true;
     } else {
-      addLog.warn('Cannot remove active or completed job', { evalId, jobId, jobState });
+      logger.warn('Cannot remove active or completed job', { body: { evalId, jobId, jobState } });
       return false;
     }
   } catch (error) {
-    addLog.error('Failed to remove evaluation job', { evalId, error });
+    logger.error('Failed to remove evaluation job', { body: { evalId }, error });
     return false;
   }
 };

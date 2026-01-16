@@ -7,6 +7,7 @@ export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       await import('@fastgpt/service/common/proxy');
+      await (await import('@fastgpt/service/common/logger')).configureLogger();
 
       // 基础系统初始化
       const [

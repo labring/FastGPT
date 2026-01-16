@@ -7,10 +7,11 @@ import {
   type IOssStorageOptions,
   type IStorageOptions
 } from '@fastgpt-sdk/storage';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 
 export class S3PrivateBucket extends S3BaseBucket {
   constructor() {
+    const logger = getLogger(infra.storage);
     const { vendor, privateBucket, externalBaseUrl, credentials, region, ...options } =
       createDefaultStorageOptions();
 
@@ -91,17 +92,16 @@ export class S3PrivateBucket extends S3BaseBucket {
     client
       .ensureBucket()
       .then((data) => {
-        addLog.debug(`Bucket "${client.bucketName}" exists:`, data);
+        logger.debug(`Bucket "${client.bucketName}" exists:`, { body: data });
       })
       .catch((error) => {
-        addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
+        logger.error(`Failed to ensure bucket "${client.bucketName}" exists:`, { error });
       });
 
     externalClient?.ensureBucket().catch((error) => {
-      addLog.error(
-        `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
+      logger.error(`Failed to ensure external bucket "${externalClient.bucketName}" exists:`, {
         error
-      );
+      });
     });
   }
 }

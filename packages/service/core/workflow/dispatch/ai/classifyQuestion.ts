@@ -13,8 +13,10 @@ import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { createLLMResponse } from '../../../ai/llm/request';
+
+const logger = getLogger(mod.coreWorkflow);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -161,7 +163,7 @@ const completions = async ({
     '';
 
   if (!id) {
-    addLog.warn('Classify error', { answer });
+    logger.warn('Classify error', { body: { answer } });
   }
 
   return {

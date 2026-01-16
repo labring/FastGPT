@@ -6,11 +6,13 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+
+const logger = getLogger(mod.coreDataset);
 
 type ResponseDataType = {
   success: boolean;
@@ -43,7 +45,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
    */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
-      addLog.info('Api dataset data is empty');
+      logger.info('Api dataset data is empty');
       return Promise.reject('服务器异常');
     } else if (!data.success) {
       return Promise.reject(data);

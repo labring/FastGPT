@@ -1,9 +1,11 @@
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import Papa from 'papaparse';
+
+const logger = getLogger(mod.coreApp);
 
 export const parseEvaluationCSV = (rawText: string) => {
   const parseResult = Papa.parse(rawText.trim(), {
@@ -13,7 +15,7 @@ export const parseEvaluationCSV = (rawText: string) => {
   });
 
   if (parseResult.errors.length > 0) {
-    addLog.error('CSV parsing failed', parseResult.errors);
+    logger.error('CSV parsing failed', { body: { errors: parseResult.errors } });
     throw new Error('CSV parsing failed');
   }
 
@@ -32,19 +34,19 @@ export const validateEvaluationFile = async (
   const expectedHeader = getEvaluationFileHeader(appVariables);
   const actualHeader = csvData[0]?.join(',') || '';
   if (actualHeader !== expectedHeader) {
-    addLog.error(`Header mismatch. Expected: ${expectedHeader}, Got: ${actualHeader}`);
+    logger.error(`Header mismatch. Expected: ${expectedHeader}, Got: ${actualHeader}`);
     return Promise.reject(evaluationFileErrors);
   }
 
   // Validate data rows count
   if (dataLength <= 1) {
-    addLog.error('No data rows found');
+    logger.error('No data rows found');
     return Promise.reject(evaluationFileErrors);
   }
 
   const maxRows = 1000;
   if (dataLength - 1 > maxRows) {
-    addLog.error(`Too many rows. Max: ${maxRows}, Got: ${dataLength - 1}`);
+    logger.error(`Too many rows. Max: ${maxRows}, Got: ${dataLength - 1}`);
     return Promise.reject(evaluationFileErrors);
   }
 
@@ -80,7 +82,7 @@ export const validateEvaluationFile = async (
   }
 
   if (errors.length > 0) {
-    addLog.error(`Validation failed: ${errors.join('; ')}`);
+    logger.error(`Validation failed: ${errors.join('; ')}`);
     return Promise.reject(evaluationFileErrors);
   }
 

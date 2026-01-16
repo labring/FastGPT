@@ -6,10 +6,11 @@ import type { LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
-import { addLog } from '../system/log';
+import { getLogger, mod } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
 
+const logger = getLogger(mod.common);
 let reader: ReaderModel | null = null;
 
 const locationIpMap = new Map<string, LocationName>();
@@ -97,7 +98,7 @@ export function initGeo() {
     loadGeoDB();
   } catch (error) {
     clearCleanupInterval();
-    addLog.error(`Failed to load geo db`, error);
+    logger.error(`Failed to load geo db`, { error });
     throw error;
   }
 }

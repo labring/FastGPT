@@ -10,8 +10,10 @@ import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+
+const logger = getLogger(mod.app);
 
 type OptimizePromptBody = {
   originalPrompt: string;
@@ -53,7 +55,7 @@ Prompt工程师
 };
 
 const getPromptOptimizerUserPrompt = (originalPrompt: string, optimizerInput: string) => {
-  return `请严格遵循用户的优化需求: 
+  return `请严格遵循用户的优化需求:
 <OptimizerInput>
 ${optimizerInput}
 </OptimizerInput>
@@ -153,7 +155,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       ]
     });
   } catch (error: any) {
-    addLog.error('Optimize prompt error', error);
+    logger.error('Optimize prompt error', { error });
     sseErrRes(res, error);
   }
   res.end();

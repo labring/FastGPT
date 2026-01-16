@@ -5,6 +5,10 @@
   "dependencies": {
     "@fastgpt-sdk/storage": "0.6.6",
     "@fastgpt/global": "workspace:*",
+    "@logtape/file": "^1.3.6",
+    "@logtape/logtape": "^1.3.6",
+    "@logtape/otel": "^1.3.6",
+    "@logtape/pretty": "^1.3.6",
     "@maxmind/geoip2-node": "^6.3.4",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "@node-rs/jieba": "2.0.1",

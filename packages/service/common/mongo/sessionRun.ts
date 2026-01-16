@@ -1,7 +1,8 @@
-import { addLog } from '../system/log';
+import { getLogger, infra } from '../logger';
 import { connectionMongo, type ClientSession } from './index';
 
 const timeout = 60000;
+const logger = getLogger(infra.mongo);
 
 export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) => Promise<T>) => {
   const session = await connectionMongo.startSession();
@@ -19,7 +20,7 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
     if (!session.transaction.isCommitted) {
       await session.abortTransaction();
     } else {
-      addLog.warn('Un catch mongo session error', { error });
+      logger.warn('Un catch mongo session error', { error });
     }
     return Promise.reject(error);
   } finally {

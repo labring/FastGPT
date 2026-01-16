@@ -1,7 +1,23 @@
-import { addLog } from '../system/log';
+import { getLogger, infra } from '../logger';
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const logger = getLogger(infra.redis);
+
+const attachRedisConnectionLogs = (redis: Redis) => {
+  redis.on('connect', () => {
+    logger.info('[Redis] connected');
+  });
+  redis.on('reconnecting', () => {
+    logger.warn('[Redis] reconnecting');
+  });
+  redis.on('error', (error) => {
+    logger.error('[Redis] error', { error });
+  });
+  redis.on('close', () => {
+    logger.warn('[Redis] connection closed');
+  });
+};
 
 // Base Redis options for connection reliability
 const REDIS_BASE_OPTION = {
@@ -10,9 +26,9 @@ const REDIS_BASE_OPTION = {
     // Never give up retrying to ensure worker keeps running
     const delay = Math.min(times * 50, 2000); // Max 2s between retries
     if (times > 10) {
-      addLog.error(`[Redis connection failed] attempt ${times}, will keep retrying...`);
+      logger.error(`[Redis] connection failed, will keep retrying`, { attempt: times });
     } else {
-      addLog.warn(`Redis reconnecting... attempt ${times}, delay ${delay}ms`);
+      logger.warn(`[Redis] reconnecting`, { attempt: times, delay });
     }
     return delay; // Always return a delay to keep retrying
   },
@@ -23,7 +39,7 @@ const REDIS_BASE_OPTION = {
 
     const shouldReconnect = reconnectErrors.some((errType) => message.includes(errType));
     if (shouldReconnect) {
-      addLog.warn(`Redis reconnecting due to error: ${message}`);
+      logger.warn(`[Redis] reconnecting due to error`, { message });
     }
     return shouldReconnect;
   },
@@ -39,6 +55,7 @@ export const newQueueRedisConnection = () => {
     // Limit retries for queue operations
     maxRetriesPerRequest: 3
   });
+  attachRedisConnectionLogs(redis);
   return redis;
 };
 
@@ -48,6 +65,7 @@ export const newWorkerRedisConnection = () => {
     // BullMQ requires maxRetriesPerRequest: null for blocking operations
     maxRetriesPerRequest: null
   });
+  attachRedisConnectionLogs(redis);
   return redis;
 };
 
@@ -61,15 +79,7 @@ export const getGlobalRedisConnection = () => {
     maxRetriesPerRequest: 3
   });
 
-  global.redisClient.on('connect', () => {
-    addLog.info('[Global Redis] connected');
-  });
-  global.redisClient.on('error', (error) => {
-    addLog.error('[Global Redis] connection error', error);
-  });
-  global.redisClient.on('close', () => {
-    addLog.warn('[Global Redis] connection closed');
-  });
+  attachRedisConnectionLogs(global.redisClient);
 
   return global.redisClient;
 };

@@ -1,13 +1,15 @@
 import type { Processor } from 'bullmq';
 import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
 import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDataset } from '../schema';
 import { removeImageByPath } from '../../../common/file/image/controller';
 import { MongoDatasetTraining } from '../training/schema';
+
+const logger = getLogger(mod.coreDataset);
 
 export const deleteDatasetsImmediate = async ({
   teamId,
@@ -92,7 +94,7 @@ export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (jo
   const { teamId, datasetId } = job.data;
   const startTime = Date.now();
 
-  addLog.info(`[Dataset Delete] Start deleting dataset: ${datasetId} for team: ${teamId}`);
+  logger.info(`[Dataset Delete] Start deleting dataset: ${datasetId} for team: ${teamId}`);
 
   try {
     // 1. 查找知识库及其所有子知识库
@@ -103,7 +105,7 @@ export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (jo
     });
 
     if (!datasets || datasets.length === 0) {
-      addLog.warn(`[Dataset Delete] Dataset not found: ${datasetId}`);
+      logger.warn(`[Dataset Delete] Dataset not found: ${datasetId}`);
       return;
     }
 
@@ -118,11 +120,13 @@ export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (jo
     ).lean();
 
     if (markedForDelete.length !== datasets.length) {
-      addLog.warn(
+      logger.warn(
         `[Dataset Delete] Safety check: ${markedForDelete.length}/${datasets.length} datasets marked for deletion`,
         {
-          markedDatasetIds: markedForDelete.map((d) => d._id),
-          totalDatasetIds: datasets.map((d) => d._id)
+          body: {
+            markedDatasetIds: markedForDelete.map((d) => d._id),
+            totalDatasetIds: datasets.map((d) => d._id)
+          }
         }
       );
     }
@@ -133,16 +137,18 @@ export const datasetDeleteProcessor: Processor<DatasetDeleteJobData> = async (jo
       datasets
     });
 
-    addLog.info(
+    logger.info(
       `[Dataset Delete] Successfully deleted dataset: ${datasetId} and ${datasets.length - 1} children`,
       {
-        duration: Date.now() - startTime,
-        totalDatasets: datasets.length,
-        datasetIds: datasets.map((d) => d._id)
+        body: {
+          duration: Date.now() - startTime,
+          totalDatasets: datasets.length,
+          datasetIds: datasets.map((d) => d._id)
+        }
       }
     );
   } catch (error: any) {
-    addLog.error(`[Dataset Delete] Failed to delete dataset: ${datasetId}`, error);
+    logger.error(`[Dataset Delete] Failed to delete dataset: ${datasetId}`, { error });
     throw error;
   }
 };

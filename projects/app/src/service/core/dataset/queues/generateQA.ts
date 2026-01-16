@@ -2,7 +2,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
@@ -21,6 +21,8 @@ import { delay } from '@fastgpt/service/common/bullmq';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
+const logger = getLogger(mod.app);
+
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
 
@@ -34,7 +36,7 @@ type PopulateType = {
 
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
-  addLog.debug(`[QA Queue] Queue size: ${global.qaQueueLen}`);
+  logger.debug(`[QA Queue] Queue size: ${global.qaQueueLen}`);
 
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
@@ -94,13 +96,13 @@ export async function generateQA(): Promise<any> {
         break;
       }
       if (error) {
-        addLog.error(`[QA Queue] Error`, error);
+        logger.error(`[QA Queue] Error`, { error });
         await delay(500);
         continue;
       }
 
       if (!data.dataset || !data.collection) {
-        addLog.info(`[QA Queue] Dataset or collection not found`, data);
+        logger.info(`[QA Queue] Dataset or collection not found`, { body: data });
         // Delete data
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
@@ -110,7 +112,7 @@ export async function generateQA(): Promise<any> {
         continue;
       }
 
-      addLog.info(`[QA Queue] Start`);
+      logger.info(`[QA Queue] Start`);
 
       try {
         const modelData = getLLMModel(data.dataset.agentModel);
@@ -169,13 +171,15 @@ export async function generateQA(): Promise<any> {
           type: UsageItemTypeEnum.training_qa
         });
 
-        addLog.info(`[QA Queue] Finish`, {
-          time: Date.now() - startTime,
-          splitLength: qaArr.length,
-          usage: { inputTokens, outputTokens }
+        logger.info(`[QA Queue] Finish`, {
+          body: {
+            time: Date.now() - startTime,
+            splitLength: qaArr.length,
+            usage: { inputTokens, outputTokens }
+          }
         });
       } catch (err: any) {
-        addLog.error(`[QA Queue] Error`, err);
+        logger.error(`[QA Queue] Error`, { error: err });
         await MongoDatasetTraining.updateOne(
           {
             _id: data._id
@@ -189,13 +193,13 @@ export async function generateQA(): Promise<any> {
       }
     }
   } catch (error) {
-    addLog.error(`[QA Queue] Error`, error);
+    logger.error(`[QA Queue] Error`, { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[QA Queue] Done`);
+    logger.info(`[QA Queue] Done`);
   }
-  addLog.debug(`[QA Queue] break loop, current queue size: ${global.qaQueueLen}`);
+  logger.debug(`[QA Queue] break loop, current queue size: ${global.qaQueueLen}`);
 }
 
 // Format qa answer

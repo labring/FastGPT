@@ -1,5 +1,7 @@
 import { MongoAppRecord } from './schema';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
+
+const logger = getLogger(mod.coreApp);
 
 export const recordAppUsage = async ({
   appId,
@@ -22,6 +24,6 @@ export const recordAppUsage = async ({
       upsert: true
     }
   ).catch((error) => {
-    addLog.error('recordAppUsage error', error);
+    logger.error('recordAppUsage error', { error });
   });
 };

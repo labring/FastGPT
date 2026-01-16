@@ -3,8 +3,11 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getLogger, infra } from '@fastgpt/service/common/logger';
 
 export async function initRootUser(retry = 3): Promise<any> {
+  const logger = getLogger(infra.mongo);
+
   try {
     const rootUser = await MongoUser.findOne({
       username: 'root'
@@ -39,6 +42,8 @@ export async function initRootUser(retry = 3): Promise<any> {
       username: 'root',
       password: psw
     });
+
+    logger.info('root user init success');
   } catch (error) {
     if (retry > 0) {
       console.log('retry init root user');
