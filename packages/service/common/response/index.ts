@@ -1,11 +1,13 @@
 import type { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { addLog } from '../system/log';
+import { getLogger, mod } from '../logger';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
+
+const logger = getLogger(mod.common);
 
 export interface ResponseType<T = any> {
   code: number;
@@ -42,7 +44,7 @@ export function processError(params: {
     const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
 
     // 记录业务侧错误日志
-    addLog.info(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
+    logger.info(`Api response error: ${url}`, { body: ERROR_RESPONSE[errResponseKey] });
 
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
@@ -67,19 +69,19 @@ export function processError(params: {
 
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
-    addLog.info(`Request error: ${url}, ${msg}`);
+    logger.info(`Request error: ${url}, ${msg}`);
   } else if (error instanceof ZodError) {
     zodError = (() => {
       try {
         return JSON.parse(error.message);
       } catch (error) {}
     })();
-    addLog.error(`[Zod] Error in ${url}`, {
+    logger.error(`[Zod] Error in ${url}`, {
       data: zodError
     });
     msg = error.message;
   } else {
-    addLog.error(`System unexpected error: ${url}, ${msg}`, error);
+    logger.error(`System unexpected error: ${url}, ${msg}`, { error });
   }
 
   // 4. 返回处理后的错误信息
@@ -161,7 +163,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = `${error?.error?.code} ${error?.error?.message}`;
   }
 
-  addLog.error(`sse error: ${msg}`, error);
+  logger.error(`sse error: ${msg}`, { error });
 
   responseWrite({
     res,

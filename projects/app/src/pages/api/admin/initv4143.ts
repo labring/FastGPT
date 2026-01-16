@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
@@ -22,6 +22,8 @@ import {
 } from '@fastgpt/service/common/s3/utils';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 
+const logger = getLogger(mod.app);
+
 // 将 GridFS 的流转换为 Buffer
 async function gridFSStreamToBuffer(
   stream: Awaited<ReturnType<typeof getDownloadStream>>
@@ -40,7 +42,7 @@ async function gridFSStreamToBuffer(
 
 // 将 MongoDB 中 ObjectId 类型的 fileId 转换为字符串
 async function convertFileIdToString(batchId: string) {
-  addLog.info(`[Migration ${batchId}] Converting ObjectId fileId to String in database...`);
+  logger.info(`[Migration ${batchId}] Converting ObjectId fileId to String in database...`);
 
   // 查找所有 fileId 存在且不为 null 的 collection
   const collections = await MongoDatasetCollection.find(
@@ -51,11 +53,11 @@ async function convertFileIdToString(batchId: string) {
   ).lean();
 
   if (collections.length === 0) {
-    addLog.info(`[Migration ${batchId}] No collections with fileId found`);
+    logger.info(`[Migration ${batchId}] No collections with fileId found`);
     return { converted: 0 };
   }
 
-  addLog.info(
+  logger.info(
     `[Migration ${batchId}] Found ${collections.length} collections with fileId, starting conversion...`
   );
 
@@ -81,9 +83,9 @@ async function convertFileIdToString(batchId: string) {
 
         convertedCount++;
       } catch (error) {
-        addLog.error(
+        logger.error(
           `[Migration ${batchId}] Failed to convert fileId for collection ${collection._id}:`,
-          error
+          { error }
         );
       }
     })
@@ -91,7 +93,7 @@ async function convertFileIdToString(batchId: string) {
 
   await Promise.all(tasks);
 
-  addLog.info(`[Migration ${batchId}] Converted ${convertedCount} fileId fields to String type`);
+  logger.info(`[Migration ${batchId}] Converted ${convertedCount} fileId fields to String type`);
 
   return { converted: convertedCount };
 }
@@ -218,7 +220,7 @@ async function migrateDatasetCollection({
       collectionId
     };
   } catch (error) {
-    addLog.error(`[Migration ${batchId}] Failed to migrate collection ${collectionId}:`, error);
+    logger.error(`[Migration ${batchId}] Failed to migrate collection ${collectionId}:`, { error });
     throw error;
   }
 }
@@ -286,7 +288,7 @@ async function processCollectionBatch({
   const skippedCount = collections.length - pendingCollections.length;
 
   if (pendingCollections.length === 0) {
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Batch all skipped. Total: ${collections.length}, Skipped: ${skippedCount}`
     );
     return {
@@ -297,7 +299,7 @@ async function processCollectionBatch({
     };
   }
 
-  addLog.info(
+  logger.info(
     `[Migration ${batchId}] Processing ${pendingCollections.length} collections (${skippedCount} skipped)`
   );
 
@@ -346,10 +348,9 @@ async function processCollectionBatch({
         succeeded++;
       } catch (error) {
         failed++;
-        addLog.error(
-          `[Migration ${batchId}] Failed to migrate collection ${collection._id}:`,
+        logger.error(`[Migration ${batchId}] Failed to migrate collection ${collection._id}:`, {
           error
-        );
+        });
       }
     })
   );
@@ -420,7 +421,7 @@ async function updateDatasetCollectionFileId({
       }
     );
 
-    addLog.error(`[Migration ${batchId}] Failed to update collection ${collectionId}:`, error);
+    logger.error(`[Migration ${batchId}] Failed to update collection ${collectionId}:`, { error });
     throw error;
   }
 }
@@ -441,7 +442,7 @@ function getDatasetImageGFSCollection() {
 
 // 将 MongoDB 中 ObjectId 类型的 imageId 转换为字符串
 async function convertImageIdToString(batchId: string) {
-  addLog.info(`[Migration ${batchId}] Converting ObjectId imageId to String in database...`);
+  logger.info(`[Migration ${batchId}] Converting ObjectId imageId to String in database...`);
 
   // 查找所有 imageId 存在且不为 null 的 data
   const dataList = await MongoDatasetData.find(
@@ -452,11 +453,11 @@ async function convertImageIdToString(batchId: string) {
   ).lean();
 
   if (dataList.length === 0) {
-    addLog.info(`[Migration ${batchId}] No data with imageId found`);
+    logger.info(`[Migration ${batchId}] No data with imageId found`);
     return { converted: 0 };
   }
 
-  addLog.info(
+  logger.info(
     `[Migration ${batchId}] Found ${dataList.length} data with imageId, starting conversion...`
   );
 
@@ -479,17 +480,16 @@ async function convertImageIdToString(batchId: string) {
 
         convertedCount++;
       } catch (error) {
-        addLog.error(
-          `[Migration ${batchId}] Failed to convert imageId for data ${data._id}:`,
+        logger.error(`[Migration ${batchId}] Failed to convert imageId for data ${data._id}:`, {
           error
-        );
+        });
       }
     })
   );
 
   await Promise.all(tasks);
 
-  addLog.info(`[Migration ${batchId}] Converted ${convertedCount} imageId fields to String type`);
+  logger.info(`[Migration ${batchId}] Converted ${convertedCount} imageId fields to String type`);
 
   return { converted: convertedCount };
 }
@@ -564,7 +564,7 @@ async function processImageBatch({
   const skippedCount = dataList.length - pendingDataList.length;
 
   if (pendingDataList.length === 0) {
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Image batch all skipped. Total: ${dataList.length}, Skipped: ${skippedCount}`
     );
     return {
@@ -575,7 +575,7 @@ async function processImageBatch({
     };
   }
 
-  addLog.info(
+  logger.info(
     `[Migration ${batchId}] Processing ${pendingDataList.length} images (${skippedCount} skipped)`
   );
 
@@ -587,7 +587,7 @@ async function processImageBatch({
     .map((data) => {
       const imageFile = imageFileMap.get(data.imageId!);
       if (!imageFile) {
-        addLog.warn(
+        logger.warn(
           `[Migration ${batchId}] Image file not found for imageId: ${data.imageId}, dataId: ${data._id}`
         );
         return null;
@@ -642,7 +642,9 @@ async function processImageBatch({
         succeeded++;
       } catch (error) {
         failed++;
-        addLog.error(`[Migration ${batchId}] Failed to migrate image for data ${data._id}:`, error);
+        logger.error(`[Migration ${batchId}] Failed to migrate image for data ${data._id}:`, {
+          error
+        });
       }
     })
   );
@@ -789,7 +791,7 @@ async function migrateDatasetImage({
       dataId
     };
   } catch (error) {
-    addLog.error(`[Migration ${batchId}] Failed to migrate image for data ${dataId}:`, error);
+    logger.error(`[Migration ${batchId}] Failed to migrate image for data ${dataId}:`, { error });
     throw error;
   }
 }
@@ -850,7 +852,7 @@ async function updateDatasetDataImageId({
       }
     );
 
-    addLog.error(`[Migration ${batchId}] Failed to update data ${dataId}:`, error);
+    logger.error(`[Migration ${batchId}] Failed to update data ${dataId}:`, { error });
     throw error;
   }
 }
@@ -858,7 +860,7 @@ async function updateDatasetDataImageId({
 // 批量删除已完成迁移的 S3 文件的 TTL
 async function removeTTLForCompletedMigrations(batchId: string) {
   try {
-    addLog.info(`[Migration ${batchId}] Removing TTL for completed migrations...`);
+    logger.info(`[Migration ${batchId}] Removing TTL for completed migrations...`);
 
     // 分批删除，避免一次查询太多
     const BATCH_SIZE = 5000;
@@ -887,7 +889,7 @@ async function removeTTLForCompletedMigrations(batchId: string) {
       if (keys.length > 0) {
         await removeS3TTL({ key: keys, bucketName: 'private' });
         totalRemoved += keys.length;
-        addLog.info(`[Migration ${batchId}] Removed TTL for ${totalRemoved} objects so far`);
+        logger.info(`[Migration ${batchId}] Removed TTL for ${totalRemoved} objects so far`);
       }
 
       offset += BATCH_SIZE;
@@ -895,9 +897,9 @@ async function removeTTLForCompletedMigrations(batchId: string) {
       if (completedMigrations.length < BATCH_SIZE) break;
     }
 
-    addLog.info(`[Migration ${batchId}] Total TTL removed: ${totalRemoved}`);
+    logger.info(`[Migration ${batchId}] Total TTL removed: ${totalRemoved}`);
   } catch (error) {
-    addLog.error(`[Migration ${batchId}] Failed to remove TTL:`, error);
+    logger.error(`[Migration ${batchId}] Failed to remove TTL:`, { error });
     // 不抛出错误，因为这不是致命问题
   }
 }
@@ -918,8 +920,8 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   const batchId = `migration_${Date.now()}_${randomUUID()}`;
   const migrationVersion = 'v4.14.3';
 
-  addLog.info(`[Migration ${batchId}] Starting migration ${migrationVersion}`);
-  addLog.info(
+  logger.info(`[Migration ${batchId}] Starting migration ${migrationVersion}`);
+  logger.info(
     `[Migration ${batchId}] Config: collectionBatch=${config.collectionBatchSize}, collectionConcurrency=${config.collectionConcurrency}, imageBatch=${config.imageBatchSize}, imageConcurrency=${config.imageConcurrency}`
   );
 
@@ -928,7 +930,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
 
   // ========== Collection 迁移 ==========
   const totalCollectionFiles = await getGFSCollection('dataset').countDocuments({});
-  addLog.info(`[Migration ${batchId}] Total collection files in GridFS: ${totalCollectionFiles}`);
+  logger.info(`[Migration ${batchId}] Total collection files in GridFS: ${totalCollectionFiles}`);
 
   let collectionStats = {
     processed: 0,
@@ -942,7 +944,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
     const currentBatch = Math.floor(offset / config.collectionBatchSize) + 1;
     const totalBatches = Math.ceil(totalCollectionFiles / config.collectionBatchSize);
 
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Processing collections batch ${currentBatch}/${totalBatches} (${offset}-${offset + config.collectionBatchSize})`
     );
 
@@ -959,7 +961,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
     collectionStats.failed += batchStats.failed;
     collectionStats.skipped += batchStats.skipped;
 
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Batch ${currentBatch}/${totalBatches} completed. Batch: +${batchStats.succeeded} succeeded, +${batchStats.failed} failed. Total progress: ${collectionStats.succeeded}/${totalCollectionFiles}`
     );
 
@@ -970,13 +972,13 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   }
 
   // ========== Image Migration ==========
-  addLog.info(`[Migration ${batchId}] Starting image migration...`);
+  logger.info(`[Migration ${batchId}] Starting image migration...`);
 
   // 步骤 1: 将现有数据库中的 ObjectId 类型的 imageId 转换为 String
   const { converted: convertedImageIds } = await convertImageIdToString(batchId);
 
   const totalImageFiles = await getDatasetImageGFSCollection().countDocuments({});
-  addLog.info(`[Migration ${batchId}] Total image files in GridFS: ${totalImageFiles}`);
+  logger.info(`[Migration ${batchId}] Total image files in GridFS: ${totalImageFiles}`);
 
   let imageStats = {
     processed: 0,
@@ -990,7 +992,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
     const currentBatch = Math.floor(offset / config.imageBatchSize) + 1;
     const totalBatches = Math.ceil(totalImageFiles / config.imageBatchSize);
 
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Processing images batch ${currentBatch}/${totalBatches} (${offset}-${offset + config.imageBatchSize})`
     );
 
@@ -1007,7 +1009,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
     imageStats.failed += batchStats.failed;
     imageStats.skipped += batchStats.skipped;
 
-    addLog.info(
+    logger.info(
       `[Migration ${batchId}] Batch ${currentBatch}/${totalBatches} completed. Batch: +${batchStats.succeeded} succeeded, +${batchStats.failed} failed. Total progress: ${imageStats.succeeded}/${totalImageFiles}`
     );
 
@@ -1021,16 +1023,16 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await removeTTLForCompletedMigrations(batchId);
 
   // ========== 汇总统计 ==========
-  addLog.info(`[Migration ${batchId}] ========== Migration Summary ==========`);
-  addLog.info(
+  logger.info(`[Migration ${batchId}] ========== Migration Summary ==========`);
+  logger.info(
     `[Migration ${batchId}] Collections - Total: ${totalCollectionFiles}, Succeeded: ${collectionStats.succeeded}, Failed: ${collectionStats.failed}, Skipped: ${collectionStats.skipped}`
   );
-  addLog.info(
+  logger.info(
     `[Migration ${batchId}] Images - Total: ${totalImageFiles}, Succeeded: ${imageStats.succeeded}, Failed: ${imageStats.failed}, Skipped: ${imageStats.skipped}`
   );
-  addLog.info(`[Migration ${batchId}] Converted fileId: ${converted}`);
-  addLog.info(`[Migration ${batchId}] Converted imageId: ${convertedImageIds}`);
-  addLog.info(`[Migration ${batchId}] =======================================`);
+  logger.info(`[Migration ${batchId}] Converted fileId: ${converted}`);
+  logger.info(`[Migration ${batchId}] Converted imageId: ${convertedImageIds}`);
+  logger.info(`[Migration ${batchId}] =======================================`);
 
   return {
     batchId,

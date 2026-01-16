@@ -1,9 +1,11 @@
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { axios } from '../../common/api/axios';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const logger = getLogger(mod.coreChat);
 
 export type Metadata = {
   [key: string]: {
@@ -28,10 +30,12 @@ export const pushChatLog = ({
   const interval = Number(process.env.CHAT_LOG_INTERVAL);
   const url = process.env.CHAT_LOG_URL;
   if (!isNaN(interval) && interval > 0 && url) {
-    addLog.debug(`[ChatLogPush] push chat log after ${interval}ms`, {
-      appId,
-      chatItemIdHuman,
-      chatItemIdAi
+    logger.debug(`[ChatLogPush] push chat log after ${interval}ms`, {
+      body: {
+        appId,
+        chatItemIdHuman,
+        chatItemIdAi
+      }
     });
     setTimeout(() => {
       pushChatLogInternal({ chatId, chatItemIdHuman, chatItemIdAi, appId, url, metadata });
@@ -81,8 +85,8 @@ const pushChatLogInternal = async ({
 
     const chat = await MongoChat.findOne({ chatId }).lean();
 
-    // addLog.warn('ChatLogDebug', chat);
-    // addLog.warn('ChatLogDebug', { chatItemHuman, chatItemAi });
+    // logger.warn('ChatLogDebug', { body: chat });
+    // logger.warn('ChatLogDebug', { body: { chatItemHuman, chatItemAi } });
 
     if (!chat) {
       return;
@@ -139,9 +143,8 @@ ${JSON.stringify(item.interactive, null, 2)}
       .join('\n');
 
     if (!question || !answer) {
-      addLog.error('[ChatLogPush] question or answer is empty', {
-        question: chatItemHuman.value,
-        answer: chatItemAi.value
+      logger.error('[ChatLogPush] question or answer is empty', {
+        body: { question: chatItemHuman.value, answer: chatItemAi.value }
       });
       return;
     }
@@ -178,6 +181,6 @@ ${JSON.stringify(item.interactive, null, 2)}
     };
     await axios.post(`${url}/api/chat/push`, chatLog);
   } catch (e) {
-    addLog.error('[ChatLogPush] error', e);
+    logger.error('[ChatLogPush] error', { error: e });
   }
 };

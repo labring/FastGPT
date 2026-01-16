@@ -4,7 +4,7 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
@@ -25,6 +25,8 @@ import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
+
+const logger = getLogger(mod.coreChat);
 
 export type Props = {
   chatId: string;
@@ -389,10 +391,10 @@ export async function saveChat(props: Props) {
         }
       );
     } catch (error) {
-      addLog.error('Push chat log error', error);
+      logger.error('Push chat log error', { error });
     }
   } catch (error) {
-    addLog.error(`update chat history error`, error);
+    logger.error(`update chat history error`, { error });
   }
 }
 
@@ -594,6 +596,6 @@ export const updateInteractiveChat = async (props: Props) => {
       }
     );
   } catch (error) {
-    addLog.error('update interactive chat log error', error);
+    logger.error('update interactive chat log error', { error });
   }
 };

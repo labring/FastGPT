@@ -7,12 +7,14 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
+
+const logger = getLogger(mod.app);
 
 async function appSplitMigration(teamId: string) {
   const allApps = await MongoApp.find(
@@ -172,7 +174,7 @@ async function appSplitMigration(teamId: string) {
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
   const allTeamIds = await MongoTeam.find({}, '_id').lean();
-  addLog.info(`Starting app split migration, teamIds: ${allTeamIds.length}`);
+  logger.info(`Starting app split migration, teamIds: ${allTeamIds.length}`);
   const failed = [];
   const skipedMigrated = [];
   const skipedNoFolder = [];
@@ -189,12 +191,12 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
         success.push(teamId);
       }
     } catch (e) {
-      addLog.error('App split script error: ', e);
+      logger.error('App split script error: ', { error: e });
       failed.push(teamId);
       continue;
     }
   }
-  addLog.info(
+  logger.info(
     `\
 App split migration completed!
 success teams: ${success.length}, skipedMigrated: ${skipedMigrated.length}, skipedNoFolder: ${skipedNoFolder.length}

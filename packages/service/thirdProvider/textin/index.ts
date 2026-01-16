@@ -1,7 +1,9 @@
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import axios from 'axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+
+const logger = getLogger(mod.common);
 
 export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
   // Init request
@@ -31,12 +33,12 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       return Promise.reject({ message: `[Textin] ${err.message}` });
     }
 
-    addLog.error('[Textin] Unknown error', err);
+    logger.error('[Textin] Unknown error', { error: err });
     return Promise.reject({ message: `[Textin] ${getErrText(err)}` });
   };
 
   const parsePDF = async (fileBuffer: Buffer) => {
-    addLog.debug('[Textin] PDF parse start');
+    logger.debug('[Textin] PDF parse start');
     const startTime = Date.now();
 
     try {
@@ -78,9 +80,11 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       // Get page count
       const pages = data.result?.pages?.length || data.result?.total_page_number || 1;
 
-      addLog.debug(`[Textin] PDF parse finished`, {
-        time: `${Math.round((Date.now() - startTime) / 1000)}s`,
-        pages
+      logger.debug(`[Textin] PDF parse finished`, {
+        body: {
+          pages,
+          time: `${Math.round((Date.now() - startTime) / 1000)}s`
+        }
       });
 
       return {

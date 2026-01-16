@@ -4,9 +4,11 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { axios } from '../../../../common/api/axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+
+const logger = getLogger(mod.coreWorkflow);
 
 type LafRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpReqUrl]: string;
@@ -96,7 +98,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
       [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse
     };
   } catch (error) {
-    addLog.warn('Http request error', formatHttpError(error));
+    logger.warn('Http request error', { body: formatHttpError(error) });
     return {
       error: {
         [NodeOutputKeyEnum.errorText]: getErrText(error)

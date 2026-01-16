@@ -3,12 +3,14 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
+
+const logger = getLogger(mod.app);
 
 const updateData = async () => {
   let success = 0;
@@ -65,7 +67,7 @@ const updateData = async () => {
       success += dataTextOps.length;
       console.log(`成功 ${success}`);
     } catch (error) {
-      addLog.error('更新所有旧的 jieba 分词失败', error);
+      logger.error('更新所有旧的 jieba 分词失败', { error });
       await delay(1000);
     }
   }

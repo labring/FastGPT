@@ -17,13 +17,14 @@ import { getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 import { addS3DelJob } from '../mq';
 import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
 type IStorage = ReturnType<typeof createStorage>;
+const logger = getLogger(infra.storage);
 
 // Check if the error is a "file not found" type error, which should be treated as success
 export const isFileNotFoundError = (error: any): boolean => {
@@ -95,9 +96,11 @@ export class S3BaseBucket {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
       }
-      addLog.error(`[S3 delete error]`, {
-        message: err.message,
-        data: { code: err.code, key: objectKey }
+      logger.error('[S3 delete error]', {
+        body: {
+          message: err.message,
+          data: { code: err.code, key: objectKey }
+        }
       });
       throw err;
     });
@@ -154,7 +157,7 @@ export class S3BaseBucket {
         maxSize: formatMaxFileSize
       };
     } catch (error) {
-      addLog.error('Failed to create presigned put url', error);
+      logger.error('Failed to create presigned put url', { error });
       return Promise.reject('Failed to create presigned put url');
     }
   }

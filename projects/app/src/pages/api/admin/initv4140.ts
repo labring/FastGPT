@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { MongoToolGroups } from '@fastgpt/service/core/plugin/tool/pluginGroupSchema';
 import { connectionMongo } from '@fastgpt/service/common/mongo/index';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
@@ -10,6 +10,8 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
+
+const logger = getLogger(mod.app);
 
 const { Schema } = connectionMongo;
 
@@ -27,7 +29,7 @@ const { Schema } = connectionMongo;
 async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>) {
   await authCert({ req, authRoot: true });
 
-  addLog.info('[initv4140] 开始执行 v4.14.0 数据迁移');
+  logger.info('[initv4140] 开始执行 v4.14.0 数据迁移');
 
   try {
     // 1. 迁移 group 到 tags 里
@@ -44,7 +46,7 @@ async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>
       migratedToolsCount
     };
   } catch (error) {
-    addLog.error('[initv4140] 迁移失败:', error);
+    logger.error('[initv4140] 迁移失败:', { error });
     throw error;
   }
 }
@@ -60,7 +62,7 @@ async function migrateGroupsToTags(): Promise<{
   const groups = await MongoToolGroups.find().sort({ groupOrder: 1 }).lean();
 
   if (!groups.length) {
-    addLog.warn('[initv4140] app_plugin_groups 无数据，跳过迁移');
+    logger.warn('[initv4140] app_plugin_groups 无数据，跳过迁移');
     return { migratedCount: 0, typeToGroupMap: new Map() };
   }
 
@@ -116,11 +118,11 @@ async function migrateGroupsToTags(): Promise<{
         }
       );
     }
-    addLog.info(
+    logger.info(
       `[initv4140] 标签迁移: 源表 ${uniqueTags.length} 条, 已存在 ${existingTagIds.length} 条, 成功插入 ${tagsToInsert.length} 条`
     );
   } else {
-    addLog.info(
+    logger.info(
       `[initv4140] 标签迁移: 源表 ${uniqueTags.length} 条, 已存在 ${existingTagIds.length} 条, 无需插入新数据`
     );
   }
@@ -162,7 +164,7 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
   const oldPlugins = await MongoOldSystemPlugin.find({}).lean();
 
   if (!oldPlugins.length) {
-    addLog.warn('[initv4140] app_system_plugins 无数据，跳过迁移');
+    logger.warn('[initv4140] app_system_plugins 无数据，跳过迁移');
     return 0;
   }
 
@@ -206,9 +208,9 @@ async function migrateSystemPluginsToTools(typeToGroupMap: Map<string, string>):
         upsert: true
       });
     }
-    addLog.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条`);
+    logger.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条`);
   } else {
-    addLog.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条, 无需插入新数据`);
+    logger.info(`[initv4140] 工具迁移: 源表 ${newTools.length} 条, 无需插入新数据`);
   }
 
   return newTools.length;

@@ -11,7 +11,7 @@ import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { addMinutes } from 'date-fns';
 import { checkTeamAiPointsAndLock } from './utils';
@@ -33,6 +33,8 @@ import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/cont
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+
+const logger = getLogger(mod.app);
 
 const requestLLMPargraph = async ({
   rawText,
@@ -99,7 +101,7 @@ const reduceQueue = () => {
 
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
-  addLog.debug(`[Parse Queue] Queue size: ${global.datasetParseQueueLen}`);
+  logger.debug(`[Parse Queue] Queue size: ${global.datasetParseQueueLen}`);
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
 
@@ -159,7 +161,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         break;
       }
       if (error) {
-        addLog.error(`[Parse Queue] Error`, error);
+        logger.error(`[Parse Queue] Error`, { error });
         await delay(500);
         continue;
       }
@@ -172,12 +174,12 @@ export const datasetParseQueue = async (): Promise<any> => {
       const collection = data.collection;
 
       if (!dataset || !collection) {
-        addLog.warn(`[Parse Queue] data not found`, data);
+        logger.warn(`[Parse Queue] data not found`, { body: data });
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
-      addLog.info(`[Parse Queue] Start`);
+      logger.info(`[Parse Queue] Start`);
 
       try {
         const trainingMode = getTrainingModeByCollection({
@@ -224,7 +226,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         })();
 
         if (!sourceReadType) {
-          addLog.warn(`[Parse Queue] Source read type is null, delete task`);
+          logger.warn(`[Parse Queue] Source read type is null, delete task`);
           await MongoDatasetTraining.deleteOne({
             _id: data._id
           });
@@ -279,7 +281,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             insertLen: predictDataLimitLength(trainingMode, chunks)
           });
         } catch (error) {
-          addLog.info(`[Parse Queue] Check dataset limit failed, lock the task`);
+          logger.info(`[Parse Queue] Check dataset limit failed, lock the task`);
           await MongoDatasetTraining.updateOne(
             {
               _id: data._id
@@ -339,11 +341,11 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
         });
 
-        addLog.debug(`[Parse Queue] Finish`, {
+        logger.debug(`[Parse Queue] Finish`, {
           time: Date.now() - startTime
         });
       } catch (err) {
-        addLog.error(`[Parse Queue] Error`, err);
+        logger.error(`[Parse Queue] Error`, { error: err });
 
         await MongoDatasetTraining.updateOne(
           {
@@ -359,12 +361,12 @@ export const datasetParseQueue = async (): Promise<any> => {
       }
     }
   } catch (error) {
-    addLog.error(`[Parse Queue] Error`, error);
+    logger.error(`[Parse Queue] Error`, { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[Parse Queue] Done`);
+    logger.info(`[Parse Queue] Done`);
   }
 
-  addLog.debug(`[Parse Queue] break loop`);
+  logger.debug(`[Parse Queue] break loop`);
 };

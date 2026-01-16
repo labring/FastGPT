@@ -1,10 +1,12 @@
 import type { Processor } from 'bullmq';
 import type { AppDeleteJobData } from './index';
 import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
+
+const logger = getLogger(mod.coreApp);
 
 const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchema[] }) => {
   const results = await batchRun(
@@ -22,7 +24,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
   const { teamId, appId } = job.data;
   const startTime = Date.now();
 
-  addLog.info(`[App Delete] Start deleting app: ${appId} for team: ${teamId}`);
+  logger.info(`[App Delete] Start deleting app: ${appId} for team: ${teamId}`);
 
   try {
     // 1. 查找应用及其所有子应用
@@ -32,7 +34,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
     });
 
     if (!apps || apps.length === 0) {
-      addLog.warn(`[App Delete] App not found: ${appId}`);
+      logger.warn(`[App Delete] App not found: ${appId}`);
       return;
     }
 
@@ -47,7 +49,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
     ).lean();
 
     if (markedForDelete.length !== apps.length) {
-      addLog.warn(
+      logger.warn(
         `[App Delete] Safety check: ${markedForDelete.length}/${apps.length} apps marked for deletion`,
         {
           markedAppIds: markedForDelete.map((app) => app._id),
@@ -65,13 +67,13 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
       apps
     });
 
-    addLog.info(`[App Delete] Successfully deleted app: ${appId} and ${childrenLen} children`, {
+    logger.info(`[App Delete] Successfully deleted app: ${appId} and ${childrenLen} children`, {
       duration: Date.now() - startTime,
       totalApps: appIds.length,
       appIds
     });
   } catch (error: any) {
-    addLog.error(`[App Delete] Failed to delete app: ${appId}`, error);
+    logger.error(`[App Delete] Failed to delete app: ${appId}`, { error });
     throw error;
   }
 };

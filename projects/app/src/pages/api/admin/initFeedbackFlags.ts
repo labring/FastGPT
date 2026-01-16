@@ -1,9 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(mod.app);
 
 /**
  * Initialize feedback flags for chat records
@@ -28,7 +30,7 @@ type ChatIdentifier = {
  * Create temporary indexes for migration performance
  */
 async function createTemporaryIndexes(): Promise<void> {
-  addLog.info('Creating temporary indexes for migration...');
+  logger.info('Creating temporary indexes for migration...');
 
   try {
     await Promise.all([
@@ -47,10 +49,10 @@ async function createTemporaryIndexes(): Promise<void> {
       } as any)
     ]);
 
-    addLog.info('Temporary indexes created successfully');
+    logger.info('Temporary indexes created successfully');
   } catch (error: any) {
     // Index might already exist, log warning but continue
-    addLog.warn('Error creating indexes (may already exist):', error);
+    logger.warn('Error creating indexes (may already exist):', error);
   }
 }
 
@@ -59,7 +61,7 @@ async function createTemporaryIndexes(): Promise<void> {
  * Optimized: Separate queries for good/bad feedback to utilize indexes better
  */
 async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
-  addLog.info('Aggregating chats with feedback from chatItems...');
+  logger.info('Aggregating chats with feedback from chatItems...');
 
   // Separate queries for good and bad feedback to utilize partial indexes better
   const goodFeedbackChatsPromise = MongoChatItem.aggregate<ChatIdentifier>(
@@ -124,8 +126,8 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
     badFeedbackChatsPromise
   ]);
 
-  addLog.info(`Found ${goodChats.length.toLocaleString()} chats with good feedback`);
-  addLog.info(`Found ${badChats.length.toLocaleString()} chats with bad feedback`);
+  logger.info(`Found ${goodChats.length.toLocaleString()} chats with good feedback`);
+  logger.info(`Found ${badChats.length.toLocaleString()} chats with bad feedback`);
 
   // Deduplicate in application layer using Map
   const chatMap = new Map<string, ChatIdentifier>();
@@ -138,7 +140,7 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
   }
 
   const result = Array.from(chatMap.values());
-  addLog.info(`Found ${result.length.toLocaleString()} unique chats with feedback (after dedup)`);
+  logger.info(`Found ${result.length.toLocaleString()} unique chats with feedback (after dedup)`);
 
   return result;
 }
@@ -149,10 +151,10 @@ async function getChatsWithFeedback(): Promise<ChatIdentifier[]> {
 export async function migrateFeedbackFlags() {
   const startTime = Date.now();
 
-  addLog.info('========================================');
-  addLog.info('Starting feedback flags migration');
-  addLog.info(`Concurrency: ${CONCURRENCY}`);
-  addLog.info('========================================');
+  logger.info('========================================');
+  logger.info('Starting feedback flags migration');
+  logger.info(`Concurrency: ${CONCURRENCY}`);
+  logger.info('========================================');
 
   // Step 1: Create temporary indexes
   await createTemporaryIndexes();
@@ -161,7 +163,7 @@ export async function migrateFeedbackFlags() {
   const chats = await getChatsWithFeedback();
 
   if (chats.length === 0) {
-    addLog.info('No chats with feedback found');
+    logger.info('No chats with feedback found');
     return {
       total: 0,
       succeeded: 0,
@@ -171,7 +173,7 @@ export async function migrateFeedbackFlags() {
   }
 
   // Step 3: Process all chats using batchRun
-  addLog.info(`Processing ${chats.length.toLocaleString()} chats...`);
+  logger.info(`Processing ${chats.length.toLocaleString()} chats...`);
 
   let succeeded = 0;
   let failed = 0;
@@ -188,14 +190,13 @@ export async function migrateFeedbackFlags() {
 
         // Log progress every 1000 chats
         if (succeeded % 1000 === 0) {
-          addLog.info(`Progress: ${succeeded.toLocaleString()} / ${chats.length.toLocaleString()}`);
+          logger.info(`Progress: ${succeeded.toLocaleString()} / ${chats.length.toLocaleString()}`);
         }
       } catch (error) {
         failed++;
-        addLog.error(
-          `Failed to process chat ${chat.chatId}:`,
-          error instanceof Error ? error.message : String(error)
-        );
+        logger.error(`Failed to process chat ${chat.chatId}:`, {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     },
     CONCURRENCY
@@ -204,14 +205,14 @@ export async function migrateFeedbackFlags() {
   const duration = Date.now() - startTime;
   const durationMinutes = (duration / 1000 / 60).toFixed(2);
 
-  addLog.info('========================================');
-  addLog.info('Migration feedback completed!');
-  addLog.info(`Total: ${chats.length.toLocaleString()}`);
-  addLog.info(`Succeeded: ${succeeded.toLocaleString()}`);
-  addLog.info(`Failed: ${failed.toLocaleString()}`);
-  addLog.info(`Duration: ${durationMinutes} minutes`);
-  addLog.info(`Average: ${(duration / chats.length).toFixed(0)}ms per chat`);
-  addLog.info('========================================');
+  logger.info('========================================');
+  logger.info('Migration feedback completed!');
+  logger.info(`Total: ${chats.length.toLocaleString()}`);
+  logger.info(`Succeeded: ${succeeded.toLocaleString()}`);
+  logger.info(`Failed: ${failed.toLocaleString()}`);
+  logger.info(`Duration: ${durationMinutes} minutes`);
+  logger.info(`Average: ${(duration / chats.length).toFixed(0)}ms per chat`);
+  logger.info('========================================');
 
   return {
     total: chats.length,

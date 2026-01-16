@@ -8,10 +8,11 @@ import {
   MinioStorageAdapter,
   type IStorageOptions
 } from '@fastgpt-sdk/storage';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 
 export class S3PublicBucket extends S3BaseBucket {
   constructor() {
+    const logger = getLogger(infra.storage);
     const { vendor, publicBucket, externalBaseUrl, credentials, region, ...options } =
       createDefaultStorageOptions();
 
@@ -97,11 +98,11 @@ export class S3PublicBucket extends S3BaseBucket {
         }
 
         client.ensurePublicBucketPolicy().catch((error) => {
-          addLog.info(`Failed to ensure public bucket policy "${client.bucketName}":`, { error });
+          logger.info(`Failed to ensure public bucket policy "${client.bucketName}":`, { error });
         });
       })
       .catch((error) => {
-        addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
+        logger.error(`Failed to ensure bucket "${client.bucketName}" exists:`, { error });
       });
 
     externalClient
@@ -112,16 +113,15 @@ export class S3PublicBucket extends S3BaseBucket {
         }
 
         externalClient.ensurePublicBucketPolicy().catch((error) => {
-          addLog.info(`Failed to ensure public bucket policy "${externalClient.bucketName}":`, {
+          logger.info(`Failed to ensure public bucket policy "${externalClient.bucketName}":`, {
             error
           });
         });
       })
       .catch((error) => {
-        addLog.error(
-          `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
+        logger.error(`Failed to ensure external bucket "${externalClient.bucketName}" exists:`, {
           error
-        );
+        });
       });
   }
 

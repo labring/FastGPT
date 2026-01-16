@@ -4,7 +4,7 @@ import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
-import { addLog } from '../system/log';
+import { getLogger, http } from '../logger';
 
 export enum LimitTypeEnum {
   chat = 'chat'
@@ -17,6 +17,7 @@ const FrequencyLimitOptionSchema = z.union([
   })
 ]);
 type FrequencyLimitOption = z.infer<typeof FrequencyLimitOptionSchema>;
+const logger = getLogger(http.rateLimiter);
 
 const getLimitData = async (data: FrequencyLimitOption) => {
   if (data.type === LimitTypeEnum.chat) {
@@ -63,7 +64,7 @@ export const teamFrequencyLimit = async ({
 
   if (currentCount > limit) {
     const remainingTime = await redis.ttl(key);
-    addLog.info(`[Completion Limit] Over qpm limit`, { teamId, currentCount, limit });
+    logger.info(`[Completion Limit] Over qpm limit`, { body: { teamId, currentCount, limit } });
     jsonRes(res, {
       code: 429,
       error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`

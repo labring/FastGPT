@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { Config } from '@logtape/logtape';
+import type { Config as LogTapeConfig } from '@logtape/logtape';
 import {
   configure,
   dispose,
@@ -17,11 +17,7 @@ type SinkId = 'console' | 'jsonl' | 'otel' | 'mongo';
 
 type FilterId = string;
 
-type LogTapeConfig<S extends string = SinkId, F extends string = FilterId> = Config<S, F>;
-
-type SinkConfig = LogTapeConfig<string>['sinks'];
-
-type LoggerConfig = LogTapeConfig['loggers'];
+type Config<S extends string = SinkId, F extends string = FilterId> = LogTapeConfig<S, F>;
 
 let configured = false;
 
@@ -44,7 +40,7 @@ export async function configureLogger() {
     lazy: true
   } as const;
 
-  const sinks: SinkConfig = {};
+  const sinks: Config<string>['sinks'] = {};
   const composedSinks: SinkId[] = [];
 
   if (enableConsole) {
@@ -85,7 +81,7 @@ export async function configureLogger() {
     console.log('✓ Logtape MongoDB sink enabled');
   }
 
-  const loggers: LoggerConfig = [
+  const loggers: Config['loggers'] = [
     {
       category: ['logtape', 'meta'],
       lowestLevel: 'error',

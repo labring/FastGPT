@@ -12,7 +12,19 @@ export const middleware = {
 } as const;
 
 export const mod = {
-  llm: ['mod', 'llm']
+  llm: ['mod', 'llm'],
+  coreAi: ['mod', 'core', 'ai'],
+  coreApp: ['mod', 'core', 'app'],
+  coreChat: ['mod', 'core', 'chat'],
+  coreDataset: ['mod', 'core', 'dataset'],
+  coreWorkflow: ['mod', 'core', 'workflow'],
+  support: ['mod', 'support'],
+  app: ['mod', 'app'],
+  common: ['mod', 'common'],
+  worker: ['mod', 'worker'],
+  mcp: ['mod', 'mcp'],
+  marketplace: ['mod', 'marketplace'],
+  sso: ['mod', 'sso']
 } as const;
 
 export const infra = {
@@ -21,7 +33,10 @@ export const infra = {
   storage: ['infra', 'storage'],
   pgvector: ['infra', 'pgvector'],
   bullmq: ['infra', 'bullmq'],
-  aiProxy: ['infra', 'ai-proxy']
+  aiProxy: ['infra', 'ai-proxy'],
+  milvus: ['infra', 'milvus'],
+  oceanbase: ['infra', 'oceanbase'],
+  otel: ['infra', 'otel']
 } as const;
 
 export type LogCategory =

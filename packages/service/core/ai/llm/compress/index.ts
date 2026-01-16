@@ -1,6 +1,6 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { calculateCompressionThresholds } from './constants';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -10,6 +10,8 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { parseToolArgs } from '../../utils';
+
+const logger = getLogger(mod.coreAi);
 
 /**
  * 压缩 对话历史
@@ -53,8 +55,8 @@ export const compressRequestMessages = async ({
     };
   }
 
-  addLog.info('[Compression messages] Start', {
-    tokens: messageTokens
+  logger.info('[Compression messages] Start', {
+    body: { tokens: messageTokens }
   });
 
   const compressPrompt = await getCompressRequestMessagesPrompt({
@@ -85,7 +87,7 @@ export const compressRequestMessages = async ({
     });
 
     if (!answerText) {
-      addLog.warn('[Compression messages] failed: empty response, return original messages');
+      logger.warn('[Compression messages] failed: empty response, return original messages');
       return { messages };
     }
 
@@ -112,14 +114,14 @@ export const compressRequestMessages = async ({
       !Array.isArray(compressResult) ||
       compressResult.compressed_messages.length === 0
     ) {
-      addLog.warn('[Compression messages] failed: cannot parse JSON, return original messages', {
-        messages: compressResult?.compressed_messages
+      logger.warn('[Compression messages] failed: cannot parse JSON, return original messages', {
+        body: { messages: compressResult?.compressed_messages }
       });
       return { messages, usage: compressedUsage };
     }
 
     const compressedTokens = usage.outputTokens;
-    addLog.info('[Compression messages] successfully', {
+    logger.info('[Compression messages] successfully', {
       originalTokens: messageTokens,
       compressedTokens,
       actualRatio: (compressedTokens / messageTokens).toFixed(2),
@@ -134,7 +136,7 @@ export const compressRequestMessages = async ({
       usage: compressedUsage
     };
   } catch (error) {
-    addLog.error('[Compression messages] failed', error);
+    logger.error('[Compression messages] failed', { error });
     return { messages };
   }
 };

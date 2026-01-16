@@ -4,7 +4,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   deleteDatasetDataVector,
@@ -20,6 +20,8 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
+
+const logger = getLogger(mod.app);
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -37,7 +39,7 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
-  addLog.debug(`[Vector Queue] Queue size: ${global.vectorQueueLen}`);
+  logger.debug(`[Vector Queue] Queue size: ${global.vectorQueueLen}`);
 
   if (global.vectorQueueLen >= max) return;
   global.vectorQueueLen++;
@@ -101,13 +103,13 @@ export async function generateVector(): Promise<any> {
         break;
       }
       if (error) {
-        addLog.error(`[Vector Queue] Error`, error);
+        logger.error(`[Vector Queue] Error`, { error });
         await delay(500);
         continue;
       }
 
       if (!data.dataset || !data.collection) {
-        addLog.info(`[Vector Queue] Dataset or collection not found`, data);
+        logger.info(`[Vector Queue] Dataset or collection not found`, { body: data });
         // Delete data
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
@@ -118,7 +120,7 @@ export async function generateVector(): Promise<any> {
         continue;
       }
 
-      addLog.info(`[Vector Queue] Start`);
+      logger.info(`[Vector Queue] Start`);
 
       try {
         const { tokens } = await (async () => {
@@ -138,11 +140,11 @@ export async function generateVector(): Promise<any> {
           usageId: data.billId
         });
 
-        addLog.info(`[Vector Queue] Finish`, {
+        logger.info(`[Vector Queue] Finish`, {
           time: Date.now() - start
         });
       } catch (err: any) {
-        addLog.error(`[Vector Queue] Error`, err);
+        logger.error(`[Vector Queue] Error`, { error: err });
         await MongoDatasetTraining.updateOne(
           {
             _id: data._id
@@ -155,13 +157,13 @@ export async function generateVector(): Promise<any> {
       }
     }
   } catch (error) {
-    addLog.error(`[Vector Queue] Error`, error);
+    logger.error(`[Vector Queue] Error`, { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[Vector Queue] Done`);
+    logger.info(`[Vector Queue] Done`);
   }
-  addLog.debug(`[Vector Queue] break loop, current queue size: ${global.vectorQueueLen}`);
+  logger.debug(`[Vector Queue] break loop, current queue size: ${global.vectorQueueLen}`);
 }
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {

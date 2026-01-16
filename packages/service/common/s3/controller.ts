@@ -1,10 +1,12 @@
 import { MongoS3TTL } from './schema';
-import { addLog } from '../system/log';
+import { getLogger, infra } from '../logger';
 import { setCron } from '../system/cron';
 import { checkTimerLock } from '../system/timerLock/utils';
 import { TimerIdEnum } from '../system/timerLock/constants';
 import path from 'node:path';
 import { S3Error } from 'minio';
+
+const logger = getLogger(infra.storage);
 
 export async function clearExpiredMinioFiles() {
   try {
@@ -12,11 +14,11 @@ export async function clearExpiredMinioFiles() {
       expiredTime: { $lte: new Date() }
     }).lean();
     if (expiredFiles.length === 0) {
-      addLog.info('No expired minio files to clean');
+      logger.info('No expired minio files to clean');
       return;
     }
 
-    addLog.info(`Found ${expiredFiles.length} expired minio files to clean`);
+    logger.info(`Found ${expiredFiles.length} expired minio files to clean`);
 
     let success = 0;
     let fail = 0;
@@ -31,21 +33,21 @@ export async function clearExpiredMinioFiles() {
           await MongoS3TTL.deleteOne({ _id: file._id });
 
           success++;
-          addLog.info(
+          logger.info(
             `Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`
           );
         } else {
-          addLog.warn(`Bucket not found: ${file.bucketName}`);
+          logger.warn(`Bucket not found: ${file.bucketName}`);
         }
       } catch (error) {
         fail++;
-        addLog.error(`Failed to delete minio file: ${file.minioKey}`, error);
+        logger.error(`Failed to delete minio file: ${file.minioKey}`, { error });
       }
     }
 
-    addLog.info(`Minio TTL cleanup completed. Success: ${success}, Failed: ${fail}`);
+    logger.info(`Minio TTL cleanup completed. Success: ${success}, Failed: ${fail}`);
   } catch (error) {
-    addLog.error('Error in clearExpiredMinioFiles', error);
+    logger.error('Error in clearExpiredMinioFiles', { error });
   }
 }
 

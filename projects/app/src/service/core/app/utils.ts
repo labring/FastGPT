@@ -19,7 +19,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
@@ -28,8 +28,10 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 
+const logger = getLogger(mod.app);
+
 export const getScheduleTriggerApp = async () => {
-  addLog.info('Schedule trigger app');
+  logger.info('Schedule trigger app');
 
   // 1. Find all the app
   const apps = await retryFn(() => {
@@ -163,7 +165,7 @@ export const getScheduleTriggerApp = async () => {
           customFeedbacks
         });
       } catch (error) {
-        addLog.error('[Schedule app] run error', error);
+        logger.error('[Schedule app] run error', { error });
 
         await onSave({
           error
@@ -174,7 +176,7 @@ export const getScheduleTriggerApp = async () => {
         await retryFn(() =>
           MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
         ).catch((err) => {
-          addLog.error(`[Schedule app] error update next time`, err);
+          logger.error(`[Schedule app] error update next time`, { error: err });
         });
       }
     },

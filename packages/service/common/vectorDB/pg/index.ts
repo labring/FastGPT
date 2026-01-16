@@ -4,7 +4,9 @@ import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
+
+const logger = getLogger(infra.pgvector);
 
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -56,9 +58,9 @@ export class PgVectorCtrl implements VectorControllerType {
       //   autovacuum_vacuum_cost_limit = 2000
       // );`)
 
-      addLog.info('init pg successful');
+      logger.info('init pg successful');
     } catch (error) {
-      addLog.error('init pg error', error);
+      logger.error('init pg error', { error });
     }
   };
   insert: VectorControllerType['insert'] = async (props) => {

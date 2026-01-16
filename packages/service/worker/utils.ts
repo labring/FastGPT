@@ -1,6 +1,8 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
-import { addLog } from '../common/system/log';
+import { getLogger, mod } from '../common/logger';
+
+const logger = getLogger(mod.worker);
 
 export enum WorkerNameEnum {
   readFile = 'readFile',
@@ -43,7 +45,7 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
 
       const time = Date.now() - start;
       if (time > 1000) {
-        addLog.info(`Worker ${name} run time: ${time}ms`);
+        logger.info(`Worker ${name} run time: ${time}ms`);
       }
     });
 
@@ -131,7 +133,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
   run(data: Props) {
     // watch memory
-    // addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
+    // logger.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
       /*
@@ -182,12 +184,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     // Worker error, terminate and delete it.（Un catch error)
     worker.on('error', (err) => {
       console.log(err);
-      addLog.error('Worker error', err);
+      logger.error('Worker error', { error: err });
       this.deleteWorker(workerId);
     });
     worker.on('messageerror', (err) => {
       console.log(err);
-      addLog.error('Worker messageerror', err);
+      logger.error('Worker messageerror', { error: err });
       this.deleteWorker(workerId);
     });
 

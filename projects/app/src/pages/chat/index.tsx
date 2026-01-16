@@ -25,8 +25,10 @@ import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+
+const logger = getLogger(mod.app);
 
 const Chat = () => {
   const { isPc } = useSystem();
@@ -191,7 +193,7 @@ export async function getServerSideProps(context: any) {
 
       return config;
     } catch (error) {
-      addLog.error('getServerSideProps', error);
+      logger.error('getServerSideProps', { error });
       return null;
     }
   })();

@@ -4,9 +4,11 @@ import mysql, {
   type RowDataPacket,
   type ResultSetHeader
 } from 'mysql2/promise';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 import { OCEANBASE_ADDRESS } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(infra.oceanbase);
 
 export const getClient = async (): Promise<Pool> => {
   if (!OCEANBASE_ADDRESS) {
@@ -31,16 +33,16 @@ export const getClient = async (): Promise<Pool> => {
   try {
     // Test the connection with a simple query instead of calling connect()
     await global.obClient.query('SELECT 1');
-    addLog.info(`oceanbase connected`);
+    logger.info(`oceanbase connected`);
     return global.obClient;
   } catch (error) {
-    addLog.error(`oceanbase connect error`, error);
+    logger.error(`oceanbase connect error`, { error });
 
     global.obClient?.end();
     global.obClient = null;
 
     await delay(1000);
-    addLog.info(`Retry connect oceanbase`);
+    logger.info(`Retry connect oceanbase`);
 
     return getClient();
   }
@@ -216,7 +218,7 @@ class ObClass {
         insertIds: []
       };
     } catch (error) {
-      addLog.error(`OceanBase batch insert error: ${error}`);
+      logger.error(`OceanBase batch insert error: ${error}`);
       throw error;
     } finally {
       connection.release(); // 释放连接回连接池
@@ -229,7 +231,7 @@ class ObClass {
       const time = Date.now() - start;
 
       if (time > 300) {
-        addLog.warn(`oceanbase query time: ${time}ms, sql: ${sql}`);
+        logger.warn(`oceanbase query time: ${time}ms, sql: ${sql}`);
       }
 
       return res;

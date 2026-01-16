@@ -4,7 +4,9 @@ import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
+
+const logger = getLogger(infra.oceanbase);
 
 export class ObVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -30,9 +32,9 @@ export class ObVectorCtrl implements VectorControllerType {
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
 
-      addLog.info('init oceanbase successful');
+      logger.info('init oceanbase successful');
     } catch (error) {
-      addLog.error('init oceanbase error', error);
+      logger.error('init oceanbase error', { error });
     }
   };
 

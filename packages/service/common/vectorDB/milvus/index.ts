@@ -7,8 +7,10 @@ import {
 } from '../constants';
 import type { VectorControllerType } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, infra } from '../../logger';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
+
+const logger = getLogger(infra.milvus);
 
 export class MilvusCtrl implements VectorControllerType {
   constructor() {}
@@ -24,7 +26,7 @@ export class MilvusCtrl implements VectorControllerType {
     });
     await global.milvusClient.connectPromise;
 
-    addLog.info(`Milvus connected`);
+    logger.info(`Milvus connected`);
 
     return global.milvusClient;
   };
@@ -102,7 +104,7 @@ export class MilvusCtrl implements VectorControllerType {
         ]
       });
 
-      addLog.info(`Create milvus collection: `, result);
+      logger.info(`Create milvus collection: `, { body: result });
     }
 
     const { state: colLoadState } = await client.getLoadState({
@@ -116,7 +118,7 @@ export class MilvusCtrl implements VectorControllerType {
       await client.loadCollectionSync({
         collection_name: DatasetVectorTableName
       });
-      addLog.info(`Milvus collection load success`);
+      logger.info(`Milvus collection load success`);
     }
   };
 

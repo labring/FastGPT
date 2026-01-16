@@ -2,9 +2,11 @@ import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(mod.coreAi);
 
 type GetVectorProps = {
   model: EmbeddingModelItemType;
@@ -62,12 +64,14 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
           )
           .then(async (res) => {
             if (!res.data) {
-              addLog.error('[Embedding Error] not responding', {
-                message: '',
-                data: {
-                  response: res,
-                  model: model.model,
-                  inputLength: chunk.length
+              logger.error('[Embedding Error] not responding', {
+                body: {
+                  message: '',
+                  data: {
+                    response: res,
+                    model: model.model,
+                    inputLength: chunk.length
+                  }
                 }
               });
               return Promise.reject('Embedding API is not responding');
@@ -75,12 +79,14 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
             if (!res?.data?.[0]?.embedding) {
               // @ts-ignore
               const msg = res.data?.err?.message || '';
-              addLog.error('[Embedding Error]', {
-                message: msg,
-                data: {
-                  response: res,
-                  model: model.model,
-                  inputLength: chunk.length
+              logger.error('[Embedding Error]', {
+                body: {
+                  message: msg,
+                  data: {
+                    response: res,
+                    model: model.model,
+                    inputLength: chunk.length
+                  }
                 }
               });
               return Promise.reject('Embedding API is not responding');
@@ -114,11 +120,13 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
       vectors: allVectors
     };
   } catch (error) {
-    addLog.error(`[Embedding Error]`, {
-      message: getErrText(error),
-      data: {
-        model: model.model,
-        inputLengths: formatInput.map((item) => item.length)
+    logger.error(`[Embedding Error]`, {
+      body: {
+        message: getErrText(error),
+        data: {
+          model: model.model,
+          inputLengths: formatInput.map((item) => item.length)
+        }
       }
     });
 

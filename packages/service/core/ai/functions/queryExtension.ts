@@ -2,11 +2,13 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
+
+const logger = getLogger(mod.coreAi);
 
 /*
   Query Extension - Semantic Search Enhancement
@@ -26,14 +28,14 @@ const defaultPrompt = `## 你的任务
 
 ## 参考示例
 
-历史记录: 
+历史记录:
 """
 null
 """
 原问题: 介绍下剧情。
 检索词: ["介绍下故事的背景。","故事的主题是什么？","介绍下故事的主要人物。","故事的转折点在哪里？","故事的结局如何？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 对话背景。
 assistant: 当前对话是关于 Nginx 的介绍和使用等。
@@ -41,7 +43,7 @@ assistant: 当前对话是关于 Nginx 的介绍和使用等。
 原问题: 怎么下载
 检索词: ["Nginx 如何下载？","下载 Nginx 需要什么条件？","有哪些渠道可以下载 Nginx？","Nginx 各版本的下载方式有什么区别？","如何选择合适的 Nginx 版本下载？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 对话背景。
 assistant: 当前对话是关于 Nginx 的介绍和使用等。
@@ -51,7 +53,7 @@ assistant: 报错"no connection"可能是因为……
 原问题: 怎么解决
 检索词: ["Nginx报错'no connection'如何解决？","造成'no connection'报错的原因。","Nginx提示'no connection'，要怎么办？","'no connection'错误的常见解决步骤。","如何预防 Nginx 'no connection' 错误？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: How long is the maternity leave?
 assistant: The number of days of maternity leave depends on the city in which the employee is located. Please provide your city so that I can answer your questions.
@@ -59,7 +61,7 @@ assistant: The number of days of maternity leave depends on the city in which th
 原问题: ShenYang
 检索词: ["How many days is maternity leave in Shenyang?","Shenyang's maternity leave policy.","The standard of maternity leave in Shenyang.","What benefits are included in Shenyang's maternity leave?","How to apply for maternity leave in Shenyang?"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 作者是谁？
 assistant: ${title} 的作者是 labring。
@@ -209,8 +211,8 @@ assistant: ${chatBg}
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
   if (start === -1 || end === -1) {
-    addLog.warn('Query extension failed, not a valid JSON', {
-      answer
+    logger.warn('Query extension failed, not a valid JSON', {
+      body: { answer }
     });
     return {
       rawQuery: query,
@@ -267,9 +269,9 @@ assistant: ${chatBg}
       embeddingTokens
     };
   } catch (error) {
-    addLog.warn('Query extension failed', {
+    logger.warn('Query extension failed', {
       error,
-      answer
+      body: { answer }
     });
     return {
       rawQuery: query,

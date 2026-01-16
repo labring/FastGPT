@@ -1,5 +1,5 @@
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import {
   deleteDatasetDataVector,
   getVectorDataByTime
@@ -8,6 +8,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+
+const logger = getLogger(mod.app);
 
 /*
   检测无效的 Mongo 数据
@@ -39,7 +41,7 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
     }
   }
   const list = Array.from(map.values());
-  addLog.info(`Clear invalid dataset data, total collections: ${list.length}`);
+  logger.info(`Clear invalid dataset data, total collections: ${list.length}`);
   let index = 0;
 
   for await (const item of list) {
@@ -90,13 +92,13 @@ export async function checkInvalidVector(start: Date, end: Date) {
   let deletedVectorAmount = 0;
   // 1. get all vector data
   const rows = await getVectorDataByTime(start, end);
-  addLog.info(`Clear invalid vector, total vector data: ${rows.length}`);
+  logger.info(`Clear invalid vector, total vector data: ${rows.length}`);
 
   let index = 0;
 
   for await (const item of rows) {
     if (!item.teamId || !item.datasetId || !item.id) {
-      addLog.error('error data', item);
+      logger.error('error data', item);
       continue;
     }
     try {
@@ -124,5 +126,5 @@ export async function checkInvalidVector(start: Date, end: Date) {
     }
   }
 
-  addLog.info(`Clear invalid vector finish, remove ${deletedVectorAmount} data`);
+  logger.info(`Clear invalid vector finish, remove ${deletedVectorAmount} data`);
 }

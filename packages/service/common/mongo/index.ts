@@ -1,5 +1,5 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { addLog } from '../../common/system/log';
+import { getLogger, infra } from '../../common/logger';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
 
@@ -24,6 +24,7 @@ export const connectionLogMongo = (() => {
 })();
 
 const addCommonMiddleware = (schema: mongoose.Schema) => {
+  const logger = getLogger(infra.mongo);
   const operations = [
     /^find/,
     'save',
@@ -74,9 +75,9 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
         };
 
         if (duration > 2000) {
-          addLog.warn(`[Mongo Slow] Level2`, getLogData());
+          logger.warn(`[Mongo Slow] Level2`, { body: getLogData() });
         } else if (duration > 500) {
-          addLog.warn(`[Mongo Slow] Level1`, getLogData());
+          logger.warn(`[Mongo Slow] Level1`, { body: getLogData() });
         }
       }
       next();
@@ -139,6 +140,7 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
+  const logger = getLogger(infra.mongo);
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.SYNC_INDEX === '0' ||
@@ -151,7 +153,7 @@ const syncMongoIndex = async (model: Model<any>) => {
   try {
     await model.syncIndexes({ background: true });
   } catch (error) {
-    addLog.error('Create index error', error);
+    logger.error('Create index error', { error });
   }
 };
 

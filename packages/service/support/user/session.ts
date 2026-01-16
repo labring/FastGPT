@@ -1,8 +1,10 @@
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+
+const logger = getLogger(mod.support);
 
 const redisPrefix = 'session:';
 const getSessionKey = (key: string) => `${redisPrefix}${key}`;
@@ -46,7 +48,7 @@ const setSession = async ({
         await redis.expire(formatKey, expireSeconds);
       }
     } catch (error) {
-      addLog.error('Set session error:', error);
+      logger.error('Set session error:', { error });
       return Promise.reject(error);
     }
   });
@@ -78,7 +80,7 @@ const getSession = async (key: string): Promise<SessionType> => {
       ip: data.ip
     };
   } catch (error) {
-    addLog.error('Parse session error:', error);
+    logger.error('Parse session error:', { error });
     delSession(formatKey);
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
