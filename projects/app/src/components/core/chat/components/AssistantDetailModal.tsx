@@ -40,7 +40,6 @@ interface ChatDetailModalProps {
   dataId: string;
   appId: string;
   chatId?: string;
-  chatTime?: Date;
   outLinkAuthData?: any;
 }
 
@@ -591,7 +590,6 @@ const ChatDetailModal = ({
   dataId,
   appId,
   chatId,
-  chatTime = new Date(),
   outLinkAuthData = {}
 }: ChatDetailModalProps) => {
   const { t } = useTranslation();
@@ -622,41 +620,24 @@ const ChatDetailModal = ({
     return datasetSearchNode?.quoteList || [];
   }, [workflowNodes]);
 
-  // 从 retrievalResults 提取 datasetDataIdList（用于知识召回）
-  const retrievalDatasetDataIdList = useMemo(
-    () =>
-      retrievalResults
-        .map((item) => item.id)
-        .filter((v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)),
-    [retrievalResults]
-  );
+  // 提取 datasetDataIdList 和 collectionIdList 的辅助函数
+  const extractIds = useCallback((list: SearchDataResponseItemType[]) => {
+    const datasetDataIdList = list.map((item) => item.id).filter((v): v is string => !!v);
+    const collectionIdList = [
+      ...new Set(list.map((item) => item.collectionId).filter((v): v is string => !!v))
+    ];
+    return { datasetDataIdList, collectionIdList };
+  }, []);
 
-  // 从 retrievalResults 提取 collectionIdList（用于知识召回）
-  const retrievalCollectionIdList = useMemo(
-    () =>
-      [...new Set(retrievalResults.map((item) => item.collectionId))].filter(
-        (v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)
-      ),
-    [retrievalResults]
-  );
+  // 从 retrievalResults 提取 ID 列表（用于知识召回）
+  const {
+    datasetDataIdList: retrievalDatasetDataIdList,
+    collectionIdList: retrievalCollectionIdList
+  } = useMemo(() => extractIds(retrievalResults), [retrievalResults, extractIds]);
 
-  // 从 quoteList 提取 datasetDataIdList（用于知识重排）
-  const quoteDatasetDataIdList = useMemo(
-    () =>
-      quoteList
-        .map((item) => item.id)
-        .filter((v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)),
-    [quoteList]
-  );
-
-  // 从 quoteList 提取 collectionIdList（用于知识重排）
-  const quoteCollectionIdList = useMemo(
-    () =>
-      [...new Set(quoteList.map((item) => item.collectionId))].filter(
-        (v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)
-      ),
-    [quoteList]
-  );
+  // 从 quoteList 提取 ID 列表（用于知识重排）
+  const { datasetDataIdList: quoteDatasetDataIdList, collectionIdList: quoteCollectionIdList } =
+    useMemo(() => extractIds(quoteList), [quoteList, extractIds]);
 
   // chatItemDataId 就是当前对话记录的 dataId
   const chatItemDataId = dataId;
@@ -692,7 +673,11 @@ const ChatDetailModal = ({
           })
         : [],
     {
-      refreshDeps: [retrievalResults, chatItemDataId],
+      refreshDeps: [
+        retrievalDatasetDataIdList.length,
+        retrievalCollectionIdList.length,
+        chatItemDataId
+      ],
       manual: false
     }
   ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };
@@ -711,7 +696,7 @@ const ChatDetailModal = ({
           })
         : [],
     {
-      refreshDeps: [quoteList, chatItemDataId],
+      refreshDeps: [quoteDatasetDataIdList.length, quoteCollectionIdList.length, chatItemDataId],
       manual: false
     }
   ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };

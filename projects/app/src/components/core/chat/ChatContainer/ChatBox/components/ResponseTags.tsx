@@ -329,7 +329,6 @@ const ResponseTags = ({
           dataId={dataId}
           appId={chatBoxData.appId}
           chatId={chatBoxData.chatId}
-          chatTime={chatTime}
           outLinkAuthData={chatBoxData.outLinkAuthData}
         />
       )}
