@@ -20,12 +20,9 @@ import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import type {
   SearchDataResponseItemType,
-  DatasetCiteItemType,
   AssistantDatasetCiteItemType
 } from '@fastgpt/global/core/dataset/type';
-import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import Markdown from '@/components/Markdown';
-import { t } from 'i18next';
 import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
@@ -36,14 +33,6 @@ type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
   sourceName?: string;
   index?: number;
 };
-
-// sourceType 显示文本映射
-const SOURCE_TYPE_TEXT = {
-  faq: t('chat:source_type_faq'),
-  sql: t('chat:source_type_sql'),
-  correction: t('chat:source_type_correction'),
-  chunk: t('chat:source_type_chunk')
-} as const;
 
 interface ChatDetailModalProps {
   isOpen: boolean;
@@ -160,6 +149,17 @@ const KnowledgeRecallNode = ({
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
+  // sourceType 显示文本映射 - 使用 useMemo 确保在 i18n 就绪后执行
+  const SOURCE_TYPE_TEXT = useMemo(
+    () => ({
+      faq: t('chat:source_type_faq'),
+      sql: t('chat:source_type_sql'),
+      correction: t('chat:source_type_correction'),
+      chunk: t('chat:source_type_chunk')
+    }),
+    [t]
+  );
+
   // 计算知识召回总耗时 = retrievalTime + sqlRetrievalTime
   const recallTime = useMemo(() => {
     const retrievalTime = data?.retrievalTime || 0;
@@ -259,9 +259,8 @@ const KnowledgeRecallNode = ({
                       }
 
                       // 根据 sourceType 获取标题文本
-                      const title = t(
-                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
-                      );
+                      const title =
+                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
 
                       // 计算 linkText 和 linkUrl
                       let linkText = '';
@@ -307,17 +306,28 @@ const KnowledgeRerankNode = ({
   data,
   quoteList,
   rawQuoteList,
-  retrievalResultsList,
+  rawRetrievalResults,
   isLoading
 }: {
   data?: ChatHistoryItemResType;
   quoteList?: AssistantDatasetCiteItemType[];
   rawQuoteList?: SearchDataResponseItemType[];
-  retrievalResultsList?: AssistantDatasetCiteItemType[];
+  rawRetrievalResults?: SearchDataResponseItemType[];
   isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
+
+  // sourceType 显示文本映射 - 使用 useMemo 确保在 i18n 就绪后执行
+  const SOURCE_TYPE_TEXT = useMemo(
+    () => ({
+      faq: t('chat:source_type_faq'),
+      sql: t('chat:source_type_sql'),
+      correction: t('chat:source_type_correction'),
+      chunk: t('chat:source_type_chunk')
+    }),
+    [t]
+  );
 
   // 获取重排耗时
   const rerankTime = useMemo(() => {
@@ -404,10 +414,10 @@ const KnowledgeRerankNode = ({
                         }
                       }
 
-                      // 计算召回排名：根据 id 在 retrievalResultsList 中的位置
+                      // 计算召回排名：根据 id 在 rawRetrievalResults 中的位置
                       let recallRank = '-';
-                      if (retrievalResultsList && item._id) {
-                        const rankIndex = retrievalResultsList.findIndex((r) => r._id === item._id);
+                      if (rawRetrievalResults && item._id) {
+                        const rankIndex = rawRetrievalResults.findIndex((r) => r.id === item._id);
                         if (rankIndex !== -1) {
                           recallRank = `${rankIndex + 1}`;
                         }
@@ -415,9 +425,8 @@ const KnowledgeRerankNode = ({
                       descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
                       // 根据 sourceType 获取标题文本
-                      const title = t(
-                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
-                      );
+                      const title =
+                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
 
                       // 计算 linkText 和 linkUrl
                       let linkText = '';
@@ -688,17 +697,6 @@ const ChatDetailModal = ({
     }
   ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };
 
-  // 创建 retrievalResultsList 的映射，用于快速查找召回排名
-  const retrievalResultsMap = useMemo(() => {
-    const map = new Map<string, number>();
-    retrievalResultsList.forEach((item, index) => {
-      if (item._id) {
-        map.set(item._id, index);
-      }
-    });
-    return map;
-  }, [retrievalResultsList]);
-
   // 通过 API 获取知识重排的完整数据（包含 q、a 等字段）
   const { data: rerankQuoteList = [], loading: rerankLoading } = useRequest2(
     async () =>
@@ -787,7 +785,7 @@ const ChatDetailModal = ({
                 )}
                 quoteList={rerankQuoteList}
                 rawQuoteList={quoteList}
-                retrievalResultsList={retrievalResultsList}
+                rawRetrievalResults={retrievalResults}
                 isLoading={rerankLoading}
               />
               <FinalAnswerNode
