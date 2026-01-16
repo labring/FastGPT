@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -27,19 +28,32 @@ const StandardPlanContentList = ({
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
-    const plan = subPlans?.standard?.[level];
+    const isWecomTeam = !!userInfo?.team?.isWecomTeam;
+    const formatMode = isWecomTeam ? SubModeEnum.year : mode;
+
+    // For wecom teams, free plan should use basic plan config
+    const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
+    const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
+    // For wecom free plan (trial), use WecomFreePlan constants
+
     return {
-      price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
+      price: plan.price * (formatMode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-      totalPoints:
-        standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
       annualBonusPoints:
-        mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+        formatMode === SubModeEnum.month
+          ? 0
+          : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+      totalPoints:
+        standplan?.totalPoints ??
+        (isWecomTeam
+          ? plan.wecom?.points ?? 2000
+          : plan.totalPoints * (formatMode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
@@ -57,6 +71,7 @@ const StandardPlanContentList = ({
     subPlans?.standard,
     level,
     mode,
+    userInfo?.team?.isWecomTeam,
     standplan?.totalPoints,
     standplan?.annualBonusPoints,
     standplan?.requestsPerMinute,

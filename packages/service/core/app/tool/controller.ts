@@ -66,10 +66,12 @@ export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool)
 
 export const getSystemToolsWithInstalled = async ({
   teamId,
-  isRoot
+  isRoot,
+  userTags = []
 }: {
   teamId: string;
   isRoot: boolean;
+  userTags?: string[];
 }) => {
   const [tools, { installedSet, uninstalledSet }] = await Promise.all([
     getSystemTools(),
@@ -89,25 +91,46 @@ export const getSystemToolsWithInstalled = async ({
       })
   ]);
 
-  return tools.map((tool) => {
-    const installed = (() => {
-      if (installedSet.has(tool.id)) {
-        return true;
+  return tools
+    .filter((tool) => {
+      // Filter out tools hidden by hideTags
+      if (userTags.length > 0 && tool.hideTags && tool.hideTags.length > 0) {
+        return !tool.hideTags.some((hideTag) => userTags.includes(hideTag));
       }
-      if (isRoot && !uninstalledSet.has(tool.id)) {
-        return true;
-      }
-      if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
-        return true;
-      }
-      return false;
-    })();
+      return true;
+    })
+    .map((tool) => {
+      const installed = (() => {
+        // 优先级1: 明确记录
+        if (installedSet.has(tool.id)) {
+          return true;
+        }
+        // 优先级2: Root用户
+        if (isRoot && !uninstalledSet.has(tool.id)) {
+          return true;
+        }
+        // 优先级3: 基于 promoteTags 的自动预安装
+        if (
+          userTags.length > 0 &&
+          tool.promoteTags &&
+          tool.promoteTags.length > 0 &&
+          !uninstalledSet.has(tool.id)
+        ) {
+          const shouldAutoInstall = tool.promoteTags.some((tag) => userTags.includes(tag));
+          if (shouldAutoInstall) return true;
+        }
+        // 优先级4: 全局默认安装
+        if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
+          return true;
+        }
+        return false;
+      })();
 
-    return {
-      ...tool,
-      installed
-    };
-  });
+      return {
+        ...tool,
+        installed
+      };
+    });
 };
 
 export const getSystemToolByIdAndVersionId = async (
@@ -622,7 +645,7 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       author: item.author,
       courseUrl: item.courseUrl,
       instructions: dbPluginConfig?.customConfig?.userGuide,
-      tags: item.tags,
+      tags: dbPluginConfig?.customConfig?.tags || item.tags,
       workflow: {
         nodes: [],
         edges: []
@@ -633,12 +656,13 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       defaultInstalled: dbPluginConfig?.defaultInstalled ?? false,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
-
       originCost: dbPluginConfig?.originCost ?? 0,
       currentCost: dbPluginConfig?.currentCost ?? 0,
       systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
       hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
-      pluginOrder: dbPluginConfig?.pluginOrder
+      pluginOrder: dbPluginConfig?.pluginOrder,
+      hideTags: dbPluginConfig?.hideTags,
+      promoteTags: dbPluginConfig?.promoteTags
     };
   });
 

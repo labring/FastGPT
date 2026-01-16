@@ -30,6 +30,14 @@ export const TeamStandardSubPlanItemSchema = z.object({
   // Active
   annualBonusPoints: z.int().optional(), // 年度赠送积分
 
+  /** 企微设置 */
+  wecom: z
+    .object({
+      price: z.number().describe('企微价格'),
+      points: z.number().describe('企微积分')
+    })
+    .nullish(),
+
   // @deprecated
   pointPrice: z.number().optional()
 });
