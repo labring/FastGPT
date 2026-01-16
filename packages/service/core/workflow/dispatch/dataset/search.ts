@@ -696,14 +696,19 @@ export async function dispatchDatasetSearch(
  */
 export async function searchCorrectionData({
   appId,
-  userChatInput,
-  teamId,
-  vectorModel
-}: SearchCorrectionDataProps): Promise<SearchCorrectionDataResult> {
+  queryVector,
+  embeddingTokens,
+  teamId
+}: {
+  appId: string;
+  queryVector: number[];
+  embeddingTokens: number;
+  teamId: string;
+}): Promise<SearchCorrectionDataResult> {
   try {
     addLog.debug('Correction Search - Starting', {
       appId,
-      userChatInput
+      embeddingTokens
     });
 
     // 步骤1&2：查询该应用下所有包含问题向量的校正数据，并在数据库层面过滤数组
@@ -771,17 +776,7 @@ export async function searchCorrectionData({
       return null;
     }
 
-    // 步骤3：向量相似度计算
-    // 生成用户查询向量（复用现有的 getVectorsByText 函数）
-    const {
-      vectors: [userQueryVector],
-      tokens: embeddingTokens
-    } = await getVectorsByText({
-      model: vectorModel,
-      input: userChatInput
-    });
-
-    // 步骤4：使用现有的向量相似度计算
+    // 步骤3：使用传入的向量进行相似度计算
     // 从向量存储中检索与用户查询最相似的问题向量
     // 校正数据的dataset_id存储的是app_id
     // 扩大搜索范围以处理多个相似度相同的情况
@@ -789,7 +784,7 @@ export async function searchCorrectionData({
     const { results: vectorSearchResults } = await recallFromVectorStore({
       teamId,
       datasetIds: [appId], // 使用appId查询校正数据
-      vector: userQueryVector,
+      vector: queryVector,
       limit: correctionSearchLimit,
       forbidCollectionIdList: []
     });

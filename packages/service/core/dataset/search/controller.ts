@@ -1048,104 +1048,123 @@ export const defaultSearchDatasetData = async ({
   // 新增：检索开始计时（问题改写之后）
   const retrievalStartTime = Date.now();
 
-  // ===== 校正数据优先检索（移动到这里）=====
-  if (isAssistant && appId && datasetIds && datasetIds.length > 0) {
+  // ===== 统一生成向量（用于 correction 和 FAQ 检索）=====
+  let sharedQueryVector: number[] | undefined = undefined;
+  let sharedEmbeddingTokens = 0;
+
+  if (isAssistant && datasetIds && datasetIds.length > 0) {
     // 获取向量模型
     const vectorModel = getEmbeddingModel(
       (await MongoDataset.findById(datasetIds[0], 'vectorModel').lean())?.vectorModel
     );
 
     if (vectorModel) {
-      // 优先使用指代消解后的标准化查询，如果没有则使用原始查询
+      // 使用指代消解后的标准化查询，如果没有则使用原始查询（降级机制）
       const searchQuery = aiExtensionResult?.synonymRewriteResult?.standardizedQuery || query;
 
-      const correctionResult = await searchCorrectionData({
-        appId,
-        userChatInput: searchQuery,
-        teamId: props.teamId,
-        vectorModel
+      // 生成向量（只生成一次）
+      const { vectors, tokens } = await getVectorsByText({
+        model: vectorModel,
+        input: [searchQuery],
+        type: 'query'
       });
+      sharedQueryVector = vectors[0];
+      sharedEmbeddingTokens = tokens;
 
-      const correctionThreshold = global.systemEnv?.correctionSimilarityThreshold ?? 0.95;
-      addLog.debug('Assistant Config - correctionSimilarityThreshold', { correctionThreshold });
-
-      if (
-        correctionResult &&
-        correctionResult.similarity > correctionThreshold &&
-        correctionResult.correctedAnswer
-      ) {
-        // 新增：计算检索时间
-        const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
-
-        // 创建校正数据块
-        const correctionChunk: SearchDataResponseItemType = {
-          id: `correction_quote_${correctionResult.correctionId}`,
-          updateTime: new Date(),
-          q: correctionResult.question,
-          a: correctionResult.correctedAnswer,
-          chunkIndex: 0,
-          datasetId: appId,
-          collectionId: `correction_quote_${correctionResult.correctionId}`,
-          sourceName: 'Correction Data',
-          sourceId: correctionResult.correctionId,
-          score: [
-            {
-              type: SearchScoreTypeEnum.embedding,
-              value: correctionResult.similarity,
-              index: 0
-            }
-          ]
-        };
-
-        return {
-          searchRes: [correctionChunk],
-          embeddingTokens: correctionResult.embeddingTokens || 0,
-          reRankInputTokens: 0,
-          searchMode: DatasetSearchModeEnum.embedding,
-          limit: props.limit,
-          similarity: correctionResult.similarity,
-          usingReRank: false,
-          usingSimilarityFilter: true,
-          retrievalTime, // 新增：检索总耗时
-          retrievalType: 'correction' as const, // 新增：标记为 correction 命中
-          queryExtensionResult: aiExtensionResult
-            ? {
-                model: aiExtensionResult.model,
-                inputTokens: aiExtensionResult.inputTokens,
-                outputTokens: aiExtensionResult.outputTokens,
-                query: extensionQueries.join('\n'),
-                synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
-                rewriteTime // 新增：问题改写耗时（仅assistant场景）
-              }
-            : undefined,
-          correctionData: {
-            correctionId: correctionResult.correctionId,
-            correctedAnswer: correctionResult.correctedAnswer,
-            question: correctionResult.question,
-            similarity: correctionResult.similarity
-          }
-        };
-      }
+      addLog.debug('Shared Vector Generation', {
+        query: searchQuery,
+        hasStandardizedQuery: !!aiExtensionResult?.synonymRewriteResult?.standardizedQuery,
+        tokens: sharedEmbeddingTokens
+      });
     }
   }
+
+  // ===== 校正数据优先检索（移动到这里）=====
+  if (isAssistant && appId && sharedQueryVector && datasetIds && datasetIds.length > 0) {
+    const correctionResult = await searchCorrectionData({
+      appId,
+      queryVector: sharedQueryVector,
+      embeddingTokens: sharedEmbeddingTokens,
+      teamId: props.teamId
+    });
+
+    const correctionThreshold = global.systemEnv?.correctionSimilarityThreshold ?? 0.95;
+    addLog.debug('Assistant Config - correctionSimilarityThreshold', { correctionThreshold });
+
+    if (
+      correctionResult &&
+      correctionResult.similarity > correctionThreshold &&
+      correctionResult.correctedAnswer
+    ) {
+      // 新增：计算检索时间
+      const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
+      // 创建校正数据块
+      const correctionChunk: SearchDataResponseItemType = {
+        id: `correction_quote_${correctionResult.correctionId}`,
+        updateTime: new Date(),
+        q: correctionResult.question,
+        a: correctionResult.correctedAnswer,
+        chunkIndex: 0,
+        datasetId: appId,
+        collectionId: `correction_quote_${correctionResult.correctionId}`,
+        sourceName: 'Correction Data',
+        sourceId: correctionResult.correctionId,
+        score: [
+          {
+            type: SearchScoreTypeEnum.embedding,
+            value: correctionResult.similarity,
+            index: 0
+          }
+        ]
+      };
+
+      return {
+        searchRes: [correctionChunk],
+        embeddingTokens: sharedEmbeddingTokens,
+        reRankInputTokens: 0,
+        searchMode: DatasetSearchModeEnum.embedding,
+        limit: props.limit,
+        similarity: correctionResult.similarity,
+        usingReRank: false,
+        usingSimilarityFilter: true,
+        retrievalTime, // 新增：检索总耗时
+        retrievalType: 'correction' as const, // 新增：标记为 correction 命中
+        queryExtensionResult: aiExtensionResult
+          ? {
+              model: aiExtensionResult.model,
+              inputTokens: aiExtensionResult.inputTokens,
+              outputTokens: aiExtensionResult.outputTokens,
+              query: extensionQueries.join('\n'),
+              synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
+              rewriteTime // 新增：问题改写耗时（仅assistant场景）
+            }
+          : undefined,
+        correctionData: {
+          correctionId: correctionResult.correctionId,
+          correctedAnswer: correctionResult.correctedAnswer,
+          question: correctionResult.question,
+          similarity: correctionResult.similarity
+        }
+      };
+    }
+  }
+
   // ===== 校正数据检索结束 =====
 
   // ===== 新增: FAQ 数据优先检索（仅 faqAnswerMode 为 quote 时执行）=====
   if (
     isAssistant &&
     faqAnswerMode === 'quote' &&
-    aiExtensionResult?.synonymRewriteResult &&
+    sharedQueryVector &&
     datasetIds &&
     datasetIds.length > 0
   ) {
-    // 使用指代消解后的标准化查询
-    const searchQuery = aiExtensionResult.synonymRewriteResult.standardizedQuery;
-
     const faqResult = await searchFAQData({
       teamId: props.teamId,
       datasetIds,
-      rewriteQuery: searchQuery,
-      model: props.model
+      queryVector: sharedQueryVector,
+      embeddingTokens: sharedEmbeddingTokens
     });
 
     if (faqResult) {
@@ -1161,7 +1180,7 @@ export const defaultSearchDatasetData = async ({
 
       return {
         searchRes: [faqResult],
-        embeddingTokens: faqResult.embeddingTokens || 0,
+        embeddingTokens: sharedEmbeddingTokens,
         reRankInputTokens: 0,
         searchMode: DatasetSearchModeEnum.embedding,
         limit: props.limit,
@@ -1602,13 +1621,13 @@ export const generateAndExecuteSQL = async ({
 async function searchFAQData({
   teamId,
   datasetIds,
-  rewriteQuery,
-  model
+  queryVector,
+  embeddingTokens
 }: {
   teamId: string;
   datasetIds: string[];
-  rewriteQuery: string;
-  model: string;
+  queryVector: number[];
+  embeddingTokens: number;
 }): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
   const startTime = Date.now();
   const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
@@ -1617,7 +1636,7 @@ async function searchFAQData({
   addLog.debug('FAQ Search - Starting', {
     teamId,
     datasetIds,
-    query: rewriteQuery
+    embeddingTokens
   });
 
   try {
@@ -1642,19 +1661,11 @@ async function searchFAQData({
 
     const faqCollectionIds = faqCollections.map((c) => String(c._id));
 
-    // 2. 获取向量
-    const vectorModel = getEmbeddingModel(model);
-    const { vectors, tokens } = await getVectorsByText({
-      model: vectorModel,
-      input: [rewriteQuery],
-      type: 'query'
-    });
-
-    // 3. 向量检索 (仅在 FAQ collections 中，取 top 1000)
+    // 2. 使用传入的向量进行检索 (仅在 FAQ collections 中，取 top 1000)
     const recallResult = await recallFromVectorStore({
       teamId,
       datasetIds,
-      vector: vectors[0],
+      vector: queryVector,
       limit: 1000,
       forbidCollectionIdList: [],
       filterCollectionIdList: faqCollectionIds // 只在 FAQ collections 中检索
@@ -1760,7 +1771,7 @@ async function searchFAQData({
           index: 0
         }
       ],
-      embeddingTokens: tokens
+      embeddingTokens: embeddingTokens
     };
 
     addLog.debug('FAQ Search - Match found', {
