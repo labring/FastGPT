@@ -96,6 +96,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
 
 export type SystemVariablesType = {
   userId: string;
+  username: string;
   appId: string;
   chatId?: string;
   responseChatItemId?: string;
