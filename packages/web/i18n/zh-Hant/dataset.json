@@ -447,6 +447,8 @@
   "close": "關閉",
   "retry": "重試",
   "build_database_by_import": "通過導入文件、直連數據庫形式構建數據庫",
-  "database_auth_desc": "授權 MySQL、SQL server 等數據庫，檢索時連接數據庫獲取相關信息"
+  "database_auth_desc": "授權 MySQL、SQL server 等數據庫，檢索時連接數據庫獲取相關信息",
+  "filename_validation_error": "文件名不符合要求",
+  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头"
 }
 
