@@ -42,7 +42,7 @@ export async function createRerankModelConfig(params: {
   // Step 1: Create or update model configuration in database (idempotent with upsert)
   // Model config contains metadata only, no credentials
   const modelConfig: RerankModelItemType = {
-    provider: getModelProvider('OpenAI').id,
+    provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
     isActive: isActive ?? true,
