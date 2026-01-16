@@ -176,6 +176,7 @@ export type DispatchNodeResponseType = {
   reRankInputTokens?: number;
   searchUsingReRank?: boolean;
   retrievalTime?: number; // 新增：检索耗时(s)，仅assistant场景
+  sqlRetrievalTime?: number; // 新增：数据库检索耗时(s)，仅assistant场景
   rerankTime?: number; // 新增：重排耗时(s)，仅assistant场景
   retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
   retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
@@ -184,6 +185,7 @@ export type DispatchNodeResponseType = {
     inputTokens: number;
     outputTokens: number;
     query: string;
+    rewriteTime?: number;
   };
   deepSearchResult?: {
     model: string;

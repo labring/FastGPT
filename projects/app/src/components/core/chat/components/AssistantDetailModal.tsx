@@ -28,9 +28,13 @@ import Markdown from '@/components/Markdown';
 import { t } from 'i18next';
 import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
-// 扩展类型，添加 score 字段
+// 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
   score?: SearchDataResponseItemType['score'];
+  datasetId?: string;
+  collectionId?: string;
+  sourceName?: string;
+  index?: number;
 };
 
 // sourceType 显示文本映射
@@ -60,6 +64,11 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
   // 获取改写后的问题
   const rewrittenQuery = useMemo(() => {
     return data?.queryExtensionResult?.query || '';
+  }, [data]);
+
+  // 获取改写耗时
+  const rewriteTime = useMemo(() => {
+    return data?.queryExtensionResult?.rewriteTime || 0;
   }, [data]);
 
   // 处理复制操作
@@ -110,7 +119,7 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
-          {data?.runningTime || 0}s
+          {rewriteTime}s
         </Box>
       </Flex>
 
@@ -151,6 +160,13 @@ const KnowledgeRecallNode = ({
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
+  // 计算知识召回总耗时 = retrievalTime + sqlRetrievalTime
+  const recallTime = useMemo(() => {
+    const retrievalTime = data?.retrievalTime || 0;
+    const sqlRetrievalTime = data?.sqlRetrievalTime || 0;
+    return retrievalTime + sqlRetrievalTime;
+  }, [data]);
+
   // 合并数据：以 rawRetrievalResults 的顺序为主，遍历它并在 retrievalResultsList 中找到对应数据合并
   const mergedList = useMemo(() => {
     if (!rawRetrievalResults || rawRetrievalResults.length === 0) return [];
@@ -159,8 +175,14 @@ const KnowledgeRecallNode = ({
     return rawRetrievalResults
       .map((rawItem) => {
         const apiItem = retrievalResultsList.find((r) => r._id === rawItem.id);
+        if (!apiItem) return null;
+
         return {
           ...apiItem,
+          datasetId: rawItem.datasetId,
+          collectionId: rawItem.collectionId,
+          sourceName: rawItem.sourceName,
+          index: rawItem.chunkIndex,
           score: rawItem.score
         };
       })
@@ -191,7 +213,7 @@ const KnowledgeRecallNode = ({
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
-          {data?.runningTime || 0}s
+          {recallTime}s
         </Box>
       </Flex>
 
@@ -241,14 +263,25 @@ const KnowledgeRecallNode = ({
                         SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
                       );
 
+                      // 计算 linkText 和 linkUrl
+                      let linkText = '';
+                      let linkUrl = '';
+
+                      if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                        linkText = `${item.sourceName || ''} / #${item.index || index + 1}`;
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&chunkIndex=${item.index || index + 1}&activeId=${item._id || ''}`;
+                      } else if (item.sourceType === 'sql') {
+                        linkText = item.sourceName || '';
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                      }
+
                       return (
                         <ChunkInfoCard
                           key={item._id || index}
                           title={title}
                           descriptionList={descriptionList}
-                          // TODO: LINK
-                          linkText={`#${index + 1}`}
-                          linkUrl=""
+                          linkText={linkText}
+                          linkUrl={linkUrl}
                           q={item.q}
                           a={item.a}
                         />
@@ -286,6 +319,11 @@ const KnowledgeRerankNode = ({
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
+  // 获取重排耗时
+  const rerankTime = useMemo(() => {
+    return data?.rerankTime || 0;
+  }, [data]);
+
   // 合并数据：以 rawQuoteList 的顺序为主，遍历它并在 quoteList 中找到对应数据合并
   const mergedList = useMemo(() => {
     if (!rawQuoteList || rawQuoteList.length === 0) return [];
@@ -294,8 +332,14 @@ const KnowledgeRerankNode = ({
     return rawQuoteList
       .map((rawItem) => {
         const apiItem = quoteList.find((r) => r._id === rawItem.id);
+        if (!apiItem) return null;
+
         return {
           ...apiItem,
+          datasetId: rawItem.datasetId,
+          collectionId: rawItem.collectionId,
+          sourceName: rawItem.sourceName,
+          index: rawItem.chunkIndex,
           score: rawItem.score
         };
       })
@@ -328,7 +372,7 @@ const KnowledgeRerankNode = ({
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
-          {data?.runningTime || 0}s
+          {rerankTime}s
         </Box>
       </Flex>
 
@@ -375,13 +419,25 @@ const KnowledgeRerankNode = ({
                         SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
                       );
 
+                      // 计算 linkText 和 linkUrl
+                      let linkText = '';
+                      let linkUrl = '';
+
+                      if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                        linkText = `${item.sourceName || ''} / #${item.index || index + 1}`;
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&chunkIndex=${item.index || index + 1}&activeId=${item._id || ''}`;
+                      } else if (item.sourceType === 'sql') {
+                        linkText = item.sourceName || '';
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                      }
+
                       return (
                         <ChunkInfoCard
                           key={item._id || index}
                           title={title}
                           descriptionList={descriptionList}
-                          linkText={`#${index + 1}`}
-                          linkUrl=""
+                          linkText={linkText}
+                          linkUrl={linkUrl}
                           q={item.q}
                           a={item.a}
                         />

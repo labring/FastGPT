@@ -150,7 +150,7 @@ const ChunkInfoCard = ({
                 />
               </Box>
               <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                <Markdown source={q} isDisabled />
+                <Markdown source={q} />
               </Box>
             </Box>
           ) : (
@@ -158,16 +158,16 @@ const ChunkInfoCard = ({
               {!!a ? (
                 <>
                   <Box fontSize={'sm'} fontWeight={500} lineHeight={'20px'} color={'myGray.900'}>
-                    <Markdown source={q} isDisabled />
+                    <Markdown source={q} />
                   </Box>
                   <MyDivider my={2} h={'1px'} />
                   <Box fontSize={'xs'} lineHeight={'20px'} color={'myGray.500'}>
-                    <Markdown source={a} isDisabled />
+                    <Markdown source={a} />
                   </Box>
                 </>
               ) : (
                 <Box fontSize={'sm'}>
-                  <Markdown source={q} isDisabled />
+                  <Markdown source={q} />
                 </Box>
               )}
             </Box>
