@@ -61,11 +61,25 @@ function getImportMode(): CustomFileImportModeType {
   const config = global.systemEnv?.customFileImport;
   const targetMode = config?.defaultActivateMode || 'default';
 
+  addLog.debug('[FileImport] Getting import mode configuration', {
+    targetMode,
+    availableModes: config?.modes?.map((m) => ({ name: m.name, enabled: m.enabled }))
+  });
+
   const mode = config?.modes?.find((m) => m.name === targetMode && m.enabled !== false);
 
   if (!mode) {
+    addLog.error('[FileImport] Import mode not found or disabled', { targetMode });
     throw new Error(`Import mode not found or disabled: ${targetMode}`);
   }
+
+  addLog.debug('[FileImport] Selected import mode configuration', {
+    modeName: mode.name,
+    chunkConfig: mode.chunkConfig,
+    enhanceConfig: mode.enhanceConfig,
+    parseConfig: mode.parseConfig,
+    promptConfig: mode.promptConfig
+  });
 
   return mode;
 }

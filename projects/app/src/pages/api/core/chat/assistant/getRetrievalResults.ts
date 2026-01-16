@@ -145,44 +145,12 @@ async function handler(
   // 获取图片预览 URL
   let formatPreviewUrlList = getFormatDatasetCiteList(list);
 
-  // 5. 获取检索结果数据（从 retrievalResults 字段）
+  // 5. 获取检索结果数据（从 chatItem.responseData）
   const Items = chatItem.responseData?.filter(
     (e) => e.moduleType === FlowNodeTypeEnum.datasetSearchNode
   );
 
-  // 获取 retrievalResults 中的 datasetId 用于查询更新时间
-  const retrievalResultsList = Items?.map((item) => item.retrievalResults).flat();
-
-  const updateInfo = await MongoDataset.find(
-    { _id: { $in: retrievalResultsList?.map((e) => e?.datasetId) || '' } },
-    'updateTime'
-  ).lean();
-
-  // 6. 处理 retrievalResults 数据（过滤掉 SQL 和 Correction 数据，这些会从 sqlResult/correctSearchResult 单独获取）
-  const retrievalFormatList = Items?.map((item) => item.retrievalResults)
-    ?.flat()
-    .filter((res): res is NonNullable<typeof res> => {
-      if (!res || !res.datasetId) return false;
-      // 过滤掉 SQL 和 Correction 数据，避免重复
-      const resId = res.id || '';
-      return !isDatabaseSource(resId) && !isCorrectionSource(resId);
-    })
-    .map((res) => {
-      const uInfo = updateInfo.find((d) => String(d._id) === String(res.datasetId));
-      return {
-        _id: res.id || `retrieval_${res.datasetId}_${res.chunkIndex || 0}`,
-        q: res.q || '',
-        a: res.a || '',
-        updateTime: uInfo?.updateTime || chatItem.time,
-        index: res.chunkIndex
-      } as DatasetCiteItemType;
-    });
-
-  if (retrievalFormatList) {
-    formatPreviewUrlList.push(...retrievalFormatList);
-  }
-
-  // 7. 获取 SQL 引用数据（与 getQuote 保持一致）
+  // 6. 获取 SQL 引用数据（与 getQuote 保持一致）
   const sqlQuoteLists = Items?.map((item) => item.quoteList).flat();
 
   const sqlUpdateInfo = await MongoDataset.find(

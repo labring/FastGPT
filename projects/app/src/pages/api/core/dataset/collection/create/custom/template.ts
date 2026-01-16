@@ -215,6 +215,8 @@ async function handler(
     const customTemplateConfig = global.systemEnv?.customTemplateImport;
     const defaultModeName = customTemplateConfig?.defaultActivateMode || 'default';
 
+    addLog.debug(`[TemplateImport] Using mode: ${defaultModeName}`);
+
     // TODO: 实现内容探测逻辑，根据文件内容选择合适的模式
     // 当前使用默认模式
     const selectedMode = customTemplateConfig?.modes?.find(
@@ -230,6 +232,10 @@ async function handler(
     }
 
     const enhanceConfig = selectedMode.enhanceConfig || {};
+    addLog.debug(`[TemplateImport] enhanceConfig details: ${JSON.stringify(enhanceConfig)}`);
+    addLog.debug(
+      `[TemplateImport] EnhanceConfig - autoIndexes: ${enhanceConfig.autoIndexes || false}, small2bigIndexes: ${enhanceConfig.small2bigIndexes || false}, syntheticIndex: ${enhanceConfig.syntheticIndex !== false}`
+    );
 
     // 7. 创建集合并插入数据
     await createCollectionAndInsertData({
