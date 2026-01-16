@@ -3,6 +3,7 @@ import { Box, Flex, useDisclosure, ModalBody } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
   getChatResData,
   getAssistantRetrievalResults,
@@ -25,6 +26,7 @@ import type {
 import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import Markdown from '@/components/Markdown';
 import { t } from 'i18next';
+import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
 // 扩展类型，添加 score 字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
@@ -114,16 +116,18 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
 
       {isOpen && (
         <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
-          {rewrittenQuery && (
+          {rewrittenQuery ? (
             <Box
               borderRadius={'6px'}
               border={'1px solid'}
               borderColor={'borderColor.low'}
               p={'12px 16px'}
             >
-              <Box fontSize={'14px'} color={'myGray.600'}>
-                {rewrittenQuery}
-              </Box>
+              <Markdown source={rewrittenQuery} isDisabled />
+            </Box>
+          ) : (
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {t('chat:no_rewrite_needed')}
             </Box>
           )}
         </Box>
@@ -136,28 +140,32 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
 const KnowledgeRecallNode = ({
   data,
   retrievalResultsList,
-  rawRetrievalResults
+  rawRetrievalResults,
+  isLoading
 }: {
   data?: ChatHistoryItemResType;
   retrievalResultsList?: AssistantDatasetCiteItemType[];
   rawRetrievalResults?: SearchDataResponseItemType[];
+  isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
-  // 合并数据：将 API 返回的完整数据与原始的 retrievalResults 合并，以获取 score 信息
+  // 合并数据：以 rawRetrievalResults 的顺序为主，遍历它并在 retrievalResultsList 中找到对应数据合并
   const mergedList = useMemo(() => {
+    if (!rawRetrievalResults || rawRetrievalResults.length === 0) return [];
     if (!retrievalResultsList || retrievalResultsList.length === 0) return [];
-    if (!rawRetrievalResults || rawRetrievalResults.length === 0) return retrievalResultsList;
 
-    return retrievalResultsList.map((apiItem) => {
-      const rawItem = rawRetrievalResults.find((r) => r.id === apiItem._id);
-      return {
-        ...apiItem,
-        score: rawItem?.score
-      };
-    });
-  }, [retrievalResultsList, rawRetrievalResults]) as AssistantDatasetCiteItemWithScore[];
+    return rawRetrievalResults
+      .map((rawItem) => {
+        const apiItem = retrievalResultsList.find((r) => r._id === rawItem.id);
+        return {
+          ...apiItem,
+          score: rawItem.score
+        };
+      })
+      .filter(Boolean) as AssistantDatasetCiteItemWithScore[];
+  }, [retrievalResultsList, rawRetrievalResults]);
 
   // 判断是否使用 FaqContentCard：只有当 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq' 时
   const shouldUseFaqCard = data?.retrievalType === 'correction' || data?.retrievalType === 'faq';
@@ -189,57 +197,72 @@ const KnowledgeRecallNode = ({
 
       {isOpen && (
         <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
-          {mergedList.length > 0 ? (
-            <Flex flexDirection={'column'} gap={3}>
-              {mergedList.map((item, index) => {
-                // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
-                if (shouldUseFaqCard) {
-                  return (
-                    <Box key={item._id || index}>
-                      <FaqContentCard
-                        q={item.q}
-                        a={item.a || ''}
-                        retrievalType={data?.retrievalType}
-                      />
-                    </Box>
-                  );
-                }
+          <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
+            {!isLoading && (
+              <>
+                {mergedList.length > 0 ? (
+                  <Flex flexDirection={'column'} gap={3}>
+                    {mergedList.map((item, index) => {
+                      // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
+                      if (shouldUseFaqCard) {
+                        return (
+                          <Box key={item._id || index}>
+                            <FaqContentCard
+                              q={item.q}
+                              a={item.a || ''}
+                              retrievalType={data?.retrievalType}
+                            />
+                          </Box>
+                        );
+                      }
 
-                // 构造描述列表 - 只显示全文检索和向量检索
-                const descriptionList: string[] = [];
+                      // 构造描述列表 - 只显示全文检索和向量检索
+                      const descriptionList: string[] = [];
 
-                // 从 score 数组中提取 fullText 和 embedding 分数
-                if (item.score && Array.isArray(item.score)) {
-                  item.score.forEach((scoreItem) => {
-                    if (scoreItem.type === 'fullText') {
-                      descriptionList.push(`全文检索：${scoreItem.value.toFixed(4)}`);
-                    } else if (scoreItem.type === 'embedding') {
-                      descriptionList.push(`向量检索：${scoreItem.value.toFixed(4)}`);
-                    }
-                  });
-                }
+                      // 从 score 数组中提取 fullText 和 embedding 分数，按固定顺序显示
+                      if (item.score && Array.isArray(item.score)) {
+                        const fullTextScore = item.score.find((s) => s.type === 'fullText');
+                        const embeddingScore = item.score.find((s) => s.type === 'embedding');
 
-                // 根据 sourceType 获取标题文本
-                const title = t(SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk'));
+                        if (fullTextScore) {
+                          descriptionList.push(
+                            `${t('chat:fulltext_search')}${fullTextScore.value.toFixed(4)}`
+                          );
+                        }
+                        if (embeddingScore) {
+                          descriptionList.push(
+                            `${t('chat:vector_search')}${embeddingScore.value.toFixed(4)}`
+                          );
+                        }
+                      }
 
-                return (
-                  <ChunkInfoCard
-                    key={item._id || index}
-                    title={title}
-                    descriptionList={descriptionList}
-                    linkText={`#${index + 1}`}
-                    linkUrl=""
-                    q={item.q}
-                    a={item.a}
-                  />
-                );
-              })}
-            </Flex>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.600'}>
-              {t('chat:no_recall_content')}
-            </Box>
-          )}
+                      // 根据 sourceType 获取标题文本
+                      const title = t(
+                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
+                      );
+
+                      return (
+                        <ChunkInfoCard
+                          key={item._id || index}
+                          title={title}
+                          descriptionList={descriptionList}
+                          // TODO: LINK
+                          linkText={`#${index + 1}`}
+                          linkUrl=""
+                          q={item.q}
+                          a={item.a}
+                        />
+                      );
+                    })}
+                  </Flex>
+                ) : (
+                  <Box fontSize={'sm'} color={'myGray.600'}>
+                    {t('chat:no_recall_content')}
+                  </Box>
+                )}
+              </>
+            )}
+          </MyBox>
         </Box>
       )}
     </Box>
@@ -250,31 +273,37 @@ const KnowledgeRecallNode = ({
 const KnowledgeRerankNode = ({
   data,
   quoteList,
-  rawQuoteList
+  rawQuoteList,
+  retrievalResultsList,
+  isLoading
 }: {
   data?: ChatHistoryItemResType;
   quoteList?: AssistantDatasetCiteItemType[];
   rawQuoteList?: SearchDataResponseItemType[];
+  retrievalResultsList?: AssistantDatasetCiteItemType[];
+  isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
-  // 合并数据：将 API 返回的完整数据与原始的 quoteList 合并，以获取 score 信息
+  // 合并数据：以 rawQuoteList 的顺序为主，遍历它并在 quoteList 中找到对应数据合并
   const mergedList = useMemo(() => {
+    if (!rawQuoteList || rawQuoteList.length === 0) return [];
     if (!quoteList || quoteList.length === 0) return [];
-    if (!rawQuoteList || rawQuoteList.length === 0) return quoteList;
 
-    return quoteList.map((apiItem) => {
-      const rawItem = rawQuoteList.find((r) => r.id === apiItem._id);
-      return {
-        ...apiItem,
-        score: rawItem?.score
-      };
-    });
-  }, [quoteList, rawQuoteList]) as AssistantDatasetCiteItemWithScore[];
+    return rawQuoteList
+      .map((rawItem) => {
+        const apiItem = quoteList.find((r) => r._id === rawItem.id);
+        return {
+          ...apiItem,
+          score: rawItem.score
+        };
+      })
+      .filter(Boolean) as AssistantDatasetCiteItemWithScore[];
+  }, [quoteList, rawQuoteList]);
 
-  // 当 mergedList 为空时，隐藏知识重排节点
-  const shouldShow = mergedList.length > 0;
+  // 当 rawQuoteList 为空时，隐藏知识重排节点
+  const shouldShow = rawQuoteList && rawQuoteList.length > 0;
 
   if (!shouldShow) return null;
 
@@ -305,49 +334,68 @@ const KnowledgeRerankNode = ({
 
       {isOpen && (
         <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
-          {mergedList.length > 0 ? (
-            <Flex flexDirection={'column'} gap={3}>
-              {mergedList.map((item, index) => {
-                // 构造描述列表 - 显示综合分数、重排分数和召回排名
-                const descriptionList = [];
+          <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
+            {!isLoading && (
+              <>
+                {mergedList.length > 0 ? (
+                  <Flex flexDirection={'column'} gap={3}>
+                    {mergedList.map((item, index) => {
+                      // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                      const descriptionList = [];
 
-                // 从 score 数组中提取分数信息
-                if (item.score && Array.isArray(item.score)) {
-                  item.score.forEach((scoreItem) => {
-                    if (scoreItem.type === 'rrf') {
-                      descriptionList.push(`综合分数：${scoreItem.value.toFixed(4)}`);
-                    } else if (scoreItem.type === 'reRank') {
-                      descriptionList.push(`重排分数：${scoreItem.value.toFixed(4)}`);
-                    }
-                  });
-                }
+                      // 从 score 数组中提取分数信息，按固定顺序添加
+                      if (item.score && Array.isArray(item.score)) {
+                        const rrfScore = item.score.find((s) => s.type === 'rrf');
+                        const reRankScore = item.score.find((s) => s.type === 'reRank');
 
-                // 添加召回排名（使用 index 字段）
-                if (item.index !== undefined) {
-                  descriptionList.push(`召回排名：#${item.index + 1}`);
-                }
+                        if (rrfScore) {
+                          descriptionList.push(
+                            `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                          );
+                        }
+                        if (reRankScore) {
+                          descriptionList.push(
+                            `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                          );
+                        }
+                      }
 
-                // 根据 sourceType 获取标题文本
-                const title = t(SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk'));
+                      // 计算召回排名：根据 id 在 retrievalResultsList 中的位置
+                      let recallRank = '-';
+                      if (retrievalResultsList && item._id) {
+                        const rankIndex = retrievalResultsList.findIndex((r) => r._id === item._id);
+                        if (rankIndex !== -1) {
+                          recallRank = `${rankIndex + 1}`;
+                        }
+                      }
+                      descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                return (
-                  <ChunkInfoCard
-                    key={item._id || index}
-                    title={title}
-                    descriptionList={descriptionList}
-                    linkText={`#${index + 1}`}
-                    linkUrl=""
-                    q={item.q}
-                    a={item.a}
-                  />
-                );
-              })}
-            </Flex>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.600'}>
-              {t('chat:no_recall_content')}
-            </Box>
-          )}
+                      // 根据 sourceType 获取标题文本
+                      const title = t(
+                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')
+                      );
+
+                      return (
+                        <ChunkInfoCard
+                          key={item._id || index}
+                          title={title}
+                          descriptionList={descriptionList}
+                          linkText={`#${index + 1}`}
+                          linkUrl=""
+                          q={item.q}
+                          a={item.a}
+                        />
+                      );
+                    })}
+                  </Flex>
+                ) : (
+                  <Box fontSize={'sm'} color={'myGray.600'}>
+                    {t('chat:no_recall_content')}
+                  </Box>
+                )}
+              </>
+            )}
+          </MyBox>
         </Box>
       )}
     </Box>
@@ -372,21 +420,24 @@ const FinalAnswerNode = ({
 
   // 获取最终回答文本
   const finalAnswer = useMemo(() => {
+    let rawValue = '';
+
     // 如果是兜底回复，使用 answerNode 的 textOutput
     if (isFallback) {
-      return data?.textOutput || '';
-    }
-
-    // 否则从 chatNode 的 historyPreview 中获取最后一个 AI 对话的 value
-    if (chatNodeData?.historyPreview && Array.isArray(chatNodeData.historyPreview)) {
+      rawValue = data?.textOutput || '';
+    } else if (chatNodeData?.historyPreview && Array.isArray(chatNodeData.historyPreview)) {
+      // 否则从 chatNode 的 historyPreview 中获取最后一个 AI 对话的 value
       const aiMessages = chatNodeData.historyPreview.filter((msg: any) => msg.obj === 'AI');
       if (aiMessages.length > 0) {
-        return aiMessages[aiMessages.length - 1].value;
+        rawValue = aiMessages[aiMessages.length - 1].value;
       }
+    } else {
+      // 兜底：使用 answerNode 的 textOutput
+      rawValue = data?.textOutput || '';
     }
 
-    // 兜底：使用 answerNode 的 textOutput
-    return data?.textOutput || '';
+    // 使用 removeDatasetCiteText 处理文本，移除数据集引用标记
+    return removeDatasetCiteText(rawValue, false);
   }, [data, isFallback, chatNodeData]);
 
   // 处理复制操作
@@ -563,7 +614,7 @@ const ChatDetailModal = ({
   }, [workflowNodes]);
 
   // 通过 API 获取知识召回的完整数据（包含 q、a 等字段）
-  const { data: retrievalResultsList = [] } = useRequest2(
+  const { data: retrievalResultsList = [], loading: retrievalLoading } = useRequest2(
     async () =>
       !!chatItemDataId && !!chatId && retrievalDatasetDataIdList.length > 0
         ? await getAssistantRetrievalResults({
@@ -579,10 +630,21 @@ const ChatDetailModal = ({
       refreshDeps: [retrievalResults, chatItemDataId],
       manual: false
     }
-  ) as { data: AssistantDatasetCiteItemType[] };
+  ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };
+
+  // 创建 retrievalResultsList 的映射，用于快速查找召回排名
+  const retrievalResultsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    retrievalResultsList.forEach((item, index) => {
+      if (item._id) {
+        map.set(item._id, index);
+      }
+    });
+    return map;
+  }, [retrievalResultsList]);
 
   // 通过 API 获取知识重排的完整数据（包含 q、a 等字段）
-  const { data: rerankQuoteList = [] } = useRequest2(
+  const { data: rerankQuoteList = [], loading: rerankLoading } = useRequest2(
     async () =>
       !!chatItemDataId && !!chatId && quoteDatasetDataIdList.length > 0
         ? await getAssistantQuoteList({
@@ -598,7 +660,7 @@ const ChatDetailModal = ({
       refreshDeps: [quoteList, chatItemDataId],
       manual: false
     }
-  ) as { data: AssistantDatasetCiteItemType[] };
+  ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };
 
   // 获取历史响应数据
   const fetchHistoryResponseData = useCallback(async () => {
@@ -661,6 +723,7 @@ const ChatDetailModal = ({
                 )}
                 retrievalResultsList={retrievalResultsList}
                 rawRetrievalResults={retrievalResults}
+                isLoading={retrievalLoading}
               />
               <KnowledgeRerankNode
                 data={workflowNodes.find(
@@ -668,6 +731,8 @@ const ChatDetailModal = ({
                 )}
                 quoteList={rerankQuoteList}
                 rawQuoteList={quoteList}
+                retrievalResultsList={retrievalResultsList}
+                isLoading={rerankLoading}
               />
               <FinalAnswerNode
                 data={workflowNodes.find((node) => node.moduleType === FlowNodeTypeEnum.answerNode)}

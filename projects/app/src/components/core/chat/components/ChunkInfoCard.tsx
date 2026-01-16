@@ -82,7 +82,7 @@ const ChunkInfoCard = ({
 
           {/* Description List */}
           {descriptionList.length > 0 && (
-            <Flex alignItems={'center'} gap={4} flexWrap={'wrap'}>
+            <Flex alignItems={'center'} gap={4} flexWrap={'wrap'} ml={2}>
               {descriptionList.map((desc, index) => (
                 <Box
                   key={index}
