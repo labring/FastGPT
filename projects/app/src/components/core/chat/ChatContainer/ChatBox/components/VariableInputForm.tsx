@@ -44,9 +44,12 @@ const VariableInput = ({
 
   const { getValues, setValue, reset } = variablesForm;
 
-  if (isAssistantType && !chatForm.getValues('chatStarted')) {
-    chatForm.setValue('chatStarted', true);
-  }
+  // Init chatStarted for assistant type
+  useEffect(() => {
+    if (isAssistantType && !chatForm.getValues('chatStarted')) {
+      chatForm.setValue('chatStarted', true);
+    }
+  }, [isAssistantType, chatForm]);
 
   // Init variables and add default values
   useEffect(() => {
