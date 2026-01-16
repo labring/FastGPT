@@ -1397,5 +1397,6 @@
   "core.file.error.pptParseRequiresCustomService": "PPT 文件解析需要自定义解析服务。请配置 customPdfParse 服务或转换为 PDF/PPTX 格式。",
   "core.dataset.error.collectionNameDuplicate": "该数据集中已存在同名文件 \"{{fileName}}\"",
   "core.dataset.error.collectionNameMissingExtension": "不能去除文件后缀，请保留原文件后缀",
-  "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致。原后缀：{{original}}，新后缀：{{new}}"
+  "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致。原后缀：{{original}}，新后缀：{{new}}",
+  "dataset.data.deleted": "该数据已被删除"
 }

@@ -379,6 +379,17 @@ export const delOneDatasetDataById = (id: string) =>
 export const getQuoteData = (data: GetQuoteDataProps) =>
   POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
 
+/**
+ * 获取数据在集合中的索引位置
+ * @param data - 包含 dataId, collectionId, datasetId
+ * @returns 返回索引位置，-1 表示数据已被删除
+ */
+export const getDatasetDataIndex = (data: {
+  dataId: string;
+  collectionId: string;
+  datasetId: string;
+}) => POST<{ index: number }>(`/core/dataset/data/getindex`, data);
+
 /* ================ training ==================== */
 export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
   POST(`/core/dataset/training/rebuildEmbedding`, data);
