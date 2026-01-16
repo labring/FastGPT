@@ -1139,6 +1139,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 const getSystemVariables = async ({
   timezone,
   runningAppInfo,
+  runningUserInfo,
   chatId,
   responseChatItemId,
   histories = [],
@@ -1179,11 +1180,18 @@ const getSystemVariables = async ({
       variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
   }
+  // login: username from user; share/outLink/custom uid: fallback to uid like userId
+  // 登录态用用户表 username，免登录/自定义 UID 时用 uid，保持与 userId 一致
+  const username =
+    uid && String(uid) !== String(runningUserInfo?.tmbId)
+      ? String(uid)
+      : runningUserInfo?.username || String(uid || '');
 
   return {
     ...variablesMap,
     // System var:
     userId: uid,
+    username,
     appId: String(runningAppInfo.id),
     chatId,
     responseChatItemId,
