@@ -42,7 +42,11 @@ export class OracleClient extends AsyncDB {
   /**
    * Oracle 使用 FETCH FIRST n ROWS ONLY (12c+) 语法
    */
-  protected override buildSampleQuery(tableName: string, columnName: string, limit: number): string {
+  protected override buildSampleQuery(
+    tableName: string,
+    columnName: string,
+    limit: number
+  ): string {
     return `
       SELECT DISTINCT ${this.getProtectedIdentifier(columnName)}
       FROM ${this.getProtectedIdentifier(tableName)}
@@ -55,7 +59,10 @@ export class OracleClient extends AsyncDB {
    * 获取表详细信息，包括列和描述
    * Oracle 需要使用特定的系统视图获取注释信息
    */
-  override async get_table_info(tableName: string, getExamples: boolean = false): Promise<TableSchemaType> {
+  override async get_table_info(
+    tableName: string,
+    getExamples: boolean = false
+  ): Promise<TableSchemaType> {
     if (!this.db.isInitialized) {
       await this.db.initialize();
     }
@@ -64,52 +71,59 @@ export class OracleClient extends AsyncDB {
     const owner = (this.config.schema || this.config.user).toUpperCase();
 
     try {
-      // 1. 获取表注释
-      const tableCommentResult: { COMMENTS: string | null }[] = await queryRunner.query(
-        `SELECT COMMENTS FROM ALL_TAB_COMMENTS WHERE OWNER = :1 AND TABLE_NAME = :2`,
-        [owner, tableName.toUpperCase()]
-      );
-      const tableComment = tableCommentResult[0]?.COMMENTS || '';
-
-      // 2. 获取列信息和列注释
+      // 1. 合并查询：表注释、列信息、列注释和主键信息（优化为单次查询）
       const columnsResult: {
+        TABLE_COMMENTS: string | null;
         COLUMN_NAME: string;
         DATA_TYPE: string;
         NULLABLE: string;
         DATA_DEFAULT: string | null;
         COMMENTS: string | null;
+        IS_PRIMARY_KEY: number;
       }[] = await queryRunner.query(
         `SELECT
+           tc.COMMENTS AS TABLE_COMMENTS,
            c.COLUMN_NAME,
            c.DATA_TYPE,
            c.NULLABLE,
            c.DATA_DEFAULT,
-           cc.COMMENTS
+           cc.COMMENTS,
+           CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IS_PRIMARY_KEY
          FROM ALL_TAB_COLUMNS c
          LEFT JOIN ALL_COL_COMMENTS cc
            ON c.OWNER = cc.OWNER
            AND c.TABLE_NAME = cc.TABLE_NAME
            AND c.COLUMN_NAME = cc.COLUMN_NAME
+         LEFT JOIN ALL_TAB_COMMENTS tc
+           ON c.OWNER = tc.OWNER
+           AND c.TABLE_NAME = tc.TABLE_NAME
+         LEFT JOIN (
+           SELECT cons.OWNER, cons.TABLE_NAME, cols.COLUMN_NAME
+           FROM ALL_CONSTRAINTS cons
+           JOIN ALL_CONS_COLUMNS cols
+             ON cons.OWNER = cols.OWNER
+             AND cons.CONSTRAINT_NAME = cols.CONSTRAINT_NAME
+           WHERE cons.CONSTRAINT_TYPE = 'P'
+         ) pk ON c.OWNER = pk.OWNER
+           AND c.TABLE_NAME = pk.TABLE_NAME
+           AND c.COLUMN_NAME = pk.COLUMN_NAME
          WHERE c.OWNER = :1 AND c.TABLE_NAME = :2
          ORDER BY c.COLUMN_ID`,
         [owner, tableName.toUpperCase()]
       );
 
-      // 3. 获取主键信息
-      const primaryKeysResult: { COLUMN_NAME: string }[] = await queryRunner.query(
-        `SELECT cc.COLUMN_NAME
-         FROM ALL_CONSTRAINTS c
-         JOIN ALL_CONS_COLUMNS cc ON c.OWNER = cc.OWNER
-           AND c.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
-         WHERE c.OWNER = :1
-           AND c.TABLE_NAME = :2
-           AND c.CONSTRAINT_TYPE = 'P'
-         ORDER BY cc.POSITION`,
-        [owner, tableName.toUpperCase()]
-      );
-      const primaryKeys = primaryKeysResult.map((pk) => pk.COLUMN_NAME);
+      // 检查表是否存在
+      if (columnsResult.length === 0) {
+        addLog.error('[Oracle] Table does not exist:', { owner, tableName });
+        return Promise.reject(DatabaseErrEnum.fetchInfoError);
+      }
 
-      // 4. 获取外键信息
+      const tableComment = columnsResult[0]?.TABLE_COMMENTS || '';
+      const primaryKeys = columnsResult
+        .filter((col) => col.IS_PRIMARY_KEY === 1)
+        .map((col) => col.COLUMN_NAME);
+
+      // 2. 获取外键信息
       const foreignKeysResult: {
         CONSTRAINT_NAME: string;
         COLUMN_NAME: string;
@@ -139,7 +153,7 @@ export class OracleClient extends AsyncDB {
 
       const foreignKeyColumns = new Set(foreignKeysResult.map((fk) => fk.COLUMN_NAME));
 
-      // 5. 构建列信息
+      // 3. 构建列信息
       const columns: Record<string, ColumnSchemaType> = {};
 
       for (const col of columnsResult) {
@@ -165,7 +179,9 @@ export class OracleClient extends AsyncDB {
               valueIndex = true;
             }
           } catch (error) {
-            addLog.warn(`[Oracle] Failed to get sample data for column ${col.COLUMN_NAME}:`, { error });
+            addLog.warn(`[Oracle] Failed to get sample data for column ${col.COLUMN_NAME}:`, {
+              error
+            });
             examples = [];
           }
         }
@@ -188,7 +204,7 @@ export class OracleClient extends AsyncDB {
         };
       }
 
-      // 6. 构建外键列表
+      // 4. 构建外键列表
       const foreignKeys: ForeignKeySchemaType[] = foreignKeysResult.map((fk) => ({
         name: fk.CONSTRAINT_NAME,
         column: fk.COLUMN_NAME,
@@ -283,4 +299,3 @@ export class OracleClient extends AsyncDB {
     }
   }
 }
-
