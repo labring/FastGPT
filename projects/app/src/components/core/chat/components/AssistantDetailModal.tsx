@@ -618,6 +618,15 @@ const ChatDetailModal = ({
     return datasetSearchNode?.quoteList || [];
   }, [workflowNodes]);
 
+  // 判断是否为 correction 或 faq 类型
+  const isCorrectionOrFaq = useMemo(() => {
+    const datasetSearchNode = workflowNodes.find(
+      (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+    );
+    const retrievalType = datasetSearchNode?.retrievalType;
+    return retrievalType === 'correction' || retrievalType === 'faq';
+  }, [workflowNodes]);
+
   // 提取 datasetDataIdList 和 collectionIdList 的辅助函数
   const extractIds = useCallback((list: SearchDataResponseItemType[]) => {
     const datasetDataIdList = list.map((item) => item.id).filter((v): v is string => !!v);
@@ -758,19 +767,21 @@ const ChatDetailModal = ({
                 data={workflowNodes.find(
                   (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
                 )}
-                retrievalResultsList={retrievalResultsList}
-                rawRetrievalResults={retrievalResults}
-                isLoading={retrievalLoading}
+                retrievalResultsList={isCorrectionOrFaq ? rerankQuoteList : retrievalResultsList}
+                rawRetrievalResults={isCorrectionOrFaq ? quoteList : retrievalResults}
+                isLoading={isCorrectionOrFaq ? rerankLoading : retrievalLoading}
               />
-              <KnowledgeRerankNode
-                data={workflowNodes.find(
-                  (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
-                )}
-                quoteList={rerankQuoteList}
-                rawQuoteList={quoteList}
-                rawRetrievalResults={retrievalResults}
-                isLoading={rerankLoading}
-              />
+              {!isCorrectionOrFaq && (
+                <KnowledgeRerankNode
+                  data={workflowNodes.find(
+                    (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+                  )}
+                  quoteList={rerankQuoteList}
+                  rawQuoteList={quoteList}
+                  rawRetrievalResults={retrievalResults}
+                  isLoading={rerankLoading}
+                />
+              )}
               <FinalAnswerNode
                 data={workflowNodes.find((node) => node.moduleType === FlowNodeTypeEnum.answerNode)}
                 totalRunningTime={finalAnswerTotalRunningTime}

@@ -229,6 +229,7 @@ export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) 
   return retainDatasetCite
     ? text.replace(/[\[【]id[\]】]\(CITE\)/g, '')
     : text
+        .replace(/[\[【][a-zA-Z0-9_]+[\]】]\(CITE\)/g, '')
         .replace(/[\[【]([a-f0-9]{24})[\]】](?:\([^\)]*\)?)?/g, '')
         .replace(/[\[【]id[\]】]\(CITE\)/g, '');
 };
