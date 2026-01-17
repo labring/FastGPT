@@ -34,6 +34,9 @@ import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { parseUserSystemPrompt } from './sub/plan/prompt';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetSearchToolConfig } from './sub/dataset/utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -46,6 +49,20 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTopP]?: number;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+
+  // Knowledge base search configuration
+  [NodeInputKeyEnum.datasetSelectList]?: SelectedDatasetType[];
+  [NodeInputKeyEnum.datasetSimilarity]?: number;
+  [NodeInputKeyEnum.datasetMaxTokens]?: number;
+  [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  [NodeInputKeyEnum.collectionFilterMatch]?: string;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -82,7 +99,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       temperature,
       aiChatTopP,
-      agent_selectedTools: selectedTools = []
+      agent_selectedTools: selectedTools = [],
+      // Dataset search configuration
+      datasets: datasetSelectList,
+      similarity: datasetSimilarity = 0.4,
+      limit: datasetMaxTokens = 5000,
+      searchMode: datasetSearchMode = DatasetSearchModeEnum.embedding,
+      embeddingWeight: datasetSearchEmbeddingWeight,
+      usingReRank: datasetSearchUsingReRank = false,
+      rerankModel: datasetSearchRerankModel,
+      rerankWeight: datasetSearchRerankWeight,
+      datasetSearchUsingExtensionQuery: datasetSearchUsingExtensionQuery = false,
+      datasetSearchExtensionModel: datasetSearchExtensionModel,
+      datasetSearchExtensionBg: datasetSearchExtensionBg,
+      collectionFilterMatch: collectionFilterMatch
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -122,7 +152,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   try {
     // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    console.log('fileUrlInput', fileUrlInput);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
@@ -133,14 +162,34 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       histories: chatHistories
     });
 
+    // Build dataset configuration
+    const datasetConfig: DatasetSearchToolConfig | undefined =
+      datasetSelectList && datasetSelectList.length > 0
+        ? {
+            datasets: datasetSelectList,
+            similarity: datasetSimilarity,
+            maxTokens: datasetMaxTokens,
+            searchMode: datasetSearchMode,
+            embeddingWeight: datasetSearchEmbeddingWeight,
+            usingReRank: datasetSearchUsingReRank,
+            rerankModel: datasetSearchRerankModel,
+            rerankWeight: datasetSearchRerankWeight,
+            usingExtensionQuery: datasetSearchUsingExtensionQuery,
+            extensionModel: datasetSearchExtensionModel,
+            extensionBg: datasetSearchExtensionBg,
+            collectionFilterMatch
+          }
+        : undefined;
+
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
         tmbId: runningAppInfo.tmbId,
         lang,
-        filesMap,
-        getPlanTool: true
+        getPlanTool: true,
+        datasetConfig,
+        fileSelectConfig: chatConfig?.fileSelectConfig
       }
     );
     const getSubAppInfo = (id: string) => {

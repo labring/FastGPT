@@ -28,7 +28,7 @@ export const dispatchFileRead = async ({
   tmbId,
   customPdfParse,
   model
-}: FileReadParams): Promise<DispatchSubAppResponse> => {
+}: FileReadParams): Promise<{ response: string; usages: ChatNodeUsageType[] }> => {
   const readFilesResult = await Promise.all(
     files.map(async ({ index, url }) => {
       // Get from buffer
@@ -130,9 +130,7 @@ export const dispatchFileRead = async ({
   // Check if compression is needed
   const llmModel = getLLMModel(model);
   const thresholds = calculateCompressionThresholds(llmModel.maxContext);
-  // const maxTokens = thresholds.fileReadResponse.threshold;
-  // Test
-  const maxTokens = 10000;
+  const maxTokens = thresholds.fileReadResponse.threshold;
 
   addLog.debug('[File Read] Checking if compression needed', {
     contentLength: responseText.length,
