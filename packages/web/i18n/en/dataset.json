@@ -448,6 +448,8 @@
   "close": "关闭",
   "retry": "重试",
   "build_database_by_import": "通过导入文件、直连数据库形式构建数据库",
-  "database_auth_desc": "授权 MySQL、SQL server 等数据库，检索时连接数据库获取相关信息"
+  "database_auth_desc": "授权 MySQL、SQL server 等数据库，检索时连接数据库获取相关信息",
+  "filename_validation_error": "文件名不符合要求",
+  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头"
 }
 

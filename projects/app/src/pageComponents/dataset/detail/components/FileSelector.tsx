@@ -26,6 +26,8 @@ const FileSelector = ({
   autoFilterOverSize,
   fileTipNode,
   showFaqTip = false,
+  fileNameValidator,
+  fileNameValidationError,
   ...props
 }: {
   fileType: string;
@@ -37,6 +39,8 @@ const FileSelector = ({
   fileTipNode?: React.ReactNode;
   autoFilterOverSize?: boolean;
   showFaqTip?: boolean;
+  fileNameValidator?: (fileName: string) => boolean;
+  fileNameValidationError?: string;
 } & FlexProps) => {
   const { t } = useTranslation();
 
@@ -97,6 +101,23 @@ const FileSelector = ({
           status: 'error'
         });
         return;
+      }
+
+      // 检查文件名校验
+      if (fileNameValidator) {
+        const invalidFiles = files.filter((file) => {
+          // 获取文件名（不含扩展名）
+          const fileNameWithoutExt = file.name.replace(/(\.[^.]+)$/, '');
+          return !fileNameValidator(fileNameWithoutExt);
+        });
+
+        if (invalidFiles.length > 0) {
+          toast({
+            title: fileNameValidationError || t('dataset:filename_validation_error'),
+            status: 'error'
+          });
+          return;
+        }
       }
 
       const fileList = files.map((file) => ({

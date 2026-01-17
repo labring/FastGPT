@@ -73,6 +73,12 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     uploadApi
   });
 
+  // 文件名校验函数
+  const fileNameValidator = useCallback((fileName: string) => {
+    const reg = /^[a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*$/;
+    return reg.test(fileName);
+  }, []);
+
   // FileSelector 状态
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
 
@@ -261,6 +267,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
               setSelectFiles={handleFileSelectorChange}
               maxCount={maxFiles}
               maxSize={maxFileSize}
+              fileNameValidator={fileNameValidator}
+              fileNameValidationError={t('dataset:filename_format_tip')}
               FileTypeNode={
                 <Box fontSize={'xs'}>
                   <Trans
