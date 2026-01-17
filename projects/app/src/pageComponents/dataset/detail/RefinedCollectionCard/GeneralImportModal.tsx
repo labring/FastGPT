@@ -32,7 +32,7 @@ import DuplicateConfirmModal from './DuplicateConfirmModal';
 
 const MAX_LINKS_COUNT = 10;
 
-const fileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .pptx';
+const fileType = '.txt, .doc, .docx, .csv, .xlsx, .pdf, .md, .ppt, .pptx';
 
 interface GeneralImportModalProps {
   isOpen: boolean;
