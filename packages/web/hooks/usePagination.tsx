@@ -33,6 +33,7 @@ export function usePagination<DataT, ResT = {}>(
   api: (data: PaginationProps<DataT>) => Promise<PaginationResponse<ResT>>,
   {
     defaultPageSize = 10,
+    defaultPageNum,
     pageSizeOptions: defaultPageSizeOptions,
     params,
     defaultRequest = true,
@@ -45,6 +46,7 @@ export function usePagination<DataT, ResT = {}>(
     pollingWhenHidden = false
   }: {
     defaultPageSize?: number;
+    defaultPageNum?: number;
     pageSizeOptions?: number[];
     params?: DataT;
     defaultRequest?: boolean;
@@ -64,7 +66,7 @@ export function usePagination<DataT, ResT = {}>(
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
-  const [pageNum, setPageNum] = useState(1);
+  const [pageNum, setPageNum] = useState(defaultPageNum || 1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const pageSizeOptions = useCreation(
     () => defaultPageSizeOptions || [10, 20, 50, 100],
@@ -75,12 +77,23 @@ export function usePagination<DataT, ResT = {}>(
   const [data, setData] = useState<ResT[]>([]);
   const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
+  // Update pageNum when defaultPageNum changes
+  useEffect(() => {
+    if (defaultPageNum !== undefined) {
+      setPageNum(defaultPageNum);
+    }
+  }, [defaultPageNum]);
+
   const isEmpty = total === 0 && !isLoading;
   const noMore = data.length >= totalDataLength;
 
   const fetchData = useMemoizedFn(
     async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
-      if (noMore && num !== 1) return;
+      // Only check noMore if we have already loaded data (total > 0 or data.length > 0)
+      // This prevents blocking the initial load when total is still 0
+      if (noMore && num !== 1 && (total > 0 || data.length > 0)) {
+        return;
+      }
 
       setTrue();
 
@@ -138,7 +151,7 @@ export function usePagination<DataT, ResT = {}>(
 
   // Button pagination
   const Pagination = useCallback(() => {
-    const maxPage = Math.ceil(totalDataLength / pageSize);
+    const maxPage = Math.ceil(totalDataLength / pageSize) || 1;
 
     const IconButton = ({
       icon,

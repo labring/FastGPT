@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Box, Card, Flex, IconButton, Button, VStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -14,7 +14,8 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import {
   getDatasetDataList,
   getDatasetDataItemById,
-  putDatasetDataById
+  putDatasetDataById,
+  getDatasetDataIndex
 } from '@/web/core/dataset/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Markdown from '@/components/Markdown';
@@ -42,9 +43,10 @@ const RefinedDataCard = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { collectionId = '' } = router.query as {
+  const { collectionId = '', activeId = '' } = router.query as {
     collectionId: string;
     datasetId: string;
+    activeId?: string;
   };
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
@@ -58,8 +60,53 @@ const RefinedDataCard = () => {
   const [newIndexText, setNewIndexText] = useState('');
   const [editingDataId, setEditingDataId] = useState<string | null>(null);
   const [foldedCards, setFoldedCards] = useState<Record<string, boolean>>({});
+  const [initialPageNum, setInitialPageNum] = useState<number | undefined>(undefined);
+  const [isCalculatingPage, setIsCalculatingPage] = useState(!!activeId);
+  const [hasProcessedActiveId, setHasProcessedActiveId] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
+
+  // Calculate initial page number from activeId
+  React.useEffect(() => {
+    const calculateInitialPage = async () => {
+      if (!activeId || !collectionId || !datasetId) {
+        setInitialPageNum(undefined);
+        return;
+      }
+
+      try {
+        setIsCalculatingPage(true);
+        const { index } = await getDatasetDataIndex({
+          dataId: activeId,
+          collectionId,
+          datasetId
+        });
+
+        // If index is -1, data has been deleted
+        if (index === -1) {
+          setInitialPageNum(undefined);
+          toast({
+            title: t('common:dataset.data.deleted'),
+            status: 'warning'
+          });
+          return;
+        }
+
+        // Calculate page number (pageNum starts from 1, index starts from 0)
+        const defaultPageSize = 10;
+        const pageNum = Math.floor(index / defaultPageSize) + 1;
+        setInitialPageNum(pageNum);
+      } catch (error) {
+        console.error('Failed to calculate initial page:', error);
+        setInitialPageNum(undefined);
+      } finally {
+        setIsCalculatingPage(false);
+      }
+    };
+
+    calculateInitialPage();
+  }, [activeId, collectionId, datasetId, t, toast]);
 
   // Debounce search text
   React.useEffect(() => {
@@ -111,6 +158,8 @@ const RefinedDataCard = () => {
     setIsAddingNewIndex(false);
     setNewIndexText('');
     fetchActiveDataDetail(dataId);
+    // Mark that user has manually selected a card, so activeId won't override
+    setHasProcessedActiveId(true);
   });
 
   // Handle card fold/unfold
@@ -210,6 +259,8 @@ const RefinedDataCard = () => {
   } = usePagination(getDatasetDataList, {
     defaultPageSize: 10,
     pageSizeOptions: [10, 20, 50, 100],
+    defaultPageNum: initialPageNum,
+    defaultRequest: false,
     params: {
       collectionId,
       searchText: debouncedSearchText
@@ -218,29 +269,68 @@ const RefinedDataCard = () => {
     EmptyTip: EmptyTipDom
   });
 
+  // Manually trigger data fetch after page calculation
+  React.useEffect(() => {
+    // Wait for collectionId to be available
+    if (!collectionId) return;
+
+    // Case 1: activeId exists - wait for page calculation to complete
+    if (activeId) {
+      if (!isCalculatingPage && initialPageNum !== undefined) {
+        fetchData(initialPageNum);
+      }
+    }
+    // Case 2: no activeId - fetch page 1 immediately
+    else if (!isCalculatingPage) {
+      fetchData(1);
+    }
+  }, [activeId, isCalculatingPage, initialPageNum, fetchData, collectionId]);
+
   // Initialize active card to first item when data loads
   React.useEffect(() => {
-    if (datasetDataList.length > 0 && activeCardId === null) {
-      const firstId = datasetDataList[0]._id;
-      setActiveCardId(firstId);
-      fetchActiveDataDetail(firstId);
-    }
-    // If the active card was deleted, switch to the first available card
-    if (
-      datasetDataList.length > 0 &&
-      activeCardId !== null &&
-      !datasetDataList.find((item) => item._id === activeCardId)
-    ) {
-      const firstId = datasetDataList[0]._id;
-      setActiveCardId(firstId);
-      fetchActiveDataDetail(firstId);
-    }
-    // If no data left, clear active card
     if (datasetDataList.length === 0) {
       setActiveCardId(null);
       setActiveDataDetail(null);
+      return;
     }
-  }, [datasetDataList, activeCardId, fetchActiveDataDetail]);
+
+    // Priority 1: If activeId exists in route and is in the current list, activate it (only once)
+    if (
+      activeId &&
+      !hasProcessedActiveId &&
+      datasetDataList.find((item) => item._id === activeId)
+    ) {
+      if (activeCardId !== activeId) {
+        setActiveCardId(activeId);
+        fetchActiveDataDetail(activeId);
+        setHasProcessedActiveId(true);
+
+        // Scroll to active card
+        setTimeout(() => {
+          const activeCard = scrollContainerRef.current?.querySelector(`[data-id="${activeId}"]`);
+          if (activeCard && scrollContainerRef.current) {
+            activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+      return;
+    }
+
+    // Priority 2: If no active card is set, activate the first item
+    if (activeCardId === null) {
+      const firstId = datasetDataList[0]._id;
+      setActiveCardId(firstId);
+      fetchActiveDataDetail(firstId);
+      return;
+    }
+
+    // Priority 3: If the active card was deleted, switch to the first available card
+    if (!datasetDataList.find((item) => item._id === activeCardId)) {
+      const firstId = datasetDataList[0]._id;
+      setActiveCardId(firstId);
+      fetchActiveDataDetail(firstId);
+    }
+  }, [datasetDataList, activeCardId, activeId, fetchActiveDataDetail, hasProcessedActiveId]);
 
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
@@ -412,6 +502,7 @@ const RefinedDataCard = () => {
 
             {/* Data List - Scrollable */}
             <MyBox
+              ref={scrollContainerRef}
               flex={1}
               overflow={'auto'}
               isLoading={isLoading && datasetDataList.length === 0}
@@ -427,6 +518,7 @@ const RefinedDataCard = () => {
                     return (
                       <Card
                         key={item._id}
+                        data-id={item._id}
                         p={3}
                         userSelect={'none'}
                         border={'sm'}

@@ -16,8 +16,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ChunkInfoCard from './ChunkInfoCard';
 import FaqContentCard from './FaqContentCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
-import { isCorrectionRecord } from '@/global/core/chat/utils';
 import type {
   SearchDataResponseItemType,
   AssistantDatasetCiteItemType
@@ -266,8 +264,8 @@ const KnowledgeRecallNode = ({
                       let linkUrl = '';
 
                       if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                        linkText = `${item.sourceName || ''} / #${item.index || index + 1}`;
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&chunkIndex=${item.index || index + 1}&activeId=${item._id || ''}`;
+                        linkText = `${item.sourceName || ''} / #${item.index}`;
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
                       } else if (item.sourceType === 'sql') {
                         linkText = item.sourceName || '';
                         linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
@@ -432,8 +430,8 @@ const KnowledgeRerankNode = ({
                       let linkUrl = '';
 
                       if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                        linkText = `${item.sourceName || ''} / #${item.index || index + 1}`;
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&chunkIndex=${item.index || index + 1}&activeId=${item._id || ''}`;
+                        linkText = `${item.sourceName || ''} / #${item.index}`;
+                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
                       } else if (item.sourceType === 'sql') {
                         linkText = item.sourceName || '';
                         linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
