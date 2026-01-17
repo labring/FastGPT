@@ -84,8 +84,12 @@ const KnowledgeSelect = ({
   const handleSearch = useCallback(
     (value: string) => {
       debouncedSearch(value);
+      // 如果输入框聚焦且有内容，确保 Popover 是打开的
+      if (inputRef.current === document.activeElement && !isOpen) {
+        onOpen();
+      }
     },
-    [debouncedSearch]
+    [debouncedSearch, isOpen, onOpen]
   );
 
   // 处理搜索框点击事件，阻止浮层关闭
