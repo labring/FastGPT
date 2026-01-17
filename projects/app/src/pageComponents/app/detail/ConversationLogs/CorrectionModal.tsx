@@ -45,6 +45,7 @@ interface CorrectionModalProps {
   defaultCorrectionData?: Partial<CorrectionDataType>;
   onSubmit: (response: SubmitChatCorrectionResponse) => Promise<void>;
   correctionId?: string;
+  mode?: 'create' | 'edit';
 }
 
 /**
@@ -59,9 +60,14 @@ const CorrectionModal = ({
   dataId,
   defaultCorrectionData,
   onSubmit,
-  correctionId
+  correctionId,
+  mode = 'create'
 }: CorrectionModalProps) => {
   const { t } = useTranslation();
+
+  // 根据模式确定标题和图标
+  const modalTitle = mode === 'edit' ? t('common:Edit') : t('app:Correction_Modal_Title');
+  const modalIconSrc = mode === 'edit' ? 'edit' : 'kbTest';
 
   // 从 defaultCorrectionData 中提取初始值，提供默认值
   const initialQuestion = defaultCorrectionData?.question ?? '';
@@ -232,9 +238,9 @@ const CorrectionModal = ({
     <MyModal
       isOpen={isOpen}
       onClose={onClose}
-      iconSrc="edit"
+      iconSrc={modalIconSrc}
       iconColor={'primary.600'}
-      title={t('app:Correction_Modal_Title')}
+      title={modalTitle}
       maxW="800px"
       w="90vw"
       closeOnOverlayClick={false}

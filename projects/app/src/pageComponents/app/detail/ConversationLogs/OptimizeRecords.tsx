@@ -349,6 +349,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
           dataId={selectedRecord.dataId}
           defaultCorrectionData={selectedRecord.correctionData}
           onSubmit={handleEditSubmit}
+          mode="edit"
         />
       )}
     </Flex>
