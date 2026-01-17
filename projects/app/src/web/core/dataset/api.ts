@@ -501,10 +501,10 @@ export const postCreateStructureCollection = ({
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify({ overwriteDuplicate }));
+  formData.append('data', JSON.stringify({ datasetId, overwriteDuplicate }));
 
   return POST<{ collectionId: string }>(
-    `/core/dataset/database/createStructureCollection?datasetId=${datasetId}`,
+    `/core/dataset/database/createStructureCollection`,
     formData,
     {
       timeout: 600000,
