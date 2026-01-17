@@ -655,6 +655,12 @@ export function form2AppWorkflow(
                 value: ['', ''],
                 renderType: 'input',
                 valueType: 'string'
+              },
+              {
+                variable: ['VARIABLE_NODE_ID', 'udQRlgfO'],
+                value: ['', ''],
+                renderType: 'input',
+                valueType: 'string'
               }
             ]
           }

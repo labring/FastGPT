@@ -40,8 +40,10 @@ async function batchIdentifySourceType(
   quotes: DatasetCiteItemType[],
   collectionIds: string[]
 ): Promise<AssistantDatasetCiteItemType[]> {
-  // 收集所有需要查询的 collectionId
-  const uniqueCollectionIds = Array.from(new Set(collectionIds.filter(Boolean)));
+  // 收集所有需要查询的 collectionId（过滤掉特殊来源的 ID）
+  const uniqueCollectionIds = Array.from(
+    new Set(collectionIds.filter((id) => id && !isDatabaseSource(id) && !isCorrectionSource(id)))
+  );
 
   // 批量查询 collection 的 trainingType
   const collections = await MongoDatasetCollection.find(
@@ -111,6 +113,11 @@ async function handler(
     (id) => !isDatabaseSource(id) && !isCorrectionSource(id)
   );
 
+  // 提取所有真实的 collectionId 用于权限验证（去除特殊前缀）
+  const authCollectionIds = collectionIdList.filter(
+    (id) => !isDatabaseSource(id) && !isCorrectionSource(id)
+  );
+
   // 3. 权限验证
   const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
     authChatCrud({
@@ -123,7 +130,7 @@ async function handler(
       teamId,
       teamToken
     }),
-    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
+    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: authCollectionIds })
   ]);
 
   if (!chat || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);

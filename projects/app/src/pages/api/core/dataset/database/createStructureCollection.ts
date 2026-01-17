@@ -19,96 +19,20 @@ import {
   dativeUrl,
   createBucketSourceConfig
 } from '@fastgpt/service/core/dataset/database/dative/utils';
-import { PassThrough } from 'stream';
 
 export type CreateStructureCollectionResponse = CreateCollectionResponse & {
   overwritten?: boolean; // Whether overwrite operation was performed
   deletedCollectionId?: string; // Deleted old collection ID (only returned when overwritten)
 };
 
-/**
- * Parse multipart form data to extract 'data' field and create a new stream for forwarding
- */
-async function parseMultipartData(
-  req: NextApiRequest,
-  contentType: string
-): Promise<{ datasetId: string; overwriteDuplicate: boolean; newStream: Readable }> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let datasetId = '';
-    let overwriteDuplicate = false;
-
-    // Collect all data from the request
-    req.on('data', (chunk: Buffer) => {
-      chunks.push(chunk);
-    });
-
-    req.on('end', () => {
-      try {
-        const buffer = Buffer.concat(chunks);
-        const bodyText = buffer.toString('utf-8');
-
-        // Parse the 'data' field manually
-        // Look for: Content-Disposition: form-data; name="data"\r\n\r\n{...}\r\n
-        const dataFieldRegex = new RegExp(
-          `Content-Disposition: form-data; name="data"\\r\\n\\r\\n([^\\r\\n]+)`,
-          'i'
-        );
-        const dataMatch = bodyText.match(dataFieldRegex);
-
-        if (dataMatch && dataMatch[1]) {
-          try {
-            const parsedData = JSON.parse(dataMatch[1]);
-            datasetId = parsedData.datasetId || '';
-            overwriteDuplicate = parsedData.overwriteDuplicate === true;
-
-            addLog.debug('[createStructureCollection] Parsed data field', {
-              datasetId,
-              overwriteDuplicate
-            });
-          } catch (parseError) {
-            addLog.warn('[createStructureCollection] Failed to parse data field', {
-              error: parseError,
-              rawData: dataMatch[1]
-            });
-          }
-        }
-
-        // Create a new readable stream from the buffer for forwarding
-        const newStream = new PassThrough();
-        newStream.end(buffer);
-
-        resolve({ datasetId, overwriteDuplicate, newStream });
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-  });
-}
-
 async function handler(req: NextApiRequest): Promise<CreateStructureCollectionResponse> {
   if (!dativeUrl) {
     return Promise.reject(new Error('Dative service URL is not configured'));
   }
 
-  // Validate Content-Type
-  const contentType = req.headers['content-type'] || '';
-  if (!contentType.includes('multipart/form-data')) {
-    return Promise.reject(new Error('Content-Type must be multipart/form-data'));
-  }
-
-  // Parse multipart data to extract datasetId and overwriteDuplicate
-  const { datasetId, overwriteDuplicate, newStream } = await parseMultipartData(req, contentType);
-
-  addLog.debug('[createStructureCollection] Request parameters', {
-    datasetId,
-    overwriteDuplicate,
-    contentType
-  });
+  // Extract datasetId and overwriteDuplicate from query
+  const datasetId = req.query.datasetId as string;
+  const overwriteDuplicate = req.query.overwriteDuplicate === 'true';
 
   if (!datasetId) {
     return Promise.reject('datasetId is required');
@@ -123,9 +47,15 @@ async function handler(req: NextApiRequest): Promise<CreateStructureCollectionRe
     datasetId: datasetId
   });
 
-  // Upload Excel file using the new framework with the reconstructed stream
+  // Validate Content-Type
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.includes('multipart/form-data')) {
+    return Promise.reject(new Error('Content-Type must be multipart/form-data'));
+  }
+
+  // Upload Excel file using the new framework
   const result = await uploadExcel({
-    fileStream: newStream as unknown as Readable,
+    fileStream: req as unknown as Readable,
     contentType,
     sourceConfig: createBucketSourceConfig(datasetId, teamId, tmbId)
   });
@@ -142,12 +72,6 @@ async function handler(req: NextApiRequest): Promise<CreateStructureCollectionRe
   // Handle duplicate file name check
   let deletedCollectionId: string | undefined;
   let overwritten = false;
-
-  addLog.debug('[createStructureCollection] Duplicate check params', {
-    filename,
-    overwriteDuplicate,
-    overwriteDuplicateType: typeof overwriteDuplicate
-  });
 
   // Check if file with same name exists
   // Note: 不检查 parentId，在整个 dataset 范围内检查重名，确保文件名全局唯一
