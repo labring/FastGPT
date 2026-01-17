@@ -16,10 +16,10 @@ const FaqContentCard = ({ q, a, retrievalType }: FaqContentCardProps) => {
   // 根据 retrievalType 显示不同的说明文本
   const getTipText = () => {
     if (retrievalType === 'correction') {
-      return t('faq_matched_correction');
+      return t('chat:faq_matched_correction');
     }
     if (retrievalType === 'faq') {
-      return t('faq_matched_direct_use');
+      return t('chat:faq_matched_direct_use');
     }
     return null;
   };
