@@ -33,6 +33,10 @@ import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { parseUserSystemPrompt } from './sub/plan/prompt';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetSearchToolConfig } from './sub/dataset/utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -45,6 +49,20 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTopP]?: number;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+
+  // Knowledge base search configuration
+  [NodeInputKeyEnum.datasetSelectList]?: SelectedDatasetType[];
+  [NodeInputKeyEnum.datasetSimilarity]?: number;
+  [NodeInputKeyEnum.datasetMaxTokens]?: number;
+  [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  [NodeInputKeyEnum.collectionFilterMatch]?: string;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -81,7 +99,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       temperature,
       aiChatTopP,
-      agent_selectedTools: selectedTools = []
+      agent_selectedTools: selectedTools = [],
+      // Dataset search configuration
+      datasets: datasetSelectList,
+      similarity: datasetSimilarity = 0.4,
+      limit: datasetMaxTokens = 5000,
+      searchMode: datasetSearchMode = DatasetSearchModeEnum.embedding,
+      embeddingWeight: datasetSearchEmbeddingWeight,
+      usingReRank: datasetSearchUsingReRank = false,
+      rerankModel: datasetSearchRerankModel,
+      rerankWeight: datasetSearchRerankWeight,
+      datasetSearchUsingExtensionQuery: datasetSearchUsingExtensionQuery = false,
+      datasetSearchExtensionModel: datasetSearchExtensionModel,
+      datasetSearchExtensionBg: datasetSearchExtensionBg,
+      collectionFilterMatch: collectionFilterMatch
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -131,14 +162,34 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       histories: chatHistories
     });
 
+    // Build dataset configuration
+    const datasetConfig: DatasetSearchToolConfig | undefined =
+      datasetSelectList && datasetSelectList.length > 0
+        ? {
+            datasets: datasetSelectList,
+            similarity: datasetSimilarity,
+            maxTokens: datasetMaxTokens,
+            searchMode: datasetSearchMode,
+            embeddingWeight: datasetSearchEmbeddingWeight,
+            usingReRank: datasetSearchUsingReRank,
+            rerankModel: datasetSearchRerankModel,
+            rerankWeight: datasetSearchRerankWeight,
+            usingExtensionQuery: datasetSearchUsingExtensionQuery,
+            extensionModel: datasetSearchExtensionModel,
+            extensionBg: datasetSearchExtensionBg,
+            collectionFilterMatch
+          }
+        : undefined;
+
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
         tmbId: runningAppInfo.tmbId,
         lang,
-        filesMap,
-        getPlanTool: true
+        getPlanTool: true,
+        datasetConfig,
+        fileSelectConfig: chatConfig?.fileSelectConfig
       }
     );
     const getSubAppInfo = (id: string) => {
@@ -149,11 +200,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
+
+    // 生成文件信息提示
+    const filesInfo =
+      Object.keys(filesMap).length > 0
+        ? `\n\n<available_files>
+        当前对话中用户已上传以下文件：
+        ${Object.entries(filesMap)
+          .map(([index, url]) => {
+            const fileInfo = parseUrlToFileType(url);
+            return `- 文件${index}: ${fileInfo?.name || 'Unknown'} (类型: ${fileInfo?.type || 'file'})`;
+          })
+          .join('\n')}
+        
+        **重要提示**：
+        - 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
+        - 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
+        </available_files>`
+        : '';
+
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: systemPrompt,
+      userSystemPrompt: systemPrompt + filesInfo,
       getSubAppInfo
     });
-    // console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
+    console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
     // console.dir(agentSubAppsMap, {depth:null});
 
     /* ===== AI Start ===== */
@@ -232,10 +302,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           reserveTool: true
         });
 
-        // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        const userInputMessage = userChatInput
-          ? [{ role: 'user' as const, content: userChatInput }]
-          : [];
+        // 构建完整上下文：历史消息 + 用户输入(根据场景) + 本轮所有的AI响应
+        const userInputMessage =
+          lastInteractive && interactiveInput
+            ? [{ role: 'user' as const, content: interactiveInput }]
+            : [];
 
         const result = await dispatchPlanAgent({
           checkIsStopping,
@@ -395,9 +466,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
 
         // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        const userInputMessage =
-          userChatInput && initialRequest
+        // 如果是首轮直接输入用户的消息，如果是非首轮且有交互内容，则输入交互的内容
+        const userInputMessage = initialRequest
+          ? userChatInput
             ? [{ role: 'user' as const, content: userChatInput }]
+            : []
+          : lastInteractive && interactiveInput
+            ? [{ role: 'user' as const, content: interactiveInput }]
             : [];
 
         // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)

@@ -14,6 +14,8 @@ import { parseJsonArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
 import { dispatchTool } from '../sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { DatasetSearchToolSchema, type DatasetSearchToolConfig } from '../sub/dataset/utils';
+import { dispatchAgentDatasetSearch } from '../sub/dataset';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
 import { getStepDependon } from './dependon';
@@ -120,7 +122,8 @@ export const masterCall = async ({
       const callQuery = await getStepCallQuery({
         steps,
         step,
-        model
+        model,
+        filesMap
       });
       if (callQuery.usage) {
         usagePush([callQuery.usage]);
@@ -253,7 +256,6 @@ export const masterCall = async ({
         try {
           if (toolId === SubAppIds.fileRead) {
             const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(call.function.arguments));
-
             if (!toolParams.success) {
               return {
                 response: toolParams.error.message,
@@ -270,7 +272,8 @@ export const masterCall = async ({
               files,
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
+              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+              model
             });
             return {
               response: result.response,
@@ -305,6 +308,50 @@ export const masterCall = async ({
                 stop: false
               };
             }
+          }
+          if (toolId === SubAppIds.datasetSearch) {
+            const toolParams = DatasetSearchToolSchema.safeParse(
+              parseJsonArgs(call.function.arguments)
+            );
+            if (!toolParams.success) {
+              return {
+                response: toolParams.error.message,
+                usages: []
+              };
+            }
+            const params = toolParams.data;
+
+            // 从 subAppsMap 获取工具配置
+            const tool = subAppsMap.get(toolId);
+            if (!tool) {
+              return {
+                response: '知识库检索工具未配置',
+                usages: []
+              };
+            }
+
+            const config = tool.params as DatasetSearchToolConfig;
+            if (!config.datasets || config.datasets.length === 0) {
+              return {
+                response: '未选择知识库',
+                usages: []
+              };
+            }
+
+            const result = await dispatchAgentDatasetSearch({
+              query: params.query,
+              config,
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId,
+              histories: messages.filter(
+                (msg) => msg.role === ChatRoleEnum.Human || msg.role === ChatRoleEnum.AI
+              ) as any
+            });
+
+            return {
+              response: result.response,
+              usages: result.usages
+            };
           }
           // User Sub App
           else {

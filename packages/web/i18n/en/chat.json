@@ -46,6 +46,7 @@
   "custom_input_guide_url": "Custom Lexicon URL",
   "data_source": "Source Dataset: {{name}}",
   "dataset_quote_type error": "Knowledge base reference type is wrong, correct type: { datasetId: string }[]",
+  "dataset_search": "Dataset Search",
   "delete_all_input_guide_confirm": "Are you sure you want to clear the input guide lexicon?",
   "download_chunks": "Download data",
   "empty_directory": "This directory is empty~",

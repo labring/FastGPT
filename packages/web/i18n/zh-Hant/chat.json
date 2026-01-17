@@ -46,6 +46,7 @@
   "custom_input_guide_url": "自訂詞彙庫網址",
   "data_source": "來源知識庫：{{name}}",
   "dataset_quote_type error": "知識庫引用類型錯誤，正確類型：{ datasetId: string }[]",
+  "dataset_search": "知識庫檢索",
   "delete_all_input_guide_confirm": "確定要清除輸入導引詞彙庫嗎？",
   "download_chunks": "下載資料",
   "empty_directory": "此目錄中已無項目可選～",

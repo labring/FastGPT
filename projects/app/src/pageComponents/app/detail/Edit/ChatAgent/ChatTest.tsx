@@ -23,6 +23,7 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
+import { SubAppIds } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -140,8 +141,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
+                // 过滤掉内部工具
+                const internalToolIds = Object.values(SubAppIds);
+                const filteredToolIds = (formData.tools || []).filter(
+                  (toolId) => !internalToolIds.includes(toolId as SubAppIds)
+                );
+
                 const newTools = await loadGeneratedTools({
-                  newToolIds: formData.tools || [],
+                  newToolIds: filteredToolIds,
                   existsTools: appForm.selectedTools,
                   fileSelectConfig: appForm.chatConfig.fileSelectConfig
                 });

@@ -2,6 +2,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSystemToolsWithInstalled } from '../../../../app/tool/controller';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
+import { SubAppIds, systemSubInfo } from '../../../../workflow/dispatch/ai/agent/sub/constants';
 export const generateResourceList = async ({
   teamId,
   isRoot,
@@ -42,6 +43,11 @@ ${tool}
 
       return `- **${toolId}** [工具]: ${name} - ${description}`;
     });
+
+  // 添加文件读取工具
+  const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
+  const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;
+  installedTools.push(fileReadTool);
 
   return getPrompt({
     tool: installedTools.length > 0 ? installedTools.join('\n') : '暂无已安装的工具'

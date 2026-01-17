@@ -4,7 +4,8 @@ export enum SubAppIds {
   plan = 'plan_agent',
   ask = 'ask_agent',
   model = 'model_agent',
-  fileRead = 'file_read'
+  fileRead = 'file_read',
+  datasetSearch = 'dataset_search'
 }
 
 export const systemSubInfo: Record<
@@ -20,6 +21,12 @@ export const systemSubInfo: Record<
     name: i18nT('chat:file_parse'),
     avatar: 'core/workflow/template/readFiles',
     toolDescription: '读取文件内容，并返回文件内容。'
+  },
+  [SubAppIds.datasetSearch]: {
+    name: i18nT('chat:dataset_search'),
+    avatar: 'core/workflow/template/datasetSearch',
+    toolDescription:
+      '搜索知识库获取相关信息，当有相关知识库信息的时候可以使用此工具来对知识库进行检索'
   },
   [SubAppIds.ask]: {
     name: 'Ask Agent',

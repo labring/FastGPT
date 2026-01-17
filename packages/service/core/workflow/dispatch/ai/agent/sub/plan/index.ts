@@ -141,12 +141,7 @@ export const dispatchPlanAgent = async ({
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: [
-        planPrompt,
-        parseUserSystemPrompt({ userSystemPrompt: systemPrompt, getSubAppInfo })
-      ]
-        .filter(Boolean)
-        .join('\n\n')
+      content: [planPrompt, systemPrompt ? systemPrompt : undefined].filter(Boolean).join('\n\n')
     },
     ...defaultMessages
   ];

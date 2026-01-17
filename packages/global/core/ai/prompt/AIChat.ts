@@ -115,7 +115,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。
+- 如果没有相关的问答对，你需要澄清。 
 - 避免提及你是从 <QA></QA> 获取的知识，只需要回复答案。
 - 使用与问题相同的语言回答。
 

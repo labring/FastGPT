@@ -168,7 +168,9 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 
   datasetSearchUsingExtensionQuery: z.boolean().optional(),
   datasetSearchExtensionModel: z.string().optional(),
-  datasetSearchExtensionBg: z.string().optional()
+  datasetSearchExtensionBg: z.string().optional(),
+
+  collectionFilterMatch: z.string().optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 

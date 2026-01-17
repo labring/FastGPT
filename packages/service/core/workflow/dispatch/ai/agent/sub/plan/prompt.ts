@@ -32,16 +32,14 @@ export const parseUserSystemPrompt = ({
     return '';
   }
 
-  return `<user_background>
-          ${userSystemPrompt}
+  return `${userSystemPrompt}
 
           请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
           如果和user_background没有任何关系则忽略参考信息。
 
-          **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。
-          </user_background>`;
+          **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
 };
-// TODO plan 和 replan 的提示词区分出来，函数传入一个标识来区分一下
+
 // 通用的基础部分
 const getCommonPromptParts = ({
   getSubAppInfo,
@@ -189,7 +187,7 @@ export const getInitialPlanPrompt = ({
 1. **渐进式规划**：只规划当前阶段需要执行的步骤
 2. **最小化假设**：不对未知信息做过多预设
 3. **前置信息优先**：优先收集必要的前置信息
-4. **用户信息优先**：当缺少关键信息时，优先通过 Ask 工具向用户确认
+4. **用户信息优先**：当缺少关键信息或者当前的目标不明确，优先通过 Ask 工具向用户确认
 </core_principle>
 
 <task_analysis>

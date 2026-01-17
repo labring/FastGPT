@@ -7,15 +7,18 @@ import { addLog } from '../../../../../common/system/log';
 import { calculateCompressionThresholds } from '../../../../ai/llm/compress/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 
 export const getStepCallQuery = async ({
   steps,
   step,
-  model
+  model,
+  filesMap = {}
 }: {
   steps: AgentStepItemType[];
   step: AgentStepItemType;
   model: string;
+  filesMap?: Record<string, string>;
 }) => {
   /**
    * 压缩步骤提示词（Depends on）
@@ -188,6 +191,24 @@ ${stepPrompt}
   );
   preStepPrompt = compressResult.stepPrompt;
 
+  // 生成文件列表信息
+  const filesInfo =
+    Object.keys(filesMap).length > 0
+      ? `\n\n<available_files>
+当前对话中用户已上传以下文件：
+${Object.entries(filesMap)
+  .map(([index, url]) => {
+    const fileInfo = parseUrlToFileType(url);
+    return `- 文件${index}: ${fileInfo?.name || 'Unknown'} (类型: ${fileInfo?.type || 'file'})`;
+  })
+  .join('\n')}
+
+**重要提示**：
+- 如果当前步骤的任务涉及文件分析、解析或处理，请优先考虑使用 @file_read 工具
+- 使用 file_read 工具时，传入对应的文件序号（如 ["1", "2"]）
+</available_files>`
+      : '';
+
   const multiTopicRule = `<important>
       **多主题任务处理规则**（优先级最高）：
       如果步骤描述包含多个独立的检索主题（使用顿号"、"、分号"；"或换行分隔），你必须：
@@ -195,7 +216,7 @@ ${stepPrompt}
       2. **分别调用工具**：为每个主题调用一次检索工具
       3. **保持主题独立**：每次工具调用只专注于一个主题
       4. **总结报告任务**：直接执行，不需要进行拆分
-      
+
       **示例**：
       - 步骤描述："检索 平台定位、核心功能、易用性/可定制性"
       - ✅ 正确做法：调用 3 次检索工具
@@ -203,19 +224,19 @@ ${stepPrompt}
         - 第2次：query="核心功能"
         - 第3次：query="易用性/可定制性"
       - ❌ 错误做法：调用 1 次检索工具，query="平台定位 核心功能 易用性/可定制性"
-      
+
       **识别标准**：
       - 主题间使用顿号"、"、分号"；"、或换行分隔
       - 每个主题都是独立的检索对象
       - 主题数量通常在 2-5 个之间
       - 例如："分析 A、B、C 的特点" 应拆分为 3 次独立检索
-      
+
       **执行要求**：
       - 如果识别出多个主题，必须分别调用工具检索
       - 每次工具调用的 query 应该只包含一个主题
       - 最后综合所有检索结果，生成完整的步骤响应
       - 除非主题之间有强依赖关系，否则应该并行检索
-      
+
       **特别注意**：
       - 如果是一个总结报告一般都是直接使用之前搜集的信息来总结，不需要去调用工工具，不受上面的约束
       </important>`;
@@ -233,6 +254,7 @@ ${preStepPrompt}
 步骤 ID: ${step.id}
 步骤标题: ${step.title}
 步骤描述: ${step.description}
+${filesInfo}
 
 ${multiTopicRule}`
       : `请完成当前步骤的任务。
@@ -242,6 +264,7 @@ ${multiTopicRule}`
 步骤 ID: ${step.id}
 步骤标题: ${step.title}
 步骤描述: ${step.description}
+${filesInfo}
 
 ${multiTopicRule}`
   };

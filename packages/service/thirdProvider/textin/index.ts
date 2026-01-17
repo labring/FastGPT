@@ -71,7 +71,7 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       if (!rawMarkdown) {
         return Promise.reject('[Textin] No markdown content in response');
       }
-      console.log('rawMarkdown', rawMarkdown);
+      // console.log('rawMarkdown', rawMarkdown);
       // Process tables and images (reuse existing utility functions)
       const { text, imageList } = matchMdImg(rawMarkdown);
 
