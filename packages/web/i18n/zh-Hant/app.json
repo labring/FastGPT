@@ -390,7 +390,7 @@
   "smart_customer_service_rerank_model_warning": "該模型會依據應用調優進行不斷訓練以提升回答準確率，後續不再支援修改",
   "smart_customer_service_qa_config": "問答配置",
   "smart_customer_service_faq_answer_mode": "FAQ知識問答",
-  "smart_customer_service_faq_answer_mode_tooltip": "如檢索到 FAQ 類型的知識，使用以下方式生成回答",
+  "smart_customer_service_faq_answer_mode_tooltip": "檢索到 FAQ 類型的知識時，使用指定方式生成回答。",
   "smart_customer_service_direct_quote": "直接使用原文回答",
   "smart_customer_service_llm_summary": "大模型匯總生成回答",
   "smart_customer_service_welcome_text": "對話開場白",
