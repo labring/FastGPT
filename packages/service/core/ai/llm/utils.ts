@@ -230,6 +230,9 @@ export const loadRequestMessages = async ({
     const result = (
       await Promise.all(
         content.map(async (item) => {
+          // Remove system filed
+
+          delete item.key;
           if (item.type === 'text') {
             // If it is array, not need to parse image
             if (item.text) return item;
