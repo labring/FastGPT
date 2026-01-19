@@ -155,6 +155,18 @@
                 "value": ["", "quote"],
                 "renderType": "input",
                 "valueType": "string"
+              },
+              {
+                "variable": ["VARIABLE_NODE_ID", "hTRJXdb1"],
+                "value": ["", ""],
+                "renderType": "input",
+                "valueType": "string"
+              },
+              {
+                "variable": ["VARIABLE_NODE_ID", "udQRlgfO"],
+                "value": ["", ""],
+                "renderType": "input",
+                "valueType": "string"
               }
             ],
             "debugLabel": "",
