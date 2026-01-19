@@ -122,9 +122,9 @@ const InputTypeConfig = ({
       : undefined;
 
   const maxFiles = watch('maxFiles') ?? 5;
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxSelectFiles = Math.min(
-    feConfigs?.uploadFileMaxAmount ?? 20,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 20,
     50
   );
   const canSelectFile = watch('canSelectFile') ?? true;

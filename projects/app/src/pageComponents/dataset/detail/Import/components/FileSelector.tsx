@@ -33,11 +33,9 @@ const FileSelector = ({
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
-  // 文件数量限制：取系统配置和套餐限制中的最小值
-  const maxCount = Math.min(
-    feConfigs?.uploadFileMaxAmount || 1000,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
-  );
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  const maxCount =
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
   // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
   const maxSize =
     (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *

@@ -19,7 +19,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
@@ -90,16 +89,15 @@ const FileSelector = ({
     canSelectCustomFileExtension,
     customFileExtensionList
   ]);
-  const maxSelectFiles = Math.min(
-    maxFiles ?? 10,
-    feConfigs?.uploadFileMaxAmount ?? Infinity,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
-  );
+  // 文件数量限制：组件参数 || 团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles =
+    maxFiles ||
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
+    feConfigs?.uploadFileMaxAmount ||
+    10;
+  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
   const maxSize =
-    Math.min(
-      teamPlanStatus?.standardConstants?.maxUploadFileSize ?? Infinity,
-      feConfigs?.uploadFileMaxSize ?? 500
-    ) *
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
     1024 *
     1024;
   const canSelectFileAmount = maxSelectFiles - value.length;

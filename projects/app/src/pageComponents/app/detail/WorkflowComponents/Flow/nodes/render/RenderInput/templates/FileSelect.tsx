@@ -24,10 +24,9 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
     return [];
   }, [item.value]);
 
-  const maxSelectFiles = Math.min(
-    item.maxFiles || 10,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
-  );
+  // 文件数量限制：节点配置的maxFiles || 团队套餐 || 默认值
+  const maxSelectFiles =
+    item.maxFiles || teamPlanStatus?.standardConstants?.maxUploadFileCount || 10;
   const isMaxSelected = values.length >= maxSelectFiles;
 
   const handleAddUrl = useCallback(

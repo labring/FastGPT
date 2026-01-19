@@ -54,16 +54,15 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
-  const maxSelectFiles = Math.min(
-    fileSelectConfig?.maxFiles ?? Infinity,
-    feConfigs?.uploadFileMaxAmount ?? 10,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity
-  );
+  // 文件数量限制：配置的maxFiles || 团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles =
+    fileSelectConfig?.maxFiles ||
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
+    feConfigs?.uploadFileMaxAmount ||
+    10;
+  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
   const maxSize =
-    Math.min(
-      teamPlanStatus?.standardConstants?.maxUploadFileSize ?? Infinity,
-      feConfigs?.uploadFileMaxSize ?? 500
-    ) *
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
     1024 *
     1024;
   const canSelectFileAmount = maxSelectFiles - fileList.length;

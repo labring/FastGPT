@@ -42,9 +42,9 @@ const FileSelect = ({
   const { teamPlanStatus } = useUserStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxSelectFiles = Math.min(
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ?? Infinity,
-    feConfigs?.uploadFileMaxAmount ?? 20,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 20,
     30
   );
 
