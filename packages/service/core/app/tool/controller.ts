@@ -633,7 +633,6 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
       defaultInstalled: dbPluginConfig?.defaultInstalled ?? false,
       inputList: item?.secretInputConfig,
       hasSystemSecret: !!dbPluginConfig?.inputListVal,
-
       originCost: dbPluginConfig?.originCost ?? 0,
       currentCost: dbPluginConfig?.currentCost ?? 0,
       systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
