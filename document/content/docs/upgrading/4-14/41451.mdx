@@ -1,30 +1,29 @@
 ---
-title: 'V4.14.6(进行中)'
-description: 'FastGPT V4.14.6 更新说明'
+title: 'V4.14.5.1（进行中）'
+description: 'FastGPT V4.14.5.1 更新说明'
 ---
 
 
 ## 🚀 新增内容
 
 1. Markdown 表格支持导出 csv。
-2. 系统工具可配置自定义的分类属性
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.6
-- 更新 FastGPT 商业版镜像tag: v4.14.6
+- 更新 FastGPT 镜像tag: v4.14.5.1
+- 更新 FastGPT 商业版镜像tag: v4.14.5.1
 - 更新 fastgpt-plugin 镜像 tag: v0.4.0
 - mcp_server 无需更新
 - Sandbox 无需更新
 - AIProxy 无需更新
-- mongo 5.x 版本修改成 5.0.32 版本，解决 CVE-2025-14847 漏洞。直接修改镜像 tag 成 `5.0.32`。
+- mongo 无需更新
 
 ### 2. 执行升级脚本
 
 从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
 
 ```bash
-curl --location --request POST 'https://{{host}}/api/admin/initv4146' \
+curl --location --request POST 'https://{{host}}/api/admin/initv41451' \
 --header 'rootkey: {{rootkey}}' \
 --header 'Content-Type: application/json'
 ```
