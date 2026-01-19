@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
+import path from 'path';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -193,13 +194,11 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
     => pdf
 */
 export const parseFileExtensionFromUrl = (url = '') => {
-  // Remove query params
+  // Remove query params first, then get extension using path module
   const urlWithoutQuery = url.split('?')[0];
-  // Get file name
-  const fileName = urlWithoutQuery.split('/').pop() || '';
-  // Get file extension
-  const extension = fileName.split('.').pop();
-  return (extension || '').toLowerCase();
+  const extension = path.extname(urlWithoutQuery);
+  // path.extname returns '.ext' or '', so we need to remove the dot
+  return extension ? extension.slice(1).toLowerCase() : '';
 };
 
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
