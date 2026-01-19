@@ -42,6 +42,7 @@ export type EditorProps = {
   maxLength?: number;
   placeholder?: string;
   isInvalid?: boolean;
+  resizable?: boolean;
 
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
@@ -64,6 +65,7 @@ export default function Editor({
   placeholder = '',
   bg = 'white',
   isInvalid,
+  resizable = false,
 
   ExtensionPopover
 }: EditorProps &
@@ -128,7 +130,15 @@ export default function Editor({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
+              className={
+                isInvalid
+                  ? resizable
+                    ? styles.contentEditable_invalid_resizable
+                    : styles.contentEditable_invalid
+                  : resizable
+                    ? styles.contentEditable_resizable
+                    : styles.contentEditable
+              }
               style={{
                 minHeight: `${minH}px`,
                 maxHeight: `${maxH}px`

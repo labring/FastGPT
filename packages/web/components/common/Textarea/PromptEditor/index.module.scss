@@ -72,6 +72,19 @@
   box-shadow: 0px 0px 0px 2.4px rgba(244, 69, 46, 0.15);
 }
 
+/* 可拉伸样式 */
+.contentEditable_resizable {
+  @extend .contentEditable;
+  resize: vertical;
+  /* 不需要设置 overflow，@extend 已包含 overflow-y: auto */
+}
+
+.contentEditable_invalid_resizable {
+  @extend .contentEditable_invalid;
+  resize: vertical;
+  /* 不需要设置 overflow，@extend 已包含 overflow-y: auto */
+}
+
 .variable {
   color: var(--chakra-colors-primary-600);
   padding: 0 2px;
