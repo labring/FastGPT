@@ -16,6 +16,7 @@ import type {
 import { Types } from '@fastgpt/service/common/mongo';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 // Import synonym utilities
 import { getDatasetSynonymConfig } from '@fastgpt/service/core/dataset/indexTransform/controller';
@@ -162,144 +163,198 @@ export const processSynonymStandardize = async ({
     });
 
     // 5. 更新 MongoDB (使用 session 保证原子性)
-    await mongoSessionRun(async (session) => {
-      await MongoDatasetData.updateOne(
-        { _id: dataId },
-        {
-          $set: {
-            // q/a 不修改,保持原文
-            indexes: newIndexes
+    /**
+     * 使用 retryFn 处理 WriteConflict 错误
+     *
+     * 问题场景：
+     * 多个 worker 并发处理不同的 training 任务时，在链式处理阶段会同时执行
+     * findOneAndUpdate 去抢夺下一条 synonymProcessing='standardize' 的数据。
+     * MongoDB 事务中的 findOneAndUpdate 是排他的，当多个 session 同时尝试
+     * 更新满足相同条件的文档时，只有一个能成功，其他会抛出 WriteConflict。
+     *
+     * 解决方案：
+     * 1. retryFn 重试机制：发生冲突时自动重试，下次可能获取到其他未被锁定的数据
+     * 2. 幂等性检查：创建任务前先检查是否已存在，避免重复创建
+     *
+     * 这个方案与 generateVector.ts 中的 rebuildData 函数保持一致。
+     */
+    await retryFn(
+      async () => {
+        await mongoSessionRun(async (session) => {
+          await MongoDatasetData.updateOne(
+            { _id: dataId },
+            {
+              $set: {
+                // q/a 不修改,保持原文
+                indexes: newIndexes
+              }
+            },
+            { session }
+          );
+
+          // 6. 如果 q/a 发生了同义词转换，更新全文检索
+          if (qaHasTransformation) {
+            const fullText =
+              trainingData.data.a && aStandardized
+                ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
+                : qStandardized.transformedText;
+            const fullTextToken = await jiebaSplitWithCustomDict({
+              text: fullText,
+              customWords: customWords
+            });
+
+            await MongoDatasetDataText.updateOne(
+              { dataId },
+              {
+                $set: {
+                  teamId,
+                  datasetId: trainingData.datasetId,
+                  collectionId: trainingData.collectionId,
+                  fullTextToken
+                }
+              },
+              { upsert: true, session }
+            );
           }
-        },
-        { session }
-      );
 
-      // 6. 如果 q/a 发生了同义词转换，更新全文检索
-      if (qaHasTransformation) {
-        const fullText =
-          trainingData.data.a && aStandardized
-            ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
-            : qStandardized.transformedText;
-        const fullTextToken = await jiebaSplitWithCustomDict({
-          text: fullText,
-          customWords: customWords
-        });
+          // 7. 删除训练任务
+          await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 
-        await MongoDatasetDataText.updateOne(
-          { dataId },
-          {
-            $set: {
-              teamId,
-              datasetId: trainingData.datasetId,
-              collectionId: trainingData.collectionId,
-              fullTextToken
-            }
-          },
-          { upsert: true, session }
-        );
-      }
-
-      // 7. 删除训练任务
-      await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
-
-      // 8. 链式处理:查找下一条需要处理的数据
-      const nextData = await MongoDatasetData.findOneAndUpdate(
-        {
-          synonymProcessing: 'standardize',
-          teamId,
-          datasetId: trainingData.datasetId
-        },
-        {
-          $unset: { synonymProcessing: null }
-        },
-        { session }
-      ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
-
-      if (nextData) {
-        await MongoDatasetTraining.create(
-          [
+          // 8. 链式处理:查找下一条需要处理的数据
+          const nextData = await MongoDatasetData.findOneAndUpdate(
             {
+              synonymProcessing: 'standardize',
               teamId,
-              tmbId: trainingData.tmbId,
-              datasetId: trainingData.datasetId,
-              collectionId: nextData.collectionId,
-              mode: TrainingModeEnum.synonymStandardize,
-              dataId: nextData._id,
-              dataMetadata: {
-                synonymFileIds: nextData.synonymFileIds
+              datasetId: trainingData.datasetId
+            },
+            {
+              $unset: { synonymProcessing: null }
+            },
+            { session }
+          ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
+
+          if (nextData) {
+            // 幂等性检查：避免重复创建任务
+            const existingTask = await MongoDatasetTraining.findOne(
+              {
+                datasetId: trainingData.datasetId,
+                dataId: nextData._id,
+                mode: TrainingModeEnum.synonymStandardize
               },
-              retryCount: 3,
-              billId: trainingData.billId
+              { _id: 1 },
+              { session }
+            );
+
+            if (!existingTask) {
+              await MongoDatasetTraining.create(
+                [
+                  {
+                    teamId,
+                    tmbId: trainingData.tmbId,
+                    datasetId: trainingData.datasetId,
+                    collectionId: nextData.collectionId,
+                    mode: TrainingModeEnum.synonymStandardize,
+                    dataId: nextData._id,
+                    dataMetadata: {
+                      synonymFileIds: nextData.synonymFileIds
+                    },
+                    retryCount: 3,
+                    billId: trainingData.billId
+                  }
+                ],
+                { session, ordered: true }
+              );
             }
-          ],
-          { session, ordered: true }
-        );
-      }
-    });
+          }
+        });
+      },
+      3 // 最多重试3次
+    );
   } else {
-    // indexes 无需更新，但如果 q/a 发生了同义词转换，仍需更新全文检索
-    await mongoSessionRun(async (session) => {
-      // 如果 q/a 发生了同义词转换，更新全文检索
-      if (qaHasTransformation) {
-        const fullText =
-          trainingData.data.a && aStandardized
-            ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
-            : qStandardized.transformedText;
-        const fullTextToken = await jiebaSplitWithCustomDict({
-          text: fullText,
-          customWords: customWords
-        });
+    /**
+     * 使用 retryFn 处理 WriteConflict 错误（同上）
+     * indexes 无需更新的分支，但链式处理逻辑相同，存在同样的并发竞争问题
+     */
+    await retryFn(
+      async () => {
+        await mongoSessionRun(async (session) => {
+          // 如果 q/a 发生了同义词转换，更新全文检索
+          if (qaHasTransformation) {
+            const fullText =
+              trainingData.data.a && aStandardized
+                ? `${qStandardized.transformedText}\n${aStandardized.transformedText}`
+                : qStandardized.transformedText;
+            const fullTextToken = await jiebaSplitWithCustomDict({
+              text: fullText,
+              customWords: customWords
+            });
 
-        await MongoDatasetDataText.updateOne(
-          { dataId },
-          {
-            $set: {
-              teamId,
-              datasetId: trainingData.datasetId,
-              collectionId: trainingData.collectionId,
-              fullTextToken
-            }
-          },
-          { upsert: true, session }
-        );
-      }
-
-      await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
-
-      // 链式处理下一条
-      const nextData = await MongoDatasetData.findOneAndUpdate(
-        {
-          synonymProcessing: 'standardize',
-          teamId,
-          datasetId: trainingData.datasetId
-        },
-        {
-          $unset: { synonymProcessing: null }
-        },
-        { session }
-      ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
-
-      if (nextData) {
-        await MongoDatasetTraining.create(
-          [
-            {
-              teamId,
-              tmbId: trainingData.tmbId,
-              datasetId: trainingData.datasetId,
-              collectionId: nextData.collectionId,
-              mode: TrainingModeEnum.synonymStandardize,
-              dataId: nextData._id,
-              dataMetadata: {
-                synonymFileIds: nextData.synonymFileIds
+            await MongoDatasetDataText.updateOne(
+              { dataId },
+              {
+                $set: {
+                  teamId,
+                  datasetId: trainingData.datasetId,
+                  collectionId: trainingData.collectionId,
+                  fullTextToken
+                }
               },
-              retryCount: 3,
-              billId: trainingData.billId
+              { upsert: true, session }
+            );
+          }
+
+          await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+
+          // 链式处理下一条
+          const nextData = await MongoDatasetData.findOneAndUpdate(
+            {
+              synonymProcessing: 'standardize',
+              teamId,
+              datasetId: trainingData.datasetId
+            },
+            {
+              $unset: { synonymProcessing: null }
+            },
+            { session }
+          ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
+
+          if (nextData) {
+            // 幂等性检查：避免重复创建任务
+            const existingTask = await MongoDatasetTraining.findOne(
+              {
+                datasetId: trainingData.datasetId,
+                dataId: nextData._id,
+                mode: TrainingModeEnum.synonymStandardize
+              },
+              { _id: 1 },
+              { session }
+            );
+
+            if (!existingTask) {
+              await MongoDatasetTraining.create(
+                [
+                  {
+                    teamId,
+                    tmbId: trainingData.tmbId,
+                    datasetId: trainingData.datasetId,
+                    collectionId: nextData.collectionId,
+                    mode: TrainingModeEnum.synonymStandardize,
+                    dataId: nextData._id,
+                    dataMetadata: {
+                      synonymFileIds: nextData.synonymFileIds
+                    },
+                    retryCount: 3,
+                    billId: trainingData.billId
+                  }
+                ],
+                { session, ordered: true }
+              );
             }
-          ],
-          { session, ordered: true }
-        );
-      }
-    });
+          }
+        });
+      },
+      3 // 最多重试3次
+    );
   }
 
   return { tokens: totalTokens };
