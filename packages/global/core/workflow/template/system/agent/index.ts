@@ -20,6 +20,7 @@ import {
   Input_Template_File_Link
 } from '../../input';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { DatasetSearchModeEnum } from '../../../../dataset/constants';
 
 export const AgentNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.agent,
@@ -48,6 +49,88 @@ export const AgentNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       valueType: WorkflowIOValueTypeEnum.object
+    },
+    // Knowledge base search configuration
+    {
+      key: NodeInputKeyEnum.datasetSelectList,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
+      label: '',
+      value: [],
+      valueType: WorkflowIOValueTypeEnum.selectDataset
+    },
+    {
+      key: NodeInputKeyEnum.datasetSimilarity,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: 0.4,
+      valueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      key: NodeInputKeyEnum.datasetMaxTokens,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: 5000,
+      valueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchMode,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: DatasetSearchModeEnum.embedding
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0.5
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchUsingReRank,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankWeight,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0.5
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchExtensionModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchExtensionBg,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: ''
+    },
+    {
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
     },
     { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],

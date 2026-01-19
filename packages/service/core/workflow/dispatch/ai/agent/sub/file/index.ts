@@ -7,6 +7,11 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
+import { getLLMModel } from '../../../../../../ai/model';
+import { compressLargeContent } from '../../../../../../ai/llm/compress';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { addLog } from '../../../../../../../common/system/log';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -14,14 +19,16 @@ type FileReadParams = {
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  model: string;
 };
 
 export const dispatchFileRead = async ({
   files,
   teamId,
   tmbId,
-  customPdfParse
-}: FileReadParams): Promise<DispatchSubAppResponse> => {
+  customPdfParse,
+  model
+}: FileReadParams): Promise<{ response: string; usages: ChatNodeUsageType[] }> => {
   const readFilesResult = await Promise.all(
     files.map(async ({ index, url }) => {
       // Get from buffer
@@ -117,8 +124,44 @@ export const dispatchFileRead = async ({
     })
   );
 
+  // Stringify the result
+  let responseText = JSON.stringify(readFilesResult);
+
+  // Check if compression is needed
+  const llmModel = getLLMModel(model);
+  const thresholds = calculateCompressionThresholds(llmModel.maxContext);
+  const maxTokens = thresholds.fileReadResponse.threshold;
+
+  addLog.debug('[File Read] Checking if compression needed', {
+    contentLength: responseText.length,
+    maxTokens,
+    model: llmModel.model
+  });
+
+  // Compress if content exceeds threshold
+  let compressionUsages: ChatNodeUsageType[] = [];
+  try {
+    const result = await compressLargeContent({
+      content: responseText,
+      model: llmModel,
+      maxTokens
+    });
+
+    responseText = result.compressed;
+    compressionUsages = result.usages;
+
+    addLog.info('[File Read] Compression complete', {
+      originalLength: JSON.stringify(readFilesResult).length,
+      compressedLength: responseText.length,
+      compressionRatio: (responseText.length / JSON.stringify(readFilesResult).length).toFixed(2),
+      usageCount: compressionUsages.length
+    });
+  } catch (error) {
+    addLog.error('[File Read] Compression failed, using original content', error);
+  }
+
   return {
-    response: JSON.stringify(readFilesResult),
-    usages: []
+    response: responseText,
+    usages: compressionUsages
   };
 };
