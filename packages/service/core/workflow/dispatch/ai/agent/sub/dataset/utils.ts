@@ -23,6 +23,7 @@ export type DatasetSearchToolConfig = {
   extensionModel?: string;
   extensionBg?: string;
   collectionFilterMatch?: string;
+  model: string;
 };
 
 // ChatCompletionTool 定义

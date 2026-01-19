@@ -75,14 +75,14 @@ export const COMPRESSION_CONFIG = {
 
   /**
    * === 分块压缩 ===
-   *
-   * 用途：当单个 tool response 超过限制时，将内容分块并行压缩
-   *
-   * 示例（maxContext=100k）：
-   * - 单块最大：50k tokens
-   * - 120k 内容 → 切分成 3 块，每块约 40k
    */
-  CHUNK_SIZE_RATIO: 0.5 // 单块不超过 maxContext 的 50%
+  CHUNK_SIZE_RATIO: 0.5, // 单块不超过 maxContext 的 50%
+
+  /**
+   * === 知识库检索工具的压缩阈值 ===
+   * 策略：使用 LLM 根据查询相关性自动选择最相关的一半分块
+   */
+  DATASET_SEARCH_SELECTION_RATIO: 0.2
 } as const;
 
 /**
@@ -115,7 +115,12 @@ export const calculateCompressionThresholds = (maxContext: number) => {
       target: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_TARGET)
     },
 
-    // 分块大小
-    chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO)
+    // 分块压缩中每个分块的分割大小，用来划分原始大块的内容，压缩的目标是根据实际的 maxtoken / 分块数量 来决定的
+    chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO),
+
+    // 知识库检索工具阈值，到达阈值会触发选择最相关的一半分块内容（筛选）
+    datasetSearchSelection: Math.floor(
+      maxContext * COMPRESSION_CONFIG.DATASET_SEARCH_SELECTION_RATIO
+    )
   };
 };

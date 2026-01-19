@@ -177,7 +177,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             usingExtensionQuery: datasetSearchUsingExtensionQuery,
             extensionModel: datasetSearchExtensionModel,
             extensionBg: datasetSearchExtensionBg,
-            collectionFilterMatch
+            collectionFilterMatch,
+            model
           }
         : undefined;
 

@@ -1,5 +1,6 @@
 {
   "agent_call": "Agent call",
+  "ai.dataset_chunk_selection": "Dataset chunk selection",
   "ai.query_extension_embedding": "Problem optimization-embedding",
   "ai_model": "AI model",
   "all": "all",
