@@ -124,7 +124,9 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   },
   scripts: [],
   favicon: '/favicon.ico',
-  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || ''
+  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
+  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
+  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
 };
 
 export async function initSystemConfig() {
@@ -150,7 +152,9 @@ export async function initSystemConfig() {
       show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      payFormUrl: process.env.PAY_FORM_URL || ''
+      payFormUrl: process.env.PAY_FORM_URL || '',
+      uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
+      uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
     },
     systemEnv: {
       ...fileRes.systemEnv,

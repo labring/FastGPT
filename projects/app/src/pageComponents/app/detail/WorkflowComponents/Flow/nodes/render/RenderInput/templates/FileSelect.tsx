@@ -9,12 +9,10 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { teamPlanStatus } = useUserStore();
 
   const [urlInput, setUrlInput] = useState('');
   const values = useMemo(() => {
@@ -25,8 +23,7 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   }, [item.value]);
 
   // 文件数量限制：节点配置的maxFiles || 团队套餐 || 默认值
-  const maxSelectFiles =
-    item.maxFiles || teamPlanStatus?.standardConstants?.maxUploadFileCount || 10;
+  const maxSelectFiles = item.maxFiles || 10;
   const isMaxSelected = values.length >= maxSelectFiles;
 
   const handleAddUrl = useCallback(

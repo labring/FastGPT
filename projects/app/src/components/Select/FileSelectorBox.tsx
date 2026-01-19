@@ -46,11 +46,12 @@ const FileSelector = ({
     1024;
   const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
   // 文件数量限制：组件传入的maxCount || 团队套餐 || 系统配置
-  const formatMaxCount =
-    maxCount ||
+  const formatMaxCount = Math.min(
+    maxCount,
     teamPlanStatus?.standardConstants?.maxUploadFileCount ||
-    feConfigs?.uploadFileMaxAmount ||
-    maxCount;
+      feConfigs?.uploadFileMaxAmount ||
+      maxCount
+  );
 
   const { File, onOpen } = useSelectFile({
     fileType,
