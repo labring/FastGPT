@@ -10,7 +10,7 @@ export type ResponseType = {
 };
 
 /**
- * 4.14.6 版本数据初始化脚本
+ * 4.14.5.1 版本数据初始化脚本
  * 1. 迁移 system tool 数据：如果工具集配置了系统密钥，则需要给其子工具都写入 InputListVal 字段
  */
 
