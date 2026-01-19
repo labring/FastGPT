@@ -34,7 +34,9 @@ async function handler(
     appId,
     chatId,
     filename,
-    uId: uid
+    uId: uid,
+    maxFileSize:
+      planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
 }
 

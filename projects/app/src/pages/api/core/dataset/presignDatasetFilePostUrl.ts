@@ -33,7 +33,9 @@ async function handler(
 
   return await getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
-    filename
+    filename,
+    maxFileSize:
+      planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
 }
 
