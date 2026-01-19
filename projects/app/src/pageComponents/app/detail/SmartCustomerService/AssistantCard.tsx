@@ -56,8 +56,8 @@ const AssistantCard = () => {
       {/* basic info */}
       <Box p={6} position={'relative'}>
         <Flex alignItems={'center'} mb={4}>
-          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
-          <Box ml={3} fontWeight={'bold'} fontSize={'md'} flex={'1 0 0'} color={'myGray.900'}>
+          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'32px'} />
+          <Box ml={2} fontWeight={'500'} fontSize={'md'} flex={'1 0 0'} color={'myGray.600'}>
             {appDetail.name}
           </Box>
           {/* 按钮移到标题右侧，只显示图标，顺序为：编辑、对话、权限 */}
@@ -95,9 +95,9 @@ const AssistantCard = () => {
           flex={1}
           className={'textEllipsis2'}
           wordBreak={'break-all'}
-          color={'myGray.600'}
-          fontSize={'xs'}
-          minH={'32px'}
+          color={'myGray.500'}
+          fontSize={'12px'}
+          lineHeight={'16px'}
         >
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
