@@ -364,17 +364,27 @@ export async function dispatchDatasetSearch(
 
           // Collect SQL result
           if (singleSqlResult) {
-            // Collect for billing and response data
-            sqlResult.push({
-              ...singleSqlResult,
-              datasetId
-            } as SqlResultWithDatasetId);
-            // convertSqlResultsToChunks
-            const sqlChunk = await convertSqlResultsToChunks(singleSqlResult, datasetId);
-            searchRes.push(sqlChunk);
-            // 仅assistant场景保存SQL检索结果到sqlChunks
-            if (isAssistant) {
-              sqlChunks.push(sqlChunk);
+            // Filter out empty answer or sql
+            if (singleSqlResult.answer && singleSqlResult.sql) {
+              // Collect for billing and response data
+              sqlResult.push({
+                ...singleSqlResult,
+                datasetId
+              } as SqlResultWithDatasetId);
+              // convertSqlResultsToChunks
+              const sqlChunk = await convertSqlResultsToChunks(singleSqlResult, datasetId);
+              searchRes.push(sqlChunk);
+              // 仅assistant场景保存SQL检索结果到sqlChunks
+              if (isAssistant) {
+                sqlChunks.push(sqlChunk);
+              }
+            } else {
+              addLog.warn('Dataset Search - SQL result has empty answer or sql', {
+                datasetId,
+                datasetType,
+                hasAnswer: !!singleSqlResult.answer,
+                hasSql: !!singleSqlResult.sql
+              });
             }
           } else {
             addLog.warn('Dataset Search - SQL Generation Failed', { datasetId, datasetType });

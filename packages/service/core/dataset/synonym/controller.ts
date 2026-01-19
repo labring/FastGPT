@@ -17,7 +17,6 @@ import type {
 import { Types } from '../../../common/mongo';
 import * as iconv from 'iconv-lite';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import DatasetErrorCode from '@fastgpt/global/common/error/code/dataset';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
