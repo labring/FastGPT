@@ -25,7 +25,7 @@ async function handler(
   await authFrequencyLimit({
     eventId: `${uid}-uploadfile`,
     maxAmount:
-      (planStatus.standardConstants?.maxUploadFileCount || global.feConfigs?.uploadFileMaxAmount) *
+      (planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount) *
       2,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });

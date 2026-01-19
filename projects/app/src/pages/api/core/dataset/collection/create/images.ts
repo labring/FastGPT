@@ -26,7 +26,7 @@ async function handler(
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { parentId, datasetId, collectionName } = result.data;
@@ -43,8 +43,8 @@ async function handler(
     await authFrequencyLimit({
       eventId: `${tmbId}-uploadfile`,
       maxAmount:
-        (planStatus.standardConstants?.maxUploadFileCount ||
-          global.feConfigs?.uploadFileMaxAmount) * 2,
+        (planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount) *
+        2,
       expiredTime: addSeconds(new Date(), 30), // 30s
       num: result.fileMetadata.length
     });
