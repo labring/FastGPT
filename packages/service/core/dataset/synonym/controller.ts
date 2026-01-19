@@ -17,6 +17,7 @@ import type {
 import { Types } from '../../../common/mongo';
 import * as iconv from 'iconv-lite';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import DatasetErrorCode from '@fastgpt/global/common/error/code/dataset';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
@@ -27,6 +28,7 @@ import { getEmbeddingModel } from '../../ai/model';
 import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
 import { detectAndDecodeBuffer } from '../../../common/file/encoding';
 import { addLog } from '../../../common/system/log';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 // 同义词词汇缓存，key 为 datasetId，value 为词汇列表、过期时间和访问时间
 interface SynonymWordsCache {
@@ -420,49 +422,82 @@ export async function uploadSynonymFile({
     );
 
     // 11. 创建初始批次的训练任务
+    /**
+     * 使用 retryFn 处理 WriteConflict 错误
+     *
+     * 问题场景：
+     * 虽然这里是 for await 循环顺序执行，但在多 Pod/多实例部署场景下，
+     * 多个实例可能同时执行 uploadSynonymFile，导致多个 mongoSessionRun
+     * 并发竞争同一条 synonymProcessing='standardize' 的数据。
+     *
+     * 另外，即使单实例场景，当 worker 处理速度很快时，链式处理创建的新任务
+     * 也可能与这里的初始批次创建产生竞争。
+     *
+     * 解决方案：
+     * 1. retryFn 重试机制：发生冲突时自动重试（最多3次）
+     * 2. 幂等性检查：创建任务前先检查是否已存在相同的 datasetId+dataId+mode 任务
+     */
     const max = global.systemEnv?.vectorMaxProcess || 10;
     const initialBatch = new Array(max * 2).fill(0);
 
     for await (const _ of initialBatch) {
       try {
-        const hasNext = await mongoSessionRun(async (session) => {
-          // 获取下一条需要处理的数据
-          const data = await MongoDatasetData.findOneAndUpdate(
-            {
-              synonymProcessing: 'standardize',
-              teamId: new Types.ObjectId(teamId),
-              datasetId: new Types.ObjectId(datasetId)
-            },
-            {
-              $unset: { synonymProcessing: null } // 清除标记,避免重复处理
-            },
-            { session }
-          ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
-
-          if (data) {
-            // 创建训练任务
-            await MongoDatasetTraining.create(
-              [
+        const hasNext = await retryFn(
+          async () => {
+            return await mongoSessionRun(async (session) => {
+              // 获取下一条需要处理的数据
+              const data = await MongoDatasetData.findOneAndUpdate(
                 {
+                  synonymProcessing: 'standardize',
                   teamId: new Types.ObjectId(teamId),
-                  tmbId: new Types.ObjectId(tmbId),
-                  datasetId: new Types.ObjectId(datasetId),
-                  collectionId: data.collectionId,
-                  mode: TrainingModeEnum.synonymStandardize,
-                  dataId: data._id,
-                  dataMetadata: {
-                    synonymFileIds: data.synonymFileIds
-                  },
-                  retryCount: 3,
-                  billId
-                }
-              ],
-              { session, ordered: true }
-            );
-          }
+                  datasetId: new Types.ObjectId(datasetId)
+                },
+                {
+                  $unset: { synonymProcessing: null } // 清除标记,避免重复处理
+                },
+                { session }
+              ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
 
-          return !!data;
-        });
+              if (data) {
+                // 幂等性检查：避免重复创建任务
+                const existingTask = await MongoDatasetTraining.findOne(
+                  {
+                    datasetId: new Types.ObjectId(datasetId),
+                    dataId: data._id,
+                    mode: TrainingModeEnum.synonymStandardize
+                  },
+                  { _id: 1 },
+                  { session }
+                );
+
+                if (!existingTask) {
+                  // 创建训练任务
+                  await MongoDatasetTraining.create(
+                    [
+                      {
+                        teamId: new Types.ObjectId(teamId),
+                        tmbId: new Types.ObjectId(tmbId),
+                        datasetId: new Types.ObjectId(datasetId),
+                        collectionId: data.collectionId,
+                        mode: TrainingModeEnum.synonymStandardize,
+                        dataId: data._id,
+                        dataMetadata: {
+                          synonymFileIds: data.synonymFileIds
+                        },
+                        retryCount: 3,
+                        billId
+                      }
+                    ],
+                    { session, ordered: true }
+                  );
+                }
+              }
+
+              return !!data;
+            });
+          },
+          3 // 最多重试3次
+        );
 
         if (!hasNext) break;
       } catch (error) {
@@ -562,47 +597,70 @@ export async function deleteSynonymFile({
   );
 
   // 5. 创建初始批次的恢复任务
+  /**
+   * 使用 retryFn 处理 WriteConflict 错误（同 uploadSynonymFile）
+   * deleteSynonymFile 的恢复任务创建逻辑与标准化任务创建相同，
+   * 存在同样的多实例并发竞争问题。
+   */
   const max = global.systemEnv?.vectorMaxProcess || 10;
   const initialBatch = new Array(max * 2).fill(0);
 
   for await (const _ of initialBatch) {
     try {
-      const hasNext = await mongoSessionRun(async (session) => {
-        const data = await MongoDatasetData.findOneAndUpdate(
-          {
-            synonymProcessing: 'restore',
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId)
-          },
-          {
-            $unset: { synonymProcessing: null }
-          },
-          { session }
-        ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
-
-        if (data) {
-          await MongoDatasetTraining.create(
-            [
+      const hasNext = await retryFn(
+        async () => {
+          return await mongoSessionRun(async (session) => {
+            const data = await MongoDatasetData.findOneAndUpdate(
               {
+                synonymProcessing: 'restore',
                 teamId: new Types.ObjectId(teamId),
-                tmbId: new Types.ObjectId(tmbId),
-                datasetId: new Types.ObjectId(datasetId),
-                collectionId: data.collectionId,
-                mode: TrainingModeEnum.synonymRestore,
-                dataId: data._id,
-                dataMetadata: {
-                  synonymFileIds: data.synonymFileIds
-                },
-                retryCount: 3,
-                billId
-              }
-            ],
-            { session, ordered: true }
-          );
-        }
+                datasetId: new Types.ObjectId(datasetId)
+              },
+              {
+                $unset: { synonymProcessing: null }
+              },
+              { session }
+            ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
 
-        return !!data;
-      });
+            if (data) {
+              // 幂等性检查：避免重复创建任务
+              const existingTask = await MongoDatasetTraining.findOne(
+                {
+                  datasetId: new Types.ObjectId(datasetId),
+                  dataId: data._id,
+                  mode: TrainingModeEnum.synonymRestore
+                },
+                { _id: 1 },
+                { session }
+              );
+
+              if (!existingTask) {
+                await MongoDatasetTraining.create(
+                  [
+                    {
+                      teamId: new Types.ObjectId(teamId),
+                      tmbId: new Types.ObjectId(tmbId),
+                      datasetId: new Types.ObjectId(datasetId),
+                      collectionId: data.collectionId,
+                      mode: TrainingModeEnum.synonymRestore,
+                      dataId: data._id,
+                      dataMetadata: {
+                        synonymFileIds: data.synonymFileIds
+                      },
+                      retryCount: 3,
+                      billId
+                    }
+                  ],
+                  { session, ordered: true }
+                );
+              }
+            }
+
+            return !!data;
+          });
+        },
+        3 // 最多重试3次
+      );
 
       if (!hasNext) break;
     } catch (error) {
