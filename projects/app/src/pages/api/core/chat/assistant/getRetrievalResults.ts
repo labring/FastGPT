@@ -7,7 +7,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { quoteDataFieldSelector } from '@/service/core/chat/constants';
+import { quoteDataFieldSelectorForAssistant } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
@@ -41,10 +41,22 @@ export type AssistantGetRetrievalResultsRes = AssistantDatasetCiteItemType[];
  */
 async function batchIdentifySourceType(
   quotes: DatasetCiteItemType[],
-  collectionIds: string[]
+  datasetDataList: any[]
 ): Promise<AssistantDatasetCiteItemType[]> {
-  // 收集所有需要查询的 collectionId
-  const uniqueCollectionIds = Array.from(new Set(collectionIds.filter(Boolean)));
+  // 建立 datasetDataId -> collectionId 的映射
+  const dataIdToCollectionMap = new Map(
+    datasetDataList.map((data) => [String(data._id), String(data.collectionId)])
+  );
+
+  // 收集所有需要查询的 collectionId（过滤掉空值）
+  const uniqueCollectionIds = Array.from(
+    new Set(
+      datasetDataList
+        .map((d) => d.collectionId)
+        .filter((id) => id) // 过滤掉 undefined/null
+        .map((id) => String(id))
+    )
+  );
 
   // 批量查询 collection 的 trainingType
   const collections = await MongoDatasetCollection.find(
@@ -55,8 +67,7 @@ async function batchIdentifySourceType(
   const collectionMap = new Map(collections.map((c) => [String(c._id), c.trainingType]));
 
   // 为每个引用识别来源类型
-  return quotes.map((quote, index) => {
-    const collectionId = collectionIds[index];
+  return quotes.map((quote) => {
     let sourceType: AssistantSourceType = 'chunk';
 
     // 将 _id 转换为字符串以便检查
@@ -71,10 +82,14 @@ async function batchIdentifySourceType(
       sourceType = 'correction';
     }
     // 3. 检查是否为 FAQ (template 模式)
-    else if (collectionId) {
-      const mode = collectionMap.get(String(collectionId));
-      if (mode === DatasetCollectionDataProcessModeEnum.template) {
-        sourceType = 'faq';
+    else {
+      // 从映射中获取该 datasetData 对应的 collectionId
+      const collectionId = dataIdToCollectionMap.get(quoteId);
+      if (collectionId) {
+        const mode = collectionMap.get(collectionId);
+        if (mode === DatasetCollectionDataProcessModeEnum.template) {
+          sourceType = 'faq';
+        }
       }
     }
 
@@ -139,7 +154,7 @@ async function handler(
   // 4. 查询普通知识库数据
   const list = await MongoDatasetData.find(
     { _id: { $in: filterdatasetDataIdList }, collectionId: { $in: filterCollectionIdList } },
-    quoteDataFieldSelector
+    quoteDataFieldSelectorForAssistant
   ).lean();
 
   // 获取图片预览 URL
@@ -193,10 +208,7 @@ async function handler(
   const retrievalResultList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 
   // 10. 批量识别来源类型
-  const resultsWithSourceType = await batchIdentifySourceType(
-    retrievalResultList,
-    collectionIdList
-  );
+  const resultsWithSourceType = await batchIdentifySourceType(retrievalResultList, list);
 
   return resultsWithSourceType;
 }
