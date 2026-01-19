@@ -194,11 +194,14 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
     => pdf
 */
 export const parseFileExtensionFromUrl = (url = '') => {
-  // Remove query params first, then get extension using path module
-  const urlWithoutQuery = url.split('?')[0];
+  // Remove query params and hash first
+  const urlWithoutQuery = url.split('?')[0].split('#')[0];
   const extension = path.extname(urlWithoutQuery);
-  // path.extname returns '.ext' or '', so we need to remove the dot
-  return extension ? extension.slice(1).toLowerCase() : '';
+  // path.extname returns '.ext' or ''
+  if (extension.startsWith('.')) {
+    return extension.slice(1).toLowerCase();
+  }
+  return '';
 };
 
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {

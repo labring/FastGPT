@@ -19,9 +19,8 @@ describe('parseFileExtensionFromUrl', () => {
   });
 
   it('should not handle hash in URL (returns extension with hash)', () => {
-    // Note: The function only removes query params, not hash
-    expect(parseFileExtensionFromUrl('http://example.com/file.pdf#page=1')).toBe('pdf#page=1');
-    expect(parseFileExtensionFromUrl('https://example.com/image.jpg#section')).toBe('jpg#section');
+    expect(parseFileExtensionFromUrl('http://example.com/file.pdf#page=1')).toBe('pdf');
+    expect(parseFileExtensionFromUrl('https://example.com/image.jpg#section')).toBe('jpg');
   });
 
   it('should parse extension from URL with query but not hash', () => {
