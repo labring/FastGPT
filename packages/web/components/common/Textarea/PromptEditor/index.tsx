@@ -16,6 +16,7 @@ const PromptEditor = ({
   onBlur,
   title,
   isDisabled,
+  resizable = false,
   ...props
 }: FormPropsType &
   EditorProps & {
@@ -23,6 +24,7 @@ const PromptEditor = ({
     isDisabled?: boolean;
     onChange?: (text: string) => void;
     onBlur?: (text: string) => void;
+    resizable?: boolean;
   }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
@@ -59,6 +61,7 @@ const PromptEditor = ({
           onChange={onChangeInput}
           onChangeText={onChange}
           onBlur={onBlurInput}
+          resizable={resizable}
         />
         {isDisabled && (
           <Box
@@ -91,6 +94,7 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onChangeText={onChange}
             onBlur={onBlurInput}
+            resizable={false}
           />
         </ModalBody>
         <ModalFooter>

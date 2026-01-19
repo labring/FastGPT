@@ -62,6 +62,7 @@ type BasicProps = {
   };
   questionGuides?: string[];
   children?: React.ReactNode;
+  hideCiteIcon?: boolean;
 } & ChatControllerProps;
 
 type Props = BasicProps & {
@@ -95,7 +96,8 @@ const AIContentCard = React.memo(function AIContentCard({
   isLastChild,
   isChatting,
   questionGuides,
-  onOpenCiteModal
+  onOpenCiteModal,
+  hideCiteIcon
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
@@ -103,6 +105,7 @@ const AIContentCard = React.memo(function AIContentCard({
   isChatting: boolean;
   questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
+  hideCiteIcon?: boolean;
 }) {
   return (
     <Flex flexDirection={'column'} gap={2}>
@@ -117,6 +120,7 @@ const AIContentCard = React.memo(function AIContentCard({
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
             onOpenCiteModal={onOpenCiteModal}
+            hideCiteIcon={hideCiteIcon}
           />
         );
       })}
@@ -128,7 +132,16 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = (props: Props) => {
-  const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
+  const {
+    type,
+    avatar,
+    statusBoxData,
+    children,
+    isLastChild,
+    questionGuides = [],
+    chat,
+    hideCiteIcon
+  } = props;
 
   const { isPc } = useSystem();
 
@@ -361,6 +374,7 @@ const ChatItem = (props: Props) => {
                   isChatting={isChatting}
                   questionGuides={questionGuides}
                   onOpenCiteModal={onOpenCiteModal}
+                  hideCiteIcon={hideCiteIcon}
                 />
                 {i === splitAiResponseResults.length - 1 && (
                   <ResponseTags

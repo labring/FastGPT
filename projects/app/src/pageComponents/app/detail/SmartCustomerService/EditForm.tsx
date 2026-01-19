@@ -68,7 +68,7 @@ const FormItem: React.FC<{
   tooltip?: string;
 }> = ({ label, children, minWidth = SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM, tooltip }) => (
   <Flex alignItems={'center'} w={'100%'}>
-    <FormLabel minW={minWidth}>
+    <FormLabel fontSize={'12px'} fontWeight={'500'} minW={minWidth}>
       {label}
       {tooltip && <QuestionTip ml={1} label={tooltip} />}
     </FormLabel>
@@ -87,14 +87,14 @@ const AccordionSection: React.FC<{
   <Accordion allowToggle defaultIndex={defaultIndex}>
     <AccordionItem border="none">
       <AccordionButton _hover={{}} px={0}>
-        <Flex flex="1" textAlign="left" fontWeight="bold" alignItems={'center'}>
+        <Flex flex="1" color={'myGray.900'} fontSize={'sm'} fontWeight="500" alignItems={'center'}>
           <MyIcon name={icon} w={5} h={5} mr={2} color={iconColor} />
           {title}
         </Flex>
         <AccordionIcon />
       </AccordionButton>
       <AccordionPanel pb={4} px={0}>
-        <VStack spacing={4} align="stretch">
+        <VStack spacing={3} align="stretch">
           {children}
         </VStack>
       </AccordionPanel>
@@ -377,7 +377,7 @@ const EditForm = ({
               <LeftRadio<string>
                 list={FAQ_OPTIONS}
                 px={3}
-                py={2.5}
+                py={1.5}
                 value={appForm.chatConfig.faqAnswerMode || FAQAnswerModeEnum.Quote}
                 onChange={(e) => updateVariableValue('faqAnswerMode', e)}
                 flex={1}
@@ -387,10 +387,7 @@ const EditForm = ({
               />
             </FormItem>
 
-            <FormItem
-              label={t('app:smart_customer_service_welcome_text')}
-              minWidth={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM}
-            >
+            <FormItem label={t('app:smart_customer_service_welcome_text')}>
               <Input
                 value={appForm.chatConfig.welcomeText || ''}
                 onChange={(e) => updateChatConfig({ welcomeText: e.target.value })}
@@ -399,7 +396,11 @@ const EditForm = ({
             </FormItem>
 
             <Flex alignItems={'start'}>
-              <FormLabel minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM}>
+              <FormLabel
+                fontSize={'12px'}
+                fontWeight={'500'}
+                minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM}
+              >
                 {t('app:smart_customer_service_fallback_reply')}
                 <QuestionTip
                   ml={1}
@@ -427,6 +428,7 @@ const EditForm = ({
             >
               <Box flex={1}>
                 <AIModelSelector
+                  h={'32px'}
                   value={appForm.aiSettings.model || defaultModels.llm?.model}
                   list={llmModelList.map((item) => ({
                     value: item.model,
@@ -437,10 +439,10 @@ const EditForm = ({
               </Box>
             </FormItem>
 
-            <Flex alignItems="center" h={8}>
-              <FormLabel minW={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}>
-                {t('app:smart_customer_service_deep_thinking')}
-              </FormLabel>
+            <FormItem
+              label={t('app:smart_customer_service_deep_thinking')}
+              minWidth={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}
+            >
               <MyTooltip label={!isReasoningSupported ? t('app:model_not_support_reasoning') : ''}>
                 <Switch
                   isChecked={appForm.aiSettings.aiChatReasoning ?? false}
@@ -448,15 +450,16 @@ const EditForm = ({
                   isDisabled={!isReasoningSupported}
                 />
               </MyTooltip>
-            </Flex>
+            </FormItem>
 
             <Flex flexDirection={'column'}>
-              <FormLabel mb={4}>{t('app:smart_customer_service_prompt_config')}</FormLabel>
+              <FormLabel fontSize={'12px'} fontWeight={'500'} mb={3}>
+                {t('app:smart_customer_service_prompt_config')}
+              </FormLabel>
               <PromptEditor
-                mt={2}
                 minH={120}
+                maxH={500}
                 value={appForm.aiSettings.systemPrompt}
-                bg={'myGray.50'}
                 onChange={(text) => {
                   startTst(() => {
                     updateAISettings({ systemPrompt: text });
@@ -465,7 +468,7 @@ const EditForm = ({
                 variableLabels={formatVariables}
                 variables={formatVariables}
                 placeholder=""
-                ExtensionPopover={[OptimizerPopverComponent]}
+                resizable={true}
               />
             </Flex>
           </AccordionSection>

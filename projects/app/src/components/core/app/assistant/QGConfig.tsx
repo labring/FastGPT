@@ -22,8 +22,9 @@ const QGConfig = ({
   return (
     <Flex>
       <Flex minW={'120px'} alignItems={'center'}>
-        <FormLabel color={'myGray.900'}>{t('common:core.app.Question Guide')}</FormLabel>
-        <ChatFunctionTip type={'nextQuestion'} />
+        <FormLabel fontSize={'12px'} color={'myGray.900'}>
+          {t('common:core.app.Question Guide')}
+        </FormLabel>
       </Flex>
       <Switch
         isChecked={isOpenQG}

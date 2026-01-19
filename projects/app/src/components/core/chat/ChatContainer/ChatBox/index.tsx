@@ -1021,6 +1021,7 @@ const ChatBox = ({
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
+                      hideCiteIcon={isAssistantType}
                       {...{
                         showVoiceIcon,
                         statusBoxData,
