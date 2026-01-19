@@ -44,8 +44,8 @@ export const COMPRESSION_CONFIG = {
    * - 再 1 轮 = 60k (60%) ⚠️ 触发压缩 → 30k
    * - 预留：55k - 30k = 25k（还能跑 4 轮）
    */
-  MESSAGE_THRESHOLD: 0.8, // 55% 触发压缩
-  MESSAGE_TARGET_RATIO: 0.5, // 压缩到 50%（即原 55% → 27.5%）
+  MESSAGE_THRESHOLD: 0.8,
+  MESSAGE_TARGET_RATIO: 0.5,
 
   /**
    * === 单个 tool response ===
@@ -59,6 +59,19 @@ export const COMPRESSION_CONFIG = {
    */
   SINGLE_TOOL_MAX: 0.5,
   SINGLE_TOOL_TARGET: 0.25,
+
+  /**
+   * === 文件读取结果压缩 ===
+   *
+   * 触发场景：文件解析工具返回的文件内容超过限制
+   * 内容特点：通常是大型文档、PDF 等文件的完整文本内容
+   *
+   * 示例（maxContext=100k）：
+   * - 文件内容 = 40k (40%) ✅ 不触发
+   * - 文件内容 = 60k (60%) ⚠️ 触发压缩 → 25k
+   */
+  FILE_READ_RESPONSE_MAX: 0.5, // 50% 触发压缩
+  FILE_READ_RESPONSE_TARGET: 0.25, // 压缩到 25%
 
   /**
    * === 分块压缩 ===
@@ -94,6 +107,12 @@ export const calculateCompressionThresholds = (maxContext: number) => {
     singleTool: {
       threshold: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_MAX),
       target: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_TARGET)
+    },
+
+    // 文件读取结果压缩阈值
+    fileReadResponse: {
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_MAX),
+      target: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_TARGET)
     },
 
     // 分块大小
