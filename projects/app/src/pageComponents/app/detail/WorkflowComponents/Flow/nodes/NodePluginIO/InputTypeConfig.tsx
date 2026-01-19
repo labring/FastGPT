@@ -485,7 +485,7 @@ const InputTypeConfig = ({
                       setValue('timeRangeStart', date);
                     }}
                     popPosition="top"
-                    timeGranularity={timeGranularity}
+                    timeGranularity={timeGranularity || 'day'}
                     maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
                   />
                 </Box>
@@ -499,7 +499,7 @@ const InputTypeConfig = ({
                       setValue('timeRangeEnd', date);
                     }}
                     popPosition="top"
-                    timeGranularity={timeGranularity}
+                    timeGranularity={timeGranularity || 'day'}
                     minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
                   />
                 </Box>
@@ -623,7 +623,7 @@ const InputTypeConfig = ({
                     setValue('defaultValue', date);
                   }}
                   popPosition="top"
-                  timeGranularity={timeGranularity}
+                  timeGranularity={timeGranularity || 'day'}
                   minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
                   maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
                 />
@@ -640,7 +640,7 @@ const InputTypeConfig = ({
                         setValue('defaultValue', [date, timeRangeEndDefault]);
                       }}
                       popPosition="top"
-                      timeGranularity={timeGranularity}
+                      timeGranularity={timeGranularity || 'day'}
                       minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
                       maxDate={
                         timeRangeEndDefault && timeRangeEnd
@@ -668,7 +668,7 @@ const InputTypeConfig = ({
                         setValue('defaultValue', [timeRangeStartDefault, date]);
                       }}
                       popPosition="top"
-                      timeGranularity={timeGranularity}
+                      timeGranularity={timeGranularity || 'day'}
                       minDate={
                         timeRangeStartDefault && timeRangeStart
                           ? new Date(
