@@ -14,7 +14,8 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { checkFileMimeType, putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { ALLOWED_DOCUMENT_MIME_TYPES } from '@fastgpt/global/common/file/constants';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -61,12 +62,20 @@ const SelectFile = React.memo(function SelectFile() {
     goToNext();
   }, [goToNext]);
 
+  const allowedMimeTypes = new Set(Object.values(ALLOWED_DOCUMENT_MIME_TYPES));
+
   const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
     async (files: SelectFileItemType[]) => {
       {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
             try {
+              await checkFileMimeType({
+                file,
+                allowedMimeTypes,
+                allowedTextFallbackMimeTypes: allowedMimeTypes
+              });
+
               const { url, key, headers, maxSize } = await getUploadDatasetFilePresignedUrl({
                 filename: file.name,
                 datasetId

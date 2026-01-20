@@ -14,8 +14,12 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
-import { getUploadFileType } from '@fastgpt/global/core/app/constants';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { defaultFileExtensionTypes, getUploadFileType } from '@fastgpt/global/core/app/constants';
+import {
+  checkFileMimeType,
+  getMimeTypeByExtensions,
+  putFileToS3
+} from '@fastgpt/web/common/file/utils';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -84,6 +88,13 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectVideo
   ]);
 
+  const allowedMimeTypes = new Set(
+    getMimeTypeByExtensions(fileType.split(',').map((item) => item.trim()))
+  );
+  const allowedTextFallbackMimeTypes = showSelectFile
+    ? new Set(getMimeTypeByExtensions(defaultFileExtensionTypes.canSelectFile))
+    : undefined;
+
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType,
     multiple: true,
@@ -116,38 +127,39 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
       // Convert files to UserInputFileItemType
       const loadFiles = await Promise.all(
-        filterFilesByMaxSize.map(
-          (file) =>
-            new Promise<UserInputFileItemType>((resolve, reject) => {
-              if (file.type.includes('image')) {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => {
-                  const item: UserInputFileItemType = {
-                    id: getNanoid(6),
-                    rawFile: file,
-                    type: ChatFileTypeEnum.image,
-                    name: file.name,
-                    icon: reader.result as string,
-                    status: 0
-                  };
-                  resolve(item);
-                };
-                reader.onerror = () => {
-                  reject(reader.error);
-                };
-              } else {
-                resolve({
+        filterFilesByMaxSize.map(async (file) => {
+          await checkFileMimeType({ file, allowedMimeTypes, allowedTextFallbackMimeTypes });
+
+          return new Promise<UserInputFileItemType>((resolve, reject) => {
+            if (file.type.includes('image')) {
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              reader.onload = () => {
+                const item: UserInputFileItemType = {
                   id: getNanoid(6),
                   rawFile: file,
-                  type: ChatFileTypeEnum.file,
+                  type: ChatFileTypeEnum.image,
                   name: file.name,
-                  icon: getFileIcon(file.name),
+                  icon: reader.result as string,
                   status: 0
-                });
-              }
-            })
-        )
+                };
+                resolve(item);
+              };
+              reader.onerror = () => {
+                reject(reader.error);
+              };
+            } else {
+              resolve({
+                id: getNanoid(6),
+                rawFile: file,
+                type: ChatFileTypeEnum.file,
+                name: file.name,
+                icon: getFileIcon(file.name),
+                status: 0
+              });
+            }
+          });
+        })
       );
 
       appendFiles(loadFiles);
