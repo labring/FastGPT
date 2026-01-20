@@ -53,9 +53,6 @@ async function parseFileToCSV(buffer: Buffer, extension: string): Promise<string
 // 验证模板格式
 function validateTemplateFormat(csvText: string): void {
   const lines = csvText.trim().split('\n');
-  if (lines.length < 2) {
-    throw new Error(i18nT('dataset:template_file_invalid'));
-  }
 
   const headerLine = lines[0];
   const headers = headerLine.split(',').map((h) => h.trim());
@@ -238,7 +235,7 @@ async function handler(
     );
 
     // 7. 创建集合并插入数据
-    await createCollectionAndInsertData({
+    const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,
@@ -262,6 +259,8 @@ async function handler(
     });
 
     return {
+      collectionId,
+      results: insertResults,
       ...(overwritten && { overwritten, deletedCollectionId })
     };
   } catch (error) {
