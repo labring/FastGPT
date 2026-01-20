@@ -501,6 +501,7 @@
   "core.dataset.error.synonymFileUnsupportedFormat": "僅支援上傳 CSV、XLSX、XLS 格式的檔案。",
   "core.dataset.error.synonymFileParseFailed": "檔案解析失敗。請檢查檔案格式和編碼。",
   "core.dataset.error.synonymTermDuplicate": "標準詞不能與同義詞相同。請檢查檔案內容。",
+  "core.dataset.error.datasetTrainingInProgress": "知識庫正在訓練中，請等待訓練完成後再操作。",
   "core.dataset.externalFile": "外部檔案庫",
   "core.dataset.file": "檔案",
   "core.dataset.folder": "目錄",
