@@ -3,6 +3,7 @@ import m from 'multer';
 import type { NextApiRequest } from 'next';
 import path from 'path';
 import fs from 'node:fs';
+import { checkFileMimeType } from '../file/utils';
 
 export const multer = {
   _storage: m.diskStorage({
@@ -56,33 +57,48 @@ export const multer = {
       const handler = this.singleStore(maxFileSize);
 
       // @ts-expect-error it can accept a NextApiRequest
-      handler(request, null, (error) => {
+      handler(request, null, async (error) => {
         if (error) {
           return reject(error);
         }
 
         // @ts-expect-error `file` will be injected by multer
-        const file = request.file as Express.Multer.File;
+        const file = request.file as Express.Multer.File | undefined;
 
         if (!file) {
           return reject(new Error('File not found'));
         }
 
-        const data = (() => {
-          if (!request.body?.data) return {};
-          try {
-            return JSON.parse(request.body.data);
-          } catch {
-            return {};
-          }
-        })();
+        try {
+          const result = await checkFileMimeType({
+            from: 'stream',
+            file: fs.createReadStream(file.path),
+            fileName: file.originalname
+          });
 
-        resolve({
-          data,
-          fileMetadata: file,
-          getBuffer: () => fs.readFileSync(file.path),
-          getReadStream: () => fs.createReadStream(file.path)
-        });
+          if (result !== file.mimetype) {
+            file.mimetype = result;
+          }
+
+          const data = (() => {
+            if (!request.body?.data) return {};
+            try {
+              return JSON.parse(request.body.data);
+            } catch {
+              return {};
+            }
+          })();
+
+          resolve({
+            data,
+            fileMetadata: file,
+            getBuffer: () => fs.readFileSync(file.path),
+            getReadStream: () => fs.createReadStream(file.path)
+          });
+        } catch (error) {
+          this.clearDiskTempFiles([file.path]);
+          return reject(error);
+        }
       });
     });
   },
@@ -101,7 +117,7 @@ export const multer = {
       const handler = this.multipleStore(maxFileSize);
 
       // @ts-expect-error it can accept a NextApiRequest
-      handler(request, null, (error) => {
+      handler(request, null, async (error) => {
         if (error) {
           return reject(error);
         }
@@ -109,7 +125,32 @@ export const multer = {
         // @ts-expect-error `files` will be injected by multer
         const files = request.files as Array<Express.Multer.File>;
 
-        if (!files || files.length === 0) {
+        const settled = await Promise.allSettled(
+          files.map(async (file) => {
+            try {
+              const result = await checkFileMimeType({
+                from: 'stream',
+                file: fs.createReadStream(file.path),
+                fileName: file.originalname
+              });
+              if (result !== file.mimetype) {
+                file.mimetype = result;
+              }
+              return file;
+            } catch (error) {
+              this.clearDiskTempFiles([file.path]);
+              throw error;
+            }
+          })
+        );
+
+        const validFiles = settled
+          .map(
+            (result) => (result.status === 'fulfilled' ? result.value : null) as Express.Multer.File
+          )
+          .filter(Boolean);
+
+        if (!validFiles || validFiles.length === 0) {
           return reject(new Error('File not found'));
         }
 
@@ -124,7 +165,7 @@ export const multer = {
 
         resolve({
           data,
-          fileMetadata: files
+          fileMetadata: validFiles
         });
       });
     });

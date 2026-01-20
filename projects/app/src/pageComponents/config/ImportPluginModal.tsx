@@ -17,7 +17,7 @@ import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { checkFileMimeType, putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error' | 'duplicate';
@@ -49,6 +49,10 @@ const ImportPluginModal = ({
 
   const uploadAndParseFile = async (file: UploadedPluginFile) => {
     try {
+      if (!file.file.name.endsWith('.pkg'))
+        throw new Error(`File type ${file.file.name} is not allowed`);
+      await checkFileMimeType({ file: file.file, allowedMimeTypes: new Set(['application/zip']) });
+
       setUploadedFiles((prev) =>
         prev.map((f) =>
           f.name === file.name ? { ...f, status: 'uploading', errorMsg: undefined } : f

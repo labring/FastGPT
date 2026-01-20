@@ -16,7 +16,7 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getUploadFileType } from '@fastgpt/global/core/app/constants';
+import { defaultFileExtensionTypes, getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -30,7 +30,11 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import {
+  checkFileMimeType,
+  getMimeTypeByExtensions,
+  putFileToS3
+} from '@fastgpt/web/common/file/utils';
 
 const FileSelector = ({
   value,
@@ -88,6 +92,12 @@ const FileSelector = ({
     canSelectCustomFileExtension,
     customFileExtensionList
   ]);
+  const allowedMimeTypes = new Set(
+    getMimeTypeByExtensions(fileType.split(',').map((item) => item.trim()))
+  );
+  const allowedTextFallbackMimeTypes = canSelectFile
+    ? new Set(getMimeTypeByExtensions(defaultFileExtensionTypes.canSelectFile))
+    : undefined;
   const maxSelectFiles = maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
   const canSelectFileAmount = maxSelectFiles - value.length;
@@ -110,6 +120,12 @@ const FileSelector = ({
           setFileUploadingCount((state) => state + 1);
 
           try {
+            await checkFileMimeType({
+              file: file.rawFile,
+              allowedMimeTypes,
+              allowedTextFallbackMimeTypes
+            });
+
             // Get Upload Post Presigned URL
             const { url, key, headers } = await getUploadChatFilePresignedUrl({
               filename: file.rawFile.name,
@@ -164,6 +180,7 @@ const FileSelector = ({
         })
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [handleChangeFiles, setFileUploadingCount, appId, chatId, outLinkAuthData]
   );
 

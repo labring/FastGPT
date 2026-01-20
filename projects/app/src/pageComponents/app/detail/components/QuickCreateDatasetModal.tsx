@@ -31,7 +31,8 @@ import FileSelector, {
   type SelectFileItemType
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
 import { useRouter } from 'next/router';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { checkFileMimeType, putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { ALLOWED_DOCUMENT_MIME_TYPES } from '@fastgpt/global/common/file/constants';
 
 const QuickCreateDatasetModal = ({
   onClose,
@@ -67,6 +68,8 @@ const QuickCreateDatasetModal = ({
     }
   });
 
+  const allowedMimeTypes = new Set(Object.values(ALLOWED_DOCUMENT_MIME_TYPES));
+
   const avatar = watch('avatar');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
@@ -81,6 +84,12 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
+            await checkFileMimeType({
+              file,
+              allowedMimeTypes,
+              allowedTextFallbackMimeTypes: allowedMimeTypes
+            });
+
             const { url, key, headers, maxSize } = await getUploadTempFilePresignedUrl({
               filename: file.name
             });
