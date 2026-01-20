@@ -144,7 +144,7 @@ export async function generateSynthesis(): Promise<any> {
               context: [text]
             },
             llmConfig: {
-              name: agentModel.name,
+              name: agentModel.model,
               base_url: agentModel.requestUrl,
               api_key: agentModel.requestAuth,
               timeout
