@@ -819,6 +819,10 @@ export async function searchDatasetDataForAssistant(
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
+      addLog.error('Reranker error', {
+        model: rerankModel?.model,
+        error: error instanceof Error ? error.message : String(error)
+      });
       usingReRank = false;
       return {
         results: [],
@@ -826,6 +830,18 @@ export async function searchDatasetDataForAssistant(
       };
     }
   })();
+
+  // 【Debug】打印 reranker 原始得分
+  if (reRankResults.length > 0) {
+    addLog.debug('Reranker original scores', {
+      count: reRankResults.length,
+      scores: reRankResults.map((item) => ({
+        id: item.id,
+        rerankScore: item.score.find((s) => s.type === SearchScoreTypeEnum.reRank)?.value,
+        rerankIndex: item.score.find((s) => s.type === SearchScoreTypeEnum.reRank)?.index
+      }))
+    });
+  }
 
   // 【步骤 9】RRF 融合：rrfSearchResult + reRankResults
   const rrfConcatResults = (() => {
@@ -840,6 +856,22 @@ export async function searchDatasetDataForAssistant(
       { k: rerankK, list: reRankResults }
     ]);
   })();
+
+  // 【Debug】打印 RRF 融合后的得分情况
+  if (reRankResults.length > 0) {
+    addLog.debug('After RRF fusion - Top 10 results with all scores', {
+      count: rrfConcatResults.length,
+      topResults: rrfConcatResults.slice(0, 10).map((item, idx) => ({
+        rank: idx + 1,
+        id: item.id,
+        scores: item.score.map((s) => ({
+          type: s.type,
+          value: s.value,
+          index: s.index
+        }))
+      }))
+    });
+  }
 
   // 【步骤 10】去重
   set = new Set<string>();

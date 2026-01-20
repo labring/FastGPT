@@ -168,6 +168,14 @@ export const datasetDataReRank = async ({
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
+  // Debug日志：打印reranker使用的query
+  addLog.debug('Dataset Rerank - Query Info', {
+    query,
+    rerankMethod,
+    rerankModel: rerankModel?.name,
+    dataCount: data.length
+  });
+
   const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
@@ -928,6 +936,10 @@ export async function searchDatasetData(
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
+      addLog.error('Reranker error', {
+        model: rerankModel?.model,
+        error: error instanceof Error ? error.message : String(error)
+      });
       usingReRank = false;
       return {
         results: [],
