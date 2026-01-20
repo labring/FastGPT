@@ -23,6 +23,8 @@ import {
   queryByNL
 } from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
 import { getDuckDBStoreConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>
@@ -61,6 +63,17 @@ async function handler(
     calculatedDynamicLimit: dynamicLimit
   });
   const databaseSearch = async (): Promise<DatabaseSearchTestResponse> => {
+    // Check if dataset has any collections (tables) before proceeding
+    const collectionCount = await MongoDatasetCollection.countDocuments({
+      teamId,
+      datasetId,
+      forbid: { $ne: true }
+    });
+
+    if (collectionCount === 0) {
+      return Promise.reject(i18nT('common:core.dataset.error.noDataTables'));
+    }
+
     const { schema, tokens: embeddingTokens } = await SearchDatabaseData({
       histories: [],
       teamId: teamId,
@@ -143,6 +156,17 @@ async function handler(
     } as DatabaseSearchTestResponse;
   };
   const structureDocumentSearch = async (): Promise<DatabaseSearchTestResponse> => {
+    // Check if dataset has any collections (files) before proceeding
+    const collectionCount = await MongoDatasetCollection.countDocuments({
+      teamId,
+      datasetId,
+      forbid: { $ne: true }
+    });
+
+    if (collectionCount === 0) {
+      return Promise.reject(i18nT('common:core.dataset.error.noFiles'));
+    }
+
     const start = Date.now();
 
     // Get metadata for all files (with value examples)
@@ -153,7 +177,7 @@ async function handler(
     });
 
     if (!metadata.tables || metadata.tables.length === 0) {
-      return Promise.reject('No files found in this structure document dataset');
+      return Promise.reject(i18nT('common:core.dataset.error.noFiles'));
     }
 
     // Prepare SQL generation request

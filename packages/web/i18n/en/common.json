@@ -1398,5 +1398,7 @@
   "core.file.error.pptParseRequiresCustomService": "PPT file parsing requires custom parse service. Please configure customPdfParse service or convert to PDF/PPTX format.",
   "core.dataset.error.collectionNameMissingExtension": "File extension cannot be removed. Please keep the original file extension.",
   "core.dataset.error.collectionNameExtensionMismatch": "File extension does not match the original. Original: {{original}}, New: {{new}}.",
+  "core.dataset.error.noDataTables": "Database knowledge base has no data tables. Please add data tables first.",
+  "core.dataset.error.noFiles": "Structured document knowledge base has no files. Please upload files first.",
   "dataset.data.deleted": "该数据已被删除"
 }

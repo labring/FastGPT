@@ -1398,5 +1398,7 @@
   "core.dataset.error.collectionNameDuplicate": "该数据集中已存在同名文件 \"{{fileName}}\"",
   "core.dataset.error.collectionNameMissingExtension": "不能去除文件后缀，请保留原文件后缀",
   "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致。原后缀：{{original}}，新后缀：{{new}}",
+  "core.dataset.error.noDataTables": "数据库知识库中没有数据表，请先添加数据表",
+  "core.dataset.error.noFiles": "文档知识库中没有文件，请先上传文件",
   "dataset.data.deleted": "该数据已被删除"
 }
