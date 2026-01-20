@@ -155,7 +155,18 @@ const HumanContentCard = React.memo(
   function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     return (
-      <Flex flexDirection={'column'} gap={4} color={'white'}>
+      <Flex
+        flexDirection={'column'}
+        gap={4}
+        color={'white'}
+        sx={{
+          a: {
+            color: 'white !important',
+            textDecoration: 'underline',
+            textDecorationColor: 'white'
+          }
+        }}
+      >
         {files.length > 0 && <FilesBlock files={files} />}
         {text && <Markdown source={text} />}
       </Flex>

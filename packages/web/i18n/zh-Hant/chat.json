@@ -160,5 +160,6 @@
   "vector_search": "向量檢索：",
   "combined_score": "綜合分數：",
   "rerank_score": "重排分數：",
-  "recall_rank": "召回排名："
+  "recall_rank": "召回排名：",
+  "run_preview": "運行預覽"
 }

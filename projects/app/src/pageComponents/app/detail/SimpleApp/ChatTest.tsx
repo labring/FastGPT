@@ -67,9 +67,15 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
         boxShadow={'3'}
       >
         <Flex px={[2, 5]} pb={2}>
-          <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
-            {t('app:chat_debug')}
-          </Box>
+          {isAssistantType ? (
+            <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'} mr={3}>
+              {t('chat:run_preview')}
+            </Box>
+          ) : (
+            <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
+              {t('app:chat_debug')}
+            </Box>
+          )}
           {!isVariableVisible && !isAssistantType && <VariablePopover showExternalVariables />}
           <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
