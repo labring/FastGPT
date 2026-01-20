@@ -180,7 +180,8 @@ const ChatBox = ({
     chatBoxData?.appId === appId &&
     (chatStartedWatch ||
       chatRecords.length > 0 ||
-      [...variableList, ...externalVariableList].length === 0);
+      [...variableList, ...externalVariableList].length === 0 ||
+      isAssistantType);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
