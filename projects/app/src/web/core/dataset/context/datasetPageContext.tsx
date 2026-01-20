@@ -194,7 +194,7 @@ export const DatasetPageContextProvider = ({
       }),
     {
       manual: false,
-      refreshDeps: [datasetDetail.parentId]
+      refreshDeps: [datasetDetail.parentId, datasetDetail.name]
     }
   );
 

@@ -1,7 +1,7 @@
 export const fileImgs = [
-  { suffix: 'pdf', src: 'file/fill/pdf' },
+  { suffix: 'pdf', src: 'file/pdf' },
   { suffix: 'ppt', src: 'file/fill/ppt' },
-  { suffix: 'xlsx', src: 'file/fill/xlsx' },
+  { suffix: '(xls|xlsx)', src: 'file/fill/xlsx' },
   { suffix: 'csv', src: 'file/fill/csv' },
   { suffix: '(doc|docs)', src: 'file/fill/doc' },
   { suffix: 'txt', src: 'file/fill/txt' },
