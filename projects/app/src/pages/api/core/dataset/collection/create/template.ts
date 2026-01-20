@@ -21,6 +21,7 @@ export type EnhanceConfig = {
   autoIndexes?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
+  syntheticIndex?: boolean;
   hypeIndexPrompt?: string;
   smll2bigConfig?: small2bigConfigType;
   autoIndexesPrompt?: string;
