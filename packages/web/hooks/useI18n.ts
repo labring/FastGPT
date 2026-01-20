@@ -41,7 +41,7 @@ export const useI18nLng = () => {
   };
 
   const onChangeLng = async (lng: string) => {
-    const lang = languageMap[lng] || 'en';
+    const lang = languageMap[lng] || 'zh-CN';
     const prevLang = getLang();
 
     if (prevLang === lang) {
@@ -71,7 +71,7 @@ export const useI18nLng = () => {
 
     if (getLang() && !forceGetDefaultLng) return onChangeLng(getLang() as string);
 
-    const lang = languageMap[navigator.language] || 'en';
+    const lang = languageMap[navigator.language] || 'zh-CN';
 
     // currentLng not in userLang
     return onChangeLng(lang);
