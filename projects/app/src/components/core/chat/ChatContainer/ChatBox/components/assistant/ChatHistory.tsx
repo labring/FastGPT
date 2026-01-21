@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
@@ -59,6 +59,11 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
     correctionId: undefined
   });
 
+  // 去除文本开头的换行符
+  const trimLeadingNewlines = useCallback((text: string) => {
+    return text.replace(/^\n+/, '');
+  }, []);
+
   // 获取问题和答案的函数
   const getQuestionAndAnswer = useCallback(
     (currentItem: ChatItemType) => {
@@ -87,18 +92,20 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
 
       const { question, rawAnswer } = getQuestionAndAnswer(currentItem);
 
+      const cleanedRawAnswer = trimLeadingNewlines(removeDatasetCiteText(rawAnswer, false));
+
       setCorrectionModalData({
         isOpen: true,
         dataId,
         defaultCorrectionData: {
           question,
-          rawAnswer: removeDatasetCiteText(rawAnswer, false),
-          correctedAnswer: removeDatasetCiteText(rawAnswer, false)
+          rawAnswer: cleanedRawAnswer,
+          correctedAnswer: cleanedRawAnswer
         },
         correctionId: currentItem.correctionId
       });
     },
-    [chatRecords, getQuestionAndAnswer]
+    [chatRecords, getQuestionAndAnswer, trimLeadingNewlines]
   );
 
   // 关闭纠错弹窗
