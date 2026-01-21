@@ -12,6 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { getDefaultEmbeddingModel } from '@fastgpt/service/core/ai/model';
 
 async function handler(
   req: ApiRequestProps<SubmitChatCorrectionParams>,
@@ -40,12 +41,13 @@ async function handler(
   const app = await MongoApp.findById(appId, 'modules').lean();
   if (!app) return Promise.reject(AppErrEnum.unExist);
 
-  const modelName: string =
+  const configuredModel =
     app.modules
       ?.find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
       ?.inputs?.find((item) => item.key === NodeInputKeyEnum.datasetSelectList)
-      ?.value?.find((v: { vectorModel?: { name: string } }) => v.vectorModel)?.vectorModel.name ??
-    '';
+      ?.value?.find((v: { vectorModel?: { name: string } }) => v.vectorModel)?.vectorModel.name;
+
+  const modelName = configuredModel || getDefaultEmbeddingModel().name;
 
   addLog.debug(`used model for correction: ${modelName}`);
 
