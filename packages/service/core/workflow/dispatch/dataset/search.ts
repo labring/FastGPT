@@ -41,6 +41,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
+import { MongoDatasetCollection } from '../../../dataset/collection/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { addLog } from '../../../../common/system/log';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
@@ -285,6 +286,21 @@ export async function dispatchDatasetSearch(
           const datasetDetail = datasetDetails.find((d) => String(d?._id) === datasetId);
           const datasetType = datasetDetail?.type;
 
+          // Check if dataset has any collections (tables/files) before proceeding
+          const collectionCount = await MongoDatasetCollection.countDocuments({
+            teamId,
+            datasetId,
+            forbid: { $ne: true }
+          });
+
+          if (collectionCount === 0) {
+            addLog.warn('Dataset Search - No collections found, skipping', {
+              datasetId,
+              datasetType
+            });
+            return; // Skip this dataset
+          }
+
           // Common SQL generation config
           const key = sqlLLM.requestAuth || undefined;
           const url = sqlLLM.requestUrl?.replace(/(chat\/completions.*)$/, '') || undefined;
@@ -324,7 +340,9 @@ export async function dispatchDatasetSearch(
                   }
                 });
               } else {
-                addLog.warn('Dataset Search - No schema found', { datasetId });
+                addLog.warn('Dataset Search - No schema found, skipping SQL generation', {
+                  datasetId
+                });
               }
             } else {
               addLog.warn('Dataset Search - Database search failed', { datasetId });
@@ -352,7 +370,9 @@ export async function dispatchDatasetSearch(
                   retrieved_metadata: metadata
                 });
               } else {
-                addLog.warn('Dataset Search - No table metadata found', { datasetId });
+                addLog.warn('Dataset Search - No table metadata found, skipping SQL generation', {
+                  datasetId
+                });
               }
             } catch (error) {
               addLog.error('Dataset Search - Structure document search failed', {

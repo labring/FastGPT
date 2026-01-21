@@ -1401,5 +1401,7 @@
   "core.dataset.error.collectionNameDuplicate": "該資料集中已存在同名檔案 \"{{fileName}}\"",
   "core.dataset.error.collectionNameMissingExtension": "不能去除檔案副檔名，請保留原檔案副檔名",
   "core.dataset.error.collectionNameExtensionMismatch": "檔案副檔名與原檔案不一致。原副檔名：{{original}}，新副檔名：{{new}}",
+  "core.dataset.error.noDataTables": "資料庫知識庫中沒有資料表，請先新增資料表",
+  "core.dataset.error.noFiles": "文件知識庫中沒有文件，請先上傳文件",
   "dataset.data.deleted": "該數據已被刪除"
 }
