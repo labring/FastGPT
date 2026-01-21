@@ -44,9 +44,12 @@ export class S3DatasetSource extends S3PrivateBucket {
 
   // 上传链接
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
-    const { filename, datasetId } = CreateUploadDatasetFileParamsSchema.parse(params);
+    const { filename, datasetId, maxFileSize } = CreateUploadDatasetFileParamsSchema.parse(params);
     const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
-    return await this.createPresignedPutUrl({ rawKey: fileKey, filename }, { expiredHours: 3 });
+    return await this.createPresignedPutUrl(
+      { rawKey: fileKey, filename },
+      { expiredHours: 3, maxFileSize }
+    );
   }
 
   // 单个键删除

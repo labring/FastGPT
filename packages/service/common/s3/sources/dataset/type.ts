@@ -4,7 +4,8 @@ import { z } from 'zod';
 
 export const CreateUploadDatasetFileParamsSchema = z.object({
   filename: z.string().nonempty(),
-  datasetId: ObjectIdSchema
+  datasetId: ObjectIdSchema,
+  maxFileSize: z.number().positive().optional()
 });
 export type CreateUploadDatasetFileParams = z.infer<typeof CreateUploadDatasetFileParamsSchema>;
 
