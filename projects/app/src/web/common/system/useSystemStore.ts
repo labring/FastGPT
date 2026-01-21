@@ -146,7 +146,10 @@ export const useSystemStore = create<State>()(
         },
 
         initDataBufferId: undefined,
-        feConfigs: {},
+        feConfigs: {
+          uploadFileMaxSize: 1000,
+          uploadFileMaxAmount: 1000
+        },
         subPlans: undefined,
         systemVersion: '0.0.0',
 

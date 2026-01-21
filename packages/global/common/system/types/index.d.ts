@@ -113,8 +113,8 @@ export type FastGPTFeConfigsType = {
     websiteSyncLimitMinuted?: number;
   };
 
-  uploadFileMaxAmount?: number;
-  uploadFileMaxSize?: number;
+  uploadFileMaxAmount: number;
+  uploadFileMaxSize: number; // MB
   evalFileMaxLines?: number;
 
   // Compute by systemEnv.customPdfParse

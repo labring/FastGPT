@@ -98,7 +98,6 @@ const TemplateImportModal = ({
 
           <FileSelector
             maxCount={1}
-            maxSize="100MB"
             fileType=".csv"
             selectFiles={selectFiles}
             setSelectFiles={setSelectFiles}
