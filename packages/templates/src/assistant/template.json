@@ -279,7 +279,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
-            "value": false,
+            "value": true,
             "debugLabel": "",
             "toolDescription": ""
           },
