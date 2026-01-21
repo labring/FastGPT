@@ -292,6 +292,8 @@
   "dataset_index_max_process": "知識庫索引最大處理進程",
   "file_understanding_max_process": "文件理解模型最大處理進程",
   "image_understanding_max_process": "圖片理解模型最大處理進程",
+  "dataset_sql_result_limit": "資料庫SQL查詢結果數量限制",
+  "dataset_sql_result_limit_desc": "資料庫SQL查詢傳回的最大結果數量（預設：100）",
   "hnsw_ef_search": "HNSW ef_search",
   "hnsw_ef_search_desc": "HNSW 參數。越大召回率越高，性能越差，默認為 100，具體可見：https://github.com/pgvector/pgvector",
   "hnsw_max_scan_tuples": "HNSW max_scan_tuples",

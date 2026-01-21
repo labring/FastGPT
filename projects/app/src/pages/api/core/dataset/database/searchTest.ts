@@ -11,7 +11,10 @@ import {
   generateAndExecuteSQL,
   SearchDatabaseData
 } from '@fastgpt/service/core/dataset/search/controller';
-import { calculateDynamicLimit } from '@fastgpt/service/core/dataset/search/utils';
+import {
+  calculateDynamicLimit,
+  getDatasetSqlResultLimit
+} from '@fastgpt/service/core/dataset/search/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -95,7 +98,7 @@ async function handler(
       query: query,
       schema: schema,
       teamId,
-      limit: 50,
+      limit: getDatasetSqlResultLimit(),
       generate_sql_llm: {
         model: sqlLLM.model,
         api_key: key,
@@ -198,7 +201,7 @@ async function handler(
         base_url: url
       },
       query,
-      result_num_limit: 50,
+      result_num_limit: getDatasetSqlResultLimit(),
       retrieved_metadata: metadata
     });
     addLog.debug(JSON.stringify(result, null, 2));

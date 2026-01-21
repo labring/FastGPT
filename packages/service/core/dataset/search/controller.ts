@@ -36,7 +36,7 @@ import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { datasetSearchQueryExtension } from './utils';
+import { datasetSearchQueryExtension, getDatasetSqlResultLimit } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import {
@@ -1487,7 +1487,7 @@ export const generateAndExecuteSQL = async ({
   query,
   schema,
   teamId,
-  limit = 50,
+  limit,
   generate_sql_llm,
   evaluate_sql_llm
 }: {
@@ -1508,6 +1508,9 @@ export const generateAndExecuteSQL = async ({
     };
   };
 }): Promise<SqlGenerationResponse | null> => {
+  // Handle default limit value
+  const resultLimit = limit ?? getDatasetSqlResultLimit();
+
   // Get dataset and database config
   const dataset = await MongoDataset.findById(datasetId).lean();
   if (!dataset?.databaseConfig) {
@@ -1608,7 +1611,7 @@ export const generateAndExecuteSQL = async ({
     generate_sql_llm,
     evaluate_sql_llm,
     query,
-    result_num_limit: limit,
+    result_num_limit: resultLimit,
     retrieved_metadata: {
       name: dbConfig.database, // DatabaseName
       comments: '',

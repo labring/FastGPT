@@ -111,6 +111,20 @@ export const datasetSearchQueryExtension = async ({
   };
 };
 
+// Get dataset SQL result limit from config or environment variable
+export const getDatasetSqlResultLimit = (): number => {
+  const configLimit = global.systemEnv?.datasetSqlResultLimit;
+  if (configLimit !== undefined) return configLimit;
+
+  const envLimit = process.env.DATASET_SQL_RESULT_LIMIT;
+  if (envLimit) {
+    const parsed = Number(envLimit);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+
+  return 100; // Default
+};
+
 // Calculate dynamic limit based on LLM model's max context and safety factor
 export const calculateDynamicLimit = ({
   generateSqlModel,

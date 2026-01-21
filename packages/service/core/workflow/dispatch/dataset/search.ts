@@ -31,7 +31,7 @@ import {
   getMetadataWithValueExamples,
   queryByNL
 } from '../../../dataset/database/dative/client/dativeApiServer';
-import { calculateDynamicLimit } from '../../../dataset/search/utils';
+import { calculateDynamicLimit, getDatasetSqlResultLimit } from '../../../dataset/search/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -327,7 +327,7 @@ export async function dispatchDatasetSearch(
                   query: userChatInput,
                   schema: singleResult.schema,
                   teamId,
-                  limit,
+                  limit: getDatasetSqlResultLimit(),
                   generate_sql_llm: {
                     model: sqlLLM.model,
                     api_key: key,
@@ -366,7 +366,7 @@ export async function dispatchDatasetSearch(
                     base_url: url
                   },
                   query: userChatInput,
-                  result_num_limit: 50,
+                  result_num_limit: getDatasetSqlResultLimit(),
                   retrieved_metadata: metadata
                 });
               } else {

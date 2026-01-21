@@ -292,6 +292,8 @@
   "dataset_index_max_process": "知识库索引最大处理进程",
   "file_understanding_max_process": "文件理解模型最大处理进程",
   "image_understanding_max_process": "图片理解模型最大处理进程",
+  "dataset_sql_result_limit": "数据库SQL查询结果数量限制",
+  "dataset_sql_result_limit_desc": "数据库SQL查询返回的最大结果数量（默认：100）",
   "hnsw_ef_search": "HNSW ef_search",
   "hnsw_ef_search_desc": "HNSW 参数。越大召回率越高，性能越差，默认为 100，具体可见：https://github.com/pgvector/pgvector",
   "hnsw_max_scan_tuples": "HNSW max_scan_tuples",
