@@ -97,7 +97,7 @@ async function handler(
     selector,
     externalFileId,
     customPdfParse,
-    apiDatasetServer: dataset.apiDatasetServer,
+    pluginDatasetServer: dataset.pluginDatasetServer,
     datasetId
   });
 

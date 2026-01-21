@@ -129,7 +129,17 @@ const DatasetSchema = new Schema({
     default: true
   },
 
-  apiDatasetServer: Object,
+  pluginDatasetServer: {
+    type: {
+      pluginId: {
+        type: String,
+        required: true
+      },
+      config: {
+        type: Schema.Types.Mixed
+      }
+    }
+  },
 
   // 软删除标记字段
   deleteTime: {

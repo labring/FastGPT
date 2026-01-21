@@ -83,6 +83,7 @@ import type {
   DatasetCreateWithFilesBody,
   DatasetCreateWithFilesResponse
 } from '@/pages/api/core/dataset/createWithFiles';
+import type { GetPluginDatasetConfigResponse } from '@/pages/api/core/dataset/pluginDataset/getConfig';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -316,3 +317,7 @@ export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
 
 export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
   POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);
+
+/* ================== pluginDataset ======================== */
+export const getPluginDatasetSourceConfig = (sourceId: string) =>
+  GET<GetPluginDatasetConfigResponse>('/core/dataset/pluginDataset/getConfig', { sourceId });

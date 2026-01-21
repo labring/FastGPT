@@ -10,7 +10,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -38,20 +38,31 @@ const CreateModal = ({
   parentId?: string;
   type: CreateDatasetType;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
+  const {
+    defaultModels,
+    embeddingModelList,
+    datasetModelList,
+    getVlmModelList,
+    getDatasetTypeConfig
+  } = useSystemStore();
   const { isPc } = useSystem();
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
+  const config = useMemo(
+    () => getDatasetTypeConfig(type, t, i18n.language),
+    [type, t, i18n.language, getDatasetTypeConfig]
+  );
+
   const form = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
-      avatar: DatasetTypeMap[type].avatar,
+      avatar: config?.avatar,
       name: '',
       intro: '',
       vectorModel:
@@ -90,14 +101,8 @@ const CreateModal = ({
     <MyModal
       title={
         <Flex alignItems={'center'} ml={-3}>
-          <Avatar
-            w={'20px'}
-            h={'20px'}
-            borderRadius={'xs'}
-            src={DatasetTypeMap[type].avatar}
-            pr={'10px'}
-          />
-          {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
+          <Avatar w={'20px'} h={'20px'} borderRadius={'xs'} src={config?.avatar} pr={'10px'} />
+          {t('common:core.dataset.Create dataset', { name: config?.label })}
         </Flex>
       }
       isOpen
@@ -111,14 +116,14 @@ const CreateModal = ({
             <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
               {t('common:input_name')}
             </Box>
-            {DatasetTypeMap[type]?.courseUrl && (
+            {config?.courseUrl && (
               <Flex
                 as={'span'}
                 alignItems={'center'}
                 color={'primary.600'}
                 fontSize={'sm'}
                 cursor={'pointer'}
-                onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
+                onClick={() => window.open(getDocPath(config?.courseUrl || ''), '_blank')}
               >
                 <MyIcon name={'book'} w={4} mr={0.5} />
                 {t('common:Instructions')}

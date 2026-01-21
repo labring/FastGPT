@@ -1,19 +1,24 @@
 import { useApiDatasetRequest } from './custom/api';
-import { useYuqueDatasetRequest } from './yuqueDataset/api';
-import { useFeishuDatasetRequest } from './feishuDataset/api';
-import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { usePluginDatasetRequest } from './plugin/api';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
-export const getApiDatasetRequest = async (apiDatasetServer?: ApiDatasetServerType) => {
-  const { apiServer, yuqueServer, feishuServer } = apiDatasetServer || {};
+export const getApiDatasetRequest = async (pluginServer?: PluginDatasetServerType) => {
+  if (!pluginServer?.pluginId) {
+    return Promise.reject('Missing pluginDatasetServer');
+  }
 
-  if (apiServer) {
-    return useApiDatasetRequest({ apiServer });
+  const { pluginId, config } = pluginServer;
+
+  if (pluginId === 'custom-api') {
+    return useApiDatasetRequest({
+      apiServer: {
+        baseUrl: config.baseUrl,
+        authorization: config.authorization,
+        basePath: config.basePath
+      }
+    });
   }
-  if (yuqueServer) {
-    return useYuqueDatasetRequest({ yuqueServer });
-  }
-  if (feishuServer) {
-    return useFeishuDatasetRequest({ feishuServer });
-  }
-  return Promise.reject('Can not find api dataset server');
+
+  // 其他的统一发送到 fastgpt-plugin 处理
+  return usePluginDatasetRequest(pluginServer);
 };

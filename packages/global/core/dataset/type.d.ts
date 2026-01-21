@@ -15,10 +15,10 @@ import type {
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
-  ApiDatasetServerType,
   APIFileServer,
   FeishuServer,
-  YuqueServer
+  YuqueServer,
+  PluginDatasetServerType
 } from './apiDataset/type';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
@@ -81,7 +81,7 @@ export type DatasetSchemaType = {
 
   inheritPermission: boolean;
 
-  apiDatasetServer?: ApiDatasetServerType;
+  pluginDatasetServer?: PluginDatasetServerType;
 
   // 软删除字段
   deleteTime?: Date | null;

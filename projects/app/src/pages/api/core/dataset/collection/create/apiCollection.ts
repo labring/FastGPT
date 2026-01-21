@@ -19,7 +19,7 @@ async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionPar
   });
 
   const fileDetail = await (
-    await getApiDatasetRequest(dataset.apiDatasetServer)
+    await getApiDatasetRequest(dataset.pluginDatasetServer)
   ).getFileDetail({
     apiFileId
   });

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { postChangeOwner, resumeInheritPer } from '@/web/core/dataset/api';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -115,25 +115,13 @@ function List() {
     [DatasetTypeEnum.externalFile]: t('common:core.dataset.Delete Confirm')
   });
 
-  const formatDatasets = useMemo(
-    () =>
-      myDatasets.map((item) => {
-        return {
-          ...item,
-          label: DatasetTypeMap[item.type]?.label,
-          icon: DatasetTypeMap[item.type]?.icon
-        };
-      }),
-    [myDatasets]
-  );
-
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
 
   return (
     <>
-      {formatDatasets.length > 0 && (
+      {myDatasets.length > 0 && (
         <Grid
           py={4}
           gridTemplateColumns={
@@ -144,7 +132,7 @@ function List() {
           gridGap={5}
           alignItems={'stretch'}
         >
-          {formatDatasets.map((dataset, index) => {
+          {myDatasets.map((dataset, index) => {
             const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
 
             return (

@@ -43,6 +43,7 @@
   "common_dataset": "通用資料集",
   "common_dataset_desc": "通過導入文件、網頁鏈接或手動錄入形式構建知識庫",
   "condition": "條件",
+  "config_dataset": "配置{{dataset}}",
   "config_sync_schedule": "設定定時同步",
   "confirm_delete_collection": "確認刪除 {{num }} 個文件？",
   "confirm_import_images": "共 {{num}} 張圖片 | 確認創建",
@@ -94,9 +95,6 @@
   "external_url": "檔案存取網址",
   "failedToLoadRootDirectories": "加載根目錄失敗",
   "failedToLoadSubDirectories": "加載子目錄失敗",
-  "feishu_dataset": "飛書知識庫",
-  "feishu_dataset_config": "設定飛書知識庫",
-  "feishu_dataset_desc": "可透過設定飛書文件權限，使用飛書文件建構知識庫，文件不會進行二次儲存",
   "file_list": "文件列表",
   "file_model_function_tip": "用於增強索引和問答生成",
   "filename": "檔案名稱",
@@ -221,8 +219,5 @@
   "vlm_model_required_warning": "需要圖片理解模型",
   "website_dataset": "網站同步",
   "website_dataset_desc": "通過爬蟲，批量爬取網頁數據構建知識庫",
-  "website_info": "網站資訊",
-  "yuque_dataset": "語雀知識庫",
-  "yuque_dataset_config": "設定語雀知識庫",
-  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存"
+  "website_info": "網站資訊"
 }

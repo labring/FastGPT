@@ -37,11 +37,32 @@ export type SystemDefaultModelType = {
   [ModelTypeEnum.rerank]?: RerankModelItemType;
 };
 
+import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+
+export type PluginDatasetSourceType = {
+  sourceId: string;
+  name: I18nStringType;
+  description?: I18nStringType;
+  icon: string;
+  iconOutline?: string;
+  version?: string;
+  courseUrl?: string;
+  formFields?: Array<{
+    key: string;
+    label: I18nStringType;
+    type: 'input' | 'password' | 'select' | 'tree-select';
+    required?: boolean;
+  }>;
+};
+
 declare global {
   var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
   var aiproxyIdMapCache: AiproxyMapProviderType;
+
+  // Plugin dataset sources cache
+  var PluginDatasetSourcesCache: PluginDatasetSourceType[];
 
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;
