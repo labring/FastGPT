@@ -282,13 +282,15 @@ export async function uploadSynonymFile({
     // 说明: 此检查阻止同义词上传与任何训练任务(chunk/qa/auto/synonymStandardize/synonymRestore)并发
     // 注意: 这里不过滤 mode，因为需要阻止所有类型的训练任务，包括同义词自身的任务
     // 配合 pushDataListToTrainingQueue 中的检查，保证双向互斥
+    // 只检查 retryCount > 0 的任务，因为 retryCount 为 0 的任务不会再被处理
     const hasTrainingTask = await MongoDatasetTraining.exists({
       teamId: new Types.ObjectId(teamId),
-      datasetId: new Types.ObjectId(datasetId)
+      datasetId: new Types.ObjectId(datasetId),
+      retryCount: { $gt: 0 }
     });
 
     if (hasTrainingTask) {
-      throw new Error('知识库正在训练中,请等待训练完成后再上传同义词文件');
+      throw new Error(DatasetErrEnum.datasetTrainingInProgress);
     }
 
     // 1. 检查该知识库是否已有同义词文件
@@ -349,7 +351,7 @@ export async function uploadSynonymFile({
     // 5. 获取知识库信息（用于创建billId）
     const dataset = await MongoDataset.findById(datasetId).select('vectorModel').lean();
     if (!dataset) {
-      throw new Error('知识库不存在');
+      throw new Error(DatasetErrEnum.unExist);
     }
 
     // 6. 创建 billId (用于费用追踪)
@@ -543,13 +545,15 @@ export async function deleteSynonymFile({
 }): Promise<void> {
   // ✅ 双向互斥检查: 同义词删除入口检查是否有任何训练任务
   // 说明: 同 uploadSynonymFile，阻止删除操作与任何训练任务并发
+  // 只检查 retryCount > 0 的任务，因为 retryCount 为 0 的任务不会再被处理
   const hasTrainingTask = await MongoDatasetTraining.exists({
     teamId: new Types.ObjectId(teamId),
-    datasetId: new Types.ObjectId(datasetId)
+    datasetId: new Types.ObjectId(datasetId),
+    retryCount: { $gt: 0 }
   });
 
   if (hasTrainingTask) {
-    throw new Error('知识库正在训练中,请等待训练完成后再删除同义词文件');
+    throw new Error(DatasetErrEnum.datasetTrainingInProgress);
   }
 
   // 1. 查找同义词文件记录
@@ -566,7 +570,7 @@ export async function deleteSynonymFile({
   // 2. 获取知识库信息（用于创建billId）
   const dataset = await MongoDataset.findById(datasetId).select('vectorModel').lean();
   if (!dataset) {
-    throw new Error('知识库不存在');
+    throw new Error(DatasetErrEnum.unExist);
   }
 
   // 3. 创建 billId (用于费用追踪)
@@ -719,13 +723,15 @@ export async function updateSynonymFile({
 }): Promise<DatasetSynonymSchemaType> {
   // ✅ 双向互斥检查: 同义词更新入口检查是否有任何训练任务
   // 说明: 同 uploadSynonymFile，阻止更新操作与任何训练任务并发
+  // 只检查 retryCount > 0 的任务，因为 retryCount 为 0 的任务不会再被处理
   const hasTrainingTask = await MongoDatasetTraining.exists({
     teamId: new Types.ObjectId(teamId),
-    datasetId: new Types.ObjectId(datasetId)
+    datasetId: new Types.ObjectId(datasetId),
+    retryCount: { $gt: 0 }
   });
 
   if (hasTrainingTask) {
-    throw new Error('知识库正在训练中,请等待训练完成后再更新同义词文件');
+    throw new Error(DatasetErrEnum.datasetTrainingInProgress);
   }
 
   // 1. 先调用删除流程,恢复所有数据

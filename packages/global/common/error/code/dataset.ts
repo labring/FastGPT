@@ -26,6 +26,7 @@ export enum DatasetErrEnum {
   synonymFileUnsupportedFormat = 'synonymFileUnsupportedFormat',
   synonymFileParseFailed = 'synonymFileParseFailed',
   synonymTermDuplicate = 'synonymTermDuplicate',
+  datasetTrainingInProgress = 'datasetTrainingInProgress',
   // Collection name validation errors
   collectionNameDuplicate = 'collectionNameDuplicate',
   collectionNameMissingExtension = 'collectionNameMissingExtension',
@@ -113,6 +114,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.synonymTermDuplicate,
     message: i18nT('common:core.dataset.error.synonymTermDuplicate')
+  },
+  {
+    statusText: DatasetErrEnum.datasetTrainingInProgress,
+    message: i18nT('common:core.dataset.error.datasetTrainingInProgress')
   },
   {
     statusText: DatasetErrEnum.collectionNameDuplicate,

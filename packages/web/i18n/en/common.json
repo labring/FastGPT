@@ -503,6 +503,7 @@
   "core.dataset.error.synonymFileUnsupportedFormat": "Only CSV, XLSX, and XLS format files are supported for upload.",
   "core.dataset.error.synonymFileParseFailed": "Failed to parse file. Please check the file format and encoding.",
   "core.dataset.error.synonymTermDuplicate": "Standard term cannot be the same as synonym term. Please check the file content.",
+  "core.dataset.error.datasetTrainingInProgress": "The knowledge base is currently training. Please wait for the training to complete before proceeding.",
   "core.dataset.error.collectionNameDuplicate": "A file with the same name \"{{fileName}}\" already exists in this dataset.",
   "core.dataset.externalFile": "External file database",
   "core.dataset.file": "File",
