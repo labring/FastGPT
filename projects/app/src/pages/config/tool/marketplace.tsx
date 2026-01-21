@@ -13,6 +13,7 @@ import { useDebounce, useMount, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
+import BatchUpdateDrawer from '@fastgpt/web/components/core/plugin/tool/BatchUpdateDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
@@ -20,8 +21,10 @@ import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
   getMarketPlaceToolTags,
   getMarketplaceDownloadURL,
+  getMarketplaceDownloadURLs,
   getMarketplaceToolDetail,
   getMarketplaceTools,
+  getMarketplaceToolVersions,
   getSystemInstalledPlugins
 } from '@/web/core/plugin/marketplace/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -74,6 +77,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
   const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
+
+  const [showBatchUpdateDrawer, setShowBatchUpdateDrawer] = useState(false);
+  const [batchUpdatingToolIds, batchUpdatingToolIdsDispatch] = useSet<string>();
 
   // Type filter
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
@@ -138,7 +144,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       const { list } = await getSystemInstalledPlugins({ type: 'tool' });
       return {
         ids: new Set(list.map((item) => item.id)),
-        map: new Map(list.map((item) => [item.id, item]))
+        map: new Map(list.map((item) => [item.id, item])),
+        list: list
       };
     },
     {
@@ -147,6 +154,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   );
 
   const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
+    manual: false
+  });
+
+  const { data: marketplaceVersions } = useRequest2(getMarketplaceToolVersions, {
     manual: false
   });
 
@@ -260,6 +271,36 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
+  const handleBatchUpdate = useCallback(
+    async (toolIds: string[]) => {
+      if (toolIds.length === 0) return;
+
+      // Mark all tools as updating
+      toolIds.forEach((id) => batchUpdatingToolIdsDispatch.add(id));
+
+      try {
+        // 1. Batch get download URLs
+        const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
+
+        // 2. Batch install (update)
+        await intallPluginWithUrl({ downloadUrls });
+
+        // 3. Refresh installed plugins list
+        await refreshInstalledPlugins();
+
+        // 4. Close Drawer
+        setShowBatchUpdateDrawer(false);
+      } catch (error) {
+        // Error handling by useRequest2
+        throw error;
+      } finally {
+        // Clear updating status
+        toolIds.forEach((id) => batchUpdatingToolIdsDispatch.remove(id));
+      }
+    },
+    [batchUpdatingToolIdsDispatch, refreshInstalledPlugins]
+  );
+
   const heroSectionRef = useRef<HTMLDivElement>(null);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   useEffect(() => {
@@ -313,6 +354,43 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         }) || []
     );
   }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins]);
+
+  // Calculate updatable tools based on full version data from marketplace
+  const updatableTools = useMemo(() => {
+    if (!systemInstalledPlugins || !marketplaceVersions) return [];
+
+    // Create a map for quick lookup of marketplace versions
+    const marketplaceVersionMap = new Map(
+      marketplaceVersions.map((item) => [item.toolId, item.version])
+    );
+
+    // Filter installed plugins that have updates available
+    const updatableList = systemInstalledPlugins.list
+      .filter((installedPlugin) => {
+        const marketplaceVersion = marketplaceVersionMap.get(installedPlugin.id);
+        return marketplaceVersion && marketplaceVersion !== installedPlugin.version;
+      })
+      .map((installedPlugin) => {
+        // Use system installed plugin info directly
+        return {
+          id: installedPlugin.id,
+          name: parseI18nString(installedPlugin.name || installedPlugin.id, i18n.language),
+          description: parseI18nString(installedPlugin.description || '', i18n.language),
+          icon: installedPlugin.icon || '',
+          author: installedPlugin.author || '',
+          tags:
+            installedPlugin.tags?.map((tag: string) => {
+              const currentTag = allTags.find((t) => t.tagId === tag);
+              return parseI18nString(currentTag?.tagName || tag, i18n.language);
+            }) || [],
+          installed: true,
+          update: true,
+          downloadCount: 0
+        };
+      });
+
+    return updatableList;
+  }, [systemInstalledPlugins, marketplaceVersions, i18n.language, allTags]);
 
   if (toolsError && !loadingTools) {
     return (
@@ -381,6 +459,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           />
           {!showCompactSearch && (
             <Flex gap={3} position={'absolute'} right={4} top={4}>
+              {updatableTools.length > 0 && (
+                <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
+                  {t('app:toolkit_updatable')} ({updatableTools.length})
+                </Button>
+              )}
               {feConfigs?.docUrl && (
                 <Button
                   onClick={() => {
@@ -654,6 +737,17 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"
           //@ts-ignore
+          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+        />
+      )}
+
+      {showBatchUpdateDrawer && (
+        <BatchUpdateDrawer
+          isOpen={showBatchUpdateDrawer}
+          onClose={() => setShowBatchUpdateDrawer(false)}
+          updatableTools={updatableTools}
+          onBatchUpdate={handleBatchUpdate}
+          isBatchUpdating={batchUpdatingToolIds.size > 0}
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />
       )}
