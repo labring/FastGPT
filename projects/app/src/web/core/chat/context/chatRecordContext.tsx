@@ -2,7 +2,7 @@ import { type getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginati
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import React, { type ReactNode, useMemo, useState } from 'react';
+import React, { type ReactNode, useMemo, useState, useEffect } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from './chatItemContext';
 import { getChatRecords } from '../api';
@@ -76,6 +76,7 @@ const ChatRecordContextProvider = ({
   const [badTotal, setBadTotal] = useState(0);
   const [notFoundTotal, setNotFoundTotal] = useState(0);
   const [lastTotalCount, setLastTotalCount] = useState(0);
+  const [lastChatId, setLastChatId] = useState(params.chatId);
 
   const requestParams = useMemo(
     () => ({
@@ -84,6 +85,14 @@ const ChatRecordContextProvider = ({
     }),
     [params, chatLogsFilter]
   );
+
+  // Reset lastTotalCount when chatId changes to ensure new chat shows correct count
+  useEffect(() => {
+    if (params.chatId !== lastChatId) {
+      setLastTotalCount(0);
+      setLastChatId(params.chatId);
+    }
+  }, [params.chatId, lastChatId]);
 
   const {
     data: chatRecords,
