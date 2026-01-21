@@ -54,7 +54,8 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
 
   // 获取改写耗时
   const rewriteTime = useMemo(() => {
-    return data?.queryExtensionResult?.rewriteTime || 0;
+    const time = data?.queryExtensionResult?.rewriteTime || 0;
+    return Number(time.toFixed(2));
   }, [data]);
 
   // 处理复制操作
@@ -161,7 +162,7 @@ const KnowledgeRecallNode = ({
   const recallTime = useMemo(() => {
     const retrievalTime = data?.retrievalTime || 0;
     const sqlRetrievalTime = data?.sqlRetrievalTime || 0;
-    return retrievalTime + sqlRetrievalTime;
+    return Number((retrievalTime + sqlRetrievalTime).toFixed(2));
   }, [data]);
 
   // 合并数据：以 rawRetrievalResults 的顺序为主，遍历它并在 retrievalResultsList 中找到对应数据合并
@@ -328,7 +329,8 @@ const KnowledgeRerankNode = ({
 
   // 获取重排耗时
   const rerankTime = useMemo(() => {
-    return data?.rerankTime || 0;
+    const time = data?.rerankTime || 0;
+    return Number(time.toFixed(2));
   }, [data]);
 
   // 合并数据：以 rawQuoteList 的顺序为主，遍历它并在 quoteList 中找到对应数据合并
@@ -661,9 +663,11 @@ const ChatDetailModal = ({
     const nodesAfterDatasetSearch = workflowNodes.slice(datasetSearchNodeIndex + 1);
 
     // 计算这些节点的 runningTime 总和
-    return nodesAfterDatasetSearch.reduce((total, node) => {
+    const totalTime = nodesAfterDatasetSearch.reduce((total, node) => {
       return total + (node.runningTime || 0);
     }, 0);
+
+    return Number(totalTime.toFixed(2));
   }, [workflowNodes]);
 
   // 通过 API 获取知识召回的完整数据（包含 q、a 等字段）

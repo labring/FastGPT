@@ -140,7 +140,7 @@ const FileDataCard = () => {
           <Box flex={1} mr={1} />
         </Flex>
         <TableContainer overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-          <Table variant={'simple'} draggable={false}>
+          <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%' }}>
             <Thead draggable={false}>
               <Tr color={'myGray.600'}>
                 {tableData.cols.map((col: string, index: number) => (
@@ -148,13 +148,11 @@ const FileDataCard = () => {
                     bg="myGray.100"
                     borderLeftRadius={index === 0 ? 'md' : ''}
                     borderRightRadius={index === tableData.cols.length - 1 ? 'md' : ''}
-                    maxW={'150px'}
                     key={index}
+                    w={`${100 / tableData.cols.length}%`}
                   >
                     <MyTooltip label={col || ''} shouldWrapChildren={false}>
-                      <Text className={'textEllipsis'} maxW={'120px'}>
-                        {col}
-                      </Text>
+                      <Text className={'textEllipsis'}>{col}</Text>
                     </MyTooltip>
                   </Th>
                 ))}
@@ -164,11 +162,9 @@ const FileDataCard = () => {
               {tableData.rows.map((row: any[], rowIndex: number) => (
                 <Tr key={rowIndex} _hover={{ bg: 'myGray.50' }}>
                   {row.map((cell: any, cellIndex: number) => (
-                    <Td key={cellIndex} py={4} maxW={'150px'}>
+                    <Td key={cellIndex} py={4}>
                       <MyTooltip label={cell || ''} shouldWrapChildren={false}>
-                        <Text className={'textEllipsis'} maxW={'120px'}>
-                          {cell || '-'}
-                        </Text>
+                        <Text className={'textEllipsis'}>{cell || '-'}</Text>
                       </MyTooltip>
                     </Td>
                   ))}
