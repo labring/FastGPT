@@ -11,6 +11,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type {
   GetResourceFolderListProps,
   GetResourceListItemResponse
@@ -526,8 +527,10 @@ const SliderApps = ({ apps, activeAppId }: Props) => {
                   })}
             >
               <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
-              <Box ml={2} className={'textEllipsis'}>
-                {item.name}
+              <Box ml={2} flex={'1 0 0'} w={0} className={'textEllipsis'}>
+                <MyTooltip label={item.name} shouldWrapChildren={false}>
+                  <Box className="textEllipsis">{item.name}</Box>
+                </MyTooltip>
               </Box>
             </Flex>
           ))}

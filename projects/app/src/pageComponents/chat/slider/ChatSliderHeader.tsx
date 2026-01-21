@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
@@ -48,7 +49,9 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
         color={title ? 'myGray.900' : 'inherit'}
         className={'textEllipsis'}
       >
-        {title || appName}
+        <MyTooltip label={title || appName} shouldWrapChildren={false}>
+          <Box className="textEllipsis">{title || appName}</Box>
+        </MyTooltip>
       </Box>
     </Flex>
   ) : (

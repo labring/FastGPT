@@ -132,9 +132,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <Flex mb={2} alignItems={'center'}>
           <Avatar src={datasetDetail.avatar} w={'20px'} h={'20px'} borderRadius={'xs'} />
           <Box ml={1.5}>
-            <Box fontWeight={'bold'} color={'myGray.900'}>
-              {datasetDetail.name}
-            </Box>
+            <MyTooltip label={datasetDetail.name}>
+              <Box
+                fontWeight={'bold'}
+                color={'myGray.900'}
+                className={'textEllipsis'}
+                maxW={'180px'}
+              >
+                {datasetDetail.name}
+              </Box>
+            </MyTooltip>
           </Box>
           <MyIcon
             pl={1.5}
@@ -157,19 +164,21 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <DatasetTypeTag type={datasetDetail.type} />
           </Flex>
         )}
-        <Box
-          flex={1}
-          className={'textEllipsis3'}
-          pt={3}
-          wordBreak={'break-all'}
-          fontSize={'xs'}
-          color={'myGray.500'}
-        >
-          {datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
-        </Box>
+        <MyTooltip label={datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}>
+          <Box
+            lineHeight={'20px'}
+            className={'textEllipsis3'}
+            pt={3}
+            wordBreak={'break-all'}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            {datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
+          </Box>
+        </MyTooltip>
       </Box>
 
-      <MyDivider my={4} h={'2px'} maxW={'500px'} />
+      <MyDivider mt={3} mb={4} h={'2px'} maxW={'500px'} />
 
       <Box>
         <Flex w={'100%'} flexDir={'column'}>

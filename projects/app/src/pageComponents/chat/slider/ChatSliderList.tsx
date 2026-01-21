@@ -8,6 +8,7 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -108,8 +109,10 @@ const ChatSliderList = () => {
               name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
               w={'16px'}
             />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
-              {item.customTitle || item.title}
+            <Box flex={'1 0 0'} ml={3} className="textEllipsis" w={0}>
+              <MyTooltip label={item.customTitle || item.title} shouldWrapChildren={false}>
+                <Box className="textEllipsis">{item.customTitle || item.title}</Box>
+              </MyTooltip>
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
