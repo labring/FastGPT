@@ -44,7 +44,7 @@ const FileSelect = ({
 
   // 文件数量限制：团队套餐 || 系统配置 || 默认值（这里是指对话中，最多上传多少文件）
   const maxSelectFiles = Math.min(
-    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 50,
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
     50
   );
 

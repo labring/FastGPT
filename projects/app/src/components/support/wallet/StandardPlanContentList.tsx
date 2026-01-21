@@ -68,15 +68,9 @@ const StandardPlanContentList = ({
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
       maxUploadFileSize:
-        standplan?.maxUploadFileSize ||
-        plan.maxUploadFileSize ||
-        feConfigs?.uploadFileMaxSize ||
-        1000,
+        standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize,
       maxUploadFileCount:
-        standplan?.maxUploadFileCount ||
-        plan.maxUploadFileCount ||
-        feConfigs?.uploadFileMaxAmount ||
-        1000
+        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
     };
   }, [
     subPlans?.standard,

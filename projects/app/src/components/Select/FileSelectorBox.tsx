@@ -39,18 +39,16 @@ const FileSelector = ({
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
-  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
+  // 文件大小限制（B）：团队套餐 || 系统配置 || 默认值
   const systemMaxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
     1024 *
     1024;
   const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
   // 文件数量限制：组件传入的maxCount || 团队套餐 || 系统配置
   const formatMaxCount = Math.min(
     maxCount,
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
-      feConfigs?.uploadFileMaxAmount ||
-      maxCount
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount
   );
 
   const { File, onOpen } = useSelectFile({
