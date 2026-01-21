@@ -396,10 +396,13 @@ async function filterDatasetQuote({
   quoteTemplate: string;
 }) {
   function getValue({ item, index }: { item: SearchDataResponseItemType; index: number }) {
+    // Filter out SQL content for sql_quote items to prevent interference with LLM generation
+    const isSqlQuote = item.id.startsWith('sql_quote_');
+
     return replaceVariable(quoteTemplate, {
       id: item.id,
       q: item.q,
-      a: item.a || '',
+      a: isSqlQuote ? '' : item.a || '',
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),
