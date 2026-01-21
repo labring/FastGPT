@@ -731,13 +731,7 @@ export async function searchDatasetDataForAssistant(
     return true;
   });
 
-  // 取 top N（去重后的前 N 条）
-  const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
-  addLog.debug('Assistant Config - assistantRetrievalLimit', { retrievalLimit });
-  const dedupedResults = dedupedRrfResults.slice(0, retrievalLimit);
-
-  // 【步骤 6】构建 retrievalResults（去重后、进入 reranker 前的结果）
-  // 包含 embedding、fullText、rrf 三种分数
+  // 【步骤 6】构建分数映射表
   const embeddingScoreMap = new Map<string, number>();
   embeddingRecallResults.forEach((item) => {
     const embScore = item.score.find((s) => s.type === SearchScoreTypeEnum.embedding);
@@ -754,7 +748,189 @@ export async function searchDatasetDataForAssistant(
     }
   });
 
-  const retrievalResults = dedupedResults.map((item, index) => {
+  // 【步骤 7】重排开始计时
+  const rerankStartTime = usingReRank ? Date.now() : undefined;
+
+  // 【步骤 8】将完整的去重结果送进 Reranker（不截断）
+  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
+    if (!usingReRank) {
+      return {
+        results: [],
+        inputTokens: 0
+      };
+    }
+
+    try {
+      return await reRankFunction({
+        rerankModel,
+        query: reRankQuery,
+        data: dedupedRrfResults,
+        rerankMethod: rerankMethod ?? RerankMethodEnum.content
+      });
+    } catch (error) {
+      addLog.error('Reranker error', {
+        model: rerankModel?.model,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      usingReRank = false;
+      return {
+        results: [],
+        inputTokens: 0
+      };
+    }
+  })();
+
+  // 【步骤 9】RRF 融合：dedupedRrfResults + reRankResults
+  const rrfConcatResults = (() => {
+    if (reRankResults.length === 0) return dedupedRrfResults;
+    if (rerankWeight === 1) return reRankResults;
+
+    const searchK = Math.round(baseK * rerankWeight);
+    const rerankK = Math.round(baseK * (1 - rerankWeight));
+
+    return datasetSearchResultConcat([
+      { k: searchK, list: dedupedRrfResults },
+      { k: rerankK, list: reRankResults }
+    ]);
+  })();
+
+  // 【步骤 10】去重
+  set = new Set<string>();
+  const filterSameDataResults = rrfConcatResults.filter((item) => {
+    const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
+    if (set.has(str)) return false;
+    set.add(str);
+    return true;
+  });
+
+  // 【步骤 11】相似度过滤
+  const scoreFilter = (() => {
+    if (usingReRank) {
+      usingSimilarityFilter = true;
+
+      const filtered: typeof filterSameDataResults = [];
+      const discarded: Array<{ id: string; collectionId: string; score: number }> = [];
+
+      filterSameDataResults.forEach((item) => {
+        const reRankScore = item.score.find((item) => item.type === SearchScoreTypeEnum.reRank);
+        if (reRankScore && reRankScore.value < similarity) {
+          discarded.push({
+            id: item.id,
+            collectionId: item.collectionId,
+            score: reRankScore.value
+          });
+        } else {
+          filtered.push(item);
+        }
+      });
+
+      if (discarded.length > 0) {
+        addLog.debug('Similarity filter - Discarded by reRank threshold', {
+          threshold: similarity,
+          discardedCount: discarded.length,
+          discardedItems: discarded
+        });
+      }
+
+      return filtered;
+    }
+    if (searchMode === DatasetSearchModeEnum.embedding) {
+      usingSimilarityFilter = true;
+
+      const filtered: typeof filterSameDataResults = [];
+      const discarded: Array<{ id: string; collectionId: string; score: number }> = [];
+
+      filterSameDataResults.forEach((item) => {
+        const embeddingScore = item.score.find(
+          (item) => item.type === SearchScoreTypeEnum.embedding
+        );
+        if (embeddingScore && embeddingScore.value < similarity) {
+          discarded.push({
+            id: item.id,
+            collectionId: item.collectionId,
+            score: embeddingScore.value
+          });
+        } else {
+          filtered.push(item);
+        }
+      });
+
+      if (discarded.length > 0) {
+        addLog.debug('Similarity filter - Discarded by embedding threshold', {
+          threshold: similarity,
+          discardedCount: discarded.length,
+          discardedItems: discarded
+        });
+      }
+
+      return filtered;
+    }
+    return filterSameDataResults;
+  })();
+
+  // 【步骤 12】Token 过滤
+  const filterMaxTokensResult = await filterFunction(scoreFilter, maxTokens);
+
+  // 【步骤 13】限制最终结果数量
+  const finalResultLimit = global.systemEnv?.assistantFinalResultLimit ?? 10;
+  const finalResults =
+    filterMaxTokensResult.length > finalResultLimit
+      ? filterMaxTokensResult.slice(0, finalResultLimit)
+      : filterMaxTokensResult;
+
+  // 【步骤 14】确保最终结果包含所有必需的分数
+  // 为每个结果补充完整的分数信息（embedding、fullText、reRank、rrf）
+  const finalResultsWithAllScores = finalResults.map((item, finalIndex) => {
+    const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
+
+    // 1. 添加 embedding 分数（如果存在）
+    const embScore = embeddingScoreMap.get(item.id);
+    if (embScore !== undefined) {
+      const embIndex = embeddingRecallResults.findIndex((r) => r.id === item.id);
+      scores.push({
+        type: SearchScoreTypeEnum.embedding,
+        value: embScore,
+        index: embIndex >= 0 ? embIndex : finalIndex
+      });
+    }
+
+    // 2. 添加 fullText 分数（如果存在）
+    const ftScore = fullTextScoreMap.get(item.id);
+    if (ftScore !== undefined) {
+      const ftIndex = fullTextRecallResults.findIndex((r) => r.id === item.id);
+      scores.push({
+        type: SearchScoreTypeEnum.fullText,
+        value: ftScore,
+        index: ftIndex >= 0 ? ftIndex : finalIndex
+      });
+    }
+
+    // 3. 添加 reRank 分数（如果存在）
+    const reRankScore = item.score.find((s) => s.type === SearchScoreTypeEnum.reRank);
+    if (reRankScore) {
+      scores.push(reRankScore);
+    }
+
+    // 4. 添加 RRF 分数（检索+重排融合后的分数）
+    const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+    if (rrfScore) {
+      scores.push({
+        type: SearchScoreTypeEnum.rrf,
+        value: rrfScore.value,
+        index: finalIndex
+      });
+    }
+
+    return {
+      ...item,
+      score: scores
+    };
+  });
+
+  // 【步骤 15】构建 retrievalResults（用于落库，取 top retrievalLimit）
+  const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
+
+  const retrievalResults = dedupedRrfResults.slice(0, retrievalLimit).map((item, index) => {
     const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
 
     // 添加 embedding 分数（如果存在）
@@ -787,142 +963,18 @@ export async function searchDatasetDataForAssistant(
       });
     }
 
-    // 返回完整的结果，只替换 score 数组
     return {
       ...item,
       score: scores
     };
   });
 
-  // 【步骤 7】重排开始计时
-  const rerankStartTime = usingReRank ? Date.now() : undefined;
-
-  // 【步骤 8】将去重后的结果送进 Reranker（重要：retrievalResults 就是送进 reranker 的数据）
-  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
-    if (!usingReRank) {
-      return {
-        results: [],
-        inputTokens: 0
-      };
-    }
-
-    addLog.debug('Assistant Config - Data sent to reranker', {
-      count: dedupedResults.length,
-      dataIds: dedupedResults.slice(0, 5).map((item) => item.id)
-    });
-
-    try {
-      return await reRankFunction({
-        rerankModel,
-        query: reRankQuery,
-        data: dedupedResults,
-        rerankMethod: rerankMethod ?? RerankMethodEnum.content
-      });
-    } catch (error) {
-      addLog.error('Reranker error', {
-        model: rerankModel?.model,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      usingReRank = false;
-      return {
-        results: [],
-        inputTokens: 0
-      };
-    }
-  })();
-
-  // 【Debug】打印 reranker 原始得分
-  if (reRankResults.length > 0) {
-    addLog.debug('Reranker original scores', {
-      count: reRankResults.length,
-      scores: reRankResults.map((item) => ({
-        id: item.id,
-        rerankScore: item.score.find((s) => s.type === SearchScoreTypeEnum.reRank)?.value,
-        rerankIndex: item.score.find((s) => s.type === SearchScoreTypeEnum.reRank)?.index
-      }))
-    });
-  }
-
-  // 【步骤 9】RRF 融合：rrfSearchResult + reRankResults
-  const rrfConcatResults = (() => {
-    if (reRankResults.length === 0) return rrfSearchResult;
-    if (rerankWeight === 1) return reRankResults;
-
-    const searchK = Math.round(baseK * rerankWeight);
-    const rerankK = Math.round(baseK * (1 - rerankWeight));
-
-    return datasetSearchResultConcat([
-      { k: searchK, list: rrfSearchResult },
-      { k: rerankK, list: reRankResults }
-    ]);
-  })();
-
-  // 【Debug】打印 RRF 融合后的得分情况
-  if (reRankResults.length > 0) {
-    addLog.debug('After RRF fusion - Top 10 results with all scores', {
-      count: rrfConcatResults.length,
-      topResults: rrfConcatResults.slice(0, 10).map((item, idx) => ({
-        rank: idx + 1,
-        id: item.id,
-        scores: item.score.map((s) => ({
-          type: s.type,
-          value: s.value,
-          index: s.index
-        }))
-      }))
-    });
-  }
-
-  // 【步骤 10】去重
-  set = new Set<string>();
-  const filterSameDataResults = rrfConcatResults.filter((item) => {
-    const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
-    if (set.has(str)) return false;
-    set.add(str);
-    return true;
-  });
-
-  // 【步骤 11】相似度过滤
-  const scoreFilter = (() => {
-    if (usingReRank) {
-      usingSimilarityFilter = true;
-
-      return filterSameDataResults.filter((item) => {
-        const reRankScore = item.score.find((item) => item.type === SearchScoreTypeEnum.reRank);
-        if (reRankScore && reRankScore.value < similarity) return false;
-        return true;
-      });
-    }
-    if (searchMode === DatasetSearchModeEnum.embedding) {
-      usingSimilarityFilter = true;
-      return filterSameDataResults.filter((item) => {
-        const embeddingScore = item.score.find(
-          (item) => item.type === SearchScoreTypeEnum.embedding
-        );
-        if (embeddingScore && embeddingScore.value < similarity) return false;
-        return true;
-      });
-    }
-    return filterSameDataResults;
-  })();
-
-  // 【步骤 12】Token 过滤
-  const filterMaxTokensResult = await filterFunction(scoreFilter, maxTokens);
-
-  // 【步骤 13】限制最终结果数量
-  const finalResultLimit = global.systemEnv?.assistantFinalResultLimit ?? 10;
-  addLog.debug('Assistant Config - assistantFinalResultLimit', { finalResultLimit });
-  const finalResults =
-    filterMaxTokensResult.length > finalResultLimit
-      ? filterMaxTokensResult.slice(0, finalResultLimit)
-      : filterMaxTokensResult;
-
-  // 【步骤 14】重排结束计时
+  // 【步骤 16】重排结束计时
   const rerankTime =
     rerankStartTime !== undefined ? +((Date.now() - rerankStartTime) / 1000).toFixed(2) : undefined;
 
   return {
-    searchRes: finalResults,
+    searchRes: finalResultsWithAllScores,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
@@ -932,6 +984,6 @@ export async function searchDatasetDataForAssistant(
     usingSimilarityFilter,
     retrievalTime, // 检索耗时（召回阶段）
     rerankTime, // 重排耗时（重排阶段）
-    retrievalResults // 检索结果（RRF 融合后的 top N）
+    retrievalResults // 检索结果（RRF 融合后的 top N，用于落库）
   };
 }
