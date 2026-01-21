@@ -252,6 +252,26 @@ const EditForm = ({
     [setAppForm]
   );
 
+  // 同步 AI 模型到 questionGuide.model
+  useEffect(() => {
+    if (appForm.aiSettings.model) {
+      setAppForm((state) => {
+        const currentQG = state.chatConfig.questionGuide;
+        return {
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            questionGuide: {
+              open: currentQG?.open ?? false,
+              model: appForm.aiSettings.model,
+              customPrompt: currentQG?.customPrompt || undefined
+            }
+          }
+        };
+      });
+    }
+  }, [appForm.aiSettings.model, setAppForm]);
+
   // 优化的聊天配置更新函数
   const updateChatConfig = useCallback(
     (updates: Partial<AppSimpleEditFormType['chatConfig']>) => {
