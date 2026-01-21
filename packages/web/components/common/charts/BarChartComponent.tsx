@@ -38,6 +38,7 @@ type BarChartComponentProps = {
   bars: BarConfig[];
   tooltipItems?: TooltipItem[];
   blur?: boolean;
+  allowDecimals?: boolean;
 };
 
 const CustomTooltip = ({
@@ -79,7 +80,8 @@ const BarChartComponent = ({
   HeaderRightChildren,
   bars,
   tooltipItems,
-  blur = false
+  blur = false,
+  allowDecimals = true
 }: BarChartComponentProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -129,6 +131,7 @@ const BarChartComponent = ({
             tick={{ fontSize: '12px', color: theme?.colors?.myGray['500'], fontWeight: '500' }}
             interval="preserveStartEnd"
             tickFormatter={formatYAxisNumber}
+            allowDecimals={allowDecimals}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
