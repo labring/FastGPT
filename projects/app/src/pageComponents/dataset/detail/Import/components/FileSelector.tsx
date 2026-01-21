@@ -228,10 +228,10 @@ const FileSelector = ({
             {t('file:support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
-            {/* max count */}
-            {maxCount && t('file:support_max_count', { maxCount })}
-            {/* max size */}
-            {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
+            {t('common:n_max_upload_file_limit', {
+              count: maxCount,
+              size: formatFileSize(maxSize)
+            })}
           </Box>
 
           <File

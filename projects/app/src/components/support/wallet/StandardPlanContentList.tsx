@@ -12,6 +12,7 @@ import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type'
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -67,8 +68,9 @@ const StandardPlanContentList = ({
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
-      maxUploadFileSize:
-        standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize,
+      maxUploadFileSize: formatFileSize(
+        standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize
+      ),
       maxUploadFileCount:
         standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
     };

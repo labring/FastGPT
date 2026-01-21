@@ -22,7 +22,6 @@ const FileSelector = ({
   selectFiles,
   setSelectFiles,
   maxCount = 1000,
-  maxSize,
   FileTypeNode,
   ...props
 }: {
@@ -30,7 +29,6 @@ const FileSelector = ({
   selectFiles: SelectFileItemType[];
   setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
-  maxSize?: string;
   FileTypeNode?: React.ReactNode;
 } & FlexProps) => {
   const { t } = useTranslation();
@@ -40,11 +38,11 @@ const FileSelector = ({
   const { teamPlanStatus } = useUserStore();
 
   // 文件大小限制（B）：团队套餐 || 系统配置 || 默认值
-  const systemMaxSize =
+  const displayMaxSize = formatFileSize(
     (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
-    1024 *
-    1024;
-  const displayMaxSize = maxSize || formatFileSize(systemMaxSize);
+      1024 *
+      1024
+  );
   // 文件数量限制：组件传入的maxCount || 团队套餐 || 系统配置
   const formatMaxCount = Math.min(
     maxCount,
@@ -216,10 +214,14 @@ const FileSelector = ({
               </Box>
             )}
             <Box color={'myGray.500'} fontSize={'xs'}>
-              {/* max count */}
-              {formatMaxCount && <>{t('file:support_max_count', { maxCount: formatMaxCount })}, </>}
-              {/* max size */}
-              {t('file:support_max_size', { maxSize: displayMaxSize })}
+              {formatMaxCount && (
+                <>
+                  {t('common:n_max_upload_file_limit', {
+                    count: formatMaxCount,
+                    size: displayMaxSize
+                  })}
+                </>
+              )}
             </Box>
           </>
 
