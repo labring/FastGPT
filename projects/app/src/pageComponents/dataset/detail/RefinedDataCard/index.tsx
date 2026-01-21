@@ -286,6 +286,17 @@ const RefinedDataCard = () => {
     }
   }, [activeId, isCalculatingPage, initialPageNum, fetchData, collectionId]);
 
+  // Handle search text change - reset to page 1 when search text changes
+  const prevDebouncedSearchTextRef = useRef<string>(debouncedSearchText);
+  React.useEffect(() => {
+    if (!collectionId) return;
+    // Only trigger when debouncedSearchText actually changes (not on initial mount)
+    if (prevDebouncedSearchTextRef.current !== debouncedSearchText) {
+      prevDebouncedSearchTextRef.current = debouncedSearchText;
+      fetchData(1);
+    }
+  }, [debouncedSearchText, collectionId, fetchData]);
+
   // Initialize active card to first item when data loads
   React.useEffect(() => {
     if (datasetDataList.length === 0) {
