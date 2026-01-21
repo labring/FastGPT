@@ -31,6 +31,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -40,7 +41,7 @@ const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateMo
 
 const Dataset = () => {
   const { isPc } = useSystem();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
 
@@ -59,10 +60,12 @@ const Dataset = () => {
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, pluginDatasets } = useSystemStore();
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
+
+  const lang = i18n.language || 'zh-CN';
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
@@ -75,6 +78,20 @@ const Dataset = () => {
       setCreateDatasetType(e);
     },
     [t, toast, feConfigs]
+  );
+
+  // 已启用的插件数据源菜单项
+  const pluginDatasetMenuItems = useMemo(
+    () =>
+      pluginDatasets
+        .filter((source) => source.status !== 0)
+        .map((source) => ({
+          icon: source.icon || '',
+          label: parseI18nString(source.name, lang),
+          description: parseI18nString(source.description, lang),
+          onClick: () => onSelectDatasetType(source.sourceId as CreateDatasetType)
+        })),
+    [pluginDatasets, lang, onSelectDatasetType]
   );
 
   const RenderSearchInput = useMemo(
@@ -177,26 +194,7 @@ const Dataset = () => {
                                   description: t('dataset:external_file_dataset_desc'),
                                   onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
                                 },
-                                ...(feConfigs?.show_dataset_feishu !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/feishuDatasetColor',
-                                        label: t('dataset:feishu_dataset'),
-                                        description: t('dataset:feishu_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                                      }
-                                    ]
-                                  : []),
-                                ...(feConfigs?.show_dataset_yuque !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/yuqueDatasetColor',
-                                        label: t('dataset:yuque_dataset'),
-                                        description: t('dataset:yuque_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
-                                      }
-                                    ]
-                                  : [])
+                                ...pluginDatasetMenuItems
                               ]
                             }
                           ]

@@ -208,7 +208,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             return {
               type: DatasetSourceReadTypeEnum.apiFile,
               sourceId: collection.apiFileId,
-              apiDatasetServer: dataset.apiDatasetServer
+              pluginDatasetServer: dataset.pluginDatasetServer
             };
           }
           if (collection.type === DatasetCollectionTypeEnum.externalFile) {

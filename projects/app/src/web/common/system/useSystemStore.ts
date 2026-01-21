@@ -8,7 +8,7 @@ import type {
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
-import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
+import type { InitDateResponse, PluginDatasetType } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
@@ -21,6 +21,8 @@ import {
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels, getOperationalAd } from './api';
+import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -77,6 +79,22 @@ type State = {
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
+
+  pluginDatasets: PluginDatasetType[];
+  updatePluginDatasetStatus: (data: { sourceId: string; status: number }) => void;
+  getDatasetTypeConfig: (
+    type: string,
+    t: (key: string) => string,
+    language?: string
+  ) =>
+    | {
+        icon: string;
+        avatar: string;
+        label: string;
+        collectionLabel: string;
+        courseUrl?: string;
+      }
+    | undefined;
 
   initStaticData: (e: InitDateResponse) => void;
 
@@ -218,6 +236,43 @@ export const useSystemStore = create<State>()(
           }
           return get().modelProviderMap[language as langType][provider] ?? {};
         },
+
+        // Plugin datasets (合并 source 和 config)
+        pluginDatasets: [],
+        updatePluginDatasetStatus({ sourceId, status }) {
+          set((state) => {
+            const item = state.pluginDatasets.find((d) => d.sourceId === sourceId);
+            if (item) item.status = status;
+          });
+        },
+        getDatasetTypeConfig(type, t, language = 'zh-CN') {
+          // 优先从 pluginDatasets 匹配
+          const pluginDataset = get().pluginDatasets.find((d) => d.sourceId === type);
+          if (pluginDataset) {
+            return {
+              icon: pluginDataset.iconOutline || pluginDataset.icon,
+              avatar: pluginDataset.icon,
+              label: parseI18nString(pluginDataset.name, language),
+              collectionLabel: language === 'en' ? 'File' : '文件',
+              courseUrl: pluginDataset.courseUrl
+            };
+          }
+
+          // 否则从内置 DatasetTypeMap 获取
+          const builtinConfig = DatasetTypeMap[type as keyof typeof DatasetTypeMap];
+          if (builtinConfig) {
+            return {
+              icon: builtinConfig.icon,
+              avatar: builtinConfig.avatar,
+              label: t(builtinConfig.label as any),
+              collectionLabel: t(builtinConfig.collectionLabel as any),
+              courseUrl: builtinConfig.courseUrl
+            };
+          }
+
+          return undefined;
+        },
+
         initStaticData(res) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
@@ -253,6 +308,7 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
+            state.pluginDatasets = res.pluginDatasets ?? state.pluginDatasets;
           });
         }
       })),
@@ -276,7 +332,8 @@ export const useSystemStore = create<State>()(
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
+          sttModelList: state.sttModelList,
+          pluginDatasets: state.pluginDatasets
         })
       }
     )

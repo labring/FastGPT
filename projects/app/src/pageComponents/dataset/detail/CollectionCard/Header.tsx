@@ -11,14 +11,13 @@ import MyInput from '@/components/MyInput';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useMemo } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
-  DatasetTypeMap,
-  DatasetStatusEnum,
-  ApiDatasetTypeMap
+  DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -41,11 +40,18 @@ const BackupImportModal = dynamic(() => import('./BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
-  const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { t, i18n } = useTranslation();
+  const { feConfigs, getDatasetTypeConfig, pluginDatasets } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const datasetTypeConfig = datasetDetail?.type
+    ? getDatasetTypeConfig(datasetDetail.type, t, i18n.language)
+    : undefined;
+  const isPluginDataset = useMemo(
+    () => pluginDatasets.some((item) => item.sourceId === datasetDetail?.type),
+    [pluginDatasets, datasetDetail?.type]
+  );
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -133,7 +139,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               >
                 <Flex align={'center'}>
                   {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
-                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
+                  {datasetTypeConfig?.collectionLabel}({total})
                 </Flex>
                 {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (
@@ -452,8 +458,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               ]}
             />
           )}
-          {/* apiDataset */}
-          {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
+          {/* apiDataset / plugin dataset */}
+          {isPluginDataset && (
             <>
               {datasetDetail.status === DatasetStatusEnum.active && (
                 <HStack gap={2}>

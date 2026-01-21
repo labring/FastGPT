@@ -68,7 +68,7 @@ async function handler(
     vlmModel,
     websiteConfig,
     externalReadUrl,
-    apiDatasetServer,
+    pluginDatasetServer,
     autoSync,
     chunkSettings
   } = req.body;
@@ -173,35 +173,6 @@ async function handler(
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
-    const apiDatasetParams = (() => {
-      if (!apiDatasetServer) return {};
-
-      const flattenObjectWithConditions = (
-        obj: any,
-        prefix = 'apiDatasetServer'
-      ): Record<string, any> => {
-        const result: Record<string, any> = {};
-
-        if (!obj || typeof obj !== 'object') return result;
-
-        Object.keys(obj).forEach((key) => {
-          const value = obj[key];
-          const newKey = prefix ? `${prefix}.${key}` : key;
-
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            // Recursively flatten nested objects
-            Object.assign(result, flattenObjectWithConditions(value, newKey));
-          } else {
-            // Add non-empty primitive values
-            result[newKey] = value;
-          }
-        });
-
-        return result;
-      };
-      return flattenObjectWithConditions(apiDatasetServer);
-    })();
-
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -216,7 +187,7 @@ async function handler(
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
-        ...apiDatasetParams
+        ...(pluginDatasetServer && { pluginDatasetServer })
       },
       { session }
     );

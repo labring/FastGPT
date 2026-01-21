@@ -3,7 +3,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   ApiDatasetDetailResponse,
-  ApiDatasetServerType
+  PluginDatasetServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
@@ -16,7 +16,7 @@ export type GetApiDatasetPathQuery = {};
 export type GetApiDatasetPathBody = {
   datasetId?: string;
   parentId?: ParentIdType;
-  apiDatasetServer?: ApiDatasetServerType;
+  pluginDatasetServer?: PluginDatasetServerType;
 };
 
 export type GetApiDatasetPathResponse = string;
@@ -43,10 +43,10 @@ async function handler(
   req: ApiRequestProps<GetApiDatasetPathBody, any>,
   res: ApiResponseType<GetApiDatasetPathResponse>
 ): Promise<GetApiDatasetPathResponse> {
-  const { datasetId, parentId } = req.body;
+  const { datasetId, parentId, pluginDatasetServer } = req.body;
   if (!parentId) return '';
 
-  const apiDatasetServer = await (async () => {
+  const serverConfig = await (async () => {
     if (datasetId) {
       const { dataset } = await authDataset({
         req,
@@ -56,15 +56,15 @@ async function handler(
         datasetId
       });
 
-      return dataset.apiDatasetServer;
+      return dataset.pluginDatasetServer;
     } else {
       await authCert({ req, authToken: true });
 
-      return req.body.apiDatasetServer;
+      return pluginDatasetServer;
     }
   })();
 
-  const apiDataset = await getApiDatasetRequest(apiDatasetServer);
+  const apiDataset = await getApiDatasetRequest(serverConfig);
 
   if (!apiDataset?.getFileDetail) {
     return Promise.reject(DatasetErrEnum.noApiServer);

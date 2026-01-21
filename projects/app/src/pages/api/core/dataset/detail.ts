@@ -6,7 +6,7 @@ import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
-import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { filterPluginDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type Query = {
   id: string;
@@ -40,7 +40,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel),
     vlmModel: getVlmModel(dataset.vlmModel),
-    apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
+    pluginDatasetServer: filterPluginDatasetServerPublicData(dataset.pluginDatasetServer)
   };
 }
 

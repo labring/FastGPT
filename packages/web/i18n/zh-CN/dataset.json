@@ -25,9 +25,9 @@
   "chunk_trigger_tips": "当满足一定条件时才触发分块存储，否则会直接完整存储原文",
   "close_auto_sync": "确认关闭自动同步功能？",
   "collection.Create update time": "创建/更新时间",
-  "collection.not_found": "集合不存在",
   "collection.Training type": "训练模式",
   "collection.export_all_chunks": "导出分块",
+  "collection.not_found": "集合不存在",
   "collection.sync.submit": "已提交同步任务",
   "collection.training_type": "处理模式",
   "collection_data_count": "数据量",
@@ -43,6 +43,7 @@
   "common_dataset": "通用知识库",
   "common_dataset_desc": "通过导入文件、网页链接或手动录入形式构建知识库",
   "condition": "条件",
+  "config_dataset": "配置{{dataset}}",
   "config_sync_schedule": "配置定时同步",
   "confirm_delete_collection": "确认删除 {{num }} 个文件？",
   "confirm_import_images": "共 {{num}} 张图片 | 确认创建",
@@ -94,9 +95,6 @@
   "external_url": "文件访问 URL",
   "failedToLoadRootDirectories": "加载根目录失败",
   "failedToLoadSubDirectories": "加载子目录失败",
-  "feishu_dataset": "飞书知识库",
-  "feishu_dataset_config": "配置飞书知识库",
-  "feishu_dataset_desc": "可通过配置飞书文档权限，使用飞书文档构建知识库，文档不会进行二次存储",
   "file_list": "文件列表",
   "file_model_function_tip": "用于增强索引和 QA 生成",
   "filename": "文件名",
@@ -221,8 +219,5 @@
   "vlm_model_required_warning": "需要图片理解模型",
   "website_dataset": "Web 站点同步",
   "website_dataset_desc": "通过爬虫，批量爬取网页数据构建知识库",
-  "website_info": "网站信息",
-  "yuque_dataset": "语雀知识库",
-  "yuque_dataset_config": "配置语雀知识库",
-  "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储"
+  "website_info": "网站信息"
 }

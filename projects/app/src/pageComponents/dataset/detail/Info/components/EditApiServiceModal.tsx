@@ -10,12 +10,12 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getDocPath } from '@/web/common/system/doc';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type EditAPIDatasetInfoFormType = {
   id: string;
-  apiDatasetServer?: ApiDatasetServerType;
+  pluginDatasetServer?: PluginDatasetServerType;
 };
 
 const EditAPIDatasetInfoModal = ({
@@ -28,11 +28,13 @@ const EditAPIDatasetInfoModal = ({
   onClose: () => void;
   onEdit: (data: EditAPIDatasetInfoFormType) => any;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
+  const { getDatasetTypeConfig } = useSystemStore();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const type = datasetDetail.type;
+  const courseUrl = getDatasetTypeConfig(type, t, i18n.language)?.courseUrl;
 
   const form = useForm<EditAPIDatasetInfoFormType>({
     defaultValues: defaultForm
@@ -54,7 +56,7 @@ const EditAPIDatasetInfoModal = ({
   return (
     <MyModal isOpen onClose={onClose} w={'450px'} iconSrc="modal/edit" title={title}>
       <ModalBody>
-        {DatasetTypeMap[type]?.courseUrl && (
+        {courseUrl && (
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={500}>
               {t('dataset:apidataset_configuration')}
@@ -65,7 +67,7 @@ const EditAPIDatasetInfoModal = ({
               color={'primary.600'}
               fontSize={'sm'}
               cursor={'pointer'}
-              onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
+              onClick={() => window.open(getDocPath(courseUrl), '_blank')}
             >
               <MyIcon name={'book'} w={4} mr={0.5} />
               {t('common:Instructions')}

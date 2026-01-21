@@ -1,31 +1,28 @@
-import type { ApiDatasetServerType } from './type';
+import type { PluginDatasetServerType } from './type';
 
-export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {
-  if (!apiDatasetServer) return undefined;
+// 过滤掉敏感信息（如 token、secret 等）
+export const filterPluginDatasetServerPublicData = (
+  pluginDatasetServer?: PluginDatasetServerType
+): PluginDatasetServerType | undefined => {
+  if (!pluginDatasetServer?.pluginId) return undefined;
 
-  const { apiServer, yuqueServer, feishuServer } = apiDatasetServer;
+  const { pluginId, config } = pluginDatasetServer;
+
+  // 敏感字段列表（支持部分匹配，不区分大小写）
+  const sensitiveFields = ['token', 'secret', 'auth'];
+
+  // 过滤掉敏感字段
+  const filteredConfig: Record<string, any> = {};
+  for (const [key, value] of Object.entries(config || {})) {
+    if (sensitiveFields.some((field) => key.toLowerCase().includes(field.toLowerCase()))) {
+      filteredConfig[key] = '';
+    } else {
+      filteredConfig[key] = value;
+    }
+  }
 
   return {
-    apiServer: apiServer
-      ? {
-          baseUrl: apiServer.baseUrl,
-          authorization: '',
-          basePath: apiServer.basePath
-        }
-      : undefined,
-    yuqueServer: yuqueServer
-      ? {
-          userId: yuqueServer.userId,
-          token: '',
-          basePath: yuqueServer.basePath
-        }
-      : undefined,
-    feishuServer: feishuServer
-      ? {
-          appId: feishuServer.appId,
-          appSecret: '',
-          folderToken: feishuServer.folderToken
-        }
-      : undefined
+    pluginId,
+    config: filteredConfig
   };
 };
