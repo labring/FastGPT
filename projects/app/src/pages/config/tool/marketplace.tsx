@@ -748,6 +748,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           updatableTools={updatableTools}
           onBatchUpdate={handleBatchUpdate}
           isBatchUpdating={batchUpdatingToolIds.size > 0}
+          //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />
       )}
