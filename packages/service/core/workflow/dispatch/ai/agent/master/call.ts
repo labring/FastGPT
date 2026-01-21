@@ -343,9 +343,8 @@ export const masterCall = async ({
               config,
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              histories: messages.filter(
-                (msg) => msg.role === ChatRoleEnum.Human || msg.role === ChatRoleEnum.AI
-              ) as any
+              model: config.model,
+              histories: messages
             });
 
             return {

@@ -3,8 +3,15 @@ import type { DatasetSearchToolConfig } from './utils';
 import { dispatchDatasetSearch } from '../../../../dataset/search';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { addLog } from '../../../../../../../common/system/log';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getLLMModel } from '../../../../../../ai/model';
+import { createLLMResponse } from '../../../../../../ai/llm/request';
+import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken/index';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type DatasetSearchParams = {
   query: string;
@@ -12,7 +19,8 @@ type DatasetSearchParams = {
 
   teamId: string;
   tmbId: string;
-  histories: ChatItemType[];
+  histories: ChatCompletionMessageParam[];
+  model: string;
 };
 
 /**
@@ -33,6 +41,94 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
 };
 
 /**
+ * 调用 LLM 自动选择最相关的分块
+ * @returns 选中的分块 ID 列表和 usage
+ */
+const selectRelevantChunksByLLM = async ({
+  query,
+  chunks,
+  model
+}: {
+  query: string;
+  chunks: SearchDataResponseItemType[];
+  model: string;
+}): Promise<{
+  ids: string[];
+  usage?: ChatNodeUsageType;
+}> => {
+  const chunkSummaries = chunks
+    .map((chunk, index) => {
+      const source = chunk.sourceName || `来源${index + 1}`;
+      const score = chunk.score?.[0]?.value.toFixed(3) || '0';
+      const summary = chunk.q.substring(0, 150) + (chunk.q.length > 150 ? '...' : '');
+
+      return `${index + 1}. [ID:${chunk.id}] ${source}\n   相似度: ${score}\n   内容: ${summary}`;
+    })
+    .join('\n\n');
+
+  const prompt = `用户查询：${query}
+
+以下是从知识库中搜索到的 ${chunks.length} 个相关分块：
+${chunkSummaries}
+
+请根据用户查询的相关性，选择最相关的 ${Math.floor(chunks.length / 2)} 个分块。
+
+【重要】输出格式要求：
+1. 只返回分块 ID，用方括号包裹，用逗号分隔
+2. 格式必须严格为：[id1,id2,id3]
+3. 不要添加任何其他文字、标点或解释
+4. 不要添加换行符
+5. 确保返回的 ID 都在上述列表中存在
+
+示例：[chunk_id_1,chunk_id_2,chunk_id_3]`;
+
+  try {
+    const response = await createLLMResponse({
+      body: {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0,
+        stream: false
+      }
+    });
+
+    const content = response.answerText || '';
+    const ids = content
+      .replace(/[\[\]]/g, '')
+      .split(/[,，\n]/)
+      .map((id: string) => id.trim())
+      .filter((id: string) => id && chunks.some((c) => c.id === id));
+
+    // 计算 usage
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens
+    });
+
+    const usage: ChatNodeUsageType = {
+      totalPoints,
+      moduleName: i18nT('account_usage:ai.dataset_chunk_selection'),
+      model: modelName,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens
+    };
+
+    addLog.info('[Agent Dataset Search] Exceeded threshold，AI selected chunks', {
+      total: chunks.length,
+      selected: ids.length,
+      ids,
+      usage
+    });
+
+    return { ids, usage };
+  } catch (error) {
+    addLog.error('[Agent Dataset Search] AI selection failed', error);
+    return { ids: [] };
+  }
+};
+
+/**
  * 调度知识库搜索
  */
 export const dispatchAgentDatasetSearch = async ({
@@ -40,7 +136,8 @@ export const dispatchAgentDatasetSearch = async ({
   config,
   teamId,
   tmbId,
-  histories
+  histories,
+  model
 }: DatasetSearchParams): Promise<{
   response: string;
   usages: ChatNodeUsageType[];
@@ -53,11 +150,15 @@ export const dispatchAgentDatasetSearch = async ({
   });
 
   try {
-    // 构造 dispatchDatasetSearch 需要的 props 对象
+    const adaptedHistories = GPTMessages2Chats({
+      messages: histories,
+      reserveTool: false
+    });
+
     const props: any = {
       runningAppInfo: { teamId, tmbId },
       runningUserInfo: { teamId, tmbId },
-      histories,
+      histories: adaptedHistories,
       node: {
         nodeId: 'agent-dataset-search',
         name: '知识库检索',
@@ -81,19 +182,52 @@ export const dispatchAgentDatasetSearch = async ({
         datasetSearchExtensionModel: config.extensionModel,
         datasetSearchExtensionBg: config.extensionBg,
         collectionFilterMatch: config.collectionFilterMatch || '',
-        authTmbId: false // Agent 场景下不需要权限验证（已在配置时验证）
+        authTmbId: false
       }
     };
 
-    // 调用核心搜索逻辑
     const searchResult = await dispatchDatasetSearch(props);
+    let results = searchResult.data?.quoteQA || [];
 
-    // 格式化响应
-    const formattedResponse = formatDatasetSearchResponse(searchResult.data.quoteQA || []);
+    const modelData = getLLMModel(model);
+    const threshold = calculateCompressionThresholds(modelData.maxContext).datasetSearchSelection;
+
+    const messages: ChatCompletionMessageParam[] = results.map((item) => ({
+      role: 'user',
+      content: `[来源:${item.sourceName || '未知'}]\n${item.q}\n${item.a || ''}`
+    }));
+
+    const estimatedTokens = await countGptMessagesTokens(messages);
+
+    addLog.debug('[Agent Dataset Search] Token estimation', {
+      resultCount: results.length,
+      estimatedTokens,
+      threshold,
+      maxContext: modelData.maxContext
+    });
+
+    if (estimatedTokens > threshold && results.length > 0) {
+      const { ids: selectedIds, usage: selectionUsage } = await selectRelevantChunksByLLM({
+        query,
+        chunks: results,
+        model
+      });
+
+      if (selectedIds.length > 0) {
+        results = results.filter((item) => selectedIds.includes(item.id));
+      }
+
+      // 将 AI 分块选择的 usage 添加到总 usage 中
+      if (selectionUsage) {
+        searchResult.nodeDispatchUsages?.push(selectionUsage);
+      }
+    }
+
+    const formattedResponse = formatDatasetSearchResponse(results);
 
     addLog.info('[Agent Dataset Search] Complete', {
       query,
-      resultCount: searchResult.data.quoteQA?.length || 0,
+      resultCount: results.length,
       totalPoints:
         searchResult.nodeDispatchUsages?.reduce(
           (sum: number, u: ChatNodeUsageType) => sum + u.totalPoints,

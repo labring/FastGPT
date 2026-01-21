@@ -1,5 +1,6 @@
 {
   "agent_call": "Agent 调用",
+  "ai.dataset_chunk_selection": "知识库分块智能选择",
   "ai.query_extension_embedding": "问题优化-embedding",
   "ai_model": "AI 模型",
   "all": "所有",
