@@ -101,8 +101,6 @@ const ChunkInfoCard = ({
         {/* Link Button */}
         {linkText && linkUrl && (
           <Link
-            href={linkUrl}
-            isExternal
             onClick={handleLinkClick}
             display={'flex'}
             alignItems={'center'}
@@ -115,6 +113,7 @@ const ChunkInfoCard = ({
             fontSize={'xs'}
             color={'myGray.600'}
             flexShrink={0}
+            cursor={'pointer'}
             _hover={{
               textDecoration: 'none',
               bg: 'myGray.05'
