@@ -292,7 +292,9 @@ const FileImport = () => {
                         <VStack key={index} w={'100%'} align="stretch">
                           <HStack w={'100%'}>
                             <MyIcon name={item.icon as any} w={'1rem'} />
-                            <Box color={'myGray.900'}>{item.name}</Box>
+                            <Box fontSize={'sm'} color={'myGray.900'}>
+                              {item.name}
+                            </Box>
                             <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
                               {item.size}
                             </Box>

@@ -44,7 +44,7 @@ export const useSelectFile = (props?: {
             onSelect(fileList, openSign.current);
           } else {
             const filterFiles = fileList.filter((item) => item.size <= maxSize);
-            if (filterFiles.length < files.length) {
+            if (filterFiles.length < fileList.length) {
               toast({
                 status: 'warning',
                 title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
