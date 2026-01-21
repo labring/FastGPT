@@ -240,12 +240,11 @@ function List() {
                   </Flex>
 
                   <Box
-                    flex={1}
                     className={'textEllipsis3'}
-                    whiteSpace={'pre-wrap'}
                     py={3}
                     fontSize={'xs'}
                     color={'myGray.500'}
+                    height={'72px'}
                   >
                     {dataset.intro ||
                       (dataset.type === DatasetTypeEnum.folder
