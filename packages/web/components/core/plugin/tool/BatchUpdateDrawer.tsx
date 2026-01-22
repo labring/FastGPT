@@ -175,32 +175,36 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 </Flex>
               ))}
 
-              {/* Bottom action bar */}
-              <FloatingActionBar
+              {/* Bottom action bar - Always visible */}
+              <Flex
                 position="fixed"
                 bottom={0}
                 left={0}
                 right={0}
-                maxW="480px"
+                w={'480px'}
+                bg={'white'}
+                px={6}
                 py={4}
-                activeBg="white"
-                activedStyles={{
-                  boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.08)',
-                  gap: 3
-                }}
-                Controler={
-                  <Button
-                    flex={1}
-                    variant="primary"
-                    isLoading={isBatchUpdating}
-                    onClick={() =>
-                      onBatchUpdate(selectedItems.map((tool: ToolCardItemType) => tool.id))
-                    }
-                  >
-                    {t('app:toolkit_batch_update')}
-                  </Button>
-                }
-              />
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Flex alignItems="center" gap={2}>
+                  <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} />
+                  <Box fontSize="sm" color="gray.600">
+                    {t('common:select_count_num', { num: selectedItems.length })}
+                  </Box>
+                </Flex>
+                <Button
+                  variant="primary"
+                  isLoading={isBatchUpdating}
+                  isDisabled={!hasSelections}
+                  onClick={() =>
+                    onBatchUpdate(selectedItems.map((tool: ToolCardItemType) => tool.id))
+                  }
+                >
+                  {t('app:toolkit_batch_update')}
+                </Button>
+              </Flex>
             </VStack>
           ) : (
             <MyBox>
