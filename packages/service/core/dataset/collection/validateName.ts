@@ -1,7 +1,6 @@
 import { MongoDatasetCollection } from './schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import DatasetErrorCode from '@fastgpt/global/common/error/code/dataset';
 
 /**
  * Validate collection name when updating
@@ -44,11 +43,7 @@ export const validateCollectionNameUpdate = async ({
 
   // Check 2: File extension must match original
   if (originalExt && newExt && originalExt !== newExt) {
-    const errorObj = DatasetErrorCode[DatasetErrEnum.collectionNameExtensionMismatch];
-    return Promise.reject({
-      ...errorObj,
-      message: errorObj.message.replace('{{original}}', originalExt).replace('{{new}}', newExt)
-    });
+    return Promise.reject(DatasetErrEnum.collectionNameExtensionMismatch);
   }
 
   // Check 3: No duplicate names in the same dataset
@@ -61,11 +56,6 @@ export const validateCollectionNameUpdate = async ({
   });
 
   if (existingCollection) {
-    // Return error with the duplicate file name
-    const errorObj = DatasetErrorCode[DatasetErrEnum.collectionNameDuplicate];
-    return Promise.reject({
-      ...errorObj,
-      message: errorObj.message.replace('{{fileName}}', newName)
-    });
+    return Promise.reject(DatasetErrEnum.collectionNameDuplicate);
   }
 };
