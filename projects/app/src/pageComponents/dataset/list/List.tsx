@@ -240,16 +240,19 @@ function List() {
                   </Flex>
 
                   <Box
-                    className={'textEllipsis3'}
+                    flex={'1 0 72px'}
                     py={3}
+                    textAlign={'justify'}
+                    wordBreak={'break-all'}
                     fontSize={'xs'}
                     color={'myGray.500'}
-                    height={'72px'}
                   >
-                    {dataset.intro ||
-                      (dataset.type === DatasetTypeEnum.folder
-                        ? t('common:core.dataset.Folder placeholder')
-                        : t('common:core.dataset.Intro Placeholder'))}
+                    <Box className={'textEllipsis3'} whiteSpace={'pre-wrap'}>
+                      {dataset.intro ||
+                        (dataset.type === DatasetTypeEnum.folder
+                          ? t('common:core.dataset.Folder placeholder')
+                          : t('common:core.dataset.Intro Placeholder'))}
+                    </Box>
                   </Box>
 
                   <Flex

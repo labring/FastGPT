@@ -206,24 +206,23 @@ const ListItem = () => {
                 })}
               >
                 <HStack>
-                  <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                  <Box flex={'1 0 0'} color={'myGray.900'}>
+                  <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} flexShrink={0} />
+                  <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'}>
                     {app.name}
                   </Box>
-                  <Box mr={'-1.25rem'}>
+                  <Box mr={'-1.25rem'} flexShrink={0}>
                     <AppTypeTag type={app.type} />
                   </Box>
                 </HStack>
                 <Box
-                  flex={['1 0 60px', '1 0 72px']}
-                  mt={3}
-                  pr={8}
+                  flex={'1 0 72px'}
+                  py={3}
                   textAlign={'justify'}
                   wordBreak={'break-all'}
                   fontSize={'xs'}
                   color={'myGray.500'}
                 >
-                  <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
+                  <Box className={'textEllipsis3'} whiteSpace={'pre-wrap'}>
                     {app.intro || t('common:no_intro')}
                   </Box>
                 </Box>
