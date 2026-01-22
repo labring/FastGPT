@@ -297,6 +297,8 @@
   "hnsw_max_scan_tuples": "HNSW max_scan_tuples",
   "hnsw_max_scan_tuples_desc":  "Maximum iterative scans. A higher value increases recall rate but reduces performance. Default value: 100000. For details, see https://github.com/pgvector/pgvector",
   "token_calc_max_process": "Max processes for token calculation (based on concurrency)",
+  "dataset_sql_result_limit": "Database SQL query result limit",
+  "dataset_sql_result_limit_desc": "Maximum number of results returned by database SQL queries (default: 100)",
   "custom_pdf_parse_url": "Custom PDF parsing address",
   "custom_pdf_parse_key": "Custom PDF parsing key",
   "custom_pdf_parse_timeout": "Custom PDF parsing timeout (minutes)",
