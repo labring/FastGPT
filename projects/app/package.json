@@ -45,7 +45,7 @@
     "json5": "^2.2.3",
     "jsondiffpatch": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "mermaid": "^10.9.4",
     "minio": "^8.0.5",
     "nanoid": "^5.1.3",
