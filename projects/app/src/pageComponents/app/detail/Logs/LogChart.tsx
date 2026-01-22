@@ -403,6 +403,7 @@ const LogChart = ({
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -448,6 +449,7 @@ const LogChart = ({
                       />
                     }
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -496,6 +498,7 @@ const LogChart = ({
                       customValue: (data) => data.sourceCountMap[key as ChatSourceEnum]
                     }))}
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
               </Grid>
@@ -557,6 +560,7 @@ const LogChart = ({
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -586,6 +590,7 @@ const LogChart = ({
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>
@@ -718,6 +723,7 @@ const LogChart = ({
                       </Flex>
                     }
                     blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
                   />
                 </Box>
                 <Box {...chartBoxStyles}>

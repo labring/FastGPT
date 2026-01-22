@@ -41,6 +41,7 @@ type LineChartComponentProps = {
   showAverage?: boolean;
   averageKey?: string;
   blur?: boolean;
+  allowDecimals?: boolean;
 };
 
 const CustomTooltip = ({
@@ -91,7 +92,8 @@ const LineChartComponent = ({
   tooltipItems,
   showAverage = false,
   averageKey,
-  blur = false
+  blur = false,
+  allowDecimals = true
 }: LineChartComponentProps) => {
   const theme = useTheme();
 
@@ -194,6 +196,7 @@ const LineChartComponent = ({
             tick={{ fontSize: '12px', color: theme?.colors?.myGray['500'], fontWeight: '500' }}
             interval="preserveStartEnd"
             tickFormatter={formatYAxisNumber}
+            allowDecimals={allowDecimals}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           {tooltipItems && <Tooltip content={<CustomTooltip tooltipItems={tooltipItems} />} />}
