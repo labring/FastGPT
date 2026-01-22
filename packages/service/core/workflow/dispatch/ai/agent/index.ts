@@ -25,18 +25,18 @@ import { SubAppIds, systemSubInfo } from './sub/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
 
-import { getFileInputPrompt } from './sub/file/utils';
+import { formatFileInput } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
 import { addLog } from '../../../../../common/system/log';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { parseUserSystemPrompt } from './sub/plan/prompt';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { DatasetSearchToolConfig } from './sub/dataset/utils';
+import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { PlanAgentParamsType } from './sub/plan/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -83,7 +83,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     node: { nodeId, inputs },
     lang,
     histories,
-    query,
+    query, // 最新一轮对话输入的值
     requestOrigin,
     chatConfig,
     lastInteractive,
@@ -94,25 +94,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     params: {
       model,
       systemPrompt,
-      userChatInput,
+      userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
       temperature,
       aiChatTopP,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
-      datasets: datasetSelectList,
-      similarity: datasetSimilarity = 0.4,
-      limit: datasetMaxTokens = 5000,
-      searchMode: datasetSearchMode = DatasetSearchModeEnum.embedding,
-      embeddingWeight: datasetSearchEmbeddingWeight,
-      usingReRank: datasetSearchUsingReRank = false,
-      rerankModel: datasetSearchRerankModel,
-      rerankWeight: datasetSearchRerankWeight,
-      datasetSearchUsingExtensionQuery: datasetSearchUsingExtensionQuery = false,
-      datasetSearchExtensionModel: datasetSearchExtensionModel,
-      datasetSearchExtensionBg: datasetSearchExtensionBg,
-      collectionFilterMatch: collectionFilterMatch
+      datasets: datasetSelectList
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -124,28 +113,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   let planIterationCount = 0; // 规划迭代计数器
 
+  const masterMessagesKey = `masterMessages-${nodeId}`;
   const planMessagesKey = `planMessages-${nodeId}`;
   const agentPlanKey = `agentPlan-${nodeId}`;
-
-  // 交互模式进来的话，这个值才是交互输入的值
-  const interactiveInput = lastInteractive ? chatValue2RuntimePrompt(query).text : '';
+  const planBufferKey = `planBuffer-${nodeId}`;
 
   // Get history messages
-  let { planHistoryMessages, agentPlan } = (() => {
-    const lastHistory = chatHistories[chatHistories.length - 1];
-    if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
-      return {
-        planHistoryMessages: lastHistory.memories?.[
-          planMessagesKey
-        ] as ChatCompletionMessageParam[],
-        agentPlan: lastHistory.memories?.[agentPlanKey] as AgentPlanType
-      };
-    }
-    return {
-      planHistoryMessages: undefined,
-      agentPlan: undefined
-    };
-  })();
+
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
 
@@ -155,32 +129,46 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
-    const { filesMap, prompt: fileInputPrompt } = getFileInputPrompt({
+    const { filesMap, prompt: fileInputPrompt } = formatFileInput({
       fileUrls: fileLinks,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
       histories: chatHistories
     });
 
-    // Build dataset configuration
-    const datasetConfig: DatasetSearchToolConfig | undefined =
-      datasetSelectList && datasetSelectList.length > 0
-        ? {
-            datasets: datasetSelectList,
-            similarity: datasetSimilarity,
-            maxTokens: datasetMaxTokens,
-            searchMode: datasetSearchMode,
-            embeddingWeight: datasetSearchEmbeddingWeight,
-            usingReRank: datasetSearchUsingReRank,
-            rerankModel: datasetSearchRerankModel,
-            rerankWeight: datasetSearchRerankWeight,
-            usingExtensionQuery: datasetSearchUsingExtensionQuery,
-            extensionModel: datasetSearchExtensionModel,
-            extensionBg: datasetSearchExtensionBg,
-            collectionFilterMatch,
-            model
-          }
-        : undefined;
+    // 交互模式进来的话，这个值才是交互输入的值
+    const queryInput = chatValue2RuntimePrompt(query).text;
+    const formatUserChatInput = fileInputPrompt
+      ? `${fileInputPrompt}\n\n${userChatInput}`
+      : userChatInput;
+
+    let {
+      masterMessages = historiesMessages.concat({
+        role: 'user',
+        content: formatUserChatInput
+      }),
+      planHistoryMessages,
+      agentPlan,
+      planBuffer
+    } = (() => {
+      const lastHistory = chatHistories[chatHistories.length - 1];
+      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
+        return {
+          masterMessages: lastHistory.memories?.[masterMessagesKey] as ChatCompletionMessageParam[],
+          planHistoryMessages: lastHistory.memories?.[
+            planMessagesKey
+          ] as ChatCompletionMessageParam[],
+          agentPlan: lastHistory.memories?.[agentPlanKey] as AgentPlanType,
+          planBuffer: lastHistory.memories?.[planBufferKey] as PlanAgentParamsType
+        };
+      }
+      return {
+        masterMessages: undefined,
+        planHistoryMessages: undefined,
+        agentPlan: undefined,
+        planBuffer: undefined
+      };
+    })();
 
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
@@ -189,8 +177,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         tmbId: runningAppInfo.tmbId,
         lang,
         getPlanTool: true,
-        datasetConfig,
-        fileSelectConfig: chatConfig?.fileSelectConfig
+        hasDataset: datasetSelectList && datasetSelectList.length > 0,
+        hasFiles: Object.keys(filesMap).length > 0
       }
     );
     const getSubAppInfo = (id: string) => {
@@ -202,77 +190,69 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     };
 
-    // 生成文件信息提示
-    const filesInfo =
-      Object.keys(filesMap).length > 0
-        ? `\n\n<available_files>
-        当前对话中用户已上传以下文件：
-        ${Object.entries(filesMap)
-          .map(([index, url]) => {
-            const fileInfo = parseUrlToFileType(url);
-            return `- 文件${index}: ${fileInfo?.name || 'Unknown'} (类型: ${fileInfo?.type || 'file'})`;
-          })
-          .join('\n')}
-        
-        **重要提示**：
-        - 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
-        - 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
-        </available_files>`
-        : '';
-
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: systemPrompt + filesInfo,
+      userSystemPrompt: systemPrompt,
       getSubAppInfo
     });
-    console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
+    // console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
     // console.dir(agentSubAppsMap, {depth:null});
 
     /* ===== AI Start ===== */
     const parsePlanCallResult = (result: DispatchPlanAgentResponse) => {
-      let { askInteractive, plan, completeMessages, usages } = result;
+      let { askInteractive, plan, planBuffer, completeMessages, usages, nodeResponse } = result;
       // 调试代码
       // if (plan) {
       //   plan.steps = plan.steps.slice(0, 1);
       // }
+      nodeResponses.push(nodeResponse);
       usagePush(usages);
 
       // SSE response
       // 只有当 plan 存在且有步骤时才推送
       if (plan && plan.steps.length > 0) {
+        const formatPlan = {
+          ...plan,
+          steps: plan.steps.map((item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description
+          }))
+        };
         assistantResponses.push({
-          plan: {
-            ...plan,
-            steps: plan.steps.map((item) => ({
-              id: item.id,
-              title: item.title,
-              description: item.description
-            }))
-          }
+          plan: formatPlan
         });
         workflowStreamResponse?.({
           event: SseResponseEventEnum.plan,
-          data: { plan }
+          data: { plan: formatPlan }
         });
       }
 
       return {
         completeMessages,
         askInteractive,
-        plan
+        plan,
+        planBuffer
       };
     };
     const planCallFn = async () => {
+      // Plan: 2,4 场景
+      if (!lastInteractive || !planHistoryMessages || !planBuffer) {
+        addLog.error('Plan 结构逻辑错误');
+        return Promise.reject('逻辑错误');
+      }
       const result = await dispatchPlanAgent({
         checkIsStopping,
-        defaultMessages: planHistoryMessages || historiesMessages,
-        userInput: lastInteractive ? interactiveInput : userChatInput,
-        interactive: lastInteractive,
         completionTools: agentCompletionTools,
         getSubAppInfo,
         systemPrompt: formatedSystemPrompt,
         model,
         stream,
-        mode: 'initial' // 初始规划模式
+
+        mode: 'interactive', // 初始规划模式
+        interactive: lastInteractive,
+        planMessages: planHistoryMessages || [],
+        queryInput,
+        ...planBuffer
       });
       const { completeMessages, askInteractive, plan } = parsePlanCallResult(result);
 
@@ -283,51 +263,52 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         return {
           [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
           [DispatchNodeResponseKeyEnum.memories]: {
+            [masterMessagesKey]: masterMessages,
             [planMessagesKey]: filterMemoryMessages(completeMessages),
-            [agentPlanKey]: agentPlan
+            [agentPlanKey]: agentPlan,
+            [planBufferKey]: planBuffer
           },
           [DispatchNodeResponseKeyEnum.interactive]: askInteractive
         };
       }
     };
     const continuePlanCallFn = async () => {
+      // plan: 5 场景
       if (!agentPlan) return;
 
       addLog.debug(`All steps completed, check if need continue planning`);
+      const stepsResponse = agentPlan.steps.map((step) => {
+        const stepResponse = assistantResponses
+          .filter((item) => item.stepId === step.id)
+          ?.map((item) => item.text?.content)
+          .join('\n');
+        return {
+          title: step.title,
+          response: stepResponse
+        };
+      });
 
       try {
-        // 将当前轮次的步骤执行结果转换为消息格式
-        const currentMessages = chats2GPTMessages({
-          messages: [{ obj: ChatRoleEnum.AI, value: assistantResponses }],
-          reserveId: false,
-          reserveTool: true
-        });
-
-        // 构建完整上下文：历史消息 + 用户输入(根据场景) + 本轮所有的AI响应
-        const userInputMessage =
-          lastInteractive && interactiveInput
-            ? [{ role: 'user' as const, content: interactiveInput }]
-            : [];
-
         const result = await dispatchPlanAgent({
           checkIsStopping,
-          defaultMessages: [...historiesMessages, ...userInputMessage, ...currentMessages],
-          userInput:
-            '请基于已执行的步骤结果，根据系统提示词来判断是否需要继续规划、生成总结报告步骤、还是任务已完成，或者遇到问题直接返回',
-          interactive: lastInteractive,
           completionTools: agentCompletionTools,
           getSubAppInfo,
           systemPrompt: formatedSystemPrompt,
           model,
           stream,
-          mode: 'continue' // 继续规划模式
+          mode: 'continue', // 继续规划模式
+          query: getContinuePlanQuery({
+            task: agentPlan.task,
+            description: agentPlan.description,
+            background: agentPlan.background,
+            response: JSON.stringify(stepsResponse)
+          }),
+          task: agentPlan.task,
+          description: agentPlan.description,
+          background: agentPlan.background
         });
 
-        const {
-          completeMessages,
-          askInteractive,
-          plan: continuePlan
-        } = parsePlanCallResult(result);
+        const { plan: continuePlan } = parsePlanCallResult(result);
 
         if (continuePlan && continuePlan.steps.length > 0) {
           addLog.debug(
@@ -338,17 +319,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           addLog.debug(`Continue planning: no new steps, planning complete`);
           agentPlan = undefined;
         }
-
-        if (askInteractive) {
-          return {
-            [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-            [DispatchNodeResponseKeyEnum.memories]: {
-              [planMessagesKey]: filterMemoryMessages(completeMessages),
-              [agentPlanKey]: agentPlan
-            },
-            [DispatchNodeResponseKeyEnum.interactive]: askInteractive
-          };
-        }
       } catch (error) {
         addLog.error(`Continue planning failed`, error);
         // 规划失败时，清空 agentPlan，让任务正常结束
@@ -357,11 +327,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     };
 
-    // 首轮任务
-    let initialRequest = true;
     // 执行 Plan
-    if (!!planHistoryMessages?.length) {
-      initialRequest = false;
+    if (planHistoryMessages?.length) {
       const result = await planCallFn();
       // 有 result 代表 plan 有交互响应（ask）
       if (result) return result;
@@ -373,10 +340,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       if (agentPlan) {
-        console.log(`Start step call`, {
-          agentPlan: JSON.stringify(agentPlan, null, 2)
-        });
-
         while (!checkIsStopping() && agentPlan.steps.filter((item) => !item.response).length) {
           for await (const step of agentPlan.steps) {
             if (checkIsStopping()) {
@@ -404,7 +367,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             const result = await masterCall({
               ...props,
               systemPrompt: formatedSystemPrompt,
-              defaultMessages: [],
+              masterMessages: [],
+              planMessages: [],
               getSubAppInfo,
               completionTools: agentCompletionTools,
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
@@ -438,6 +402,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
 
         // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
+        const stepsResponse = agentPlan.steps.map((step) => {
+          const stepResponse = assistantResponses
+            .filter((item) => item.stepId === step.id)
+            ?.map((item) => item.text?.content)
+            .join('\n');
+          return {
+            title: step.title,
+            response: stepResponse
+          };
+        });
+        // 拼接 plan response 到 masterMessages 里（肯定在最后一个）
+        const lastToolIndex = masterMessages.findIndex((item) => item.role === 'tool');
+        if (lastToolIndex !== -1) {
+          masterMessages[lastToolIndex].content = JSON.stringify(stepsResponse);
+        }
         planIterationCount++;
 
         if (planIterationCount >= MAX_PLAN_ITERATIONS) {
@@ -455,40 +434,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         if (!agentPlan) {
           addLog.debug(`Planning complete, hand over to master agent`);
-          initialRequest = false;
           continue;
         }
       } else {
         addLog.debug(`Start master agent`);
-        const messages = chats2GPTMessages({
-          messages: [{ obj: ChatRoleEnum.AI, value: assistantResponses }],
-          reserveId: false,
-          reserveTool: true
-        });
-
-        // 构建完整上下文：历史消息 + 用户输入 + 本轮所有的AI响应
-        // 如果是首轮直接输入用户的消息，如果是非首轮且有交互内容，则输入交互的内容
-        const userInputMessage = initialRequest
-          ? userChatInput
-            ? [{ role: 'user' as const, content: userChatInput }]
-            : []
-          : lastInteractive && interactiveInput
-            ? [{ role: 'user' as const, content: interactiveInput }]
-            : [];
 
         // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)
         // addLog.debug(`Master agent message:${JSON.stringify(messages, null, 2)}`)
         const result = await masterCall({
           ...props,
+          masterMessages,
+          planMessages: planHistoryMessages || [],
           systemPrompt: formatedSystemPrompt,
-          initialRequest,
-          defaultMessages: [...historiesMessages, ...userInputMessage, ...messages],
           getSubAppInfo,
           completionTools: agentCompletionTools,
           filesMap,
           subAppsMap: agentSubAppsMap
         });
         nodeResponses.push(result.nodeResponse);
+        masterMessages = result.masterMessages;
 
         // Merge assistant responses
         const assistantResponse = GPTMessages2Chats({
@@ -502,7 +466,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         // 触发了 plan
         if (result.planResponse) {
-          const { completeMessages, askInteractive, plan } = parsePlanCallResult(
+          const { completeMessages, askInteractive, plan, planBuffer } = parsePlanCallResult(
             result.planResponse
           );
 
@@ -511,8 +475,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             return {
               [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
               [DispatchNodeResponseKeyEnum.memories]: {
+                [masterMessagesKey]: masterMessages,
                 [planMessagesKey]: filterMemoryMessages(completeMessages),
-                [agentPlanKey]: plan
+                [agentPlanKey]: plan,
+                [planBufferKey]: planBuffer
               },
               [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
               [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
@@ -535,8 +501,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 任务结束
     return {
       [DispatchNodeResponseKeyEnum.memories]: {
+        [masterMessagesKey]: undefined,
         [agentPlanKey]: undefined,
-        [planMessagesKey]: undefined
+        [planMessagesKey]: undefined,
+        [planBufferKey]: undefined
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses

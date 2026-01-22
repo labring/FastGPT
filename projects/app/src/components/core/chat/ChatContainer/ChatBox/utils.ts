@@ -120,7 +120,6 @@ export const rewriteHistoriesByInteractiveResponse = ({
     return histories.slice(0, -2);
   })();
 
-  console.log(formatHistories);
   const newHistories = formatHistories.map((item, i) => {
     if (i !== formatHistories.length - 1) return item;
 

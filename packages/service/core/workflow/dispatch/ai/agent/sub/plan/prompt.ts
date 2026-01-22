@@ -2,7 +2,7 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '../constants';
 import { AIAskTool } from './ask/constants';
 import type { GetSubAppInfoFnType } from '../../type';
-import { parseSystemPrompt } from '../../utils';
+import type { PlanAgentParamsType } from './constants';
 
 const getSubAppPrompt = ({
   getSubAppInfo,
@@ -163,7 +163,6 @@ const getCommonPromptParts = ({
       </best_practices>`
   };
 };
-
 // 初始规划的提示词
 export const getInitialPlanPrompt = ({
   getSubAppInfo,
@@ -848,4 +847,34 @@ ${requirements}
 ${guardrails}
 
 ${bestPractices}`;
+};
+
+export const getInitialPlanQuery = ({ task, description, background }: PlanAgentParamsType) => {
+  return `## 任务目标
+${task}
+
+## 任务描述
+${description}
+
+
+${background ? `## 背景信息\n${background}\n` : ''}`.trim();
+};
+
+export const getContinuePlanQuery = ({
+  task,
+  description,
+  background,
+  response
+}: PlanAgentParamsType & {
+  response: string;
+}) => {
+  return `${getInitialPlanQuery({ task, description, background })}
+
+## 已执行的步骤及结果
+"""
+${response}
+"""
+
+## 下一步任务
+请基于已执行步骤及结果，根据系统提示词来判断是否需要继续规划、生成总结报告步骤、还是任务已完成，或者遇到问题直接返回`;
 };

@@ -224,18 +224,18 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       })) as SystemModelItemType[];
     }
 
-    console.log(
-      JSON.stringify(
-        _systemActiveModelList.map((item) => ({
-          provider: item.provider,
-          model: item.model,
-          name: item.name
-        })),
-        null,
-        2
-      ),
-      `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
-    );
+    // console.log(
+    //   JSON.stringify(
+    //     _systemActiveModelList.map((item) => ({
+    //       provider: item.provider,
+    //       model: item.model,
+    //       name: item.name
+    //     })),
+    //     null,
+    //     2
+    //   ),
+    //   `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
+    // );
   } catch (error) {
     console.error('Load models error', error);
 

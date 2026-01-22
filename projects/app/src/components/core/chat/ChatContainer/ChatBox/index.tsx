@@ -615,7 +615,7 @@ const ChatBox = ({
               status: ChatStatusEnum.loading
             }
           ];
-          console.log(interactive, 1212);
+
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
             interactive

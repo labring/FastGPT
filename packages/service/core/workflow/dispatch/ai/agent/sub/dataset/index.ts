@@ -11,16 +11,31 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '../../../../../../../../web/i18n/utils';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type DatasetSearchParams = {
   query: string;
-  config: DatasetSearchToolConfig;
+  config: {
+    datasets: SelectedDatasetType[];
+    similarity: number;
+    maxTokens: number;
+    searchMode: `${DatasetSearchModeEnum}`;
+    embeddingWeight?: number;
+    usingReRank: boolean;
+    rerankModel?: string;
+    rerankWeight?: number;
+    usingExtensionQuery: boolean;
+    extensionModel?: string;
+    extensionBg?: string;
+    collectionFilterMatch?: string;
+    model: string;
+  };
 
   teamId: string;
   tmbId: string;
   histories: ChatCompletionMessageParam[];
-  model: string;
 };
 
 /**
@@ -136,8 +151,7 @@ export const dispatchAgentDatasetSearch = async ({
   config,
   teamId,
   tmbId,
-  histories,
-  model
+  histories
 }: DatasetSearchParams): Promise<{
   response: string;
   usages: ChatNodeUsageType[];
@@ -189,7 +203,7 @@ export const dispatchAgentDatasetSearch = async ({
     const searchResult = await dispatchDatasetSearch(props);
     let results = searchResult.data?.quoteQA || [];
 
-    const modelData = getLLMModel(model);
+    const modelData = getLLMModel(config.model);
     const threshold = calculateCompressionThresholds(modelData.maxContext).datasetSearchSelection;
 
     const messages: ChatCompletionMessageParam[] = results.map((item) => ({
@@ -210,7 +224,7 @@ export const dispatchAgentDatasetSearch = async ({
       const { ids: selectedIds, usage: selectionUsage } = await selectRelevantChunksByLLM({
         query,
         chunks: results,
-        model
+        model: config.model
       });
 
       if (selectedIds.length > 0) {

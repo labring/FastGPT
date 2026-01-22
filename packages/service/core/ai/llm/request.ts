@@ -602,11 +602,12 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
         : undefined,
     response_format,
     stop: formatStop?.length ? formatStop : undefined,
-    ...(toolCallMode === 'toolChoice' && {
-      tools,
-      tool_choice,
-      parallel_tool_calls
-    })
+    ...(toolCallMode === 'toolChoice' &&
+      tools?.length && {
+        tools,
+        tool_choice,
+        parallel_tool_calls
+      })
   } as T;
 
   // Filter undefined/null value

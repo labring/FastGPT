@@ -31,7 +31,7 @@ export const readFileTool: ChatCompletionTool = {
   }
 };
 
-export const getFileInputPrompt = ({
+export const formatFileInput = ({
   fileUrls = [],
   requestOrigin,
   maxFiles,
@@ -126,6 +126,18 @@ export const getFileInputPrompt = ({
     const index = uniqueFiles.findIndex((f) => f.name === item.name);
     promptList.push({ index: `${index + 1}`, name: item.name });
   });
+  const prompt =
+    promptList.length > 0
+      ? `<available_files>
+当前对话中用户已上传以下文件：
+
+${promptList.map((item) => `- 文件${item.index}: ${item.name}`).join('\n')}
+
+**重要提示**：
+- 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
+- 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
+</available_files>`
+      : '';
 
   return {
     filesMap: uniqueFiles.reduce(
@@ -135,7 +147,7 @@ export const getFileInputPrompt = ({
       },
       {} as Record<string, string>
     ),
-    prompt: promptList.length > 0 ? JSON.stringify(promptList) : ''
+    prompt
   };
 };
 

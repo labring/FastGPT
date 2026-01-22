@@ -4,7 +4,6 @@ import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/cor
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
 import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
-
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getStepCallQuery } from '../constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -14,7 +13,7 @@ import { parseJsonArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
 import { dispatchTool } from '../sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { DatasetSearchToolSchema, type DatasetSearchToolConfig } from '../sub/dataset/utils';
+import { DatasetSearchToolSchema } from '../sub/dataset/utils';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
@@ -30,6 +29,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getMasterSystemPrompt } from './prompt';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { PlanAgentParamsSchema } from '../sub/plan/constants';
+import { filterMemoryMessages } from '../../utils';
 
 type Response = {
   stepResponse?: {
@@ -39,30 +41,32 @@ type Response = {
   planResponse?: DispatchPlanAgentResponse;
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
+  masterMessages: ChatCompletionMessageParam[];
 
   nodeResponse: ChatHistoryItemResType;
 };
 
 export const masterCall = async ({
   systemPrompt,
-  defaultMessages,
+  masterMessages,
+  planMessages,
   getSubAppInfo,
   completionTools,
   filesMap,
   subAppsMap,
-  initialRequest,
   steps,
   step,
   ...props
 }: DispatchAgentModuleProps & {
+  masterMessages: ChatCompletionMessageParam[];
+  planMessages: ChatCompletionMessageParam[];
   systemPrompt?: string;
-  defaultMessages: ChatCompletionMessageParam[];
+
   getSubAppInfo: GetSubAppInfoFnType;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
   subAppsMap: Map<string, SubAppRuntimeType>;
 
-  initialRequest?: boolean;
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
@@ -77,7 +81,22 @@ export const masterCall = async ({
     stream,
     workflowStreamResponse,
     usagePush,
-    params: { model }
+    params: {
+      model,
+      userChatInput,
+      // Dataset search configuration
+      datasets: datasetSelectList,
+      similarity: datasetSimilarity = 0.4,
+      limit: datasetMaxTokens = 5000,
+      searchMode: datasetSearchMode = DatasetSearchModeEnum.embedding,
+      embeddingWeight: datasetSearchEmbeddingWeight,
+      usingReRank: datasetSearchUsingReRank = false,
+      rerankModel: datasetSearchRerankModel,
+      rerankWeight: datasetSearchRerankWeight,
+      datasetSearchUsingExtensionQuery: datasetSearchUsingExtensionQuery = false,
+      datasetSearchExtensionModel: datasetSearchExtensionModel,
+      datasetSearchExtensionBg: datasetSearchExtensionBg
+    }
   } = props;
 
   const startTime = Date.now();
@@ -151,7 +170,7 @@ export const masterCall = async ({
         role: 'system' as const,
         content: getMasterSystemPrompt(systemPrompt)
       },
-      ...defaultMessages
+      ...masterMessages
     ];
     return {
       requestMessages: messages
@@ -280,21 +299,77 @@ export const masterCall = async ({
               usages: result.usages
             };
           }
+          if (toolId === SubAppIds.datasetSearch) {
+            const toolParams = DatasetSearchToolSchema.safeParse(
+              parseJsonArgs(call.function.arguments)
+            );
+            if (!toolParams.success) {
+              return {
+                response: toolParams.error.message,
+                usages: []
+              };
+            }
+
+            if (!datasetSelectList || datasetSelectList.length === 0) {
+              return {
+                response: 'No dataset selected',
+                usages: []
+              };
+            }
+
+            const params = toolParams.data;
+
+            const result = await dispatchAgentDatasetSearch({
+              query: params.query,
+              config: {
+                datasets: datasetSelectList,
+                similarity: datasetSimilarity,
+                maxTokens: datasetMaxTokens,
+                searchMode: datasetSearchMode,
+                embeddingWeight: datasetSearchEmbeddingWeight,
+                usingReRank: datasetSearchUsingReRank,
+                rerankModel: datasetSearchRerankModel,
+                rerankWeight: datasetSearchRerankWeight,
+                usingExtensionQuery: datasetSearchUsingExtensionQuery,
+                extensionModel: datasetSearchExtensionModel,
+                extensionBg: datasetSearchExtensionBg,
+                model
+              },
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId,
+              histories: messages
+            });
+
+            return {
+              response: result.response,
+              usages: result.usages
+            };
+          }
           if (toolId === SubAppIds.plan) {
             try {
-              const toolArgs = parseJsonArgs<{ description: string }>(call.function.arguments);
-              const query = toolArgs?.description;
+              const toolArgs = await PlanAgentParamsSchema.safeParseAsync(
+                parseJsonArgs(call.function.arguments)
+              );
 
+              if (!toolArgs.success) {
+                return {
+                  response: 'Tool arguments is not valid',
+                  usages: []
+                };
+              }
+
+              // plan: 1,3 场景
               planResult = await dispatchPlanAgent({
                 checkIsStopping,
-                defaultMessages,
-                userInput: initialRequest ? undefined : query,
                 completionTools,
                 getSubAppInfo,
                 systemPrompt,
                 model,
                 stream,
-                mode: initialRequest ? 'initial' : 'continue' //  目前不支持深层 plan 调用的话，step Call 的情况下不会调用到 plan agent
+                mode: 'initial',
+                task: toolArgs.data.task,
+                description: toolArgs.data.description,
+                background: toolArgs.data.background
               });
 
               return {
@@ -309,49 +384,7 @@ export const masterCall = async ({
               };
             }
           }
-          if (toolId === SubAppIds.datasetSearch) {
-            const toolParams = DatasetSearchToolSchema.safeParse(
-              parseJsonArgs(call.function.arguments)
-            );
-            if (!toolParams.success) {
-              return {
-                response: toolParams.error.message,
-                usages: []
-              };
-            }
-            const params = toolParams.data;
 
-            // 从 subAppsMap 获取工具配置
-            const tool = subAppsMap.get(toolId);
-            if (!tool) {
-              return {
-                response: '知识库检索工具未配置',
-                usages: []
-              };
-            }
-
-            const config = tool.params as DatasetSearchToolConfig;
-            if (!config.datasets || config.datasets.length === 0) {
-              return {
-                response: '未选择知识库',
-                usages: []
-              };
-            }
-
-            const result = await dispatchAgentDatasetSearch({
-              query: params.query,
-              config,
-              teamId: runningUserInfo.teamId,
-              tmbId: runningUserInfo.tmbId,
-              model: config.model,
-              histories: messages
-            });
-
-            return {
-              response: result.response,
-              usages: result.usages
-            };
-          }
           // User Sub App
           else {
             const tool = subAppsMap.get(toolId);
@@ -528,7 +561,8 @@ export const masterCall = async ({
       },
       completeMessages,
       assistantMessages,
-      nodeResponse
+      nodeResponse,
+      masterMessages: masterMessages.concat(assistantMessages)
     };
   }
 
@@ -538,6 +572,7 @@ export const masterCall = async ({
     planResponse: planResult,
     completeMessages,
     assistantMessages,
-    nodeResponse
+    nodeResponse,
+    masterMessages: filterMemoryMessages(completeMessages)
   };
 };
