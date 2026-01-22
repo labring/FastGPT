@@ -459,7 +459,7 @@ const EditForm = ({
               </Box>
             </FormItem>
 
-            <FormItem
+            {/* <FormItem
               label={t('app:smart_customer_service_deep_thinking')}
               minWidth={SIZES.FORM_LABEL_MIN_WIDTH.SMALL}
             >
@@ -470,8 +470,7 @@ const EditForm = ({
                   isDisabled={!isReasoningSupported}
                 />
               </MyTooltip>
-            </FormItem>
-
+            </FormItem> */}
             <Flex flexDirection={'column'}>
               <FormLabel fontSize={'12px'} fontWeight={'500'} mb={3}>
                 {t('app:smart_customer_service_prompt_config')}
