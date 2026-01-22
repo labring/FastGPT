@@ -43,8 +43,6 @@ const StandardPlanContentList = ({
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
 
-    console.log(plan.maxUploadFileSize, standplan?.maxUploadFileSize);
-
     return {
       price: plan.price * (formatMode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
