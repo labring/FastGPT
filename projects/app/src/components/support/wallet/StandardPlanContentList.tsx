@@ -69,7 +69,8 @@ const StandardPlanContentList = ({
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
       maxUploadFileSize: formatFileSize(
-        standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize
+        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
+          1024 ** 2
       ),
       maxUploadFileCount:
         standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
