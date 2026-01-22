@@ -68,6 +68,7 @@ const ExceptionInfoModal = ({
       manual: true,
       onSuccess: () => {
         refreshList();
+        onSuccess?.();
       }
     }
   );
