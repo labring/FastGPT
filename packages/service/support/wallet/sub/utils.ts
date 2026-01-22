@@ -247,7 +247,10 @@ export const getTeamPlanStatus = async ({
             standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
           ticketResponseTime:
             standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain
+          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+          maxUploadFileSize: standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+          maxUploadFileCount:
+            standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
         }
       : undefined,
 

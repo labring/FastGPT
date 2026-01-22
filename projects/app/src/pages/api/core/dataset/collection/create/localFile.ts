@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
 
