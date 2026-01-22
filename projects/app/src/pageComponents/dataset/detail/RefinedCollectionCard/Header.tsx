@@ -331,7 +331,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 <Flex align={'center'}>
                   {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
                   {titleLabel}
-                  {i18n.language === 'en' ? '  ' : ''}({total})
+                  {i18n.language === 'en' ? '  ' : ''}
+                  {t('common:count_in_bracket', { count: total })}
                 </Flex>
                 {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (

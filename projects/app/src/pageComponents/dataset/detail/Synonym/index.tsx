@@ -62,6 +62,7 @@ interface UploadedFile {
   uploadTime: Date;
   status: 'success' | 'failed';
   file: File;
+  errorMessage?: string;
 }
 
 // 文件信息组件Props
@@ -81,6 +82,7 @@ interface FileInfoProps {
   onCancelDelete?: () => void;
   onConfirmDelete?: (e: React.MouseEvent) => Promise<void>;
   uploadStatus?: 'success' | 'failed';
+  errorMessage?: string;
 }
 
 // 文件信息组件
@@ -99,7 +101,8 @@ const FileInfo: React.FC<FileInfoProps> = ({
   showDeleteConfirm = false,
   onCancelDelete,
   onConfirmDelete,
-  uploadStatus
+  uploadStatus,
+  errorMessage
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -107,7 +110,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
   const isFailedUpload = isUploadedFile && uploadStatus === 'failed';
 
   return (
-    <VStack spacing={4} alignItems="stretch" w={'100%'}>
+    <VStack spacing={2} alignItems="stretch" w={'100%'}>
       <Box p={4} border={theme.borders.sm} borderRadius={'10px'} borderColor={theme.borders.base}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Flex alignItems={'center'} gap={3}>
@@ -251,6 +254,15 @@ const FileInfo: React.FC<FileInfoProps> = ({
           </HStack>
         </Flex>
       </Box>
+
+      {/* 错误信息显示 */}
+      {isFailedUpload && errorMessage && (
+        <Box py={'4px'} px={'8px'}>
+          <Text fontSize={'12px'} color={'red.600'}>
+            {errorMessage}
+          </Text>
+        </Box>
+      )}
     </VStack>
   );
 };
@@ -335,13 +347,13 @@ const SynonymTab = () => {
           size: fileToUpload.size,
           uploadTime: new Date(),
           status: 'failed',
-          file: fileToUpload.file
+          file: fileToUpload.file,
+          errorMessage: t((error as Error).message)
         });
 
         toast({
           status: 'error',
-          title: t('dataset:synonym_upload_failed'),
-          description: t((error as Error).message)
+          title: t('dataset:synonym_upload_failed')
         });
       } finally {
         setIsUploading(false);
@@ -368,7 +380,7 @@ const SynonymTab = () => {
 
       toast({
         status: 'success',
-        title: `${synonymFile.fileName} ${t('dataset:synonym_download_started')}`
+        title: t('dataset:synonym_download_started', { fileName: synonymFile.fileName })
       });
     } catch (error) {
       toast({
@@ -426,6 +438,7 @@ order,purchase order,order number,transaction,invoice`;
             uploadTime={uploadedFile.uploadTime}
             isUploadedFile={true}
             uploadStatus={uploadedFile.status}
+            errorMessage={uploadedFile.errorMessage}
             onClear={handleClearUpload}
             isUploading={isUploading}
           />

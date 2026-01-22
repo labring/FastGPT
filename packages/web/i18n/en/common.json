@@ -1401,5 +1401,6 @@
   "core.dataset.error.collectionNameExtensionMismatch": "File extension does not match the original. Original: {{original}}, New: {{new}}.",
   "core.dataset.error.noDataTables": "Database knowledge base has no data tables. Please add data tables first.",
   "core.dataset.error.noFiles": "Structured document knowledge base has no files. Please upload files first.",
-  "dataset.data.deleted": "该数据已被删除"
+  "dataset.data.deleted": "该数据已被删除",
+  "count_in_bracket": "({{count}})"
 }

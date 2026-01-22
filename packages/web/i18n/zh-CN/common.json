@@ -499,11 +499,11 @@
   "core.dataset.error.unLinkCollection": "不是网络链接集合",
   "core.dataset.error.synonymFileNotExist": "同义词文件不存在或您无权访问该文件。",
   "core.dataset.error.synonymFileEmpty": "文件为空或仅包含表头。",
-  "core.dataset.error.synonymFileInvalidFormat": "文件格式无效。请确保第一行包含表头。",
+  "core.dataset.error.synonymFileInvalidFormat": "文件格式无效，请确保第一行包含表头。",
   "core.dataset.error.synonymFileNoValidData": "文件中未找到有效的同义词数据。",
   "core.dataset.error.synonymFileUnsupportedFormat": "仅支持上传 CSV、XLSX、XLS 格式的文件。",
-  "core.dataset.error.synonymFileParseFailed": "文件解析失败。请检查文件格式和编码。",
-  "core.dataset.error.synonymTermDuplicate": "标准词不能与同义词相同。请检查文件内容。",
+  "core.dataset.error.synonymFileParseFailed": "文件解析失败，请检查文件格式和编码。",
+  "core.dataset.error.synonymTermDuplicate": "标准词不能与同义词相同，请检查文件内容。",
   "core.dataset.error.datasetTrainingInProgress": "知识库正在训练中，请等待训练完成后再操作。",
   "core.dataset.externalFile": "外部文件库",
   "core.dataset.file": "文件",
@@ -1401,5 +1401,6 @@
   "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致。原后缀：{{original}}，新后缀：{{new}}",
   "core.dataset.error.noDataTables": "数据库知识库中没有数据表，请先添加数据表",
   "core.dataset.error.noFiles": "文档知识库中没有文件，请先上传文件",
-  "dataset.data.deleted": "该数据已被删除"
+  "dataset.data.deleted": "该数据已被删除",
+  "count_in_bracket": "（{{count}}）"
 }

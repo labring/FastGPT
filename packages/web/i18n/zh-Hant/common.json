@@ -496,11 +496,11 @@
   "core.dataset.error.unLinkCollection": "不是網路連結集合",
   "core.dataset.error.synonymFileNotExist": "同義詞檔案不存在或您無權存取該檔案。",
   "core.dataset.error.synonymFileEmpty": "檔案為空或僅包含表頭。",
-  "core.dataset.error.synonymFileInvalidFormat": "檔案格式無效。請確保第一行包含表頭。",
+  "core.dataset.error.synonymFileInvalidFormat": "檔案格式無效，請確保第一行包含表頭。",
   "core.dataset.error.synonymFileNoValidData": "檔案中未找到有效的同義詞資料。",
   "core.dataset.error.synonymFileUnsupportedFormat": "僅支援上傳 CSV、XLSX、XLS 格式的檔案。",
-  "core.dataset.error.synonymFileParseFailed": "檔案解析失敗。請檢查檔案格式和編碼。",
-  "core.dataset.error.synonymTermDuplicate": "標準詞不能與同義詞相同。請檢查檔案內容。",
+  "core.dataset.error.synonymFileParseFailed": "檔案解析失敗，請檢查檔案格式和編碼。",
+  "core.dataset.error.synonymTermDuplicate": "標準詞不能與同義詞相同，請檢查檔案內容。",
   "core.dataset.error.datasetTrainingInProgress": "知識庫正在訓練中，請等待訓練完成後再操作。",
   "core.dataset.externalFile": "外部檔案庫",
   "core.dataset.file": "檔案",
@@ -1403,5 +1403,6 @@
   "core.dataset.error.collectionNameExtensionMismatch": "檔案副檔名與原檔案不一致。原副檔名：{{original}}，新副檔名：{{new}}",
   "core.dataset.error.noDataTables": "資料庫知識庫中沒有資料表，請先新增資料表",
   "core.dataset.error.noFiles": "文件知識庫中沒有文件，請先上傳文件",
-  "dataset.data.deleted": "該數據已被刪除"
+  "dataset.data.deleted": "該數據已被刪除",
+  "count_in_bracket": "（{{count}}）"
 }
