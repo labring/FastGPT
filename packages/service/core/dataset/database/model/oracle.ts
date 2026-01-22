@@ -29,6 +29,7 @@ export class OracleClient extends AsyncDB {
         `SELECT TABLE_NAME
          FROM ALL_TABLES
          WHERE OWNER = :1
+           AND NESTED = 'NO'
          ORDER BY TABLE_NAME`,
         [owner]
       );
@@ -109,7 +110,7 @@ export class OracleClient extends AsyncDB {
            AND c.COLUMN_NAME = pk.COLUMN_NAME
          WHERE c.OWNER = :1 AND c.TABLE_NAME = :2
          ORDER BY c.COLUMN_ID`,
-        [owner, tableName.toUpperCase()]
+        [owner, tableName]
       );
 
       // 检查表是否存在
@@ -148,7 +149,7 @@ export class OracleClient extends AsyncDB {
          WHERE c.OWNER = :1
            AND c.TABLE_NAME = :2
            AND c.CONSTRAINT_TYPE = 'R'`,
-        [owner, tableName.toUpperCase()]
+        [owner, tableName]
       );
 
       const foreignKeyColumns = new Set(foreignKeysResult.map((fk) => fk.COLUMN_NAME));
