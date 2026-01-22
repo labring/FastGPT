@@ -43,6 +43,8 @@ const StandardPlanContentList = ({
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
 
+    console.log(plan.maxUploadFileSize, standplan?.maxUploadFileSize);
+
     return {
       price: plan.price * (formatMode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
@@ -69,7 +71,8 @@ const StandardPlanContentList = ({
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
       maxUploadFileSize: formatFileSize(
-        standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize
+        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
+          1024 ** 2
       ),
       maxUploadFileCount:
         standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
