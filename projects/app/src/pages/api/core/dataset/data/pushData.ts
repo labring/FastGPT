@@ -85,7 +85,8 @@ async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiR
     trainingType: collection.trainingType,
     autoIndexes: collection.autoIndexes,
     imageIndex: collection.imageIndex,
-    small2bigIndexes: collection.small2bigIndexes
+    small2bigIndexes: collection.small2bigIndexes,
+    syntheticIndex: collection.syntheticIndex
   });
 
   // auth dataset limit
