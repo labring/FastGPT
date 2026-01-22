@@ -37,7 +37,7 @@
     "json5": "^2.2.3",
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "mammoth": "^1.11.0",
     "mime": "^4.1.0",
     "minio": "^8.0.5",
