@@ -185,7 +185,8 @@ export const masterCall = async ({
     completeMessages,
     inputTokens,
     outputTokens,
-    childrenUsages
+    childrenUsages,
+    finish_reason
   } = await runAgentCall({
     maxRunAgentTimes: 100,
     body: {
@@ -521,7 +522,8 @@ export const masterCall = async ({
     inputTokens,
     outputTokens,
     totalPoints: childTotalPoints + llmUsage.totalPoints,
-    childrenResponses
+    childrenResponses,
+    finishReason: finish_reason
   };
 
   // Step call

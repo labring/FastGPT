@@ -44,6 +44,7 @@ export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBo
   body: LLMRequestBodyType<T>;
   isAborted?: () => boolean | undefined | null;
   custonHeaders?: Record<string, string>;
+  maxContinuations?: number;
 } & ResponseEvents;
 
 type LLMResponse = {
@@ -71,7 +72,7 @@ type LLMResponse = {
 export const createLLMResponse = async <T extends CompletionsBodyType>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
-  const { throwError = true, body, custonHeaders, userKey } = args;
+  const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
 
   // Messages process
@@ -93,40 +94,136 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     messages: rewriteMessages
   });
 
-  console.log(JSON.stringify(requestBody.messages, null, 2));
-  const { response, isStreamResponse } = await createChatCompletion({
-    body: requestBody,
-    modelData,
-    userKey,
-    options: {
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        ...custonHeaders
-      }
-    }
-  });
+  // Initial request and accumulate results if finish_reason is 'length'
+  let accumulatedAnswerText = '';
+  let accumulatedReasoningText = '';
+  let accumulatedToolCalls: ChatCompletionMessageToolCall[] | undefined;
+  let currentFinishReason: CompletionFinishReason = 'stop';
+  let accumulatedUsage = {
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0
+  };
+  let currentError: any = undefined;
+  let currentMessages = [...requestBody.messages];
+  let continuationCount = 0;
+  let isStreamResponse = false;
 
-  let { answerText, reasoningText, toolCalls, finish_reason, usage, error } = await (async () => {
-    if (isStreamResponse) {
-      return createStreamResponse({
-        response,
-        body,
-        isAborted: args.isAborted,
-        onStreaming: args.onStreaming,
-        onReasoning: args.onReasoning,
-        onToolCall: args.onToolCall,
-        onToolParam: args.onToolParam
-      });
-    } else {
-      return createCompleteResponse({
-        response,
-        body,
-        onStreaming: args.onStreaming,
-        onReasoning: args.onReasoning,
-        onToolCall: args.onToolCall
-      });
+  while (continuationCount < maxContinuations) {
+    console.log(
+      JSON.stringify(
+        {
+          ...requestBody,
+          messages: currentMessages
+        },
+        null,
+        2
+      )
+    );
+    const { response, isStreamResponse: currentIsStreamResponse } = await createChatCompletion({
+      body: {
+        ...requestBody,
+        messages: currentMessages
+      },
+      modelData,
+      userKey,
+      options: {
+        headers: {
+          Accept: 'application/json, text/plain, */*',
+          ...custonHeaders
+        }
+      }
+    });
+
+    // Save isStreamResponse from first request
+    if (continuationCount === 0) {
+      isStreamResponse = currentIsStreamResponse;
     }
-  })();
+
+    const { answerText, reasoningText, toolCalls, finish_reason, usage, error } =
+      await (async () => {
+        if (currentIsStreamResponse) {
+          return createStreamResponse({
+            response,
+            body,
+            isAborted: args.isAborted,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall,
+            onToolParam: args.onToolParam
+          });
+        } else {
+          return createCompleteResponse({
+            response,
+            body,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall
+          });
+        }
+      })();
+
+    // Accumulate results
+    accumulatedAnswerText += answerText;
+    accumulatedReasoningText += reasoningText;
+    if (toolCalls?.length) {
+      accumulatedToolCalls = [...(accumulatedToolCalls || []), ...toolCalls];
+    }
+    currentFinishReason = finish_reason;
+    currentError = error;
+
+    // Accumulate usage
+    if (usage) {
+      accumulatedUsage.prompt_tokens += usage.prompt_tokens || 0;
+      accumulatedUsage.completion_tokens += usage.completion_tokens || 0;
+      accumulatedUsage.total_tokens += usage.total_tokens || 0;
+    }
+
+    // Check if we need to continue
+    if (finish_reason === 'length' && !error) {
+      // Append assistant message and user continuation message
+      currentMessages = currentMessages.slice(0, requestBody.messages.length);
+      currentMessages = [
+        ...currentMessages,
+        ...(accumulatedToolCalls
+          ? [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
+                tool_calls: accumulatedToolCalls
+              }
+            ]
+          : []),
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
+          ...(accumulatedAnswerText && { content: accumulatedAnswerText }),
+          ...(accumulatedReasoningText && { reasoning_text: accumulatedReasoningText })
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User as 'user',
+          content: '[继续输出]'
+        }
+      ];
+
+      addLog.debug(`Continue LLM response due to length limit`, {
+        continuationCount,
+        currentLength: accumulatedAnswerText.length
+      });
+      continuationCount++;
+    } else {
+      // Stop condition reached
+      break;
+    }
+  }
+
+  // Use accumulated results
+  let { answerText, reasoningText, toolCalls, finish_reason, usage, error } = {
+    answerText: accumulatedAnswerText,
+    reasoningText: accumulatedReasoningText,
+    toolCalls: accumulatedToolCalls,
+    finish_reason: currentFinishReason,
+    usage: accumulatedUsage,
+    error: currentError
+  };
 
   const assistantMessage: ChatCompletionMessageParam[] = [
     ...(answerText || reasoningText
