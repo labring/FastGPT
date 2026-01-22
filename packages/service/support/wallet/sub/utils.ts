@@ -52,8 +52,12 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const standard = plans[0];
 
   const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]
+    standard.currentSubLevel && standardPlans
+      ? standardPlans[
+          standard.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standard.currentSubLevel
+        ]
       : undefined;
 
   return {
