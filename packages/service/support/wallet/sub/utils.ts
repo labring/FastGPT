@@ -217,7 +217,11 @@ export const getTeamPlanStatus = async ({
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
       ? standardPlan?.maxDatasetSize ||
-        standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize ||
+        standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]?.maxDatasetSize ||
         Infinity
       : Infinity;
   const totalDatasetSize =
@@ -226,10 +230,16 @@ export const getTeamPlanStatus = async ({
 
   const standardConstants =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]
+      ? standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]
       : undefined;
 
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
+
+  console.log('standardConstants', standardConstants);
 
   return {
     [SubTypeEnum.standard]: standardPlan,
