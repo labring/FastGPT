@@ -144,8 +144,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
               py={1}
               alignItems={'center'}
               justifyContent={'center'}
-              borderRadius={'md'}
-              fontWeight={'bold'}
+              borderRadius={'sm'}
             >
               <MyIcon mr={1} name={'core/chat/feedback/goodLight'} w={'16px'} color={'green.500'} />
               {item.userGoodFeedbackCount}
@@ -158,8 +157,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
               alignItems={'center'}
               alignSelf={'baseline'}
               justifyContent={'center'}
-              borderRadius={'md'}
-              fontWeight={'bold'}
+              borderRadius={'sm'}
             >
               <MyIcon color={'yellow.500'} mr={1} name={'core/chat/feedback/badLight'} w={'16px'} />
               {item.userBadFeedbackCount}
