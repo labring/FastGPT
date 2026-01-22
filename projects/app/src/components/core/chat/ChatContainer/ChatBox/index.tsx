@@ -64,6 +64,7 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -388,6 +389,8 @@ const ChatBox = ({
             }
             return item;
           }
+
+          // Agent
           if (event === SseResponseEventEnum.plan && plan) {
             return {
               ...item,
@@ -1115,7 +1118,7 @@ const ChatBox = ({
       const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
       const nextIsDeleted =
         index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-      console.log(isDeleted, 2323);
+
       if (isDeleted && !prevIsDeleted) {
         // 开始新的删除组
         currentGroup = {
@@ -1209,7 +1212,6 @@ const ChatBox = ({
                   <Box py={item.hideInUI ? 0 : 6}>
                     {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                       <ChatItem
-                        type={item.obj}
                         avatar={userAvatar}
                         chat={item}
                         onRetry={retryInput(item.dataId)}
@@ -1219,7 +1221,6 @@ const ChatBox = ({
                     )}
                     {item.obj === ChatRoleEnum.AI && (
                       <ChatItem
-                        type={item.obj}
                         avatar={appAvatar}
                         chat={item}
                         isLastChild={index === processedRecords.length - 1}

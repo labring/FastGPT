@@ -220,6 +220,7 @@ const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) 
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showWholeResponse
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest

@@ -12,12 +12,11 @@ import { S3Buckets } from '../../constants';
 import path from 'path';
 import { getFileS3Key } from '../../utils';
 
-export class S3HelperBotSource {
-  private bucket: S3PrivateBucket;
+export class S3HelperBotSource extends S3PrivateBucket {
   private static instance: S3HelperBotSource;
 
   constructor() {
-    this.bucket = new S3PrivateBucket();
+    super();
   }
 
   static getInstance() {
@@ -59,46 +58,19 @@ export class S3HelperBotSource {
     return { type, chatId, userId, filename };
   }
 
-  // 获取文件流
-  getFileStream(key: string) {
-    return this.bucket.getFileStream(key);
-  }
-
-  // 获取文件状态
-  getFileStat(key: string) {
-    return this.bucket.statObject(key);
-  }
-
-  // 获取文件元数据
-  async getFileMetadata(key: string) {
-    const stat = await this.getFileStat(key);
-    if (!stat) return { filename: '', extension: '', contentLength: 0, contentType: '' };
-
-    const contentLength = stat.size;
-    const filename: string = decodeURIComponent(stat.metaData['origin-filename']);
-    const extension = parseFileExtensionFromUrl(filename);
-    const contentType: string = stat.metaData['content-type'];
-    return {
-      filename,
-      extension,
-      contentType,
-      contentLength
-    };
-  }
-
   async createGetFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
     const { key, expiredHours = 1, external = false } = params; // 默认一个小时
 
     if (external) {
-      return await this.bucket.createExternalUrl({ key, expiredHours });
+      return await this.createExternalUrl({ key, expiredHours });
     }
-    return await this.bucket.createPreviewUrl({ key, expiredHours });
+    return await this.createPreviewUrl({ key, expiredHours });
   }
 
   async createUploadFileURL(params: CheckHelperBotFileKeys) {
     const { type, chatId, userId, filename, expiredTime } = HelperBotFileUploadSchema.parse(params);
     const { fileKey } = getFileS3Key.helperBot({ type, chatId, userId, filename });
-    return await this.bucket.createPostPresignedUrl(
+    return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
       { expiredHours: expiredTime ? differenceInHours(new Date(), expiredTime) : 24 }
     );
@@ -108,14 +80,22 @@ export class S3HelperBotSource {
     const { type, chatId, userId } = DelChatFileByPrefixSchema.parse(params);
 
     const prefix = [S3Sources.helperBot, type, userId, chatId].filter(Boolean).join('/');
-    return this.bucket.addDeleteJob({ prefix });
+    return this.addDeleteJob({ prefix });
   }
 
   deleteFileByKey(key: string) {
-    return this.bucket.addDeleteJob({ key });
+    return this.addDeleteJob({ key });
   }
 }
 
 export function getS3HelperBotSource() {
-  return S3HelperBotSource.getInstance();
+  if (global.helperBotBucket) {
+    return global.helperBotBucket;
+  }
+  global.helperBotBucket = new S3HelperBotSource();
+  return global.helperBotBucket;
+}
+
+declare global {
+  var helperBotBucket: S3HelperBotSource;
 }

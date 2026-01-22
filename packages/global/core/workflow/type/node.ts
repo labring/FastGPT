@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum } from '../node/constant';
+import { FlowNodeTypeEnum, NodeColorSchemaEnum, NodeGradients } from '../node/constant';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
@@ -74,7 +74,7 @@ export const FlowNodeCommonTypeSchema = z.object({
 
   avatar: z.string().optional(), // avatar
   avatarLinear: z.string().optional(), // avatar linear
-  colorSchema: z.string().optional(), // color schema
+  colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
   toolDescription: z.string().optional(), // tool description

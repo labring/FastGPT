@@ -9,8 +9,12 @@ import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  UserChatItemFileItemType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -160,7 +164,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
             skip: !hasReadFilesTool,
             userInput: runtimePrompt2ChatsValue({
               text: userChatInput,
-              files: userFiles
+              files: userFiles as UserChatItemFileItemType[]
             })
           })
         }
@@ -391,15 +395,15 @@ const toolCallMessagesAdapt = ({
 }): UserChatItemValueItemType[] => {
   if (skip) return userInput;
 
-  const files = userInput.filter((item) => item.type === 'file');
+  const files = userInput.filter((item) => 'file' in item);
 
   if (files.length > 0) {
     const filesCount = files.filter((file) => file.file?.type === 'file').length;
     const imgCount = files.filter((file) => file.file?.type === 'image').length;
 
-    if (userInput.some((item) => item.type === 'text')) {
+    if (userInput.some((item) => 'text' in item)) {
       return userInput.map((item) => {
-        if (item.type === 'text') {
+        if ('text' in item) {
           const text = item.text?.content || '';
 
           return {
@@ -416,7 +420,6 @@ const toolCallMessagesAdapt = ({
     // Every input is a file
     return [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
         }
