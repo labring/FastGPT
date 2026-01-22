@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
@@ -57,11 +58,20 @@ const AssistantCard = () => {
       <Box p={6} position={'relative'}>
         <Flex alignItems={'center'} mb={4}>
           <Avatar src={appDetail.avatar} borderRadius={'md'} w={'32px'} />
-          <Box ml={2} fontWeight={'500'} fontSize={'md'} flex={'1 0 0'} color={'myGray.600'}>
-            {appDetail.name}
-          </Box>
+          <MyTooltip label={appDetail.name} shouldWrapChildren={false}>
+            <Box
+              ml={2}
+              fontWeight={'500'}
+              fontSize={'md'}
+              flex={'1 0 0'}
+              color={'myGray.600'}
+              className="textEllipsis"
+            >
+              {appDetail.name}
+            </Box>
+          </MyTooltip>
           {/* 按钮移到标题右侧，只显示图标，顺序为：编辑、对话、权限 */}
-          <HStack spacing={2}>
+          <HStack spacing={2} ml={2}>
             {appDetail.permission.hasManagePer && (
               <IconButton
                 size={['smSquare', 'mdSquare']}
@@ -91,16 +101,21 @@ const AssistantCard = () => {
             )}
           </HStack>
         </Flex>
-        <Box
-          flex={1}
-          className={'textEllipsis2'}
-          wordBreak={'break-all'}
-          color={'myGray.500'}
-          fontSize={'12px'}
-          lineHeight={'16px'}
+        <MyTooltip
+          label={appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          shouldWrapChildren={false}
         >
-          {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
-        </Box>
+          <Box
+            flex={1}
+            className={'textEllipsis2'}
+            wordBreak={'break-all'}
+            color={'myGray.500'}
+            fontSize={'12px'}
+            lineHeight={'16px'}
+          >
+            {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          </Box>
+        </MyTooltip>
       </Box>
       {!!editPerApp && (
         <ConfigPerModal

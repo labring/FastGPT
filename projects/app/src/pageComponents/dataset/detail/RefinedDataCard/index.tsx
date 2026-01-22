@@ -518,6 +518,7 @@ const RefinedDataCard = () => {
               overflow={'auto'}
               isLoading={isLoading && datasetDataList.length === 0}
               pr={4}
+              pb={2}
             >
               {datasetDataList.length === 0 ? (
                 !isLoading && EmptyTipDom
@@ -531,6 +532,7 @@ const RefinedDataCard = () => {
                         key={item._id}
                         data-id={item._id}
                         p={3}
+                        pb={!isFolded ? 9 : 3}
                         userSelect={'none'}
                         border={'sm'}
                         position={'relative'}
@@ -573,7 +575,7 @@ const RefinedDataCard = () => {
                             </Box>
                             <Box flex={1} />
                             <MyIcon
-                              name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                              name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
                               w={'14px'}
                               color={'myGray.500'}
                             />
@@ -693,7 +695,7 @@ const RefinedDataCard = () => {
 
             {/* Pagination - Fixed at bottom */}
             {total > 0 && (
-              <Box pt={4} flexShrink={0}>
+              <Box pt={3} flexShrink={0}>
                 <Pagination />
               </Box>
             )}
@@ -727,7 +729,15 @@ const RefinedDataCard = () => {
 
               {/* Index List */}
               {activeDataDetail ? (
-                <VStack spacing={3} align={'stretch'} flex={1} overflow={'auto'} px={4} pr={2}>
+                <VStack
+                  spacing={3}
+                  align={'stretch'}
+                  flex={1}
+                  overflow={'auto'}
+                  pl={4}
+                  pr={2}
+                  pb={2}
+                >
                   {/* New Index Input */}
                   {isAddingNewIndex && (
                     <ContentIndexCard

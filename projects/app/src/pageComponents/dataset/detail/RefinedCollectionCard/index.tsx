@@ -398,9 +398,14 @@ const CollectionCard = () => {
                             onChange={(e) => toggleSelect(collection)}
                           />
                         </Box>
-                        <Box>
+                        <Box minW={0}>
                           <Flex alignItems={'center'}>
-                            <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
+                            <MyIcon
+                              name={collection.icon as any}
+                              w={'1.25rem'}
+                              mr={2}
+                              flexShrink={0}
+                            />
                             {isStructureDocument ? (
                               <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
                                 {collection.name}
