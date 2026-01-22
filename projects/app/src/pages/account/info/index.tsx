@@ -569,11 +569,7 @@ const PlanUsage = () => {
 
         <Box py={3} borderTopWidth={'1px'} borderTopColor={'borderColor.base'}>
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
-            <StandardPlanContentList
-              level={standardPlan?.currentSubLevel}
-              mode={'month'}
-              standplan={standardPlan}
-            />
+            <StandardPlanContentList level={standardPlan?.currentSubLevel} mode={'month'} />
           </Box>
         </Box>
       </Box>
