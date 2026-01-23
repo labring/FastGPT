@@ -8,11 +8,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
-import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -20,29 +20,25 @@ const ModelPriceModal = dynamic(() =>
 
 const StandardPlanContentList = ({
   level,
-  mode
+  mode,
+  standplan
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
+  standplan?: TeamSubSchemaType;
 }) => {
   const { t } = useTranslation();
 
-  const { feConfigs, subPlans } = useSystemStore();
-  const { userInfo, teamPlanStatus } = useUserStore();
-
-  const standplan = teamPlanStatus?.standard;
+  const { subPlans, feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
     const isWecomTeam = !!userInfo?.team?.isWecomTeam;
     const formatMode = isWecomTeam ? SubModeEnum.year : mode;
 
     // For wecom teams, free plan should use basic plan config
-    // const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
-    const plan = isWecomTeam
-      ? level === 'free'
-        ? subPlans?.standard?.basic
-        : subPlans?.standard?.[level]
-      : teamPlanStatus?.standardConstants ?? subPlans?.standard?.[level];
+    const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
+    const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
