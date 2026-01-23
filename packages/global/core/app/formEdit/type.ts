@@ -9,7 +9,7 @@ export type AgentSubAppItemType = {};
 /* ===== Tool ===== */
 export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.and(
   z.object({
-    configStatus: z.enum(['active', 'waitingForConfig', 'invalid']).optional()
+    configStatus: z.enum(['unconfigured', 'waitingForConfig', 'configured', 'invalid']).optional()
   })
 );
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;

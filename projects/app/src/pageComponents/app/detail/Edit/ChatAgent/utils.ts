@@ -239,24 +239,26 @@ export function agentForm2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.selectedTools.map((tool) => ({
-                id: tool.pluginId,
+              value: data.selectedTools.map((tool) => {
+                return {
+                  id: tool.pluginId,
 
-                config: tool.inputs.reduce(
-                  (acc, input) => {
-                    // Special tool
-                    if (
-                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                      input.key === NodeInputKeyEnum.history
-                    ) {
-                      acc[input.key] = data.aiSettings.maxHistories;
-                    }
-                    acc[input.key] = input.value;
-                    return acc;
-                  },
-                  {} as Record<string, any>
-                )
-              }))
+                  config: tool.inputs.reduce(
+                    (acc, input) => {
+                      // Special tool
+                      if (
+                        tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                        input.key === NodeInputKeyEnum.history
+                      ) {
+                        acc[input.key] = data.aiSettings.maxHistories;
+                      }
+                      acc[input.key] = input.value;
+                      return acc;
+                    },
+                    {} as Record<string, any>
+                  )
+                };
+              })
             },
             // Dataset configuration
             {
@@ -359,6 +361,7 @@ export function agentForm2AppWorkflow(
   }
 
   const workflow = agentChatTemplate();
+
   return {
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,

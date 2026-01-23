@@ -46,7 +46,12 @@ const Edit = ({
           flex={'1'}
         >
           <Box {...cardStyles} boxShadow={'2'}>
-            <AppCard appForm={appForm} setPast={setPast} form2WorkflowFn={agentForm2AppWorkflow} />
+            <AppCard
+              appForm={appForm}
+              setPast={setPast}
+              form2WorkflowFn={agentForm2AppWorkflow}
+              configToWorkflow={false}
+            />
           </Box>
 
           <Box pb={4}>

@@ -18,7 +18,6 @@ import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -49,13 +48,22 @@ export const dispatchTool = async ({
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const startTime = Date.now();
+
+  const getErrResponse = (error: any) => {
+    return {
+      runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+      response: getErrText(error, 'Call tool error'),
+      usages: []
+    };
+  };
+
   try {
     if (toolConfig?.systemTool?.toolId) {
       const tool = await getSystemToolById(toolConfig?.systemTool.toolId);
       const inputConfigParams = await (async () => {
         switch (system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
-            return Promise.reject(new Error('This is not supported yet'));
+            return Promise.reject('This is not supported yet');
           case SystemToolSecretInputTypeEnum.manual:
             return getSecretValue({
               storeSecret: system_input_config.value || {}
@@ -116,13 +124,7 @@ export const dispatchTool = async ({
       let result = res.output || {};
 
       if (res.error) {
-        // String error(Common error, not custom)
-        if (typeof res.error === 'string') {
-          throw new Error(res.error);
-        }
-
-        // Custom error field
-        return Promise.reject(res.error);
+        return getErrResponse(res.error);
       }
 
       const usagePoints = (() => {
@@ -183,7 +185,7 @@ export const dispatchTool = async ({
         usages: []
       };
     } else {
-      return Promise.reject("Can't find the tool");
+      return getErrResponse("Can't find the tool");
     }
   } catch (error) {
     if (toolConfig?.systemTool?.toolId) {
@@ -196,6 +198,6 @@ export const dispatchTool = async ({
         msg: getErrText(error)
       });
     }
-    return Promise.reject("Can't find the tool");
+    return getErrResponse(error);
   }
 };

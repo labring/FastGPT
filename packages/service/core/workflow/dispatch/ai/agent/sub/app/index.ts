@@ -20,29 +20,39 @@ import { getChildAppRuntimeById } from '../../../../../../app/tool/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { serverGetWorkflowToolRunUserQuery } from '../../../../../../app/tool/workflowTool/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 
-type Props = ModuleDispatchProps<{}> & {
-  callParams: {
-    appId?: string;
-    version?: string;
-    [key: string]: any;
-  };
+type Props = Pick<
+  RunWorkflowProps,
+  | 'checkIsStopping'
+  | 'lang'
+  | 'requestOrigin'
+  | 'mode'
+  | 'timezone'
+  | 'externalProvider'
+  | 'runningAppInfo'
+  | 'runningUserInfo'
+  | 'retainDatasetCite'
+  | 'maxRunTimes'
+  | 'workflowDispatchDeep'
+  | 'responseAllData'
+  | 'responseDetail'
+  | 'variables'
+> & {
+  appId: string;
+  userChatInput: string;
+  customAppVariables: Record<string, any>;
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
   const {
     runningAppInfo,
-    workflowStreamResponse,
+    runningUserInfo,
+    appId,
     variables,
-    callParams: {
-      appId,
-      version,
-      userChatInput,
-      system_forbid_stream,
-      history,
-      fileUrlList,
-      ...data
-    }
+    customAppVariables,
+    userChatInput,
+    ...data
   } = props;
 
   if (!appId) {
@@ -57,18 +67,19 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   });
   const { nodes, edges, chatConfig } = await getAppVersionById({
     appId,
-    versionId: version,
     app: appData
   });
 
   // Rewrite children app variables
-  const systemVariables = filterSystemVariables(variables);
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
   const childrenRunVariables = {
-    ...systemVariables,
-    histories: [],
+    userId: variables.userId,
     appId: String(appData._id),
-    ...data,
+    chatId: variables.chatId,
+    responseChatItemId: variables.responseChatItemId,
+    histories: [],
+    cTime: variables.cTime,
+    ...customAppVariables,
     ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
   };
 
@@ -77,8 +88,12 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
 
-  const { assistantResponses, flowUsages } = await runWorkflow({
-    ...props,
+  const { assistantResponses, flowUsages, runTimes } = await runWorkflow({
+    ...data,
+    uid: variables.userId,
+    chatId: variables.chatId,
+    responseChatItemId: variables.responseChatItemId,
+    mcpClientMemory: {},
     runningAppInfo: {
       id: String(appData._id),
       name: appData.name,
@@ -86,9 +101,10 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       tmbId: String(appData.tmbId),
       isChildApp: true
     },
-    runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
+    runningUserInfo,
     runtimeNodes,
     runtimeEdges,
+    chatConfig,
     histories: [],
     variables: childrenRunVariables,
     query: [
@@ -98,97 +114,104 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         }
       }
     ],
-    chatConfig
+    stream: false,
+    workflowStreamResponse: undefined
   });
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
     response: text,
+    result: {},
+    runningTime: runTimes || 0,
     usages: flowUsages
   };
 };
 
-export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    callParams: { appId, version, system_forbid_stream, ...data }
-  } = props;
+// export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
+//   const {
+//     runningAppInfo,
+//     callParams: { appId, version, system_forbid_stream, ...data }
+//   } = props;
 
-  if (!appId) {
-    return Promise.reject(new Error('AppId is empty'));
-  }
+//   if (!appId) {
+//     return Promise.reject(new Error('AppId is empty'));
+//   }
 
-  // Auth the app by tmbId(Not the user, but the workflow user)
-  const {
-    app: { tmbId }
-  } = await authAppByTmbId({
-    appId,
-    tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
-  });
-  const plugin = await getChildAppRuntimeById({ id: appId, versionId: version });
+//   // Auth the app by tmbId(Not the user, but the workflow user)
+//   const {
+//     app: { tmbId }
+//   } = await authAppByTmbId({
+//     appId,
+//     tmbId: runningAppInfo.tmbId,
+//     per: ReadPermissionVal
+//   });
+//   const plugin = await getChildAppRuntimeById({ id: appId, versionId: version });
 
-  const outputFilterMap =
-    plugin.nodes
-      .find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)
-      ?.inputs.reduce<Record<string, boolean>>((acc, cur) => {
-        acc[cur.key] = cur.isToolOutput === false ? false : true;
-        return acc;
-      }, {}) ?? {};
-  const runtimeNodes = storeNodes2RuntimeNodes(
-    plugin.nodes,
-    getWorkflowEntryNodeIds(plugin.nodes)
-  ).map((node) => {
-    // Update plugin input value
-    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-      return {
-        ...node,
-        showStatus: false,
-        inputs: node.inputs.map((input) => ({
-          ...input,
-          value: data[input.key] ?? input.value
-        }))
-      };
-    }
-    return {
-      ...node,
-      showStatus: false
-    };
-  });
+//   const outputFilterMap =
+//     plugin.nodes
+//       .find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)
+//       ?.inputs.reduce<Record<string, boolean>>((acc, cur) => {
+//         acc[cur.key] = cur.isToolOutput === false ? false : true;
+//         return acc;
+//       }, {}) ?? {};
+//   const runtimeNodes = storeNodes2RuntimeNodes(
+//     plugin.nodes,
+//     getWorkflowEntryNodeIds(plugin.nodes)
+//   ).map((node) => {
+//     // Update plugin input value
+//     if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+//       return {
+//         ...node,
+//         showStatus: false,
+//         inputs: node.inputs.map((input) => ({
+//           ...input,
+//           value: data[input.key] ?? input.value
+//         }))
+//       };
+//     }
+//     return {
+//       ...node,
+//       showStatus: false
+//     };
+//   });
 
-  const { externalProvider } = await getUserChatInfo(tmbId);
-  const runtimeVariables = {
-    ...filterSystemVariables(props.variables),
-    appId: String(plugin.id),
-    ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
-  };
+//   const { externalProvider } = await getUserChatInfo(tmbId);
+//   const runtimeVariables = {
+//     ...filterSystemVariables(props.variables),
+//     appId: String(plugin.id),
+//     ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
+//   };
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes, system_memories } =
-    await runWorkflow({
-      ...props,
-      runningAppInfo: {
-        id: String(plugin.id),
-        // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-        name: plugin.name,
-        teamId: plugin.teamId || runningAppInfo.teamId,
-        tmbId: plugin.tmbId || runningAppInfo.tmbId,
-        isChildApp: true
-      },
-      variables: runtimeVariables,
-      query: serverGetWorkflowToolRunUserQuery({
-        pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
-        variables: runtimeVariables
-      }).value,
-      chatConfig: {},
-      runtimeNodes,
-      runtimeEdges: storeEdges2RuntimeEdges(plugin.edges)
-    });
-  const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
-  const response = output?.pluginOutput ? JSON.stringify(output?.pluginOutput) : 'No output';
+//   const { flowResponses, flowUsages, assistantResponses, runTimes, system_memories } =
+//     await runWorkflow({
+//       ...props,
+//       runningAppInfo: {
+//         id: String(plugin.id),
+//         // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
+//         name: plugin.name,
+//         teamId: plugin.teamId || runningAppInfo.teamId,
+//         tmbId: plugin.tmbId || runningAppInfo.tmbId,
+//         isChildApp: true
+//       },
+//       variables: runtimeVariables,
+//       query: serverGetWorkflowToolRunUserQuery({
+//         pluginInputs: getWorkflowToolInputsFromStoreNodes(plugin.nodes),
+//         variables: runtimeVariables
+//       }).value,
+//       chatConfig: {},
+//       runtimeNodes,
+//       runtimeEdges: storeEdges2RuntimeEdges(plugin.edges),
+//       stream: false,
+//       workflowStreamResponse: undefined
+//     });
+//   const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
+//   const response = output?.pluginOutput ? JSON.stringify(output?.pluginOutput) : 'No output';
 
-  return {
-    response,
-    usages: flowUsages
-  };
-};
+//   return {
+//     response,
+//     result: output?.pluginOutput || {},
+//     runningTime: runTimes || 0,
+//     usages: flowUsages
+//   };
+// };

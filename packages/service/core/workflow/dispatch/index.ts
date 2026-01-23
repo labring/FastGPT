@@ -247,7 +247,7 @@ export async function dispatchWorkFlow({
   });
 }
 
-type RunWorkflowProps = ChatDispatchProps & {
+export type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   mcpClientMemory: Record<string, MCPClient>;
@@ -631,11 +631,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
         const val = {
+          moduleName: node.name,
+          moduleType: node.flowNodeType,
+          moduleLogo: node.avatar,
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
           id: getNanoid(),
           nodeId: node.nodeId,
-          moduleName: node.name,
-          moduleType: node.flowNodeType,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
         nodeResponses.push(val);

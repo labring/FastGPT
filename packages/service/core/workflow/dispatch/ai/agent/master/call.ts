@@ -433,39 +433,16 @@ export const masterCall = async ({
                 moduleName: tool.name,
                 moduleLogo: tool.avatar,
                 toolInput: requestParams,
-                toolRes: result,
+                toolRes: result || response,
                 totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
               });
-
               return {
                 response,
                 usages
               };
-            } else if (tool.type === 'workflow' || tool.type === 'toolWorkflow') {
-              // const fn = tool.type === 'workflow' ? dispatchApp : dispatchPlugin;
-
-              // const { response, usages } = await fn({
-              //   ...props,
-              //   node,
-              //   workflowStreamResponse:stepStreamResponse,
-              //   callParams: {
-              //     appId: node.pluginId,
-              //     version: node.version,
-              //     ...requestParams
-              //   }
-              // });
-
-              // return {
-              //   response,
-              //   usages
-              // };
-              return {
-                response: 'Can not find the tool',
-                usages: []
-              };
             } else {
               return {
-                response: 'Can not find the tool',
+                response: 'Invalid tool type',
                 usages: []
               };
             }
@@ -519,6 +496,7 @@ export const masterCall = async ({
     moduleType: FlowNodeTypeEnum.agent,
     moduleName: i18nT('chat:agent_call'),
     model: llmUsage.modelName,
+    moduleLogo: 'core/app/type/agentFill',
     inputTokens,
     outputTokens,
     totalPoints: childTotalPoints + llmUsage.totalPoints,

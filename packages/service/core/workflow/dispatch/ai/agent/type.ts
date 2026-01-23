@@ -11,7 +11,7 @@ export type ToolNodeItemType = RuntimeNodeItemType & {
 
 export type DispatchSubAppResponse = {
   response: string;
-  result: Record<string, any>;
+  result?: any;
   runningTime: number;
   usages?: ChatNodeUsageType[];
 };

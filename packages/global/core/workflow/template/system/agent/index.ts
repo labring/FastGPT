@@ -28,12 +28,12 @@ export const AgentNode: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/agent',
+  avatar: 'core/app/type/agentFill',
   name: 'Agent',
-  intro: 'Agent',
+  intro: '',
   showStatus: true,
   isTool: true,
-  version: '4.13.0',
+  version: '4.16.0',
   catchError: false,
   inputs: [
     {

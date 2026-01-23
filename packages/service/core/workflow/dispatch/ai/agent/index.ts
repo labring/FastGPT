@@ -36,7 +36,6 @@ import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { PlanAgentParamsType } from './sub/plan/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -45,8 +44,6 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
-  [NodeInputKeyEnum.aiChatTemperature]?: number;
-  [NodeInputKeyEnum.aiChatTopP]?: number;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
 
@@ -97,8 +94,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
-      temperature,
-      aiChatTopP,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
       datasets: datasetSelectList

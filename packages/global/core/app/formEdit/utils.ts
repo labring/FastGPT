@@ -1,6 +1,7 @@
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
+import type { SelectedToolItemType } from './type';
 
 /* Invalid tool check
   1. Reference type. but not tool description;
@@ -87,14 +88,14 @@ export const getToolConfigStatus = (
   toolTemplate: FlowNodeTemplateType
 ): {
   needConfig: boolean;
-  status: 'active' | 'waitingForConfig';
+  status: SelectedToolItemType['configStatus'];
 } => {
   // Check if tool needs configuration
   const needsConfig = checkNeedsUserConfiguration(toolTemplate);
   if (!needsConfig) {
     return {
       needConfig: false,
-      status: 'active'
+      status: 'unconfigured'
     };
   }
 
@@ -130,6 +131,6 @@ export const getToolConfigStatus = (
 
   return {
     needConfig: !allConfigured,
-    status: allConfigured ? 'active' : 'waitingForConfig'
+    status: allConfigured ? 'configured' : 'waitingForConfig'
   };
 };

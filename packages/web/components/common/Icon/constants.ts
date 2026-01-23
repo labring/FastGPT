@@ -179,6 +179,7 @@ export const iconPaths = {
   'core/app/templates/stock': () => import('./icons/core/app/templates/stock.svg'),
   'core/app/toolCall': () => import('./icons/core/app/toolCall.svg'),
   'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
+  'core/app/type/agentFill': () => import('./icons/core/app/type/agentFill.svg'),
   'core/app/type/httpPlugin': () => import('./icons/core/app/type/httpPlugin.svg'),
   'core/app/type/httpPluginFill': () => import('./icons/core/app/type/httpPluginFill.svg'),
   'core/app/type/jsonImport': () => import('./icons/core/app/type/jsonImport.svg'),
