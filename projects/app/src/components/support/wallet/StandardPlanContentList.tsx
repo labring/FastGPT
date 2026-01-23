@@ -20,29 +20,25 @@ const ModelPriceModal = dynamic(() =>
 
 const StandardPlanContentList = ({
   level,
-  mode
+  mode,
+  standplan
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
+  standplan?: TeamSubSchemaType;
 }) => {
   const { t } = useTranslation();
 
-  const { feConfigs, subPlans } = useSystemStore();
-  const { userInfo, teamPlanStatus } = useUserStore();
-
-  const standplan = teamPlanStatus?.standard;
+  const { subPlans, feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
     const isWecomTeam = !!userInfo?.team?.isWecomTeam;
     const formatMode = isWecomTeam ? SubModeEnum.year : mode;
 
     // For wecom teams, free plan should use basic plan config
-    // const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
-    const plan = isWecomTeam
-      ? level === 'free'
-        ? subPlans?.standard?.basic
-        : subPlans?.standard?.[level]
-      : teamPlanStatus?.standardConstants ?? subPlans?.standard?.[level];
+    const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
+    const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
