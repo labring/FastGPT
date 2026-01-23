@@ -12,7 +12,7 @@ import {
   useToast,
   AlertDescription,
   AlertTitle,
-  CloseButton
+  IconButton
 } from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
@@ -231,12 +231,51 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         position: 'bottom-right',
         duration: null,
         render: () => (
-          <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
-            <AlertIcon w={6} h={6} />
+          <Alert
+            status="success"
+            bgColor={'green.50'}
+            alignItems={'center'}
+            variant="subtle"
+            px={5}
+            py={4}
+            borderRadius={'sm'}
+            maxW={'390px'}
+            boxShadow={
+              '0px 4px 10px 0px rgba(19, 51, 107, 0.1), 0px 0px 1px 0px rgba(19, 51, 107, 0.1)'
+            }
+          >
+            <AlertIcon w={6} h={6} alignSelf={'flex-start'} mt={'2px'} />
             <Box flex={1} color={'myGray.900'}>
-              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
+              <Flex
+                alignItems={'center'}
+                mb={
+                  result.summary.modifiedTables > 0 || result.summary.deletedTables > 0 ? '6px' : 0
+                }
+              >
+                <AlertTitle fontWeight={'md'} mb={0}>
+                  {t('dataset:refresh_success')}
+                </AlertTitle>
+                <IconButton
+                  size={'sm'}
+                  ml={'auto'}
+                  icon={<MyIcon name={'close'} w={'14px'} color={'myGray.600'} />}
+                  _hover={{
+                    bg: 'myGray.200',
+                    '& svg': {
+                      color: 'primary.600'
+                    }
+                  }}
+                  variant={'transparentBase'}
+                  aria-label={''}
+                  onClick={() => toast.close(toastId)}
+                />
+              </Flex>
               {(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) && (
-                <AlertDescription fontSize={'14px'}>
+                <AlertDescription
+                  fontSize={'14px'}
+                  whiteSpace={'pre-wrap'}
+                  wordBreak={'break-word'}
+                >
                   <Box>
                     {getTips(result)}
                     <Button
@@ -256,13 +295,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 </AlertDescription>
               )}
             </Box>
-            <CloseButton
-              position="relative"
-              color={'black'}
-              right={-1}
-              top={-1}
-              onClick={() => toast.close(toastId)}
-            />
           </Alert>
         )
       });
@@ -271,23 +303,46 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         position: 'bottom-right',
         duration: null,
         render: () => (
-          <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
-            <Box mr={3}>
+          <Alert
+            status="error"
+            bgColor={'red.50'}
+            alignItems={'center'}
+            variant="subtle"
+            px={5}
+            py={4}
+            borderRadius={'sm'}
+            maxW={'390px'}
+            boxShadow={
+              '0px 4px 10px 0px rgba(19, 51, 107, 0.1), 0px 0px 1px 0px rgba(19, 51, 107, 0.1)'
+            }
+          >
+            <Box mr={3} alignSelf={'flex-start'} mt={'2px'}>
               <MyIcon name="core/workflow/runError" w={6} h={6}></MyIcon>
             </Box>
             <Box flex={1} color={'myGray.900'}>
-              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_failed')}</AlertTitle>
-              <AlertDescription fontSize={'14px'}>
+              <Flex alignItems={'center'} mb={0.5}>
+                <AlertTitle fontWeight={'md'} mb={0}>
+                  {t('dataset:refresh_failed')}
+                </AlertTitle>
+                <IconButton
+                  size={'sm'}
+                  ml={'auto'}
+                  icon={<MyIcon name={'close'} w={'14px'} color={'myGray.600'} />}
+                  _hover={{
+                    bg: 'myGray.200',
+                    '& svg': {
+                      color: 'primary.600'
+                    }
+                  }}
+                  variant={'transparentBase'}
+                  aria-label={''}
+                  onClick={() => toast.close(toastId)}
+                />
+              </Flex>
+              <AlertDescription fontSize={'14px'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
                 {t(error?.message) || t('dataset:unknown_error')}
               </AlertDescription>
             </Box>
-            <CloseButton
-              position="relative"
-              color={'black'}
-              right={-1}
-              top={-1}
-              onClick={() => toast.close(toastId)}
-            />
           </Alert>
         )
       });
