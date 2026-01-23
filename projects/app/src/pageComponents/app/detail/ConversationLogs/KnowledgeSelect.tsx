@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   Box,
   Input,
@@ -13,7 +13,8 @@ import {
   PopoverContent,
   PopoverBody,
   useDisclosure,
-  IconButton
+  IconButton,
+  useOutsideClick
 } from '@chakra-ui/react';
 import { useDebounceFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -72,6 +73,98 @@ const KnowledgeSelect = ({
   const [hoveredKnowledgeId, setHoveredKnowledgeId] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const inputRef = useRef<HTMLInputElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 手动控制悬浮显示
+  const handleMouseEnter = useCallback((knowledgeId: string) => {
+    // 清除之前的关闭定时器
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+
+    // 设置打开定时器(延迟100ms)
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredKnowledgeId(knowledgeId);
+    }, 100);
+  }, []);
+
+  // 手动控制悬浮隐藏
+  const handleMouseLeave = useCallback(() => {
+    // 清除打开定时器
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    // 设置关闭定时器(延迟200ms)
+    closeTimeoutRef.current = setTimeout(() => {
+      setHoveredKnowledgeId(null);
+      // 悬浮内容关闭后,焦点短暂返回搜索框后立即失焦,防止下拉列表滚动
+      // 但只有在搜索框未聚焦时才执行此逻辑
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+        // 使用 setTimeout 0 确保焦点设置后立即失焦
+        setTimeout(() => {
+          inputRef.current?.blur();
+        }, 0);
+      }
+    }, 200);
+  }, []);
+
+  // 当悬浮内容本身被鼠标进入时,取消关闭
+  const handlePopoverMouseEnter = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  // 当悬浮内容本身被鼠标离开时,立即关闭
+  const handlePopoverMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredKnowledgeId(null);
+    // 悬浮内容关闭后,焦点短暂返回搜索框后立即失焦,防止下拉列表滚动
+    // 但只有在搜索框未聚焦时才执行此逻辑
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      inputRef.current.focus();
+      // 使用 setTimeout 0 确保焦点设置后立即失焦
+      setTimeout(() => {
+        inputRef.current?.blur();
+      }, 0);
+    }
+  }, []);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 点击外部关闭下拉列表(但排除悬浮内容区域)
+  useOutsideClick({
+    ref: popoverRef,
+    handler: () => {
+      // 如果悬浮内容正在显示,不关闭下拉列表
+      if (!hoveredKnowledgeId) {
+        onClose();
+      }
+    }
+  });
 
   // 防抖搜索
   const { run: debouncedSearch } = useDebounceFn(
@@ -221,6 +314,8 @@ const KnowledgeSelect = ({
         placement="bottom-start"
         matchWidth
         initialFocusRef={inputRef}
+        closeOnBlur={false}
+        closeOnEsc={true}
       >
         <PopoverTrigger>
           <Box>
@@ -241,6 +336,7 @@ const KnowledgeSelect = ({
           </Box>
         </PopoverTrigger>
         <PopoverContent
+          ref={popoverRef}
           border="1px solid"
           borderColor="myGray.200"
           borderRadius="md"
@@ -275,12 +371,12 @@ const KnowledgeSelect = ({
                       <Popover
                         key={knowledge.datasetDataId}
                         isOpen={hoveredKnowledgeId === knowledge.datasetDataId}
-                        onOpen={() => setHoveredKnowledgeId(knowledge.datasetDataId)}
-                        onClose={() => setHoveredKnowledgeId(null)}
                         placement="right"
-                        trigger="hover"
-                        openDelay={300}
-                        closeDelay={200}
+                        closeOnBlur={false}
+                        isLazy
+                        lazyBehavior="unmount"
+                        returnFocusOnClose={false}
+                        autoFocus={false}
                       >
                         <PopoverTrigger>
                           <Box
@@ -311,6 +407,10 @@ const KnowledgeSelect = ({
                                   }
                             }
                             onClick={() => !isDisabled && handleKnowledgeToggle(knowledge)}
+                            onMouseEnter={() =>
+                              !isDisabled && handleMouseEnter(knowledge.datasetDataId)
+                            }
+                            onMouseLeave={handleMouseLeave}
                           >
                             <Flex align={'flex-start'} gap={3}>
                               <Box onClick={(e) => e.stopPropagation()}>
@@ -384,6 +484,8 @@ const KnowledgeSelect = ({
                           borderRadius="md"
                           boxShadow="0px 4px 12px rgba(0, 0, 0, 0.15)"
                           bg="white"
+                          onMouseEnter={handlePopoverMouseEnter}
+                          onMouseLeave={handlePopoverMouseLeave}
                         >
                           <PopoverBody p={3} maxH="400px" overflowY="auto">
                             <VStack align="stretch" spacing={2}>
