@@ -154,7 +154,8 @@ export async function getServerSideProps(context: any) {
         'login',
         'dataset',
         'dashboard_evaluation',
-        'evaluation'
+        'evaluation',
+        'database_client'
       ]))
     }
   };

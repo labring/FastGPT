@@ -19,6 +19,6 @@
     "table_not_found": "Failed to obtain table information because the table does not exist.",
     "illeagal_table_info": "Invalid table information. Please check.",
     "op_unknown_database_error": "Unknown error occurred while accessing the database. Please check the database connection.",
-    "dative_service_error": "Error occurred while connecting to the Dative service. Please check the configuration.",
+    "dative_service_error": "Error occurred while connecting to the database service. Please check the configuration.",
     "tableNamesDuplicate": "Duplicate table names exist."
 }

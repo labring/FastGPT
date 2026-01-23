@@ -19,6 +19,6 @@
   "table_not_found": "取得表格資訊失敗，表格不存在",
   "illeagal_table_info": "非法的表格訊息，請檢查表格資訊是否正確",
   "op_unknown_database_error": "嘗試操作您的資料庫時發生未知錯誤，請檢查資料庫連線是否正常",
-  "dative_service_error": "連線Dative服務時發生錯誤，請檢查設定是否正確",
+  "dative_service_error": "連線資料庫服務時發生錯誤，請檢查設定是否正確",
   "tableNamesDuplicate": "存在多個重複表名"
 }

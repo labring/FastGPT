@@ -52,7 +52,7 @@ function responseError(err: any) {
 
 export const http: AxiosInstance = axios.create({
   baseURL: dativeUrl,
-  timeout: 300000, // 5 minutes for potentially long SQL operations
+  timeout: 120000, // 2 minutes for SQL operations
   headers: {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache'

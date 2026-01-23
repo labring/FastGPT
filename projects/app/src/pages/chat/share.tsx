@@ -518,7 +518,14 @@ export async function getServerSideProps(context: any) {
       authToken: authToken ?? '',
       allowAnonymous: app?.allowAnonymous ?? true,
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login']))
+      ...(await serviceSideProps(context, [
+        'file',
+        'app',
+        'chat',
+        'workflow',
+        'login',
+        'database_client'
+      ]))
     }
   };
 }
