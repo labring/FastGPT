@@ -4,15 +4,19 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
 import { MongoRerankTrainsetData } from '../../data/schema';
 import { MongoRerankTrainset } from '../../trainset/schema';
 import { addLog } from '../../../../../common/system/log';
-import { createEnhancedError } from '../../utils';
+import { createEnhancedError, formatTrainTaskError } from '../../utils';
 import { getRerankTrainDataDir } from '../../constants';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import {
   RerankTaskCheckpointStageEnum,
   RerankTrainsetStatusEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
 import { calculateTrainsetStats } from '../../data/controller';
+import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 
 /**
  * Poll and wait for trainset to be ready
@@ -39,9 +43,8 @@ async function waitForTrainsetReady(
     if (!trainset) {
       const enhancedError = createEnhancedError(
         RerankTaskCheckpointStageEnum.preparing,
-        TrainTaskErrorType.INTERNAL_ERROR,
-        'Trainset not found or has been deleted',
-        'Please check if the trainset ID is correct'
+        RerankTrainErrEnum.prepareTrainsetDeleted,
+        RerankTrainSuggestionEnum.prepareTrainsetDeleted
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
@@ -53,9 +56,8 @@ async function waitForTrainsetReady(
         addLog.error('No train data available in trainset', { trainsetId });
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.preparing,
-          TrainTaskErrorType.DATA_EMPTY,
-          'No train data available in trainset',
-          'Please ensure the trainset contains training data'
+          RerankTrainErrEnum.prepareDataEmpty,
+          RerankTrainSuggestionEnum.prepareDataEmpty
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -63,17 +65,43 @@ async function waitForTrainsetReady(
       return;
     }
 
-    // If error, throw unrecoverable error
+    // If error, check error type
     if (trainset.status === RerankTrainsetStatusEnum.error) {
-      const errorMsg = trainset.errorMsg || 'Trainset generation failed';
-      addLog.error('Trainset generation failed', { trainsetId, errorMsg });
-      const enhancedError = createEnhancedError(
-        RerankTaskCheckpointStageEnum.preparing,
-        TrainTaskErrorType.INTERNAL_ERROR,
-        `Trainset generation failed: ${errorMsg}`,
-        'Please check trainset generation logs and retry'
-      );
-      throw new TrainTaskUnrecoverableError(enhancedError);
+      const enhancedError = trainset.errorMsg as EnhancedErrorMessage;
+
+      // Check if this is a retriable trainset generation error
+      // Retriable errors: DiTing failures and database errors
+      const retriableErrorTypes = [
+        RerankTrainErrEnum.trainsetGenDitingFailed,
+        RerankTrainErrEnum.trainsetGenDitingNoData,
+        RerankTrainErrEnum.trainsetGenDatabaseError
+      ];
+
+      if (retriableErrorTypes.includes(enhancedError.type as RerankTrainErrEnum)) {
+        addLog.info('Trainset generation failed with retriable error, continuing to poll', {
+          trainsetId,
+          errorType: enhancedError.type,
+          attempts
+        });
+        // Continue polling - trainset generation will be retried by its worker
+        await new Promise((resolve) => setTimeout(resolve, interval));
+        attempts++;
+        continue;
+      }
+
+      // Unrecoverable trainset error - fail the training task
+      addLog.error('Trainset generation failed with unrecoverable error', {
+        trainsetId,
+        errorType: enhancedError.type,
+        errorMessage: enhancedError.message
+      });
+
+      // Reuse trainset's enhancedError, just add the stage field
+      const taskError: EnhancedErrorMessage = {
+        ...enhancedError,
+        stage: RerankTaskCheckpointStageEnum.preparing
+      };
+      throw new TrainTaskUnrecoverableError(taskError);
     }
 
     // If still generating or pending, continue waiting
@@ -101,9 +129,8 @@ async function waitForTrainsetReady(
   addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
   const enhancedError = createEnhancedError(
     RerankTaskCheckpointStageEnum.preparing,
-    TrainTaskErrorType.TIMEOUT,
-    `Trainset generation timeout after ${maxAttempts} attempts`,
-    'Trainset generation is taking longer than expected, please check the trainset status or contact administrator'
+    RerankTrainErrEnum.prepareTimeout,
+    RerankTrainSuggestionEnum.prepareTimeout
   );
   throw new TrainTaskRetriableError(enhancedError);
 }
@@ -170,9 +197,8 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.preparing,
-      TrainTaskErrorType.FILE_SYSTEM_ERROR,
-      `Failed to prepare training data file: ${errorMsg}`,
-      'This may be a file system permission issue. Please check system logs and available disk space',
+      RerankTrainErrEnum.prepareFileSystemError,
+      RerankTrainSuggestionEnum.prepareFileSystemError,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -184,9 +210,8 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
   if (dataCount === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.preparing,
-      TrainTaskErrorType.DATA_EMPTY,
-      'Training data is empty, cannot start training',
-      'Please generate training data or manually add training samples first'
+      RerankTrainErrEnum.prepareDataEmptyAfterWrite,
+      RerankTrainSuggestionEnum.prepareDataEmptyAfterWrite
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }

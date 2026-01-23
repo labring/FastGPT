@@ -8,7 +8,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDefaultRerankModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { createEnhancedError } from '../../utils';
 import { MongoRerankTrainTask } from '../schema';
 import { isTunedModel } from '../helpers/model';
@@ -37,9 +40,8 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   if (!tunedModelConfigId) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.applying,
-      TrainTaskErrorType.MODEL_CONFIG_INVALID,
-      'Tuned model config ID not found from registration stage',
-      'Please check if model registration stage completed correctly, or re-run the training task'
+      RerankTrainErrEnum.applyModelConfigNotFound,
+      RerankTrainSuggestionEnum.applyModelConfigNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -48,9 +50,8 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   if (!app) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.applying,
-      TrainTaskErrorType.INTERNAL_ERROR,
-      'Application not found or has been deleted',
-      'Please check if the application still exists, cannot apply training results if deleted'
+      RerankTrainErrEnum.applyAppDeleted,
+      RerankTrainSuggestionEnum.applyAppDeleted
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -109,9 +110,8 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   if (updatedNodes === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.applying,
-      TrainTaskErrorType.APP_UPDATE_FAILED,
-      'No Rerank model nodes found to update in application',
-      'Possible reasons: 1) App workflow has been modified 2) App is not using base model 3) Dataset search nodes have no Rerank model configured. Please check app workflow configuration'
+      RerankTrainErrEnum.applyNoNodesToUpdate,
+      RerankTrainSuggestionEnum.applyNoNodesToUpdate
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -197,9 +197,8 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.applying,
-      TrainTaskErrorType.DATABASE_ERROR,
-      `Failed to update application with tuned model: ${errorMsg}`,
-      'This may be a database error. Please check database connection and try again',
+      RerankTrainErrEnum.applyDatabaseUpdateFailed,
+      RerankTrainSuggestionEnum.applyDatabaseUpdateFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);

@@ -35,8 +35,40 @@ vi.mock('@fastgpt/service/core/train/rerank/task/schema', () => ({
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
-    findById: vi.fn()
+    findById: vi.fn(),
+    findByIdAndUpdate: vi.fn()
+  },
+  AppCollectionName: 'apps'
+}));
+
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    findOne: vi.fn(),
+    findById: vi.fn(),
+    deleteOne: vi.fn(),
+    updateOne: vi.fn()
   }
+}));
+
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  MongoEvalDatasetCollection: {
+    find: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => ({
+  MongoEvalDatasetData: {
+    deleteMany: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
+  deleteRerankModelConfig: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/validation', () => ({
+  validateTrainingEnvironment: vi.fn().mockResolvedValue(undefined),
+  validateDatasetSynthesisIndexes: vi.fn().mockResolvedValue(undefined)
 }));
 
 describe('Rerank Train Task Controller', () => {
@@ -301,16 +333,35 @@ describe('Rerank Train Task Controller', () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
+      const { MongoEvalDatasetCollection } = await import(
+        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
+      );
+      const { MongoEvalDatasetData } = await import(
+        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
+      );
+      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
 
       // Mock findById to return a task for deletion
       (MongoRerankTrainTask.findById as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue({
           _id: 'task_123',
+          appId: 'app_123',
           result: { trainDatasetFilePath: undefined }
         })
       });
 
+      // Mock eval dataset collection find to return empty array
+      (MongoEvalDatasetCollection.find as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([])
+      });
+
+      // Mock app version queries
+      (MongoAppVersion.findOne as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue(null)
+      });
+
       (MongoRerankTrainTask.deleteOne as any).mockResolvedValue({});
+      (MongoEvalDatasetData.deleteMany as any).mockResolvedValue({});
 
       await deleteRerankTrainTask('task_123');
 

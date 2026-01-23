@@ -10,6 +10,7 @@ import commonErr from './code/common';
 import SystemErrEnum from './code/system';
 import databaseErr from './code/database';
 import evaluationErr from './code/evaluation';
+import trainErr from './code/train';
 import { i18nT } from '../../../web/i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -112,5 +113,6 @@ export const ERROR_RESPONSE: Record<
   ...pluginErr,
   ...commonErr,
   ...SystemErrEnum,
-  ...evaluationErr
+  ...evaluationErr,
+  ...trainErr
 };

@@ -3,6 +3,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/controller';
+import {
+  validateTrainingEnvironment,
+  validateDatasetSynthesisIndexes
+} from '@fastgpt/service/core/train/rerank/validation';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
@@ -17,6 +21,7 @@ import type {
   CreateRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
 import { calculateTrainsetStats } from '@fastgpt/service/core/train/rerank/data/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(
   req: NextApiRequest,
@@ -40,7 +45,13 @@ async function handler(
     per: WritePermissionVal
   });
 
-  // 2. Validate trainset exists, is ready, and belongs to the app
+  // 2. Validate training environment (SFT Bridge and DiTing accessibility)
+  await validateTrainingEnvironment();
+
+  // 3. Validate dataset synthesis indexes
+  await validateDatasetSynthesisIndexes(app);
+
+  // 4. Validate trainset exists, is ready, and belongs to the app
   const trainset = await MongoRerankTrainset.findOne({
     _id: trainsetId,
     appId: appId
@@ -58,7 +69,7 @@ async function handler(
     return Promise.reject(RerankTrainErrEnum.noTrainDataAvailable);
   }
 
-  // 3. Check if there's a running task
+  // 5. Check if there's a running task
   const runningTask = await MongoRerankTrainTask.findOne({
     appId,
     status: {
@@ -70,7 +81,7 @@ async function handler(
     return Promise.reject(RerankTrainErrEnum.taskAlreadyRunning);
   }
 
-  // 4. Create task
+  // 6. Create task
   const taskId = await createRerankTrainTask({
     appId,
     trainsetId,
@@ -79,7 +90,7 @@ async function handler(
     name
   });
 
-  // 5. Add to task queue
+  // 7. Add to task queue
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -89,7 +100,7 @@ async function handler(
     }
   );
 
-  // 6. Update jobId
+  // 8. Update jobId
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
 
   return {

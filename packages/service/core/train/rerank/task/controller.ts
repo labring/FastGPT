@@ -12,9 +12,11 @@ import { getDefaultRerankModel, getRerankModel } from '../../../ai/model';
 import type { ClientSession } from '../../../../common/mongo';
 import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
+import { MongoAppVersion } from '../../../app/version/schema';
 import { extractModelFromApp, buildModelEndpoint } from '../utils';
 import { deleteRerankModelConfig } from '../model/controller';
 import { getRerankTrainDataDir } from '../constants';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 
 /**
  * Create rerank training task (only creates record, does not start execution)
@@ -32,7 +34,7 @@ import { getRerankTrainDataDir } from '../constants';
  * @param params.tmbId - Team member ID
  * @param params.name - Optional task name
  * @returns Task ID
- * @throws {Error} When app not found or rerank model not found
+ * @throws {RerankTrainErrEnum} When app not found or rerank model not found
  */
 export async function createRerankTrainTask(params: {
   appId: string;
@@ -45,7 +47,7 @@ export async function createRerankTrainTask(params: {
 
   const app = await MongoApp.findById(appId).lean();
   if (!app) {
-    throw new Error('Application not found');
+    return Promise.reject(RerankTrainErrEnum.taskAppNotFound);
   }
 
   const baseModelConfigId = extractModelFromApp(
@@ -57,7 +59,7 @@ export async function createRerankTrainTask(params: {
 
   const rerankModel = getRerankModel(baseModelConfigId);
   if (!rerankModel) {
-    throw new Error(`Rerank model not found: ${baseModelConfigId}`);
+    return Promise.reject(RerankTrainErrEnum.taskModelNotFound);
   }
 
   const baseModelEndpoint = buildModelEndpoint(rerankModel);
@@ -238,6 +240,104 @@ export async function deleteRerankTrainTask(
         sftTaskId,
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  // Optimization 2: Delete associated app version and restore previous version
+  const versionId = task.result?.versionId || task.checkpoint?.data?.applying?.versionId;
+  if (versionId) {
+    addLog.info('Deleting app version associated with task', {
+      taskId,
+      versionId,
+      appId: String(task.appId)
+    });
+
+    try {
+      // Check if this version is the latest published version
+      const latestPublishedVersion = await MongoAppVersion.findOne(
+        {
+          appId: task.appId,
+          isPublish: true
+        },
+        null,
+        { session, sort: { time: -1 } }
+      ).lean();
+
+      const isLatestVersion =
+        latestPublishedVersion && String(latestPublishedVersion._id) === versionId;
+
+      // Delete the task's version
+      const deleteResult = await MongoAppVersion.deleteOne({ _id: versionId }, { session });
+
+      if (deleteResult.deletedCount === 0) {
+        addLog.warn('No app version found to delete', { taskId, versionId });
+      } else {
+        addLog.info('Deleted app version', { taskId, versionId });
+
+        // Only update app if the deleted version was the latest published version
+        if (isLatestVersion) {
+          // Find the new latest published version (after deletion)
+          const newLatestVersion = await MongoAppVersion.findOne(
+            {
+              appId: task.appId,
+              isPublish: true
+            },
+            null,
+            { session, sort: { time: -1 } }
+          ).lean();
+
+          if (newLatestVersion) {
+            // Update app to reference the new latest published version
+            await MongoApp.findByIdAndUpdate(
+              task.appId,
+              {
+                modules: newLatestVersion.nodes || [],
+                edges: newLatestVersion.edges || [],
+                chatConfig: newLatestVersion.chatConfig || {},
+                'pluginData.nodeVersion': String(newLatestVersion._id),
+                updateTime: new Date()
+              },
+              { session }
+            );
+
+            addLog.info('Restored previous app version as current published version', {
+              taskId,
+              newLatestVersionId: String(newLatestVersion._id),
+              newLatestVersionName: newLatestVersion.versionName
+            });
+          } else {
+            // No published version left, clear the version reference
+            await MongoApp.findByIdAndUpdate(
+              task.appId,
+              {
+                'pluginData.nodeVersion': undefined,
+                updateTime: new Date()
+              },
+              { session }
+            );
+
+            addLog.warn('No published version remaining after deletion', {
+              taskId,
+              appId: String(task.appId)
+            });
+          }
+        } else {
+          addLog.info('Deleted version was not the latest, app state unchanged', {
+            taskId,
+            versionId,
+            latestVersionId: latestPublishedVersion ? String(latestPublishedVersion._id) : 'none'
+          });
+        }
+      }
+    } catch (error) {
+      addLog.warn(
+        'Failed to delete app version or restore previous version, continuing with task deletion',
+        {
+          taskId,
+          versionId,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      );
     }
   }
 

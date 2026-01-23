@@ -12,9 +12,15 @@ import {
 } from './constants';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type {
-  TrainTaskErrorType,
   EnhancedErrorMessage
 } from '@fastgpt/global/core/train/rerank/error';
+import type {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum} from '@fastgpt/global/common/error/code/train';
+import {
+  getTrainErrorMessageKey,
+  getTrainErrorSuggestionKey
+} from '@fastgpt/global/common/error/code/train';
 
 /**
  * Concurrency control utility using promise limiting
@@ -430,11 +436,11 @@ const STAGE_NAME_MAP: Record<RerankTaskCheckpointStageEnum, string> = {
  * @example
  * const errorMsg = formatTrainTaskError({
  *   stage: RerankTaskCheckpointStageEnum.preparing,
- *   type: TrainTaskErrorType.DATA_EMPTY,
+ *   type: RerankTrainErrEnum.prepareDataEmpty,
  *   message: 'Training data is empty, cannot start training',
  *   suggestion: 'Please generate training data or manually add training samples first'
  * });
- * // Returns: "[Stage: Data Preparation] [Type: Insufficient Data] Training data is empty, cannot start training. Suggestion: Please generate training data or manually add training samples first"
+ * // Returns: "[Stage: Data Preparation] [Type: prepareDataEmpty] Training data is empty, cannot start training. Suggestion: Please generate training data or manually add training samples first"
  */
 export function formatTrainTaskError(error: EnhancedErrorMessage): string {
   const parts: string[] = [];
@@ -460,29 +466,58 @@ export function formatTrainTaskError(error: EnhancedErrorMessage): string {
 }
 
 /**
- * Create enhanced error message from Error object or string
+ * Convert RerankTaskCheckpointStageEnum to i18n stage key
+ * Example: preparing -> train:stage_preparing
  *
- * Helper function to quickly convert plain Error object or string to enhanced error message
+ * @param stage - Stage enum value
+ * @returns i18n key with 'train:stage_' prefix
+ */
+export function getTrainStageKey(stage: RerankTaskCheckpointStageEnum): string {
+  return `train:stage_${stage}`;
+}
+
+/**
+ * Create enhanced error message for rerank training tasks
  *
- * @param stage - Current stage
- * @param type - Error type
- * @param message - Error message string
- * @param suggestion - Optional resolution suggestion
- * @param originalError - Optional original error stack or message for debugging
+ * All i18n keys are automatically generated through conversion functions:
+ * - stage: getTrainStageKey(stage) -> 'train:stage_xxx'
+ * - message: getTrainErrorMessageKey(type) -> 'train:xxx'
+ * - suggestion: getTrainErrorSuggestionKey(suggestion) -> 'train:xxx_suggestion'
+ *
+ * @param stage - Current training stage (can be null for general errors)
+ * @param type - Error type enum
+ * @param suggestion - Optional suggestion enum
+ * @param originalError - Optional original error message for debugging
  * @returns Enhanced error message object
+ *
+ * @example
+ * // Simple error without suggestion
+ * const error = createEnhancedError(
+ *   RerankTaskCheckpointStageEnum.preparing,
+ *   RerankTrainErrEnum.prepareDataEmpty,
+ *   RerankTrainSuggestionEnum.prepareDataEmpty
+ * );
+ *
+ * @example
+ * // Error with dynamic debugging info
+ * const error = createEnhancedError(
+ *   RerankTaskCheckpointStageEnum.evaluating,
+ *   RerankTrainErrEnum.evalDatabaseSaveFailed,
+ *   RerankTrainSuggestionEnum.evalDatabaseSaveFailed,
+ *   errorMsg  // originalError for debugging
+ * );
  */
 export function createEnhancedError(
   stage: RerankTaskCheckpointStageEnum | null,
-  type: TrainTaskErrorType | string,
-  message: string,
-  suggestion?: string,
+  type: RerankTrainErrEnum,
+  suggestion?: RerankTrainSuggestionEnum,
   originalError?: string
 ): EnhancedErrorMessage {
   return {
-    stage,
+    stage: stage ? (getTrainStageKey(stage) as any) : null,
     type,
-    message,
-    suggestion,
+    message: getTrainErrorMessageKey(type),
+    suggestion: suggestion ? (getTrainErrorSuggestionKey(suggestion) as any) : undefined,
     originalError
   };
 }

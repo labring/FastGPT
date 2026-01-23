@@ -31,7 +31,7 @@ const RerankTrainsetSchema = new connectionMongo.Schema({
     default: RerankTrainsetStatusEnum.pending
   },
   errorMsg: {
-    type: String
+    type: connectionMongo.Schema.Types.Mixed // Support both string (legacy) and EnhancedErrorMessage object
   },
   jobId: {
     type: String

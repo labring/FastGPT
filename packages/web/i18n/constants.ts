@@ -23,6 +23,7 @@ export const I18N_NAMESPACES = [
   'dashboard_mcp',
   'dashboard_evaluation',
   'evaluation',
+  'train',
   'admin',
   'database_client'
 ];

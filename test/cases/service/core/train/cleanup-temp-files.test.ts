@@ -16,6 +16,11 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
+// Mock getRerankTrainDataDir to return test directory
+vi.mock('@fastgpt/service/core/train/rerank/constants', () => ({
+  getRerankTrainDataDir: vi.fn(() => os.tmpdir())
+}));
+
 describe('临时文件清理功能', () => {
   const testTaskId = 'test_task_123';
   const tempDir = os.tmpdir(); // 使用 os.tmpdir() 而不是硬编码 /tmp
@@ -88,7 +93,9 @@ describe('临时文件清理功能', () => {
     await cleanupTempFiles(undefined, testTaskId);
 
     // 验证指定任务的文件被删除
-    const targetFiles = testFiles.filter((file) => file.includes(testTaskId));
+    // 使用正则表达式匹配，与 cleanupTempFiles 中的逻辑一致
+    const tempFilePattern = new RegExp(`^rerank_train_${testTaskId}_\\d+\\.jsonl$`);
+    const targetFiles = testFiles.filter((file) => tempFilePattern.test(file));
 
     for (const file of targetFiles) {
       const filePath = path.join(tempDir, file);

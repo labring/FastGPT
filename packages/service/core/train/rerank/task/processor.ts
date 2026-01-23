@@ -23,7 +23,10 @@ import {
   runEvaluateBaseModel,
   runEvaluateTunedModel
 } from './stages/evaluate';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { createEnhancedError } from '../utils';
 import { deleteRerankModelConfig } from '../model/controller';
 import { isTunedModel } from './helpers/model';
@@ -215,9 +218,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
   if (!task) {
     const enhancedError = createEnhancedError(
       null,
-      TrainTaskErrorType.INTERNAL_ERROR,
-      'Training task not found or has been deleted',
-      'Please check if the task ID is correct'
+      RerankTrainErrEnum.processorTaskNotFound,
+      RerankTrainSuggestionEnum.processorTaskNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -251,9 +253,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!taskAfterPrepare) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.finetuning,
-          TrainTaskErrorType.INTERNAL_ERROR,
-          'Task not found after data preparation completed',
-          'This may be a system error, please contact administrator'
+          RerankTrainErrEnum.processorTaskLostAfterPrepare,
+          RerankTrainSuggestionEnum.processorTaskLostAfterPrepare
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -271,9 +272,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!taskAfterFinetune) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.registering,
-          TrainTaskErrorType.INTERNAL_ERROR,
-          'Task not found after model finetuning completed',
-          'This may be a system error, please contact administrator'
+          RerankTrainErrEnum.processorTaskLostAfterFinetune,
+          RerankTrainSuggestionEnum.processorTaskLostAfterFinetune
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -290,9 +290,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!updatedTask) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.evaluating,
-          TrainTaskErrorType.INTERNAL_ERROR,
-          'Task not found after checkpoint update',
-          'This may be a system error, please contact administrator'
+          RerankTrainErrEnum.processorTaskLostAfterRegister,
+          RerankTrainSuggestionEnum.processorTaskLostAfterRegister
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -303,9 +302,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!checkpointData.registering?.tunedModelConfigId) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.evaluating,
-          TrainTaskErrorType.MODEL_CONFIG_INVALID,
-          'Tuned model config ID not found in checkpoint',
-          'Please check if model registration stage completed correctly'
+          RerankTrainErrEnum.processorModelConfigNotInCheckpoint,
+          RerankTrainSuggestionEnum.processorModelConfigNotInCheckpoint
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -319,9 +317,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!taskAfterEvalDataset) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.evaluating,
-          TrainTaskErrorType.INTERNAL_ERROR,
-          'Task not found after evaluation dataset generation',
-          'This may be a system error, please contact administrator'
+          RerankTrainErrEnum.processorTaskLostAfterEvalGen,
+          RerankTrainSuggestionEnum.processorTaskLostAfterEvalGen
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -354,9 +351,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       if (!updatedTask) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.applying,
-          TrainTaskErrorType.INTERNAL_ERROR,
-          'Task not found after evaluation completed',
-          'This may be a system error, please contact administrator'
+          RerankTrainErrEnum.processorTaskLostAfterEval,
+          RerankTrainSuggestionEnum.processorTaskLostAfterEval
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
@@ -376,9 +372,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     if (!finalTask) {
       const enhancedError = createEnhancedError(
         null,
-        TrainTaskErrorType.INTERNAL_ERROR,
-        'Task not found after all stages completed',
-        'This may be a system error, please contact administrator'
+        RerankTrainErrEnum.processorTaskLostAfterApply,
+        RerankTrainSuggestionEnum.processorTaskLostAfterApply
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }

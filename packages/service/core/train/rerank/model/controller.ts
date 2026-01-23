@@ -130,24 +130,30 @@ export async function deleteRerankModelConfig(
     addLog.info('Reloaded system models', { modelConfigId });
   }
 
-  // Step 3: Delete from SFT Bridge platform (non-blocking, errors are logged but don't throw)
+  // Step 3: Delete from SFT Bridge platform (async, non-blocking)
+  // Run in background to avoid blocking the main deletion flow (SFT task deletion can be slow)
   // Only attempt deletion if sftTaskId is provided
   if (sftTaskId) {
-    try {
-      const sftResult = await deleteSFTTask({ taskId: sftTaskId });
-      addLog.info('Successfully deleted SFT task from SFT Bridge', {
-        modelConfigId,
-        sftTaskId,
-        taskId: sftResult.task_id,
-        message: sftResult.message
-      });
-    } catch (sftError) {
-      addLog.warn('Error calling SFT Bridge delete task API', {
-        modelConfigId,
-        sftTaskId,
-        error: sftError instanceof Error ? sftError.message : String(sftError)
-      });
-    }
+    // Use setImmediate to run async without awaiting
+    setImmediate(() => {
+      deleteSFTTask({ taskId: sftTaskId })
+        .then((sftResult) => {
+          addLog.info('Successfully deleted SFT task from SFT Bridge', {
+            modelConfigId,
+            sftTaskId,
+            taskId: sftResult.task_id,
+            message: sftResult.message
+          });
+        })
+        .catch((sftError) => {
+          addLog.warn('Error calling SFT Bridge delete task API', {
+            modelConfigId,
+            sftTaskId,
+            error: sftError instanceof Error ? sftError.message : String(sftError)
+          });
+        });
+    });
+    addLog.info('Triggered async SFT task deletion', { modelConfigId, sftTaskId });
   } else {
     addLog.info('No sftTaskId provided, skipping SFT Bridge deletion', { modelConfigId });
   }

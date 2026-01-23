@@ -37,7 +37,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultLLMModel } from '../../../../ai/model';
 import { createEnhancedError } from '../../utils';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { TrainTaskUnrecoverableError } from '../errors';
 import { DEFAULT_DITING_CONCURRENCY, MAX_DITING_CONCURRENCY } from '../../constants';
@@ -232,9 +235,9 @@ export async function mockRunGenerateEvalDataset(task: RerankTrainTaskSchemaType
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.INTERNAL_ERROR,
-      `Failed to parse XLSX file: ${errorMsg}`,
-      `Please check if the XLSX file exists at: ${xlsxFilePath} and has the correct format (required columns: userInput, expectedContextIds; optional: expectedOutput)`
+      RerankTrainErrEnum.evalDatabaseSaveFailed,
+      RerankTrainSuggestionEnum.evalDatabaseSaveFailed,
+      `Failed to parse XLSX file: ${errorMsg}`
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -244,9 +247,8 @@ export async function mockRunGenerateEvalDataset(task: RerankTrainTaskSchemaType
   if (!app) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.INTERNAL_ERROR,
-      'Application not found or has been deleted',
-      'Please check if the application still exists'
+      RerankTrainErrEnum.evalAppDeleted,
+      RerankTrainSuggestionEnum.evalAppDeleted
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -305,9 +307,8 @@ export async function mockRunGenerateEvalDataset(task: RerankTrainTaskSchemaType
   if (enrichedEvalDataItems.length === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_FAILED,
-      'Failed to perform dataset search for all XLSX items',
-      'Please check dataset configuration and search parameters'
+      RerankTrainErrEnum.evalDitingGenerationFailed,
+      RerankTrainSuggestionEnum.evalDitingGenerationFailed
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -371,10 +372,9 @@ export async function mockRunGenerateEvalDataset(task: RerankTrainTaskSchemaType
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.DATABASE_ERROR,
-      `Failed to save evaluation dataset: ${errorMsg}`,
-      'This may be a database error. Please check database connection and try again',
-      errorMsg
+      RerankTrainErrEnum.evalDatabaseSaveFailed,
+      RerankTrainSuggestionEnum.evalDatabaseSaveFailed,
+      `Failed to save evaluation dataset: ${errorMsg}`
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }

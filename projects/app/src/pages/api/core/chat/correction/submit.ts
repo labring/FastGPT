@@ -41,11 +41,10 @@ async function handler(
   const app = await MongoApp.findById(appId, 'modules').lean();
   if (!app) return Promise.reject(AppErrEnum.unExist);
 
-  const configuredModel =
-    app.modules
-      ?.find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
-      ?.inputs?.find((item) => item.key === NodeInputKeyEnum.datasetSelectList)
-      ?.value?.find((v: { vectorModel?: { name: string } }) => v.vectorModel)?.vectorModel.name;
+  const configuredModel = app.modules
+    ?.find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
+    ?.inputs?.find((item) => item.key === NodeInputKeyEnum.datasetSelectList)
+    ?.value?.find((v: { vectorModel?: { name: string } }) => v.vectorModel)?.vectorModel.name;
 
   const modelName = configuredModel || getDefaultEmbeddingModel().name;
 
