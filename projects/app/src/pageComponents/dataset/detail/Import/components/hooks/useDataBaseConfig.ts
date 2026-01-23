@@ -195,8 +195,8 @@ export const useDataBaseConfig = (
             enabled: table.status === StatusEnum.add ? false : true,
             columns: table.columns.map((col) => ({
               ...col,
-              // 新增列默认不启用
-              enabled: col.status === StatusEnum.add ? false : col.enabled
+              // 新增列默认启用
+              enabled: col.status === StatusEnum.add ? true : col.enabled
             }))
           }));
 

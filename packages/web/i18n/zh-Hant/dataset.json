@@ -334,7 +334,7 @@
   "tables_deleted": "發現 {{deletedTables}} 個數據表已不存在，",
   "please_verify_data": "請核查最新數據。",
   "changes_detected": "發現",
-  "new_columns_added_disabled": "個新增列（默認未啟用），",
+  "new_columns_added_disabled": "個新增列（默認啟用），",
   "columns_no_longer_exist": "個列已不存在，",
   "check_latest_data": "請核查最新數據。",
   "config": "配置",

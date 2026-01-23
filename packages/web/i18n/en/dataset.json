@@ -334,7 +334,7 @@
   "tables_deleted": "and {{deletedTables}} no longer exist. ",
   "please_verify_data": "Please check the data.",
   "changes_detected": "",
-  "new_columns_added_disabled": " columns are added (new columns are disabled by default). ",
+  "new_columns_added_disabled": " columns are added (new columns are enabled by default). ",
   "columns_no_longer_exist": " columns no longer exist. ",
   "check_latest_data": "Please check the data.",
   "config": "Go now",
