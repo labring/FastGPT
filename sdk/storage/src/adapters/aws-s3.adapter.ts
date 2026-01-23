@@ -299,29 +299,42 @@ export class AwsS3StorageAdapter implements IStorage {
       }
     }
 
-    if (contentType) {
-      meta['Content-Type'] = contentType;
-    }
+    const convertToS3Headers = (meta: Record<string, string>) => {
+      return Object.keys(meta)
+        .filter((key) => key !== 'Content-Type')
+        .map((key) => `x-amz-meta-${key}`);
+    };
 
     const url = await getSignedUrl(
       this.client,
       new PutObjectCommand({
         Bucket: this.options.bucket,
         Key: key,
-        Metadata: meta
+        Metadata: meta,
+        ContentType: contentType
       }),
       {
-        expiresIn
+        expiresIn,
+        unhoistableHeaders: new Set(convertToS3Headers(meta))
       }
     );
+
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(meta)) {
+      if (key.toLowerCase() === 'content-type') {
+        continue;
+      }
+      headers[`x-amz-meta-${key}`] = value;
+    }
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
 
     return {
       key,
       url: url,
       bucket: this.options.bucket,
-      metadata: {
-        'Content-Type': meta['Content-Type']
-      }
+      metadata: headers
     };
   }
 
