@@ -433,6 +433,7 @@
   "knowledge_select_search_placeholder": "搜尋選擇知識",
   "knowledge_search_input_tip": "請先輸入關鍵詞",
   "knowledge_search_no_results": "未搜尋到相關知識",
+  "knowledge_faq_limit_tip": "FAQ 資料最多選擇 1 個",
   "chat_item_citation_source": "引用來源",
   "chat_item_cost_time": "耗時",
   "chat_item_rewrite": "改寫",

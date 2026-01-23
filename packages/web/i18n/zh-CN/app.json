@@ -433,6 +433,7 @@
   "knowledge_select_search_placeholder": "搜索选择知识",
   "knowledge_search_input_tip": "请先输入关键词",
   "knowledge_search_no_results": "未搜索到相关知识",
+  "knowledge_faq_limit_tip": "FAQ 数据最多选择 1 个",
   "chat_item_citation_source": "引用来源",
   "chat_item_cost_time": "耗时",
   "chat_item_rewrite": "改写",
