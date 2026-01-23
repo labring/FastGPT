@@ -7,10 +7,10 @@ import FileList from './FileList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FileSelector, { type SelectFileItemType } from '../FileSelector';
 import { Trans } from 'next-i18next';
-import { fileDownload } from '@/web/common/file/utils';
 import { postCheckDuplicateCollection } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from '../../RefinedCollectionCard/DuplicateConfirmModal';
+import ExcelJS from 'exceljs';
 
 export interface FileUploadModalProps {
   isOpen: boolean;
@@ -82,17 +82,56 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   // FileSelector 状态
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
 
-  const handleDownloadTemplate = () => {
-    const content = `id,name,age,region
-1, 'Alice', 30, 'US'
-2, 'Bob', 25, 'UK'
-3, 'Charlie', 35 ,'US'
-4, 'Diana', 28, 'CN'`;
-    fileDownload({
-      text: content,
-      type: 'text/csv;charset=utf-8',
-      filename: 'file_template.csv'
-    });
+  // 下载模板文件 (XLSX格式，UTF-8编码) - 前端生成
+  const handleDownloadTemplate = async () => {
+    try {
+      // 创建工作簿和工作表
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Template');
+
+      // 设置列宽
+      worksheet.columns = [
+        { width: 10 }, // id
+        { width: 20 }, // name
+        { width: 10 }, // age
+        { width: 15 } // region
+      ];
+
+      // 添加表头（第一行）
+      const headerRow = worksheet.addRow(['id', 'name', 'age', 'region']);
+
+      // 设置表头样式
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // 添加示例数据
+      worksheet.addRow([1, 'Alice', 30, 'US']);
+      worksheet.addRow([2, 'Bob', 25, 'UK']);
+      worksheet.addRow([3, 'Charlie', 35, 'US']);
+      worksheet.addRow([4, 'Diana', 28, 'CN']);
+
+      // 生成 Buffer（UTF-8编码）
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // 创建 Blob 并下载
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'file_template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download template:', error);
+    }
   };
 
   // 处理 FileSelector 的文件选择
