@@ -239,10 +239,34 @@ export const getTeamPlanStatus = async ({
 
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
-  console.log('standardConstants', standardConstants);
-
   return {
-    [SubTypeEnum.standard]: standardPlan,
+    [SubTypeEnum.standard]:
+      standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
+        ? {
+            ...standardPlan,
+            maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
+            maxApp: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
+            maxDataset: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
+            requestsPerMinute:
+              standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+            chatHistoryStoreDuration:
+              standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+            maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+            websiteSyncPerDataset:
+              standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+            appRegistrationCount:
+              standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+            auditLogStoreDuration:
+              standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+            ticketResponseTime:
+              standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+            customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+            maxUploadFileSize:
+              standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+            maxUploadFileCount:
+              standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+          }
+        : standardPlan,
     standardConstants: standardConstants
       ? {
           ...standardConstants,
