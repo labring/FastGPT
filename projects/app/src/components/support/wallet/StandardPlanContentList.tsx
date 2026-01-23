@@ -42,7 +42,7 @@ const StandardPlanContentList = ({
       ? level === 'free'
         ? subPlans?.standard?.basic
         : subPlans?.standard?.[level]
-      : teamPlanStatus?.standardConstants;
+      : teamPlanStatus?.standardConstants ?? subPlans?.standard?.[level];
 
     if (!plan) return;
     // For wecom free plan (trial), use WecomFreePlan constants
