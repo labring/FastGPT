@@ -239,6 +239,13 @@ export async function dispatchDatasetSearch(
     let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 新增：检索结果（仅assistant场景）
     let retrievalType: 'correction' | 'faq' | undefined = undefined; // 新增：检索类型（仅correction/faq命中时有值）
     let sqlChunks: SearchDataResponseItemType[] = []; // 新增：SQL检索结果转换的chunks（仅assistant场景）
+    let rerankError:
+      | {
+          errorMessage: Record<string, any>;
+          i18nErrorMessage: string;
+          i18nErrorMessageData: { modelName: string };
+        }
+      | undefined = undefined; // 新增：Reranker 错误信息（仅 reranker 报错时有值）
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -485,6 +492,8 @@ export async function dispatchDatasetSearch(
       retrievalResults = commonResult.retrievalResults;
       // 新增：提取检索类型（仅correction/faq命中时有值）
       retrievalType = commonResult.retrievalType;
+      // 新增：提取 reranker 错误信息（仅 reranker 报错时有值）
+      rerankError = commonResult.rerankError;
       // 提取 FAQ 数据信息
       if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
         faqAnswer = commonResult.searchRes[0].a;
@@ -688,7 +697,9 @@ export async function dispatchDatasetSearch(
             similarity: correctionData.similarity
           }
         ]
-      })
+      }),
+      // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
+      ...(rerankError && { rerankError })
     };
 
     return {

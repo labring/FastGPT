@@ -46,6 +46,45 @@ import {
   filterDatasetDataByMaxTokens as filterFunction
 } from './controller';
 
+// Import assistant-specific reranker
+import { assistantDatasetReRank } from './assistantReranker';
+
+/**
+ * 生成 i18n 错误 key（用于前端展示）
+ */
+function generateI18nErrorKey(errorMessage: string): string {
+  // 检查常见错误类型并返回对应的 i18n key
+  const lowerError = errorMessage.toLowerCase();
+
+  if (lowerError.includes('timeout') || lowerError.includes('超时')) {
+    return 'common:core.dataset.error.Rerank timeout';
+  }
+  if (lowerError.includes('network') || lowerError.includes('网络')) {
+    return 'common:core.dataset.error.Rerank network error';
+  }
+  if (lowerError.includes('404') || lowerError.includes('not found')) {
+    return 'common:core.dataset.error.Rerank service not found';
+  }
+  if (lowerError.includes('401') || lowerError.includes('unauthorized')) {
+    return 'common:core.dataset.error.Rerank unauthorized';
+  }
+  if (lowerError.includes('403') || lowerError.includes('forbidden')) {
+    return 'common:core.dataset.error.Rerank forbidden';
+  }
+  if (lowerError.includes('500') || lowerError.includes('internal server error')) {
+    return 'common:core.dataset.error.Rerank internal error';
+  }
+  if (lowerError.includes('502') || lowerError.includes('bad gateway')) {
+    return 'common:core.dataset.error.Rerank bad gateway';
+  }
+  if (lowerError.includes('503') || lowerError.includes('service unavailable')) {
+    return 'common:core.dataset.error.Rerank service unavailable';
+  }
+
+  // 默认通用错误
+  return 'common:core.dataset.error.Rerank error';
+}
+
 /**
  * Assistant 专属知识库搜索函数
  *
@@ -752,6 +791,13 @@ export async function searchDatasetDataForAssistant(
   const rerankStartTime = usingReRank ? Date.now() : undefined;
 
   // 【步骤 8】将完整的去重结果送进 Reranker（不截断）
+  let rerankError:
+    | {
+        errorMessage: Record<string, any>;
+        i18nErrorMessage: string;
+        i18nErrorMessageData: { modelName: string };
+      }
+    | undefined = undefined;
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
     if (!usingReRank) {
       return {
@@ -761,17 +807,80 @@ export async function searchDatasetDataForAssistant(
     }
 
     try {
-      return await reRankFunction({
+      return await assistantDatasetReRank({
         rerankModel,
         query: reRankQuery,
         data: dedupedRrfResults,
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
+        // rerankStrategy 使用默认值 RerankStrategyEnum.maxScore
       });
     } catch (error) {
+      // 构建结构化的错误对象
+      let errorMessage: Record<string, any> = {};
+      let errorTextForI18n = '';
+
+      if (error instanceof Error) {
+        errorMessage = {
+          type: 'Error',
+          name: error.name,
+          message: error.message
+        };
+        errorTextForI18n = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = {
+          type: 'string',
+          message: error
+        };
+        errorTextForI18n = error;
+      } else if (error && typeof error === 'object') {
+        const errorObj = error as any;
+        errorMessage = {
+          type: 'object',
+          ...(errorObj.message && { message: errorObj.message }),
+          ...(errorObj.error && { error: errorObj.error }),
+          ...(errorObj.status && { status: errorObj.status }),
+          ...(errorObj.statusText && { statusText: errorObj.statusText }),
+          ...(errorObj.code && { code: errorObj.code }),
+          ...(errorObj.response && { response: errorObj.response })
+        };
+
+        // 提取用于 i18n 匹配的文本
+        if (errorObj.message) {
+          errorTextForI18n = errorObj.message;
+        } else if (errorObj.statusText) {
+          errorTextForI18n = `${errorObj.statusText}${errorObj.status ? ` (${errorObj.status})` : ''}`;
+        } else if (typeof errorObj.error === 'string') {
+          errorTextForI18n = errorObj.error;
+        } else {
+          errorTextForI18n = JSON.stringify(errorObj);
+        }
+      } else {
+        errorMessage = {
+          type: 'unknown',
+          value: String(error)
+        };
+        errorTextForI18n = String(error);
+      }
+
+      // 生成 i18n 错误 key
+      const i18nErrorMessage = generateI18nErrorKey(errorTextForI18n);
+
+      // 记录完整的原始错误信息用于调试
+      addLog.error('Reranker error - Full error details', error);
+
       addLog.error('Reranker error', {
         model: rerankModel?.model,
-        error: error instanceof Error ? error.message : String(error)
+        errorMessage,
+        i18nErrorKey: i18nErrorMessage
       });
+
+      // 记录 reranker 错误信息
+      rerankError = {
+        errorMessage,
+        i18nErrorMessage,
+        i18nErrorMessageData: { modelName: rerankModel?.name || rerankModel?.model || 'Unknown' }
+      };
+
       usingReRank = false;
       return {
         results: [],
@@ -984,6 +1093,7 @@ export async function searchDatasetDataForAssistant(
     usingSimilarityFilter,
     retrievalTime, // 检索耗时（召回阶段）
     rerankTime, // 重排耗时（重排阶段）
-    retrievalResults // 检索结果（RRF 融合后的 top N，用于落库）
+    retrievalResults, // 检索结果（RRF 融合后的 top N，用于落库）
+    rerankError // Reranker 错误信息（如果有）
   };
 }
