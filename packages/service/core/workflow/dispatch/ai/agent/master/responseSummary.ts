@@ -67,6 +67,7 @@ export const getOneStepResponseSummary = async ({
       runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
       moduleType: FlowNodeTypeEnum.emptyNode,
       moduleName: i18nT('chat:step_summary'),
+      moduleLogo: 'core/app/agent/child/stepSummary',
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       totalPoints

@@ -56,6 +56,7 @@
   "select_member_and_source_first": "请先选中成员和类型",
   "share": "分享链接",
   "source": "来源",
+  "step_call": "阶段 Agent 调用",
   "step_summary": "步骤总结",
   "text_length": "文本长度",
   "token_length": "token 长度",

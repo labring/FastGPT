@@ -53,6 +53,7 @@
   "select_member_and_source_first": "Please select members and types first",
   "share": "Share Link",
   "source": "source",
+  "step_call": "Step call",
   "step_summary": "Summary of steps",
   "text_length": "text length",
   "token_length": "token length",

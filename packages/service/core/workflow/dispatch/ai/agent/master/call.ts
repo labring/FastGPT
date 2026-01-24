@@ -257,6 +257,7 @@ export const masterCall = async ({
         id: getNanoid(),
         moduleType: FlowNodeTypeEnum.emptyNode,
         moduleName: i18nT('chat:compress_llm_messages'),
+        moduleLogo: 'core/app/agent/child/contextCompress',
         model: modelName,
         inputTokens,
         outputTokens,
@@ -494,14 +495,17 @@ export const masterCall = async ({
     nodeId: getNanoid(),
     id: getNanoid(),
     moduleType: FlowNodeTypeEnum.agent,
-    moduleName: i18nT('chat:agent_call'),
+    moduleName: isStepCall ? i18nT('chat:step_call') : i18nT('chat:master_agent_call'),
     model: llmUsage.modelName,
-    moduleLogo: 'core/app/type/agentFill',
+    moduleLogo: isStepCall ? 'core/app/agent/child/stepCall' : 'core/app/type/agentFill',
     inputTokens,
     outputTokens,
     totalPoints: childTotalPoints + llmUsage.totalPoints,
     childrenResponses,
-    finishReason: finish_reason
+    finishReason: finish_reason,
+
+    // Step params
+    stepQuery: step?.title
   };
 
   // Step call

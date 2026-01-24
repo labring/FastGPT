@@ -272,11 +272,13 @@ export const dispatchPlanAgent = async ({
     outputTokens: usage.outputTokens
   });
 
+  const nodeId = getNanoid(6);
   const nodeResponse: ChatHistoryItemResType = {
-    nodeId: getNanoid(),
-    id: getNanoid(),
+    nodeId: nodeId,
+    id: nodeId,
     moduleType: FlowNodeTypeEnum.emptyNode,
     moduleName: i18nT('chat:plan_agent'),
+    moduleLogo: 'core/app/agent/child/plan',
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalPoints,

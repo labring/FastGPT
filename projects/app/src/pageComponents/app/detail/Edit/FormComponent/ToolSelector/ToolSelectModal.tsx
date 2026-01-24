@@ -290,7 +290,7 @@ const RenderList = React.memo(function RenderList({
 
       onAddTool({
         ...res,
-        configStatus: getToolConfigStatus(res).status
+        configStatus: getToolConfigStatus({ tool: res }).status
       });
     }
   );

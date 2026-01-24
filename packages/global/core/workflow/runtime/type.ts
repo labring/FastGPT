@@ -353,6 +353,8 @@ export type DispatchNodeResponseType = {
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
+  // Agent call
+  stepQuery?: string;
 
   // code
   codeLog?: string;

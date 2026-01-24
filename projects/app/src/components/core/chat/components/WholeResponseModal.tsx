@@ -185,6 +185,7 @@ export const WholeResponseContent = ({
             value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
           />
         )}
+        <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
         <Row

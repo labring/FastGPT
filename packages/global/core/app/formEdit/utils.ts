@@ -81,17 +81,19 @@ export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType):
 /**
  * Get the configuration status of a tool
  * Checks if tool needs configuration and whether all required fields are filled
- * @param toolTemplate - The tool template to check
+ * @param tool - The tool template to check
  * @returns 'active' if tool is ready to use, 'waitingForConfig' if configuration needed
  */
-export const getToolConfigStatus = (
-  toolTemplate: FlowNodeTemplateType
-): {
+export const getToolConfigStatus = ({
+  tool
+}: {
+  tool: FlowNodeTemplateType;
+}): {
   needConfig: boolean;
   status: SelectedToolItemType['configStatus'];
 } => {
   // Check if tool needs configuration
-  const needsConfig = checkNeedsUserConfiguration(toolTemplate);
+  const needsConfig = checkNeedsUserConfiguration(tool);
   if (!needsConfig) {
     return {
       needConfig: false,
@@ -113,7 +115,7 @@ export const getToolConfigStatus = (
   };
 
   // Find all inputs that need configuration
-  const configInputs = toolTemplate.inputs.filter((input) => {
+  const configInputs = tool.inputs.filter((input) => {
     if (input.toolDescription) return false;
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
     if (input.key === NodeInputKeyEnum.systemInputConfig) return true;

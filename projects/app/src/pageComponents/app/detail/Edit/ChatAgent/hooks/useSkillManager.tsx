@@ -176,7 +176,7 @@ export const useSkillManager = ({
 
       onUpdateOrAddTool({
         ...tool,
-        configStatus: getToolConfigStatus(tool).status
+        configStatus: getToolConfigStatus({ tool }).status
       });
 
       return tool.id;

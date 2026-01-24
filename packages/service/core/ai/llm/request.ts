@@ -110,16 +110,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   let isStreamResponse = false;
 
   while (continuationCount < maxContinuations) {
-    console.log(
-      JSON.stringify(
-        {
-          ...requestBody,
-          messages: currentMessages
-        },
-        null,
-        2
-      )
-    );
+    console.log(JSON.stringify(currentMessages, null, 2));
     const { response, isStreamResponse: currentIsStreamResponse } = await createChatCompletion({
       body: {
         ...requestBody,
@@ -206,7 +197,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
       addLog.debug(`Continue LLM response due to length limit`, {
         continuationCount,
-        currentLength: accumulatedAnswerText.length
+        completionTokens: usage?.completion_tokens
       });
       continuationCount++;
     } else {

@@ -554,35 +554,6 @@ export const updateInteractiveChat = async (props: Props) => {
 
   chatItem.markModified('value');
   await mongoSessionRun(async (session) => {
-    // Merge chat item respones
-    if (nodeResponses) {
-      const lastResponse = await MongoChatItemResponse.findOne({
-        appId,
-        chatId,
-        chatItemDataId: chatItem.dataId
-      })
-        .sort({
-          _id: -1
-        })
-        .lean()
-        .session(session);
-
-      const newResponses = lastResponse?.data
-        ? mergeChatResponseData([lastResponse?.data, ...nodeResponses])
-        : nodeResponses;
-
-      await MongoChatItemResponse.create(
-        newResponses.map((item) => ({
-          teamId,
-          appId,
-          chatId,
-          chatItemDataId: chatItem.dataId,
-          data: item
-        })),
-        { session, ordered: true, ...writePrimary }
-      );
-    }
-
     await chatItem.save({ session });
     await MongoChat.updateOne(
       {
@@ -602,7 +573,10 @@ export const updateInteractiveChat = async (props: Props) => {
 
     // Create chat item respones
     if (nodeResponses) {
-      // Merge
+      /* 
+        Merge with last response data
+        如果是从嵌套的 node 里触发的交互，这里需要进行一个合并，否则会导致出现两次相同的 node（child response 无法合并起来）
+      */
       const lastResponse = await MongoChatItemResponse.findOneAndDelete({
         appId,
         chatId,
@@ -615,8 +589,7 @@ export const updateInteractiveChat = async (props: Props) => {
         .session(session);
 
       const newResponses = lastResponse?.data
-        ? // @ts-ignore
-          mergeChatResponseData([lastResponse?.data, ...nodeResponses])
+        ? mergeChatResponseData([lastResponse?.data, ...nodeResponses])
         : nodeResponses;
 
       await MongoChatItemResponse.create(

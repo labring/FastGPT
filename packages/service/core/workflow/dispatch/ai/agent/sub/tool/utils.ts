@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { SubAppInitType } from '../type';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 export const agentSkillToToolRuntime = async ({
   tools,
@@ -56,7 +57,7 @@ export const agentSkillToToolRuntime = async ({
       }
 
       if (input.key === NodeInputKeyEnum.toolData) {
-        jsonSchema = (input.value as McpToolDataType).inputSchema;
+        jsonSchema = (input.value as McpToolDataType)?.inputSchema;
       }
     }
 
@@ -124,12 +125,33 @@ export const agentSkillToToolRuntime = async ({
             : [])
         ]);
 
+        // Check if tool configuration is complete
+        // 1. Add config value to toolNode.inputs
+        toolNode.inputs.forEach((input) => {
+          const value = tool.config[input.key];
+          if (value) {
+            input.value = value;
+          }
+        });
+        // 2. Check config status
+        const configStatus = getToolConfigStatus({
+          tool: toolNode
+        });
+        if (configStatus.status === 'waitingForConfig') {
+          addLog.warn(`[Agent] tool config incomplete`, {
+            toolId: tool.id,
+            toolName: toolNode.name
+          });
+          return [];
+        }
+
         const removePrefixId = pluginId.replace(`${source}-`, '');
+        // 前缀加一个固定的t，避免 prefix 可能是数字，导致部分模型不兼容
         const requestToolId = `t${removePrefixId}`;
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
-          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0].value;
+          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0]?.value;
           if (systemToolId) {
             const children = await getSystemToolRunTimeNodeFromSystemToolset({
               toolSetNode: {

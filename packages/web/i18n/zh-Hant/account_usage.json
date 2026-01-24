@@ -53,6 +53,7 @@
   "select_member_and_source_first": "請先選取成員和類型",
   "share": "分享連結",
   "source": "來源",
+  "step_call": "階段 Agent 調用",
   "step_summary": "步驟總結",
   "text_length": "文字長度",
   "token_length": "token 長度",

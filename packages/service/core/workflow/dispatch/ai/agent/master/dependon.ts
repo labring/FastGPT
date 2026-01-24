@@ -94,6 +94,7 @@ export const getStepDependon = async ({
     id: getNanoid(),
     moduleType: FlowNodeTypeEnum.emptyNode,
     moduleName: i18nT('chat:context_pick'),
+    moduleLogo: 'core/app/agent/child/contextPick',
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalPoints,
