@@ -478,5 +478,7 @@
   "unknown_error": "未知错误",
   "exception_info": "异常信息",
   "retry": "重试",
-  "vector_model_mismatch": "仅支持选择同一个向量模型的知识库。该知识库向量模型为 {{model1}}，已选知识库向量模型为 {{model2}}。"
+  "vector_model_mismatch": "仅支持选择同一个向量模型的知识库。该知识库向量模型为 {{model1}}，已选知识库向量模型为 {{model2}}。",
+  "auto_learn.confirm_delete_completed_record": "Are you sure you want to delete this learning record? The model fine-tuning will be reverted to the state before this learning.",
+  "auto_learn.confirm_delete_failed_record": "Are you sure you want to delete this learning record?"
 }

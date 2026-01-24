@@ -26,6 +26,7 @@ import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import { cardStyles } from '../constants';
 import TrainExceptionModal from './TrainExceptionModal';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const AutoLearn = () => {
   const { t } = useTranslation();
@@ -47,6 +48,9 @@ const AutoLearn = () => {
   // 删除任务 loading 状态集合
   const [deletingTaskIds, setDeletingTaskIds] = useState<Set<string>>(new Set());
 
+  // 标记是否为轮询请求（用于抑制 loading 状态）
+  const isPollingRef = React.useRef(false);
+
   // 空状态组件
   const EmptyTipDom = useMemo(() => <EmptyTip mt={0} text={t('app:auto_learn_no_records')} />, [t]);
 
@@ -61,7 +65,7 @@ const AutoLearn = () => {
     };
   }, [appId, sortOrder]);
 
-  // 使用滚动分页获取训练任务数据，并添加15s轮询
+  // 使用滚动分页获取训练任务数据
   const {
     data: trainTasks,
     total,
@@ -73,15 +77,42 @@ const AutoLearn = () => {
     params: requestParams,
     EmptyTip: EmptyTipDom,
     refreshDeps: [appId, sortOrder],
-    errorToast: t('app:fetch_learning_records_error'),
-    pollingInterval: 15000 // 15秒轮询
+    errorToast: t('app:fetch_learning_records_error')
   }) as {
     data: RerankTrainTaskListItem[];
     total: number;
     isLoading: boolean;
     ScrollData: any;
-    refreshList: () => void;
+    refreshList: (options?: { silent?: boolean }) => void;
   };
+
+  // 检查是否有正在运行或待处理的任务
+  const hasRunningTasks = useMemo(
+    () =>
+      trainTasks.some(
+        (task) =>
+          task.status === RerankTrainTaskStatusEnum.pending ||
+          task.status === RerankTrainTaskStatusEnum.running
+      ),
+    [trainTasks]
+  );
+
+  // 静默轮询正在运行的任务（15s 间隔）- 不显示 loading
+  useRequest2(
+    async () => {
+      if (!hasRunningTasks) return;
+      isPollingRef.current = true;
+      await refreshList({ silent: true });
+      isPollingRef.current = false;
+    },
+    {
+      manual: false,
+      ready: hasRunningTasks,
+      pollingInterval: hasRunningTasks ? 15000 : undefined,
+      errorToast: '', // 轮询时抑制错误提示
+      refreshDeps: [hasRunningTasks]
+    }
+  );
 
   // 使用 useRequest2 处理开始学习
   const { runAsync: onStartLearn, loading: isStartLearning } = useRequest2(
@@ -416,6 +447,9 @@ const AutoLearn = () => {
     };
   }, []);
 
+  // 计算实际的 loading 状态：轮询时不显示 loading
+  const actualIsLoading = isLoading && !isPollingRef.current;
+
   return (
     <Flex
       flexDirection={'column'}
@@ -449,7 +483,7 @@ const AutoLearn = () => {
 
       {/* 表格区域 */}
       <Box flex={1}>
-        <ScrollData>
+        <ScrollData isLoading={actualIsLoading}>
           <Table variant={'simple'}>
             <Thead bg={'myGray.100'}>
               <Tr>
@@ -549,13 +583,29 @@ const AutoLearn = () => {
                     </Td>
                     <Td>
                       {task.status === RerankTrainTaskStatusEnum.completed ? (
-                        <Button
-                          size={'sm'}
-                          variant={'whitePrimary'}
-                          onClick={() => handleDownloadData(task._id)}
-                        >
-                          {t('app:auto_learn.download_evaluation_data')}
-                        </Button>
+                        <HStack spacing={2}>
+                          <Button
+                            size={'sm'}
+                            variant={'whitePrimary'}
+                            onClick={() => handleDownloadData(task._id)}
+                          >
+                            {t('app:auto_learn.download_evaluation_data')}
+                          </Button>
+                          <PopoverConfirm
+                            Trigger={
+                              <Button
+                                size={'sm'}
+                                variant={'whiteDanger'}
+                                isLoading={deletingTaskIds.has(task._id)}
+                              >
+                                {t('common:Delete')}
+                              </Button>
+                            }
+                            type="delete"
+                            content={t('app:auto_learn.confirm_delete_completed_record')}
+                            onConfirm={() => handleDeleteTask(task._id)}
+                          />
+                        </HStack>
                       ) : task.status === RerankTrainTaskStatusEnum.failed ? (
                         <HStack spacing={2}>
                           <Button
@@ -566,14 +616,20 @@ const AutoLearn = () => {
                           >
                             {t('app:retry')}
                           </Button>
-                          <Button
-                            size={'sm'}
-                            variant={'whiteDanger'}
-                            onClick={() => handleDeleteTask(task._id)}
-                            isLoading={deletingTaskIds.has(task._id)}
-                          >
-                            {t('common:Delete')}
-                          </Button>
+                          <PopoverConfirm
+                            Trigger={
+                              <Button
+                                size={'sm'}
+                                variant={'whiteDanger'}
+                                isLoading={deletingTaskIds.has(task._id)}
+                              >
+                                {t('common:Delete')}
+                              </Button>
+                            }
+                            type="delete"
+                            content={t('app:auto_learn.confirm_delete_failed_record')}
+                            onConfirm={() => handleDeleteTask(task._id)}
+                          />
                         </HStack>
                       ) : null}
                     </Td>
