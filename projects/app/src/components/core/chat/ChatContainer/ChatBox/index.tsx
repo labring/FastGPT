@@ -641,7 +641,7 @@ const ChatBox = ({
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 这里，无论是否为交互模式，最后都是 Human 的消息。
+            // 这里，无论是否为交互模式，都要确保最后一条消息都是 Human 的消息。
             const messages = chats2GPTMessages({
               messages: newChatList.slice(0, -1).map((item) => {
                 if (item.obj === ChatRoleEnum.Human) {
@@ -656,7 +656,7 @@ const ChatBox = ({
             });
 
             const { responseText } = await onStartChat({
-              messages, // 保证最后一条是 Human 的消息
+              messages,
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),

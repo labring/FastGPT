@@ -230,8 +230,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     // save chat
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -262,8 +260,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     };
 
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({
+        interactive,
+        ...params
+      });
     } else {
       await pushChatRecords(params);
     }

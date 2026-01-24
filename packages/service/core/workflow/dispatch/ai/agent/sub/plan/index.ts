@@ -277,7 +277,8 @@ export const dispatchPlanAgent = async ({
     nodeId: nodeId,
     id: nodeId,
     moduleType: FlowNodeTypeEnum.emptyNode,
-    moduleName: i18nT('chat:plan_agent'),
+    moduleName:
+      props.mode === 'continue' ? i18nT('chat:reflection_agent') : i18nT('chat:plan_agent'),
     moduleLogo: 'core/app/agent/child/plan',
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
@@ -298,7 +299,7 @@ export const dispatchPlanAgent = async ({
     nodeResponse,
     usages: [
       {
-        moduleName: i18nT('chat:plan_agent'),
+        moduleName: i18nT('account_usage:agent_call'),
         model: modelName,
         totalPoints,
         inputTokens: usage.inputTokens,

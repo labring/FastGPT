@@ -133,6 +133,7 @@ const AIContentCard = React.memo(function AIContentCard({
               chatItemDataId={dataId}
               value={value}
               isLastResponseValue={isLastResponse}
+              isLastChild={isLastChild}
               isChatting={isChatting}
               onOpenCiteModal={onOpenCiteModal}
             />

@@ -407,7 +407,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             response: stepResponse
           };
         });
-        // 拼接 plan response 到 masterMessages 里（肯定在最后一个）
+        // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
         const lastToolIndex = masterMessages.findIndex((item) => item.role === 'tool');
         if (lastToolIndex !== -1) {
           masterMessages[lastToolIndex].content = JSON.stringify(stepsResponse);

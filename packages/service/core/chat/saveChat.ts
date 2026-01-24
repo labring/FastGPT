@@ -12,7 +12,10 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  checkInteractiveResponseStatus,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {
   FlowNodeTypeEnum,
@@ -29,6 +32,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type Props = {
   chatId: string;
@@ -405,7 +409,12 @@ export const pushChatRecords = async (props: Props) => {
   1. 更新当前的 items，并把 value 追加到当前 items
   2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
 */
-export const updateInteractiveChat = async (props: Props) => {
+export const updateInteractiveChat = async ({
+  interactive,
+  ...props
+}: Props & {
+  interactive: WorkflowInteractiveResponseType;
+}) => {
   beforProcess(props);
 
   const {
@@ -435,27 +444,17 @@ export const updateInteractiveChat = async (props: Props) => {
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
   // Get interactive value
-  const interactiveValue = chatItem.value[chatItem.value.length - 1];
-  if (!interactiveValue || !interactiveValue.interactive) {
-    return;
-  }
-  interactiveValue.interactive.params = interactiveValue.interactive.params || {};
+  interactive.params = interactive.params || {};
 
   // Get interactive response
   const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
 
-  // 拿到的是实参
-  const finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
-  /* 
-    需要追加一条 chat_items 记录，而不是修改原来的。
-    1. Ask query: 用户肯定会输入一条新消息
-    2. Plan check 非确认模式，用户也是输入一条消息。
-  */
-  const pushNewItems =
-    finalInteractive.type === 'agentPlanAskQuery' ||
-    (finalInteractive.type === 'agentPlanCheck' && userInteractiveVal !== ConfirmPlanAgentText);
-
-  if (pushNewItems) {
+  // 如果是发送一条新的 user 消息，则直接用推送记录的方式
+  const status = checkInteractiveResponseStatus({
+    interactive,
+    input: userInteractiveVal
+  });
+  if (status === 'query') {
     return await pushChatRecords(props);
   }
 
@@ -480,6 +479,9 @@ export const updateInteractiveChat = async (props: Props) => {
   */
   // Update interactive value
   {
+    // 提取嵌套在子流程里的交互节点
+    const finalInteractive = extractDeepestInteractive(interactive);
+
     if (
       finalInteractive.type === 'userSelect' ||
       finalInteractive.type === 'agentPlanAskUserSelect'
@@ -522,6 +524,9 @@ export const updateInteractiveChat = async (props: Props) => {
     } else if (finalInteractive.type === 'agentPlanCheck') {
       finalInteractive.params.confirmed = true;
     }
+
+    // 将最新的 interactive 赋值给最后一条消息（最后一条必然是带交互的消息）
+    chatItem.value[chatItem.value.length - 1].interactive = interactive;
   }
 
   // Update current items

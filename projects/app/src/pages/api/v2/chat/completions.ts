@@ -358,7 +358,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       customFeedbacks
     };
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
     const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,
@@ -381,8 +380,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       durationSeconds
     };
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({ interactive, ...params });
     } else {
       await pushChatRecords(params);
     }

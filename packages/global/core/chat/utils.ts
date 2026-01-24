@@ -10,6 +10,8 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
+import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -205,6 +207,34 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
     default:
       return ChatSourceEnum.online;
   }
+};
+
+/* 
+  对于交互模式下，有两种响应：
+  1. 提交交互结果，此时不会新增一条 user 消息
+  2. 发送 user 消息，此时对话会新增一条 user 消息
+*/
+export const checkInteractiveResponseStatus = ({
+  interactive,
+  input
+}: {
+  interactive: WorkflowInteractiveResponseType;
+  input: string;
+}): 'submit' | 'query' => {
+  if (interactive.type === 'agentPlanAskQuery') {
+    return 'query';
+  }
+  if (interactive.type === 'agentPlanAskUserForm') {
+    try {
+      // 如果是表单提交，会是一个对象，如果解析失败，则认为是非表单提交。
+      JSON.parse(input);
+    } catch {
+      return 'query';
+    }
+  } else if (interactive.type === 'agentPlanCheck' && input !== ConfirmPlanAgentText) {
+    return 'query';
+  }
+  return 'submit';
 };
 
 /*

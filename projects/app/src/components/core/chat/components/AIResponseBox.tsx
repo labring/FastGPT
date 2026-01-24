@@ -219,10 +219,12 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive,
-  chatItemDataId
+  chatItemDataId,
+  isLastChild
 }: {
   interactive: UserInputInteractive;
   chatItemDataId: string;
+  isLastChild: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -276,7 +278,11 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   return (
     <Flex flexDirection={'column'} gap={2} minW={'250px'}>
       <FormInputComponent
-        interactiveParams={interactive.params}
+        interactiveParams={{
+          ...interactive.params,
+          // 如果不是最后一条消息，此时不能再提交了。
+          submitted: interactive.params.submitted || !isLastChild
+        }}
         defaultValues={defaultValues}
         SubmitButton={({ onSubmit, isFileUploading }) => (
           <Button
@@ -430,12 +436,14 @@ const AIResponseBox = ({
   chatItemDataId,
   value,
   isLastResponseValue,
+  isLastChild,
   isChatting,
   onOpenCiteModal
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
   isLastResponseValue: boolean;
+  isLastChild: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
@@ -470,7 +478,11 @@ const AIResponseBox = ({
     }
     if (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') {
       return (
-        <RenderUserFormInteractive interactive={interactive} chatItemDataId={chatItemDataId} />
+        <RenderUserFormInteractive
+          interactive={interactive}
+          chatItemDataId={chatItemDataId}
+          isLastChild={isLastChild}
+        />
       );
     }
     if (interactive.type === 'agentPlanCheck') {
