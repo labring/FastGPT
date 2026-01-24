@@ -350,11 +350,23 @@ const CollectionCard = () => {
                       <Box>{t('common:Name')}</Box>
                     </HStack>
                   </Th>
-                  <Th py={4}>{t('dataset:chunk_count')}</Th>
-                  {!isStructureDocument && <Th py={4}>{t('common:Status')}</Th>}
-                  <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                  <Th py={4}>{t('dataset:Enable')}</Th>
-                  {!isStructureDocument && <Th py={4} />}
+                  <Th py={4} w="100px">
+                    {t('dataset:chunk_count')}
+                  </Th>
+                  {!isStructureDocument && (
+                    <Th py={4} w="100px">
+                      {t('common:Status')}
+                    </Th>
+                  )}
+                  <Th py={4} w="150px">
+                    {t('dataset:collection.Create update time')}
+                  </Th>
+                  {!isStructureDocument && (
+                    <Th py={4} w="100px">
+                      {t('dataset:Enable')}
+                    </Th>
+                  )}
+                  <Th py={4} w="100px" />
                 </Tr>
               </Thead>
               <Tbody>
@@ -431,9 +443,11 @@ const CollectionCard = () => {
                         </Box>
                       </HStack>
                     </Td>
-                    <Td py={2}>{formatDataAmount(collection, isStructureDocument)}</Td>
+                    <Td py={2} w="100px">
+                      {formatDataAmount(collection, isStructureDocument)}
+                    </Td>
                     {!isStructureDocument && (
-                      <Td py={2}>
+                      <Td py={2} w="100px">
                         {collection.statusKey === 'error' ? (
                           <MyTooltip label={t('common:Click_to_expand')}>
                             <MyTag
@@ -464,12 +478,12 @@ const CollectionCard = () => {
                         )}
                       </Td>
                     )}
-                    <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+                    <Td fontSize={'xs'} py={2} color={'myGray.500'} w="150px">
                       <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                       <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                     </Td>
                     {!isStructureDocument && (
-                      <Td py={2} onClick={(e) => e.stopPropagation()}>
+                      <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                         <Switch
                           isChecked={!collection.forbid}
                           size={'sm'}
@@ -482,7 +496,7 @@ const CollectionCard = () => {
                         />
                       </Td>
                     )}
-                    <Td py={2} onClick={(e) => e.stopPropagation()}>
+                    <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                       {collection.permission.hasWritePer && (
                         <MyMenu
                           width={100}

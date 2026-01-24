@@ -49,31 +49,39 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
           <Tr>
             <Th py={4}>{t('common:Name')}</Th>
             <Th py={4}>{t('dataset:description')}</Th>
-            <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-            <Th py={4}>{t('common:Status')}</Th>
-            <Th py={4}>{t('dataset:Enable')}</Th>
-            <Th py={4} />
+            <Th py={4} w="150px">
+              {t('dataset:collection.Create update time')}
+            </Th>
+            <Th py={4} w="100px">
+              {t('common:Status')}
+            </Th>
+            <Th py={4} w="100px">
+              {t('dataset:Enable')}
+            </Th>
+            <Th py={4} w="100px" />
           </Tr>
         </Thead>
         <Tbody>
           <Tr h={'5px'} />
           {formatCollections.map((collection) => (
             <Tr key={collection._id} _hover={{ bg: 'myGray.50' }} cursor={'pointer'}>
-              <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
-                <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
-                  {collection.name}
-                </Box>
+              <Td py={2} w={'250px'}>
+                <MyTooltip label={collection.name} shouldWrapChildren={false}>
+                  <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                    {collection.name}
+                  </Box>
+                </MyTooltip>
               </Td>
-              <Td maxW={'290px'} py={2}>
-                <MyTooltip label={collection.tableSchema?.description}>
+              <Td py={2} minW={'200px'}>
+                <MyTooltip label={collection.tableSchema?.description} shouldWrapChildren={false}>
                   <Text className={'textEllipsis'}>{collection.tableSchema?.description}</Text>
                 </MyTooltip>
               </Td>
-              <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+              <Td fontSize={'xs'} py={2} color={'myGray.500'} w="150px">
                 <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                 <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
               </Td>
-              <Td py={2}>
+              <Td py={2} w="100px">
                 {collection.statusKey === 'error' ? (
                   <MyTooltip label={t('common:Click_to_expand')}>
                     <MyTag
@@ -99,7 +107,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   </MyTag>
                 )}
               </Td>
-              <Td py={2} onClick={(e) => e.stopPropagation()}>
+              <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                 <Switch
                   isChecked={!collection.forbid}
                   size={'sm'}
@@ -112,7 +120,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                   }
                 />
               </Td>
-              <Td py={2} onClick={(e) => e.stopPropagation()}>
+              <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                 {collection.permission.hasWritePer && (
                   <MyMenu
                     width={100}

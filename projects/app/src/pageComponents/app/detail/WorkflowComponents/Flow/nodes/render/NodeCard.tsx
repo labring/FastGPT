@@ -220,7 +220,7 @@ const NodeCard = (props: Props) => {
                 cursor={'pointer'}
                 onClick={() => {
                   onOpenCustomTitleModal({
-                    defaultVal: name,
+                    defaultVal: t(name as any),
                     onSuccess: (e) => {
                       if (!e) {
                         return toast({
@@ -654,7 +654,7 @@ const NodeIntro = React.memo(function NodeIntro({
               cursor={'pointer'}
               onClick={() => {
                 onOpenIntroModal({
-                  defaultVal: intro,
+                  defaultVal: t(intro as any),
                   onSuccess(e) {
                     onChangeNode({
                       nodeId,
