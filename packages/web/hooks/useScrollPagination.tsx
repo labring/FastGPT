@@ -383,8 +383,8 @@ export function useScrollPagination<
     }
   );
 
-  const refreshList = useMemoizedFn(() => {
-    loadData({ init: true });
+  const refreshList = useMemoizedFn((options?: { silent?: boolean }) => {
+    loadData({ init: true, silent: options?.silent });
   });
 
   return {
