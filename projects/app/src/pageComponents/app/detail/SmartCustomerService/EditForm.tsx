@@ -343,7 +343,7 @@ const EditForm = ({
               <Flex
                 overflow={'hidden'}
                 alignItems={'center'}
-                py={2.5}
+                py={1}
                 px={3}
                 h={SIZES.DATASET_ITEM_HEIGHT}
                 bg={'white'}
@@ -367,6 +367,7 @@ const EditForm = ({
                   className={'textEllipsis'}
                   fontSize={'sm'}
                   color={'myGray.900'}
+                  lineHeight={'20px'}
                 >
                   {item.name}
                 </Box>
