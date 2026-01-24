@@ -45,7 +45,7 @@ export function detectAndDecodeBuffer(buffer: Buffer): DecodeResult {
 
     // 先检测GBK特征（中文编码）
     // GBK的第一个字节范围: 0x81-0xFE，第二个字节范围: 0x40-0xFE
-    let gbkLikeCount = 0;
+    let gbkLikeBytes = 0;
     for (let i = 0; i < sample.length - 1; i++) {
       if (
         sample[i] >= 0x81 &&
@@ -53,16 +53,17 @@ export function detectAndDecodeBuffer(buffer: Buffer): DecodeResult {
         sample[i + 1] >= 0x40 &&
         sample[i + 1] <= 0xfe
       ) {
-        gbkLikeCount++;
+        gbkLikeBytes += 2;
         i++; // 跳过第二个字节
       }
     }
 
     // 如果GBK特征明显（超过设定阈值的字节符合GBK编码规则），优先使用GBK
-    if (gbkLikeCount > sample.length * GBK_DETECTION_THRESHOLD) {
+    const gbkRatio = sample.length > 0 ? gbkLikeBytes / sample.length : 0;
+    if (gbkRatio > GBK_DETECTION_THRESHOLD) {
       encoding = 'gbk';
       addLog.debug(
-        `[detectAndDecodeBuffer] GBK detection: gbkLikeCount=${gbkLikeCount}, sample.length=${sample.length}, ratio=${(gbkLikeCount / sample.length).toFixed(3)}, threshold=${GBK_DETECTION_THRESHOLD}`
+        `[detectAndDecodeBuffer] GBK detection: gbkLikeBytes=${gbkLikeBytes}, sample.length=${sample.length}, ratio=${gbkRatio.toFixed(3)}, threshold=${GBK_DETECTION_THRESHOLD}`
       );
     } else {
       // 验证UTF-8有效性：检查字节序列是否符合UTF-8编码规则
@@ -130,59 +131,4 @@ export function detectAndDecodeBuffer(buffer: Buffer): DecodeResult {
     content: iconv.decode(contentBuffer, encoding),
     encoding
   };
-}
-
-/**
- * 仅检测Buffer的编码，不进行解码
- *
- * @param buffer - 文件Buffer
- * @returns 检测到的编码名称
- */
-export function detectBufferEncoding(buffer: Buffer): string {
-  // UTF-8 BOM
-  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
-    return 'utf-8';
-  }
-  // UTF-16 LE BOM
-  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
-    return 'utf-16le';
-  }
-  // UTF-16 BE BOM
-  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
-    return 'utf-16be';
-  }
-
-  // 启发式检测
-  const sample = buffer.slice(0, Math.min(buffer.length, 1024));
-  const utf8Decoded = iconv.decode(sample, 'utf-8');
-  const utf8Valid = !utf8Decoded.includes('�') && !utf8Decoded.includes('\uFFFD');
-
-  if (utf8Valid) {
-    return 'utf-8';
-  }
-
-  // GBK检测
-  let gbkLikeCount = 0;
-  for (let i = 0; i < sample.length - 1; i++) {
-    if (sample[i] >= 0x81 && sample[i] <= 0xfe && sample[i + 1] >= 0x40 && sample[i + 1] <= 0xfe) {
-      gbkLikeCount++;
-      i++;
-    }
-  }
-  if (gbkLikeCount > sample.length * GBK_DETECTION_THRESHOLD) {
-    return 'gbk';
-  }
-
-  return 'utf-8'; // 默认返回UTF-8
-}
-
-/**
- * 使用指定编码解码Buffer
- *
- * @param buffer - 文件Buffer
- * @param encoding - 编码名称
- * @returns 解码后的字符串
- */
-export function decodeBuffer(buffer: Buffer, encoding: string): string {
-  return iconv.decode(buffer, encoding);
 }
