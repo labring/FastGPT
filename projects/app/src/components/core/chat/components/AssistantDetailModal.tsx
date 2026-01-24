@@ -355,10 +355,11 @@ const KnowledgeRerankNode = ({
       .filter(Boolean) as AssistantDatasetCiteItemWithScore[];
   }, [quoteList, rawQuoteList]);
 
-  // 当 rawQuoteList 为空时，隐藏知识重排节点
-  const shouldShow = rawQuoteList && rawQuoteList.length > 0;
+  // 判断是否使用重排:从 data 中获取 searchUsingReRank
+  const searchUsingReRank = data?.searchUsingReRank || false;
 
-  if (!shouldShow) return null;
+  // 当未使用重排时，隐藏知识重排节点
+  if (!searchUsingReRank) return null;
 
   return (
     <Box>
@@ -454,7 +455,7 @@ const KnowledgeRerankNode = ({
                   </Flex>
                 ) : (
                   <Box fontSize={'sm'} color={'myGray.600'}>
-                    {t('chat:no_recall_content')}
+                    {t('chat:no_rerank_passed')}
                   </Box>
                 )}
               </>
@@ -494,6 +495,9 @@ const FinalAnswerNode = ({
       const aiMessages = chatNodeData.historyPreview.filter((msg: any) => msg.obj === 'AI');
       if (aiMessages.length > 0) {
         rawValue = aiMessages[aiMessages.length - 1].value;
+      } else if (chatNodeData?.errorText) {
+        // 如果存在 chatNodeData 但没取到 aiMessage，且存在 errorText，显示 errorText
+        rawValue = chatNodeData.errorText;
       }
     } else {
       // 兜底：使用 answerNode 的 textOutput
@@ -503,6 +507,21 @@ const FinalAnswerNode = ({
     // 使用 removeDatasetCiteText 处理文本，移除数据集引用标记
     return removeDatasetCiteText(rawValue, false);
   }, [data, isFallback, chatNodeData]);
+
+  // 判断是否为错误状态
+  const isError = useMemo(() => {
+    if (isFallback) return false;
+    if (!chatNodeData) return false;
+
+    // 判断是否有 AI 消息
+    const hasAiMessage =
+      chatNodeData.historyPreview &&
+      Array.isArray(chatNodeData.historyPreview) &&
+      chatNodeData.historyPreview.some((msg: any) => msg.obj === 'AI');
+
+    // 存在 errorText 且没有 AI 消息时为错误状态
+    return !!chatNodeData.errorText && !hasAiMessage;
+  }, [isFallback, chatNodeData]);
 
   // 处理复制操作
   const handleCopy = useCallback(
@@ -537,7 +556,7 @@ const FinalAnswerNode = ({
             alignItems={'center'}
           >
             {t('chat:final_answer')}
-            {finalAnswer && (
+            {finalAnswer && !isError && (
               <MyTooltip label={t('common:Copy')}>
                 <Box
                   ml={1}
@@ -548,6 +567,9 @@ const FinalAnswerNode = ({
                   <MyIcon name={'copy' as any} w={'16px'} h={'16px'} color={'myGray.600'} />
                 </Box>
               </MyTooltip>
+            )}
+            {isError && (
+              <MyIcon name={'common/error'} w={'16px'} h={'16px'} color={'red.600'} ml={1} />
             )}
           </Box>
         </Flex>
@@ -566,16 +588,23 @@ const FinalAnswerNode = ({
                   {t('chat:fallback_reply')}
                 </Box>
               )}
-              <Box
-                borderRadius={'6px'}
-                border={'1px solid'}
-                borderColor={'borderColor.low'}
-                p={'12px'}
-              >
-                <Box fontSize={'14px'} lineHeight={'22px'} color={'myGray.600'}>
-                  <Markdown source={finalAnswer} isDisabled />
+              {/* 错误状态：直接显示错误文本，不带边框 */}
+              {isError ? (
+                <Box fontSize={'sm'} color={'red.600'}>
+                  {finalAnswer}
                 </Box>
-              </Box>
+              ) : (
+                <Box
+                  borderRadius={'6px'}
+                  border={'1px solid'}
+                  borderColor={'borderColor.low'}
+                  p={'12px'}
+                >
+                  <Box fontSize={'14px'} lineHeight={'22px'} color={'myGray.600'}>
+                    <Markdown source={finalAnswer} isDisabled />
+                  </Box>
+                </Box>
+              )}
             </>
           )}
         </Box>
