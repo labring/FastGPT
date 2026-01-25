@@ -31,8 +31,8 @@ import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
-import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
 export type Props = {
   chatId: string;
@@ -161,26 +161,24 @@ const formatAiContent = ({
 
   const citeCollectionIds = new Set<string>();
 
-  const nodeResponses = responseData?.map((responseItem) => {
+  const dealResponseData = (responseItem: ChatHistoryItemResType) => {
     if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
-      return {
-        ...responseItem,
-        quoteList: responseItem.quoteList.map((quote) => {
-          citeCollectionIds.add(quote.collectionId);
-          return {
-            id: quote.id,
-            chunkIndex: quote.chunkIndex,
-            datasetId: quote.datasetId,
-            collectionId: quote.collectionId,
-            sourceId: quote.sourceId,
-            sourceName: quote.sourceName,
-            score: quote.score
-          };
-        })
-      };
+      // @ts-ignore
+      responseItem.quoteList = responseItem.quoteList.map((quote) => {
+        citeCollectionIds.add(quote.collectionId);
+        return {
+          id: quote.id,
+          chunkIndex: quote.chunkIndex,
+          datasetId: quote.datasetId,
+          collectionId: quote.collectionId,
+          sourceId: quote.sourceId,
+          sourceName: quote.sourceName,
+          score: quote.score
+        };
+      });
     }
-    return responseItem;
-  }) as ChatHistoryItemResType[] | undefined;
+  };
+  getFlatAppResponses(responseData || []).forEach(dealResponseData);
 
   return {
     aiResponse: {
@@ -189,7 +187,7 @@ const formatAiContent = ({
       errorMsg,
       citeCollectionIds: Array.from(citeCollectionIds)
     },
-    nodeResponses,
+    nodeResponses: responseData,
     citeCollectionIds
   };
 };

@@ -93,6 +93,7 @@
   "query_extension_IO_tokens": "Problem Optimization Input/Output Tokens",
   "query_extension_result": "Problem optimization results",
   "question_tip": "From top to bottom, the response order of each module",
+  "read_file": "File parsing",
   "read_raw_source": "Open the original text",
   "reasoning_text": "Thinking process",
   "reflection_agent": "Reflection Agent",

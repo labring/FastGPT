@@ -209,6 +209,21 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
+// 扁平化响应
+export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
+  return res
+    .map((item) => {
+      return [
+        item,
+        ...getFlatAppResponses(item.pluginDetail || []),
+        ...getFlatAppResponses(item.toolDetail || []),
+        ...getFlatAppResponses(item.loopDetail || []),
+        ...getFlatAppResponses(item.childrenResponses || [])
+      ];
+    })
+    .flat();
+};
+
 /* 
   对于交互模式下，有两种响应：
   1. 提交交互结果，此时不会新增一条 user 消息

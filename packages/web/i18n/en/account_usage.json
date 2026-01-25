@@ -1,6 +1,5 @@
 {
   "agent_call": "Agent call",
-  "ai.dataset_chunk_selection": "Dataset chunk selection",
   "ai.query_extension_embedding": "Problem optimization-embedding",
   "ai_model": "AI model",
   "all": "all",
@@ -14,6 +13,8 @@
   "count": "Number of runs",
   "current_filter_conditions": "Current filter conditions",
   "dashboard": "Dashboard",
+  "dataset_chunk_selection": "Knowledge base block cutting",
+  "dataset_search": "Knowledge base search",
   "details": "Details",
   "dingtalk": "DingTalk",
   "duration_seconds": "Duration (seconds)",

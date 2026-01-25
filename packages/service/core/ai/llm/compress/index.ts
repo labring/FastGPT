@@ -377,7 +377,7 @@ export const compressLargeContent = async ({
   }
 
   // 8. 分块 LLM 压缩
-  let compressionUsages: ChatNodeUsageType[] = [];
+  const compressionUsages: ChatNodeUsageType[] = [];
   try {
     const result = await chunkAndCompress({
       content: compressed,
@@ -388,21 +388,23 @@ export const compressLargeContent = async ({
     compressed = result.compressed;
 
     // 格式化为 ChatNodeUsageType
-    compressionUsages = result.usages.map((usage) => {
-      const { totalPoints, modelName } = formatModelChars2Points({
-        model: model.model,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      });
+    compressionUsages.push(
+      ...result.usages.map((usage) => {
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: model.model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        });
 
-      return {
-        moduleName: i18nT('account_usage:compress_file_content'),
-        model: modelName,
-        totalPoints,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      };
-    });
+        return {
+          moduleName: i18nT('account_usage:compress_file_content'),
+          model: modelName,
+          totalPoints,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        };
+      })
+    );
   } catch (error) {
     addLog.error('[Chunk compression] failed, fallback to binary truncate', error);
   }

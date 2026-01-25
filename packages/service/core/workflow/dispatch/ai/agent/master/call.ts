@@ -242,8 +242,8 @@ export const masterCall = async ({
     },
     onCompressContext({ modelName, inputTokens, outputTokens, totalPoints, seconds }) {
       childrenResponses.push({
-        nodeId: getNanoid(),
-        id: getNanoid(),
+        nodeId: getNanoid(6),
+        id: getNanoid(6),
         moduleType: FlowNodeTypeEnum.emptyNode,
         moduleName: i18nT('chat:compress_llm_messages'),
         moduleLogo: 'core/app/agent/child/contextCompress',
@@ -285,6 +285,10 @@ export const masterCall = async ({
               customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
               model
             });
+
+            if (result.nodeResponse) {
+              childrenResponses.push(result.nodeResponse);
+            }
             return {
               response: result.response,
               usages: result.usages
@@ -323,13 +327,16 @@ export const masterCall = async ({
                 rerankWeight: datasetParams.rerankWeight || 0.5,
                 usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
                 extensionModel: datasetParams.datasetSearchExtensionModel,
-                extensionBg: datasetParams.datasetSearchExtensionBg,
-                model
+                extensionBg: datasetParams.datasetSearchExtensionBg
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              histories: messages
+              llmModel: model
             });
+
+            if (result.nodeResponse) {
+              childrenResponses.push(result.nodeResponse);
+            }
 
             return {
               response: result.response,
@@ -416,8 +423,8 @@ export const masterCall = async ({
               });
 
               childrenResponses.push({
-                nodeId: getNanoid(),
-                id: getNanoid(),
+                nodeId: getNanoid(6),
+                id: getNanoid(6),
                 runningTime,
                 moduleType: FlowNodeTypeEnum.tool,
                 moduleName: tool.name,
@@ -481,8 +488,8 @@ export const masterCall = async ({
   });
   const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);
   const nodeResponse: ChatHistoryItemResType = {
-    nodeId: getNanoid(),
-    id: getNanoid(),
+    nodeId: getNanoid(6),
+    id: getNanoid(6),
     moduleType: FlowNodeTypeEnum.agent,
     moduleName: isStepCall ? i18nT('chat:step_call') : i18nT('chat:master_agent_call'),
     model: llmUsage.modelName,

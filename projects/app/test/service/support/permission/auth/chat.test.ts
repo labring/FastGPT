@@ -9,7 +9,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({

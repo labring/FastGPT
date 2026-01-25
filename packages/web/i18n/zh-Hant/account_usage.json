@@ -1,6 +1,5 @@
 {
   "agent_call": "Agent 調用",
-  "ai.dataset_chunk_selection": "知識庫分塊智能選擇",
   "ai.query_extension_embedding": "問題優化-embedding",
   "ai_model": "AI 模型",
   "all": "所有",
@@ -14,6 +13,8 @@
   "count": "運行次數",
   "current_filter_conditions": "目前篩選條件：",
   "dashboard": "儀表板",
+  "dataset_chunk_selection": "知識庫分塊裁切",
+  "dataset_search": "知識庫搜索",
   "details": "詳細資訊",
   "dingtalk": "釘釘",
   "duration_seconds": "時長（秒）",
