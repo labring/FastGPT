@@ -33,9 +33,8 @@ import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { PlanAgentParamsType } from './sub/plan/constants';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -48,18 +47,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
 
   // Knowledge base search configuration
-  [NodeInputKeyEnum.datasetSelectList]?: SelectedDatasetType[];
-  [NodeInputKeyEnum.datasetSimilarity]?: number;
-  [NodeInputKeyEnum.datasetMaxTokens]?: number;
-  [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
-  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
-  [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
-  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
-  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
-  [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
-  [NodeInputKeyEnum.collectionFilterMatch]?: string;
+  [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -96,7 +84,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
-      datasets: datasetSelectList
+      agent_datasetParams: datasetParams
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -172,7 +160,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         tmbId: runningAppInfo.tmbId,
         lang,
         getPlanTool: true,
-        hasDataset: datasetSelectList && datasetSelectList.length > 0,
+        hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: Object.keys(filesMap).length > 0
       }
     );
@@ -184,7 +172,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
-
+    console.dir(agentCompletionTools, { depth: null });
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: systemPrompt,
       getSubAppInfo

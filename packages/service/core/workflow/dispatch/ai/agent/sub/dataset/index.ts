@@ -158,9 +158,7 @@ export const dispatchAgentDatasetSearch = async ({
 }> => {
   addLog.debug('[Agent Dataset Search] Starting', {
     query,
-    datasetCount: config.datasets.length,
-    similarity: config.similarity,
-    searchMode: config.searchMode
+    config
   });
 
   try {
@@ -169,7 +167,7 @@ export const dispatchAgentDatasetSearch = async ({
       reserveTool: false
     });
 
-    const props: any = {
+    const props = {
       runningAppInfo: { teamId, tmbId },
       runningUserInfo: { teamId, tmbId },
       histories: adaptedHistories,

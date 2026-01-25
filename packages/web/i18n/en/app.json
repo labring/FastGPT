@@ -335,7 +335,7 @@
   "setting_plugin": "Workflow",
   "show_templates": "Expand",
   "show_top_p_tip": "An alternative method of temperature sampling, called Nucleus sampling, the model considers the results of tokens with TOP_P probability mass quality. \nTherefore, 0.1 means that only tokens containing the highest probability quality are considered. \nThe default is 1.",
-  "simple_tool_tips": "This tool contains special inputs and does not support being called by simple applications.",
+  "simple_tool_tips": "This tool contains special input and is not currently supported as a tool.",
   "skill_delete_success": "Skill deleted successfully",
   "skill_description_placeholder": "Used to guide the Agent to select the skill for execution",
   "skill_editor": "Skill-assisted generation",

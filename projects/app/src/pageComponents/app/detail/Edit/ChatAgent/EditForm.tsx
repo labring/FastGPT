@@ -1,14 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  type BoxProps,
-  useTheme,
-  useDisclosure,
-  Button,
-  HStack
-} from '@chakra-ui/react';
+import React, { useEffect, useMemo } from 'react';
+import { Box, Flex, Grid, type BoxProps, useDisclosure, Button, HStack } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -124,7 +115,7 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
-  console.log(appForm.selectedTools, selectedSkills, 2323);
+
   return (
     <>
       <Box mt={4} {...cardStyles} boxShadow={'3.5'}>

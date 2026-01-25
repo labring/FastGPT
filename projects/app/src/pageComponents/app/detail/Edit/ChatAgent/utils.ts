@@ -1,4 +1,7 @@
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import {
+  AppFormEditFormV1TypeSchema,
+  type SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type {
@@ -67,53 +70,9 @@ export const appWorkflow2AgentForm = ({
       }
 
       // Dataset configuration
-      const datasets = inputMap.get(NodeInputKeyEnum.datasetSelectList);
-      if (datasets) {
-        defaultAppForm.dataset.datasets = datasets as any;
-      }
-      const similarity = inputMap.get(NodeInputKeyEnum.datasetSimilarity);
-      if (similarity !== undefined) {
-        defaultAppForm.dataset.similarity = similarity as number;
-      }
-      const limit = inputMap.get(NodeInputKeyEnum.datasetMaxTokens);
-      if (limit !== undefined) {
-        defaultAppForm.dataset.limit = limit as number;
-      }
-      const searchMode = inputMap.get(NodeInputKeyEnum.datasetSearchMode);
-      if (searchMode !== undefined) {
-        defaultAppForm.dataset.searchMode = searchMode as any;
-      }
-      const embeddingWeight = inputMap.get(NodeInputKeyEnum.datasetSearchEmbeddingWeight);
-      if (embeddingWeight !== undefined) {
-        defaultAppForm.dataset.embeddingWeight = embeddingWeight as number;
-      }
-      const usingReRank = inputMap.get(NodeInputKeyEnum.datasetSearchUsingReRank);
-      if (usingReRank !== undefined) {
-        defaultAppForm.dataset.usingReRank = usingReRank as boolean;
-      }
-      const rerankModel = inputMap.get(NodeInputKeyEnum.datasetSearchRerankModel);
-      if (rerankModel !== undefined) {
-        defaultAppForm.dataset.rerankModel = rerankModel as string;
-      }
-      const rerankWeight = inputMap.get(NodeInputKeyEnum.datasetSearchRerankWeight);
-      if (rerankWeight !== undefined) {
-        defaultAppForm.dataset.rerankWeight = rerankWeight as number;
-      }
-      const usingExtensionQuery = inputMap.get(NodeInputKeyEnum.datasetSearchUsingExtensionQuery);
-      if (usingExtensionQuery !== undefined) {
-        defaultAppForm.dataset.datasetSearchUsingExtensionQuery = usingExtensionQuery as boolean;
-      }
-      const extensionModel = inputMap.get(NodeInputKeyEnum.datasetSearchExtensionModel);
-      if (extensionModel !== undefined) {
-        defaultAppForm.dataset.datasetSearchExtensionModel = extensionModel as string;
-      }
-      const extensionBg = inputMap.get(NodeInputKeyEnum.datasetSearchExtensionBg);
-      if (extensionBg !== undefined) {
-        defaultAppForm.dataset.datasetSearchExtensionBg = extensionBg as string;
-      }
-      const collectionFilterMatch = inputMap.get(NodeInputKeyEnum.collectionFilterMatch);
-      if (collectionFilterMatch !== undefined) {
-        defaultAppForm.dataset.collectionFilterMatch = collectionFilterMatch as string;
+      const datasetParams = inputMap.get(NodeInputKeyEnum.datasetParams);
+      if (datasetParams) {
+        defaultAppForm.dataset = datasetParams;
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -262,88 +221,23 @@ export function agentForm2AppWorkflow(
             },
             // Dataset configuration
             {
-              key: NodeInputKeyEnum.datasetSelectList,
+              key: NodeInputKeyEnum.datasetParams,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
-              value: data.dataset.datasets,
-              valueType: WorkflowIOValueTypeEnum.selectDataset
-            },
-            {
-              key: NodeInputKeyEnum.datasetSimilarity,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: data.dataset.similarity,
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
-              key: NodeInputKeyEnum.datasetMaxTokens,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: data.dataset.limit,
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchMode,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.dataset.searchMode
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.number,
-              value: data.dataset.embeddingWeight
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchUsingReRank,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.boolean,
-              value: data.dataset.usingReRank
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchRerankModel,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.dataset.rerankModel
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchRerankWeight,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.number,
-              value: data.dataset.rerankWeight
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.boolean,
-              value: data.dataset.datasetSearchUsingExtensionQuery
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchExtensionModel,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.dataset.datasetSearchExtensionModel
-            },
-            {
-              key: NodeInputKeyEnum.datasetSearchExtensionBg,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.dataset.datasetSearchExtensionBg
-            },
-            {
-              key: NodeInputKeyEnum.collectionFilterMatch,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.dataset.collectionFilterMatch
+              valueType: WorkflowIOValueTypeEnum.object,
+              value: AppFormEditFormV1TypeSchema.shape.dataset.parse({
+                datasets: data.dataset.datasets,
+                similarity: data.dataset.similarity,
+                limit: data.dataset.limit,
+                searchMode: data.dataset.searchMode,
+                embeddingWeight: data.dataset.embeddingWeight,
+                usingReRank: data.dataset.usingReRank,
+                rerankModel: data.dataset.rerankModel,
+                rerankWeight: data.dataset.rerankWeight,
+                datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
+                datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
+                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg
+              })
             }
           ],
           outputs: AgentNode.outputs

@@ -97,10 +97,10 @@ const ToolSelect = ({
                 _hover={{
                   borderColor: toolError ? 'red.600' : 'primary.300',
                   '.delete': {
-                    display: 'block'
+                    display: 'flex'
                   },
                   '.hoverStyle': {
-                    display: 'block'
+                    display: 'flex'
                   },
                   '.unHoverStyle': {
                     display: 'none'
@@ -149,13 +149,13 @@ const ToolSelect = ({
                 {hasFormInput && !toolError && (
                   <MyIconButton
                     className="hoverStyle"
-                    display={['block', 'none']}
+                    display={['flex', 'none']}
                     icon="common/setting"
                     onClick={() => setConfigTool(item)}
                   />
                 )}
                 {/* Delete icon */}
-                <Box className="hoverStyle" display={['block', 'none']} ml={0.5}>
+                <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
                   <MyIconButton
                     icon="delete"
                     hoverBg="red.50"

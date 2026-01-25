@@ -1,23 +1,10 @@
-import {
-  chatHistoryValueDesc,
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '../../../node/constant';
+import { FlowNodeTypeEnum } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
+import { FlowNodeTemplateTypeEnum } from '../../../constants';
 import {
-  WorkflowIOValueTypeEnum,
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
-} from '../../../constants';
-import {
-  Input_Template_SettingAiModel,
-  Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_System_Prompt,
-  Input_Template_UserChatInput,
-  Input_Template_File_Link
+  Input_Template_UserChatInput
 } from '../../input';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import { DatasetSearchModeEnum } from '../../../../dataset/constants';
@@ -35,124 +22,6 @@ export const AgentNode: FlowNodeTemplateType = {
   isTool: true,
   version: '4.16.0',
   catchError: false,
-  inputs: [
-    {
-      key: NodeInputKeyEnum.aiModel,
-      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel], // Set in the pop-up window
-      label: i18nT('common:core.module.input.label.aiModel'),
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    Input_Template_System_Prompt,
-    Input_Template_History,
-    {
-      key: NodeInputKeyEnum.selectedTools,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.object
-    },
-    // Knowledge base search configuration
-    {
-      key: NodeInputKeyEnum.datasetSelectList,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-      label: '',
-      value: [],
-      valueType: WorkflowIOValueTypeEnum.selectDataset
-    },
-    {
-      key: NodeInputKeyEnum.datasetSimilarity,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      value: 0.4,
-      valueType: WorkflowIOValueTypeEnum.number
-    },
-    {
-      key: NodeInputKeyEnum.datasetMaxTokens,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      value: 5000,
-      valueType: WorkflowIOValueTypeEnum.number
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchMode,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string,
-      value: DatasetSearchModeEnum.embedding
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.number,
-      value: 0.5
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchUsingReRank,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.boolean,
-      value: false
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchRerankModel,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchRerankWeight,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.number,
-      value: 0.5
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.boolean,
-      value: false
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchExtensionModel,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: NodeInputKeyEnum.datasetSearchExtensionBg,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string,
-      value: ''
-    },
-    {
-      key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
-  ],
-  outputs: [
-    {
-      id: NodeOutputKeyEnum.history,
-      key: NodeOutputKeyEnum.history,
-      required: true,
-      label: i18nT('common:core.module.output.label.New context'),
-      description: i18nT('common:core.module.output.description.New context'),
-      valueType: WorkflowIOValueTypeEnum.chatHistory,
-      valueDesc: chatHistoryValueDesc,
-      type: FlowNodeOutputTypeEnum.static
-    },
-    {
-      id: NodeOutputKeyEnum.answerText,
-      key: NodeOutputKeyEnum.answerText,
-      required: true,
-      label: i18nT('common:core.module.output.label.Ai response content'),
-      description: i18nT('common:core.module.output.description.Ai response content'),
-      valueType: WorkflowIOValueTypeEnum.string,
-      type: FlowNodeOutputTypeEnum.static
-    }
-  ]
+  inputs: [],
+  outputs: []
 };

@@ -83,19 +83,8 @@ export const masterCall = async ({
     usagePush,
     params: {
       model,
-      userChatInput,
       // Dataset search configuration
-      datasets: datasetSelectList,
-      similarity: datasetSimilarity = 0.4,
-      limit: datasetMaxTokens = 5000,
-      searchMode: datasetSearchMode = DatasetSearchModeEnum.embedding,
-      embeddingWeight: datasetSearchEmbeddingWeight,
-      usingReRank: datasetSearchUsingReRank = false,
-      rerankModel: datasetSearchRerankModel,
-      rerankWeight: datasetSearchRerankWeight,
-      datasetSearchUsingExtensionQuery: datasetSearchUsingExtensionQuery = false,
-      datasetSearchExtensionModel: datasetSearchExtensionModel,
-      datasetSearchExtensionBg: datasetSearchExtensionBg
+      agent_datasetParams: datasetParams
     }
   } = props;
 
@@ -312,7 +301,7 @@ export const masterCall = async ({
               };
             }
 
-            if (!datasetSelectList || datasetSelectList.length === 0) {
+            if (!datasetParams || datasetParams.datasets.length === 0) {
               return {
                 response: 'No dataset selected',
                 usages: []
@@ -324,17 +313,17 @@ export const masterCall = async ({
             const result = await dispatchAgentDatasetSearch({
               query: params.query,
               config: {
-                datasets: datasetSelectList,
-                similarity: datasetSimilarity,
-                maxTokens: datasetMaxTokens,
-                searchMode: datasetSearchMode,
-                embeddingWeight: datasetSearchEmbeddingWeight,
-                usingReRank: datasetSearchUsingReRank,
-                rerankModel: datasetSearchRerankModel,
-                rerankWeight: datasetSearchRerankWeight,
-                usingExtensionQuery: datasetSearchUsingExtensionQuery,
-                extensionModel: datasetSearchExtensionModel,
-                extensionBg: datasetSearchExtensionBg,
+                datasets: datasetParams.datasets,
+                similarity: datasetParams.similarity || 0.4,
+                maxTokens: datasetParams.limit || 5000,
+                searchMode: datasetParams.searchMode,
+                embeddingWeight: datasetParams.embeddingWeight,
+                usingReRank: datasetParams.usingReRank ?? false,
+                rerankModel: datasetParams.rerankModel,
+                rerankWeight: datasetParams.rerankWeight || 0.5,
+                usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
+                extensionModel: datasetParams.datasetSearchExtensionModel,
+                extensionBg: datasetParams.datasetSearchExtensionBg,
                 model
               },
               teamId: runningUserInfo.teamId,

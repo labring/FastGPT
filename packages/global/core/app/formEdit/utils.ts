@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum } from '../../workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from './type';
@@ -24,23 +24,38 @@ export const validateToolConfiguration = ({
     ).length === 1;
 
   const canUploadFile = canSelectFile || canSelectImg;
-
   const hasValidFileInput = oneFileInput && !!canUploadFile;
 
   // 检查是否有无效的输入配置
-  const hasInvalidInput = toolTemplate.inputs.some(
-    (input) =>
-      // 引用类型但没有工具描述
-      (input.renderTypeList.length === 1 &&
-        input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
-        !input.toolDescription) ||
-      // 包含数据集选择
-      input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
-      // 包含动态输入参数
-      input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
-      // 文件选择但配置无效
-      (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !hasValidFileInput)
-  );
+  const hasInvalidInput = toolTemplate.inputs.some((input) => {
+    // 引用类型但没有工具描述
+    if (
+      input.renderTypeList.length === 1 &&
+      input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
+      !input.toolDescription
+    ) {
+      return true;
+    }
+
+    // 文件选择但配置无效
+    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !hasValidFileInput) {
+      return true;
+    }
+
+    // 包含特殊输入类型
+    const list = [
+      FlowNodeInputTypeEnum.selectDataset,
+      FlowNodeInputTypeEnum.addInputParam,
+      FlowNodeInputTypeEnum.selectLLMModel,
+      FlowNodeInputTypeEnum.settingLLMModel,
+      FlowNodeInputTypeEnum.fileSelect
+    ];
+
+    if (list.some((type) => input.renderTypeList.includes(type))) {
+      return true;
+    }
+    return false;
+  });
 
   if (hasInvalidInput) {
     return false;
@@ -107,18 +122,18 @@ export const getToolConfigStatus = ({
     [FlowNodeInputTypeEnum.textarea]: true,
     [FlowNodeInputTypeEnum.numberInput]: true,
     [FlowNodeInputTypeEnum.password]: true,
-    [FlowNodeInputTypeEnum.switch]: true,
     [FlowNodeInputTypeEnum.select]: true,
     [FlowNodeInputTypeEnum.JSONEditor]: true,
     [FlowNodeInputTypeEnum.timePointSelect]: true,
     [FlowNodeInputTypeEnum.timeRangeSelect]: true
   };
 
-  // Find all inputs that need configuration
+  // Find all inputs that need configuration(Only check the required items)
   const configInputs = tool.inputs.filter((input) => {
-    if (input.toolDescription) return false;
+    if (input.toolDescription || input.required !== true) return false;
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
     if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+    if (input.key === NodeInputKeyEnum.history) return false;
     return input.renderTypeList.some((type) => formRenderTypesMap[type]);
   });
 
