@@ -68,7 +68,7 @@ const ToolDetailDrawer = ({
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
       <DrawerOverlay />
-      <DrawerContent maxW="480px">
+      <DrawerContent maxW="480px" borderLeftRadius="md">
         <DrawerHeader pt={6} pb={1}>
           <Flex gap={1.5}>
             <Avatar src={parentTool?.icon || ''} borderRadius={'md'} w={6} />
