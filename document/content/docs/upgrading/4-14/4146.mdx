@@ -3,29 +3,22 @@ title: 'V4.14.6(进行中)'
 description: 'FastGPT V4.14.6 更新说明'
 ---
 
+## 更新指南
 
 ### 1. 更新镜像：
 
-### 2. 执行升级脚本
-
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
-
-```bash
-curl --location --request POST 'https://{{host}}/api/admin/initv4146' \
---header 'rootkey: {{rootkey}}' \
---header 'Content-Type: application/json'
-```
-
-**脚本功能：**  
-
-1. 迁移系统工具的系统密钥配置
-  
+- 更新 FastGPT 镜像tag: v4.14.6
+- 更新 FastGPT 商业版镜像tag: v4.14.6
+- 更新 fastgpt-plugin 镜像 tag: v0.4.0
+- mcp_server 无需更新
+- sandbox 无需更新
+- AIProxy 无需更新
+- mongo 无需更新
 
 ## 🚀 新增内容
 
 1. 系统工具可配置自定义的分类属性
-2. Markdown 表格支持导出 csv。
-3. 订阅套餐支持配置最大文件上传数量和大小。
+2. 订阅套餐支持配置最大文件上传数量和大小。
   
 ## ⚙️ 优化
 
@@ -35,6 +28,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4146' \
 
 ## 🐛 修复
 
-1. 系统工具工具集设置系统密钥后，子工具无法读取到设置的系统密钥
+1. 工作流编排页面系统工具“探索更多”跳转地址错误
 
 ## 插件
