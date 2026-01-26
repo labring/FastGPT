@@ -13,6 +13,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { Trans } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
+import ExcelJS from 'exceljs';
 
 const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: () => void }) => {
   const { t } = useTranslation();
@@ -121,22 +122,61 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
     await uploadFiles(selectFiles, duplicateFiles);
   };
 
-  const handleDownloadTemplate = () => {
-    const templateContent = `q,a,indexes
-"Who are you?","I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.","1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?"
-"What are you?","I am an AI assistant designed to help users with their questions and provide support across various topics.","What are you?"`;
+  const handleDownloadTemplate = async () => {
+    try {
+      // 创建工作簿和工作表
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Template');
 
-    const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+      // 设置列宽
+      worksheet.columns = [
+        { width: 30 }, // q
+        { width: 60 }, // a
+        { width: 60 } // indexes
+      ];
 
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      // 添加表头（第一行）
+      const headerRow = worksheet.addRow(['q', 'a', 'indexes']);
+
+      // 设置表头样式
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // 添加示例数据
+      worksheet.addRow([
+        'Who are you?',
+        'I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.',
+        "1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?"
+      ]);
+
+      worksheet.addRow([
+        'What are you?',
+        'I am an AI assistant designed to help users with their questions and provide support across various topics.',
+        'What are you?'
+      ]);
+
+      // 生成 Buffer（UTF-8编码）
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // 创建 Blob 并下载
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download template:', error);
+    }
   };
 
   return (

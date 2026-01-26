@@ -41,12 +41,12 @@ import {
 } from '@/web/core/dataset/api';
 import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import { downloadFetch } from '@/web/common/system/utils';
-import { fileDownload } from '@/web/common/file/utils';
 import type { ListSynonymFilesResponse } from '@/pages/api/core/dataset/synonym/list';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Trans } from 'next-i18next';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import ExcelJS from 'exceljs';
 
 type SynonymFile = NonNullable<ListSynonymFilesResponse['files']>[0];
 
@@ -408,17 +408,56 @@ const SynonymTab = () => {
     [synonymFile, datasetDetail._id, onDeleteSynonymFile]
   );
 
-  // 下载模板文件
-  const handleDownloadTemplate = useCallback(() => {
-    const template = `standardizedTerm,synonymTerms,,,,
-refund,return,chargeback,reimbursement,money back
-order,purchase order,order number,transaction,invoice`;
+  // 下载模板文件 (XLSX格式，UTF-8编码) - 前端生成
+  const handleDownloadTemplate = useCallback(async () => {
+    try {
+      // 创建工作簿和工作表
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Synonyms');
 
-    fileDownload({
-      text: template,
-      type: 'text/csv;charset=utf-8',
-      filename: 'synonym_template.csv'
-    });
+      // 设置列宽
+      worksheet.columns = [
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 },
+        { width: 20 }
+      ];
+
+      // 添加表头（第一行）
+      const headerRow = worksheet.addRow(['standardizedTerm', 'synonymTerms', '', '', '', '']);
+
+      // 设置表头样式
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // 添加示例数据
+      worksheet.addRow(['refund', 'return', 'chargeback', 'reimbursement', 'money back', '']);
+      worksheet.addRow(['order', 'purchase order', 'order number', 'transaction', 'invoice', '']);
+
+      // 生成 Buffer（UTF-8编码）
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // 创建 Blob 并下载
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'synonym_template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download template:', error);
+    }
   }, []);
 
   // 组件初始化时获取文件列表
