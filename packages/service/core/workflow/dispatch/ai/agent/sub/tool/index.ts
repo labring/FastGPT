@@ -18,6 +18,7 @@ import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
+import { runHTTPTool } from '../../../../../../app/http';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -182,6 +183,59 @@ export const dispatchTool = async ({
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         response: JSON.stringify(result),
         result,
+        usages: []
+      };
+    } else if (toolConfig?.httpTool?.toolId) {
+      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      if (!parentId || !toolName) {
+        return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
+      }
+
+      const toolset = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
+      if (!toolSetData || typeof toolSetData !== 'object') {
+        return Promise.reject(`HTTP tool set not found: ${toolConfig.httpTool.toolId}`);
+      }
+
+      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+
+      const httpTool = toolList?.find((tool) => tool.name === toolName);
+      if (!httpTool) {
+        return Promise.reject(`HTTP tool ${toolName} not found`);
+      }
+
+      const { data, errorMsg } = await runHTTPTool({
+        baseUrl: baseUrl || '',
+        toolPath: httpTool.path,
+        method: httpTool.method,
+        params,
+        headerSecret: httpTool.headerSecret || headerSecret,
+        customHeaders: customHeaders
+          ? typeof customHeaders === 'string'
+            ? JSON.parse(customHeaders)
+            : customHeaders
+          : undefined,
+        staticParams: httpTool.staticParams,
+        staticHeaders: httpTool.staticHeaders,
+        staticBody: httpTool.staticBody
+      });
+
+      if (errorMsg) {
+        return {
+          runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+          response: errorMsg,
+          usages: []
+        };
+      }
+
+      return {
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        response: typeof data === 'object' ? JSON.stringify(data) : data,
+        result: data,
         usages: []
       };
     } else {

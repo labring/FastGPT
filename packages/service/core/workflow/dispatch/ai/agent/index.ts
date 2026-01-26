@@ -35,6 +35,7 @@ import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SubAppRuntimeType } from './type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -165,14 +166,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     );
     const getSubAppInfo = (id: string) => {
-      const toolNode = agentSubAppsMap.get(id) || systemSubInfo[id];
+      const formatId = id.slice(1);
+      const toolNode =
+        agentSubAppsMap.get(id) ||
+        agentSubAppsMap.get(formatId) ||
+        systemSubInfo[id] ||
+        systemSubInfo[formatId];
+
       return {
         name: toolNode?.name || '',
         avatar: toolNode?.avatar || '',
         toolDescription: toolNode?.toolDescription || toolNode?.name || ''
       };
     };
+    const getSubApp = (id: string) => {
+      const formatId = id.slice(1);
+      return (agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId))!;
+    };
+    console.log(11111);
     console.dir(agentCompletionTools, { depth: null });
+    console.dir(agentSubAppsMap, { depth: null });
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: systemPrompt,
       getSubAppInfo
@@ -353,11 +366,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               masterMessages: [],
               planMessages: [],
               getSubAppInfo,
+              getSubApp,
               completionTools: agentCompletionTools,
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
-              filesMap,
-              subAppsMap: agentSubAppsMap
+              filesMap
             });
             nodeResponses.push(result.nodeResponse);
 
@@ -430,9 +443,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           planMessages: planHistoryMessages || [],
           systemPrompt: formatedSystemPrompt,
           getSubAppInfo,
+          getSubApp,
           completionTools: agentCompletionTools,
-          filesMap,
-          subAppsMap: agentSubAppsMap
+          filesMap
         });
         nodeResponses.push(result.nodeResponse);
         masterMessages = result.masterMessages;

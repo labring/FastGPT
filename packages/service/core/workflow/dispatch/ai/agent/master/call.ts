@@ -32,6 +32,7 @@ import { getMasterSystemPrompt } from './prompt';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
+import { dispatchApp, dispatchPlugin } from '../sub/app';
 
 type Response = {
   stepResponse?: {
@@ -51,9 +52,9 @@ export const masterCall = async ({
   masterMessages,
   planMessages,
   getSubAppInfo,
+  getSubApp,
   completionTools,
   filesMap,
-  subAppsMap,
   steps,
   step,
   ...props
@@ -63,9 +64,9 @@ export const masterCall = async ({
   systemPrompt?: string;
 
   getSubAppInfo: GetSubAppInfoFnType;
+  getSubApp: (id: string) => SubAppRuntimeType;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
-  subAppsMap: Map<string, SubAppRuntimeType>;
 
   // Step call
   steps?: AgentStepItemType[];
@@ -386,17 +387,16 @@ export const masterCall = async ({
 
           // User Sub App
           else {
-            const tool = subAppsMap.get(toolId);
+            const tool = getSubApp(toolId);
             if (!tool) {
               return {
-                response: `Can not find the tool ${toolId}`,
+                response: `Can't find the tool ${toolId}`,
                 usages: []
               };
             }
-
             const toolCallParams = parseJsonArgs(call.function.arguments);
 
-            if (!toolCallParams) {
+            if (call.function.arguments && !toolCallParams) {
               return {
                 response: 'params is not object',
                 usages: []
@@ -437,6 +437,80 @@ export const masterCall = async ({
               return {
                 response,
                 usages
+              };
+            } else if (tool.type === 'workflow') {
+              const { userChatInput, ...params } = requestParams;
+
+              const { response, runningTime, usages } = await dispatchApp({
+                appId: tool.id,
+                userChatInput: userChatInput,
+                customAppVariables: params,
+                checkIsStopping,
+                lang: props.lang,
+                requestOrigin: props.requestOrigin,
+                mode: props.mode,
+                timezone: props.timezone,
+                externalProvider: props.externalProvider,
+                runningAppInfo: props.runningAppInfo,
+                runningUserInfo: props.runningUserInfo,
+                retainDatasetCite: props.retainDatasetCite,
+                maxRunTimes: props.maxRunTimes,
+                workflowDispatchDeep: props.workflowDispatchDeep,
+                variables: props.variables
+              });
+
+              childrenResponses.push({
+                nodeId: getNanoid(6),
+                id: getNanoid(6),
+                runningTime,
+                moduleType: FlowNodeTypeEnum.appModule,
+                moduleName: tool.name,
+                moduleLogo: tool.avatar,
+                toolInput: requestParams,
+                toolRes: response,
+                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+              });
+
+              return {
+                response,
+                usages,
+                runningTime
+              };
+            } else if (tool.type === 'toolWorkflow') {
+              const { response, result, runningTime, usages } = await dispatchPlugin({
+                appId: tool.id,
+                userChatInput: '',
+                customAppVariables: requestParams,
+                checkIsStopping,
+                lang: props.lang,
+                requestOrigin: props.requestOrigin,
+                mode: props.mode,
+                timezone: props.timezone,
+                externalProvider: props.externalProvider,
+                runningAppInfo: props.runningAppInfo,
+                runningUserInfo: props.runningUserInfo,
+                retainDatasetCite: props.retainDatasetCite,
+                maxRunTimes: props.maxRunTimes,
+                workflowDispatchDeep: props.workflowDispatchDeep,
+                variables: props.variables
+              });
+
+              childrenResponses.push({
+                nodeId: getNanoid(6),
+                id: getNanoid(6),
+                runningTime,
+                moduleType: FlowNodeTypeEnum.pluginModule,
+                moduleName: tool.name,
+                moduleLogo: tool.avatar,
+                toolInput: requestParams,
+                toolRes: result,
+                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+              });
+
+              return {
+                response,
+                usages,
+                runningTime
               };
             } else {
               return {

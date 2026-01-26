@@ -83,7 +83,7 @@ export const getSubapps = async ({
   formatTools.forEach((tool) => {
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
-      type: 'tool',
+      type: tool.type,
       id: tool.id,
       name: tool.name,
       avatar: tool.avatar,

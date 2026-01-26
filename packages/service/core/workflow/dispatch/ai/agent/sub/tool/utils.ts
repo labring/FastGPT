@@ -12,6 +12,7 @@ import { getSystemToolRunTimeNodeFromSystemToolset } from '../../../../../../wor
 import { MongoApp } from '../../../../../../app/schema';
 import { getMCPChildren } from '../../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
@@ -21,6 +22,7 @@ import {
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
@@ -66,12 +68,13 @@ export const agentSkillToToolRuntime = async ({
       name: name,
       intro: toolDescription || intro
     });
+    const formatToolId = `t${toolId}`;
 
     if (jsonSchema) {
       return {
         type: 'function',
         function: {
-          name: toolId,
+          name: formatToolId,
           description,
           parameters: jsonSchema
         }
@@ -94,7 +97,7 @@ export const agentSkillToToolRuntime = async ({
     return {
       type: 'function',
       function: {
-        name: toolId,
+        name: formatToolId,
         description,
         parameters: {
           type: 'object',
@@ -145,24 +148,33 @@ export const agentSkillToToolRuntime = async ({
           return [];
         }
 
-        const removePrefixId = pluginId.replace(`${source}-`, '');
-        // 前缀加一个固定的t，避免 prefix 可能是数字，导致部分模型不兼容
-        const requestToolId = `t${removePrefixId}`;
+        const toolType = (() => {
+          if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {
+            return 'workflow';
+          }
+          if (toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+            return 'toolWorkflow';
+          }
+          return 'tool';
+        })();
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
           const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0]?.value;
+          const httpToolsetVal = toolNode.toolConfig?.httpToolSet;
+
           if (systemToolId) {
             const children = await getSystemToolRunTimeNodeFromSystemToolset({
               toolSetNode: {
                 toolConfig: toolNode.toolConfig,
                 inputs: toolNode.inputs,
-                nodeId: requestToolId
+                nodeId: pluginId
               },
               lang
             });
 
             return children.map((child) => ({
+              type: 'tool',
               id: child.nodeId,
               name: child.name,
               avatar: child.avatar,
@@ -199,6 +211,41 @@ export const agentSkillToToolRuntime = async ({
 
             return children.map((child) => {
               return {
+                type: 'tool',
+                id: child.nodeId,
+                name: child.name,
+                avatar: child.avatar,
+                version: child.version,
+                toolConfig: child.toolConfig,
+                params: tool.config,
+                requestSchema: formatSchema({
+                  toolId: child.nodeId,
+                  inputs: child.inputs,
+                  flowNodeType: child.flowNodeType,
+                  name: child.name,
+                  toolDescription: child.toolDescription,
+                  intro: child.intro
+                })
+              };
+            });
+          } else if (httpToolsetVal) {
+            const children = httpToolsetVal.toolList.map((tool: HttpToolConfigType, index) => {
+              const newToolNode = getHTTPToolRuntimeNode({
+                tool: {
+                  ...tool,
+                  name: `${toolNode.name}/${tool.name}`
+                },
+                nodeId: `${pluginId}${index}`,
+                avatar: toolNode.avatar,
+                parentId: pluginId
+              });
+
+              return newToolNode;
+            });
+
+            return children.map((child) => {
+              return {
+                type: 'tool',
                 id: child.nodeId,
                 name: child.name,
                 avatar: child.avatar,
@@ -221,14 +268,15 @@ export const agentSkillToToolRuntime = async ({
         } else {
           return [
             {
-              id: requestToolId,
+              type: toolType,
+              id: pluginId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,
               requestSchema: formatSchema({
-                toolId: requestToolId,
+                toolId: pluginId,
                 inputs: toolNode.inputs,
                 flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,
