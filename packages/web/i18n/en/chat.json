@@ -197,5 +197,10 @@
   "upload": "Upload",
   "variable_invisable_in_share": "External variables are not visible in login-free links",
   "view_citations": "View References",
-  "web_site_sync": "Web Site Sync"
+  "web_site_sync": "Web Site Sync",
+  "llm_request_ids": "LLM Request IDs",
+  "llm_request_detail": "LLM Request Detail",
+  "request_body": "Request Body",
+  "response_content": "Response Content",
+  "request_record_not_found": "Request record not found (records are kept for 7 days)"
 }

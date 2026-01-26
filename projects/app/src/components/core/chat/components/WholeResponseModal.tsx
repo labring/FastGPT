@@ -18,6 +18,7 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import RequestIdDetailModal from '@/components/core/ai/requestId';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -34,12 +35,14 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime
+  chatTime,
+  onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   chatTime?: Date;
+  onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -185,6 +188,42 @@ export const WholeResponseContent = ({
             value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
           />
         )}
+        {/* LLM Request IDs */}
+        {activeModule?.llmRequestIds &&
+          activeModule.llmRequestIds.length > 0 &&
+          onOpenRequestIdDetail && (
+            <Row
+              label={t('chat:llm_request_ids')}
+              rawDom={
+                <Flex flexWrap={'wrap'} gap={2} px={3} py={2}>
+                  {activeModule.llmRequestIds.map((requestId, index) => (
+                    <Box
+                      key={index}
+                      as="button"
+                      bg={'blue.50'}
+                      color={'blue.600'}
+                      px={3}
+                      py={1.5}
+                      borderRadius={'md'}
+                      fontSize={'xs'}
+                      fontFamily={'monospace'}
+                      cursor={'pointer'}
+                      transition="all 0.2s"
+                      _hover={{
+                        bg: 'blue.100',
+                        transform: 'translateY(-1px)',
+                        boxShadow: 'sm'
+                      }}
+                      onClick={() => onOpenRequestIdDetail(requestId)}
+                      title="点击查看详情"
+                    >
+                      {requestId}
+                    </Box>
+                  ))}
+                </Flex>
+              }
+            />
+          )}
         <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
@@ -620,6 +659,17 @@ export const ResponseBox = React.memo(function ResponseBox({
   const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
+  // LLM Request Detail Modal state
+  const [selectedRequestId, setSelectedRequestId] = useState<string>();
+
+  const handleOpenRequestIdDetail = useCallback((requestId: string) => {
+    setSelectedRequestId(requestId);
+  }, []);
+
+  const handleCloseRequestIdModal = useCallback(() => {
+    setSelectedRequestId(undefined);
+  }, []);
+
   const flattedResponse = useMemo(() => {
     /* Flat response */
     function flattenArray(arr: ChatHistoryItemResType[]) {
@@ -748,6 +798,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               activeModule={activeModule}
               hideTabs={hideTabs}
               chatTime={chatTime}
+              onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
         </Flex>
@@ -813,11 +864,17 @@ export const ResponseBox = React.memo(function ResponseBox({
                   activeModule={activeModule}
                   hideTabs={hideTabs}
                   chatTime={chatTime}
+                  onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>
             </Flex>
           )}
         </Box>
+      )}
+
+      {/* LLM Request Detail Modal */}
+      {selectedRequestId && (
+        <RequestIdDetailModal onClose={handleCloseRequestIdModal} requestId={selectedRequestId} />
       )}
     </>
   );

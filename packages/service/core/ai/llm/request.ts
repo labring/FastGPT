@@ -30,6 +30,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
+import { saveLLMRequestRecord } from '../record/controller';
 
 export type ResponseEvents = {
   onStreaming?: (e: { text: string }) => void;
@@ -48,6 +49,7 @@ export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBo
 } & ResponseEvents;
 
 type LLMResponse = {
+  requestId: string; // LLM 请求追踪 ID
   error?: any;
   isStreamResponse: boolean;
   answerText: string;
@@ -72,6 +74,9 @@ type LLMResponse = {
 export const createLLMResponse = async <T extends CompletionsBodyType>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
+  // 生成唯一的请求追踪 ID
+  const requestId = getNanoid();
+
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
 
@@ -274,6 +279,23 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     (finish_reason === 'stop' || !finish_reason);
   const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
+  // 异步保存 LLM 请求追踪记录
+  saveLLMRequestRecord({
+    requestId,
+    body: requestBody,
+    response: {
+      answerText,
+      reasoningText,
+      toolCalls,
+      finish_reason,
+      usage: {
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
+      },
+      error
+    }
+  });
+
   return {
     error,
     isStreamResponse,
@@ -286,6 +308,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
       inputTokens: error ? 0 : inputTokens,
       outputTokens: error ? 0 : outputTokens
     },
+    requestId, // 返回请求追踪 ID
 
     requestMessages,
     assistantMessage,

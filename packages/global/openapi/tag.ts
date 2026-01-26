@@ -8,6 +8,8 @@ export const TagsMap = {
   appCommon: 'Agent 管理',
   // Ai -skill
   aiSkill: 'AI技能管理',
+  // AI
+  ai: 'AI 模型与请求',
 
   // Chat - home
   chatPage: '对话页面通用',

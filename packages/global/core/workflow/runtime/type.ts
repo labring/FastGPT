@@ -266,6 +266,8 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  // LLM request tracking
+  llmRequestIds?: string[]; // LLM 请求追踪 ID 列表
 
   // Client will toast
   error?: Record<string, any> | string;

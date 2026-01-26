@@ -200,5 +200,10 @@
   "upload": "上传",
   "variable_invisable_in_share": "外部变量在免登录链接中不可见",
   "view_citations": "查看引用",
-  "web_site_sync": "Web站点同步"
+  "web_site_sync": "Web站点同步",
+  "llm_request_ids": "LLM 请求追踪 ID",
+  "llm_request_detail": "LLM 请求详情",
+  "request_body": "请求体",
+  "response_content": "响应内容",
+  "request_record_not_found": "未找到请求记录,可能已被清理(记录保留7天)"
 }
