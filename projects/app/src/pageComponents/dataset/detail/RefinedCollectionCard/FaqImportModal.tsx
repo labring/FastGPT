@@ -5,6 +5,7 @@ import { Box, Button, HStack, ModalBody, ModalFooter, VStack } from '@chakra-ui/
 import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postImportFaqByTemplate, postCheckDuplicateCollection } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -229,16 +230,28 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
 
             {/* File render */}
             {selectFiles.length > 0 && (
-              <VStack gap={2}>
+              <VStack gap={2} alignItems="stretch">
                 {selectFiles.map((item, index) => (
-                  <HStack key={index} w={'100%'}>
-                    <MyIcon name={item.icon as any} w={'1rem'} />
-                    <Box fontSize={'sm'} color={'myGray.900'}>
-                      {item.name}
-                    </Box>
-                    <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
-                      {item.size}
-                    </Box>
+                  <HStack key={index} w={'100%'} spacing={2} justifyContent="space-between">
+                    <HStack spacing={2} flex={1} overflow="hidden">
+                      <MyIcon name={item.icon as any} w={'1rem'} flexShrink={0} />
+                      <MyTooltip label={item.name}>
+                        <Box
+                          fontSize={'sm'}
+                          color={'myGray.900'}
+                          flex={1}
+                          overflow="hidden"
+                          textOverflow="ellipsis"
+                          whiteSpace="nowrap"
+                          maxW="320px"
+                        >
+                          {item.name}
+                        </Box>
+                      </MyTooltip>
+                      <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
+                        {item.size}
+                      </Box>
+                    </HStack>
                     <MyIconButton
                       icon="delete"
                       hoverColor="red.500"

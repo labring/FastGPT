@@ -382,7 +382,7 @@
   "data_index_correction": "Correction Index",
   "hype_enhanced_index": "HyPE enhanced index",
   "hype_enhanced_index_tips": "Use Hypothetical Prompt Embeddings technology to generate hypothetical questions, simulate retrieval and recall to filter truly high-quality questions as indexes, improving retrieval accuracy. (Takes longer time when data volume is large)",
-  "template_csv_format_tip": "The template uses CSV format and contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question",
+  "template_csv_format_tip": "The template contains the following columns:\nq: Question column, stores questions that users may ask\na: Answer column, stores standard answers to corresponding questions\nmetadata: Metadata column, customizable column name, optional, used to store data-related attributes that can be returned after retrieval and called as needed\nindexes: Index column, stores indexes related to the question",
   "segment_enhanced_index": "Segment Enhanced Index",
   "segment_enhanced_index_tips": "Further segment the 'Answer (A)' part of the data to be used as index content, improving retrieval accuracy.",
   "process.segment_enhanced_index": "Segment Enhanced Index Generation",

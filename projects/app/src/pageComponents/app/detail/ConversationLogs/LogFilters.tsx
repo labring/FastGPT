@@ -233,7 +233,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
   }, [triggerFiltersChange]);
 
   return (
-    <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
+    <Flex alignItems={'center'} gap={2} flexWrap={'wrap'}>
       {/* 日期筛选 - 置前 */}
       <Flex>
         <DateRangePicker
@@ -318,7 +318,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
 
       {/* 搜索 */}
       <Flex
-        flex={'0 1 150px'}
+        flex={'0 1 180px'}
         h={10}
         alignItems={'center'}
         rounded={'8px'}
@@ -328,7 +328,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           borderColor: 'primary.600',
           boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
         }}
-        pl={3}
+        px={3}
       >
         <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
           {t('common:chat')}

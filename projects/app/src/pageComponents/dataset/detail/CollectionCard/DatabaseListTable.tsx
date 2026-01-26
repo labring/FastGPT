@@ -65,14 +65,14 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
           <Tr h={'5px'} />
           {formatCollections.map((collection) => (
             <Tr key={collection._id} _hover={{ bg: 'myGray.50' }} cursor={'pointer'}>
-              <Td py={2} w={'250px'}>
+              <Td py={2} maxW={'250px'}>
                 <MyTooltip label={collection.name} shouldWrapChildren={false}>
                   <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
                     {collection.name}
                   </Box>
                 </MyTooltip>
               </Td>
-              <Td py={2} minW={'200px'}>
+              <Td py={2} minW={'200px'} maxW={'400px'}>
                 <MyTooltip label={collection.tableSchema?.description} shouldWrapChildren={false}>
                   <Text className={'textEllipsis'}>{collection.tableSchema?.description}</Text>
                 </MyTooltip>
