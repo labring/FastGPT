@@ -114,7 +114,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   return (
     <Drawer isOpen={isOpen} onClose={onClose} placement="right">
       <DrawerOverlay />
-      <DrawerContent maxW="480px">
+      <DrawerContent maxW="480px" borderLeftRadius="md">
         <DrawerHeader pt={6} pb={1}>
           {viewMode === 'list' ? (
             <Flex gap={1.5} alignItems="center">
@@ -182,14 +182,14 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 left={0}
                 right={0}
                 w={'480px'}
-                bg={'white'}
-                px={6}
-                py={4}
+                px={8}
+                py={2}
                 alignItems="center"
                 justifyContent="space-between"
+                borderLeftRadius="md"
               >
                 <Flex alignItems="center" gap={2}>
-                  <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} />
+                  <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} ml={1} />
                   <Box fontSize="sm" color="gray.600">
                     {t('common:select_count_num', { num: selectedItems.length })}
                   </Box>
