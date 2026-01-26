@@ -19,7 +19,7 @@ import {
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { customNanoid, getNanoid } from '@fastgpt/global/common/string/tools';
 import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptCall';
 import { getLLMModel } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -31,6 +31,10 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 import { saveLLMRequestRecord } from '../record/controller';
+
+const getRequestId = () => {
+  return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
+};
 
 export type ResponseEvents = {
   onStreaming?: (e: { text: string }) => void;
@@ -75,7 +79,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
   // 生成唯一的请求追踪 ID
-  const requestId = getNanoid();
+  const requestId = getRequestId();
 
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;

@@ -232,7 +232,8 @@ export const dispatchPlanAgent = async ({
     toolCalls = [],
     usage,
     completeMessages,
-    responseEmptyTip
+    responseEmptyTip,
+    requestId
   } = await createLLMResponse({
     isAborted: checkIsStopping,
     body: {
@@ -284,7 +285,8 @@ export const dispatchPlanAgent = async ({
     outputTokens: usage.outputTokens,
     totalPoints,
     model: modelName,
-    runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+    runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+    llmRequestIds: [requestId]
   };
 
   return {

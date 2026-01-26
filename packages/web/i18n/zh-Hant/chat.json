@@ -71,6 +71,7 @@
   "invalid_share_url": "無效的分享鏈接",
   "is_chatting": "對話進行中...請稍候",
   "items": "筆",
+  "llm_request_ids": "LLM 請求詳情",
   "llm_tokens": "LLM tokens",
   "log.feedback.hide_feedback": "隱藏反饋",
   "log.feedback.mark_as_read": "標為已讀",

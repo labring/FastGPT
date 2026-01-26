@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -18,7 +18,11 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import RequestIdDetailModal from '@/components/core/ai/requestId';
+import dynamic from 'next/dynamic';
+
+const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
+  ssr: false
+});
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -195,32 +199,45 @@ export const WholeResponseContent = ({
             <Row
               label={t('chat:llm_request_ids')}
               rawDom={
-                <Flex flexWrap={'wrap'} gap={2} px={3} py={2}>
+                <Grid
+                  templateColumns={'repeat(auto-fill, minmax(250px, 1fr))'}
+                  gap={2}
+                  px={3}
+                  py={2}
+                >
                   {activeModule.llmRequestIds.map((requestId, index) => (
-                    <Box
+                    <Flex
                       key={index}
-                      as="button"
-                      bg={'blue.50'}
-                      color={'blue.600'}
-                      px={3}
-                      py={1.5}
+                      alignItems={'center'}
+                      bg={'white'}
+                      border={'base'}
                       borderRadius={'md'}
-                      fontSize={'xs'}
-                      fontFamily={'monospace'}
+                      px={3}
+                      py={2}
                       cursor={'pointer'}
-                      transition="all 0.2s"
                       _hover={{
-                        bg: 'blue.100',
-                        transform: 'translateY(-1px)',
+                        borderColor: 'primary.500',
+                        color: 'primary.600',
                         boxShadow: 'sm'
                       }}
                       onClick={() => onOpenRequestIdDetail(requestId)}
-                      title="点击查看详情"
+                      title={t('common:Click_to_expand')}
                     >
-                      {requestId}
-                    </Box>
+                      <Box
+                        flex={'1 0 0'}
+                        width={0}
+                        fontFamily={'monospace'}
+                        fontSize={'xs'}
+                        textOverflow={'ellipsis'}
+                        overflow={'hidden'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {requestId}
+                      </Box>
+                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                    </Flex>
                   ))}
-                </Flex>
+                </Grid>
               }
             />
           )}

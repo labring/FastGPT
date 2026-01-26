@@ -5,6 +5,14 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getLLMRequestRecordAPI } from '@/web/core/ai/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import dynamic from 'next/dynamic';
+
+const CodeEditor = dynamic(
+  () => import('@fastgpt/web/components/common/Textarea/CodeEditor/Editor'),
+  {
+    ssr: false
+  }
+);
 
 type RequestIdDetailModalProps = {
   onClose: () => void;
@@ -41,65 +49,59 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
       onClose={onClose}
       title={t('chat:llm_request_detail')}
       isLoading={loading}
+      w={'100%'}
+      h={'100%'}
+      maxW={['90vw', '1080px']}
       iconSrc="/imgs/modal/wholeRecord.svg"
     >
       {record && (
-        <Flex height="70vh" gap={4}>
+        <Flex height="100%">
           {/* 请求体 */}
-          <Box flex={1} bg="myGray.50" p={4} borderRadius="md">
+          <Flex
+            flex={1}
+            bg="myGray.50"
+            p={4}
+            flexDirection={'column'}
+            borderRight={'2px solid'}
+            borderColor={'myGray.200'}
+          >
             <Text fontWeight="bold" mb={2} fontSize="lg">
               {t('chat:request_body')}
             </Text>
-            <Box
-              bg="white"
-              p={4}
-              borderRadius="md"
-              overflow="auto"
-              maxHeight="calc(70vh - 60px)"
-              border="1px solid"
-              borderColor="myGray.200"
-            >
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontFamily: 'monospace',
-                  fontSize: 'sm'
+            <Box flex={'1 0 0'} h={0} bg="white" borderRadius="md" overflow="hidden">
+              <CodeEditor
+                value={formatJson(record.body)}
+                language="json"
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false
                 }}
-              >
-                {formatJson(record.body)}
-              </pre>
+                h={'100%'}
+              />
             </Box>
-          </Box>
+          </Flex>
 
           {/* 响应内容 */}
-          <Box flex={1} bg="myGray.50" p={4} borderRadius="md">
+          <Flex flex={1} bg="myGray.50" p={4} flexDirection={'column'}>
             <Text fontWeight="bold" mb={2} fontSize="lg">
               {t('chat:response_content')}
             </Text>
-            <Box
-              bg="white"
-              p={4}
-              borderRadius="md"
-              overflow="auto"
-              maxHeight="calc(70vh - 60px)"
-              border="1px solid"
-              borderColor="myGray.200"
-            >
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontFamily: 'monospace',
-                  fontSize: 'sm'
+            <Box flex={'1 0 0'} h={0} bg="white" borderRadius="md" overflow="hidden">
+              <CodeEditor
+                value={formatJson(record.response)}
+                language="json"
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false
                 }}
-              >
-                {formatJson(record.response)}
-              </pre>
+                h={'100%'}
+              />
             </Box>
-          </Box>
+          </Flex>
         </Flex>
       )}
     </MyModal>

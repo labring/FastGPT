@@ -1,5 +1,5 @@
 import { MongoLLMRequestRecord } from './schema';
-import type { LLMRequestRecordSchemaType } from './schema';
+import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { addLog } from '../../../common/system/log';
 
 /**
@@ -34,7 +34,7 @@ export const saveLLMRequestRecord = async (params: {
 export const getLLMRequestRecord = async (
   requestId: string
 ): Promise<LLMRequestRecordSchemaType | null> => {
-  return MongoLLMRequestRecord.findOne({ requestId });
+  return await MongoLLMRequestRecord.findOne({ requestId }).lean();
 };
 
 /**

@@ -24,7 +24,7 @@ export const getOneStepResponseSummary = async ({
   addLog.debug('Get one step response summary start');
 
   const modelData = getLLMModel(model);
-  const { answerText, usage } = await createLLMResponse({
+  const { answerText, usage, requestId } = await createLLMResponse({
     body: {
       model: modelData.model,
       messages: [
@@ -70,7 +70,8 @@ export const getOneStepResponseSummary = async ({
       moduleLogo: 'core/app/agent/child/stepSummary',
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
-      totalPoints
+      totalPoints,
+      llmRequestIds: [requestId]
     }
   };
 };

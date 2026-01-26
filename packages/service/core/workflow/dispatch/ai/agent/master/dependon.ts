@@ -69,7 +69,7 @@ export const getStepDependon = async ({
   }
   \`\`\``;
 
-  const { answerText, usage } = await createLLMResponse({
+  const { answerText, usage, requestId } = await createLLMResponse({
     isAborted: checkIsStopping,
     body: {
       model: modelData.model,
@@ -99,7 +99,8 @@ export const getStepDependon = async ({
     outputTokens: usage.outputTokens,
     totalPoints,
     model: modelName,
-    runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+    runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+    llmRequestIds: [requestId]
   };
 
   const params = parseJsonArgs<{

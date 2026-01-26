@@ -5,8 +5,9 @@ import { getLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller'
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   GetLLMRequestRecordParamsSchema,
-  LLMRequestRecordResponseSchema
+  LLMRequestRecordSchema
 } from '@fastgpt/global/openapi/core/ai/api';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 export type GetRecordQuery = {
   requestId: string;
@@ -16,9 +17,21 @@ export type GetRecordBody = {};
 
 export type GetRecordResponse = LLMRequestRecordSchemaType;
 
-async function handler(req: ApiRequestProps, res: ApiResponseType): Promise<GetRecordResponse> {
-  // 需要登录认证
-  await authCert({ req, authToken: true });
+async function handler(
+  req: ApiRequestProps,
+  res: ApiResponseType
+): Promise<GetRecordResponse | undefined> {
+  const { teamId } = await authCert({ req, authToken: true });
+
+  if (
+    !(await teamFrequencyLimit({
+      teamId,
+      type: LimitTypeEnum.oneRequest,
+      res
+    }))
+  ) {
+    return;
+  }
 
   const { requestId } = GetLLMRequestRecordParamsSchema.parse(req.query);
 
@@ -32,7 +45,10 @@ async function handler(req: ApiRequestProps, res: ApiResponseType): Promise<GetR
     return Promise.reject('Record not found');
   }
 
-  return LLMRequestRecordResponseSchema.parse(record);
+  return LLMRequestRecordSchema.parse({
+    ...record,
+    _id: String(record._id)
+  });
 }
 
 export default NextAPI(handler);

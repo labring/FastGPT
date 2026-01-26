@@ -12,7 +12,7 @@ export const GetLLMRequestRecordParamsSchema = z.object({
 export type GetLLMRequestRecordParamsType = z.infer<typeof GetLLMRequestRecordParamsSchema>;
 
 // Response
-export const LLMRequestRecordResponseSchema = z.object({
+export const LLMRequestRecordSchema = z.object({
   _id: ObjectIdSchema,
   requestId: z.string().meta({
     example: 'V1StGXR8_Z5jdHi6B-myT',
@@ -30,4 +30,4 @@ export const LLMRequestRecordResponseSchema = z.object({
   })
 });
 
-export type LLMRequestRecordSchemaType = z.infer<typeof LLMRequestRecordResponseSchema>;
+export type LLMRequestRecordSchemaType = z.infer<typeof LLMRequestRecordSchema>;

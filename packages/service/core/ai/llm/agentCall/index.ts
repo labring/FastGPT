@@ -66,6 +66,7 @@ type RunAgentCallProps = {
 } & ResponseEvents;
 
 type RunAgentResponse = {
+  requestIds: string[];
   error?: any;
   completeMessages: ChatCompletionMessageParam[]; // Step request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Step assistant response messages
@@ -193,6 +194,7 @@ export const runAgentCall = async ({
 
     if (interactiveResponse || stop) {
       return {
+        requestIds: [],
         model: modelData.model,
         inputTokens: 0,
         outputTokens: 0,
@@ -210,6 +212,7 @@ export const runAgentCall = async ({
   }
 
   // 自循环运行
+  const requestIds: string[] = [];
   let consecutiveRequestToolTimes = 0; // 连续多次工具调用后会强制回答，避免模型自身死循环。
   while (runTimes < maxRunAgentTimes) {
     // TODO: 费用检测
@@ -252,7 +255,7 @@ export const runAgentCall = async ({
 
     // 2. Request LLM
     let {
-      reasoningText: reasoningContent,
+      requestId,
       answerText: answer,
       toolCalls = [],
       usage,
@@ -281,6 +284,7 @@ export const runAgentCall = async ({
 
     finish_reason = finishReason;
     requestError = error;
+    requestIds.push(requestId);
 
     if (requestError) {
       break;
@@ -386,6 +390,7 @@ export const runAgentCall = async ({
   }
 
   return {
+    requestIds,
     error: requestError,
     model: modelData.model,
     inputTokens,

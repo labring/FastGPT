@@ -130,10 +130,10 @@ export const getToolConfigStatus = ({
 
   // Find all inputs that need configuration(Only check the required items)
   const configInputs = tool.inputs.filter((input) => {
-    if (input.toolDescription || input.required !== true) return false;
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
-    if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
     if (input.key === NodeInputKeyEnum.history) return false;
+    if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+    if (input.toolDescription || input.required !== true) return false;
     return input.renderTypeList.some((type) => formRenderTypesMap[type]);
   });
 

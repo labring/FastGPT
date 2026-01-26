@@ -9,7 +9,7 @@ export const TagsMap = {
   // Ai -skill
   aiSkill: 'AI技能管理',
   // AI
-  ai: 'AI 模型与请求',
+  aiCommon: 'AI 通用 接口',
 
   // Chat - home
   chatPage: '对话页面通用',

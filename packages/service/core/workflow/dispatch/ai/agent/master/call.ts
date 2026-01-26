@@ -175,7 +175,8 @@ export const masterCall = async ({
     inputTokens,
     outputTokens,
     childrenUsages,
-    finish_reason
+    finish_reason,
+    requestIds
   } = await runAgentCall({
     maxRunAgentTimes: 100,
     body: {
@@ -499,6 +500,7 @@ export const masterCall = async ({
     totalPoints: childTotalPoints + llmUsage.totalPoints,
     childrenResponses,
     finishReason: finish_reason,
+    llmRequestIds: requestIds,
 
     // Step params
     stepQuery: step?.title

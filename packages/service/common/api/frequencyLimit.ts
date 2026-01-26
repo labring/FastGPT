@@ -7,12 +7,17 @@ import z from 'zod';
 import { addLog } from '../system/log';
 
 export enum LimitTypeEnum {
-  chat = 'chat'
+  chat = 'chat',
+  oneRequest = 'oneRequest'
 }
 
 const FrequencyLimitOptionSchema = z.union([
   z.object({
     type: z.literal(LimitTypeEnum.chat),
+    teamId: z.string()
+  }),
+  z.object({
+    type: z.literal(LimitTypeEnum.oneRequest),
     teamId: z.string()
   })
 ]);
@@ -27,6 +32,13 @@ const getLimitData = async (data: FrequencyLimitOption) => {
     return {
       limit: qpm,
       seconds: 60
+    };
+  }
+
+  if (data.type === LimitTypeEnum.oneRequest) {
+    return {
+      limit: 3,
+      seconds: 1
     };
   }
   return;

@@ -8,7 +8,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';

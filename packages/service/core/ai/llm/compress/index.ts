@@ -69,7 +69,7 @@ export const compressRequestMessages = async ({
   const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
 
   try {
-    const { answerText, usage } = await createLLMResponse({
+    const { answerText, usage, requestId } = await createLLMResponse({
       isAborted: checkIsStopping,
       body: {
         model,
@@ -103,7 +103,8 @@ export const compressRequestMessages = async ({
       model: modelName,
       totalPoints,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+      outputTokens: usage.outputTokens,
+      llmRequestIds: [requestId]
     };
 
     const compressResult = parseJsonArgs<{
@@ -155,64 +156,6 @@ function splitIntoChunks(content: string, chunkSize: number): string[] {
   return chunks;
 }
 
-async function compressSingleChunk(params: {
-  chunk: string;
-  targetTokens: number;
-  model: LLMModelItemType;
-  chunkIndex?: number;
-}): Promise<{
-  compressed: string;
-  usage: { inputTokens: number; outputTokens: number };
-}> {
-  const { chunk, targetTokens, model, chunkIndex } = params;
-
-  const compressPrompt = `你是一个文本压缩专家。请将以下文本压缩到约 ${targetTokens} tokens，同时保留关键信息。
-        ## 压缩原则
-        1. **只能删除信息，不能添加**
-        2. **保留关键内容**：数据、数字、名称、日期、核心结论、错误信息
-        3. **删除冗余**：重复描述、冗长修饰语、空泛过渡句
-        4. **精简表达**：用简练语言、列表、概括替代详细说明
-        ## 待压缩文本
-        \`\`\`
-        ${chunk}
-        \`\`\`
-        请直接输出压缩后的文本内容，不要包含任何解释或代码块标记。`;
-
-  addLog.debug(
-    `[Chunk compression] ${chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}` : 'Single chunk'}`,
-    {
-      chunkLength: chunk.length,
-      targetTokens
-    }
-  );
-
-  const { answerText, usage } = await createLLMResponse({
-    body: {
-      model,
-      messages: [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.System,
-          content: compressPrompt
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: '请执行压缩操作。'
-        }
-      ],
-      temperature: 0.1,
-      stream: false
-    }
-  });
-
-  if (!answerText) {
-    throw new Error('Empty response from LLM');
-  }
-  return {
-    compressed: answerText.trim(),
-    usage
-  };
-}
-
 async function chunkAndCompress(params: {
   content: string;
   maxTokens: number;
@@ -221,6 +164,64 @@ async function chunkAndCompress(params: {
   compressed: string;
   usages: { inputTokens: number; outputTokens: number }[];
 }> {
+  async function compressSingleChunk(params: {
+    chunk: string;
+    targetTokens: number;
+    model: LLMModelItemType;
+    chunkIndex?: number;
+  }): Promise<{
+    compressed: string;
+    usage: { inputTokens: number; outputTokens: number };
+  }> {
+    const { chunk, targetTokens, model, chunkIndex } = params;
+
+    const compressPrompt = `你是一个文本压缩专家。请将以下文本压缩到约 ${targetTokens} tokens，同时保留关键信息。
+          ## 压缩原则
+          1. **只能删除信息，不能添加**
+          2. **保留关键内容**：数据、数字、名称、日期、核心结论、错误信息
+          3. **删除冗余**：重复描述、冗长修饰语、空泛过渡句
+          4. **精简表达**：用简练语言、列表、概括替代详细说明
+          ## 待压缩文本
+          \`\`\`
+          ${chunk}
+          \`\`\`
+          请直接输出压缩后的文本内容，不要包含任何解释或代码块标记。`;
+
+    addLog.debug(
+      `[Chunk compression] ${chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}` : 'Single chunk'}`,
+      {
+        chunkLength: chunk.length,
+        targetTokens
+      }
+    );
+
+    const { answerText, usage } = await createLLMResponse({
+      body: {
+        model,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: compressPrompt
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: '请执行压缩操作。'
+          }
+        ],
+        temperature: 0.1,
+        stream: false
+      }
+    });
+
+    if (!answerText) {
+      throw new Error('Empty response from LLM');
+    }
+    return {
+      compressed: answerText.trim(),
+      usage
+    };
+  }
+
   const { content, maxTokens, model } = params;
 
   const thresholds = calculateCompressionThresholds(model.maxContext);
