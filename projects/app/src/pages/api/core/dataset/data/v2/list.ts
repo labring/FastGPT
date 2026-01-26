@@ -23,7 +23,7 @@ async function handler(
   let { searchText = '', collectionId } = req.body;
   let { offset, pageSize } = parsePaginationRequest(req);
 
-  pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 100);
 
   const { teamId, collection } = await authDatasetCollection({
     req,
