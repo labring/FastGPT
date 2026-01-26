@@ -5,6 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 interface ChunkInfoCardProps {
   title: string;
@@ -100,28 +101,33 @@ const ChunkInfoCard = ({
 
         {/* Link Button */}
         {linkText && linkUrl && (
-          <Link
-            onClick={handleLinkClick}
-            display={'flex'}
-            alignItems={'center'}
-            gap={1}
-            px={2}
-            py={'3px'}
-            borderRadius={'md'}
-            border={'1px solid'}
-            borderColor={'borderColor.low'}
-            fontSize={'xs'}
-            color={'myGray.600'}
-            flexShrink={0}
-            cursor={'pointer'}
-            _hover={{
-              textDecoration: 'none',
-              bg: 'myGray.05'
-            }}
-          >
-            <Box>{linkText}</Box>
-            <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} />
-          </Link>
+          <MyTooltip label={linkText}>
+            <Link
+              onClick={handleLinkClick}
+              display={'flex'}
+              alignItems={'center'}
+              gap={1}
+              px={2}
+              py={'3px'}
+              borderRadius={'md'}
+              border={'1px solid'}
+              borderColor={'borderColor.low'}
+              fontSize={'xs'}
+              color={'myGray.600'}
+              flexShrink={0}
+              cursor={'pointer'}
+              maxW={'450px'}
+              _hover={{
+                textDecoration: 'none',
+                bg: 'myGray.05'
+              }}
+            >
+              <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+                {linkText}
+              </Box>
+              <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} flexShrink={0} />
+            </Link>
+          </MyTooltip>
         )}
       </Flex>
 

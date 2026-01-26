@@ -156,6 +156,7 @@
   "faq_matched_correction": "已匹配到人工优化记录",
   "faq_matched_direct_use": "已匹配到 FAQ（已设置直接使用原文回答）",
   "no_rewrite_needed": "无需改写",
+  "no_rerank_passed": "None of the recalled knowledge met the rerank score threshold",
   "fulltext_search": "全文检索：",
   "vector_search": "向量检索：",
   "combined_score": "综合分数：",
