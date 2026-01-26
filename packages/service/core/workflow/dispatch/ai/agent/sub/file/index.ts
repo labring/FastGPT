@@ -149,7 +149,9 @@ export const dispatchFileRead = async ({
     });
 
     responseText = result.compressed;
-    usages.push(...result.usages);
+    if (result.usage) {
+      usages.push(result.usage);
+    }
 
     addLog.info('[File Read] Compression complete', {
       originalLength: JSON.stringify(readFilesResult).length,
@@ -159,14 +161,21 @@ export const dispatchFileRead = async ({
 
     return {
       response: responseText,
-      usages: usages,
+      usages,
       nodeResponse: {
         nodeId: getNanoid(6),
         id: getNanoid(6),
         moduleType: FlowNodeTypeEnum.readFiles,
         moduleName: i18nT('chat:read_file'),
         totalPoints: usages.reduce((acc, item) => acc + item.totalPoints, 0),
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        compressTextAgent: result.usage
+          ? {
+              inputTokens: result.usage.inputTokens || 0,
+              outputTokens: result.usage.outputTokens || 0,
+              totalPoints: result.usage.totalPoints || 0
+            }
+          : undefined
       }
     };
   } catch (error) {

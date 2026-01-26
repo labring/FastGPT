@@ -35,7 +35,6 @@ import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import type { SubAppRuntimeType } from './type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];

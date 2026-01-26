@@ -5,7 +5,6 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
 import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
-import { getStepCallQuery } from '../constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SubAppIds } from '../sub/constants';
@@ -17,7 +16,7 @@ import { DatasetSearchToolSchema } from '../sub/dataset/utils';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
-import { getStepDependon } from './dependon';
+import { getStepCallQuery, getStepDependon } from './dependon';
 import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
@@ -108,25 +107,28 @@ export const masterCall = async ({
   const { requestMessages } = await (async () => {
     if (isStepCall) {
       // Get depends on step ids
-      if (!step.depends_on) {
-        const {
-          depends,
-          usage: dependsUsage,
-          nodeResponse
-        } = await getStepDependon({
-          checkIsStopping,
-          model,
-          steps,
-          step
-        });
-        if (dependsUsage) {
-          usagePush([dependsUsage]);
+      const getDependonResult = await (async () => {
+        if (!step.depends_on) {
+          const {
+            depends,
+            usage: dependsUsage,
+            nodeResponse
+          } = await getStepDependon({
+            checkIsStopping,
+            model,
+            steps,
+            step
+          });
+          if (dependsUsage) {
+            usagePush([dependsUsage]);
+          }
+
+          step.depends_on = depends;
+          return { nodeResponse };
         }
-        if (nodeResponse) {
-          childrenResponses.push(nodeResponse);
-        }
-        step.depends_on = depends;
-      }
+      })();
+      const getDependonNodeResponse = getDependonResult?.nodeResponse;
+
       // Step call system prompt
       const callQuery = await getStepCallQuery({
         steps,
@@ -136,6 +138,17 @@ export const masterCall = async ({
       });
       if (callQuery.usage) {
         usagePush([callQuery.usage]);
+        if (getDependonNodeResponse) {
+          getDependonNodeResponse.compressTextAgent = {
+            inputTokens: callQuery.usage.inputTokens || 0,
+            outputTokens: callQuery.usage.outputTokens || 0,
+            totalPoints: callQuery.usage.totalPoints
+          };
+        }
+      }
+
+      if (getDependonNodeResponse) {
+        childrenResponses.push(getDependonNodeResponse);
       }
 
       const requestMessages = chats2GPTMessages({

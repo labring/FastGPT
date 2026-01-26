@@ -329,19 +329,21 @@ export const runAgentCall = async ({
       const {
         response,
         assistantMessages: toolAssistantMessages,
-        usages,
+        usages: toolUsages,
         interactive,
         stop
       } = await handleToolResponse({
         call: tool,
         messages: cloneRequestMessages
       });
+      childrenUsages.push(...toolUsages);
+      usagePush?.(toolUsages);
 
       // 5. Add tool response to messages
       // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
       const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
 
-      const { compressed: compressed_context, usages: compressionUsages } =
+      const { compressed: compressed_context, usage: compressionUsage } =
         await compressToolResponse({
           response,
           model: modelData,
@@ -349,6 +351,10 @@ export const runAgentCall = async ({
           toolLength: toolCalls.length,
           reservedTokens: 8000 // 预留 8k tokens 给输出
         });
+      if (compressionUsage) {
+        childrenUsages.push(compressionUsage);
+        usagePush?.([compressionUsage]);
+      }
 
       const toolMessage: ChatCompletionMessageParam = {
         tool_call_id: tool.id,
@@ -357,11 +363,7 @@ export const runAgentCall = async ({
       };
       assistantMessages.push(toolMessage);
       requestMessages.push(toolMessage);
-
       assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
-
-      childrenUsages.push(...usages, ...compressionUsages);
-      usagePush?.([...usages, ...compressionUsages]);
 
       if (interactive) {
         interactiveResponse = {

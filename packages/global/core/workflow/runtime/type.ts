@@ -357,6 +357,12 @@ export type DispatchNodeResponseType = {
   toolStop?: boolean;
   // Agent call
   stepQuery?: string;
+  // Compress chunk
+  compressTextAgent?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalPoints: number;
+  };
 
   // code
   codeLog?: string;

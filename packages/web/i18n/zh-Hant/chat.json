@@ -28,6 +28,7 @@
   "completion_finish_stop": "正常完成",
   "completion_finish_tool_calls": "工具呼叫",
   "compress_llm_messages": "上下文壓縮",
+  "compress_llm_usage": "文本輸入輸出 tokens",
   "config_input_guide": "設定輸入導引",
   "config_input_guide_lexicon": "設定詞彙庫",
   "config_input_guide_lexicon_title": "設定詞彙庫",

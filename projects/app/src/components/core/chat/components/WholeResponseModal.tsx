@@ -186,6 +186,13 @@ export const WholeResponseContent = ({
             value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
           />
         )}
+        {activeModule.queryExtensionResult && (
+          <Row
+            label={t('chat:compress_llm_usage')}
+            value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+          />
+        )}
+
         {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
           <Row
             label={t('common:core.chat.response.Tool call tokens')}

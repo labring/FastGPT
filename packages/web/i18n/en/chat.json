@@ -28,6 +28,7 @@
   "completion_finish_stop": "Completed normally",
   "completion_finish_tool_calls": "Tool calls",
   "compress_llm_messages": "Context compression",
+  "compress_llm_usage": "Text input and output tokens",
   "config_input_guide": "Set Up Input Guide",
   "config_input_guide_lexicon": "Set Up Lexicon",
   "config_input_guide_lexicon_title": "Set Up Lexicon",
