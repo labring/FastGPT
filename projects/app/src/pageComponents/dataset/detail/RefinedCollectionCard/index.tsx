@@ -21,8 +21,7 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync,
-  getCollectionSource,
-  getDatasetCollections
+  getCollectionSource
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -69,7 +68,6 @@ const CollectionCard = () => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
     collectionId: string;
@@ -351,7 +349,9 @@ const CollectionCard = () => {
                     </HStack>
                   </Th>
                   <Th py={4} w="100px">
-                    {t('dataset:chunk_count')}
+                    {isStructureDocument
+                      ? t('dataset:collection_data_count')
+                      : t('dataset:chunk_count')}
                   </Th>
                   {!isStructureDocument && (
                     <Th py={4} w="100px">
@@ -543,7 +543,8 @@ const CollectionCard = () => {
                                               w={'0.9rem'}
                                               mr={2}
                                             />
-                                            {collection.type === DatasetCollectionTypeEnum.link
+                                            {collection.type === DatasetCollectionTypeEnum.link ||
+                                            collection.name.toLowerCase().endsWith('.txt')
                                               ? t('dataset:view_original')
                                               : t('dataset:download_file')}
                                           </Flex>

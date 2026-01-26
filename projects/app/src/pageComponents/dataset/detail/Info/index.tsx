@@ -30,6 +30,7 @@ import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModa
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
+import { getDatabaseTypeConfig } from '@/pageComponents/dataset/detail/Import/components/databaseTypeConfig';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
@@ -138,6 +139,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 color={'myGray.900'}
                 className={'textEllipsis'}
                 maxW={'180px'}
+                lineHeight={'20px'}
               >
                 {datasetDetail.name}
               </Box>
@@ -187,6 +189,18 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </FormLabel>
           <Box fontSize={'mini'}>{datasetDetail._id}</Box>
         </Flex>
+
+        {isDatabase && datasetDetail.databaseConfig?.clientType && (
+          <Flex w={'100%'} flexDir={'column'} mt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:database_type')}
+            </FormLabel>
+            <Box fontSize={'mini'}>
+              {getDatabaseTypeConfig(datasetDetail.databaseConfig.clientType)?.name ||
+                datasetDetail.databaseConfig.clientType}
+            </Box>
+          </Flex>
+        )}
 
         {!showVectorModel?.isHidden && !isStructureDocument && (
           <Box mt={5} w={'100%'}>

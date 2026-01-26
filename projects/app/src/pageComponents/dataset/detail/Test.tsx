@@ -114,7 +114,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
     {
-      onSuccess(res: SearchTestResponse) {
+      onSuccess(res: SearchTestResponse, params) {
         if (!res || res.list.length === 0) {
           return toast({
             status: 'warning',
@@ -125,7 +125,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         const testItem: SearchTestStoreItemType = {
           id: getNanoid(),
           datasetId,
-          text: getValues('inputText').trim(),
+          text: params[0].inputText.trim(),
           time: new Date(),
           results: res.list,
           duration: res.duration,
@@ -149,7 +149,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         model: searchModel
       }),
     {
-      onSuccess(res: any) {
+      onSuccess(res: any, params) {
         if (isEmpty(res) || !res.answer) {
           return toast({
             status: 'warning',
@@ -160,7 +160,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         const testItem: SearchTestStoreItemType = {
           id: getNanoid(),
           datasetId,
-          text: getValues('inputText').trim(),
+          text: params[0].inputText.trim(),
           time: new Date(),
           results: res,
           duration: res.duration || '0ms',

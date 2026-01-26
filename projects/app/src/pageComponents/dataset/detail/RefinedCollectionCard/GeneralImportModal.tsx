@@ -14,6 +14,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FileSelector, { type SelectFileItemType } from '../Import/components/FileSelector';
 import type { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -411,23 +412,36 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
                 {selectFiles.length > 0 && (
                   <VStack gap={2} alignItems="stretch">
                     {selectFiles.map((item, index) => (
-                      <HStack key={item.id} w="100%">
-                        <MyIcon name={item.icon as any} w="1rem" />
-                        <Box fontSize="sm" color="myGray.900">
-                          {item.sourceName}
-                        </Box>
-                        <Box fontSize="xs" color="myGray.500" flex={1}>
-                          {item.sourceSize}
-                        </Box>
-                        {item.errorMsg ? (
-                          <Box fontSize="xs" color="red.500">
-                            {item.errorMsg}
+                      <HStack key={item.id} w="100%" spacing={2} justifyContent="space-between">
+                        <HStack spacing={2} flex={1} overflow="hidden">
+                          <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
+                          <MyTooltip label={item.sourceName}>
+                            <Box
+                              fontSize="sm"
+                              color="myGray.900"
+                              flex={1}
+                              overflow="hidden"
+                              textOverflow="ellipsis"
+                              whiteSpace="nowrap"
+                              maxW="330px"
+                            >
+                              {item.sourceName}
+                            </Box>
+                          </MyTooltip>
+                          <Box fontSize="xs" color="myGray.500" flexShrink={0}>
+                            {item.sourceSize}
                           </Box>
-                        ) : item.isUploading ? (
-                          <Box fontSize="xs" color="myGray.500">
-                            {item.uploadedFileRate}%
-                          </Box>
-                        ) : (
+                          {item.errorMsg ? (
+                            <Box fontSize="xs" color="red.500" flexShrink={0}>
+                              {item.errorMsg}
+                            </Box>
+                          ) : item.isUploading ? (
+                            <Box fontSize="xs" color="myGray.500" flexShrink={0}>
+                              {item.uploadedFileRate}%
+                            </Box>
+                          ) : null}
+                        </HStack>
+                        {!item.errorMsg && !item.isUploading && (
                           <MyIconButton
                             icon="delete"
                             hoverColor="red.500"
