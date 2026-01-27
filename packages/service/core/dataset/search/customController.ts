@@ -787,6 +787,12 @@ export async function searchDatasetDataForAssistant(
     }
   });
 
+  // 【步骤 6.5】构建检索排名映射表（进入 reranker 前的排名）
+  const retrievalRankMap = new Map<string, number>();
+  dedupedRrfResults.forEach((item, index) => {
+    retrievalRankMap.set(item.id, index); // 排名从 0 开始，与其他 score 的 index 保持一致
+  });
+
   // 【步骤 7】重排开始计时
   const rerankStartTime = usingReRank ? Date.now() : undefined;
 
@@ -1032,7 +1038,8 @@ export async function searchDatasetDataForAssistant(
 
     return {
       ...item,
-      score: scores
+      score: scores,
+      retrievalRank: retrievalRankMap.get(item.id) // 添加检索排名
     };
   });
 
@@ -1074,7 +1081,8 @@ export async function searchDatasetDataForAssistant(
 
     return {
       ...item,
-      score: scores
+      score: scores,
+      retrievalRank: retrievalRankMap.get(item.id) // 添加检索排名
     };
   });
 

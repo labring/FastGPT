@@ -387,6 +387,7 @@ export type SearchDataResponseItemType = Omit<
   'teamId' | 'indexes' | 'isOwner'
 > & {
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
+  retrievalRank?: number; // 检索排名（进入 reranker 前的排名，仅 assistant 场景有值）
   // score: number;
 };
 
@@ -462,4 +463,3 @@ export type TransformationRecordType = {
   // 关联信息
   synonymMappingId: string; // 关联的同义词映射记录ID（MongoSynonymMapping._id）
 };
-
