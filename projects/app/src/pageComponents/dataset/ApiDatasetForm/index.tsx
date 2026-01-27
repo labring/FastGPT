@@ -3,7 +3,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { PluginDatasetSourceId } from '@fastgpt/global/sdk/fastgpt-plugin';
 import PluginDatasetForm from './PluginDatasetForm';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 const ApiDatasetForm = ({
   type,
@@ -14,7 +14,7 @@ const ApiDatasetForm = ({
   datasetId?: string;
   form: UseFormReturn<{ pluginDatasetServer?: PluginDatasetServerType }, any>;
 }) => {
-  const { pluginDatasets } = useSystemStore();
+  const { pluginDatasets } = usePluginStore();
 
   const isPluginSource = pluginDatasets.some((dataset) => dataset.sourceId === type);
 

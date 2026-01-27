@@ -30,6 +30,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
@@ -60,7 +61,8 @@ const Dataset = () => {
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
-  const { feConfigs, pluginDatasets } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { pluginDatasets } = usePluginStore();
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();

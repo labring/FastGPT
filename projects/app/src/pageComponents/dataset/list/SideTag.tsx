@@ -2,7 +2,7 @@ import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 const SideTag = ({
   type,
@@ -12,7 +12,7 @@ const SideTag = ({
 } & FlexProps) => {
   if (type === 'folder') return null;
   const { t, i18n } = useTranslation();
-  const { getDatasetTypeConfig } = useSystemStore();
+  const { getDatasetTypeConfig } = usePluginStore();
 
   const config = useMemo(
     () => getDatasetTypeConfig(type, t, i18n.language),

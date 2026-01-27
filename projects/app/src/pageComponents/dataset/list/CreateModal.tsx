@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -18,7 +19,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
-import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
@@ -39,14 +39,8 @@ const CreateModal = ({
 }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const {
-    defaultModels,
-    embeddingModelList,
-    datasetModelList,
-    getVlmModelList,
-    getDatasetTypeConfig,
-    pluginDatasets
-  } = useSystemStore();
+  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
+  const { getDatasetTypeConfig, pluginDatasets } = usePluginStore();
   const { isPc } = useSystem();
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);

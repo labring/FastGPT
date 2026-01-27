@@ -7,6 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -38,14 +39,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t, i18n } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
-  const {
-    feConfigs,
-    datasetModelList,
-    embeddingModelList,
-    getVlmModelList,
-    pluginDatasets,
-    getDatasetTypeConfig
-  } = useSystemStore();
+  const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const { getDatasetTypeConfig } = usePluginStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -125,11 +120,22 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
     const config = server.config || {};
     return { displayValue: Object.values(config)[0] };
-  }, [datasetDetail.pluginDatasetServer, pluginDatasets]);
+  }, [datasetDetail.pluginDatasetServer]);
 
   const typeConfig = useMemo(
-    () => getDatasetTypeConfig(datasetDetail.type, t, i18n.language),
-    [datasetDetail.type, t, i18n.language, getDatasetTypeConfig]
+    () =>
+      getDatasetTypeConfig(
+        datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type,
+        t,
+        i18n.language
+      ),
+    [
+      datasetDetail.pluginDatasetServer?.pluginId,
+      datasetDetail.type,
+      t,
+      i18n.language,
+      getDatasetTypeConfig
+    ]
   );
 
   return (

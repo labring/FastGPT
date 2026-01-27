@@ -11,6 +11,7 @@ import MyInput from '@/components/MyInput';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useMemo } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -41,7 +42,8 @@ const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t, i18n } = useTranslation();
-  const { feConfigs, getDatasetTypeConfig, pluginDatasets } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { getDatasetTypeConfig } = usePluginStore();
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
