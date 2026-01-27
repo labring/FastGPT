@@ -33,9 +33,9 @@ export type InitDateResponse = {
   pluginDatasets?: PluginDatasetType[];
 };
 
-// 合并第三方知识库的状态
+// 合并插件知识库的状态
 async function getPluginDatasets(): Promise<PluginDatasetType[]> {
-  if (global.PluginDatasetSourcesCache.length === 0) return [];
+  if (!global.PluginDatasetSourcesCache?.length) return [];
 
   const configs = await MongoSystemPluginDataset.find({}, 'sourceId status').lean();
   const configMap = new Map(configs.map((c) => [c.sourceId, c.status]));

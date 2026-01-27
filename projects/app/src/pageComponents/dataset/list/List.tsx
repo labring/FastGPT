@@ -209,8 +209,7 @@ function List() {
                     {dataset.type !== DatasetTypeEnum.folder && (
                       <Box flexShrink={0} mr={-5}>
                         <SideTag
-                          type={dataset.type}
-                          sourceId={dataset.pluginDatasetServer?.pluginId}
+                          type={dataset.pluginDatasetServer?.pluginId || dataset.type}
                           py={0.5}
                           px={2}
                           borderLeftRadius={'sm'}

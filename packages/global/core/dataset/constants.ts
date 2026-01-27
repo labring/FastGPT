@@ -11,17 +11,15 @@ export enum DatasetTypeEnum {
 }
 
 // @ts-ignore
-export const DatasetTypeMap: Partial<
-  Record<
-    `${DatasetTypeEnum}`,
-    {
-      icon: string;
-      avatar: string;
-      label: any;
-      collectionLabel: string;
-      courseUrl?: string;
-    }
-  >
+export const DatasetTypeMap: Record<
+  `${DatasetTypeEnum}`,
+  {
+    icon: string;
+    avatar: string;
+    label: any;
+    collectionLabel: string;
+    courseUrl?: string;
+  }
 > = {
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',

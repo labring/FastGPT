@@ -33,7 +33,7 @@ const EditAPIDatasetInfoModal = ({
   const { getDatasetTypeConfig } = useSystemStore();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const type = datasetDetail.type;
+  const type = datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type;
   const courseUrl = getDatasetTypeConfig(type, t, i18n.language)?.courseUrl;
 
   const form = useForm<EditAPIDatasetInfoFormType>({

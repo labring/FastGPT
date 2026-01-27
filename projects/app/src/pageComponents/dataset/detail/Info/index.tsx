@@ -124,12 +124,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     if (!server?.pluginId) return undefined;
 
     const config = server.config || {};
-
-    // custom-api 类型：直接展示 baseUrl
-    if (server.pluginId === 'custom-api') {
-      return { displayValue: config.baseUrl };
-    }
-
     return { displayValue: Object.values(config)[0] };
   }, [datasetDetail.pluginDatasetServer, pluginDatasets]);
 
@@ -166,8 +160,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <DatasetTypeTag
-            type={datasetDetail.type}
-            sourceId={datasetDetail.pluginDatasetServer?.pluginId}
+            type={datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type}
           />
         </Flex>
         <Box

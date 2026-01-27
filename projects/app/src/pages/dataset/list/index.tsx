@@ -80,7 +80,7 @@ const Dataset = () => {
     [t, toast, feConfigs]
   );
 
-  // 已启用的插件数据源菜单项
+  // 启用的插件知识库
   const pluginDatasetMenuItems = useMemo(
     () =>
       pluginDatasets

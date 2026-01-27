@@ -20,7 +20,6 @@ import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
@@ -29,8 +28,8 @@ const WorkflowToolConfig = dynamic(
   () => import('@/pageComponents/config/tool/WorkflowToolConfigModal')
 );
 const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
-const ThirdPartyDatasetConfig = dynamic(
-  () => import('@/pageComponents/config/tool/ThirdPartyDatasetConfig')
+const PluginDatasetConfig = dynamic(
+  () => import('@/pageComponents/config/tool/PluginDatasetConfig')
 );
 
 enum TabEnum {
@@ -79,25 +78,39 @@ const ToolProvider = () => {
 
   return (
     <Box pt={4} pl={3} pr={8}>
-      {/* Tab 切换 */}
-      <Flex mb={4}>
-        <LightRowTabs<TabEnum>
-          list={tabList}
-          value={currentTab}
-          onChange={setCurrentTab}
-          inlineStyles={{ px: 4 }}
-        />
-      </Flex>
-
-      {/* 工具配置 Tab */}
-      {currentTab === TabEnum.tool && (
-        <MyBox isLoading={loadingTools}>
-          {/* Header */}
-          <Flex alignItems={'center'}>
-            <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
-              {t('common:navbar.plugin')}
+      <Flex mb={4} alignItems={'center'} justifyContent={'space-between'}>
+        <Flex gap={2}>
+          {tabList.map((tab) => (
+            <Box
+              key={tab.value}
+              cursor={'pointer'}
+              px={3}
+              py={1}
+              fontWeight={'medium'}
+              borderRadius={'sm'}
+              {...(currentTab === tab.value
+                ? {
+                    color: 'primary.700',
+                    bg: 'white',
+                    boxShadow:
+                      '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'
+                  }
+                : {
+                    color: 'myGray.500',
+                    _hover: {
+                      bg: 'myGray.200'
+                    },
+                    onClick: () => setCurrentTab(tab.value)
+                  })}
+            >
+              {tab.label}
             </Box>
-            <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
+          ))}
+        </Flex>
+
+        {currentTab === TabEnum.tool && (
+          <Flex alignItems={'center'} gap={2}>
+            <Button onClick={onOpenTagModal} variant={'whiteBase'}>
               {t('app:toolkit_tags_manage')}
             </Button>
             <MyMenu
@@ -133,10 +146,13 @@ const ToolProvider = () => {
               ]}
             />
           </Flex>
+        )}
+      </Flex>
 
+      {currentTab === TabEnum.tool && (
+        <MyBox isLoading={loadingTools}>
           <Flex
             bg={'white'}
-            mt={5}
             h={'50px'}
             rounded={'md'}
             alignItems={'center'}
@@ -175,7 +191,7 @@ const ToolProvider = () => {
             </Box>
           </Flex>
 
-          <Box overflow={'auto'} mt={2} h={'calc(100vh - 200px)'}>
+          <Box overflow={'auto'} mt={2} h={'calc(100vh - 150px)'}>
             {localTools.length > 0 ? (
               <DndDrag<AdminSystemToolListItemType>
                 onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
@@ -247,8 +263,7 @@ const ToolProvider = () => {
         </MyBox>
       )}
 
-      {/* 第三方知识库配置 Tab */}
-      {currentTab === TabEnum.thirdPartyDataset && <ThirdPartyDatasetConfig />}
+      {currentTab === TabEnum.thirdPartyDataset && <PluginDatasetConfig />}
     </Box>
   );
 };

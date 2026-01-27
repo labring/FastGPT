@@ -237,7 +237,6 @@ export const useSystemStore = create<State>()(
           return get().modelProviderMap[language as langType][provider] ?? {};
         },
 
-        // Plugin datasets (合并 source 和 config)
         pluginDatasets: [],
         updatePluginDatasetStatus({ sourceId, status }) {
           set((state) => {

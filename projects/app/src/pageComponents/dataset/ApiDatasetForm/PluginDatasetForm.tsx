@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { useBoolean } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type {
@@ -34,7 +33,8 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [currentTreeSelectField, setCurrentTreeSelectField] = useState<string | null>(null);
   const [pathNames, setPathNames] = useState<Record<string, string>>({});
-  const [isOpenModal, { setTrue: openModal, setFalse: closeModal }] = useBoolean();
+
+  const prevTreeSelectValuesRef = useRef<Record<string, string>>({});
 
   // 初始化 pluginDatasetServer
   useEffect(() => {
@@ -64,59 +64,72 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
     [getValues, setValue, pluginId]
   );
 
-  // 获取路径名称
   const { loading: isFetchingPath, runAsync: fetchPathNames } = useRequest2(
-    async (fieldKey: string) => {
-      const parentId = pluginConfig[fieldKey];
+    async (fieldKey: string, parentIdOverride?: string) => {
+      const parentId = parentIdOverride ?? pluginConfig[fieldKey];
       if (!parentId) return t('dataset:rootdirectory');
-      try {
-        return await getApiDatasetPaths({ datasetId, parentId, pluginDatasetServer });
-      } catch {
-        return t('dataset:rootdirectory');
-      }
+
+      const currentServer = getValues('pluginDatasetServer');
+      if (!currentServer?.pluginId) return t('dataset:rootdirectory');
+
+      return getApiDatasetPaths({
+        datasetId,
+        parentId,
+        pluginDatasetServer: currentServer
+      }).catch(() => t('dataset:rootdirectory'));
     },
     { manual: true }
   );
 
   const updateFieldPathName = useCallback(
-    async (fieldKey: string) => {
-      const pathName = await fetchPathNames(fieldKey);
+    async (fieldKey: string, parentIdOverride?: string) => {
+      const pathName = await fetchPathNames(fieldKey, parentIdOverride);
       setPathNames((prev) => ({ ...prev, [fieldKey]: pathName }));
     },
     [fetchPathNames]
   );
 
-  // 监听 tree-select 字段值变化
+  const isConfigComplete = useCallback(() => {
+    return formFields
+      .filter((f) => f.required && f.type !== 'tree-select')
+      .every((f) => !!pluginConfig[f.key]);
+  }, [formFields, pluginConfig]);
+
+  const treeSelectValues = useMemo(() => {
+    return formFields
+      .filter((f) => f.type === 'tree-select')
+      .reduce(
+        (acc, f) => {
+          acc[f.key] = pluginConfig[f.key] || '';
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+  }, [formFields, pluginConfig]);
+
   useEffect(() => {
-    formFields
-      .filter((f) => f.type === 'tree-select' && pluginConfig[f.key] !== undefined)
-      .forEach((f) => updateFieldPathName(f.key));
-  }, [formFields, pluginConfig, updateFieldPathName]);
+    if (!isConfigComplete()) return;
 
-  const canOpenTreeSelect = useCallback(
-    () =>
-      formFields
-        .filter((f) => f.required && f.type !== 'tree-select')
-        .every((f) => !!pluginConfig[f.key]),
-    [formFields, pluginConfig]
-  );
+    const prevValues = prevTreeSelectValuesRef.current;
+    Object.entries(treeSelectValues).forEach(([fieldKey, value]) => {
+      if (value && prevValues[fieldKey] !== value) {
+        updateFieldPathName(fieldKey);
+      }
+    });
+    prevTreeSelectValuesRef.current = treeSelectValues;
+  }, [treeSelectValues, isConfigComplete, updateFieldPathName]);
 
-  const handleOpenTreeSelect = useCallback(
-    (fieldKey: string) => {
-      setCurrentTreeSelectField(fieldKey);
-      openModal();
-    },
-    [openModal]
-  );
+  const closeTreeSelect = useCallback(() => setCurrentTreeSelectField(null), []);
 
   const handleTreeSelectConfirm = useCallback(
     async (id: ParentIdType) => {
       if (!currentTreeSelectField) return;
-      updatePluginConfig(currentTreeSelectField, id === 'root' || !id ? '' : id);
-      closeModal();
-      setCurrentTreeSelectField(null);
+      const newValue = id === 'root' || !id ? '' : id;
+      updatePluginConfig(currentTreeSelectField, newValue);
+      updateFieldPathName(currentTreeSelectField, newValue);
+      closeTreeSelect();
     },
-    [currentTreeSelectField, updatePluginConfig, closeModal]
+    [currentTreeSelectField, updatePluginConfig, updateFieldPathName, closeTreeSelect]
   );
 
   if (loadingConfig) {
@@ -136,23 +149,26 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
           value={pluginConfig[field.key]}
           onChange={(value) => updatePluginConfig(field.key, value)}
           onOpenTreeSelect={
-            field.type === 'tree-select' ? () => handleOpenTreeSelect(field.key) : undefined
+            field.type === 'tree-select' ? () => setCurrentTreeSelectField(field.key) : undefined
           }
           treeSelectLoading={isFetchingPath && currentTreeSelectField === field.key}
           treeSelectDisplayValue={pathNames[field.key]}
-          canOpenTreeSelect={canOpenTreeSelect()}
+          canOpenTreeSelect={isConfigComplete()}
         />
       ))}
 
-      {isOpenModal && currentTreeSelectField && (
+      {currentTreeSelectField && pluginDatasetServer && (
         <FolderTreeSelectModal
           selectId={pluginConfig[currentTreeSelectField] || 'root'}
-          server={(e) => getApiDatasetCatalog({ parentId: e.parentId, pluginDatasetServer })}
-          onConfirm={handleTreeSelectConfirm}
-          onClose={() => {
-            closeModal();
-            setCurrentTreeSelectField(null);
+          server={(e) => {
+            const { basePath, folderToken, ...restConfig } = pluginDatasetServer.config;
+            return getApiDatasetCatalog({
+              parentId: e.parentId,
+              pluginDatasetServer: { ...pluginDatasetServer, config: restConfig }
+            });
           }}
+          onConfirm={handleTreeSelectConfirm}
+          onClose={closeTreeSelect}
         />
       )}
     </>
