@@ -17,6 +17,7 @@ import { extractModelFromApp, buildModelEndpoint } from '../utils';
 import { deleteRerankModelConfig } from '../model/controller';
 import { getRerankTrainDataDir } from '../constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 
 /**
  * Create rerank training task (only creates record, does not start execution)
@@ -392,6 +393,299 @@ export async function deleteRerankTrainTask(
       });
     });
   }
+}
+
+/**
+ * Delete multiple rerank training tasks for an app with optimized version rollback
+ *
+ * This function deletes all tasks for a given app and performs smart version rollback:
+ * 1. Collects all tuned models and versions created by training tasks
+ * 2. Deletes tasks and their associated resources within a MongoDB transaction
+ * 3. Batch deletes all training-created versions
+ * 4. Rolls back app to the last version before any training tasks
+ *
+ * IMPORTANT: All database operations are protected by MongoDB transaction to ensure atomicity
+ *
+ * @param appId - Application ID
+ * @returns Deletion results with counts and errors
+ */
+export async function deleteAllRerankTrainTasksByApp(appId: string): Promise<{
+  deletedCount: number;
+  skippedCount: number;
+  errors: Array<{ taskId: string; error: string }>;
+}> {
+  addLog.info('Starting optimized batch deletion for app', { appId });
+
+  // 1. Fetch all tasks for this app (outside transaction for read-only query)
+  const tasks = await MongoRerankTrainTask.find({ appId }).lean();
+
+  if (tasks.length === 0) {
+    addLog.info('No tasks found for app', { appId });
+    return { deletedCount: 0, skippedCount: 0, errors: [] };
+  }
+
+  addLog.info('Found tasks to process', { appId, taskCount: tasks.length });
+
+  // 2. Separate tasks into deletable and non-deletable (running/pending)
+  const deletableTasks = tasks.filter(
+    (task) =>
+      task.status !== RerankTrainTaskStatusEnum.pending &&
+      task.status !== RerankTrainTaskStatusEnum.running
+  );
+  const nonDeletableTasks = tasks.filter(
+    (task) =>
+      task.status === RerankTrainTaskStatusEnum.pending ||
+      task.status === RerankTrainTaskStatusEnum.running
+  );
+
+  addLog.info('Task categorization', {
+    appId,
+    deletableCount: deletableTasks.length,
+    nonDeletableCount: nonDeletableTasks.length
+  });
+
+  if (deletableTasks.length === 0) {
+    // All tasks are running/pending, no deletion needed
+    const errors = nonDeletableTasks.map((task) => ({
+      taskId: String(task._id),
+      error: `Task is ${task.status}, cannot delete running/pending tasks`
+    }));
+    return { deletedCount: 0, skippedCount: nonDeletableTasks.length, errors };
+  }
+
+  // 3. Collect all resources to clean up
+  const tunedModels: Array<{ modelId: string; sftTaskId?: string }> = [];
+  const versionIds: string[] = [];
+  const tempFilePaths: string[] = [];
+  const taskIds: string[] = [];
+
+  for (const task of deletableTasks) {
+    taskIds.push(String(task._id));
+
+    // Collect tuned model info with paired relationship
+    const tunedModelConfigId = task.checkpoint?.data?.registering?.tunedModelConfigId;
+    const sftTaskId = task.checkpoint?.data?.finetuning?.sftTaskId;
+    if (tunedModelConfigId) {
+      tunedModels.push({ modelId: tunedModelConfigId, sftTaskId });
+    }
+
+    // Collect version info
+    const versionId = task.result?.versionId || task.checkpoint?.data?.applying?.versionId;
+    if (versionId) {
+      versionIds.push(versionId);
+    }
+
+    // Collect temp file paths
+    const tempFilePath = task.result?.trainDatasetFilePath;
+    if (tempFilePath) {
+      tempFilePaths.push(tempFilePath);
+    }
+  }
+
+  addLog.info('Collected resources to clean up', {
+    appId,
+    tunedModels: tunedModels.length,
+    versions: versionIds.length,
+    tempFiles: tempFilePaths.length
+  });
+
+  // 4. Delete tuned models BEFORE transaction (external service calls)
+  // Model deletion involves external services (SFT Bridge, AI Proxy) which cannot be part of DB transaction
+  const modelDeletionErrors: Array<{ taskId: string; error: string }> = [];
+
+  if (tunedModels.length > 0) {
+    addLog.info('Deleting tuned models (outside transaction)', {
+      appId,
+      modelCount: tunedModels.length
+    });
+
+    const modelDeletionResults = await Promise.allSettled(
+      tunedModels.map((model) =>
+        deleteRerankModelConfig(model.modelId, model.sftTaskId).catch((error) => {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          addLog.warn('Failed to delete tuned model', {
+            modelId: model.modelId,
+            sftTaskId: model.sftTaskId,
+            error: errorMsg
+          });
+          throw new Error(errorMsg);
+        })
+      )
+    );
+
+    modelDeletionResults.forEach((result, idx) => {
+      if (result.status === 'rejected') {
+        modelDeletionErrors.push({
+          taskId: 'model_cleanup',
+          error: `Failed to delete model ${tunedModels[idx].modelId}: ${result.reason}`
+        });
+      }
+    });
+
+    addLog.info('Model deletion completed', {
+      appId,
+      successful: modelDeletionResults.filter((r) => r.status === 'fulfilled').length,
+      failed: modelDeletionErrors.length
+    });
+  }
+
+  // 5. Execute all database operations within a transaction
+  await mongoSessionRun(async (session: ClientSession) => {
+    addLog.info('Starting transaction for database operations', { appId });
+
+    // Find evaluation collections
+    const evalCollectionIds: string[] = [];
+    if (taskIds.length > 0) {
+      const evalCollections = await MongoEvalDatasetCollection.find(
+        { 'metadata.taskId': { $in: taskIds } },
+        null,
+        { session }
+      ).lean();
+      evalCollectionIds.push(...evalCollections.map((col) => String(col._id)));
+
+      addLog.info('Found evaluation collections', {
+        appId,
+        collectionCount: evalCollectionIds.length
+      });
+    }
+
+    // Delete evaluation data
+    if (evalCollectionIds.length > 0) {
+      const deletedDataResult = await MongoEvalDatasetData.deleteMany(
+        { evalDatasetCollectionId: { $in: evalCollectionIds } },
+        { session }
+      );
+
+      addLog.info('Deleted eval dataset data', {
+        appId,
+        deletedCount: deletedDataResult.deletedCount
+      });
+
+      // Delete evaluation collections
+      const deletedCollectionResult = await MongoEvalDatasetCollection.deleteMany(
+        { _id: { $in: evalCollectionIds } },
+        { session }
+      );
+
+      addLog.info('Deleted eval dataset collections', {
+        appId,
+        deletedCount: deletedCollectionResult.deletedCount
+      });
+    }
+
+    // Delete tasks from database
+    const taskDeletionResult = await MongoRerankTrainTask.deleteMany(
+      { _id: { $in: taskIds } },
+      { session }
+    );
+
+    addLog.info('Deleted tasks from database', {
+      appId,
+      deletedCount: taskDeletionResult.deletedCount
+    });
+
+    // Batch delete all training-created versions
+    if (versionIds.length > 0) {
+      // IMPORTANT: Find pre-training version BEFORE deleting training versions
+      // This ensures we have the correct rollback target
+      const preTrainingVersion = await MongoAppVersion.findOne(
+        {
+          appId,
+          isPublish: true,
+          _id: { $nin: versionIds }
+        },
+        null,
+        { session }
+      )
+        .sort({ time: -1 })
+        .lean();
+
+      // Now delete training-created versions
+      const versionDeletionResult = await MongoAppVersion.deleteMany(
+        { _id: { $in: versionIds } },
+        { session }
+      );
+
+      addLog.info('Deleted training-created versions', {
+        appId,
+        deletedCount: versionDeletionResult.deletedCount
+      });
+
+      // Smart version rollback: Restore pre-training version
+      if (preTrainingVersion) {
+        await MongoApp.findByIdAndUpdate(
+          appId,
+          {
+            modules: preTrainingVersion.nodes || [],
+            edges: preTrainingVersion.edges || [],
+            chatConfig: preTrainingVersion.chatConfig || {},
+            'pluginData.nodeVersion': String(preTrainingVersion._id),
+            updateTime: new Date()
+          },
+          { session }
+        );
+
+        addLog.info('Rolled back app to pre-training version', {
+          appId,
+          versionId: String(preTrainingVersion._id),
+          versionName: preTrainingVersion.versionName
+        });
+      } else {
+        // No pre-training version found, clear version reference
+        await MongoApp.findByIdAndUpdate(
+          appId,
+          {
+            'pluginData.nodeVersion': undefined,
+            updateTime: new Date()
+          },
+          { session }
+        );
+
+        addLog.warn('No pre-training version found, cleared version reference', { appId });
+      }
+    }
+
+    addLog.info('Transaction completed successfully', { appId });
+  });
+
+  // 6. Cleanup temp files asynchronously (outside transaction)
+  if (tempFilePaths.length > 0) {
+    setImmediate(() => {
+      Promise.all(
+        tempFilePaths.map((filePath) =>
+          cleanupTempFiles(filePath).catch((error) => {
+            addLog.warn('Failed to cleanup temp file', {
+              filePath,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          })
+        )
+      );
+    });
+  }
+
+  // 7. Collect all errors
+  const errors: Array<{ taskId: string; error: string }> = [
+    ...modelDeletionErrors,
+    ...nonDeletableTasks.map((task) => ({
+      taskId: String(task._id),
+      error: `Task is ${task.status}, cannot delete running/pending tasks`
+    }))
+  ];
+
+  addLog.info('Batch deletion completed', {
+    appId,
+    totalTasks: tasks.length,
+    deletedCount: deletableTasks.length,
+    skippedCount: nonDeletableTasks.length,
+    errorCount: errors.length
+  });
+
+  return {
+    deletedCount: deletableTasks.length,
+    skippedCount: nonDeletableTasks.length,
+    errors
+  };
 }
 
 /** Cancel rerank training task */
