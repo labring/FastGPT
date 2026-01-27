@@ -32,6 +32,7 @@ export const usePluginDatasetRequest = (pluginServer: PluginDatasetServerType) =
     return res.body.map((file) => ({
       ...file,
       rawId: file.rawId || file.id,
+      parentId: file.parentId ?? null,
       hasChild: file.hasChild ?? file.type === 'folder',
       updateTime: file.updateTime ? new Date(file.updateTime) : new Date(),
       createTime: file.createTime ? new Date(file.createTime) : new Date()

@@ -165,7 +165,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           />
         </Flex>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
-          <DatasetTypeTag type={datasetDetail.type} />
+          <DatasetTypeTag
+            type={datasetDetail.type}
+            sourceId={datasetDetail.pluginDatasetServer?.pluginId}
+          />
         </Flex>
         <Box
           flex={1}

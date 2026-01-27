@@ -38,9 +38,7 @@ export function getI18nDatasetType(type: DatasetTypeEnum | string): string {
   if (type === DatasetTypeEnum.dataset) return i18nT('account_team:dataset.common_dataset');
   if (type === DatasetTypeEnum.websiteDataset) return i18nT('account_team:dataset.website_dataset');
   if (type === DatasetTypeEnum.externalFile) return i18nT('account_team:dataset.external_file');
-  if (type === DatasetTypeEnum.apiDataset) return i18nT('account_team:dataset.api_file');
-  if (type === DatasetTypeEnum.feishu) return i18nT('account_team:dataset.feishu_dataset');
-  if (type === DatasetTypeEnum.yuque) return i18nT('account_team:dataset.yuque_dataset');
+  if (type === DatasetTypeEnum.pluginDataset) return i18nT('account_team:dataset.plugin_dataset');
   return i18nT('common:UnKnow');
 }
 

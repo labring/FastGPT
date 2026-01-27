@@ -5,14 +5,21 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
+const SideTag = ({
+  type,
+  sourceId,
+  ...props
+}: {
+  type: `${DatasetTypeEnum}`;
+  sourceId?: string;
+} & FlexProps) => {
   if (type === DatasetTypeEnum.folder) return null;
   const { t, i18n } = useTranslation();
   const { getDatasetTypeConfig } = useSystemStore();
 
   const config = useMemo(
-    () => getDatasetTypeConfig(type, t, i18n.language),
-    [type, t, i18n.language, getDatasetTypeConfig]
+    () => getDatasetTypeConfig(sourceId || type, t, i18n.language),
+    [sourceId, type, t, i18n.language, getDatasetTypeConfig]
   );
 
   return (

@@ -69,7 +69,7 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (!feConfigs?.isPlus && [DatasetTypeEnum.websiteDataset].includes(e)) {
+      if (!feConfigs?.isPlus && e === DatasetTypeEnum.websiteDataset) {
         return toast({
           status: 'warning',
           title: t('common:commercial_function_tip')
@@ -187,15 +187,7 @@ const Dataset = () => {
                           description: t('dataset:external_other_dataset_desc'),
                           menuList: [
                             {
-                              children: [
-                                {
-                                  icon: 'core/dataset/externalDatasetColor',
-                                  label: t('dataset:api_file'),
-                                  description: t('dataset:external_file_dataset_desc'),
-                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                                },
-                                ...pluginDatasetMenuItems
-                              ]
+                              children: pluginDatasetMenuItems
                             }
                           ]
                         }

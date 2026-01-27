@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest) {
     await getApiDatasetRequest(pluginDatasetServer)
   ).listFiles({ parentId, searchKey });
 
-  return data?.filter((item: APIFileItemType) => item.hasChild === true) || [];
+  return data?.filter((item) => item.hasChild === true) || [];
 }
 
 export default NextAPI(handler);

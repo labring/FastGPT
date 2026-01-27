@@ -150,6 +150,7 @@
   "permission.des.manage": "Can manage the entire knowledge base data and information",
   "permission.des.read": "View knowledge base content",
   "permission.des.write": "Ability to add and change knowledge base content",
+  "plugin_dataset": "Plugin Dataset",
   "pleaseFillUserIdAndToken": "Please fill in User ID and Token",
   "preview_chunk": "Preview chunks",
   "preview_chunk_empty": "File content is empty",

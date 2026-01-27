@@ -7,9 +7,7 @@ export enum DatasetTypeEnum {
   websiteDataset = 'websiteDataset', // depp link
   externalFile = 'externalFile',
 
-  apiDataset = 'apiDataset',
-  feishu = 'feishu',
-  yuque = 'yuque'
+  pluginDataset = 'pluginDataset'
 }
 
 // @ts-ignore
@@ -50,10 +48,10 @@ export const DatasetTypeMap: Partial<
     label: i18nT('dataset:external_file'),
     collectionLabel: i18nT('common:File')
   },
-  [DatasetTypeEnum.apiDataset]: {
+  [DatasetTypeEnum.pluginDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
     avatar: 'core/dataset/externalDatasetColor',
-    label: i18nT('dataset:api_file'),
+    label: i18nT('dataset:plugin_dataset'),
     collectionLabel: i18nT('common:File'),
     courseUrl: '/docs/introduction/guide/knowledge_base/api_dataset/'
   }
@@ -199,7 +197,7 @@ export enum ImportDataSourceEnum {
   fileLink = 'fileLink',
   fileCustom = 'fileCustom',
   externalFile = 'externalFile',
-  apiDataset = 'apiDataset',
+  pluginDataset = 'pluginDataset',
   reTraining = 'reTraining',
   imageDataset = 'imageDataset'
 }

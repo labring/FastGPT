@@ -45,12 +45,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const datasetTypeConfig = datasetDetail?.type
-    ? getDatasetTypeConfig(datasetDetail.type, t, i18n.language)
+  const actualSourceId = datasetDetail?.pluginDatasetServer?.pluginId || datasetDetail?.type;
+  const datasetTypeConfig = actualSourceId
+    ? getDatasetTypeConfig(actualSourceId, t, i18n.language)
     : undefined;
   const isPluginDataset = useMemo(
-    () => pluginDatasets.some((item) => item.sourceId === datasetDetail?.type),
-    [pluginDatasets, datasetDetail?.type]
+    () => pluginDatasets.some((item) => item.sourceId === actualSourceId),
+    [pluginDatasets, actualSourceId]
   );
 
   const router = useRouter();
@@ -476,7 +477,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                         query: {
                           ...router.query,
                           currentTab: TabEnum.import,
-                          source: ImportDataSourceEnum.apiDataset
+                          source: ImportDataSourceEnum.pluginDataset
                         }
                       })
                     }
