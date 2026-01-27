@@ -5,7 +5,6 @@ import type {
   SubmitChatCorrectionResponse
 } from '@fastgpt/global/core/chat/correction/api';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { submitChatCorrection } from '@fastgpt/service/core/chat/correction/controller';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -27,17 +26,7 @@ async function handler(
     chatId
   });
 
-  // 2. Validate chatItem exists
-  const chatItem = await MongoChatItem.findOne({
-    appId,
-    chatId,
-    dataId
-  });
-
-  if (!chatItem) {
-    return Promise.reject('Chat item not found');
-  }
-  // 2.5 Get modelName from app config
+  // 2. Get modelName from app config
   const app = await MongoApp.findById(appId, 'modules').lean();
   if (!app) return Promise.reject(AppErrEnum.unExist);
 
