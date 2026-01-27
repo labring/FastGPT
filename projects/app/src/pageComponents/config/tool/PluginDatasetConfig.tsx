@@ -9,7 +9,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updatePluginDatasetStatus } from '@/web/core/config/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
-const ThirdPartyDatasetConfig = () => {
+const PluginDatasetConfig = () => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || 'zh-CN';
 
@@ -23,10 +23,6 @@ const ThirdPartyDatasetConfig = () => {
 
   return (
     <MyBox isLoading={loading}>
-      <Box color={'myGray.900'} mb={5}>
-        {t('common:navbar.third_party_dataset')}
-      </Box>
-
       <Box bg={'white'} rounded={'md'} p={6}>
         <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={6}>
           {pluginDatasets.map((item) => {
@@ -70,4 +66,4 @@ const ThirdPartyDatasetConfig = () => {
   );
 };
 
-export default ThirdPartyDatasetConfig;
+export default PluginDatasetConfig;

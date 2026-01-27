@@ -45,7 +45,6 @@ export type PluginDatasetSourceType = {
   description?: I18nStringType;
   icon: string;
   iconOutline?: string;
-  version?: string;
   courseUrl?: string;
   formFields?: Array<{
     key: string;

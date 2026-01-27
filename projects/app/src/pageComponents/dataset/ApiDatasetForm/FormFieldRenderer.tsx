@@ -10,7 +10,7 @@ type FormFieldRendererProps = {
   field: PluginFormFieldConfig;
   value: any;
   onChange: (value: any) => void;
-  // tree-select 相关
+
   onOpenTreeSelect?: () => void;
   treeSelectLoading?: boolean;
   treeSelectDisplayValue?: string;
@@ -73,7 +73,7 @@ const FormFieldRenderer = ({
     return (
       <Select
         bg={'myWhite.600'}
-        placeholder={placeholder || t('common:please_select')}
+        placeholder={placeholder}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -107,18 +107,14 @@ const FormFieldRenderer = ({
 
   // 根据类型渲染字段
   const renderField = useCallback(() => {
-    switch (field.type) {
-      case 'input':
-        return renderInput();
-      case 'password':
-        return renderPassword();
-      case 'select':
-        return renderSelect();
-      case 'tree-select':
-        return renderTreeSelect();
-      default:
-        return renderInput();
-    }
+    const renderers = {
+      input: renderInput,
+      password: renderPassword,
+      select: renderSelect,
+      'tree-select': renderTreeSelect
+    };
+
+    return (renderers[field.type] ?? renderInput)();
   }, [field.type, renderInput, renderPassword, renderSelect, renderTreeSelect]);
 
   return (

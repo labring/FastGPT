@@ -1,7 +1,3 @@
-/**
- * 统一的插件数据源请求封装
- * 所有插件数据源（feishu、yuque 等）都通过此接口调用 fastgpt-plugin
- */
 import type {
   ApiFileReadContentResponse,
   ApiDatasetDetailResponse,

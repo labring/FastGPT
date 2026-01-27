@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { I18nStringSchema } from '../../plugin/type';
 
-// =================== File Item Schema ===================
 export const APIFileItemSchema = z.object({
   id: z.string(),
   rawId: z.string(),
@@ -14,14 +13,12 @@ export const APIFileItemSchema = z.object({
 });
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 
-// =================== Plugin Dataset Server Schema ===================
 export const PluginDatasetServerSchema = z.object({
   pluginId: z.string(), // "feishu" | "yuque" | "wecom" | any plugin ID
   config: z.record(z.string(), z.any()) // specific config, defined by plugin
 });
 export type PluginDatasetServerType = z.infer<typeof PluginDatasetServerSchema>;
 
-// =================== Plugin Form Field Schemas ===================
 export const PluginFormFieldTypeSchema = z.enum(['input', 'password', 'select', 'tree-select']);
 export type PluginFormFieldType = z.infer<typeof PluginFormFieldTypeSchema>;
 
@@ -43,20 +40,17 @@ export const PluginFormFieldConfigSchema = z.object({
 });
 export type PluginFormFieldConfig = z.infer<typeof PluginFormFieldConfigSchema>;
 
-// =================== Plugin Dataset Source Config Schema ===================
 export const PluginDatasetSourceConfigSchema = z.object({
   sourceId: z.string(),
   name: I18nStringSchema,
   icon: z.string(),
   iconOutline: z.string().optional(),
   description: I18nStringSchema.optional(),
-  version: z.string().optional(),
   courseUrl: z.string().optional(),
   formFields: z.array(PluginFormFieldConfigSchema)
 });
 export type PluginDatasetSourceConfig = z.infer<typeof PluginDatasetSourceConfigSchema>;
 
-// =================== API Response Schemas ===================
 export const ApiFileReadContentResponseSchema = z.object({
   title: z.string().optional(),
   rawText: z.string()

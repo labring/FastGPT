@@ -1,5 +1,4 @@
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
-import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -7,20 +6,18 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DatasetTypeTag = ({
   type,
-  sourceId,
   ...props
 }: {
-  type: `${DatasetTypeEnum}`;
-  sourceId?: string;
+  type: string;
 } & FlexProps) => {
   const { t, i18n } = useTranslation();
   const { getDatasetTypeConfig } = useSystemStore();
 
   const config = useMemo(
     () =>
-      getDatasetTypeConfig(sourceId || type, t, i18n.language) ||
+      getDatasetTypeConfig(type, t, i18n.language) ||
       getDatasetTypeConfig('dataset', t, i18n.language),
-    [sourceId, type, t, i18n.language, getDatasetTypeConfig]
+    [type, t, i18n.language, getDatasetTypeConfig]
   );
 
   return (

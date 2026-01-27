@@ -49,10 +49,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const datasetTypeConfig = actualSourceId
     ? getDatasetTypeConfig(actualSourceId, t, i18n.language)
     : undefined;
-  const isPluginDataset = useMemo(
-    () => pluginDatasets.some((item) => item.sourceId === actualSourceId),
-    [pluginDatasets, actualSourceId]
-  );
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -459,8 +455,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               ]}
             />
           )}
-          {/* apiDataset / plugin dataset */}
-          {isPluginDataset && (
+          {/*  plugin dataset */}
+          {datasetDetail.type === DatasetTypeEnum.pluginDataset && (
             <>
               {datasetDetail.status === DatasetStatusEnum.active && (
                 <HStack gap={2}>

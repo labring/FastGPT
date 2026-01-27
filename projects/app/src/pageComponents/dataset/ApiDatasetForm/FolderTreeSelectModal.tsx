@@ -65,75 +65,99 @@ const FolderTreeSelectModal = ({
   });
 
   const RenderList = useMemoizedFn(
-    ({ list, index = 0 }: { list: FolderItemType[]; index?: number }) => (
-      <>
-        {list.map((item) => (
-          <Box key={item.id} _notLast={{ mb: 0.5 }} userSelect={'none'}>
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              py={1}
-              pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
-              pr={2}
-              borderRadius={'md'}
-              _hover={{ bg: 'myGray.100' }}
-              {...(item.id === selectedId
-                ? { bg: 'primary.50 !important', onClick: () => setSelectedId('') }
-                : { onClick: () => setSelectedId(item.id) })}
-            >
-              {index !== 0 && (
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  visibility={!item.children || item.children.length > 0 ? 'visible' : 'hidden'}
-                  w={'1.25rem'}
-                  h={'1.25rem'}
-                  cursor={'pointer'}
-                  borderRadius={'xs'}
-                  _hover={{ bg: 'rgba(31, 35, 41, 0.08)' }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (requestingIdList.includes(item.id)) return;
-
-                    if (!item.children) {
-                      const data = await requestServer({ parentId: item.id });
-                      item.children = data.map((i) => ({ id: i.id, name: i.name, open: false }));
+    ({ list, index = 0 }: { list: FolderItemType[]; index?: number }) => {
+      return (
+        <>
+          {list.map((item) => (
+            <Box key={item.id} _notLast={{ mb: 0.5 }} userSelect={'none'}>
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                py={1}
+                pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
+                pr={2}
+                borderRadius={'md'}
+                _hover={{
+                  bg: 'myGray.100'
+                }}
+                {...(item.id === selectedId
+                  ? {
+                      bg: 'primary.50 !important',
+                      onClick: () => setSelectedId('')
                     }
-                    item.open = !item.open;
-                    setFolderList([...folderList]);
-                  }}
-                >
-                  <MyIcon
-                    name={
-                      requestingIdList.includes(item.id)
-                        ? 'common/loading'
-                        : 'common/rightArrowFill'
-                    }
+                  : {
+                      onClick: () => setSelectedId(item.id)
+                    })}
+              >
+                {index !== 0 && (
+                  <Flex
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    visibility={!item.children || item.children.length > 0 ? 'visible' : 'hidden'}
                     w={'1.25rem'}
-                    color={'myGray.500'}
-                    transform={item.open ? 'rotate(90deg)' : 'none'}
-                  />
-                </Flex>
+                    h={'1.25rem'}
+                    cursor={'pointer'}
+                    borderRadius={'xs'}
+                    _hover={{
+                      bg: 'rgba(31, 35, 41, 0.08)'
+                    }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (requestingIdList.includes(item.id)) return;
+
+                      if (!item.children) {
+                        const data = await requestServer({ parentId: item.id });
+                        item.children = data.map((i) => ({
+                          id: i.id,
+                          name: i.name,
+                          open: false
+                        }));
+                      }
+                      item.open = !item.open;
+                      setFolderList([...folderList]);
+                    }}
+                  >
+                    <MyIcon
+                      name={
+                        requestingIdList.includes(item.id)
+                          ? 'common/loading'
+                          : 'common/rightArrowFill'
+                      }
+                      w={'1.25rem'}
+                      color={'myGray.500'}
+                      transform={item.open ? 'rotate(90deg)' : 'none'}
+                    />
+                  </Flex>
+                )}
+                <MyIcon ml={index !== 0 ? '0.5rem' : 0} name={FolderIcon} w={'1.25rem'} />
+                <Box fontSize={'sm'} ml={2}>
+                  {item.name}
+                </Box>
+              </Flex>
+              {item.children && item.open && (
+                <Box mt={0.5}>
+                  <RenderList list={item.children} index={index + 1} />
+                </Box>
               )}
-              <MyIcon ml={index !== 0 ? '0.5rem' : 0} name={FolderIcon} w={'1.25rem'} />
-              <Box fontSize={'sm'} ml={2}>
-                {item.name}
-              </Box>
-            </Flex>
-            {item.children && item.open && (
-              <Box mt={0.5}>
-                <RenderList list={item.children} index={index + 1} />
-              </Box>
-            )}
-          </Box>
-        ))}
-      </>
-    )
+            </Box>
+          ))}
+        </>
+      );
+    }
   );
 
   const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
-    () => (selectedId ? onConfirm(selectedId === ROOT_ID ? null : selectedId) : Promise.reject('')),
-    { onSuccess: onClose }
+    () => {
+      if (selectedId) {
+        return onConfirm(selectedId === ROOT_ID ? null : selectedId);
+      }
+      return Promise.reject('');
+    },
+    {
+      onSuccess: () => {
+        onClose();
+      }
+    }
   );
 
   return (
