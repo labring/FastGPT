@@ -1,9 +1,10 @@
 import { getGlobalRedisConnection } from './index';
-import { addLog } from '../system/log';
+import { getLogger, infra } from '../logger';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const redisPrefix = 'cache:';
 const getCacheKey = (key: string) => `${redisPrefix}${key}`;
+const logger = getLogger(infra.redis);
 
 export enum CacheKeyEnum {
   team_vector_count = 'team_vector_count',
@@ -34,7 +35,7 @@ export const setRedisCache = async (
         await redis.set(getCacheKey(key), data);
       }
     } catch (error) {
-      addLog.error('Set cache error:', error);
+      logger.error('Set cache error', { error });
       return Promise.reject(error);
     }
   });
@@ -71,7 +72,7 @@ export const appendRedisCache = async (
       await redis.expire(getCacheKey(key), expireSeconds);
     }
   } catch (error) {
-    addLog.error('Append cache error:', error);
+    logger.error('Append cache error', { error });
     return Promise.reject(error);
   }
 };

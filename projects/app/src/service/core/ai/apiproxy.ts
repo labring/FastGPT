@@ -1,9 +1,17 @@
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, infra } from '@fastgpt/service/common/logger';
 import { type Method } from 'axios';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
 
 const url = process.env.API_PROXY_URL;
 const token = process.env.API_PROXY_TOKEN;
+const logger = getLogger(infra.aiProxy);
+
+if (!url) {
+  logger.warn('[AIProxy] API_PROXY_URL is empty');
+}
+if (!token) {
+  logger.warn('[AIProxy] API_PROXY_TOKEN is empty');
+}
 
 const instance = createProxyAxios({
   baseURL: url,
@@ -18,13 +26,26 @@ const instance = createProxyAxios({
  */
 const checkRes = (data: any) => {
   if (data === undefined) {
-    addLog.info('api proxy data is empty');
+    logger.warn('[AIProxy] response data is empty');
     return Promise.reject('服务器异常');
   }
   return data.data;
 };
 const responseError = (err: any) => {
-  console.log('error->', '请求错误', err);
+  const errorMessage =
+    typeof err?.message === 'string'
+      ? err.message
+      : typeof err === 'string'
+        ? err
+        : 'unknown error';
+
+  logger.error('[AIProxy] request failed', {
+    message: errorMessage,
+    code: err?.code,
+    status: err?.response?.status,
+    url: err?.config?.url,
+    method: err?.config?.method
+  });
 
   if (!err) {
     return Promise.reject({ message: '未知错误' });

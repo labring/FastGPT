@@ -3,12 +3,14 @@ import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(mod.coreDataset);
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -139,7 +141,7 @@ export async function pushDataListToTrainingQueue({
       // ordered: true 模式下,成功必定等于批次大小
       insertedCount += result.insertedCount;
 
-      addLog.debug(`Training data insert progress: ${insertedCount}/${dataToInsert.length}`);
+      logger.debug(`Training data insert progress: ${insertedCount}/${dataToInsert.length}`);
     }
 
     return insertedCount;
@@ -150,7 +152,7 @@ export async function pushDataListToTrainingQueue({
   let start = Date.now();
 
   if (data.length > chunkSize) {
-    addLog.info(`Large dataset detected (${data.length} items), using chunked transactions`);
+    logger.info(`Large dataset detected (${data.length} items), using chunked transactions`);
 
     let totalInserted = 0;
 
@@ -165,7 +167,7 @@ export async function pushDataListToTrainingQueue({
       });
     }
 
-    addLog.info(`Chunked transactions completed in ${Date.now() - start}ms`);
+    logger.info(`Chunked transactions completed in ${Date.now() - start}ms`);
 
     return { insertLen: totalInserted };
   }
@@ -173,13 +175,13 @@ export async function pushDataListToTrainingQueue({
   // 小数据量单事务处理
   if (session) {
     const insertedCount = await insertDataIterative(data, session);
-    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    logger.info(`Single transaction completed in ${Date.now() - start}ms`);
     return { insertLen: insertedCount };
   } else {
     const insertedCount = await mongoSessionRun(async (session) => {
       return insertDataIterative(data, session);
     });
-    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    logger.info(`Single transaction completed in ${Date.now() - start}ms`);
     return { insertLen: insertedCount };
   }
 }

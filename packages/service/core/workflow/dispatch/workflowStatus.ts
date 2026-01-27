@@ -1,6 +1,8 @@
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import { getGlobalRedisConnection } from '../../../common/redis/index';
 import { delay } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(mod.coreWorkflow);
 
 const WORKFLOW_STATUS_PREFIX = 'agent_runtime_stopping';
 const TTL = 60; // 1分钟
@@ -29,7 +31,7 @@ export const delAgentRuntimeStopSign = async (params: WorkflowStatusParams): Pro
   const redis = getGlobalRedisConnection();
   const key = getRuntimeStatusKey(params);
   await redis.del(key).catch((err) => {
-    addLog.error(`[Agent Runtime Stop] Delete stop sign error`, err);
+    logger.error(`[Agent Runtime Stop] Delete stop sign error`, { error: err });
   });
 };
 

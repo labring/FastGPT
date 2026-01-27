@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { Readable } from 'stream';
+import { getLogger, infra } from '@fastgpt/service/common/logger';
 
 const baseUrl = process.env.AIPROXY_API_ENDPOINT;
 const token = process.env.AIPROXY_API_TOKEN;
@@ -10,6 +11,8 @@ const token = process.env.AIPROXY_API_TOKEN;
 const endPathMap: Record<string, boolean> = {
   'api/dashboardv2': true
 };
+
+const logger = getLogger(infra.aiProxy);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -66,6 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
     }
   } catch (error) {
+    logger.error('request failed', { error });
     jsonRes(res, {
       code: 500,
       error

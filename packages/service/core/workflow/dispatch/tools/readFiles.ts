@@ -10,7 +10,7 @@ import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/f
 import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
@@ -21,6 +21,8 @@ import path from 'node:path';
 import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+
+const logger = getLogger(mod.coreWorkflow);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -164,7 +166,7 @@ export const getFileContentFromLinks = async ({
 
         return url;
       } catch (error) {
-        addLog.warn(`Parse url error`, { error });
+        logger.warn(`Parse url error`, { error });
         return '';
       }
     })
@@ -222,7 +224,7 @@ export const getFileContentFromLinks = async ({
                   try {
                     return decodeURIComponent(encodedFilename);
                   } catch (error) {
-                    addLog.warn('Failed to decode filename*', { encodedFilename, error });
+                    logger.warn('Failed to decode filename*', { body: { encodedFilename }, error });
                   }
                 }
 

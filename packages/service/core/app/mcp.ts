@@ -3,12 +3,14 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
+
+const logger = getLogger(mod.mcp);
 
 export class MCPClient {
   private client: Client;
@@ -71,9 +73,9 @@ export class MCPClient {
   async closeConnection() {
     try {
       await retryFn(() => this.client.close(), 3);
-      addLog.debug(`[MCP Client] Closed connection：${this.url}`);
+      logger.debug(`[MCP Client] Closed connection：${this.url}`);
     } catch (error) {
-      addLog.error('[MCP Client] Failed to close connection:', error);
+      logger.error('[MCP Client] Failed to close connection:', { error });
     }
   }
 
@@ -107,7 +109,7 @@ export class MCPClient {
       // @ts-ignore
       return tools;
     } catch (error) {
-      addLog.error('[MCP Client] Failed to get tools:', error);
+      logger.error('[MCP Client] Failed to get tools:', { error });
       return Promise.reject(error);
     } finally {
       await this.closeConnection();
@@ -131,7 +133,7 @@ export class MCPClient {
   }): Promise<any> {
     try {
       const client = await this.getConnection();
-      addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
+      logger.debug(`[MCP Client] Call tool: ${toolName}`, params);
 
       return await client.callTool(
         {
@@ -144,7 +146,7 @@ export class MCPClient {
         }
       );
     } catch (error) {
-      addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
+      logger.error(`[MCP Client] Failed to call tool ${toolName}:`, { error });
       return Promise.reject(error);
     } finally {
       if (closeConnection) {

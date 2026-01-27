@@ -5,9 +5,11 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, mod } from '@fastgpt/service/common/logger';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { surrenderProcess } from '@fastgpt/service/common/system/tools';
+
+const logger = getLogger(mod.app);
 
 export type SyncAppChatLogQuery = {};
 
@@ -17,7 +19,7 @@ export type SyncAppChatLogBody = {
 
 export type SyncAppChatLogResponse = {};
 
-/* 
+/*
     将 chats 表全部扫一遍，来获取统计数据
 */
 async function handler(
@@ -55,7 +57,7 @@ async function handler(
       const result = await Promise.allSettled(chats.map((chat) => processChatRecord(chat)));
       success += result.filter((r) => r.status === 'fulfilled').length;
     } catch (error) {
-      addLog.error('处理chat记录失败', error);
+      logger.error('处理chat记录失败', { error });
     }
   }
 

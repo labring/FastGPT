@@ -1,7 +1,9 @@
 import { S3PublicBucket } from './buckets/public';
 import { S3PrivateBucket } from './buckets/private';
-import { addLog } from '../system/log';
+import { getLogger, infra } from '../logger';
 import { startS3DelWorker } from './mq';
+
+const logger = getLogger(infra.storage);
 
 export function initS3Buckets() {
   const publicBucket = new S3PublicBucket();
@@ -14,6 +16,6 @@ export function initS3Buckets() {
 }
 
 export const initS3MQWorker = async () => {
-  addLog.info('Init S3 Delete Worker...');
+  logger.info('Init S3 Delete Worker...');
   await startS3DelWorker();
 };

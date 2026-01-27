@@ -25,11 +25,13 @@ import { getLLMModel } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
-import { addLog } from '../../../common/system/log';
+import { getLogger, mod } from '../../../common/logger';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
+
+const logger = getLogger(mod.coreAi);
 
 export type ResponseEvents = {
   onStreaming?: ({ text }: { text: string }) => void;
@@ -163,14 +165,14 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   const getEmptyResponseTip = () => {
     if (userKey?.baseUrl) {
-      addLog.warn(`User LLM response empty`, {
+      logger.warn(`User LLM response empty`, {
         baseUrl: userKey?.baseUrl,
         requestBody,
         finish_reason
       });
       return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
     } else {
-      addLog.error(`LLM response empty`, {
+      logger.error(`LLM response empty`, {
         message: '',
         data: requestBody,
         finish_reason
@@ -668,8 +670,8 @@ const createChatCompletion = async ({
       timeout: formatTimeout
     });
 
-    addLog.debug(`Start create chat completion`, {
-      model: body.model
+    logger.debug(`Start create chat completion`, {
+      body: { model: body.model }
     });
 
     const response = await ai.chat.completions.create(body, {
@@ -699,16 +701,20 @@ const createChatCompletion = async ({
     };
   } catch (error) {
     if (userKey?.baseUrl) {
-      addLog.warn(`User ai api error`, {
-        message: getErrText(error),
-        baseUrl: userKey?.baseUrl,
-        data: body
+      logger.warn(`User ai api error`, {
+        body: {
+          message: getErrText(error),
+          baseUrl: userKey?.baseUrl,
+          data: body
+        }
       });
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     } else {
-      addLog.error(`LLM response error`, {
-        message: getErrText(error),
-        data: body
+      logger.error(`LLM response error`, {
+        body: {
+          message: getErrText(error),
+          data: body
+        }
       });
     }
     return Promise.reject(error);

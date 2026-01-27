@@ -3,7 +3,9 @@ import fs from 'fs';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
 import { clearDirFiles } from '../../common/file/utils';
-import { addLog } from '../../common/system/log';
+import { getLogger, mod } from '../../common/logger';
+
+const logger = getLogger(mod.worker);
 
 const DEFAULTDECOMPRESSSUBLOCATION = '/tmp';
 
@@ -129,7 +131,7 @@ export const parseOffice = async ({
           return Promise.reject('只能读取 .pptx 文件');
       }
     } catch (error) {
-      addLog.error(`Load ppt error`, { error });
+      logger.error(`Load ppt error`, { error });
     }
     return '';
   })();

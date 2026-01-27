@@ -8,7 +8,9 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { WorkerNameEnum, getWorkerController } from '../../../worker/utils';
 import type { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { addLog } from '../../system/log';
+import { getLogger, mod } from '../../logger';
+
+const logger = getLogger(mod.common);
 
 export const countGptMessagesTokens = async (
   messages: ChatCompletionMessageParam[],
@@ -32,7 +34,7 @@ export const countGptMessagesTokens = async (
 
     return total;
   } catch (error) {
-    addLog.error('Count token error', error);
+    logger.error('Count token error', { error });
     const total = messages.reduce((sum, item) => {
       if (item.content) {
         return sum + item.content.length * 0.5;

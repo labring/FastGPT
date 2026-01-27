@@ -6,8 +6,10 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, mod } from '../../../../common/logger';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
+
+const logger = getLogger(mod.coreDataset);
 
 type ResponseDataType = {
   success: boolean;
@@ -60,7 +62,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
    */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
-      addLog.info('yuque dataset data is empty');
+      logger.info('yuque dataset data is empty');
       return Promise.reject('服务器异常');
     }
     return data.data;
