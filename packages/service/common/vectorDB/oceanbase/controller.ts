@@ -31,16 +31,16 @@ export const getClient = async (): Promise<Pool> => {
   try {
     // Test the connection with a simple query instead of calling connect()
     await global.obClient.query('SELECT 1');
-    addLog.info(`oceanbase connected`);
+    addLog.info(`[OceanBase] connect`);
     return global.obClient;
   } catch (error) {
-    addLog.error(`oceanbase connect error`, error);
+    addLog.error(`[OceanBase] connect error`, error);
 
     global.obClient?.end();
     global.obClient = null;
 
     await delay(1000);
-    addLog.info(`Retry connect oceanbase`);
+    addLog.info(`[OceanBase] retry connect`);
 
     return getClient();
   }
@@ -216,7 +216,7 @@ class ObClass {
         insertIds: []
       };
     } catch (error) {
-      addLog.error(`OceanBase batch insert error: ${error}`);
+      addLog.error('[OceanBase] batch insert error', error);
       throw error;
     } finally {
       connection.release(); // 释放连接回连接池
@@ -229,7 +229,7 @@ class ObClass {
       const time = Date.now() - start;
 
       if (time > 300) {
-        addLog.warn(`oceanbase query time: ${time}ms, sql: ${sql}`);
+        addLog.warn(`[OceanBase] query time: ${time}ms, sql: ${sql}`);
       }
 
       return res;
