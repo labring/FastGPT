@@ -3,6 +3,7 @@ import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakr
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -39,14 +40,8 @@ const CreateModal = ({
 }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const {
-    defaultModels,
-    embeddingModelList,
-    datasetModelList,
-    getVlmModelList,
-    getDatasetTypeConfig,
-    pluginDatasets
-  } = useSystemStore();
+  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
+  const { getDatasetTypeConfig, pluginDatasets } = usePluginStore();
   const { isPc } = useSystem();
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);

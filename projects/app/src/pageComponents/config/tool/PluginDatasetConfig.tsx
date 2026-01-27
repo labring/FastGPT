@@ -4,7 +4,7 @@ import { Box, Flex, Grid, Switch } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updatePluginDatasetStatus } from '@/web/core/config/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -13,7 +13,7 @@ const PluginDatasetConfig = () => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || 'zh-CN';
 
-  const { pluginDatasets, updatePluginDatasetStatus: updateStoreStatus } = useSystemStore();
+  const { pluginDatasets, updatePluginDatasetStatus: updateStoreStatus } = usePluginStore();
 
   const { runAsync: updateStatus, loading } = useRequest2(updatePluginDatasetStatus, {
     successToast: t('common:save_success'),

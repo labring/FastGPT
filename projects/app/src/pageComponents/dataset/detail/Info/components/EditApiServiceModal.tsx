@@ -11,7 +11,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { getDocPath } from '@/web/common/system/doc';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 export type EditAPIDatasetInfoFormType = {
   id: string;
@@ -30,7 +30,7 @@ const EditAPIDatasetInfoModal = ({
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
-  const { getDatasetTypeConfig } = useSystemStore();
+  const { getDatasetTypeConfig } = usePluginStore();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const type = datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type;

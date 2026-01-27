@@ -3,6 +3,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
 import { useSystemStore } from './useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 export const clientInitData = async (
   retry = 3
@@ -12,6 +13,10 @@ export const clientInitData = async (
   try {
     const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
     useSystemStore.getState().initStaticData(res);
+
+    if (res.pluginDatasets) {
+      usePluginStore.getState().setPluginDatasets(res.pluginDatasets);
+    }
 
     return {
       feConfigs: res.feConfigs || useSystemStore.getState().feConfigs || {}
