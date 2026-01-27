@@ -5,15 +5,22 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
+const DatasetTypeTag = ({
+  type,
+  sourceId,
+  ...props
+}: {
+  type: `${DatasetTypeEnum}`;
+  sourceId?: string;
+} & FlexProps) => {
   const { t, i18n } = useTranslation();
   const { getDatasetTypeConfig } = useSystemStore();
 
   const config = useMemo(
     () =>
-      getDatasetTypeConfig(type, t, i18n.language) ||
+      getDatasetTypeConfig(sourceId || type, t, i18n.language) ||
       getDatasetTypeConfig('dataset', t, i18n.language),
-    [type, t, i18n.language, getDatasetTypeConfig]
+    [sourceId, type, t, i18n.language, getDatasetTypeConfig]
   );
 
   return (

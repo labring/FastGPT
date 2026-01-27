@@ -12,6 +12,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
 
   const datasets = await MongoDataset.find({
     type: {
+      // @ts-ignore
       $in: [DatasetTypeEnum.apiDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque]
     }
   }).lean();
@@ -23,8 +24,11 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
       {
         $set: {
           apiDatasetServer: {
+            // @ts-ignore
             ...(dataset.apiServer && { apiServer: dataset.apiServer }),
+            // @ts-ignore
             ...(dataset.feishuServer && { feishuServer: dataset.feishuServer }),
+            // @ts-ignore
             ...(dataset.yuqueServer && { yuqueServer: dataset.yuqueServer })
           }
         }

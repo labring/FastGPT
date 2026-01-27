@@ -14,12 +14,7 @@ import type {
   ParagraphChunkAIModeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
-import type {
-  APIFileServer,
-  FeishuServer,
-  YuqueServer,
-  PluginDatasetServerType
-} from './apiDataset/type';
+import type { PluginDatasetServerType } from './apiDataset/type';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';
@@ -90,9 +85,6 @@ export type DatasetSchemaType = {
   autoSync?: boolean;
   externalReadUrl?: string;
   defaultPermission?: number;
-  apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
 };
 
 export type DatasetCollectionSchemaType = ChunkSettingsType & {
@@ -228,6 +220,7 @@ export type DatasetListItemType = {
   inheritPermission: boolean;
   private?: boolean;
   sourceMember?: SourceMemberType;
+  pluginDatasetServer?: PluginDatasetServerType;
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {

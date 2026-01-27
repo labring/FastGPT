@@ -3,11 +3,6 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
 import type {
-  APIFileServer,
-  FeishuServer,
-  YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset/type';
-import type {
   DatasetSearchModeEnum,
   DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';

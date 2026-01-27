@@ -14,28 +14,6 @@ export const APIFileItemSchema = z.object({
 });
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 
-// =================== Server Config Schemas (Legacy) ===================
-export const APIFileServerSchema = z.object({
-  baseUrl: z.string(),
-  authorization: z.string().optional(),
-  basePath: z.string().optional()
-});
-export type APIFileServer = z.infer<typeof APIFileServerSchema>;
-
-export const FeishuServerSchema = z.object({
-  appId: z.string(),
-  appSecret: z.string().optional(),
-  folderToken: z.string()
-});
-export type FeishuServer = z.infer<typeof FeishuServerSchema>;
-
-export const YuqueServerSchema = z.object({
-  userId: z.string(),
-  token: z.string().optional(),
-  basePath: z.string().optional()
-});
-export type YuqueServer = z.infer<typeof YuqueServerSchema>;
-
 // =================== Plugin Dataset Server Schema ===================
 export const PluginDatasetServerSchema = z.object({
   pluginId: z.string(), // "feishu" | "yuque" | "wecom" | any plugin ID

@@ -33,6 +33,7 @@ const Avatar = ({
       w={w}
       h={w}
       src={src || LOGO_ICON}
+      overflow={'hidden'}
       {...props}
     />
   );

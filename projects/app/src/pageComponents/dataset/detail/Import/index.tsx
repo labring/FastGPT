@@ -22,7 +22,7 @@ const ImportDataset = () => {
     if (importSource === ImportDataSourceEnum.fileLink) return FileLink;
     if (importSource === ImportDataSourceEnum.fileCustom) return FileCustomText;
     if (importSource === ImportDataSourceEnum.externalFile) return ExternalFileCollection;
-    if (importSource === ImportDataSourceEnum.apiDataset) return APIDatasetCollection;
+    if (importSource === ImportDataSourceEnum.pluginDataset) return APIDatasetCollection;
     if (importSource === ImportDataSourceEnum.imageDataset) return ImageDataset;
     return null;
   }, [importSource]);

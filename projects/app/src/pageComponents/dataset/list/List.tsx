@@ -210,6 +210,7 @@ function List() {
                       <Box flexShrink={0} mr={-5}>
                         <SideTag
                           type={dataset.type}
+                          sourceId={dataset.pluginDatasetServer?.pluginId}
                           py={0.5}
                           px={2}
                           borderLeftRadius={'sm'}
