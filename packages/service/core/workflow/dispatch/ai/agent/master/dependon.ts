@@ -42,8 +42,12 @@ export const getStepDependon = async ({
       depends: []
     };
   }
-  // console.log("GetStepDependon historySummary:", step.id, historySummary);
-  const prompt = `
+
+  const allDepends = steps.map((item) => item.id);
+
+  try {
+    // console.log("GetStepDependon historySummary:", step.id, historySummary);
+    const prompt = `
   你是一个智能检索助手。现在需要执行一个新的步骤，请根据步骤描述和历史步骤的概括信息，判断哪些历史步骤的结果对当前步骤有帮助，并将 step_id 提取出来。
   
   【当前需要执行的步骤】
@@ -73,69 +77,77 @@ export const getStepDependon = async ({
   }
   \`\`\``;
 
-  const { answerText, usage, requestId } = await createLLMResponse({
-    isAborted: checkIsStopping,
-    body: {
+    const { answerText, usage, requestId } = await createLLMResponse({
+      isAborted: checkIsStopping,
+      body: {
+        model: modelData.model,
+        messages: [{ role: 'user', content: prompt }],
+        stream: true
+      }
+    });
+    const { totalPoints, modelName } = formatModelChars2Points({
       model: modelData.model,
-      messages: [{ role: 'user', content: prompt }],
-      stream: true
-    }
-  });
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: modelData.model,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens
-  });
-  const formatUsage = {
-    moduleName: i18nT('account_usage:context_pick'),
-    model: modelName,
-    totalPoints,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens
-  };
-  const nodeResponse: ChatHistoryItemResType = {
-    nodeId: getNanoid(),
-    id: getNanoid(),
-    moduleType: FlowNodeTypeEnum.emptyNode,
-    moduleName: i18nT('chat:context_pick'),
-    moduleLogo: 'core/app/agent/child/contextPick',
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-    totalPoints,
-    model: modelName,
-    runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-    llmRequestIds: [requestId]
-  };
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    });
+    const formatUsage = {
+      moduleName: i18nT('account_usage:context_pick'),
+      model: modelName,
+      totalPoints,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens
+    };
+    const nodeResponse: ChatHistoryItemResType = {
+      nodeId: getNanoid(),
+      id: getNanoid(),
+      moduleType: FlowNodeTypeEnum.emptyNode,
+      moduleName: i18nT('chat:context_pick'),
+      moduleLogo: 'core/app/agent/child/contextPick',
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalPoints,
+      model: modelName,
+      runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+      llmRequestIds: [requestId]
+    };
 
-  const params = parseJsonArgs<{
-    needed_step_ids: string[];
-    reason: string;
-  }>(answerText);
-  if (!params) {
+    const params = parseJsonArgs<{
+      needed_step_ids: string[];
+      reason: string;
+    }>(answerText);
+    if (!params) {
+      return {
+        depends: allDepends,
+        usage: formatUsage,
+        nodeResponse
+      };
+    }
+
     return {
-      depends: [],
+      depends: params.needed_step_ids,
       usage: formatUsage,
       nodeResponse
     };
+  } catch (error) {
+    addLog.error('[GetStepDependon] failed', error);
+    return {
+      depends: allDepends
+    };
   }
-
-  return {
-    depends: params.needed_step_ids,
-    usage: formatUsage,
-    nodeResponse
-  };
 };
 
 export const getStepCallQuery = async ({
   steps,
   step,
   model,
-  filesMap = {}
+  filesMap = {},
+  checkIsStopping
 }: {
   steps: AgentStepItemType[];
   step: AgentStepItemType;
   model: string;
   filesMap?: Record<string, string>;
+  checkIsStopping: () => boolean;
 }) => {
   /**
    * 压缩步骤提示词（Depends on）
@@ -250,7 +262,8 @@ ${stepPrompt}
 请直接输出压缩后的步骤历史：`;
 
     try {
-      const { answerText, usage } = await createLLMResponse({
+      const { answerText, usage, finish_reason } = await createLLMResponse({
+        isAborted: checkIsStopping,
         body: {
           model: modelData,
           messages: [
@@ -264,7 +277,7 @@ ${stepPrompt}
             }
           ],
           temperature: 0.1,
-          stream: false
+          stream: true
         }
       });
 
@@ -275,7 +288,7 @@ ${stepPrompt}
       });
 
       return {
-        stepPrompt: answerText || stepPrompt,
+        stepPrompt: finish_reason === 'close' ? stepPrompt : answerText || stepPrompt,
         usage: {
           moduleName: i18nT('account_usage:llm_compress_text'),
           model: modelName,

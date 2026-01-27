@@ -28,7 +28,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getMasterSystemPrompt } from './prompt';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
 import { dispatchApp, dispatchPlugin } from '../sub/app';
@@ -131,6 +130,7 @@ export const masterCall = async ({
 
       // Step call system prompt
       const callQuery = await getStepCallQuery({
+        checkIsStopping,
         steps,
         step,
         model,
@@ -616,11 +616,13 @@ export const masterCall = async ({
       usage: summaryUsage,
       nodeResponse: summaryNodeResponse
     } = await getOneStepResponseSummary({
+      checkIsStopping,
       response: answerText,
       model
     });
-    usagePush([summaryUsage]);
-    nodeResponse.childrenResponses?.push(summaryNodeResponse);
+    summaryUsage && usagePush([summaryUsage]);
+    summaryNodeResponse && nodeResponse.childrenResponses?.push(summaryNodeResponse);
+    // 更新 stepCall 的运行时间
     nodeResponse.runningTime = +((Date.now() - startTime) / 1000).toFixed(2);
 
     return {

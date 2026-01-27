@@ -60,18 +60,19 @@ export const compressRequestMessages = async ({
     tokens: messageTokens
   });
 
-  const compressPrompt = await getCompressRequestMessagesPrompt({
-    messages: otherMessages,
-    rawTokens: messageTokens,
-    model
-  });
-
-  const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
-
   try {
-    const { answerText, usage, requestId } = await createLLMResponse({
+    const compressPrompt = await getCompressRequestMessagesPrompt({
+      messages: otherMessages,
+      rawTokens: messageTokens,
+      model
+    });
+
+    const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
+
+    const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       isAborted: checkIsStopping,
       body: {
+        stream: true,
         model,
         messages: [
           {
@@ -83,8 +84,7 @@ export const compressRequestMessages = async ({
             content: userPrompt
           }
         ],
-        temperature: 0.1,
-        stream: true
+        temperature: 0.1
       }
     });
 
@@ -107,6 +107,11 @@ export const compressRequestMessages = async ({
       llmRequestIds: [requestId]
     };
 
+    if (finish_reason === 'close') {
+      addLog.info('[Compression messages] aborted: return original messages');
+      return { messages, usage: compressedUsage };
+    }
+
     const compressResult = parseJsonArgs<{
       compressed_messages: ChatCompletionMessageParam[];
       compression_summary: string;
@@ -124,7 +129,7 @@ export const compressRequestMessages = async ({
     }
 
     const compressedTokens = usage.outputTokens;
-    addLog.info('[Compression messages] successfully', {
+    addLog.debug('[Compression messages] successfully', {
       originalTokens: messageTokens,
       compressedTokens,
       actualRatio: (compressedTokens / messageTokens).toFixed(2),
