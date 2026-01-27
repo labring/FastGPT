@@ -91,7 +91,8 @@ export async function getServerSideProps(context: any) {
         'workflow',
         'dashboard_evaluation',
         'evaluation',
-        'train'
+        'train',
+        'database_client'
       ]))
     }
   };
