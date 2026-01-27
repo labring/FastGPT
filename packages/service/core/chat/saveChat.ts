@@ -97,7 +97,8 @@ export async function saveChat({
                 sourceId: quote.sourceId,
                 sourceName: quote.sourceName,
                 score: quote.score,
-                tokens: quote.tokens
+                tokens: quote.tokens,
+                retrievalRank: quote.retrievalRank // 新增：检索排名（进入 reranker 前的排名）
               })),
               // 新增：过滤 retrievalResults 字段（仅保留必要的元数据）
               ...(responseItem.retrievalResults && {
@@ -109,7 +110,8 @@ export async function saveChat({
                   sourceId: result.sourceId,
                   sourceName: result.sourceName,
                   score: result.score,
-                  tokens: result.tokens
+                  tokens: result.tokens,
+                  retrievalRank: result.retrievalRank // 新增：检索排名（进入 reranker 前的排名）
                 }))
               })
             };
