@@ -93,8 +93,8 @@ export const datasetSearchQueryExtension = async ({
 
   //参考客服跑验证集逻辑，不开问题优化，传入的query是原始query+问题改写+指代消除的标准化后的；拼接在一起
   if (isAssistant) {
-    queries = [queries.join(';')];
-    rewriteQuery = queries.join(';');
+    rewriteQuery = queries.join('\n'); // 先计算 reranker 使用的换行符拼接
+    queries = [queries.join(';')]; // 检索使用分号拼接
   }
 
   // 计算问题改写耗时（仅assistant场景且实际执行了改写逻辑）

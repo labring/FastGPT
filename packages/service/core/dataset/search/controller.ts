@@ -118,6 +118,12 @@ export type SearchDatasetDataResponse = {
   rerankTime?: number; // 新增：重排耗时(s)，仅当 usingReRank=true 时有值，保留2位小数（仅assistant场景）
   retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
   retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
+  rerankError?: {
+    // 新增：Reranker 错误信息（仅当 reranker 报错时存在，仅assistant场景）
+    errorMessage: Record<string, any>; // 错误详细信息（结构化对象）
+    i18nErrorMessage: string; // 错误信息的 i18n key（用于前端根据语言动态翻译）
+    i18nErrorMessageData: { modelName: string }; // i18n 占位符数据（用于前端渲染 i18n 消息）
+  };
 
   queryExtensionResult?: {
     model: string;

@@ -252,44 +252,59 @@ assistant: ${chatBg}
    针对 assistant 类型应用，执行：指代消解、同义词标准化、问题改写
 */
 
-// 指代消除提示词 - 来自 coreference_resolution_prompt.yaml
-const CoreferenceResolutionPrompt = `- Role: 指代消解专家
-- Background: 用户问题可能存在语法或逻辑不完整,需根据上下文补充缺失代词/条件,确保问题完整性。
-- Skills: 擅长识别并替换指代词(他/她/它/这/那等)、补充省略条件(时间/地点/前提等)。
+// 合并后的提示词：同时完成指代消除和问题改写
+const MergedQueryOptimizationPrompt = `- Role: 问题优化专家
+- Background: 用户问题可能存在指代不明确或需要多角度理解的情况，你需要帮助优化问题以提升检索效果。
+- Skills:
+  1. 擅长识别并替换指代词(他/她/它/这/那等)、补充省略条件(时间/地点/前提等)
+  2. 能从不同角度拆解和改写问题，提高检索覆盖率
+
+- Task: 你需要完成两个任务
+  1. 指代消除：根据上下文将问题中的代词和指示词替换为具体对象，使问题完整明确
+  2. 问题改写：基于消除指代后的问题，从不同角度生成2-3个改写问题，帮助提升检索效果
+
 - Constraints:
-  1. 输出内容必须严格为"===新问题"格式,不附加任何额外字符、说明或格式。
-  2. 只有在存在可识别的代词或指示词时,才进行替换。
-  3. 只有在缺失必要条件时,才进行补充。
-  4. 无法确定指代时保留原问题
-- OutputFormat: 仅返回新问题,不要增加任何字符。
+  1. 只有在存在可识别的代词或指示词时，才进行替换
+  2. 只有在缺失必要条件时，才进行补充
+  3. 无法确定指代时保留原问题
+  4. 改写的问题要保持原意，只改变表达角度
+  5. 如果问题中出现多个产品或主体，可以为每个主体生成独立的子问题
+
+- OutputFormat: 必须返回严格的JSON格式，包含两个字段:
+  {
+    "resolvedQuery": "指代消除后的完整问题",
+    "rewriteQueries": ["改写问题1", "改写问题2", "改写问题3"]
+  }
+
 - Workflow:
-  1. 识别问题中的所有代词/指示词并替换为具体指代对象
-  2. 检查逻辑完整性,补充缺失的时间/地点/前提等条件
-  3. 确保新问题语法正确且不改变原意
+  1. 分析上下文，识别问题中的代词/指示词
+  2. 将代词替换为具体指代对象，补充缺失条件，得到resolvedQuery
+  3. 基于resolvedQuery，从不同角度生成2-3个改写问题
+  4. 以JSON格式输出结果
+
 - Examples:
 例1：
 <Context>流畅的Python很有趣。</Context>
 问题：这本书的作者是谁？
-===流畅的Python这本书的作者是谁？
+{"resolvedQuery":"流畅的Python这本书的作者是谁？","rewriteQueries":["流畅的Python的作者是谁？","谁写了流畅的Python这本书？","流畅的Python的创作者是谁？"]}
 
 例2：
 <Context>用户昨天购买了《百年孤独》</Context>
 问题：他什么时候买的？
-===用户什么时候购买的《百年孤独》？
+{"resolvedQuery":"用户什么时候购买的《百年孤独》？","rewriteQueries":["用户购买《百年孤独》的时间是什么时候？","《百年孤独》是何时被用户购买的？"]}
 
 例3：
 <Context>给我安排一个旅行计划，我要去河西走廊附近，时间8天。</Context>
 问题：超融合是什么？
-===超融合是什么？`;
+{"resolvedQuery":"超融合是什么？","rewriteQueries":["超融合的定义是什么？","什么是超融合技术？","超融合的概念是什么？"]}
 
-// 问题改写提示词 - 来自 query_transform_disassemble.yaml
-const QueryRewritePrompt = `你需要根据 为了解答 用户问题推理出子问题，如果问题中出现多个产品，请每个产品独立一个子问题，
-请直接输出1到2个子问题，要求输出结构化json对象，字段名为subQuestions，
-这是例子 {"subQuestions":["子问题1","子问题2"]}，不要直接回答用户问题，不用输出问候语等礼貌用语，
-返回和问题相同的语言，让我们一步步来思考和推理，但不用输出推理过程，只需输出最终的搜索问题。`;
+例4：
+<Context>用户询问Nginx的配置</Context>
+问题：怎么配置SSL和负载均衡？
+{"resolvedQuery":"怎么配置Nginx的SSL和负载均衡？","rewriteQueries":["如何在Nginx中配置SSL？","Nginx负载均衡如何配置？","Nginx的SSL和负载均衡配置方法是什么？"]}`;
 
-// 辅助函数：指代消除
-async function coreferenceResolution({
+// 合并后的辅助函数：同时完成指代消除和问题改写
+async function mergedQueryOptimization({
   histories,
   query,
   model
@@ -299,6 +314,7 @@ async function coreferenceResolution({
   model: string;
 }): Promise<{
   resolvedQuery: string;
+  rewriteQueries: string[];
   inputTokens: number;
   outputTokens: number;
 }> {
@@ -309,15 +325,15 @@ async function coreferenceResolution({
       .map((msg) => `${msg.role === 'user' ? '用户' : 'AI'}: ${msg.content}`)
       .join('\n');
 
-    const crMessages: ChatCompletionMessageParam[] = [
+    const optimizationMessages: ChatCompletionMessageParam[] = [
       {
         role: 'user',
-        content: `${CoreferenceResolutionPrompt}\n\n-----\n<Context>\n${historyText}\n</Context>\n\n问题: ${query}`
+        content: `${MergedQueryOptimizationPrompt}\n\n-----\n<Context>\n${historyText}\n</Context>\n\n问题: ${query}`
       }
     ];
 
     const requestMessages = await loadRequestMessages({
-      messages: crMessages,
+      messages: optimizationMessages,
       useVision: false
     });
 
@@ -326,70 +342,7 @@ async function coreferenceResolution({
         {
           model,
           temperature: 0.1,
-          max_tokens: 300,
-          messages: requestMessages,
-          stream: true
-        },
-        model
-      )
-    });
-
-    const { text: answer, usage } = await formatLLMResponse(response);
-
-    const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages));
-    const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
-
-    // 提取 === 后的内容
-    const marker = '===';
-    const markerIndex = answer.indexOf(marker);
-    if (markerIndex !== -1) {
-      return {
-        resolvedQuery: answer.substring(markerIndex + marker.length).trim(),
-        inputTokens,
-        outputTokens
-      };
-    }
-
-    return {
-      resolvedQuery: query,
-      inputTokens,
-      outputTokens
-    }; // 如果没有找到标记,返回原始query
-  } catch (error) {
-    addLog.debug('Coreference resolution error', { error });
-    return {
-      resolvedQuery: query,
-      inputTokens: 0,
-      outputTokens: 0
-    }; // 出错时返回原始query
-  }
-}
-
-// 辅助函数：问题改写(拆解子问题)
-async function queryRewrite({ query, model }: { query: string; model: string }): Promise<{
-  subQuestions: string[];
-  inputTokens: number;
-  outputTokens: number;
-}> {
-  try {
-    const rewriteMessages: ChatCompletionMessageParam[] = [
-      {
-        role: 'user',
-        content: `${QueryRewritePrompt}\n\n用户问题: ${query}`
-      }
-    ];
-
-    const requestMessages = await loadRequestMessages({
-      messages: rewriteMessages,
-      useVision: false
-    });
-
-    const { response } = await createChatCompletion({
-      body: llmCompletionsBodyFormat(
-        {
-          model,
-          temperature: 0.1,
-          max_tokens: 300,
+          max_tokens: 500,
           messages: requestMessages,
           stream: true
         },
@@ -405,39 +358,55 @@ async function queryRewrite({ query, model }: { query: string; model: string }):
     // 尝试解析JSON
     try {
       const parsed = json5.parse(answer);
-      if (parsed.subQuestions && Array.isArray(parsed.subQuestions)) {
+      if (parsed.resolvedQuery && parsed.rewriteQueries && Array.isArray(parsed.rewriteQueries)) {
+        // 限制改写问题数量为2-3个
+        const limitedRewriteQueries = parsed.rewriteQueries.slice(0, 3);
         return {
-          subQuestions: parsed.subQuestions,
+          resolvedQuery: parsed.resolvedQuery,
+          rewriteQueries: limitedRewriteQueries,
           inputTokens,
           outputTokens
         };
       }
     } catch (e) {
-      // 如果JSON解析失败,尝试提取数组
-      const start = answer.indexOf('[');
-      const end = answer.lastIndexOf(']');
+      // 如果JSON解析失败,尝试手动提取
+      const start = answer.indexOf('{');
+      const end = answer.lastIndexOf('}');
       if (start !== -1 && end !== -1) {
         const jsonStr = answer.substring(start, end + 1);
-        const parsed = json5.parse(jsonStr);
-        if (Array.isArray(parsed)) {
-          return {
-            subQuestions: parsed,
-            inputTokens,
-            outputTokens
-          };
+        try {
+          const parsed = json5.parse(jsonStr);
+          if (
+            parsed.resolvedQuery &&
+            parsed.rewriteQueries &&
+            Array.isArray(parsed.rewriteQueries)
+          ) {
+            const limitedRewriteQueries = parsed.rewriteQueries.slice(0, 3);
+            return {
+              resolvedQuery: parsed.resolvedQuery,
+              rewriteQueries: limitedRewriteQueries,
+              inputTokens,
+              outputTokens
+            };
+          }
+        } catch (innerE) {
+          addLog.debug('Failed to parse extracted JSON', { jsonStr, error: innerE });
         }
       }
     }
 
+    // 解析失败时返回原始query和空数组
     return {
-      subQuestions: [],
+      resolvedQuery: query,
+      rewriteQueries: [],
       inputTokens,
       outputTokens
-    }; // 解析失败返回空数组
+    };
   } catch (error) {
-    addLog.debug('Query rewrite error', { error });
+    addLog.debug('Merged query optimization error', { error });
     return {
-      subQuestions: [],
+      resolvedQuery: query,
+      rewriteQueries: [],
       inputTokens: 0,
       outputTokens: 0
     };
@@ -554,61 +523,48 @@ export const queryExtensionForAssistant = async ({
   let totalOutputTokens = 0;
 
   try {
-    // 步骤1: 指代消除
-    const crResult = await coreferenceResolution({
+    // 步骤1: 同时完成指代消除和问题改写
+    const optimizationResult = await mergedQueryOptimization({
       histories,
       query,
       model
     });
-    totalInputTokens += crResult.inputTokens;
-    totalOutputTokens += crResult.outputTokens;
+    totalInputTokens += optimizationResult.inputTokens;
+    totalOutputTokens += optimizationResult.outputTokens;
 
-    addLog.info('Coreference resolution completed', {
+    addLog.info('Merged query optimization completed', {
       original: query,
-      resolved: crResult.resolvedQuery
+      resolvedQuery: optimizationResult.resolvedQuery,
+      rewriteQueries: optimizationResult.rewriteQueries
     });
 
     // 步骤2: 从所有知识库检索标准词 (使用指代消除后的query进行全文检索，每个知识库top10，然后汇总)
     const { synonymDict, synonymFileIds } = await getSynonymMappings({
       teamId,
       datasetIds,
-      query: crResult.resolvedQuery
+      query: optimizationResult.resolvedQuery
     });
 
     addLog.info('Retrieved synonym mappings from all datasets', {
-      query: crResult.resolvedQuery,
+      query: optimizationResult.resolvedQuery,
       datasetCount: datasetIds.length,
       synonymCount: Object.keys(synonymDict).length,
       totalSynonymTerms: Object.values(synonymDict).reduce((sum, terms) => sum + terms.length, 0),
       synonymFileIds
     });
 
-    // 步骤3: 指代消除后进行标准化
-    const resolvedStandardized = standardizeQuery(crResult.resolvedQuery, synonymDict);
-
-    // 步骤4: 问题改写(拆解子问题)
-    const rewriteResult = await queryRewrite({
-      query: crResult.resolvedQuery,
-      model
-    });
-    totalInputTokens += rewriteResult.inputTokens;
-    totalOutputTokens += rewriteResult.outputTokens;
-
-    addLog.info('Query rewrite completed', {
-      subQuestions: rewriteResult.subQuestions
-    });
-
-    // 步骤5: 子问题标准化
-    const standardizedSubQuestions = rewriteResult.subQuestions.map((sq) =>
-      standardizeQuery(sq, synonymDict)
+    // 步骤3: 对指代消除后的查询和改写问题都进行同义词标准化
+    const resolvedStandardized = standardizeQuery(optimizationResult.resolvedQuery, synonymDict);
+    const standardizedRewriteQueries = optimizationResult.rewriteQueries.map((rq) =>
+      standardizeQuery(rq, synonymDict)
     );
 
-    // 步骤6: 组合结果并去重
-    // 返回: [原始Query, 指代消除+标准化, 子问题1标准化, 子问题2标准化, ...]
+    // 步骤4: 组合结果并去重
+    // 返回: [原始Query, 指代消除+标准化, 改写问题1标准化, 改写问题2标准化, ...]
     const allQueries = [
       query, // 原始query
       resolvedStandardized, // 指代消除+标准化
-      ...standardizedSubQuestions // 子问题标准化
+      ...standardizedRewriteQueries // 改写问题标准化
     ].filter((q) => q && q.trim().length > 0);
 
     // 去重：使用 Set 根据标准化后的字符串进行去重
@@ -630,10 +586,9 @@ export const queryExtensionForAssistant = async ({
     });
 
     // 构建 synonymRewriteResult（记录指代消除后标准化的query）
-    // 无论是否有同义词映射，都保存指代消除的结果，因为它本身就很有价值
     const synonymRewriteResult = {
       standardizedQuery: resolvedStandardized,
-      coreferenceResolved: crResult.resolvedQuery
+      coreferenceResolved: optimizationResult.resolvedQuery
     };
 
     return {

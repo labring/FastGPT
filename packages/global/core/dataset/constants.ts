@@ -370,6 +370,13 @@ export enum RerankMethodEnum {
   content = 'content' // Default
 }
 
+// Reranker策略枚举（仅适用于assistant场景的多query重排）
+// 默认使用 RerankStrategyEnum.concat
+export enum RerankStrategyEnum {
+  concat = 'concat', // 拼接策略：将多个query用\n拼接后一起rerank（默认）
+  maxScore = 'maxScore' // 最高分策略：每个query单独rerank，取最高分
+}
+
 export const CustomCollectionIcon = 'common/linkBlue';
 export const LinkCollectionIcon = 'common/linkBlue';
 
