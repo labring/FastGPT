@@ -148,14 +148,18 @@ export async function submitChatCorrection({
       correctionId = String(newCorrection._id);
     }
 
-    // Update ChatItem
-    await MongoChatItem.updateOne(
+    // Update ChatItem if it exists (chatItem may have been deleted)
+    const chatItemUpdateResult = await MongoChatItem.updateOne(
       { dataId },
       {
         correctionId: new Types.ObjectId(correctionId)
       },
       { session }
     );
+
+    if (chatItemUpdateResult.matchedCount === 0) {
+      addLog.debug('ChatItem not found, skipping correctionId update', { dataId, correctionId });
+    }
 
     // Process based on mode
     if (correctionData.correctionMode === CorrectionModeEnum.edit) {
@@ -360,7 +364,6 @@ async function removeCorrectionIndexes({
   correctionQuestion: string;
   session: ClientSession;
 }): Promise<string[]> {
-
   if (!correctionQuestion || !correctionQuestion.trim()) {
     addLog.warn('Empty correction question provided to removeCorrectionIndexes, skipping removal');
     return [];
@@ -497,5 +500,3 @@ export async function deleteChatCorrection({
     addLog.info('Successfully deleted chat correction', { correctionId });
   });
 }
-
-
