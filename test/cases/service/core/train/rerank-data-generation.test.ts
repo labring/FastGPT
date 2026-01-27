@@ -1,12 +1,12 @@
 import { describe, test, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
-  generateAppTrainsetDataCore,
   createManualTrainData,
   updateTrainData,
   deleteTrainData,
   calculateTrainsetStats
 } from '@fastgpt/service/core/train/rerank/data/controller';
+import { rerankTrainDataGenerateProcessor } from '@fastgpt/service/core/train/rerank/data/processor';
 import {
   RerankTrainsetStatusEnum,
   TrainDataSourceEnum
@@ -103,7 +103,7 @@ describe('Rerank Train Data Generation', () => {
     vi.clearAllMocks();
   });
 
-  describe('generateAppTrainsetDataCore', () => {
+  describe('rerankTrainDataGenerateProcessor', () => {
     test('应该成功从应用关联的知识库生成训练数据', async () => {
       // Mock应用配置，包含知识库搜索节点
       (MongoApp.findById as any).mockReturnValue({
@@ -188,10 +188,15 @@ describe('Rerank Train Data Generation', () => {
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
-      await generateAppTrainsetDataCore({
-        appId,
-        trainsetId
-      });
+      await rerankTrainDataGenerateProcessor({
+        data: {
+          appId,
+          trainsetId
+        },
+        id: 'test-job-id',
+        attemptsMade: 0,
+        opts: { attempts: 1 }
+      } as any);
 
       // 验证调用
       expect(MongoApp.findById).toHaveBeenCalledWith(appId);
@@ -214,11 +219,16 @@ describe('Rerank Train Data Generation', () => {
       });
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId: 'non_existent_app',
-          trainsetId
-        })
-      ).rejects.toThrow('App not found');
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId: 'non_existent_app',
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenAppDeleted');
     });
 
     test('训练集不存在时应抛出错误', async () => {
@@ -248,11 +258,16 @@ describe('Rerank Train Data Generation', () => {
       (MongoRerankTrainset.findById as any).mockResolvedValue(null);
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId: 'non_existent_trainset'
-        })
-      ).rejects.toThrow('Trainset not found');
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId: 'non_existent_trainset'
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenNotFound');
     });
 
     test('应用没有关联知识库时应抛出错误', async () => {
@@ -271,11 +286,16 @@ describe('Rerank Train Data Generation', () => {
       });
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId
-        })
-      ).rejects.toThrow('No datasets found for this app');
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenNoDataset');
     });
 
     test('知识库没有数据时应抛出错误', async () => {
@@ -307,11 +327,16 @@ describe('Rerank Train Data Generation', () => {
       (MongoDatasetData.aggregate as any).mockResolvedValue([]);
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId
-        })
-      ).rejects.toThrow('No data available in dataset');
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenDatasetEmpty');
     });
 
     test('外部服务失败时应正确处理错误', async () => {
@@ -359,20 +384,16 @@ describe('Rerank Train Data Generation', () => {
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId
-        })
-      ).rejects.toThrow('DiTing service error');
-
-      // 验证训练集状态被设置为错误
-      expect(MongoRerankTrainset.updateOne).toHaveBeenCalledWith(
-        { _id: trainsetId },
-        expect.objectContaining({
-          status: RerankTrainsetStatusEnum.error,
-          errorMsg: 'DiTing service error'
-        })
-      );
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenDitingNoData');
     });
 
     test('指定sampleSize时应该正确使用', async () => {
@@ -414,17 +435,30 @@ describe('Rerank Train Data Generation', () => {
       );
       (syntheticRerankTrainDatas as any).mockResolvedValue({
         success: true,
-        data: []
+        data: [
+          {
+            query: 'Test query',
+            positive: ['Positive doc'],
+            negatives: ['Negative doc 1', 'Negative doc 2'],
+            sourceId: 'test-source-id',
+            datasetId: datasetId1
+          }
+        ]
       });
 
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([]);
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
-      await generateAppTrainsetDataCore({
-        appId,
-        trainsetId,
-        generateConfig: { sampleSize: 50 }
-      });
+      await rerankTrainDataGenerateProcessor({
+        data: {
+          appId,
+          trainsetId,
+          generateConfig: { sampleSize: 50 }
+        },
+        id: 'test-job-id',
+        attemptsMade: 0,
+        opts: { attempts: 1 }
+      } as any);
 
       // 验证使用了指定的sampleSize
       expect(MongoDatasetData.aggregate).toHaveBeenCalledWith(

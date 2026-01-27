@@ -12,6 +12,11 @@ import {
   RerankTaskCheckpointStageEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import {
+  TrainTaskUnrecoverableError,
+  TrainTaskRetriableError
+} from '@fastgpt/service/core/train/rerank/task/errors';
 import * as fs from 'fs';
 
 // Mock dependencies
@@ -136,7 +141,9 @@ vi.mock('fs', () => {
     // 同时导出同步版本
     writeFile: vi.fn(),
     readFile: vi.fn(),
-    unlink: vi.fn()
+    unlink: vi.fn(),
+    existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn()
   };
 });
 
@@ -938,8 +945,8 @@ describe('Rerank Train Task Processor', () => {
       const { createSFTTask } = await import('@fastgpt/service/core/train/rerank/external');
       (createSFTTask as any).mockRejectedValue(new Error('SFT error'));
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -948,8 +955,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('SFT error');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskRetriableError);
+        expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.finetuneSftBridgeCreateFailed
+        );
+      }
 
       // 验证确实在finetuning阶段重新获取了任务数据
       expect(getRerankTrainTask).toHaveBeenCalledTimes(2); // Initial + after preparing
@@ -983,8 +997,8 @@ describe('Rerank Train Task Processor', () => {
         })
       });
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -993,8 +1007,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('Training data is empty');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+        );
+      }
     });
 
     test('应该正确处理文件清理', async () => {
@@ -1299,8 +1320,8 @@ describe('Rerank Train Task Processor', () => {
         })
       });
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -1309,8 +1330,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('Training data is empty');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+        );
+      }
 
       // 注意：processor 不再直接更新 MongoDB 状态
       // 状态更新由 worker 的 failed 事件处理器统一处理
@@ -1387,8 +1415,8 @@ describe('Rerank Train Task Processor', () => {
         error: 'Training failed due to insufficient data'
       });
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -1397,8 +1425,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('SFT Bridge training task failed');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.finetuneTrainingFailed
+        );
+      }
 
       // 验证阶段已更新到 preparing
       expect(updateCheckpointStage).toHaveBeenCalledWith(
@@ -1532,8 +1567,8 @@ describe('Rerank Train Task Processor', () => {
         error: 'Failed to connect to evaluation service'
       });
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -1542,8 +1577,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('DiTing service failed to generate any evaluation QA pairs');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskRetriableError);
+        expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.evalDitingGenerationFailed
+        );
+      }
 
       // 验证阶段已更新到 registering
       expect(updateCheckpointStage).toHaveBeenCalledWith(
@@ -1560,8 +1602,8 @@ describe('Rerank Train Task Processor', () => {
       // Mock 任务不存在
       (getRerankTrainTask as any).mockResolvedValue(null);
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: 'non_existent_task',
             isRetry: false
@@ -1570,8 +1612,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('Training task not found');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.processorTaskNotFound
+        );
+      }
     });
 
     test('应用更新阶段未找到可更新节点应该抛出 UnrecoverableError', async () => {
@@ -1739,8 +1788,8 @@ describe('Rerank Train Task Processor', () => {
         lean: vi.fn().mockResolvedValue(mockAppWithoutRerank)
       });
 
-      await expect(
-        rerankTrainTaskProcessor({
+      try {
+        await rerankTrainTaskProcessor({
           data: {
             taskId: mockTaskId,
             isRetry: false
@@ -1749,8 +1798,15 @@ describe('Rerank Train Task Processor', () => {
           opts: {
             attempts: 3
           }
-        } as any)
-      ).rejects.toThrow('No Rerank model nodes found');
+        } as any);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.applyNoNodesToUpdate
+        );
+      }
 
       // 注意：processor 不再直接更新 MongoDB 状态
       // 状态更新由 worker 的 failed 事件处理器统一处理
@@ -2180,9 +2236,16 @@ describe('Rerank Train Task Processor', () => {
       // 模拟没有采样数据
       (sampleDataFromDataset as any).mockResolvedValue([]);
 
-      await expect(runGenerateEvalDataset(mockTask)).rejects.toThrow(
-        'No evaluation data available'
-      );
+      try {
+        await runGenerateEvalDataset(mockTask);
+        // Should not reach here
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.evalNoDataAvailable
+        );
+      }
     });
   });
 

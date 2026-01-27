@@ -3,7 +3,10 @@ import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank
 import { createRerankModelConfig } from '../../model/controller';
 import { addLog } from '../../../../../common/system/log';
 import { createEnhancedError } from '../../utils';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError } from '../errors';
 
 /**
@@ -24,9 +27,8 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   if (!checkpointData.finetuning?.tunedModelEndpoint) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      TrainTaskErrorType.MODEL_CONFIG_INVALID,
-      'Tuned model endpoint information not found from finetuning stage',
-      'Please check if finetuning stage completed correctly, or re-run the training task'
+      RerankTrainErrEnum.registerEndpointNotFound,
+      RerankTrainSuggestionEnum.registerEndpointNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -34,9 +36,8 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   if (!task.baseModelConfigId) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      TrainTaskErrorType.MODEL_CONFIG_INVALID,
-      'Base model config ID not found',
-      'Please check training task configuration and ensure base model is correctly selected'
+      RerankTrainErrEnum.registerBaseModelNotFound,
+      RerankTrainSuggestionEnum.registerBaseModelNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -66,9 +67,8 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      TrainTaskErrorType.SERVICE_API_ERROR,
-      `Failed to register tuned model configuration: ${errorMsg}`,
-      'Please check AI Proxy configuration (AIPROXY_API_ENDPOINT and AIPROXY_API_TOKEN) and ensure the service is accessible',
+      RerankTrainErrEnum.registerAiProxyFailed,
+      RerankTrainSuggestionEnum.registerAiProxyFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);

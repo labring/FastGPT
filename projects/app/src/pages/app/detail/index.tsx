@@ -90,7 +90,8 @@ export async function getServerSideProps(context: any) {
         'publish',
         'workflow',
         'dashboard_evaluation',
-        'evaluation'
+        'evaluation',
+        'train'
       ]))
     }
   };

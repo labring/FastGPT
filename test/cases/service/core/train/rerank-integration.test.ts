@@ -220,14 +220,19 @@ describe('Rerank Train Data Integration Tests', () => {
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
       // 执行生成流程
-      const { generateAppTrainsetDataCore } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
+      const { rerankTrainDataGenerateProcessor } = await import(
+        '@fastgpt/service/core/train/rerank/data/processor'
       );
 
-      await generateAppTrainsetDataCore({
-        appId,
-        trainsetId
-      });
+      await rerankTrainDataGenerateProcessor({
+        data: {
+          appId,
+          trainsetId
+        },
+        id: 'test-job-id',
+        attemptsMade: 0,
+        opts: { attempts: 1 }
+      } as any);
 
       // 验证调用序列
       expect(MongoApp.findById).toHaveBeenCalledWith(appId);
@@ -343,15 +348,20 @@ describe('Rerank Train Data Integration Tests', () => {
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
       // 执行强制重新生成
-      const { generateAppTrainsetDataCore } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
+      const { rerankTrainDataGenerateProcessor } = await import(
+        '@fastgpt/service/core/train/rerank/data/processor'
       );
 
-      await generateAppTrainsetDataCore({
-        appId,
-        trainsetId,
-        generateConfig: { forceRegenerate: true }
-      });
+      await rerankTrainDataGenerateProcessor({
+        data: {
+          appId,
+          trainsetId,
+          generateConfig: { forceRegenerate: true }
+        },
+        id: 'test-job-id',
+        attemptsMade: 0,
+        opts: { attempts: 1 }
+      } as any);
 
       // 验证先删除旧数据
       expect(MongoRerankTrainsetData.deleteMany).toHaveBeenCalledWith({
@@ -487,25 +497,21 @@ describe('Rerank Train Data Integration Tests', () => {
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
-      const { generateAppTrainsetDataCore } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
+      const { rerankTrainDataGenerateProcessor } = await import(
+        '@fastgpt/service/core/train/rerank/data/processor'
       );
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId
-        })
-      ).rejects.toThrow('DiTing service temporarily unavailable');
-
-      // 验证错误状态设置
-      expect(MongoRerankTrainset.updateOne).toHaveBeenCalledWith(
-        { _id: trainsetId },
-        expect.objectContaining({
-          status: RerankTrainsetStatusEnum.error,
-          errorMsg: 'DiTing service temporarily unavailable'
-        })
-      );
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenDitingNoData');
     });
 
     test('数据采样失败应该正确处理', async () => {
@@ -533,21 +539,26 @@ describe('Rerank Train Data Integration Tests', () => {
         })
       });
 
-      // Mock空数据
-      (MongoDatasetData.countDocuments as any).mockResolvedValue(0);
+      // Mock空数据 - 使用 aggregate 而不是 countDocuments
+      (MongoDatasetData.aggregate as any).mockResolvedValue([]);
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
-      const { generateAppTrainsetDataCore } = await import(
-        '@fastgpt/service/core/train/rerank/data/controller'
+      const { rerankTrainDataGenerateProcessor } = await import(
+        '@fastgpt/service/core/train/rerank/data/processor'
       );
 
       await expect(
-        generateAppTrainsetDataCore({
-          appId,
-          trainsetId
-        })
-      ).rejects.toThrow('No data available in dataset');
+        rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any)
+      ).rejects.toThrow('trainsetGenDatasetEmpty');
     });
   });
 });

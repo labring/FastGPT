@@ -11,9 +11,11 @@ import {
 } from '../constants';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from './errors';
 import {
-  TrainTaskErrorType,
-  type EnhancedErrorMessage
-} from '@fastgpt/global/core/train/rerank/error';
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
+import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
+import { createEnhancedError } from '../utils';
 
 export function initRerankTrainTaskWorker() {
   const worker = getWorker<RerankTrainTaskJobData>(
@@ -75,12 +77,12 @@ export function initRerankTrainTaskWorker() {
         });
       } else {
         // Unknown error, construct basic structured error
-        errorMsg = {
-          stage: null,
-          type: TrainTaskErrorType.UNKNOWN_ERROR,
-          message: error.message,
-          originalError: error.stack
-        };
+        errorMsg = createEnhancedError(
+          null,
+          RerankTrainErrEnum.unknownError,
+          RerankTrainSuggestionEnum.unknownError,
+          error.stack
+        );
 
         addLog.error('[RerankTrainTask] Task failed with unknown error', {
           jobId: job.id,

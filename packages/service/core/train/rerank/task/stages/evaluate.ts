@@ -18,7 +18,10 @@ import {
   buildModelEndpoint
 } from '../../utils';
 import { createEnhancedError } from '../../utils';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { syntheticRerankEvalData, evaluateRerank } from '../../external';
 import { getDefaultLLMModel, getRerankModel } from '../../../../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -72,9 +75,8 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
   if (!app) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.INTERNAL_ERROR,
-      'Application not found or has been deleted',
-      'Please check if the application still exists'
+      RerankTrainErrEnum.evalAppDeleted,
+      RerankTrainSuggestionEnum.evalAppDeleted
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -83,9 +85,8 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
   if (datasetIds.length === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_DATASET_EMPTY,
-      'No dataset configured in application, cannot generate evaluation data',
-      'Please add dataset configuration to the application and retry'
+      RerankTrainErrEnum.evalNoDatasetConfigured,
+      RerankTrainSuggestionEnum.evalNoDatasetConfigured
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -101,9 +102,8 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
   if (sampledData.length === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_DATASET_EMPTY,
-      'No evaluation data available in dataset',
-      'Please ensure the dataset contains sufficient data content'
+      RerankTrainErrEnum.evalNoDataAvailable,
+      RerankTrainSuggestionEnum.evalNoDataAvailable
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -183,9 +183,8 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
   if (evalDataItems.length === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_FAILED,
-      'DiTing service failed to generate any evaluation QA pairs',
-      'This may be due to data quality issues or DiTing service exception, please check data content or contact system administrator'
+      RerankTrainErrEnum.evalDitingGenerationFailed,
+      RerankTrainSuggestionEnum.evalDitingGenerationFailed
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
@@ -289,9 +288,8 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.DATABASE_ERROR,
-      `Failed to save evaluation dataset: ${errorMsg}`,
-      'This may be a database error. Please check database connection and try again',
+      RerankTrainErrEnum.evalDatabaseSaveFailed,
+      RerankTrainSuggestionEnum.evalDatabaseSaveFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -324,9 +322,8 @@ async function evaluateModel(
   if (evalDataItems.length === 0) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_DATASET_EMPTY,
-      'Evaluation dataset is empty, cannot perform model evaluation',
-      'Please check if evaluation data generation step completed correctly'
+      RerankTrainErrEnum.evalDatasetEmptyBeforeEval,
+      RerankTrainSuggestionEnum.evalDatasetEmptyBeforeEval
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -336,9 +333,9 @@ async function evaluateModel(
   if (!modelConfig) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.MODEL_NOT_FOUND,
-      `Model configuration not found: ${modelConfigId}`,
-      'Please check if model configuration has been deleted or ID is correct'
+      RerankTrainErrEnum.evalModelNotFound,
+      RerankTrainSuggestionEnum.evalModelNotFound,
+      modelConfigId
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -370,12 +367,12 @@ async function evaluateModel(
   });
 
   if (!response.success || !response.data?.runLogs?.detailed_results) {
+    const errorMsg = response.error;
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
-      TrainTaskErrorType.EVAL_FAILED,
-      `${modelTypeName} model evaluation failed: ${response.error || 'Unknown error'}`,
-      'Please check DiTing service status or view detailed logs',
-      response.error
+      RerankTrainErrEnum.evalDitingEvalFailed,
+      RerankTrainSuggestionEnum.evalDitingEvalFailed,
+      errorMsg
     );
     throw new TrainTaskRetriableError(enhancedError);
   }

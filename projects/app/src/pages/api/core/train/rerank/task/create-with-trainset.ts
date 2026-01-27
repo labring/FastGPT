@@ -3,6 +3,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/controller';
+import {
+  validateTrainingEnvironment,
+  validateDatasetSynthesisIndexes
+} from '@fastgpt/service/core/train/rerank/validation';
 import { cleanupTrainModuleOnAppDelete } from '@fastgpt/service/core/app/controller';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
@@ -38,7 +42,13 @@ async function handler(
     per: WritePermissionVal
   });
 
-  // 2. Check if there's a running task
+  // 2. Validate training environment (SFT Bridge and DiTing accessibility)
+  await validateTrainingEnvironment();
+
+  // 3. Validate dataset synthesis indexes
+  await validateDatasetSynthesisIndexes(app);
+
+  // 4. Check if there's a running task
   const runningTask = await MongoRerankTrainTask.findOne({
     appId,
     status: {
@@ -50,7 +60,7 @@ async function handler(
     return Promise.reject(RerankTrainErrEnum.taskAlreadyRunning);
   }
 
-  // 3. Create new trainset (old ones are automatically preserved)
+  // 5. Create new trainset (old ones are automatically preserved)
   addLog.info('Creating new trainset for app', { appId });
 
   const [{ _id: trainsetId }] = await MongoRerankTrainset.create([
@@ -68,7 +78,7 @@ async function handler(
     trainsetId: String(trainsetId)
   });
 
-  // 4. Trigger train data generation
+  // 6. Trigger train data generation
   addLog.info('Triggering train data generation', {
     appId,
     trainsetId: String(trainsetId)
@@ -92,7 +102,7 @@ async function handler(
   // Save jobId to trainset for retry functionality
   await MongoRerankTrainset.updateOne({ _id: trainsetId }, { jobId: dataGenJob.id as string });
 
-  // 5. Create train task with trainsetId
+  // 7. Create train task with trainsetId
   // Note: Trainset may still be generating. The task processor will wait for it to be ready.
   const taskId = await createRerankTrainTask({
     appId,
@@ -102,7 +112,7 @@ async function handler(
     name
   });
 
-  // 6. Add to task queue
+  // 8. Add to task queue
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -112,7 +122,7 @@ async function handler(
     }
   );
 
-  // 7. Update jobId
+  // 9. Update jobId
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
 
   addLog.info('Created train task with trainset', {

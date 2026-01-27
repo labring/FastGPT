@@ -13,7 +13,10 @@ import {
   DEFAULT_SFT_BRIDGE_POLL_INTERVAL
 } from '../../constants';
 import { createEnhancedError } from '../../utils';
-import { TrainTaskErrorType } from '@fastgpt/global/core/train/rerank/error';
+import {
+  RerankTrainErrEnum,
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
 
 /**
@@ -40,9 +43,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   if (!checkpointData.preparing?.trainDatasetFilePath) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.DATA_INVALID,
-      'Training dataset file path not found from preparation stage',
-      'Please check if data preparation stage completed correctly, or re-run the training task'
+      RerankTrainErrEnum.finetuneDataPathNotFound,
+      RerankTrainSuggestionEnum.finetuneDataPathNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -50,9 +52,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   if (!task.baseModelEndpoint.model) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.MODEL_CONFIG_INVALID,
-      'Base model endpoint configuration missing model field',
-      'Please check the Rerank model configuration in the app and ensure model is properly configured'
+      RerankTrainErrEnum.finetuneModelConfigInvalid,
+      RerankTrainSuggestionEnum.finetuneModelConfigInvalid
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -64,9 +65,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.DATA_FILE_NOT_FOUND,
-      `Failed to read training data file: ${errorMsg}`,
-      'Training data file may have been deleted or is inaccessible. Please re-run the training task',
+      RerankTrainErrEnum.finetuneDataFileNotFound,
+      RerankTrainSuggestionEnum.finetuneDataFileNotFound,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -89,9 +89,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.SERVICE_API_ERROR,
-      `Failed to create SFT Bridge training task: ${errorMsg}`,
-      'Please check SFT Bridge configuration (SFT_BRIDGE_API_ENDPOINT and SFT_BRIDGE_API_TOKEN) and ensure the service is accessible',
+      RerankTrainErrEnum.finetuneSftBridgeCreateFailed,
+      RerankTrainSuggestionEnum.finetuneSftBridgeCreateFailed,
       errorMsg
     );
     throw new TrainTaskRetriableError(enhancedError);
@@ -133,8 +132,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       });
       const enhancedError = createEnhancedError(
         RerankTaskCheckpointStageEnum.finetuning,
-        TrainTaskErrorType.CANCELLED,
-        'User cancelled the training task'
+        RerankTrainErrEnum.finetuneCancelled,
+        RerankTrainSuggestionEnum.finetuneCancelled
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
@@ -159,19 +158,18 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       if (!endpoint) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.finetuning,
-          TrainTaskErrorType.MODEL_DEPLOYMENT_FAILED,
-          'SFT Bridge task completed but model endpoint information not returned',
-          'Please check SFT Bridge service configuration, or contact system administrator'
+          RerankTrainErrEnum.finetuneDeploymentFailed,
+          RerankTrainSuggestionEnum.finetuneDeploymentFailed
         );
         throw new TrainTaskRetriableError(enhancedError);
       }
     } else if (statusResponse.status === SFTTaskStatus.failed) {
+      const errorMsg = statusResponse.error;
       const enhancedError = createEnhancedError(
         RerankTaskCheckpointStageEnum.finetuning,
-        TrainTaskErrorType.MODEL_TRAINING_FAILED,
-        `SFT Bridge training task failed: ${statusResponse.error || 'Unknown error'}`,
-        'Please check if training data format is correct, or check SFT Bridge service logs for detailed error information',
-        statusResponse.error
+        RerankTrainErrEnum.finetuneTrainingFailed,
+        RerankTrainSuggestionEnum.finetuneTrainingFailed,
+        errorMsg
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
@@ -190,9 +188,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     });
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.TIMEOUT,
-      `SFT Bridge task polling timeout, waited ${timeoutDuration} (${maxPolls} polls)`,
-      `Training may require more time, please adjust timeout configuration via environment variables SFT_BRIDGE_MAX_POLLS and SFT_BRIDGE_POLL_INTERVAL, or check SFT Bridge service status`
+      RerankTrainErrEnum.finetuneTimeout,
+      RerankTrainSuggestionEnum.finetuneTimeout
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
@@ -200,9 +197,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   if (!endpoint) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      TrainTaskErrorType.MODEL_DEPLOYMENT_FAILED,
-      'SFT Bridge task completed but model endpoint information is unavailable',
-      'Please contact system administrator to check SFT Bridge service configuration'
+      RerankTrainErrEnum.finetuneDeploymentNoEndpoint,
+      RerankTrainSuggestionEnum.finetuneDeploymentNoEndpoint
     );
     throw new TrainTaskRetriableError(enhancedError);
   }

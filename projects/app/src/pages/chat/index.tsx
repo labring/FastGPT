@@ -155,6 +155,7 @@ export async function getServerSideProps(context: any) {
         'dataset',
         'dashboard_evaluation',
         'evaluation',
+        'train',
         'database_client'
       ]))
     }

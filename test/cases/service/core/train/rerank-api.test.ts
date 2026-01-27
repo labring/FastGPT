@@ -214,18 +214,22 @@ describe('Rerank Train Data API', () => {
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
 
       // 调用核心函数
-      await import('@fastgpt/service/core/train/rerank/data/controller').then(
-        ({ generateAppTrainsetDataCore }) => {
-          return generateAppTrainsetDataCore({
-            appId,
-            trainsetId,
-            generateConfig: {
-              sampleSize: 100,
-              forceRegenerate: false
-            }
-          });
-        }
+      const { rerankTrainDataGenerateProcessor } = await import(
+        '@fastgpt/service/core/train/rerank/data/processor'
       );
+      await rerankTrainDataGenerateProcessor({
+        data: {
+          appId,
+          trainsetId,
+          generateConfig: {
+            sampleSize: 100,
+            forceRegenerate: false
+          }
+        },
+        id: 'test-job-id',
+        attemptsMade: 0,
+        opts: { attempts: 1 }
+      } as any);
 
       // 验证前置检查
       expect(MongoApp.findById).toHaveBeenCalled();
@@ -246,16 +250,20 @@ describe('Rerank Train Data API', () => {
 
       // 验证会抛出错误
       try {
-        await import('@fastgpt/service/core/train/rerank/data/controller').then(
-          ({ generateAppTrainsetDataCore }) => {
-            return generateAppTrainsetDataCore({
-              appId: 'non_existent_app',
-              trainsetId
-            });
-          }
+        const { rerankTrainDataGenerateProcessor } = await import(
+          '@fastgpt/service/core/train/rerank/data/processor'
         );
+        await rerankTrainDataGenerateProcessor({
+          data: {
+            appId: 'non_existent_app',
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any);
       } catch (error: any) {
-        expect(error.message).toBe('App not found');
+        expect(error.message).toContain('trainsetGenAppDeleted');
       }
     });
 
@@ -268,16 +276,20 @@ describe('Rerank Train Data API', () => {
       });
 
       try {
-        await import('@fastgpt/service/core/train/rerank/data/controller').then(
-          ({ generateAppTrainsetDataCore }) => {
-            return generateAppTrainsetDataCore({
-              appId,
-              trainsetId: 'non_existent_trainset'
-            });
-          }
+        const { rerankTrainDataGenerateProcessor } = await import(
+          '@fastgpt/service/core/train/rerank/data/processor'
         );
+        await rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId: 'non_existent_trainset'
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any);
       } catch (error: any) {
-        expect(error.message).toBe('Trainset not found');
+        expect(error.message).toContain('trainsetGenNotFound');
       }
     });
 
@@ -293,16 +305,20 @@ describe('Rerank Train Data API', () => {
       });
 
       try {
-        await import('@fastgpt/service/core/train/rerank/data/controller').then(
-          ({ generateAppTrainsetDataCore }) => {
-            return generateAppTrainsetDataCore({
-              appId,
-              trainsetId
-            });
-          }
+        const { rerankTrainDataGenerateProcessor } = await import(
+          '@fastgpt/service/core/train/rerank/data/processor'
         );
+        await rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any);
       } catch (error: any) {
-        expect(error.message).toContain('generating');
+        expect(error.message).toContain('trainsetGenAlreadyGenerating');
       }
 
       // 验证业务逻辑：生成中的训练集被检查
@@ -325,16 +341,20 @@ describe('Rerank Train Data API', () => {
       });
 
       try {
-        await import('@fastgpt/service/core/train/rerank/data/controller').then(
-          ({ generateAppTrainsetDataCore }) => {
-            return generateAppTrainsetDataCore({
-              appId,
-              trainsetId
-            });
-          }
+        const { rerankTrainDataGenerateProcessor } = await import(
+          '@fastgpt/service/core/train/rerank/data/processor'
         );
+        await rerankTrainDataGenerateProcessor({
+          data: {
+            appId,
+            trainsetId
+          },
+          id: 'test-job-id',
+          attemptsMade: 0,
+          opts: { attempts: 1 }
+        } as any);
       } catch (error: any) {
-        expect(error.message).toBe('No datasets found for this app');
+        expect(error.message).toContain('trainsetGenNoDataset');
       }
     });
   });

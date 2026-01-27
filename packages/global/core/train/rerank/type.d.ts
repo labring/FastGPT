@@ -96,7 +96,7 @@ export type RerankTrainsetSchemaType = {
   description?: string;
 
   status: `${RerankTrainsetStatusEnum}`;
-  errorMsg?: string;
+  errorMsg?: EnhancedErrorMessage;
 
   jobId?: string;
 
