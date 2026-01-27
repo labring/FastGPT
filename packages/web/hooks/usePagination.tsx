@@ -337,7 +337,7 @@ export function usePagination<DataT, ResT = {}>(
     }
   );
   useEffect(() => {
-    data.length > 0 && fetchData();
+    data.length > 0 && fetchData(1);
   }, [pageSize]);
 
   useRequest(
