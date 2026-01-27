@@ -17,6 +17,8 @@ export function getRerankTrainDataDir(): string {
 // ===== Data Sampling =====
 /** Default train/evaluation data split ratio (80% for training, 20% for evaluation) */
 export const TRAIN_DATA_SPLIT_RATIO = 0.8;
+/** Default maximum total pairs to sample in train/eval mode (each pair = 2 synthesis indexes) */
+export const DEFAULT_MAX_SAMPLE_PAIRS = 5000;
 
 // ===== DiTing Service Configuration =====
 /** DiTing API default timeout (milliseconds) */
