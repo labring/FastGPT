@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ToolDetailResponseType, ToolDetailExtendedType } from './types';
 import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
+import { useRequest2 } from '../../../../../hooks/useRequest';
 
 export type UseToolDetailProps = {
   toolId?: string;
@@ -15,26 +16,31 @@ export const useToolDetail = ({
   onFetchDetail,
   autoFetch = true
 }: UseToolDetailProps) => {
-  const [toolDetail, setToolDetail] = useState<ToolDetailResponseType | undefined>(undefined);
-  const [loadingDetail, setLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string>('');
 
-  // Fetch tool detail
-  useEffect(() => {
-    const fetchToolDetail = async () => {
-      if (onFetchDetail && toolId && autoFetch) {
-        setLoading(true);
-        try {
-          const detail = await onFetchDetail(toolId);
-          setToolDetail(detail as any);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
+  // 使用 useRequest2 替代手动的 useEffect，避免无限请求问题
+  const {
+    data: toolDetail,
+    loading: loadingDetail,
+    run: fetchToolDetail
+  } = useRequest2(
+    async (id: string) => {
+      if (!onFetchDetail) return undefined;
+      const detail = await onFetchDetail(id);
+      return detail as any as ToolDetailResponseType;
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
 
-    fetchToolDetail();
-  }, [toolId, onFetchDetail, autoFetch]);
+  // 自动获取工具详情
+  useEffect(() => {
+    if (toolId && autoFetch && onFetchDetail) {
+      fetchToolDetail(toolId);
+    }
+  }, [toolId, autoFetch]);
 
   // Calculate tool structure
   const isToolSet = useMemo(() => {
