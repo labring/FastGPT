@@ -35,20 +35,49 @@ const DateTimePicker = ({
   }, [selectedDateTime]);
 
   useEffect(() => {
-    if (showSelected && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      if (popPosition === 'top') {
-        setPosition({
-          top: rect.top - 4,
-          left: rect.left
-        });
-      } else {
-        setPosition({
-          top: rect.bottom + 4,
-          left: rect.left
-        });
+    if (!showSelected) return;
+    const updatePosition = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const popoverRect = popoverRef.current?.getBoundingClientRect();
+      if (!rect || !popoverRect) return;
+
+      const padding = 8;
+      const topBottom = rect.bottom + 4;
+      const topTop = rect.top - 4 - popoverRect.height;
+      const maxTop = window.innerHeight - popoverRect.height - padding;
+      const maxLeft = window.innerWidth - popoverRect.width - padding;
+
+      let top = popPosition === 'top' ? topTop : topBottom;
+      if (
+        popPosition === 'bottom' &&
+        topBottom + popoverRect.height > window.innerHeight - padding &&
+        topTop >= padding
+      ) {
+        top = topTop;
       }
-    }
+      if (
+        popPosition === 'top' &&
+        topTop < padding &&
+        topBottom + popoverRect.height <= window.innerHeight - padding
+      ) {
+        top = topBottom;
+      }
+      top = Math.min(Math.max(top, padding), Math.max(padding, maxTop));
+
+      let left = rect.left;
+      left = Math.min(Math.max(left, padding), Math.max(padding, maxLeft));
+
+      setPosition({ top, left });
+    };
+
+    const raf = requestAnimationFrame(updatePosition);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [showSelected, popPosition]);
 
   // 点击外部关闭
@@ -99,8 +128,7 @@ const DateTimePicker = ({
           <Card
             ref={popoverRef}
             position={'fixed'}
-            top={popPosition === 'top' ? 'auto' : `${position.top}px`}
-            bottom={popPosition === 'top' ? `${window.innerHeight - position.top}px` : 'auto'}
+            top={`${position.top}px`}
             left={`${position.left}px`}
             zIndex={1500}
             css={{
