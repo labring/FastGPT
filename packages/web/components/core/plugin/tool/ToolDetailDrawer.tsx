@@ -199,7 +199,7 @@ const ToolDetailDrawer = ({
 
             <Box mt={4}>
               {activeTab === 'guide' && (
-                <VStack align="stretch" spacing={4}>
+                <VStack align="stretch" spacing={4} flex="1" minH="0">
                   {(readmeContent || parentTool?.userGuide) && (
                     <Box
                       px={4}
@@ -210,7 +210,7 @@ const ToolDetailDrawer = ({
                       bg="myGray.50"
                       fontSize="sm"
                       color="myGray.900"
-                      maxH="400px"
+                      flex="1"
                       overflowY="auto"
                     >
                       <Markdown source={readmeContent || parentTool?.userGuide || ''} />
