@@ -13,12 +13,14 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { addDays } from 'date-fns';
 
 /*
-  check dataset.files data. If there is no match in dataset.collections, delete it
+  check dataset.files data. If there is no match in dataset.collections or dataset.synonym, delete it
   可能异常情况:
   1. 上传了文件，未成功创建集合
+  2. 上传了同义词文件，未成功创建同义词记录
 */
 export async function checkInvalidDatasetFiles(start: Date, end: Date) {
   let deleteFileAmount = 0;
@@ -41,19 +43,28 @@ export async function checkInvalidDatasetFiles(start: Date, end: Date) {
   let index = 0;
   for await (const file of files) {
     try {
-      // 2. find fileId in dataset.collections
-      const hasCollection = await MongoDatasetCollection.countDocuments({
-        teamId: file.metadata.teamId,
-        fileId: file._id
-      });
+      // 2. Check if file exists in dataset.collections or dataset.synonym
+      // 注意: 同义词文件的 metadata.type === 'synonym', 需要在 MongoDatasetSynonym 中查找
+      const isValid =
+        file.metadata?.type === 'synonym'
+          ? // 如果是同义词文件, 检查 MongoDatasetSynonym 表
+            (await MongoDatasetSynonym.countDocuments({
+              teamId: file.metadata.teamId,
+              fileId: file._id
+            })) > 0
+          : // 否则检查 MongoDatasetCollection 表 (普通文件)
+            (await MongoDatasetCollection.countDocuments({
+              teamId: file.metadata.teamId,
+              fileId: file._id
+            })) > 0;
 
       // 3. if not found, delete file
-      if (hasCollection === 0) {
+      if (!isValid) {
         await delFileByFileIdList({
           bucketName: BucketNameEnum.dataset,
           fileIdList: [String(file._id)]
         });
-        console.log('delete file', file._id);
+        console.log('delete file', file._id, 'type:', file.metadata?.type || 'unknown');
         deleteFileAmount++;
       }
       index++;
