@@ -175,6 +175,12 @@ export type DispatchNodeResponseType = {
   rerankWeight?: number;
   reRankInputTokens?: number;
   searchUsingReRank?: boolean;
+  rerankError?: {
+    // 新增：Reranker 错误信息（仅当 reranker 报错时存在，仅assistant场景）
+    errorMessage: Record<string, any>; // 错误详细信息（结构化对象）
+    i18nErrorMessage: string; // 错误信息的 i18n key（用于前端根据语言动态翻译）
+    i18nErrorMessageData: { modelName: string }; // i18n 占位符数据（用于前端渲染 i18n 消息）
+  };
   retrievalTime?: number; // 新增：检索耗时(s)，仅assistant场景
   sqlRetrievalTime?: number; // 新增：数据库检索耗时(s)，仅assistant场景
   rerankTime?: number; // 新增：重排耗时(s)，仅assistant场景

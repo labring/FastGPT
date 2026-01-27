@@ -333,6 +333,26 @@ const KnowledgeRerankNode = ({
     return Number(time.toFixed(2));
   }, [data]);
 
+  // 获取重排错误信息
+  const rerankError = useMemo(() => {
+    return data?.rerankError;
+  }, [data]);
+
+  // 判断是否有错误
+  const hasError = useMemo(() => {
+    return !!rerankError;
+  }, [rerankError]);
+
+  // 获取错误文本
+  const errorText = useMemo(() => {
+    if (!rerankError) return '';
+    const { i18nErrorMessage, i18nErrorMessageData } = rerankError;
+    if (i18nErrorMessage) {
+      return t(i18nErrorMessage, i18nErrorMessageData || {});
+    }
+    return '';
+  }, [rerankError, t]);
+
   // 合并数据：以 rawQuoteList 的顺序为主，遍历它并在 quoteList 中找到对应数据合并
   const mergedList = useMemo(() => {
     if (!rawQuoteList || rawQuoteList.length === 0) return [];
@@ -359,7 +379,7 @@ const KnowledgeRerankNode = ({
   const searchUsingReRank = data?.searchUsingReRank || false;
 
   // 当未使用重排时，隐藏知识重排节点
-  if (!searchUsingReRank) return null;
+  if (!searchUsingReRank && !hasError) return null;
 
   return (
     <Box>
@@ -377,8 +397,17 @@ const KnowledgeRerankNode = ({
             color={'myGray.500'}
             mr={2}
           />
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+          <Box
+            fontSize={'sm'}
+            fontWeight={'medium'}
+            color={'myGray.900'}
+            display={'flex'}
+            alignItems={'center'}
+          >
             {t('chat:knowledge_rerank')}
+            {hasError && (
+              <MyIcon name={'common/error'} w={'16px'} h={'16px'} color={'red.600'} ml={1} />
+            )}
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
@@ -391,72 +420,82 @@ const KnowledgeRerankNode = ({
           <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
             {!isLoading && (
               <>
-                {mergedList.length > 0 ? (
-                  <Flex flexDirection={'column'} gap={3}>
-                    {mergedList.map((item, index) => {
-                      // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
-                      const descriptionList = [];
-
-                      // 从 score 数组中提取分数信息，按固定顺序添加
-                      if (item.score && Array.isArray(item.score)) {
-                        const rrfScore = item.score.find((s) => s.type === 'rrf');
-                        const reRankScore = item.score.find((s) => s.type === 'reRank');
-
-                        if (rrfScore) {
-                          descriptionList.push(
-                            `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
-                          );
-                        }
-                        if (reRankScore) {
-                          descriptionList.push(
-                            `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
-                          );
-                        }
-                      }
-
-                      // 计算召回排名：根据 id 在 rawRetrievalResults 中的位置
-                      let recallRank = '-';
-                      if (rawRetrievalResults && item._id) {
-                        const rankIndex = rawRetrievalResults.findIndex((r) => r.id === item._id);
-                        if (rankIndex !== -1) {
-                          recallRank = `${rankIndex + 1}`;
-                        }
-                      }
-                      descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
-
-                      // 根据 sourceType 获取标题文本
-                      const title =
-                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
-
-                      // 计算 linkText 和 linkUrl
-                      let linkText = '';
-                      let linkUrl = '';
-
-                      if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                        linkText = `${item.sourceName || ''} / #${item.index}`;
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                      } else if (item.sourceType === 'sql') {
-                        linkText = item.sourceName || '';
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                      }
-
-                      return (
-                        <ChunkInfoCard
-                          key={item._id || index}
-                          title={title}
-                          descriptionList={descriptionList}
-                          linkText={linkText}
-                          linkUrl={linkUrl}
-                          q={item.q}
-                          a={item.a}
-                        />
-                      );
-                    })}
-                  </Flex>
-                ) : (
-                  <Box fontSize={'sm'} color={'myGray.600'}>
-                    {t('chat:no_rerank_passed')}
+                {hasError ? (
+                  <Box fontSize={'sm'} color={'red.600'}>
+                    {errorText}
                   </Box>
+                ) : (
+                  <>
+                    {mergedList.length > 0 ? (
+                      <Flex flexDirection={'column'} gap={3}>
+                        {mergedList.map((item, index) => {
+                          // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                          const descriptionList = [];
+
+                          // 从 score 数组中提取分数信息，按固定顺序添加
+                          if (item.score && Array.isArray(item.score)) {
+                            const rrfScore = item.score.find((s) => s.type === 'rrf');
+                            const reRankScore = item.score.find((s) => s.type === 'reRank');
+
+                            if (rrfScore) {
+                              descriptionList.push(
+                                `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                              );
+                            }
+                            if (reRankScore) {
+                              descriptionList.push(
+                                `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                              );
+                            }
+                          }
+
+                          // 计算召回排名：根据 id 在 rawRetrievalResults 中的位置
+                          let recallRank = '-';
+                          if (rawRetrievalResults && item._id) {
+                            const rankIndex = rawRetrievalResults.findIndex(
+                              (r) => r.id === item._id
+                            );
+                            if (rankIndex !== -1) {
+                              recallRank = `${rankIndex + 1}`;
+                            }
+                          }
+                          descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+
+                          // 根据 sourceType 获取标题文本
+                          const title =
+                            SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
+
+                          // 计算 linkText 和 linkUrl
+                          let linkText = '';
+                          let linkUrl = '';
+
+                          if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                            linkText = `${item.sourceName || ''} / #${item.index}`;
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                          } else if (item.sourceType === 'sql') {
+                            linkText = item.sourceName || '';
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                          }
+
+                          return (
+                            <ChunkInfoCard
+                              key={item._id || index}
+                              title={title}
+                              descriptionList={descriptionList}
+                              linkText={linkText}
+                              linkUrl={linkUrl}
+                              q={item.q}
+                              a={item.a}
+                            />
+                          );
+                        })}
+                      </Flex>
+                    ) : (
+                      <Box fontSize={'sm'} color={'myGray.600'}>
+                        {t('chat:no_rerank_passed')}
+                      </Box>
+                    )}
+                  </>
                 )}
               </>
             )}
