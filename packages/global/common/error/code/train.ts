@@ -63,6 +63,7 @@ export enum RerankTrainErrEnum {
   registerEndpointNotFound = 'registerEndpointNotFound',
   registerBaseModelNotFound = 'registerBaseModelNotFound',
   registerAiProxyFailed = 'registerAiProxyFailed',
+  registerChannelNotAvailable = 'registerChannelNotAvailable',
 
   // === 评估阶段错误 (Evaluating Stage) ===
   evalAppDeleted = 'evalAppDeleted',
@@ -170,6 +171,7 @@ export enum RerankTrainSuggestionEnum {
   registerEndpointNotFound = 'registerEndpointNotFound',
   registerBaseModelNotFound = 'registerBaseModelNotFound',
   registerAiProxyFailed = 'registerAiProxyFailed',
+  registerChannelNotAvailable = 'registerChannelNotAvailable',
 
   // === 评估阶段错误 ===
   evalAppDeleted = 'evalAppDeleted',

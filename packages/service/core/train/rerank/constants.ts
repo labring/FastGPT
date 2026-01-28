@@ -61,3 +61,9 @@ export const DEFAULT_WORKER_MAX_STALLED_COUNT = 3;
 // ===== Channel Creation Configuration =====
 /** Channel creation request timeout (milliseconds) */
 export const CHANNEL_CREATE_TIMEOUT = 30000; // 30 seconds
+
+// ===== Channel Availability Polling Configuration =====
+/** Channel availability poll interval (milliseconds) */
+export const CHANNEL_AVAILABILITY_POLL_INTERVAL = 10000; // 10 seconds
+/** Channel availability maximum polling duration (milliseconds) */
+export const CHANNEL_AVAILABILITY_MAX_DURATION = 1800000; // 30 minutes

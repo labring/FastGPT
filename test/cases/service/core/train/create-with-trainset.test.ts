@@ -82,6 +82,12 @@ vi.mock('@fastgpt/service/core/train/rerank/data/controller', async (importOrigi
   };
 });
 
+// Mock validation functions
+vi.mock('@fastgpt/service/core/train/rerank/validation', () => ({
+  validateTrainingEnvironment: vi.fn().mockResolvedValue(undefined),
+  validateDatasetSynthesisIndexes: vi.fn().mockResolvedValue(undefined)
+}));
+
 describe('Create with Trainset API - 核心逻辑测试', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -65,10 +65,17 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
     });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+
+    // Distinguish channel availability timeout from other errors
+    const isChannelTimeout = errorMsg.includes('did not become available');
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      RerankTrainErrEnum.registerAiProxyFailed,
-      RerankTrainSuggestionEnum.registerAiProxyFailed,
+      isChannelTimeout
+        ? RerankTrainErrEnum.registerChannelNotAvailable
+        : RerankTrainErrEnum.registerAiProxyFailed,
+      isChannelTimeout
+        ? RerankTrainSuggestionEnum.registerChannelNotAvailable
+        : RerankTrainSuggestionEnum.registerAiProxyFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
