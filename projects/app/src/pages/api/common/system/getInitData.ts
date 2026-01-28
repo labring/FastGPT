@@ -4,18 +4,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import type {
-  SystemDefaultModelType,
-  SystemModelItemType,
-  PluginDatasetSourceType
-} from '@fastgpt/service/core/ai/type';
+import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type {
   AiproxyMapProviderType,
   I18nStringStrictType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { MongoSystemPluginDataset } from '@fastgpt/service/core/dataset/pluginDataset/schema';
 
-export type PluginDatasetType = PluginDatasetSourceType & {
+export type PluginDatasetType = PluginDatasetSourceConfig & {
   status: number;
 };
 
