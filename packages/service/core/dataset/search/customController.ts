@@ -1081,8 +1081,7 @@ export async function searchDatasetDataForAssistant(
 
     return {
       ...item,
-      score: scores,
-      retrievalRank: retrievalRankMap.get(item.id) // 添加检索排名
+      score: scores
     };
   });
 

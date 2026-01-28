@@ -110,8 +110,7 @@ export async function saveChat({
                   sourceId: result.sourceId,
                   sourceName: result.sourceName,
                   score: result.score,
-                  tokens: result.tokens,
-                  retrievalRank: result.retrievalRank // 新增：检索排名（进入 reranker 前的排名）
+                  tokens: result.tokens
                 }))
               })
             };
