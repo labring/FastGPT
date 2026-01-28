@@ -4,6 +4,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { DatasetSelect } from './DatasetSelect';
 
@@ -72,16 +73,22 @@ export const SfDatasetSelectModal = ({
               <Button variant={'whiteBase'} onClick={onClose}>
                 {t('common:Cancel')}
               </Button>
-              <Button
-                colorScheme="blue"
-                onClick={() => {
-                  // Close modal and return selected datasets
-                  onClose();
-                  onChange(selectedDatasets);
-                }}
+              <MyTooltip
+                label={t('app:files_cascader_select_first')}
+                isDisabled={selectedDatasets.length > 0}
               >
-                {t('common:Confirm')}
-              </Button>
+                <Button
+                  colorScheme="blue"
+                  isDisabled={selectedDatasets.length === 0}
+                  onClick={() => {
+                    // Close modal and return selected datasets
+                    onClose();
+                    onChange(selectedDatasets);
+                  }}
+                >
+                  {t('common:Confirm')}
+                </Button>
+              </MyTooltip>
             </HStack>
           </HStack>
         </ModalFooter>

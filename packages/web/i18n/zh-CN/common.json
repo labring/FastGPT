@@ -1413,5 +1413,6 @@
   "core.dataset.error.noDataTables": "数据库知识库中没有数据表，请先添加数据表",
   "core.dataset.error.noFiles": "文档知识库中没有文件，请先上传文件",
   "dataset.data.deleted": "该数据已被删除",
-  "count_in_bracket": "（{{count}}）"
+  "count_in_bracket": "（{{count}}）",
+  "list_separator": "，"
 }

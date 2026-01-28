@@ -43,8 +43,8 @@ const FaqContentCard = ({ q, a, retrievalType }: FaqContentCardProps) => {
         wordBreak={'break-all'}
       >
         {/* Question */}
-        <Box fontSize={'sm'} fontWeight={500} lineHeight={'20px'} color={'myGray.600'}>
-          <Markdown source={q} isDisabled />
+        <Box fontSize={'sm'} fontWeight={'bold'} lineHeight={'20px'} color={'myGray.600'}>
+          <Markdown source={q} />
         </Box>
 
         {/* Divider */}
@@ -52,7 +52,7 @@ const FaqContentCard = ({ q, a, retrievalType }: FaqContentCardProps) => {
 
         {/* Answer */}
         <Box fontSize={'13px'} lineHeight={'20px'} color={'myGray.500'}>
-          <Markdown source={a} isDisabled />
+          <Markdown source={a} />
         </Box>
       </Box>
     </Box>

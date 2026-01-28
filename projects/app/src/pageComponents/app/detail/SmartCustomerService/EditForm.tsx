@@ -68,7 +68,13 @@ const FormItem: React.FC<{
   tooltip?: string;
 }> = ({ label, children, minWidth = SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM, tooltip }) => (
   <Flex alignItems={'center'} w={'100%'}>
-    <FormLabel fontSize={'12px'} fontWeight={'500'} minW={minWidth}>
+    <FormLabel
+      display={'flex'}
+      alignItems={'center'}
+      fontSize={'12px'}
+      fontWeight={'500'}
+      minW={minWidth}
+    >
       {label}
       {tooltip && <QuestionTip ml={1} label={tooltip} />}
     </FormLabel>
@@ -418,6 +424,8 @@ const EditForm = ({
 
             <Flex alignItems={'start'}>
               <FormLabel
+                display={'flex'}
+                alignItems={'center'}
                 fontSize={'12px'}
                 fontWeight={'500'}
                 minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM}

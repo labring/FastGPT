@@ -28,6 +28,7 @@ const ChunkInfoCard = ({
 }: ChunkInfoCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isHoverOnButton, setIsHoverOnButton] = useState(false);
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
@@ -42,16 +43,31 @@ const ChunkInfoCard = ({
 
   return (
     <Box
-      p={3}
+      pb={3}
       borderRadius={'md'}
       border={'1px solid'}
       borderColor={'borderColor.low'}
       bg={'white'}
     >
       {/* Header */}
-      <Flex alignItems={'center'} justifyContent={'space-between'}>
-        <MyTooltip label={isExpanded ? t('common:Collapse') : t('common:Expand')}>
-          <Flex alignItems={'center'} flex={1} gap={2} cursor={'pointer'} onClick={handleToggle}>
+      <MyTooltip
+        label={isExpanded ? t('common:Collapse') : t('common:Expand')}
+        shouldWrapChildren={false}
+        isDisabled={isHoverOnButton}
+      >
+        <Flex
+          alignItems={'center'}
+          justifyContent={'space-between'}
+          h={'40px'}
+          px={3}
+          cursor={'pointer'}
+          onClick={handleToggle}
+          w={'100%'}
+          _hover={{
+            bg: '#F4F6F8'
+          }}
+        >
+          <Flex alignItems={'center'} flex={1} gap={2}>
             {/* Toggle Button */}
             <Box
               className="toggle-icon"
@@ -98,43 +114,51 @@ const ChunkInfoCard = ({
               </Flex>
             )}
           </Flex>
-        </MyTooltip>
 
-        {/* Link Button */}
-        {linkText && linkUrl && (
-          <MyTooltip label={linkText}>
-            <Link
-              onClick={handleLinkClick}
-              display={'flex'}
-              alignItems={'center'}
-              gap={1}
-              px={2}
-              py={'3px'}
-              borderRadius={'md'}
-              border={'1px solid'}
-              borderColor={'borderColor.low'}
-              fontSize={'xs'}
-              color={'myGray.600'}
+          {/* Link Button */}
+          {linkText && linkUrl && (
+            <Box
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => setIsHoverOnButton(true)}
+              onMouseLeave={() => setIsHoverOnButton(false)}
               flexShrink={0}
-              cursor={'pointer'}
-              maxW={'450px'}
-              _hover={{
-                textDecoration: 'none',
-                bg: 'myGray.05'
-              }}
             >
-              <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-                {linkText}
-              </Box>
-              <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} flexShrink={0} />
-            </Link>
-          </MyTooltip>
-        )}
-      </Flex>
+              <MyTooltip label={linkText}>
+                <Link
+                  onClick={handleLinkClick}
+                  display={'flex'}
+                  alignItems={'center'}
+                  gap={1}
+                  px={2}
+                  py={'3px'}
+                  borderRadius={'md'}
+                  border={'1px solid'}
+                  borderColor={'borderColor.low'}
+                  fontSize={'xs'}
+                  color={'myGray.600'}
+                  flexShrink={0}
+                  cursor={'pointer'}
+                  maxW={'350px'}
+                  _hover={{
+                    textDecoration: 'none',
+                    bg: 'myGray.05'
+                  }}
+                >
+                  <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+                    {linkText}
+                  </Box>
+                  <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} flexShrink={0} />
+                </Link>
+              </MyTooltip>
+            </Box>
+          )}
+        </Flex>
+      </MyTooltip>
 
       {/* Content */}
       {(q || imagePreviewUrl) && (
         <Box
+          px={3}
           mt={2}
           {...(isExpanded
             ? {}

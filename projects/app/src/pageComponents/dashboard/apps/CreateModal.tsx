@@ -195,22 +195,40 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   );
 
   // 统一的底部按钮组件
-  const renderFooterButtons = () => (
-    <ModalFooter gap={4}>
-      <Button variant={'whiteBase'} onClick={onClose}>
-        {t('common:Cancel')}
-      </Button>
-      {(type === AppTypeEnum.assistant || currentCreateType === 'curl') && (
-        <Button
-          variant={'primary'}
-          onClick={handleSubmit((data) => onclickCreate(data))}
-          isLoading={isCreating}
-        >
-          {t('common:Confirm')}
+  const renderFooterButtons = () => {
+    // 智能客服类型的验证逻辑
+    const isSmartCustomerService = type === AppTypeEnum.assistant;
+    const isDatasetsEmpty = isSmartCustomerService && smartCustomerService?.datasets?.length === 0;
+    const isRerankModelEmpty = isSmartCustomerService && !smartCustomerService?.rerankModel;
+
+    // 确定是否禁用按钮和显示的提示信息
+    const isDisabled = isDatasetsEmpty || isRerankModelEmpty;
+    const tooltipLabel = isDatasetsEmpty
+      ? t('app:files_cascader_select_first')
+      : isRerankModelEmpty
+        ? t('app:smart_customer_service_select_rerank_model')
+        : '';
+
+    return (
+      <ModalFooter gap={4}>
+        <Button variant={'whiteBase'} onClick={onClose}>
+          {t('common:Cancel')}
         </Button>
-      )}
-    </ModalFooter>
-  );
+        {(type === AppTypeEnum.assistant || currentCreateType === 'curl') && (
+          <MyTooltip label={tooltipLabel} isDisabled={!isDisabled}>
+            <Button
+              variant={'primary'}
+              onClick={handleSubmit((data) => onclickCreate(data))}
+              isLoading={isCreating}
+              isDisabled={isDisabled}
+            >
+              {t('common:Confirm')}
+            </Button>
+          </MyTooltip>
+        )}
+      </ModalFooter>
+    );
+  };
 
   return (
     <MyModal

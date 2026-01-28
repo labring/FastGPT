@@ -367,16 +367,16 @@ const DataCard = () => {
                       />
                     </Box>
                     <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                      <Markdown source={item.q} isDisabled />
+                      <Markdown source={item.q} />
                     </Box>
                   </Box>
                 ) : (
                   <Box wordBreak={'break-all'} fontSize={'sm'}>
-                    <Markdown source={item.q} isDisabled />
+                    <Markdown source={item.q} />
                     {!!item.a && (
                       <>
                         <MyDivider />
-                        <Markdown source={item.a} isDisabled />
+                        <Markdown source={item.a} />
                       </>
                     )}
                   </Box>
