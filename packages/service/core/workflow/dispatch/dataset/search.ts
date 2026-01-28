@@ -392,7 +392,7 @@ export async function dispatchDatasetSearch(
           // Collect SQL result
           if (singleSqlResult) {
             // Filter out empty answer or sql
-            if (singleSqlResult.answer && singleSqlResult.sql) {
+            if (singleSqlResult.answer) {
               // Collect for billing and response data
               sqlResult.push({
                 ...singleSqlResult,
