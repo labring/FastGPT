@@ -171,3 +171,14 @@ export type CancelRerankTrainTaskResponse = MessageResponse;
 // Delete Training Task
 export type DeleteRerankTrainTaskRequest = TaskIdQuery;
 export type DeleteRerankTrainTaskResponse = MessageResponse;
+
+// Delete All Training Tasks by AppId
+export type DeleteAllRerankTrainTasksByAppRequest = {
+  appId: string;
+};
+export type DeleteAllRerankTrainTasksByAppResponse = {
+  success: true;
+  deletedCount: number;
+  skippedCount: number;
+  errors: Array<{ taskId: string; error: string }>;
+};
