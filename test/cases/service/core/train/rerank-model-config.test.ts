@@ -28,7 +28,8 @@ vi.mock('@fastgpt/global/core/ai/provider', () => ({
 
 vi.mock('@fastgpt/service/core/train/rerank/task/helpers/channel', () => ({
   createTunedModelChannel: vi.fn().mockResolvedValue(undefined),
-  deleteTunedModelChannel: vi.fn().mockResolvedValue(undefined)
+  deleteTunedModelChannel: vi.fn().mockResolvedValue(undefined),
+  waitForChannelAvailable: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
@@ -84,6 +85,60 @@ describe('Rerank Model Config Controller', () => {
       );
 
       expect(updatedReloadSystemModel).toHaveBeenCalled();
+    });
+
+    test('应该在创建后调用waitForChannelAvailable进行轮询验证', async () => {
+      const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { waitForChannelAvailable } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/channel'
+      );
+
+      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_poll' });
+
+      const endpoint = {
+        base_url: 'http://192.168.1.100:8080/v1',
+        api_key: 'test-api-key',
+        model: 'test-model'
+      };
+
+      await createRerankModelConfig({
+        name: 'Poll Test Model',
+        endpoint,
+        isActive: true,
+        charsPointsPrice: 1
+      });
+
+      expect(waitForChannelAvailable).toHaveBeenCalledWith({
+        model: 'test-model',
+        endpoint
+      });
+    });
+
+    test('应该在通道不可用时抛出超时错误', async () => {
+      const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { waitForChannelAvailable } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/channel'
+      );
+
+      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_timeout' });
+      (waitForChannelAvailable as any).mockRejectedValueOnce(
+        new Error(
+          'Channel for model "test-model" did not become available within 30 minutes. Last error: connection refused'
+        )
+      );
+
+      await expect(
+        createRerankModelConfig({
+          name: 'Timeout Model',
+          endpoint: {
+            base_url: 'http://example.com/v1',
+            api_key: 'test-key',
+            model: 'test-model'
+          },
+          isActive: true,
+          charsPointsPrice: 1
+        })
+      ).rejects.toThrow('did not become available');
     });
 
     test('应该处理空的API密钥', async () => {

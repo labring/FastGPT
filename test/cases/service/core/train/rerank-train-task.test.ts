@@ -166,7 +166,7 @@ describe('Rerank Train Task Controller', () => {
           teamId: 'team_123',
           tmbId: 'tmb_123'
         })
-      ).rejects.toThrow('Application not found');
+      ).rejects.toThrow('taskAppNotFound');
     });
 
     test('应用无 rerank 节点时应抛出错误', async () => {

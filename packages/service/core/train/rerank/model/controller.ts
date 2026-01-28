@@ -5,14 +5,18 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import { deleteSFTTask } from '../external';
-import { deleteTunedModelChannel, createTunedModelChannel } from '../task/helpers/channel';
+import {
+  deleteTunedModelChannel,
+  createTunedModelChannel,
+  waitForChannelAvailable
+} from '../task/helpers/channel';
 
 /**
  * Create rerank model configuration (idempotent)
  *
  * Integrates with FastGPT model management system to create model configuration and AI Proxy channel.
  * Architecture: Model config contains metadata only, channel contains access credentials.
- * Order: 1) Create model config first, 2) Create channel second.
+ * Order: 1) Create model config first, 2) Create channel second, 3) Poll until channel is available.
  *
  * @param params - Model configuration parameters
  * @param params.name - Model alias name
@@ -23,7 +27,7 @@ import { deleteTunedModelChannel, createTunedModelChannel } from '../task/helper
  * @param params.isActive - Whether to activate the model
  * @param params.charsPointsPrice - Character points price
  * @returns Model configuration object ID
- * @throws {Error} When model config or channel creation fails
+ * @throws {Error} When model config or channel creation fails, or channel does not become available within timeout
  */
 export async function createRerankModelConfig(params: {
   name: string;
@@ -89,6 +93,10 @@ export async function createRerankModelConfig(params: {
   // Reload system models
   await updatedReloadSystemModel();
   addLog.info('Reloaded system models', { model, objectId });
+
+  // Step 3: Poll until AI Proxy channel is available
+  // New channels may not be immediately accessible after creation
+  await waitForChannelAvailable({ model, endpoint });
 
   return objectId;
 }
