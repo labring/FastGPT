@@ -427,7 +427,7 @@
   "content_index_total": "Content Index ({{total}})",
   "add_index": "Add",
   "no_indexes": "No indexes",
-  "input_knowledge_point": "请输入知识点",
+  "input_knowledge_point": "请输入内容索引",
   "edit_faq": "编辑 FAQ",
   "edit_chunk": "编辑分块",
   "question": "问题",

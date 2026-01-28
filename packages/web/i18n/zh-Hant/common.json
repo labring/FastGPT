@@ -1415,5 +1415,6 @@
   "core.dataset.error.noDataTables": "資料庫知識庫中沒有資料表，請先新增資料表",
   "core.dataset.error.noFiles": "文件知識庫中沒有文件，請先上傳文件",
   "dataset.data.deleted": "該數據已被刪除",
-  "count_in_bracket": "（{{count}}）"
+  "count_in_bracket": "（{{count}}）",
+  "list_separator": "，"
 }

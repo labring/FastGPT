@@ -83,35 +83,6 @@ export const DatasetSelect = ({
     return '';
   };
 
-  // Cache compatible datasets by vector model to avoid repeated filtering
-  const compatibleDatasetsByModel = useMemo(() => {
-    const visibleDatasets = datasets.filter(
-      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
-    );
-
-    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
-    if (!targetModel) {
-      return [];
-    }
-
-    return visibleDatasets.filter(
-      (item: DatasetListItemType) =>
-        item.vectorModel?.model === targetModel || item.type === DatasetTypeEnum.structureDocument
-    );
-  }, [datasets, activeVectorModel]);
-
-  // Check if all compatible datasets are selected
-  const isAllSelected = useMemo(() => {
-    if (compatibleDatasetsByModel.length === 0) {
-      return false;
-    }
-
-    const selectedDatasetIds = new Set(selectedDatasets.map((dataset) => dataset.datasetId));
-    return compatibleDatasetsByModel.every((item: DatasetListItemType) =>
-      selectedDatasetIds.has(item._id)
-    );
-  }, [compatibleDatasetsByModel, selectedDatasets]);
-
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
       if (isDatasetDisabled(item)) {
@@ -211,6 +182,7 @@ export const DatasetSelect = ({
                 parentName: path.parentName
               }))}
               isSxfDesign={true}
+              fontSize={'12px'}
               FirstPathDom={t('common:root_folder')}
               onClick={(e) => setParentId(e)}
             />
@@ -241,8 +213,10 @@ export const DatasetSelect = ({
                   }
                 }}
               >
-                <Box
+                <Flex
                   w={'5'}
+                  align="center"
+                  justify="center"
                   onClick={(e) => e.stopPropagation()} // Prevent parent click when clicking checkbox
                 >
                   {item.type !== DatasetTypeEnum.folder && (
@@ -259,64 +233,28 @@ export const DatasetSelect = ({
                       />
                     </MyTooltip>
                   )}
-                </Box>
+                </Flex>
 
                 {/* Avatar */}
                 <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" ml={3} mr={2.5} />
 
                 {/* Name and type */}
-                <Box flex={1} minW={0}>
+                <Flex flex={1} minW={0} align="center">
                   <Box fontSize="sm" color={'myGray.900'} lineHeight={1}>
                     {item.name}
                   </Box>
-                </Box>
+                </Flex>
 
                 {/* Folder expand arrow */}
                 {item.type === DatasetTypeEnum.folder && (
-                  <Box mr={10}>
+                  <Flex mr={10} align="center">
                     <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
-                  </Box>
+                  </Flex>
                 )}
               </Flex>
             </Box>
           ))}
         </VStack>
-
-        {/* Select all / Deselect all */}
-        {datasets.length > 0 && (
-          <Flex mt={3} px={4} justify="space-between" align="center">
-            <Checkbox
-              isChecked={isAllSelected}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  const compatibleDatasets = compatibleDatasetsByModel.filter((dataset) => {
-                    return !isDatasetSelected(dataset._id);
-                  });
-                  const newSelections = compatibleDatasets.map((item: DatasetListItemType) => ({
-                    datasetId: item._id,
-                    avatar: item.avatar,
-                    name: item.name,
-                    vectorModel: item.vectorModel,
-                    datasetType: item.type,
-                    dataCount: item.dataCount
-                  }));
-                  setSelectedDatasets((prev) => [...prev, ...newSelections]);
-                } else {
-                  const datasetIdsToRemove = compatibleDatasetsByModel.map(
-                    (item: DatasetListItemType) => item._id
-                  );
-                  setSelectedDatasets((prev) =>
-                    prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
-                  );
-                }
-              }}
-              colorScheme="blue"
-              size="sm"
-            >
-              <Box fontSize="sm">{t('common:Select_all')}</Box>
-            </Checkbox>
-          </Flex>
-        )}
       </Flex>
       {/* Right: selected datasets display */}
       <Flex h="100%" py={4} direction="column" overflow="hidden" minH={0}>

@@ -120,16 +120,21 @@ const FolderPath = (props: {
         borderRadius={'sm'}
         maxW={['45vw', '250px']}
         className={'textEllipsis'}
-        {...(isLast && concatPaths.length > 1
+        {...(isSxfDesign
           ? {
-              color: 'myGray.700',
-              ...(isSxfDesign ? {} : { fontWeight: 'bold' })
-            }
-          : {
-              fontWeight: 'medium',
               color: 'myGray.500',
-              ...clickStyles
-            })}
+              ...(!isLast && clickStyles)
+            }
+          : isLast && concatPaths.length > 1
+            ? {
+                color: 'myGray.700',
+                fontWeight: 'bold'
+              }
+            : {
+                fontWeight: 'medium',
+                color: 'myGray.500',
+                ...clickStyles
+              })}
         {...(isLast && !forbidLastClick && clickStyles)}
       >
         {displayName}

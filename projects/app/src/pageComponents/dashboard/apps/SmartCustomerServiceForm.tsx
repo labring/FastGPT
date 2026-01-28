@@ -63,7 +63,7 @@ const SmartCustomerServiceForm = ({ value, onChange }: SmartCustomerServiceFormP
       {/* 知识库选择 */}
       <Box mt={6}>
         <Flex alignItems={'center'} mb={3}>
-          <FormLabel>{t('选择知识库')}</FormLabel>
+          <FormLabel>{t('app:select_knowledge_base')}</FormLabel>
         </Flex>
 
         <MyBox isLoading={isFetching} h="353px">

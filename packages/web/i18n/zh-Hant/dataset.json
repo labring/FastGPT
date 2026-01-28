@@ -426,7 +426,7 @@
   "content_index_total": "內容索引（{{total}}）",
   "add_index": "新增",
   "no_indexes": "暫無索引",
-  "input_knowledge_point": "請輸入知識點",
+  "input_knowledge_point": "請輸入內容索引",
   "edit_faq": "編輯 FAQ",
   "edit_chunk": "編輯分塊",
   "question": "問題",

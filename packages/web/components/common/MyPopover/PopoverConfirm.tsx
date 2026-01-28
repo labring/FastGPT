@@ -79,34 +79,36 @@ const PopoverConfirm = ({
       computePositionOnMount={true}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
-      <PopoverContent p={4}>
-        <PopoverArrow />
+      <Portal>
+        <PopoverContent p={4}>
+          <PopoverArrow />
 
-        <HStack alignItems={'flex-start'} color={'myGray.700'}>
-          <MyIcon name={map.icon as any} w={'1.5rem'} />
-          <Box fontSize={'sm'} whiteSpace={'pre-wrap'}>
-            {content}
-          </Box>
-        </HStack>
-        <HStack mt={2} justifyContent={'flex-end'}>
-          {showCancel && (
-            <Button variant={'whiteBase'} size="sm" onClick={onClose}>
-              {cancelText || t('common:Cancel')}
+          <HStack alignItems={'flex-start'} color={'myGray.700'}>
+            <MyIcon name={map.icon as any} w={'1.5rem'} />
+            <Box fontSize={'sm'} whiteSpace={'pre-wrap'}>
+              {content}
+            </Box>
+          </HStack>
+          <HStack mt={2} justifyContent={'flex-end'}>
+            {showCancel && (
+              <Button variant={'whiteBase'} size="sm" onClick={onClose}>
+                {cancelText || t('common:Cancel')}
+              </Button>
+            )}
+            <Button
+              isLoading={loading}
+              variant={map.variant}
+              size="sm"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await onclickConfirm();
+              }}
+            >
+              {confirmText || t('common:Confirm')}
             </Button>
-          )}
-          <Button
-            isLoading={loading}
-            variant={map.variant}
-            size="sm"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onclickConfirm();
-            }}
-          >
-            {confirmText || t('common:Confirm')}
-          </Button>
-        </HStack>
-      </PopoverContent>
+          </HStack>
+        </PopoverContent>
+      </Portal>
     </Popover>
   );
 };

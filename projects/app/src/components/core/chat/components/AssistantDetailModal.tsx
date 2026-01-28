@@ -120,7 +120,7 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
               borderColor={'borderColor.low'}
               p={'12px 16px'}
             >
-              <Markdown source={rewrittenQuery} isDisabled />
+              <Markdown source={rewrittenQuery} />
             </Box>
           ) : (
             <Box fontSize={'sm'} color={'myGray.600'}>
@@ -191,6 +191,46 @@ const KnowledgeRecallNode = ({
   // 判断是否使用 FaqContentCard：只有当 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq' 时
   const shouldUseFaqCard = data?.retrievalType === 'correction' || data?.retrievalType === 'faq';
 
+  // 统计不同 sourceType 的数量
+  const sourceTypeStats = useMemo(() => {
+    const stats = {
+      sql: 0,
+      chunk: 0,
+      faq: 0
+    };
+
+    mergedList.forEach((item) => {
+      if (item.sourceType === 'sql') {
+        stats.sql += 1;
+      } else if (item.sourceType === 'chunk') {
+        stats.chunk += 1;
+      } else if (item.sourceType === 'faq') {
+        stats.faq += 1;
+      }
+    });
+
+    return stats;
+  }, [mergedList]);
+
+  // 生成统计文本
+  const statsText = useMemo(() => {
+    const parts: string[] = [];
+
+    if (sourceTypeStats.sql > 0) {
+      parts.push(t('chat:recall_stats_sql', { count: sourceTypeStats.sql }));
+    }
+    if (sourceTypeStats.chunk > 0) {
+      parts.push(t('chat:recall_stats_chunk', { count: sourceTypeStats.chunk }));
+    }
+    if (sourceTypeStats.faq > 0) {
+      parts.push(t('chat:recall_stats_faq', { count: sourceTypeStats.faq }));
+    }
+
+    if (parts.length === 0) return '';
+
+    return `${t('chat:recall_stats_prefix')} ${parts.join(t('common:list_separator'))}`;
+  }, [sourceTypeStats, t]);
+
   return (
     <Box>
       <Flex
@@ -222,70 +262,78 @@ const KnowledgeRecallNode = ({
             {!isLoading && (
               <>
                 {mergedList.length > 0 ? (
-                  <Flex flexDirection={'column'} gap={3}>
-                    {mergedList.map((item, index) => {
-                      // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
-                      if (shouldUseFaqCard) {
+                  <>
+                    {/* 统计文本 */}
+                    {statsText && (
+                      <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
+                        {statsText}
+                      </Box>
+                    )}
+                    <Flex flexDirection={'column'} gap={3}>
+                      {mergedList.map((item, index) => {
+                        // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
+                        if (shouldUseFaqCard) {
+                          return (
+                            <Box key={item._id || index}>
+                              <FaqContentCard
+                                q={item.q}
+                                a={item.a || ''}
+                                retrievalType={data?.retrievalType}
+                              />
+                            </Box>
+                          );
+                        }
+
+                        // 构造描述列表 - 只显示全文检索和向量检索
+                        const descriptionList: string[] = [];
+
+                        // 从 score 数组中提取 fullText 和 embedding 分数，按固定顺序显示
+                        if (item.score && Array.isArray(item.score)) {
+                          const fullTextScore = item.score.find((s) => s.type === 'fullText');
+                          const embeddingScore = item.score.find((s) => s.type === 'embedding');
+
+                          if (fullTextScore) {
+                            descriptionList.push(
+                              `${t('chat:fulltext_search')}${fullTextScore.value.toFixed(4)}`
+                            );
+                          }
+                          if (embeddingScore) {
+                            descriptionList.push(
+                              `${t('chat:vector_search')}${embeddingScore.value.toFixed(4)}`
+                            );
+                          }
+                        }
+
+                        // 根据 sourceType 获取标题文本
+                        const title =
+                          SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
+
+                        // 计算 linkText 和 linkUrl
+                        let linkText = '';
+                        let linkUrl = '';
+
+                        if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                          linkText = `${item.sourceName || ''} / #${item.index}`;
+                          linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                        } else if (item.sourceType === 'sql') {
+                          linkText = item.sourceName || '';
+                          linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                        }
+
                         return (
-                          <Box key={item._id || index}>
-                            <FaqContentCard
-                              q={item.q}
-                              a={item.a || ''}
-                              retrievalType={data?.retrievalType}
-                            />
-                          </Box>
+                          <ChunkInfoCard
+                            key={item._id || index}
+                            title={title}
+                            descriptionList={descriptionList}
+                            linkText={linkText}
+                            linkUrl={linkUrl}
+                            q={item.q}
+                            a={item.a}
+                          />
                         );
-                      }
-
-                      // 构造描述列表 - 只显示全文检索和向量检索
-                      const descriptionList: string[] = [];
-
-                      // 从 score 数组中提取 fullText 和 embedding 分数，按固定顺序显示
-                      if (item.score && Array.isArray(item.score)) {
-                        const fullTextScore = item.score.find((s) => s.type === 'fullText');
-                        const embeddingScore = item.score.find((s) => s.type === 'embedding');
-
-                        if (fullTextScore) {
-                          descriptionList.push(
-                            `${t('chat:fulltext_search')}${fullTextScore.value.toFixed(4)}`
-                          );
-                        }
-                        if (embeddingScore) {
-                          descriptionList.push(
-                            `${t('chat:vector_search')}${embeddingScore.value.toFixed(4)}`
-                          );
-                        }
-                      }
-
-                      // 根据 sourceType 获取标题文本
-                      const title =
-                        SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
-
-                      // 计算 linkText 和 linkUrl
-                      let linkText = '';
-                      let linkUrl = '';
-
-                      if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                        linkText = `${item.sourceName || ''} / #${item.index}`;
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                      } else if (item.sourceType === 'sql') {
-                        linkText = item.sourceName || '';
-                        linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                      }
-
-                      return (
-                        <ChunkInfoCard
-                          key={item._id || index}
-                          title={title}
-                          descriptionList={descriptionList}
-                          linkText={linkText}
-                          linkUrl={linkUrl}
-                          q={item.q}
-                          a={item.a}
-                        />
-                      );
-                    })}
-                  </Flex>
+                      })}
+                    </Flex>
+                  </>
                 ) : (
                   <Box fontSize={'sm'} color={'myGray.600'}>
                     {t('chat:no_recall_content')}
@@ -503,6 +551,7 @@ const FinalAnswerNode = ({
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
   // 获取最终回答文本
@@ -512,14 +561,14 @@ const FinalAnswerNode = ({
     // 如果是兜底回复，使用 answerNode 的 textOutput
     if (isFallback) {
       rawValue = data?.textOutput || '';
+    } else if (chatNodeData?.errorText) {
+      // 优先检查 errorText - 如果存在错误，直接返回错误文本（不经过 removeDatasetCiteText 处理）
+      return chatNodeData.errorText;
     } else if (chatNodeData?.historyPreview && Array.isArray(chatNodeData.historyPreview)) {
       // 否则从 chatNode 的 historyPreview 中获取最后一个 AI 对话的 value
       const aiMessages = chatNodeData.historyPreview.filter((msg: any) => msg.obj === 'AI');
       if (aiMessages.length > 0) {
         rawValue = aiMessages[aiMessages.length - 1].value;
-      } else if (chatNodeData?.errorText) {
-        // 如果存在 chatNodeData 但没取到 aiMessage，且存在 errorText，显示 errorText
-        rawValue = chatNodeData.errorText;
       }
     } else {
       // 兜底：使用 answerNode 的 textOutput
@@ -530,18 +579,15 @@ const FinalAnswerNode = ({
     return removeDatasetCiteText(rawValue, false);
   }, [data, isFallback, chatNodeData]);
 
-  // 判断是否为错误状态
+  // 判断是否为错误状态：非兜底回复 && chatNode 有 errorText && 没有 AI 消息
   const isError = useMemo(() => {
-    if (isFallback) return false;
-    if (!chatNodeData) return false;
+    if (isFallback || !chatNodeData) return false;
 
-    // 判断是否有 AI 消息
     const hasAiMessage =
       chatNodeData.historyPreview &&
       Array.isArray(chatNodeData.historyPreview) &&
       chatNodeData.historyPreview.some((msg: any) => msg.obj === 'AI');
 
-    // 存在 errorText 且没有 AI 消息时为错误状态
     return !!chatNodeData.errorText && !hasAiMessage;
   }, [isFallback, chatNodeData]);
 
@@ -601,7 +647,7 @@ const FinalAnswerNode = ({
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
+        <Box ml={2} pl={4} pt={2} pb={0}>
           {finalAnswer && (
             <>
               {/* 兜底回复说明文本 */}
@@ -623,7 +669,7 @@ const FinalAnswerNode = ({
                   p={'12px'}
                 >
                   <Box fontSize={'14px'} lineHeight={'22px'} color={'myGray.600'}>
-                    <Markdown source={finalAnswer} isDisabled />
+                    <Markdown source={finalAnswer} />
                   </Box>
                 </Box>
               )}
@@ -805,7 +851,7 @@ const ChatDetailModal = ({
         {!loading && (
           <>
             {/* 用户问题区域 */}
-            <Box bg={'primary.50'} px={4} py={3} mb={4} borderRadius={'semilg'}>
+            <Box bg={'primary.50'} px={4} py={3} mb={4} borderRadius={6}>
               <Box fontSize={'sm'} lineHeight={'22px'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
                 {userQuestion}
               </Box>

@@ -71,11 +71,17 @@ const KnowledgeSelect = ({
   const { t } = useTranslation();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [hoveredKnowledgeId, setHoveredKnowledgeId] = useState<string | null>(null);
+  const [hoveredSelectedItem, setHoveredSelectedItem] = useState<string | null>(null);
+  const [hoveredSelectedItemForPopover, setHoveredSelectedItemForPopover] = useState<string | null>(
+    null
+  );
   const { isOpen, onOpen, onClose } = useDisclosure();
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedItemHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedItemCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 手动控制悬浮显示
   const handleMouseEnter = useCallback((knowledgeId: string) => {
@@ -125,22 +131,25 @@ const KnowledgeSelect = ({
     }
   }, []);
 
-  // 当悬浮内容本身被鼠标离开时,立即关闭
+  // 当悬浮内容本身被鼠标离开时,延迟200ms关闭
   const handlePopoverMouseLeave = useCallback(() => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    setHoveredKnowledgeId(null);
-    // 悬浮内容关闭后,焦点短暂返回搜索框后立即失焦,防止下拉列表滚动
-    // 但只有在搜索框未聚焦时才执行此逻辑
-    if (inputRef.current && document.activeElement !== inputRef.current) {
-      inputRef.current.focus();
-      // 使用 setTimeout 0 确保焦点设置后立即失焦
-      setTimeout(() => {
-        inputRef.current?.blur();
-      }, 0);
-    }
+    // 设置关闭定时器(延迟200ms)
+    closeTimeoutRef.current = setTimeout(() => {
+      setHoveredKnowledgeId(null);
+      // 悬浮内容关闭后,焦点短暂返回搜索框后立即失焦,防止下拉列表滚动
+      // 但只有在搜索框未聚焦时才执行此逻辑
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+        // 使用 setTimeout 0 确保焦点设置后立即失焦
+        setTimeout(() => {
+          inputRef.current?.blur();
+        }, 0);
+      }
+    }, 200);
   }, []);
 
   // 清理定时器
@@ -152,7 +161,64 @@ const KnowledgeSelect = ({
       if (closeTimeoutRef.current) {
         clearTimeout(closeTimeoutRef.current);
       }
+      if (selectedItemHoverTimeoutRef.current) {
+        clearTimeout(selectedItemHoverTimeoutRef.current);
+      }
+      if (selectedItemCloseTimeoutRef.current) {
+        clearTimeout(selectedItemCloseTimeoutRef.current);
+      }
     };
+  }, []);
+
+  // 手动控制已选中项悬浮显示
+  const handleSelectedItemMouseEnter = useCallback((knowledgeId: string) => {
+    // 清除之前的关闭定时器
+    if (selectedItemCloseTimeoutRef.current) {
+      clearTimeout(selectedItemCloseTimeoutRef.current);
+      selectedItemCloseTimeoutRef.current = null;
+    }
+
+    // 设置打开定时器(延迟100ms)
+    if (selectedItemHoverTimeoutRef.current) {
+      clearTimeout(selectedItemHoverTimeoutRef.current);
+    }
+    selectedItemHoverTimeoutRef.current = setTimeout(() => {
+      setHoveredSelectedItemForPopover(knowledgeId);
+    }, 100);
+  }, []);
+
+  // 手动控制已选中项悬浮隐藏
+  const handleSelectedItemMouseLeave = useCallback(() => {
+    // 清除打开定时器
+    if (selectedItemHoverTimeoutRef.current) {
+      clearTimeout(selectedItemHoverTimeoutRef.current);
+      selectedItemHoverTimeoutRef.current = null;
+    }
+
+    // 设置关闭定时器(延迟200ms)
+    selectedItemCloseTimeoutRef.current = setTimeout(() => {
+      setHoveredSelectedItemForPopover(null);
+    }, 200);
+  }, []);
+
+  // 当已选中项悬浮内容本身被鼠标进入时,取消关闭
+  const handleSelectedItemPopoverMouseEnter = useCallback(() => {
+    if (selectedItemCloseTimeoutRef.current) {
+      clearTimeout(selectedItemCloseTimeoutRef.current);
+      selectedItemCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  // 当已选中项悬浮内容本身被鼠标离开时,延迟200ms关闭
+  const handleSelectedItemPopoverMouseLeave = useCallback(() => {
+    if (selectedItemHoverTimeoutRef.current) {
+      clearTimeout(selectedItemHoverTimeoutRef.current);
+      selectedItemHoverTimeoutRef.current = null;
+    }
+    // 设置关闭定时器(延迟200ms)
+    selectedItemCloseTimeoutRef.current = setTimeout(() => {
+      setHoveredSelectedItemForPopover(null);
+    }, 200);
   }, []);
 
   // 点击外部关闭下拉列表(但排除悬浮内容区域)
@@ -296,6 +362,22 @@ const KnowledgeSelect = ({
     },
     [selectedKnowledgeIds, isFAQ, hasSelectedFAQ]
   );
+
+  // 获取已选中卡片的样式
+  const getSelectedCardStyles = (itemId: string) => {
+    const isHovered = hoveredSelectedItem === itemId;
+    return {
+      border: '1px solid',
+      borderColor: isHovered ? 'primary.600' : 'transparent',
+      borderBottomColor: isHovered ? 'primary.600' : 'myGray.200',
+      shadow: isHovered ? 'sm' : 'none',
+      borderRadius: isHovered ? '8px' : '0',
+      px: 3,
+      py: 4,
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    };
+  };
 
   return (
     <Box
@@ -531,65 +613,111 @@ const KnowledgeSelect = ({
       {/* 已选中的知识项列表 */}
       {correctedQuoteList.length > 0 && (
         <Box flex={1} overflowY="auto" mt={4}>
-          <VStack spacing={2} align="stretch">
+          <VStack spacing={0} align="stretch">
             {correctedQuoteList.map((knowledge) => (
-              <Box
+              <Popover
                 key={knowledge.datasetDataId}
-                px={3}
-                py={4}
-                border="1px solid"
-                borderColor="transparent"
-                borderRadius="md"
-                transition="all 0.2s"
-                _hover={{
-                  borderColor: 'primary.500'
-                }}
+                isOpen={hoveredSelectedItemForPopover === knowledge.datasetDataId}
+                placement="right"
+                closeOnBlur={false}
+                isLazy
+                lazyBehavior="unmount"
+                returnFocusOnClose={false}
+                autoFocus={false}
               >
-                <Flex align={'center'} gap={4}>
-                  <VStack align={'stretch'} spacing={2} flex={1}>
-                    {knowledge.a ? (
-                      <>
-                        <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis'}>
-                          {knowledge.q}
-                        </Text>
-                        <Box h="1px" bg="myGray.200" my="4px" />
-                        <Text
-                          fontSize={'12px'}
-                          color={'myGray.500'}
-                          className={'textEllipsis2'}
-                          mb="8px"
-                        >
-                          {knowledge.a}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis3'}>
-                        {knowledge.q}
-                      </Text>
-                    )}
-                    <Flex align="center" gap={1}>
-                      <MyIcon
-                        name={
-                          getSourceNameIcon({
-                            sourceName: knowledge.sourceName || ''
-                          }) as any
+                <PopoverTrigger>
+                  <Box
+                    {...getSelectedCardStyles(knowledge.datasetDataId)}
+                    onMouseEnter={() => {
+                      setHoveredSelectedItem(knowledge.datasetDataId);
+                      handleSelectedItemMouseEnter(knowledge.datasetDataId);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredSelectedItem(null);
+                      handleSelectedItemMouseLeave();
+                    }}
+                  >
+                    <Flex align={'center'} gap={4}>
+                      <VStack align={'stretch'} spacing={2} flex={1}>
+                        {knowledge.a ? (
+                          <>
+                            <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis'}>
+                              {knowledge.q}
+                            </Text>
+                            <Box h="1px" bg="myGray.200" my="4px" />
+                            <Text
+                              fontSize={'12px'}
+                              color={'myGray.500'}
+                              className={'textEllipsis2'}
+                              mb="8px"
+                            >
+                              {knowledge.a}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text fontSize={'12px'} color={'myGray.500'} className={'textEllipsis3'}>
+                            {knowledge.q}
+                          </Text>
+                        )}
+                        <Flex align="center" gap={1}>
+                          <MyIcon
+                            name={
+                              getSourceNameIcon({
+                                sourceName: knowledge.sourceName || ''
+                              }) as any
+                            }
+                            w="14px"
+                          />
+                          <Text fontSize={'12px'} color="#000">
+                            {knowledge.sourceName}
+                          </Text>
+                        </Flex>
+                      </VStack>
+                      <IconButton
+                        aria-label="delete"
+                        size={'mdSquare'}
+                        variant={'whiteDanger'}
+                        icon={<MyIcon name={'delete'} w={4} />}
+                        opacity={hoveredSelectedItem === knowledge.datasetDataId ? 1 : 0}
+                        visibility={
+                          hoveredSelectedItem === knowledge.datasetDataId ? 'visible' : 'hidden'
                         }
-                        w="14px"
+                        transition="all 0.2s"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveKnowledge(knowledge.datasetDataId);
+                        }}
                       />
-                      <Text fontSize={'12px'} color="#000">
-                        {knowledge.sourceName}
-                      </Text>
                     </Flex>
-                  </VStack>
-                  <IconButton
-                    aria-label="delete"
-                    size={'mdSquare'}
-                    variant={'whiteDanger'}
-                    icon={<MyIcon name={'delete'} w={4} />}
-                    onClick={() => handleRemoveKnowledge(knowledge.datasetDataId)}
-                  />
-                </Flex>
-              </Box>
+                  </Box>
+                </PopoverTrigger>
+                <PopoverContent
+                  border="1px solid"
+                  borderColor="myGray.200"
+                  borderRadius="md"
+                  boxShadow="0px 4px 12px rgba(0, 0, 0, 0.15)"
+                  bg="white"
+                  onMouseEnter={handleSelectedItemPopoverMouseEnter}
+                  onMouseLeave={handleSelectedItemPopoverMouseLeave}
+                >
+                  <PopoverBody p={3} maxH="400px" overflowY="auto">
+                    <VStack align="stretch" spacing={2}>
+                      {knowledge.a ? (
+                        <>
+                          <Box fontSize="xs" sx={popoverMarkdownStyles}>
+                            <Markdown source={knowledge.q} />
+                            <Markdown source={knowledge.a} />
+                          </Box>
+                        </>
+                      ) : (
+                        <Box fontSize="xs" sx={popoverMarkdownStyles}>
+                          <Markdown source={knowledge.q} />
+                        </Box>
+                      )}
+                    </VStack>
+                  </PopoverBody>
+                </PopoverContent>
+              </Popover>
             ))}
           </VStack>
         </Box>
