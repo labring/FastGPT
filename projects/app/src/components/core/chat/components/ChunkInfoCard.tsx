@@ -50,54 +50,55 @@ const ChunkInfoCard = ({
     >
       {/* Header */}
       <Flex alignItems={'center'} justifyContent={'space-between'}>
-        <Flex alignItems={'center'} flex={1} gap={2}>
-          {/* Toggle Button */}
-          <Box
-            cursor={'pointer'}
-            onClick={handleToggle}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            w={'16px'}
-            h={'16px'}
-            flexShrink={0}
-          >
-            <MyIcon
-              name={isExpanded ? 'common/solidChevronDown' : 'common/solidChevronRight'}
+        <MyTooltip label={isExpanded ? t('common:Collapse') : t('common:Expand')}>
+          <Flex alignItems={'center'} flex={1} gap={2} cursor={'pointer'} onClick={handleToggle}>
+            {/* Toggle Button */}
+            <Box
+              className="toggle-icon"
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
               w={'16px'}
               h={'16px'}
+              flexShrink={0}
               color={'myGray.500'}
-            />
-          </Box>
+            >
+              <MyIcon
+                name={isExpanded ? 'common/solidChevronDown' : 'common/solidChevronRight'}
+                w={'16px'}
+                h={'16px'}
+              />
+            </Box>
 
-          {/* Title */}
-          <Box
-            fontSize={'sm'}
-            fontWeight={'500'}
-            lineHeight={'20px'}
-            color={'myGray.900'}
-            flexShrink={0}
-          >
-            {title}
-          </Box>
+            {/* Title */}
+            <Box
+              fontSize={'sm'}
+              fontWeight={'500'}
+              lineHeight={'20px'}
+              color={'myGray.900'}
+              flexShrink={0}
+            >
+              {title}
+            </Box>
 
-          {/* Description List */}
-          {descriptionList.length > 0 && (
-            <Flex alignItems={'center'} gap={4} flexWrap={'wrap'} ml={2}>
-              {descriptionList.map((desc, index) => (
-                <Box
-                  key={index}
-                  fontSize={'xs'}
-                  lineHeight={'16px'}
-                  color={'myGray.500'}
-                  flexShrink={0}
-                >
-                  {desc}
-                </Box>
-              ))}
-            </Flex>
-          )}
-        </Flex>
+            {/* Description List */}
+            {descriptionList.length > 0 && (
+              <Flex alignItems={'center'} gap={4} flexWrap={'wrap'} ml={2}>
+                {descriptionList.map((desc, index) => (
+                  <Box
+                    key={index}
+                    fontSize={'xs'}
+                    lineHeight={'16px'}
+                    color={'myGray.500'}
+                    flexShrink={0}
+                  >
+                    {desc}
+                  </Box>
+                ))}
+              </Flex>
+            )}
+          </Flex>
+        </MyTooltip>
 
         {/* Link Button */}
         {linkText && linkUrl && (
