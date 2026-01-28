@@ -24,7 +24,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteSystemModel,
   getModelConfigJson,
@@ -87,7 +87,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     data: systemModelList = [],
     runAsync: refreshSystemModelList,
     loading: loadingModels
-  } = useRequest2(getSystemModelList, {
+  } = useRequest(getSystemModelList, {
     manual: false
   });
   const refreshModels = useCallback(async () => {
@@ -256,20 +256,20 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     );
   }, [systemModelList]);
 
-  const { runAsync: onTestModel, loading: testingModel } = useRequest2(getTestModel, {
+  const { runAsync: onTestModel, loading: testingModel } = useRequest(getTestModel, {
     manual: true,
     successToast: t('common:Success')
   });
-  const { runAsync: updateModel, loading: updatingModel } = useRequest2(putSystemModel, {
+  const { runAsync: updateModel, loading: updatingModel } = useRequest(putSystemModel, {
     onSuccess: refreshModels
   });
 
-  const { runAsync: deleteModel } = useRequest2(deleteSystemModel, {
+  const { runAsync: deleteModel } = useRequest(deleteSystemModel, {
     onSuccess: refreshModels
   });
 
   const [editModelData, setEditModelData] = useState<SystemModelItemType>();
-  const { runAsync: onEditModel, loading: loadingData } = useRequest2(
+  const { runAsync: onEditModel, loading: loadingData } = useRequest(
     (modelId: string) => getSystemModelDetail(modelId),
     {
       onSuccess: (data: SystemModelItemType) => {
@@ -507,14 +507,14 @@ const JsonConfigModal = ({
   const { t } = useTranslation();
 
   const [data, setData] = useState<string>('');
-  const { loading } = useRequest2(getModelConfigJson, {
+  const { loading } = useRequest(getModelConfigJson, {
     manual: false,
     onSuccess(res) {
       setData(res);
     }
   });
 
-  const { runAsync } = useRequest2(putUpdateWithJson, {
+  const { runAsync } = useRequest(putUpdateWithJson, {
     onSuccess: () => {
       onSuccess();
       onClose();
@@ -583,7 +583,7 @@ const DefaultModelModal = ({
   // Create a copy of defaultModels for local state management
   const [defaultData, setDefaultData] = useState(defaultModels);
 
-  const { runAsync, loading } = useRequest2(putUpdateDefaultModels, {
+  const { runAsync, loading } = useRequest(putUpdateDefaultModels, {
     onSuccess: () => {
       onSuccess();
       onClose();

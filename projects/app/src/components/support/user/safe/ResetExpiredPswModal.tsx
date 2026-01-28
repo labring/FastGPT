@@ -3,7 +3,7 @@ import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakr
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { resetPassword, getCheckPswExpired } from '@/web/support/user/api';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -31,7 +31,7 @@ const ResetPswModal = () => {
     data: passwordExpired = false,
     runAsync,
     loading: isFetching
-  } = useRequest2(
+  } = useRequest(
     async () => {
       if (!userInfo?._id) {
         return false;
@@ -44,7 +44,7 @@ const ResetPswModal = () => {
     }
   );
 
-  const { runAsync: onSubmit, loading: isSubmitting } = useRequest2(resetPassword, {
+  const { runAsync: onSubmit, loading: isSubmitting } = useRequest(resetPassword, {
     onSuccess() {
       runAsync();
     },

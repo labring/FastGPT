@@ -6,7 +6,7 @@ import type { WecomAppType, OutLinkEditType } from '@fastgpt/global/support/outL
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -45,7 +45,7 @@ const WecomEditModal = ({
     runAsync: onclickCreate,
     loading: creating,
     data: createShareId
-  } = useRequest2(
+  } = useRequest(
     (e) =>
       createShareChat({
         ...e,
@@ -68,7 +68,7 @@ const WecomEditModal = ({
     runAsync: onclickUpdate,
     loading: updating,
     data: updatedShareId
-  } = useRequest2((e) => updateShareChat(e), {
+  } = useRequest((e) => updateShareChat(e), {
     errorToast: t('common:update_failed'),
     successToast: t('common:update_success'),
     onSuccess: onEdit

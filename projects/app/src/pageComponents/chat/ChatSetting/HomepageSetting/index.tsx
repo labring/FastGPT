@@ -14,7 +14,7 @@ import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
@@ -112,7 +112,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [selectedTools, setValue]
   );
 
-  const { runAsync: onSubmit, loading: isSaving } = useRequest2(
+  const { runAsync: onSubmit, loading: isSaving } = useRequest(
     async (values: ChatSettingType) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({

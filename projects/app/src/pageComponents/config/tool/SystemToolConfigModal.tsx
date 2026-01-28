@@ -17,7 +17,7 @@ import {
   Td,
   TableContainer
 } from '@chakra-ui/react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -48,7 +48,7 @@ const SystemToolConfigModal = ({
   const { register, reset, handleSubmit, setValue, watch, control } =
     useForm<AdminSystemToolDetailType>();
 
-  const { data: tool, loading } = useRequest2(() => getAdminSystemToolDetail({ toolId }), {
+  const { data: tool, loading } = useRequest(() => getAdminSystemToolDetail({ toolId }), {
     onSuccess(res) {
       reset(res);
     },
@@ -66,7 +66,7 @@ const SystemToolConfigModal = ({
   // 是否显示系统密钥配置
   const showSystemSecretInput = !!inputList && inputList.length > 0;
 
-  const { runAsync: onSubmit, loading: submitting } = useRequest2(
+  const { runAsync: onSubmit, loading: submitting } = useRequest(
     (formData: AdminSystemToolDetailType) =>
       putAdminUpdateTool({
         ...formData,
@@ -87,7 +87,7 @@ const SystemToolConfigModal = ({
     }
   );
 
-  const { runAsync: onDelete, loading: deleteLoading } = useRequest2(
+  const { runAsync: onDelete, loading: deleteLoading } = useRequest(
     () => deletePkgPlugin({ toolId: toolId.split('-')[1] }),
     {
       onSuccess() {

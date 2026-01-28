@@ -1,7 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { getAppFolderPath } from '@/web/core/app/api/app';
@@ -16,7 +16,7 @@ const Header = () => {
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
     {
       manual: false,

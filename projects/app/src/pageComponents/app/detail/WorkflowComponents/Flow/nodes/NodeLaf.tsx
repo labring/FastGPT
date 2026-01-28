@@ -23,7 +23,7 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
@@ -128,7 +128,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     [lafFunctionSelectList, requestUrl?.value]
   );
 
-  const { run: onSyncParams, loading: isSyncing } = useRequest2(
+  const { run: onSyncParams, loading: isSyncing } = useRequest(
     async () => {
       await refetchFunction();
       const lafFunction = lafData?.lafFunctions.find(

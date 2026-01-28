@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
@@ -61,7 +61,7 @@ const Header = ({
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
     {
       manual: false,
@@ -81,7 +81,7 @@ const Header = ({
     [router, lastAppListRouteType]
   );
 
-  const { runAsync: onClickSave, loading } = useRequest2(
+  const { runAsync: onClickSave, loading } = useRequest(
     async ({
       isPublish,
       versionName = formatTime2YMDHMS(new Date()),

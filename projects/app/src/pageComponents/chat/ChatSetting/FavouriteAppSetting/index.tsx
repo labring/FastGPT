@@ -10,7 +10,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +81,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
   const [localFavourites, setLocalFavourites] = useState<ChatFavouriteAppType[]>([]);
 
   // search favourite apps by apps' name and tag
-  const { loading: isSearching, runAsync: getApps } = useRequest2(
+  const { loading: isSearching, runAsync: getApps } = useRequest(
     async () => {
       const apps = await getFavouriteApps({
         name: searchAppNameValue,
@@ -98,7 +98,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
   );
 
   // update app order
-  const { runAsync: orderApp } = useRequest2(
+  const { runAsync: orderApp } = useRequest(
     async (list: ChatFavouriteAppType[]) => {
       await updateFavouriteAppOrder(list.map((item, idx) => ({ id: item._id, order: idx })));
       getApps();
@@ -107,7 +107,7 @@ const FavouriteAppSetting = ({ Header }: Props) => {
   );
 
   // delete app
-  const { runAsync: deleteApp } = useRequest2(
+  const { runAsync: deleteApp } = useRequest(
     async (id: string) => {
       await deleteFavouriteApp({ id });
       getApps();

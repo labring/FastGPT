@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -61,7 +61,7 @@ const SelectFile = React.memo(function SelectFile() {
     goToNext();
   }, [goToNext]);
 
-  const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
+  const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
       {
         await Promise.all(

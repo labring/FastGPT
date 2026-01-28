@@ -1,7 +1,7 @@
 import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
@@ -70,7 +70,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     data = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
-  } = useRequest2(
+  } = useRequest(
     () => {
       const formatType = (() => {
         // chat page show all apps
@@ -112,7 +112,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+  const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
@@ -120,7 +120,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest2(
+  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
     () => {
       if (parentId) return getAppDetailById(parentId);
       return Promise.resolve(null);
@@ -131,7 +131,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { runAsync: onUpdateApp } = useRequest2((id: string, data: AppUpdateParams) =>
+  const { runAsync: onUpdateApp } = useRequest((id: string, data: AppUpdateParams) =>
     putAppById(id, data).then(async (res) => {
       await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
       return res;

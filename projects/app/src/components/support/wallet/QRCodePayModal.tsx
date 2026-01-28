@@ -5,7 +5,7 @@ import { Box, ModalBody, Flex, Button, Text, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   BillPayWayEnum,
   BillStatusEnum,
@@ -79,7 +79,7 @@ const QRCodePayModal = ({
   });
 
   const [selectedPayment, setSelectedPayment] = useState(payment);
-  const { runAsync: handlePaymentChange, loading: isUpdating } = useRequest2(
+  const { runAsync: handlePaymentChange, loading: isUpdating } = useRequest(
     async (newPayment: BillPayWayEnum) => {
       if (newPayment === selectedPayment) {
         return;
@@ -95,7 +95,7 @@ const QRCodePayModal = ({
   );
 
   // Check pay result
-  useRequest2(() => checkBalancePayResult(billId), {
+  useRequest(() => checkBalancePayResult(billId), {
     manual: false,
     pollingInterval: 2000,
     onSuccess: ({ status, description }) => {

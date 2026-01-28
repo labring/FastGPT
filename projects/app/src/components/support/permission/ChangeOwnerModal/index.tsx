@@ -15,7 +15,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
 import React, { useState } from 'react';
@@ -39,7 +39,7 @@ export function ChangeOwnerModal({
     pageSize: 15
   });
 
-  const { data: searchedData } = useRequest2(
+  const { data: searchedData } = useRequest(
     async () => {
       if (!inputValue) return;
       return GetSearchUserGroupOrg(inputValue);
@@ -63,7 +63,7 @@ export function ChangeOwnerModal({
     'permission' | 'teamId'
   > | null>(null);
 
-  const { runAsync, loading } = useRequest2(onChangeOwner, {
+  const { runAsync, loading } = useRequest(onChangeOwner, {
     onSuccess: onClose,
     successToast: t('common:permission.change_owner_success'),
     errorToast: t('common:permission.change_owner_failed')

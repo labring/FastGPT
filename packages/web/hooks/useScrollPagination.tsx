@@ -14,7 +14,6 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from './useRequest';
 import type { PaginationType, PaginationResponseType } from '../../global/openapi/api';
 
 type ItemHeight<T> = (index: number, data: T) => number;
@@ -202,7 +201,7 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
-  } & Parameters<typeof useRequest2>[1]
+  } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -356,7 +355,7 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest2(
+  useRequest(
     async () => {
       if (disabled) return;
       loadData({ init: true });

@@ -13,7 +13,7 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { providerMap, customDomainStatusMap } from '@/web/support/customDomain/const';
@@ -45,7 +45,7 @@ const CustomDomain = () => {
     data: customDomainList,
     refreshAsync: refreshCustomDomainList,
     loading: loadingCustomDomainList
-  } = useRequest2(listCustomDomain, {
+  } = useRequest(listCustomDomain, {
     manual: false
   });
   const {
@@ -60,7 +60,7 @@ const CustomDomain = () => {
   //   onClose: onCloseDomainVerify
   // } = useDisclosure();
 
-  const { runAsync: onDelete, loading: loadingDelete } = useRequest2(deleteCustomDomain, {
+  const { runAsync: onDelete, loading: loadingDelete } = useRequest(deleteCustomDomain, {
     manual: true,
     successToast: t('common:Success'),
     onSuccess: () => refreshCustomDomainList()

@@ -6,11 +6,9 @@ import {
 } from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { customAlphabet } from 'nanoid';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { type SearchTestResponse } from '@/global/core/dataset/api';
@@ -94,7 +92,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     onClose: onCloseSelectMode
   } = useDisclosure();
 
-  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest2(
+  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
     {

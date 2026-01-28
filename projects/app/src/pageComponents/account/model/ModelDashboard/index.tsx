@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { addHours } from 'date-fns';
 import dayjs from 'dayjs';
@@ -84,7 +84,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   // Fetch channel list with "All" option
-  const { data: channelList = [] } = useRequest2(
+  const { data: channelList = [] } = useRequest(
     async () => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
@@ -106,7 +106,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   );
 
   // Get model list filtered by selected channel
-  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
+  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
     manual: false
   });
   const modelList = useMemo(() => {
@@ -193,7 +193,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   };
 
   // Fetch dashboard data with date range and channel filters
-  const { data: dashboardData = [], loading: isLoading } = useRequest2(
+  const { data: dashboardData = [], loading: isLoading } = useRequest(
     async () => {
       const params = {
         channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,

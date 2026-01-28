@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/support/wallet/bill/constants';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getBillDetail } from '@/web/support/wallet/bill/api';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
@@ -23,7 +23,7 @@ type BillDetailModalProps = {
 const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
   const { t } = useTranslation();
 
-  const { data: bill, loading } = useRequest2(() => getBillDetail(billId), {
+  const { data: bill, loading } = useRequest(() => getBillDetail(billId), {
     refreshDeps: [billId],
     manual: false
   });

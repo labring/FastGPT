@@ -11,7 +11,7 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 export type ChatControllerProps = {
@@ -75,7 +75,7 @@ const ChatController = ({
   const {
     runAsync: requestOnToggleFeedbackReadStatus,
     loading: isLoadingOnToggleFeedbackReadStatus
-  } = useRequest2(async () => onToggleFeedbackReadStatus?.(), {
+  } = useRequest(async () => onToggleFeedbackReadStatus?.(), {
     manual: true,
     onSuccess: () => {
       eventBus.emit(EventNameEnum.refreshFeedback);

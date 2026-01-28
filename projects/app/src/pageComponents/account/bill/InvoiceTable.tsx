@@ -22,7 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceTable = () => {
@@ -139,7 +139,7 @@ function InvoiceDetailModal({
 }) {
   const { t } = useTranslation();
 
-  const { runAsync: handleDownloadInvoice } = useRequest2(async (id: string) => {
+  const { runAsync: handleDownloadInvoice } = useRequest(async (id: string) => {
     await downloadFetch({
       url: `/api/proApi/support/wallet/bill/invoice/downloadFile?id=${id}`,
       filename: `${invoice.teamName}.pdf`

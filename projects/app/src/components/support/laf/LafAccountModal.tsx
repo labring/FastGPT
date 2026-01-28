@@ -50,13 +50,15 @@ const LafAccountModal = ({
     });
   }, [reset]);
 
-  const { mutate: authLafPat, isLoading: isPatLoading } = useRequest({
-    mutationFn: async (pat) => {
+  const { runAsync: authLafPat, loading: isPatLoading } = useRequest(
+    async (pat) => {
       const token = await postLafPat2Token(pat);
       setValue('token', token);
     },
-    errorToast: t('common:plugin.Invalid Env')
-  });
+    {
+      errorToast: t('common:plugin.Invalid Env')
+    }
+  );
 
   const { data: appListData = [] } = useQuery(
     ['appList', lafToken],
@@ -80,20 +82,22 @@ const LafAccountModal = ({
     }
   );
 
-  const { mutate: onSubmit, isLoading: isUpdating } = useRequest({
-    mutationFn: async (data: LafAccountType) => {
+  const { runAsync: onSubmit, loading: isUpdating } = useRequest(
+    async (data: LafAccountType) => {
       if (!userInfo?.team.teamId) return;
       return putUpdateTeam({
         lafAccount: data
       });
     },
-    onSuccess() {
-      initUserInfo();
-      onClose();
-    },
-    successToast: t('common:update_success'),
-    errorToast: t('common:update_failed')
-  });
+    {
+      onSuccess() {
+        initUserInfo();
+        onClose();
+      },
+      successToast: t('common:update_success'),
+      errorToast: t('common:update_failed')
+    }
+  );
 
   return (
     <MyModal isOpen iconSrc="support/account/laf" title={t('common:user.Laf Account Setting')}>

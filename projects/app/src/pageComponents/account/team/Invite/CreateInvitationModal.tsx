@@ -18,7 +18,7 @@ import {
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 
@@ -47,7 +47,7 @@ function CreateInvitationModal({
   const expires = watch('expires');
   const usedTimesLimit = watch('usedTimesLimit');
 
-  const { runAsync: createInvitationLink, loading } = useRequest2(postCreateInvitationLink, {
+  const { runAsync: createInvitationLink, loading } = useRequest(postCreateInvitationLink, {
     manual: true,
     errorToast: t('common:create_failed'),
     onSuccess: (data) => {

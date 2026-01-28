@@ -18,7 +18,7 @@ import {
   getMarketplaceTools,
   getToolTags
 } from '@/web/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 import Head from 'next/head';
 
@@ -152,7 +152,7 @@ const ToolkitMarketplace = () => {
     }
   );
 
-  const { data: toolTags = [] } = useRequest2(getToolTags, {
+  const { data: toolTags = [] } = useRequest(getToolTags, {
     manual: false
   });
 

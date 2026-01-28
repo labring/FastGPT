@@ -26,7 +26,7 @@ import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { listCustomDomain } from '@/web/support/customDomain/api';
 
@@ -49,7 +49,7 @@ const Wecom = ({ appId }: { appId: string }) => {
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetchShareChatList
-  } = useRequest2(() => getShareChatList<WecomAppType>({ appId, type: PublishChannelEnum.wecom }), {
+  } = useRequest(() => getShareChatList<WecomAppType>({ appId, type: PublishChannelEnum.wecom }), {
     manual: false
   });
 
@@ -61,7 +61,7 @@ const Wecom = ({ appId }: { appId: string }) => {
 
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
-  const { data: customDomains = [] } = useRequest2(listCustomDomain, {
+  const { data: customDomains = [] } = useRequest(listCustomDomain, {
     manual: false,
     refreshOnWindowFocus: true
   });

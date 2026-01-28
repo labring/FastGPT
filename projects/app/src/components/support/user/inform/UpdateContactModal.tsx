@@ -3,7 +3,7 @@ import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakr
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateContact, updateNotificationAccount } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
@@ -38,7 +38,7 @@ const UpdateContactModal = ({
   const account = watch('contact');
   const verifyCode = watch('verifyCode');
 
-  const { runAsync: onSubmit, loading: isLoading } = useRequest2(
+  const { runAsync: onSubmit, loading: isLoading } = useRequest(
     async (data: FormType) => {
       if (mode === 'contact') {
         await updateContact(data);

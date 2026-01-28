@@ -28,7 +28,7 @@ import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -66,7 +66,7 @@ const EditChannelModal = ({
   });
 
   const providerType = watch('type');
-  const { data: providerList = [] } = useRequest2(
+  const { data: providerList = [] } = useRequest(
     () =>
       getChannelProviders().then((res) => {
         return Object.entries(res)
@@ -122,7 +122,7 @@ const EditChannelModal = ({
     data: systemModelList = [],
     runAsync: refreshSystemModelList,
     loading: loadingModels
-  } = useRequest2(getSystemModelList, {
+  } = useRequest(getSystemModelList, {
     manual: false
   });
   const modelList = useMemo(() => {
@@ -150,7 +150,7 @@ const EditChannelModal = ({
 
   const modelMapping = watch('model_mapping');
 
-  const { runAsync: onSubmit, loading: loadingCreate } = useRequest2(
+  const { runAsync: onSubmit, loading: loadingCreate } = useRequest(
     (data: ChannelInfoType) => {
       if (data.models.length === 0) {
         return Promise.reject(t('account_model:selected_model_empty'));

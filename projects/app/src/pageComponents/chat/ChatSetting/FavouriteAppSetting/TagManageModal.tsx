@@ -13,7 +13,7 @@ import {
   VStack
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -192,7 +192,7 @@ const SaveTagForAppSubPanel = ({
   });
   const searchAppName = watch('name');
   // search favourite apps for list rendering (only favourites, not all apps)
-  const { data: visibleFavourites = [], loading: isSearching } = useRequest2(
+  const { data: visibleFavourites = [], loading: isSearching } = useRequest(
     async () => {
       return await getFavouriteApps({ name: searchAppName });
     },
@@ -204,7 +204,7 @@ const SaveTagForAppSubPanel = ({
   );
 
   // load all favourites for checked state and saving
-  const { data: favouriteApps = [] } = useRequest2(
+  const { data: favouriteApps = [] } = useRequest(
     async () => {
       return await getFavouriteApps({ name: '' });
     },
@@ -253,7 +253,7 @@ const SaveTagForAppSubPanel = ({
   );
 
   // save apps (update tags) via updateFavouriteApps
-  const { loading: isSaving, runAsync: saveApps } = useRequest2(
+  const { loading: isSaving, runAsync: saveApps } = useRequest(
     async () => {
       await updateFavouriteAppTags(
         localAllFavourites.map((item) => ({ id: item._id, tags: item.favouriteTags }))
@@ -388,7 +388,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const [isEditing, setIsEditing] = useState<string[]>([]);
 
   // update tags
-  const { loading: isUpdating, runAsync: updateTags } = useRequest2(
+  const { loading: isUpdating, runAsync: updateTags } = useRequest(
     async (nextTags: ChatFavouriteTagType[]) => {
       await updateChatSetting({ favouriteTags: nextTags });
     },
@@ -431,7 +431,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     setIsEditing((prev) => prev.filter((v) => v !== target.id));
   }, []);
   // delete tag
-  const { loading: isDeleting, runAsync: deleteTag } = useRequest2(
+  const { loading: isDeleting, runAsync: deleteTag } = useRequest(
     async (target: ChatFavouriteTagType) => {
       const next = localTags.filter((c) => c.id !== target.id);
       setLocalTags(next);
@@ -463,7 +463,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
 
   // counts
-  const { data: allFavourites = [] } = useRequest2(
+  const { data: allFavourites = [] } = useRequest(
     async () => {
       return await getFavouriteApps({ name: '' });
     },

@@ -15,7 +15,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -107,7 +107,7 @@ export const useChatTest = ({
   ]);
 
   // init chat data
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });

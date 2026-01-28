@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 type PathItemType = {
   parentId: string;
@@ -79,7 +79,7 @@ export function useDatasetSelect() {
     },
     loading: isFetching,
     runAsync: loadDatasets
-  } = useRequest2(
+  } = useRequest(
     async () => {
       const result = await Promise.all([
         getDatasets({ parentId, searchKey }),

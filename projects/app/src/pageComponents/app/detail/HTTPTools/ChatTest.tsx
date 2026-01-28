@@ -9,7 +9,7 @@ import { cardStyles } from '../constants';
 import { useTranslation } from 'next-i18next';
 import { type HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
 import { postRunHTTPTool } from '@/web/core/app/api/tool';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -50,7 +50,7 @@ const ChatTest = ({
     setOutput('');
   }, [currentTool, reset]);
 
-  const { runAsync: runTool, loading: isRunning } = useRequest2(
+  const { runAsync: runTool, loading: isRunning } = useRequest(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
       return postRunHTTPTool({
