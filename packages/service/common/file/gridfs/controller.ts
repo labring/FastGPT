@@ -155,6 +155,28 @@ export async function getFileById({
   return file || undefined;
 }
 
+export async function updateGridFSFilename({
+  bucketName,
+  fileId,
+  newFilename
+}: {
+  bucketName: `${BucketNameEnum}`;
+  fileId: string;
+  newFilename: string;
+}) {
+  const collection = getGFSCollection(bucketName);
+  const result = await collection.updateOne(
+    { _id: new Types.ObjectId(fileId) },
+    { $set: { filename: newFilename } }
+  );
+
+  if (result.matchedCount === 0) {
+    addLog.warn('File not found when updating filename', { fileId, newFilename });
+  }
+
+  return result;
+}
+
 export async function delFileByFileIdList({
   bucketName,
   fileIdList
