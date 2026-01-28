@@ -684,7 +684,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
                     {selectedDimensions.length > 0 ? (
                       <VStack spacing={0} align="stretch">
                         {selectedDimensions.map((dimension) => {
-                          // 优先显示评测模型，没有评测模型则显示索引模型
+                          // 优先显示评测模型，没有评测模型则显示向量模型
                           const displayModelName =
                             dimension.evaluationModel || dimension.indexModel || '';
                           const modelInfo = getModelInfo(displayModelName);

@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
   const { billId } = await createTrainingUsage({
     teamId,
     tmbId,
-    appName: '切换索引模型',
+    appName: '切换向量模型',
     billSource: UsageSourceEnum.training,
     vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
     agentModel: getLLMModel(dataset.agentModel)?.name,
