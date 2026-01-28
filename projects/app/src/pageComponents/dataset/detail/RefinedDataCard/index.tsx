@@ -36,6 +36,9 @@ import type {
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import EditContentModal from './EditContentModal';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import ExceptionInfoModal from '../RefinedCollectionCard/ExceptionInfoModal';
 
 const RefinedDataCard = () => {
   const router = useRouter();
@@ -63,6 +66,7 @@ const RefinedDataCard = () => {
   const [isCalculatingPage, setIsCalculatingPage] = useState(!!activeId);
   const [hasProcessedActiveId, setHasProcessedActiveId] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showExceptionModal, setShowExceptionModal] = useState(false);
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
@@ -481,7 +485,7 @@ const RefinedDataCard = () => {
             aria-label={''}
             _hover={'none'}
           />
-          <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
+          <Box fontWeight={'bold'} color={'myGray.600'} fontSize={'sm'}>
             {collection?.sourceName || ''}
           </Box>
         </Flex>
@@ -492,11 +496,32 @@ const RefinedDataCard = () => {
           <MyBox flex={1} display={'flex'} flexDirection={'column'} overflow={'hidden'} h={'100%'}>
             {/* Search Bar and Info */}
             <Flex alignItems={'center'} pb={4} flexShrink={0} pr={4}>
-              <Box as={'span'} fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
-                {collection?.trainingType === DatasetCollectionDataProcessModeEnum.template
-                  ? t('dataset:faq_total', { total })
-                  : t('dataset:chunk_total', { total })}
-              </Box>
+              <Flex alignItems={'center'} gap={'8px'}>
+                <Box as={'span'} fontSize={'sm'} fontWeight={'bold'} color={'myGray.900'}>
+                  {collection?.trainingType === DatasetCollectionDataProcessModeEnum.template
+                    ? t('dataset:faq_total', { total })
+                    : t('dataset:chunk_total', { total })}
+                </Box>
+                {!!collection?.errorCount && (
+                  <MyTooltip label={t('common:Click_to_expand')}>
+                    <MyTag
+                      colorSchema={'red'}
+                      type={'fill'}
+                      h={'28px'}
+                      cursor={'pointer'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowExceptionModal(true);
+                      }}
+                    >
+                      <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                        {t('dataset:exception_count', { count: collection.errorCount || 0 })}
+                        <MyIcon name={'common/maximize'} w={'11px'} />
+                      </Flex>
+                    </MyTag>
+                  </MyTooltip>
+                )}
+              </Flex>
               <Box flex={1} mr={1} />
               <MyInput
                 leftIcon={
@@ -557,39 +582,41 @@ const RefinedDataCard = () => {
                         onClick={() => handleCardClick(item._id)}
                       >
                         {/* Header - 序号和字符数 */}
-                        <Flex
-                          alignItems={'center'}
-                          h={'24px'}
-                          mb={2}
-                          cursor={'pointer'}
-                          borderRadius={'sm'}
-                          _hover={{
-                            bg: 'rgba(206, 221, 255, 0.3)'
-                          }}
-                          onClick={(e) => handleToggleFold(item._id, e)}
-                        >
-                          <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                            #{item.chunkIndex ?? '-'}
-                          </Box>
-                          <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                            {item.imageSize ? (
-                              <>{formatFileSize(item.imageSize)}</>
-                            ) : (
-                              <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
-                            )}
-                          </Box>
-                          <Box flex={1} />
-                          {!isFolded && (
-                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500} mr={1}>
-                              {t('dataset:collapse')}
+                        <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
+                          <Flex
+                            alignItems={'center'}
+                            h={'24px'}
+                            mb={2}
+                            cursor={'pointer'}
+                            borderRadius={'sm'}
+                            _hover={{
+                              bg: 'rgba(206, 221, 255, 0.3)'
+                            }}
+                            onClick={(e) => handleToggleFold(item._id, e)}
+                          >
+                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                              #{item.chunkIndex ?? '-'}
                             </Box>
-                          )}
-                          <MyIcon
-                            name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
-                            w={'14px'}
-                            color={'myGray.500'}
-                          />
-                        </Flex>
+                            <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                              {item.imageSize ? (
+                                <>{formatFileSize(item.imageSize)}</>
+                              ) : (
+                                <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
+                              )}
+                            </Box>
+                            <Box flex={1} />
+                            {!isFolded && (
+                              <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500} mr={1}>
+                                {t('dataset:collapse')}
+                              </Box>
+                            )}
+                            <MyIcon
+                              name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
+                              w={'14px'}
+                              color={'myGray.500'}
+                            />
+                          </Flex>
+                        </MyTooltip>
 
                         {/* Data content */}
                         <Box
@@ -615,7 +642,7 @@ const RefinedDataCard = () => {
                                 />
                               </Box>
                               <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                                <Markdown source={item.q} isDisabled />
+                                <Markdown source={item.q} />
                               </Box>
                             </Box>
                           ) : (
@@ -628,16 +655,16 @@ const RefinedDataCard = () => {
                                     lineHeight={'20px'}
                                     color={'myGray.900'}
                                   >
-                                    <Markdown source={item.q} isDisabled />
+                                    <Markdown source={item.q} />
                                   </Box>
                                   <MyDivider my={2} h={'1px'} />
                                   <Box fontSize={'xs'} lineHeight={'20px'} color={'myGray.500'}>
-                                    <Markdown source={item.a} isDisabled />
+                                    <Markdown source={item.a} />
                                   </Box>
                                 </>
                               ) : (
                                 <Box fontSize={'sm'}>
-                                  <Markdown source={item.q} isDisabled />
+                                  <Markdown source={item.q} />
                                 </Box>
                               )}
                             </Box>
@@ -718,7 +745,7 @@ const RefinedDataCard = () => {
             <Flex flexDirection={'column'} h={'100%'}>
               {/* Header */}
               <Flex alignItems={'center'} justifyContent={'space-between'} mb={4} px={4}>
-                <FormLabel fontWeight={'500'} mb={0}>
+                <FormLabel fontWeight={'bold'} mb={0}>
                   {t('dataset:content_index_total', {
                     total: activeDataDetail ? filteredIndexes.length : 0
                   })}
@@ -816,6 +843,19 @@ const RefinedDataCard = () => {
             if (activeCardId === editingDataId) {
               fetchActiveDataDetail(editingDataId);
             }
+          }}
+        />
+      )}
+
+      {/* Exception Info Modal */}
+      {showExceptionModal && collection && (
+        <ExceptionInfoModal
+          datasetId={datasetId}
+          collectionId={collectionId}
+          onClose={() => setShowExceptionModal(false)}
+          onSuccess={() => {
+            reloadCollection();
+            fetchData(1);
           }}
         />
       )}

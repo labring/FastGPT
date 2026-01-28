@@ -107,7 +107,7 @@ const EditContentModal = ({
       <MyBox display={'flex'} flexDir={'column'} h={'100%'} py={4}>
         <Flex flex={'1 0 0'} h={['auto', '0']} flexDir={'column'} px={7}>
           {/* Question/Content Input */}
-          <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
+          <Flex flexDir={'column'} flex={isFAQ ? '1 0 0' : '1 0 0'} h={0}>
             <FormLabel required={isFAQ ? true : undefined} mb={1}>
               {isFAQ ? t('dataset:question') : ''}
             </FormLabel>
@@ -131,7 +131,7 @@ const EditContentModal = ({
 
           {/* Answer Input - Only for FAQ */}
           {isFAQ && (
-            <Flex flexDir={'column'} flex={'1 0 0'} mt={3}>
+            <Flex flexDir={'column'} flex={'4 0 0'} mt={3}>
               <FormLabel required mb={1}>
                 {t('dataset:answer')}
               </FormLabel>
