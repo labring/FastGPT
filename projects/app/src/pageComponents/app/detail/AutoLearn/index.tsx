@@ -14,12 +14,14 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { AppContext } from '../context';
 import {
   getRerankTrainTaskList,
   createRerankTrainTaskWithTrainset,
   retryRerankTrainTask,
-  deleteRerankTrainTask
+  deleteRerankTrainTask,
+  deleteAllRerankTrainTasksByApp
 } from '@/web/core/app/api/train';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
@@ -32,6 +34,13 @@ const AutoLearn = () => {
   const { t } = useTranslation();
   // 从 AppContext 获取 appId
   const appId = useContextSelector(AppContext, (v) => v.appId);
+
+  // 初始化恢复操作的确认弹窗
+  const { openConfirm: openRestoreConfirm, ConfirmModal: RestoreConfirmModal } = useConfirm({
+    type: 'delete',
+    title: t('app:auto_learn.restore_confirm_title'),
+    content: t('app:auto_learn.restore_confirm_content')
+  });
 
   // 排序状态管理
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -194,6 +203,23 @@ const AutoLearn = () => {
     }
   );
 
+  // 使用 useRequest2 处理恢复（删除所有训练任务）
+  const { runAsync: onRestoreAllTasks, loading: isRestoring } = useRequest2(
+    async () => {
+      if (!appId) throw new Error('App ID is required');
+
+      const result = await deleteAllRerankTrainTasksByApp({ appId });
+      return result;
+    },
+    {
+      errorToast: t('app:auto_learn.restore_failed'),
+      successToast: t('app:auto_learn.restore_success'),
+      onSuccess: () => {
+        refreshList();
+      }
+    }
+  );
+
   // 使用 useRequest2 处理下载评测数据
   const { runAsync: onDownloadData } = useRequest2(
     async (taskId: string) => {
@@ -343,6 +369,17 @@ const AutoLearn = () => {
   );
 
   /**
+   * 恢复（删除所有训练任务）处理函数
+   */
+  const handleRestoreAllTasks = useCallback(async () => {
+    try {
+      await onRestoreAllTasks();
+    } catch (error) {
+      console.error('Restore all tasks error:', error);
+    }
+  }, [onRestoreAllTasks]);
+
+  /**
    * 重试处理函数 (从错误弹窗触发)
    */
   const handleRetry = useCallback(() => {
@@ -470,15 +507,36 @@ const AutoLearn = () => {
           </Text>
           <QuestionTip label={t('app:auto_learn.description')} />
         </HStack>
-        <Button
-          variant={'primary'}
-          size={'md'}
-          onClick={handleStartLearn}
-          isLoading={isStartLearning}
-          isDisabled={!appId}
-        >
-          {t('app:auto_learn.start_learning')}
-        </Button>
+        <HStack spacing={2}>
+          <MyTooltip
+            label={
+              hasRunningTasks
+                ? t('app:auto_learn.restore_tooltip_has_running')
+                : total === 0
+                  ? t('app:auto_learn.restore_tooltip_no_records')
+                  : ''
+            }
+          >
+            <Button
+              size={'md'}
+              variant={'whitePrimary'}
+              isLoading={isRestoring}
+              isDisabled={hasRunningTasks || total === 0}
+              onClick={() => openRestoreConfirm(handleRestoreAllTasks)()}
+            >
+              {t('app:auto_learn.restore')}
+            </Button>
+          </MyTooltip>
+          <Button
+            variant={'primary'}
+            size={'md'}
+            onClick={handleStartLearn}
+            isLoading={isStartLearning}
+            isDisabled={!appId}
+          >
+            {t('app:auto_learn.start_learning')}
+          </Button>
+        </HStack>
       </Flex>
 
       {/* 表格区域 */}
@@ -583,29 +641,13 @@ const AutoLearn = () => {
                     </Td>
                     <Td>
                       {task.status === RerankTrainTaskStatusEnum.completed ? (
-                        <HStack spacing={2}>
-                          <Button
-                            size={'sm'}
-                            variant={'whitePrimary'}
-                            onClick={() => handleDownloadData(task._id)}
-                          >
-                            {t('app:auto_learn.download_evaluation_data')}
-                          </Button>
-                          <PopoverConfirm
-                            Trigger={
-                              <Button
-                                size={'sm'}
-                                variant={'whiteDanger'}
-                                isLoading={deletingTaskIds.has(task._id)}
-                              >
-                                {t('common:Delete')}
-                              </Button>
-                            }
-                            type="delete"
-                            content={t('app:auto_learn.confirm_delete_completed_record')}
-                            onConfirm={() => handleDeleteTask(task._id)}
-                          />
-                        </HStack>
+                        <Button
+                          size={'sm'}
+                          variant={'whitePrimary'}
+                          onClick={() => handleDownloadData(task._id)}
+                        >
+                          {t('app:auto_learn.download_evaluation_data')}
+                        </Button>
                       ) : task.status === RerankTrainTaskStatusEnum.failed ? (
                         <HStack spacing={2}>
                           <Button
@@ -647,6 +689,9 @@ const AutoLearn = () => {
         onClose={handleCloseErrorModal}
         onRetry={handleRetry}
       />
+
+      {/* 恢复确认弹窗 */}
+      <RestoreConfirmModal confirmText={t('app:auto_learn.restore')} />
     </Flex>
   );
 };
