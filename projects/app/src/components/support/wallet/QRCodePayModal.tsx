@@ -18,6 +18,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 
 export type QRPayProps = CreateBillResponseType & {
+  billId: string;
   tip?: string;
   discountCouponName?: string;
 };
@@ -226,43 +227,59 @@ const QRCodePayModal = ({
           </Box>
         )}
 
-        <Flex justifyContent="center" gap={3} mt={6}>
-          {isWxConfigured && (
-            <Button
-              flex={1}
-              h={10}
-              onClick={() => handlePaymentChange(BillPayWayEnum.wx)}
-              color={'myGray.900'}
-              leftIcon={<MyIcon name={'common/wechat'} />}
-              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.wx).baseStyle}
-            >
-              {t('common:pay.wx_payment')}
-            </Button>
-          )}
-          {isAlipayConfigured && (
+        {/* WeChat Work payment: only show WeChat Work option, no switching allowed */}
+        {payment === BillPayWayEnum.wecom ? (
+          <Flex justifyContent="center" mt={6}>
             <Button
               flex={1}
               h={10}
               color={'myGray.900'}
-              onClick={() => handlePaymentChange(BillPayWayEnum.alipay)}
-              leftIcon={<MyIcon name={'common/alipay'} />}
-              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.alipay).baseStyle}
+              leftIcon={<MyIcon name={'common/wecom'} />}
+              variant={'solid'}
+              isDisabled
             >
-              {t('common:pay_alipay_payment')}
+              {t('common:support.wallet.bill.payWay.wecom')}
             </Button>
-          )}
-          {isBankConfigured && (
-            <Button
-              flex={1}
-              h={10}
-              color={'myGray.900'}
-              onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
-              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
-            >
-              {t('common:pay_corporate_payment')}
-            </Button>
-          )}
-        </Flex>
+          </Flex>
+        ) : (
+          <Flex justifyContent="center" gap={3} mt={6}>
+            {isWxConfigured && (
+              <Button
+                flex={1}
+                h={10}
+                onClick={() => handlePaymentChange(BillPayWayEnum.wx)}
+                color={'myGray.900'}
+                leftIcon={<MyIcon name={'common/wechat'} />}
+                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.wx).baseStyle}
+              >
+                {t('common:pay.wx_payment')}
+              </Button>
+            )}
+            {isAlipayConfigured && (
+              <Button
+                flex={1}
+                h={10}
+                color={'myGray.900'}
+                onClick={() => handlePaymentChange(BillPayWayEnum.alipay)}
+                leftIcon={<MyIcon name={'common/alipay'} />}
+                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.alipay).baseStyle}
+              >
+                {t('common:pay_alipay_payment')}
+              </Button>
+            )}
+            {isBankConfigured && (
+              <Button
+                flex={1}
+                h={10}
+                color={'myGray.900'}
+                onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
+                sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
+              >
+                {t('common:pay_corporate_payment')}
+              </Button>
+            )}
+          </Flex>
+        )}
 
         {feConfigs.payFormUrl && (
           <Box mt={4} textAlign="center" fontSize="sm">

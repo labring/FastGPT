@@ -40,11 +40,14 @@ const TeamMemberSchema = new Schema({
     type: Date
   },
 
-  // Abandoned
+  /** @deprecated
+   * But some code still use this to judge whether the member is a owner.
+   * TODO: Remove this field and replace it with a more appropriate way to determine ownership.
+   */
   role: {
     type: String
   },
-  // Abandoned
+  /** @deprecated */
   defaultTeam: {
     type: Boolean
   }

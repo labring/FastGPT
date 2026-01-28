@@ -1,22 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, Button, HStack, Input, InputGroup, useDisclosure, VStack } from '@chakra-ui/react';
-import type { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import SelectAppModal from '../../../../SelectAppModal';
+import { Box, HStack, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById } from '@/web/core/app/api';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -29,6 +21,8 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
     }
     return [];
   }, [item.value]);
+
+  // 文件数量限制：节点配置的maxFiles || 团队套餐 || 默认值
   const maxSelectFiles = item.maxFiles || 10;
   const isMaxSelected = values.length >= maxSelectFiles;
 

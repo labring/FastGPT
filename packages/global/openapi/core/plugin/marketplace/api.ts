@@ -57,7 +57,12 @@ export const GetSystemInstalledPluginsResponseSchema = z.object({
   list: z.array(
     z.object({
       id: z.string(),
-      version: z.string()
+      version: z.string(),
+      name: z.any().optional(),
+      description: z.any().optional(),
+      icon: z.string().optional(),
+      author: z.string().optional(),
+      tags: z.array(z.string()).optional()
     })
   )
 });

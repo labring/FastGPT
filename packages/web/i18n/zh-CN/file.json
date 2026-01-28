@@ -35,8 +35,6 @@
   "some_file_count_exceeds_limit": "超出 {{maxCount}} 个文件，已自动截取",
   "some_file_size_exceeds_limit": "部分文件超出 {{maxSize}}，已被过滤",
   "support_file_type": "支持 {{fileType}} 类型文件",
-  "support_max_count": "最多支持 {{maxCount}} 个文件",
-  "support_max_size": "单个文件最大 {{maxSize}}",
   "template_csv_file_select_tip": "仅支持<highlight>严格按照模板</highlight>填写的 {{fileType}} 文件",
   "template_strict_highlight": "严格按照模版",
   "total_files": "共{{selectFiles.length}}个文件",

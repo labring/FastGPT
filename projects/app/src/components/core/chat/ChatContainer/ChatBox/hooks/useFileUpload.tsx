@@ -12,6 +12,7 @@ import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
@@ -31,6 +32,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
   const {
     update: updateFiles,
@@ -52,8 +54,17 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
-  const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
+  // 文件数量限制：配置的maxFiles || 团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles =
+    fileSelectConfig?.maxFiles ||
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
+    feConfigs?.uploadFileMaxAmount ||
+    10;
+  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
+  const maxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
+    1024 *
+    1024;
   const canSelectFileAmount = maxSelectFiles - fileList.length;
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {

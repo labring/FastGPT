@@ -38,6 +38,7 @@ import TimeInput from '@/components/core/app/formRender/TimeInput';
 
 import MySlider from '@/components/Slider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
@@ -76,6 +77,7 @@ const InputTypeConfig = ({
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
   const { feConfigs, llmModelList } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
   const availableModels = useMemoEnhance(() => {
     return llmModelList.map((model) => ({
@@ -120,7 +122,11 @@ const InputTypeConfig = ({
       : undefined;
 
   const maxFiles = watch('maxFiles') ?? 5;
-  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles = Math.min(
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    50
+  );
   const canSelectFile = watch('canSelectFile') ?? true;
   const canSelectImg = watch('canSelectImg');
   const canSelectVideo = watch('canSelectVideo');

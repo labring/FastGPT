@@ -35,8 +35,6 @@
   "some_file_count_exceeds_limit": "已超過 {{maxCount}} 個檔案上限，系統已自動截斷",
   "some_file_size_exceeds_limit": "部分檔案超過 {{maxSize}} 大小限制，已自動過濾",
   "support_file_type": "支援 {{fileType}} 格式的檔案",
-  "support_max_count": "最多可支援 {{maxCount}} 個檔案",
-  "support_max_size": "單一檔案大小上限為 {{maxSize}}",
   "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件",
   "template_strict_highlight": "嚴格按照模版",
   "total_files": "共{{selectFiles.length}}個文件",

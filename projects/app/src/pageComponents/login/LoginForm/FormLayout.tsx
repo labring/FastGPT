@@ -136,6 +136,24 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         return;
       }
 
+      if (item.provider === OAuthEnum.wecom) {
+        const redirectUrl = await POST<string>(
+          '/proApi/support/user/account/login/wecom/getRedirectUrl',
+          {
+            redirectUri,
+            isWecomWorkTerminal,
+            state: state.current
+          }
+        );
+        setLoginStore({
+          provider: item.provider as OAuthEnum,
+          lastRoute: computedLastRoute,
+          state: state.current
+        });
+        router.replace(redirectUrl, '_self');
+        return;
+      }
+
       if (item.redirectUrl) {
         setLoginStore({
           provider: item.provider as OAuthEnum,
@@ -155,7 +173,19 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
     // sso auto login
     if (sso && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) onClickOauth(sso);
-  }, [rootLogin, feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth, oAuthList]);
+    if (feConfigs.oauth?.wecom && isWecomWorkTerminal) {
+      onClickOauth({
+        provider: OAuthEnum.wecom
+      } as any);
+    }
+  }, [
+    rootLogin,
+    feConfigs?.sso?.autoLogin,
+    isWecomWorkTerminal,
+    onClickOauth,
+    oAuthList,
+    feConfigs.oauth?.wecom
+  ]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

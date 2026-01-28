@@ -504,7 +504,7 @@ const RenderList = React.memo(function RenderList({
           _hover={{
             color: 'primary.600'
           }}
-          onClick={() => router.push('/plugin/tool')}
+          onClick={() => router.push('/dashboard/systemTool')}
           gap={1}
           bottom={0}
           right={[3, 6]}

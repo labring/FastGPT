@@ -66,6 +66,9 @@ const SubSchema = new Schema({
   ticketResponseTime: Number,
   customDomain: Number,
 
+  maxUploadFileSize: Number,
+  maxUploadFileCount: Number,
+
   // stand sub and extra points sub. Plan total points
   totalPoints: Number,
   // plan surplus points

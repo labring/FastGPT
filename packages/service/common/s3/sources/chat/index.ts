@@ -58,11 +58,15 @@ export class S3ChatSource extends S3PrivateBucket {
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename, expiredTime } = ChatFileUploadSchema.parse(params);
+    const { appId, chatId, uId, filename, expiredTime, maxFileSize } =
+      ChatFileUploadSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
     return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
-      { expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 24 }
+      {
+        expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 24,
+        maxFileSize
+      }
     );
   }
 

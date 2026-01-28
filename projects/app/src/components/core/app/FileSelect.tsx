@@ -20,6 +20,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
@@ -38,8 +39,14 @@ const FileSelect = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
+
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值（这里是指对话中，最多上传多少文件）
+  const maxSelectFiles = Math.min(
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    50
+  );
 
   const [localValue, setLocalValue] = useState(value);
 

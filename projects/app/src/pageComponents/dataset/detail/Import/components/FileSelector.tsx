@@ -8,6 +8,7 @@ import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 
 export type SelectFileItemType = {
@@ -30,9 +31,16 @@ const FileSelector = ({
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
-  const maxCount = feConfigs?.uploadFileMaxAmount || 1000;
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  const maxCount =
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
+  // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
+  const maxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    1024 *
+    1024;
 
   const { File, onOpen } = useSelectFile({
     fileType,
@@ -220,10 +228,10 @@ const FileSelector = ({
             {t('file:support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
-            {/* max count */}
-            {maxCount && t('file:support_max_count', { maxCount })}
-            {/* max size */}
-            {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
+            {t('common:n_max_upload_file_limit', {
+              count: maxCount,
+              size: formatFileSize(maxSize)
+            })}
           </Box>
 
           <File

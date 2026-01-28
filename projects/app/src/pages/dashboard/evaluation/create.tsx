@@ -249,9 +249,6 @@ const EvaluationCreating = () => {
                   <FileSelector
                     w={'full'}
                     maxCount={1}
-                    maxSize={t('dashboard_evaluation:evaluation_file_max_size', {
-                      count: feConfigs?.evalFileMaxLines || 1000
-                    })}
                     fileType=".csv"
                     selectFiles={evaluationFiles}
                     setSelectFiles={(e) => {
