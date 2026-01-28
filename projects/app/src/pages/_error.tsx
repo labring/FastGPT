@@ -39,7 +39,7 @@ function Error() {
     if (embeddingModelList.length === 0) {
       modelError = true;
       toast({
-        title: '未配置索引模型',
+        title: '未配置向量模型',
         status: 'error'
       });
     }

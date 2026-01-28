@@ -33,7 +33,7 @@
   "model.default_system_chat_prompt": "默认提示词",
   "model.default_system_chat_prompt_tip": "模型对话时，都会携带该默认提示词",
   "model.default_token": "默认分块长度",
-  "model.default_token_tip": "索引模型默认文本分块的长度，必须小于最大上文",
+  "model.default_token_tip": "向量模型默认文本分块的长度，必须小于最大上文",
   "model.delete_model_confirm": "确认删除该模型？",
   "model.edit_model": "模型参数编辑",
   "model.function_call": "支持函数调用",

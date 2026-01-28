@@ -445,6 +445,8 @@
   "check_link_format": "请检查链接格式是否正确",
   "upload_other_files": "请上传其他文件",
   "exception_info": "异常信息",
+  "exception_state": "Exception",
+  "exception_count": "{{count}} errors",
   "close": "关闭",
   "retry": "重试",
   "build_database_by_import": "通过导入文件、直连数据库形式构建数据库",
