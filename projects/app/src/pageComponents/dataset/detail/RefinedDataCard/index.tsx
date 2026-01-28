@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { Box, Card, Flex, IconButton, Button, VStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { TabEnum } from '../NavBar';
 import { useRouter } from 'next/router';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -154,16 +153,24 @@ const RefinedDataCard = () => {
   // Handle active card change
   const handleCardClick = useMemoizedFn((dataId: string) => {
     if (activeCardId === dataId) return;
+
     setActiveCardId(dataId);
     setIsAddingNewIndex(false);
     setNewIndexText('');
     fetchActiveDataDetail(dataId);
     // Mark that user has manually selected a card, so activeId won't override
     setHasProcessedActiveId(true);
+
+    // Auto-expand the newly activated card
+    setFoldedCards((prev) => ({
+      ...prev,
+      [dataId]: false
+    }));
   });
 
   // Handle card fold/unfold
   const handleToggleFold = useMemoizedFn((dataId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event from bubbling to parent card
     setFoldedCards((prev) => ({
       ...prev,
       [dataId]: prev[dataId] === undefined ? false : !prev[dataId]
@@ -540,6 +547,7 @@ const RefinedDataCard = () => {
                         bg={activeCardId === item._id ? 'primary.50' : 'transparent'}
                         borderColor={activeCardId === item._id ? 'blue.600' : 'inherit'}
                         boxShadow={activeCardId === item._id ? 'lg' : 'none'}
+                        cursor={'pointer'}
                         _hover={{
                           bg: 'primary.50',
                           borderColor: 'blue.600',
@@ -549,38 +557,39 @@ const RefinedDataCard = () => {
                         onClick={() => handleCardClick(item._id)}
                       >
                         {/* Header - 序号和字符数 */}
-                        <MyTooltip
-                          label={isFolded ? t('dataset:expand_all') : t('dataset:collapse')}
+                        <Flex
+                          alignItems={'center'}
+                          h={'24px'}
+                          mb={2}
+                          cursor={'pointer'}
+                          borderRadius={'sm'}
+                          _hover={{
+                            bg: 'rgba(206, 221, 255, 0.3)'
+                          }}
+                          onClick={(e) => handleToggleFold(item._id, e)}
                         >
-                          <Flex
-                            alignItems={'center'}
-                            h={'24px'}
-                            mb={2}
-                            cursor={'pointer'}
-                            borderRadius={'sm'}
-                            _hover={{
-                              bg: 'rgba(206, 221, 255, 0.3)'
-                            }}
-                            onClick={(e) => handleToggleFold(item._id, e)}
-                          >
-                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                              #{item.chunkIndex ?? '-'}
+                          <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                            #{item.chunkIndex ?? '-'}
+                          </Box>
+                          <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                            {item.imageSize ? (
+                              <>{formatFileSize(item.imageSize)}</>
+                            ) : (
+                              <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
+                            )}
+                          </Box>
+                          <Box flex={1} />
+                          {!isFolded && (
+                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500} mr={1}>
+                              {t('dataset:collapse')}
                             </Box>
-                            <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                              {item.imageSize ? (
-                                <>{formatFileSize(item.imageSize)}</>
-                              ) : (
-                                <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
-                              )}
-                            </Box>
-                            <Box flex={1} />
-                            <MyIcon
-                              name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
-                              w={'14px'}
-                              color={'myGray.500'}
-                            />
-                          </Flex>
-                        </MyTooltip>
+                          )}
+                          <MyIcon
+                            name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
+                            w={'14px'}
+                            color={'myGray.500'}
+                          />
+                        </Flex>
 
                         {/* Data content */}
                         <Box
