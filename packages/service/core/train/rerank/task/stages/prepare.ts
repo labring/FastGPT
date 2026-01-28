@@ -65,32 +65,11 @@ async function waitForTrainsetReady(
       return;
     }
 
-    // If error, check error type
+    // If error, fail the training task immediately
     if (trainset.status === RerankTrainsetStatusEnum.error) {
       const enhancedError = trainset.errorMsg as EnhancedErrorMessage;
 
-      // Check if this is a retriable trainset generation error
-      // Retriable errors: DiTing failures and database errors
-      const retriableErrorTypes = [
-        RerankTrainErrEnum.trainsetGenDitingFailed,
-        RerankTrainErrEnum.trainsetGenDitingNoData,
-        RerankTrainErrEnum.trainsetGenDatabaseError
-      ];
-
-      if (retriableErrorTypes.includes(enhancedError.type as RerankTrainErrEnum)) {
-        addLog.info('Trainset generation failed with retriable error, continuing to poll', {
-          trainsetId,
-          errorType: enhancedError.type,
-          attempts
-        });
-        // Continue polling - trainset generation will be retried by its worker
-        await new Promise((resolve) => setTimeout(resolve, interval));
-        attempts++;
-        continue;
-      }
-
-      // Unrecoverable trainset error - fail the training task
-      addLog.error('Trainset generation failed with unrecoverable error', {
+      addLog.error('Trainset generation failed', {
         trainsetId,
         errorType: enhancedError.type,
         errorMessage: enhancedError.message

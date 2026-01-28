@@ -6,6 +6,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { MAX_SEARCH_RUN_TIMES } from '../../constants';
+import { addLog } from '../../../../../common/system/log';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 /**
  * Perform dataset search and retrieve search results
@@ -29,6 +31,14 @@ export async function performDatasetSearch(
   const datasets = datasetIds.map((id) => ({ datasetId: id }));
 
   const searchParams = extractDatasetSearchParamsFromApp(app);
+
+  addLog.debug('performDatasetSearch - Starting dataset search', {
+    taskId: task._id,
+    appId: task.appId,
+    query,
+    searchParams,
+    datasetCount: datasets.length
+  });
 
   const searchResponse = await dispatchDatasetSearch({
     mode: 'test',
@@ -87,9 +97,37 @@ export async function performDatasetSearch(
     }
   });
 
-  const retrievalResults = searchResponse.data?.quoteQA || [];
+  // Prefer retrievalResults (top 20 results from retrieval stage, used for Assistant scenarios)
+  // Fall back to quoteQA (final top 10 results after filtering)
+  const nodeResponse = searchResponse[DispatchNodeResponseKeyEnum.nodeResponse] as any;
+  const retrievalResults = nodeResponse?.retrievalResults || searchResponse.data?.quoteQA || [];
 
-  return retrievalResults.map((item) => ({
+  addLog.debug('performDatasetSearch - Search response structure', {
+    taskId: task._id,
+    hasNodeResponse: !!nodeResponse,
+    hasRetrievalResults: !!nodeResponse?.retrievalResults,
+    retrievalResultsCount: nodeResponse?.retrievalResults?.length || 0,
+    hasQuoteQA: !!searchResponse.data?.quoteQA,
+    quoteQACount: searchResponse.data?.quoteQA?.length || 0,
+    usedSource: nodeResponse?.retrievalResults ? 'retrievalResults' : 'quoteQA',
+    finalResultCount: retrievalResults.length
+  });
+
+  if (retrievalResults.length > 0) {
+    addLog.debug('performDatasetSearch - First 3 retrieval results sample', {
+      taskId: task._id,
+      sample: retrievalResults.slice(0, 3).map((item: any, index: number) => ({
+        index,
+        id: item.id,
+        q: item.q?.substring(0, 50) + (item.q?.length > 50 ? '...' : ''),
+        a: item.a?.substring(0, 50) + (item.a?.length > 50 ? '...' : ''),
+        scoreTypes: item.score?.map((s: any) => s.type) || [],
+        retrievalRank: item.retrievalRank
+      }))
+    });
+  }
+
+  return retrievalResults.map((item: any) => ({
     id: item.id,
     q: item.q,
     a: item.a,

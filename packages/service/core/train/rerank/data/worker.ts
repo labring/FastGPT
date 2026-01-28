@@ -79,7 +79,9 @@ export function initRerankTrainDataWorker() {
           jobId: job.id,
           trainsetId,
           errorType: error.name,
-          errorMsg // Log complete structured error
+          errorMsg, // Log complete structured error
+          attemptsMade: job.attemptsMade,
+          maxAttempts: job.opts.attempts
         });
       } else {
         // Unknown error, construct basic structured error
@@ -94,27 +96,48 @@ export function initRerankTrainDataWorker() {
           jobId: job.id,
           trainsetId,
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
+          attemptsMade: job.attemptsMade,
+          maxAttempts: job.opts.attempts
         });
       }
 
-      try {
-        await MongoRerankTrainset.updateOne(
-          { _id: trainsetId },
-          {
-            status: RerankTrainsetStatusEnum.error,
-            errorMsg, // Save structured object
-            updateTime: new Date()
-          }
-        );
+      // Only persist errorMsg if this is an unrecoverable error or final retry
+      const isUnrecoverable = error instanceof TrainsetGenerationUnrecoverableError;
+      const isFinalRetry = job.attemptsMade >= (job.opts.attempts ?? 0);
 
-        addLog.info('[RerankTrainData] Trainset status updated to error in MongoDB', {
-          trainsetId
-        });
-      } catch (updateError) {
-        addLog.error('[RerankTrainData] Failed to update trainset status in MongoDB', {
+      if (isUnrecoverable || isFinalRetry) {
+        try {
+          await MongoRerankTrainset.updateOne(
+            { _id: trainsetId },
+            {
+              status: RerankTrainsetStatusEnum.error,
+              errorMsg, // Save structured object
+              updateTime: new Date()
+            }
+          );
+
+          addLog.info(
+            '[RerankTrainData] Trainset status updated to error in MongoDB (unrecoverable or final retry)',
+            {
+              trainsetId,
+              isUnrecoverable,
+              isFinalRetry,
+              attemptsMade: job.attemptsMade
+            }
+          );
+        } catch (updateError) {
+          addLog.error('[RerankTrainData] Failed to update trainset status in MongoDB', {
+            trainsetId,
+            updateError: (updateError as Error).message
+          });
+        }
+      } else {
+        // Retriable error with remaining attempts - don't persist errorMsg yet
+        addLog.info('[RerankTrainData] Retriable error, will retry', {
           trainsetId,
-          updateError: (updateError as Error).message
+          attemptsMade: job.attemptsMade,
+          remainingAttempts: (job.opts.attempts ?? 0) - job.attemptsMade
         });
       }
     }
