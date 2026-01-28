@@ -16,22 +16,16 @@ const TrainExceptionModal = ({
 
   const displayContent = error
     ? (() => {
-        const { stage, type, message, suggestion } = error.errorMsg;
+        const { type, message, suggestion } = error.errorMsg;
 
         // 所有字段都已经是 i18n key 格式，直接翻译
-        // stage: 'train:stage_xxx' or null
         // message: 'train:xxx'
         // suggestion: 'train:xxx_suggestion' or undefined
-        const stageText = stage ? t(stage) : '';
         const translatedMessage = t(message || `train:${type}`);
         const translatedSuggestion = suggestion ? t(suggestion) : '';
 
         // 构建显示内容（originalError 不显示给用户）
-        const parts = [
-          stageText && `[${stageText}]`,
-          translatedMessage,
-          translatedSuggestion
-        ].filter(Boolean);
+        const parts = [translatedMessage, translatedSuggestion].filter(Boolean);
 
         return parts.join('\n');
       })()

@@ -5,7 +5,9 @@ import type {
   RetryRerankTrainTaskRequest,
   RetryRerankTrainTaskResponse,
   DeleteRerankTrainTaskRequest,
-  DeleteRerankTrainTaskResponse
+  DeleteRerankTrainTaskResponse,
+  DeleteAllRerankTrainTasksByAppRequest,
+  DeleteAllRerankTrainTasksByAppResponse
 } from '@fastgpt/global/core/train/rerank/api';
 import type { ListRerankTrainTasksRequest } from '@fastgpt/global/core/train/rerank/api';
 import type { ListRerankTrainTasksResponse } from '@fastgpt/global/core/train/rerank/api';
@@ -33,3 +35,9 @@ export const retryRerankTrainTask = (data: RetryRerankTrainTaskRequest) =>
  */
 export const deleteRerankTrainTask = (data: DeleteRerankTrainTaskRequest) =>
   DELETE<DeleteRerankTrainTaskResponse>('/core/train/rerank/task/delete', data);
+
+/**
+ * 删除应用的所有训练任务（恢复功能）
+ */
+export const deleteAllRerankTrainTasksByApp = (data: DeleteAllRerankTrainTasksByAppRequest) =>
+  DELETE<DeleteAllRerankTrainTasksByAppResponse>('/core/train/rerank/task/delete-all-by-app', data);
