@@ -20,9 +20,9 @@ export class S3PrivateBucket extends S3BaseBucket {
           region,
           vendor,
           credentials,
-          forcePathStyle: true,
           endpoint: options.endpoint!,
-          maxRetries: options.maxRetries!
+          maxRetries: options.maxRetries!,
+          forcePathStyle: options.forcePathStyle
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
