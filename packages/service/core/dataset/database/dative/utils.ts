@@ -11,7 +11,6 @@ export interface DativeErrorResponse {
   detail?: {
     msg?: string;
     error?: string;
-    detail?: string;
   };
   message?: string;
   error?: string;
@@ -69,8 +68,13 @@ export function parseDativeErrorResponse(response: any): any {
     };
   }
 
+  const msg = errorData.detail?.msg;
+  const error = errorData.detail?.error;
+  const message =
+    msg && error && msg !== error ? `${msg}: ${error}` : msg || error || 'Dative error';
+
   return {
-    message: `${errorData.detail?.msg}: ${errorData.detail?.detail}` || 'Dative error',
+    message,
     code: code
   };
 }
