@@ -12,6 +12,7 @@ import type {
   I18nStringStrictType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export type SystemModelSchemaType = {
   _id: string;
@@ -37,23 +38,6 @@ export type SystemDefaultModelType = {
   [ModelTypeEnum.rerank]?: RerankModelItemType;
 };
 
-import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
-
-export type PluginDatasetSourceType = {
-  sourceId: string;
-  name: I18nStringType;
-  description?: I18nStringType;
-  icon: string;
-  iconOutline?: string;
-  courseUrl?: string;
-  formFields?: Array<{
-    key: string;
-    label: I18nStringType;
-    type: 'input' | 'password' | 'select' | 'tree-select';
-    required?: boolean;
-  }>;
-};
-
 declare global {
   var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
@@ -61,7 +45,7 @@ declare global {
   var aiproxyIdMapCache: AiproxyMapProviderType;
 
   // Plugin dataset sources cache
-  var PluginDatasetSourcesCache: PluginDatasetSourceType[];
+  var PluginDatasetSourcesCache: PluginDatasetSourceConfig[];
 
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;
