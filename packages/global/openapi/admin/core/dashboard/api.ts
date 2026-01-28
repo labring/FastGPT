@@ -97,9 +97,7 @@ export type GetAppStatsResponseType = z.infer<typeof GetAppStatsResponseSchema>;
 export const GetDatasetStatsResponseSchema = z.object({
   commonDatasetCount: z.number().meta({ description: '通用知识库总数' }),
   websiteDatasetCount: z.number().meta({ description: 'Web 站点同步总数' }),
-  apiDatasetCount: z.number().meta({ description: 'API 知识库总数' }),
-  yuqueDatasetCount: z.number().meta({ description: '语雀知识库总数' }),
-  feishuDatasetCount: z.number().meta({ description: '飞书知识库总数' }),
+  pluginDatasetCount: z.number().meta({ description: '插件知识库总数' }),
   totalIndexCount: z.number().meta({ description: '索引总量' })
 });
 export type GetDatasetStatsResponseType = z.infer<typeof GetDatasetStatsResponseSchema>;

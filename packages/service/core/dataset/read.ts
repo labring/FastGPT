@@ -9,7 +9,7 @@ import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
-import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -161,7 +161,7 @@ export const readDatasetSourceRawText = async ({
   sourceId,
   selector,
   externalFileId,
-  apiDatasetServer,
+  pluginDatasetServer,
   customPdfParse,
   getFormatText,
   usageId,
@@ -176,7 +176,7 @@ export const readDatasetSourceRawText = async ({
 
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
-  apiDatasetServer?: ApiDatasetServerType; // api dataset
+  pluginDatasetServer?: PluginDatasetServerType; // plugin dataset
   usageId?: string;
   datasetId: string; // For S3 image upload
 }): Promise<{
@@ -232,7 +232,7 @@ export const readDatasetSourceRawText = async ({
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
     const { title, rawText } = await readApiServerFileContent({
-      apiDatasetServer,
+      pluginDatasetServer,
       apiFileId: sourceId,
       teamId,
       tmbId,
@@ -251,14 +251,14 @@ export const readDatasetSourceRawText = async ({
 };
 
 export const readApiServerFileContent = async ({
-  apiDatasetServer,
+  pluginDatasetServer,
   apiFileId,
   teamId,
   tmbId,
   customPdfParse,
   datasetId
 }: {
-  apiDatasetServer?: ApiDatasetServerType;
+  pluginDatasetServer?: PluginDatasetServerType;
   apiFileId: string;
   teamId: string;
   tmbId: string;
@@ -268,7 +268,7 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  return (await getApiDatasetRequest(apiDatasetServer)).getFileContent({
+  return (await getApiDatasetRequest(pluginDatasetServer)).getFileContent({
     teamId,
     tmbId,
     apiFileId,

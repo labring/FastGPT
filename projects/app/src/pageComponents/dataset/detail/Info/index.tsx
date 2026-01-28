@@ -6,6 +6,7 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
@@ -13,7 +14,7 @@ import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -35,10 +36,11 @@ const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditRe
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const { getDatasetTypeConfig } = usePluginStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -112,6 +114,30 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   const isTraining = rebuildingCount > 0 || trainingCount > 0;
 
+  const pluginConfig = useMemo(() => {
+    const server = datasetDetail.pluginDatasetServer;
+    if (!server?.pluginId) return undefined;
+
+    const config = server.config || {};
+    return { displayValue: Object.values(config)[0] };
+  }, [datasetDetail.pluginDatasetServer]);
+
+  const typeConfig = useMemo(
+    () =>
+      getDatasetTypeConfig(
+        datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type,
+        t,
+        i18n.language
+      ),
+    [
+      datasetDetail.pluginDatasetServer?.pluginId,
+      datasetDetail.type,
+      t,
+      i18n.language,
+      getDatasetTypeConfig
+    ]
+  );
+
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
@@ -138,11 +164,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             }
           />
         </Flex>
-        {DatasetTypeMap[datasetDetail.type] && (
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <DatasetTypeTag type={datasetDetail.type} />
-          </Flex>
-        )}
+        <Flex alignItems={'center'} justifyContent={'space-between'}>
+          <DatasetTypeTag
+            type={datasetDetail.pluginDatasetServer?.pluginId || datasetDetail.type}
+          />
+        </Flex>
         <Box
           flex={1}
           className={'textEllipsis3'}
@@ -298,12 +324,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </>
         )}
 
-        {datasetDetail.type === DatasetTypeEnum.apiDataset && (
+        {pluginConfig && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
               <Flex justifyContent={'space-between'} mb={1}>
                 <FormLabel fontSize={'mini'} fontWeight={'500'}>
-                  {t('dataset:api_url')}
+                  {t('dataset:config_dataset', { dataset: typeConfig?.label })}
                 </FormLabel>
                 <MyIcon
                   name={'edit'}
@@ -313,64 +339,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      apiDatasetServer: datasetDetail.apiDatasetServer
+                      pluginDatasetServer: datasetDetail.pluginDatasetServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.apiServer?.baseUrl}</Box>
-            </Box>
-          </>
-        )}
-
-        {datasetDetail.type === DatasetTypeEnum.yuque && (
-          <>
-            <Box w={'100%'} alignItems={'center'} pt={4}>
-              <Flex justifyContent={'space-between'} mb={1}>
-                <FormLabel fontSize={'mini'} fontWeight={'500'}>
-                  {t('dataset:yuque_dataset_config')}
-                </FormLabel>
-                <MyIcon
-                  name={'edit'}
-                  w={'14px'}
-                  _hover={{ color: 'primary.600' }}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    setEditedAPIDataset({
-                      id: datasetDetail._id,
-                      apiDatasetServer: datasetDetail.apiDatasetServer
-                    })
-                  }
-                />
-              </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.apiDatasetServer?.yuqueServer?.userId}</Box>
-            </Box>
-          </>
-        )}
-
-        {datasetDetail.type === DatasetTypeEnum.feishu && (
-          <>
-            <Box w={'100%'} alignItems={'center'} pt={4}>
-              <Flex justifyContent={'space-between'} mb={1}>
-                <FormLabel fontSize={'mini'} fontWeight={'500'}>
-                  {t('dataset:feishu_dataset_config')}
-                </FormLabel>
-                <MyIcon
-                  name={'edit'}
-                  w={'14px'}
-                  _hover={{ color: 'primary.600' }}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    setEditedAPIDataset({
-                      id: datasetDetail._id,
-                      apiDatasetServer: datasetDetail.apiDatasetServer
-                    })
-                  }
-                />
-              </Flex>
-              <Box fontSize={'mini'}>
-                {datasetDetail.apiDatasetServer?.feishuServer?.folderToken}
-              </Box>
+              <Box fontSize={'mini'}>{pluginConfig.displayValue}</Box>
             </Box>
           </>
         )}
@@ -440,7 +414,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           onEdit={(data) =>
             updateDataset({
               id: datasetId,
-              apiDatasetServer: data.apiDatasetServer
+              pluginDatasetServer: data.pluginDatasetServer
             })
           }
         />

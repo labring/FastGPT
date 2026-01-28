@@ -5,10 +5,16 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type {
   AiproxyMapProviderType,
   I18nStringStrictType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { MongoSystemPluginDataset } from '@fastgpt/service/core/dataset/pluginDataset/schema';
+
+export type PluginDatasetType = PluginDatasetSourceConfig & {
+  status: number;
+};
 
 export type InitDateResponse = {
   bufferId?: string;
@@ -21,7 +27,21 @@ export type InitDateResponse = {
   defaultModels?: SystemDefaultModelType;
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
   aiproxyIdMap?: AiproxyMapProviderType;
+  pluginDatasets?: PluginDatasetType[];
 };
+
+// 合并插件知识库的状态
+async function getPluginDatasets(): Promise<PluginDatasetType[]> {
+  if (!global.PluginDatasetSourcesCache?.length) return [];
+
+  const configs = await MongoSystemPluginDataset.find({}, 'sourceId status').lean();
+  const configMap = new Map(configs.map((c) => [c.sourceId, c.status]));
+
+  return global.PluginDatasetSourcesCache.map((source) => ({
+    ...source,
+    status: configMap.get(source.sourceId) ?? 1
+  }));
+}
 
 async function handler(
   req: ApiRequestProps<{}, { bufferId?: string }>,
@@ -47,7 +67,8 @@ async function handler(
       activeModelList: global.systemActiveDesensitizedModels,
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyIdMap: global.aiproxyIdMapCache,
+      pluginDatasets: await getPluginDatasets()
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -74,7 +95,8 @@ async function handler(
       bufferId: unAuthBufferId,
       feConfigs: global.feConfigs,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyIdMap: global.aiproxyIdMapCache,
+      pluginDatasets: await getPluginDatasets()
     };
   }
 }

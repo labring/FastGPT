@@ -19,7 +19,7 @@ import type { APIFileItemType } from './apiDataset/type';
 export type DatasetUpdateBody = {
   id: string;
 
-  apiDatasetServer?: DatasetSchemaType['apiDatasetServer'];
+  pluginDatasetServer?: DatasetSchemaType['pluginDatasetServer'];
 
   parentId?: ParentIdType;
   name?: string;

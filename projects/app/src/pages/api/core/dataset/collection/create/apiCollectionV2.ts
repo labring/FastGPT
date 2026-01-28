@@ -61,9 +61,8 @@ export const createApiDatasetCollection = async ({
   const existApiFileIdSet = new Set(existCollections.map((item) => item.apiFileId).filter(Boolean));
 
   const startId =
-    dataset.apiDatasetServer?.apiServer?.basePath ||
-    dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken;
+    dataset.pluginDatasetServer?.config?.folderToken ||
+    dataset.pluginDatasetServer?.config?.basePath;
 
   // check if the directory is selected
   const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;
@@ -96,7 +95,7 @@ export const createApiDatasetCollection = async ({
 
       if (file.hasChild) {
         const folderFiles = await (
-          await getApiDatasetRequest(dataset.apiDatasetServer)
+          await getApiDatasetRequest(dataset.pluginDatasetServer)
         ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
         const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));

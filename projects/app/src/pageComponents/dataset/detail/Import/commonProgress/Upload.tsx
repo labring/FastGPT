@@ -80,7 +80,7 @@ const Upload = () => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
-      if (importSource === ImportDataSourceEnum.apiDataset) {
+      if (importSource === ImportDataSourceEnum.pluginDataset) {
         setSources((state) =>
           state.map((source) => ({
             ...source,

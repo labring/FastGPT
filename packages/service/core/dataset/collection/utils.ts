@@ -157,7 +157,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     return {
       type: DatasetSourceReadTypeEnum.apiFile,
       sourceId,
-      apiDatasetServer: dataset.apiDatasetServer
+      pluginDatasetServer: dataset.pluginDatasetServer
     };
   })();
 

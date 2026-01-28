@@ -22,7 +22,10 @@ async function handler(req: NextApiRequest) {
     per: ReadPermissionVal
   });
 
-  return (await getApiDatasetRequest(dataset.apiDatasetServer)).listFiles({ searchKey, parentId });
+  return (await getApiDatasetRequest(dataset.pluginDatasetServer)).listFiles({
+    searchKey,
+    parentId
+  });
 }
 
 export default NextAPI(handler);

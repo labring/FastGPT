@@ -91,9 +91,11 @@ async function handler(
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      return (await getApiDatasetRequest(collection.dataset.apiDatasetServer)).getFilePreviewUrl({
-        apiFileId: collection.apiFileId
-      });
+      return (await getApiDatasetRequest(collection.dataset.pluginDatasetServer)).getFilePreviewUrl(
+        {
+          apiFileId: collection.apiFileId
+        }
+      );
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.dataset.externalReadUrl) {

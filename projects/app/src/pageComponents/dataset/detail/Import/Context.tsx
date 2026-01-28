@@ -162,7 +162,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         title: t('dataset:import_confirm')
       }
     ],
-    [ImportDataSourceEnum.apiDataset]: [
+    [ImportDataSourceEnum.pluginDataset]: [
       {
         title: t('dataset:import_select_file')
       },

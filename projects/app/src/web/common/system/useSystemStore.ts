@@ -218,6 +218,7 @@ export const useSystemStore = create<State>()(
           }
           return get().modelProviderMap[language as langType][provider] ?? {};
         },
+
         initStaticData(res) {
           set((state) => {
             state.initDataBufferId = res.bufferId;

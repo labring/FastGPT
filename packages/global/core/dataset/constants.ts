@@ -7,44 +7,10 @@ export enum DatasetTypeEnum {
   websiteDataset = 'websiteDataset', // depp link
   externalFile = 'externalFile',
 
-  apiDataset = 'apiDataset',
-  feishu = 'feishu',
-  yuque = 'yuque'
+  pluginDataset = 'pluginDataset'
 }
 
 // @ts-ignore
-export const ApiDatasetTypeMap: Record<
-  `${DatasetTypeEnum}`,
-  {
-    icon: string;
-    avatar: string;
-    label: any;
-    collectionLabel: string;
-    courseUrl?: string;
-  }
-> = {
-  [DatasetTypeEnum.apiDataset]: {
-    icon: 'core/dataset/externalDatasetOutline',
-    avatar: 'core/dataset/externalDatasetColor',
-    label: i18nT('dataset:api_file'),
-    collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/introduction/guide/knowledge_base/api_dataset/'
-  },
-  [DatasetTypeEnum.feishu]: {
-    icon: 'core/dataset/feishuDatasetOutline',
-    avatar: 'core/dataset/feishuDatasetColor',
-    label: i18nT('dataset:feishu_dataset'),
-    collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/introduction/guide/knowledge_base/lark_dataset/'
-  },
-  [DatasetTypeEnum.yuque]: {
-    icon: 'core/dataset/yuqueDatasetOutline',
-    avatar: 'core/dataset/yuqueDatasetColor',
-    label: i18nT('dataset:yuque_dataset'),
-    collectionLabel: i18nT('common:File'),
-    courseUrl: '/docs/introduction/guide/knowledge_base/yuque_dataset/'
-  }
-};
 export const DatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
   {
@@ -55,7 +21,6 @@ export const DatasetTypeMap: Record<
     courseUrl?: string;
   }
 > = {
-  ...ApiDatasetTypeMap,
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
     avatar: 'common/folderFill',
@@ -80,6 +45,13 @@ export const DatasetTypeMap: Record<
     avatar: 'core/dataset/externalDatasetColor',
     label: i18nT('dataset:external_file'),
     collectionLabel: i18nT('common:File')
+  },
+  [DatasetTypeEnum.pluginDataset]: {
+    icon: 'core/dataset/externalDatasetOutline',
+    avatar: 'core/dataset/externalDatasetColor',
+    label: i18nT('dataset:plugin_dataset'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/docs/introduction/guide/knowledge_base/api_dataset/'
   }
 };
 
@@ -223,7 +195,7 @@ export enum ImportDataSourceEnum {
   fileLink = 'fileLink',
   fileCustom = 'fileCustom',
   externalFile = 'externalFile',
-  apiDataset = 'apiDataset',
+  pluginDataset = 'pluginDataset',
   reTraining = 'reTraining',
   imageDataset = 'imageDataset'
 }

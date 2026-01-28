@@ -1,13 +1,24 @@
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
-import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import React from 'react';
-import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
-const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
-  const { t } = useTranslation();
-  const item = DatasetTypeMap[type] || DatasetTypeMap['dataset'];
+const DatasetTypeTag = ({
+  type,
+  ...props
+}: {
+  type: string;
+} & FlexProps) => {
+  const { t, i18n } = useTranslation();
+  const { getDatasetTypeConfig } = usePluginStore();
+
+  const config = useMemo(
+    () =>
+      getDatasetTypeConfig(type, t, i18n.language) ||
+      getDatasetTypeConfig('dataset', t, i18n.language),
+    [type, t, i18n.language, getDatasetTypeConfig]
+  );
 
   return (
     <Flex
@@ -22,8 +33,8 @@ const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & Fle
       alignItems={'center'}
       {...props}
     >
-      <MyIcon name={item.icon as any} w={'16px'} mr={2} color={'myGray.400'} />
-      <Box>{t(item.label as any)}</Box>
+      <Avatar src={config?.icon} w={'16px'} mr={2} color={'myGray.400'} />
+      <Box>{config?.label}</Box>
     </Flex>
   );
 };
