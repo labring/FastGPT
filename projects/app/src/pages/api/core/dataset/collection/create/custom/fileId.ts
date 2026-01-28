@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
+import { getFileById, updateGridFSFilename } from '@fastgpt/service/common/file/gridfs/controller';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -207,6 +207,13 @@ async function handler(
       }
 
       fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
+
+      // Update GridFS filename to match the renamed collection name
+      await updateGridFSFilename({
+        bucketName: BucketNameEnum.dataset,
+        fileId,
+        newFilename: fileName
+      });
 
       addLog.info(
         `[FileImport] Renamed duplicate file from '${name || filename}' to '${fileName}'`
