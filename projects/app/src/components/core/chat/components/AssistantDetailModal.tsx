@@ -30,6 +30,7 @@ type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
   collectionId?: string;
   sourceName?: string;
   index?: number;
+  retrievalRank?: number;
 };
 
 interface ChatDetailModalProps {
@@ -304,28 +305,15 @@ const KnowledgeRerankNode = ({
   data,
   quoteList,
   rawQuoteList,
-  rawRetrievalResults,
   isLoading
 }: {
   data?: ChatHistoryItemResType;
   quoteList?: AssistantDatasetCiteItemType[];
   rawQuoteList?: SearchDataResponseItemType[];
-  rawRetrievalResults?: SearchDataResponseItemType[];
   isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
-
-  // sourceType 显示文本映射 - 使用 useMemo 确保在 i18n 就绪后执行
-  const SOURCE_TYPE_TEXT = useMemo(
-    () => ({
-      faq: t('chat:source_type_faq'),
-      sql: t('chat:source_type_sql'),
-      correction: t('chat:source_type_correction'),
-      chunk: t('chat:source_type_chunk')
-    }),
-    [t]
-  );
 
   // 获取重排耗时
   const rerankTime = useMemo(() => {
@@ -369,7 +357,8 @@ const KnowledgeRerankNode = ({
           collectionId: rawItem.collectionId,
           sourceName: rawItem.sourceName,
           index: rawItem.chunkIndex,
-          score: rawItem.score
+          score: rawItem.score,
+          retrievalRank: rawItem.retrievalRank
         };
       })
       .filter(Boolean) as AssistantDatasetCiteItemWithScore[];
@@ -449,21 +438,15 @@ const KnowledgeRerankNode = ({
                             }
                           }
 
-                          // 计算召回排名：根据 id 在 rawRetrievalResults 中的位置
+                          // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
                           let recallRank = '-';
-                          if (rawRetrievalResults && item._id) {
-                            const rankIndex = rawRetrievalResults.findIndex(
-                              (r) => r.id === item._id
-                            );
-                            if (rankIndex !== -1) {
-                              recallRank = `${rankIndex + 1}`;
-                            }
+                          if (item.retrievalRank !== undefined) {
+                            recallRank = `${item.retrievalRank + 1}`;
                           }
                           descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                          // 根据 sourceType 获取标题文本
-                          const title =
-                            SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk');
+                          // 使用 TOP1、TOP2 格式作为标题
+                          const title = `TOP${index + 1}`;
 
                           // 计算 linkText 和 linkUrl
                           let linkText = '';
@@ -850,7 +833,6 @@ const ChatDetailModal = ({
                   )}
                   quoteList={rerankQuoteList}
                   rawQuoteList={quoteList}
-                  rawRetrievalResults={retrievalResults}
                   isLoading={rerankLoading}
                 />
               )}
