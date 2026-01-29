@@ -263,8 +263,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories) || undefined;
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
@@ -360,7 +358,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       customFeedbacks
     };
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
     const params: SaveChatProps = {
       chatId: saveChatId,
       appId: app._id,
@@ -383,8 +380,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       durationSeconds
     };
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({ interactive, ...params });
     } else {
       await pushChatRecords(params);
     }

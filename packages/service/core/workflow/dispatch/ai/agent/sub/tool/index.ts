@@ -18,7 +18,7 @@ import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import { runHTTPTool } from '../../../../../../app/http';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -49,13 +49,22 @@ export const dispatchTool = async ({
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const startTime = Date.now();
+
+  const getErrResponse = (error: any) => {
+    return {
+      runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+      response: getErrText(error, 'Call tool error'),
+      usages: []
+    };
+  };
+
   try {
     if (toolConfig?.systemTool?.toolId) {
       const tool = await getSystemToolById(toolConfig?.systemTool.toolId);
       const inputConfigParams = await (async () => {
         switch (system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
-            return Promise.reject(new Error('This is not supported yet'));
+            return Promise.reject('This is not supported yet');
           case SystemToolSecretInputTypeEnum.manual:
             return getSecretValue({
               storeSecret: system_input_config.value || {}
@@ -116,13 +125,7 @@ export const dispatchTool = async ({
       let result = res.output || {};
 
       if (res.error) {
-        // String error(Common error, not custom)
-        if (typeof res.error === 'string') {
-          throw new Error(res.error);
-        }
-
-        // Custom error field
-        return Promise.reject(res.error);
+        return getErrResponse(res.error);
       }
 
       const usagePoints = (() => {
@@ -182,8 +185,61 @@ export const dispatchTool = async ({
         result,
         usages: []
       };
+    } else if (toolConfig?.httpTool?.toolId) {
+      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      if (!parentId || !toolName) {
+        return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
+      }
+
+      const toolset = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
+      if (!toolSetData || typeof toolSetData !== 'object') {
+        return Promise.reject(`HTTP tool set not found: ${toolConfig.httpTool.toolId}`);
+      }
+
+      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+
+      const httpTool = toolList?.find((tool) => tool.name === toolName);
+      if (!httpTool) {
+        return Promise.reject(`HTTP tool ${toolName} not found`);
+      }
+
+      const { data, errorMsg } = await runHTTPTool({
+        baseUrl: baseUrl || '',
+        toolPath: httpTool.path,
+        method: httpTool.method,
+        params,
+        headerSecret: httpTool.headerSecret || headerSecret,
+        customHeaders: customHeaders
+          ? typeof customHeaders === 'string'
+            ? JSON.parse(customHeaders)
+            : customHeaders
+          : undefined,
+        staticParams: httpTool.staticParams,
+        staticHeaders: httpTool.staticHeaders,
+        staticBody: httpTool.staticBody
+      });
+
+      if (errorMsg) {
+        return {
+          runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+          response: errorMsg,
+          usages: []
+        };
+      }
+
+      return {
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        response: typeof data === 'object' ? JSON.stringify(data) : data,
+        result: data,
+        usages: []
+      };
     } else {
-      return Promise.reject("Can't find the tool");
+      return getErrResponse("Can't find the tool");
     }
   } catch (error) {
     if (toolConfig?.systemTool?.toolId) {
@@ -196,6 +252,6 @@ export const dispatchTool = async ({
         msg: getErrText(error)
       });
     }
-    return Promise.reject("Can't find the tool");
+    return getErrResponse(error);
   }
 };

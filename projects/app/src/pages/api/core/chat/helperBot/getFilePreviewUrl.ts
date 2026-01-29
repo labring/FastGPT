@@ -18,7 +18,7 @@ async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>):
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  return await getS3HelperBotSource().createGetFileURL({ key, external: true });
+  return (await getS3HelperBotSource().createGetFileURL({ key, external: true })).url;
 }
 
 export default NextAPI(handler);

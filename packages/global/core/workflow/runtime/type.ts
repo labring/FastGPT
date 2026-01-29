@@ -266,6 +266,8 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  // LLM request tracking
+  llmRequestIds?: string[]; // LLM 请求追踪 ID 列表
 
   // Client will toast
   error?: Record<string, any> | string;
@@ -353,6 +355,14 @@ export type DispatchNodeResponseType = {
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
+  // Agent call
+  stepQuery?: string;
+  // Compress chunk
+  compressTextAgent?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalPoints: number;
+  };
 
   // code
   codeLog?: string;

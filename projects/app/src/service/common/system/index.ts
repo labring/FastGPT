@@ -163,12 +163,12 @@ export async function initSystemConfig() {
   // set config
   initFastGPTConfig(config);
 
-  console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData
-  });
+  // console.log({
+  //   feConfigs: global.feConfigs,
+  //   systemEnv: global.systemEnv,
+  //   subPlans: global.subPlans,
+  //   licenseData: global.licenseData
+  // });
 }
 
 export async function initSystemPluginTags() {

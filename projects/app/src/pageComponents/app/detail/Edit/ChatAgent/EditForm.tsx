@@ -1,14 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  type BoxProps,
-  useTheme,
-  useDisclosure,
-  Button,
-  HStack
-} from '@chakra-ui/react';
+import React, { useEffect, useMemo } from 'react';
+import { Box, Flex, Grid, type BoxProps, useDisclosure, Button, HStack } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -58,7 +49,6 @@ const EditForm = ({
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const [, startTst] = useTransition();
 
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
@@ -69,19 +59,22 @@ const EditForm = ({
       }));
     },
     onUpdateOrAddTool: (tool) => {
-      const index = appForm.selectedTools.findIndex((item) => item.id === tool.id);
-      if (index === -1) {
-        setAppForm((state) => ({
-          ...state,
-          selectedTools: [tool, ...(state.selectedTools || [])]
-        }));
-      } else {
-        setAppForm((state) => ({
-          ...state,
-          selectedTools:
-            state.selectedTools?.map((item) => (item.id === tool.id ? tool : item)) || []
-        }));
-      }
+      setAppForm((state) => {
+        const index = state.selectedTools.findIndex((item) => item.id === tool.id);
+
+        if (index === -1) {
+          return {
+            ...state,
+            selectedTools: [tool, ...(state.selectedTools || [])]
+          };
+        } else {
+          return {
+            ...state,
+            selectedTools:
+              state.selectedTools?.map((item) => (item.id === tool.id ? tool : item)) || []
+          };
+        }
+      });
     },
     canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
     canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
@@ -141,16 +134,19 @@ const EditForm = ({
                 bg="myGray.50"
                 llmModelType={'all'}
                 defaultData={{
-                  model: appForm.aiSettings.model,
-                  temperature: appForm.aiSettings.temperature,
-                  maxToken: appForm.aiSettings.maxToken,
-                  maxHistories: appForm.aiSettings.maxHistories,
-                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
-                  aiChatTopP: appForm.aiSettings.aiChatTopP,
-                  aiChatStopSign: appForm.aiSettings.aiChatStopSign,
-                  aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
-                  aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
+                  model: appForm.aiSettings.model
+                  // temperature: appForm.aiSettings.temperature,
+                  // maxToken: appForm.aiSettings.maxToken,
+                  // maxHistories: appForm.aiSettings.maxHistories,
+                  // aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  // aiChatTopP: appForm.aiSettings.aiChatTopP,
+                  // aiChatStopSign: appForm.aiSettings.aiChatStopSign,
+                  // aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
+                  // aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
+                showMaxToken={false}
+                showTemperature={false}
+                showTopP={false}
                 showStopSign={false}
                 showResponseFormat={false}
                 onChange={({ maxHistories = 6, ...data }) => {
@@ -379,7 +375,7 @@ const EditForm = ({
         </Box>
 
         {/* tts */}
-        <Box {...BoxStyles}>
+        {/* <Box {...BoxStyles}>
           <TTSSelect
             value={appForm.chatConfig.ttsConfig}
             onChange={(e) => {
@@ -392,7 +388,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box>
+        </Box> */}
 
         {/* whisper */}
         <Box {...BoxStyles}>
@@ -412,7 +408,7 @@ const EditForm = ({
         </Box>
 
         {/* question guide */}
-        <Box {...BoxStyles}>
+        {/* <Box {...BoxStyles}>
           <QGConfig
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
@@ -425,10 +421,10 @@ const EditForm = ({
               }));
             }}
           />
-        </Box>
+        </Box> */}
 
         {/* question tips */}
-        <Box {...BoxStyles}>
+        {/* <Box {...BoxStyles}>
           <InputGuideConfig
             appId={appDetail._id}
             value={appForm.chatConfig.chatInputGuide}
@@ -442,7 +438,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box>
+        </Box> */}
       </Box>
 
       {isOpenDatasetSelect && (
@@ -481,6 +477,7 @@ const EditForm = ({
           }}
         />
       )}
+      <SkillModal />
     </>
   );
 };

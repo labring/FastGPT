@@ -1,10 +1,11 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import type { GetSubAppInfoFnType, SubAppRuntimeType } from './type';
+import type { SubAppRuntimeType } from './type';
 import { agentSkillToToolRuntime } from './sub/tool/utils';
 import { readFileTool } from './sub/file/utils';
 import { PlanAgentTool } from './sub/plan/constants';
+import { datasetSearchTool } from './sub/dataset/utils';
 
 /* 
   匹配 {{@toolId@}}，转化成: @name 的格式。
@@ -42,14 +43,16 @@ export const getSubapps = async ({
   tmbId,
   tools,
   lang,
-  filesMap = {},
-  getPlanTool
+  getPlanTool,
+  hasDataset,
+  hasFiles
 }: {
   tmbId: string;
   tools: SkillToolType[];
   lang?: localeType;
-  filesMap?: Record<string, string>;
   getPlanTool?: Boolean;
+  hasDataset?: boolean;
+  hasFiles: boolean;
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -62,8 +65,13 @@ export const getSubapps = async ({
     completionTools.push(PlanAgentTool);
   }
   /* File */
-  if (Object.keys(filesMap).length > 0) {
+  if (hasFiles) {
     completionTools.push(readFileTool);
+  }
+
+  /* Dataset Search */
+  if (hasDataset) {
+    completionTools.push(datasetSearchTool);
   }
 
   /* System tool */
@@ -75,7 +83,7 @@ export const getSubapps = async ({
   formatTools.forEach((tool) => {
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
-      type: 'tool',
+      type: tool.type,
       id: tool.id,
       name: tool.name,
       avatar: tool.avatar,

@@ -16,7 +16,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { checkNeedsUserConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 
@@ -79,7 +78,8 @@ const ToolSelect = ({
           // 即将下架/已下架
           const status = item.status || item.pluginData?.status;
 
-          const hasFormInput = checkNeedsUserConfiguration(item);
+          const hasFormInput =
+            item.configStatus === 'configured' || item.configStatus === 'waitingForConfig';
           const isUnconfigured = item.configStatus === 'waitingForConfig';
 
           return (
@@ -97,10 +97,10 @@ const ToolSelect = ({
                 _hover={{
                   borderColor: toolError ? 'red.600' : 'primary.300',
                   '.delete': {
-                    display: 'block'
+                    display: 'flex'
                   },
                   '.hoverStyle': {
-                    display: 'block'
+                    display: 'flex'
                   },
                   '.unHoverStyle': {
                     display: 'none'
@@ -145,19 +145,17 @@ const ToolSelect = ({
                     {t('app:wait_for_config')}
                   </MyTag>
                 )}
-
                 {/* Edit icon */}
                 {hasFormInput && !toolError && (
                   <MyIconButton
                     className="hoverStyle"
-                    display={['block', 'none']}
+                    display={['flex', 'none']}
                     icon="common/setting"
                     onClick={() => setConfigTool(item)}
                   />
                 )}
-
                 {/* Delete icon */}
-                <Box className="hoverStyle" display={['block', 'none']} ml={0.5}>
+                <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
                   <MyIconButton
                     icon="delete"
                     hoverBg="red.50"
@@ -180,9 +178,7 @@ const ToolSelect = ({
           selectedTools={selectedTools}
           fileSelectConfig={fileSelectConfig}
           selectedModel={selectedModel}
-          onAddTool={(e) => {
-            onAddTool(e);
-          }}
+          onAddTool={onAddTool}
           onRemoveTool={(e) => {
             onRemoveTool(e.id);
           }}
@@ -196,7 +192,7 @@ const ToolSelect = ({
           onAddTool={(e) => {
             onUpdateTool({
               ...e,
-              configStatus: 'active'
+              configStatus: 'configured'
             });
           }}
         />

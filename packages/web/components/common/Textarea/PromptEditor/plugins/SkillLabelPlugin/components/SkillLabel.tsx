@@ -1,8 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import Avatar from '../../../../../Avatar';
 import MyTooltip from '../../../../../MyTooltip';
-import MyIcon from '../../../../../Icon';
 import { useTranslation } from 'next-i18next';
 import type { SkillLabelNodeBasicType } from '../node';
 import { useMemoEnhance } from '../../../../../../../hooks/useMemoEnhance';
@@ -18,12 +17,9 @@ export default function SkillLabel({
 }: SkillLabelNodeBasicType) {
   const { t } = useTranslation();
 
-  const isInvalid = useMemoEnhance(() => {
-    return status === 'invalid';
-  }, [status]);
-  const isUnconfigured = useMemoEnhance(() => {
-    return status === 'waitingForConfig';
-  }, [status]);
+  const isInvalid = status === 'invalid';
+  const isUnconfigured = status === 'waitingForConfig';
+  const isConfigured = status === 'configured';
 
   const colors = useMemoEnhance(() => {
     if (status === 'invalid') {
@@ -55,6 +51,18 @@ export default function SkillLabel({
     };
   }, [status, skillType]);
 
+  const tipText = useMemo(() => {
+    if (isInvalid) {
+      return t('common:tool_invalid_click_delete_tip');
+    }
+    if (isUnconfigured) {
+      return t('common:Skill_Label_Unconfigured');
+    }
+    if (isConfigured) {
+      return t('common:Skill_Label_Click_To_Configure');
+    }
+  }, [isInvalid, isUnconfigured, isConfigured, t]);
+
   return (
     <Box
       as="span"
@@ -78,22 +86,19 @@ export default function SkillLabel({
       onClick={() => onClick(id)}
       transform={'translateY(2px)'}
     >
-      <MyTooltip
-        shouldWrapChildren={false}
-        label={
-          isUnconfigured ? (
-            <Flex py={2} gap={2} fontWeight={'normal'} fontSize={'14px'} color={'myGray.900'}>
-              <MyIcon name="common/warningFill" w={'18px'} />
-              {t('common:Skill_Label_Unconfigured')}
-            </Flex>
-          ) : undefined
-        }
-      >
+      <MyTooltip shouldWrapChildren={false} label={tipText}>
         <Flex alignItems="center" gap={1}>
-          <Avatar src={icon} w={'14px'} h={'14px'} borderRadius={'2px'} />
-          <Box>{name || id}</Box>
-          {isUnconfigured && <Box w="6px" h="6px" bg="primary.600" borderRadius="50%" ml={1} />}
-          {isInvalid && <Box w="6px" h="6px" bg="red.600" borderRadius="50%" ml={1} />}
+          {isInvalid ? (
+            <>
+              <Box>{t('common:tool_invalid')}</Box>
+            </>
+          ) : (
+            <>
+              <Avatar src={icon} w={'14px'} h={'14px'} borderRadius={'2px'} />
+              <Box>{name || id}</Box>
+              {isUnconfigured && <Box w="6px" h="6px" bg="primary.600" borderRadius="50%" ml={1} />}
+            </>
+          )}
         </Flex>
       </MyTooltip>
     </Box>

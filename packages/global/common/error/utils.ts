@@ -4,7 +4,7 @@ import { ERROR_RESPONSE } from './errorCode';
 export const getErrText = (err: any, def = ''): any => {
   const msg: string =
     typeof err === 'string'
-      ? err
+      ? err || def
       : err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||

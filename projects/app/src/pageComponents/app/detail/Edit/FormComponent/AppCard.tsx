@@ -31,11 +31,13 @@ import type { Form2WorkflowFnType } from './type';
 const AppCard = ({
   appForm,
   setPast,
-  form2WorkflowFn
+  form2WorkflowFn,
+  configToWorkflow = true
 }: {
   appForm: AppFormEditFormType;
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
   form2WorkflowFn: Form2WorkflowFnType;
+  configToWorkflow?: boolean;
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -124,58 +126,72 @@ const AppCard = ({
               />
             )}
             {appDetail.permission.isOwner && (
-              <MyMenu
-                size={'xs'}
-                Button={
-                  <IconButton
-                    variant={'whitePrimary'}
-                    size={'mdSquare'}
-                    icon={<MyIcon name={'more'} w={'18px'} />}
-                    aria-label={'more'}
-                  />
-                }
-                menuList={[
-                  {
-                    children: [
+              <>
+                {configToWorkflow ? (
+                  <MyMenu
+                    size={'xs'}
+                    Button={
+                      <IconButton
+                        variant={'whitePrimary'}
+                        size={'mdSquare'}
+                        icon={<MyIcon name={'more'} w={'18px'} />}
+                        aria-label={'more'}
+                      />
+                    }
+                    menuList={[
                       {
-                        label: (
-                          <Flex>
-                            <ExportConfigPopover
-                              appName={appDetail.name}
-                              appForm={appForm}
-                              chatConfig={appDetail.chatConfig}
-                            />
-                          </Flex>
-                        )
+                        children: [
+                          {
+                            label: (
+                              <Flex>
+                                <ExportConfigPopover
+                                  appName={appDetail.name}
+                                  appForm={appForm}
+                                  chatConfig={appDetail.chatConfig}
+                                />
+                              </Flex>
+                            )
+                          },
+                          {
+                            icon: 'core/app/type/workflow',
+                            label: t('app:transition_to_workflow'),
+                            onClick: () => setTransitionCreateNew(true)
+                          },
+                          ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
+                            ? [
+                                {
+                                  icon: 'core/chat/fileSelect',
+                                  label: t('app:team_tags_set'),
+                                  onClick: () => setTeamTagsSet(appDetail)
+                                }
+                              ]
+                            : [])
+                        ]
                       },
                       {
-                        icon: 'core/app/type/workflow',
-                        label: t('app:transition_to_workflow'),
-                        onClick: () => setTransitionCreateNew(true)
-                      },
-                      ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
-                        ? [
-                            {
-                              icon: 'core/chat/fileSelect',
-                              label: t('app:team_tags_set'),
-                              onClick: () => setTeamTagsSet(appDetail)
-                            }
-                          ]
-                        : [])
-                    ]
-                  },
-                  {
-                    children: [
-                      {
-                        icon: 'delete',
-                        type: 'danger',
-                        label: t('common:Delete'),
-                        onClick: onDelApp
+                        children: [
+                          {
+                            icon: 'delete',
+                            type: 'danger',
+                            label: t('common:Delete'),
+                            onClick: onDelApp
+                          }
+                        ]
                       }
-                    ]
-                  }
-                ]}
-              />
+                    ]}
+                  />
+                ) : (
+                  <>
+                    <IconButton
+                      variant={'whiteDanger'}
+                      size={'mdSquare'}
+                      icon={<MyIcon name={'delete'} w={'18px'} />}
+                      aria-label={'settings'}
+                      onClick={onDelApp}
+                    />
+                  </>
+                )}
+              </>
             )}
           </HStack>
         </Flex>

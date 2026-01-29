@@ -8,7 +8,7 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';

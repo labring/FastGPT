@@ -99,9 +99,10 @@ export const chats2GPTMessages = ({
       });
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+      const existsPlanId = new Set<string>();
 
-      //AI: 只需要把根节点转化即可
       item.value.forEach((value, i) => {
+        // 只需要把根节点转化即可
         if (value.stepId) return;
 
         if ((value.tools || value.tool) && reserveTool) {
@@ -150,16 +151,25 @@ export const chats2GPTMessages = ({
             });
           }
         } else if (value.plan && reserveTool) {
-          const steps = value.plan.steps.map((step) => {
-            const stepResponse = item.value
-              .filter((item) => item.stepId === step.id)
-              ?.map((item) => item.text?.content)
-              .join('\n');
-            return {
-              title: step.title,
-              response: stepResponse
-            };
-          });
+          const planId = value.plan.planId;
+          if (existsPlanId.has(planId)) {
+            return;
+          }
+          existsPlanId.add(planId);
+          const steps = item.value
+            .filter((item) => item.plan?.planId === planId)
+            .flatMap((item) => item.plan?.steps || [])
+            .map((step) => {
+              const stepResponse = item.value
+                .filter((item) => item.stepId === step.id)
+                ?.map((item) => item.text?.content)
+                .join('\n');
+
+              return {
+                title: step.title,
+                response: stepResponse
+              };
+            });
           const toolId = getNanoid(6);
           aiResults.push({
             dataId,
@@ -170,7 +180,11 @@ export const chats2GPTMessages = ({
                 type: 'function',
                 function: {
                   name: 'plan_agent',
-                  arguments: ''
+                  arguments: JSON.stringify({
+                    task: value.plan.task,
+                    description: value.plan.description,
+                    background: value.plan.background
+                  })
                 }
               }
             ]
@@ -179,10 +193,7 @@ export const chats2GPTMessages = ({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: toolId,
-            content: JSON.stringify({
-              steps,
-              prompt: '请根据分步执行的结果继续任务或对任务进行总结回答。'
-            })
+            content: JSON.stringify(steps)
           });
         } else if (value.interactive) {
           if (value.interactive.type === 'agentPlanAskQuery') {
@@ -190,6 +201,14 @@ export const chats2GPTMessages = ({
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.interactive.params.content
+            });
+          } else if (value.interactive.type === 'agentPlanAskUserForm') {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: `${value.interactive.params.description}
+
+Answer: ${value.interactive.params.inputForm.map((item) => `- ${item.label}: ${item.value}`).join('\n')}`
             });
           }
         }

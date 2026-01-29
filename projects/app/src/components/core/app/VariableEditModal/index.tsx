@@ -88,16 +88,25 @@ const VariableEditModal = ({
         return;
       }
 
+      // For custom and internal types, user can select valueType manually, so don't override it
+      // For other types, set valueType from defaultValueType
+      if (
+        ![VariableInputEnum.custom, VariableInputEnum.internal, VariableInputEnum].includes(
+          data.type
+        )
+      ) {
+        data.valueType = inputTypeList
+          .flat()
+          .find((item) => item.value === data.type)?.defaultValueType;
+      }
+
+      // Special types set required = false
       if (
         data.type === VariableInputEnum.custom ||
         data.type === VariableInputEnum.internal ||
         data.type === VariableInputEnum.switch
       ) {
         data.required = false;
-      } else {
-        data.valueType = inputTypeList
-          .flat()
-          .find((item) => item.value === data.type)?.defaultValueType;
       }
 
       Object.keys(data).forEach((key) => {

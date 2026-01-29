@@ -11,13 +11,13 @@ export type ToolNodeItemType = RuntimeNodeItemType & {
 
 export type DispatchSubAppResponse = {
   response: string;
-  result: Record<string, any>;
+  result?: any;
   runningTime: number;
   usages?: ChatNodeUsageType[];
 };
 
 export const SubAppRuntimeSchema = z.object({
-  type: z.enum(['tool', 'file', 'workflow', 'toolWorkflow']),
+  type: z.enum(['tool', 'workflow', 'toolWorkflow']),
   id: z.string(),
   name: z.string(),
   avatar: z.string().optional(),

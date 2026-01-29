@@ -74,7 +74,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
       name: serializedNode.name,
       icon: serializedNode.icon,
       skillType: serializedNode.skillType,
-      status: 'active',
+      status: 'unconfigured',
       onClick: () => {}
     });
     node.setFormat(serializedNode.format);

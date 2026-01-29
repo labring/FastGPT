@@ -10,6 +10,8 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
+import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -168,13 +170,15 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
+      // 有文本内容，保留
       if (item.text?.content?.trim()) {
         return true;
       }
-      // type 为 'file' 时 key 和 url 不能同时为空
-      if (!item.file?.key && !item.file?.url) {
-        return false;
+      // 有文件且文件有 key 或 url，保留
+      if (item.file && (item.file.key || item.file.url)) {
+        return true;
       }
+      // 其他情况过滤掉
       return false;
     }) || []
   );
@@ -203,6 +207,49 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
     default:
       return ChatSourceEnum.online;
   }
+};
+
+// 扁平化响应
+export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
+  return res
+    .map((item) => {
+      return [
+        item,
+        ...getFlatAppResponses(item.pluginDetail || []),
+        ...getFlatAppResponses(item.toolDetail || []),
+        ...getFlatAppResponses(item.loopDetail || []),
+        ...getFlatAppResponses(item.childrenResponses || [])
+      ];
+    })
+    .flat();
+};
+
+/* 
+  对于交互模式下，有两种响应：
+  1. 提交交互结果，此时不会新增一条 user 消息
+  2. 发送 user 消息，此时对话会新增一条 user 消息
+*/
+export const checkInteractiveResponseStatus = ({
+  interactive,
+  input
+}: {
+  interactive: WorkflowInteractiveResponseType;
+  input: string;
+}): 'submit' | 'query' => {
+  if (interactive.type === 'agentPlanAskQuery') {
+    return 'query';
+  }
+  if (interactive.type === 'agentPlanAskUserForm') {
+    try {
+      // 如果是表单提交，会是一个对象，如果解析失败，则认为是非表单提交。
+      JSON.parse(input);
+    } catch {
+      return 'query';
+    }
+  } else if (interactive.type === 'agentPlanCheck' && input !== ConfirmPlanAgentText) {
+    return 'query';
+  }
+  return 'submit';
 };
 
 /*

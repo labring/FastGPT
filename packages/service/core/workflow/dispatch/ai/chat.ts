@@ -181,7 +181,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       finish_reason,
       responseEmptyTip,
       usage,
-      error
+      error,
+      requestId // 获取请求追踪 ID
     } = await createLLMResponse({
       throwError: false,
       body: {
@@ -248,7 +249,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           reasoningText,
           historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
-          finishReason: finish_reason
+          finishReason: finish_reason,
+          llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
         },
         ...(points && {
           [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
@@ -283,7 +285,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         reasoningText,
         historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
         contextTotalLen: completeMessages.length,
-        finishReason: finish_reason
+        finishReason: finish_reason,
+        llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
         {

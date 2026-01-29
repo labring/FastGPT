@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
+import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -83,7 +84,10 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: true
     };
-  } else if (finalInteractive.type === 'agentPlanAskQuery') {
+  } else if (
+    finalInteractive.type === 'agentPlanAskQuery' ||
+    finalInteractive.type === 'agentPlanAskUserForm'
+  ) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
@@ -105,13 +109,13 @@ export const rewriteHistoriesByInteractiveResponse = ({
   interactiveVal: string;
   interactive: WorkflowInteractiveResponseType;
 }): ChatSiteItemType[] => {
-  if (interactive.type === 'agentPlanAskQuery') {
-    return histories;
-  }
-
+  const status = checkInteractiveResponseStatus({
+    interactive,
+    input: interactiveVal
+  });
+  console.log(status, interactive, interactiveVal, 12121);
   const formatHistories = (() => {
-    // 确认 plan 的事件，可以发送 query
-    if (interactive.type === 'agentPlanCheck' && interactiveVal !== ConfirmPlanAgentText) {
+    if (status === 'query') {
       return histories;
     }
     return histories.slice(0, -2);
@@ -127,6 +131,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
+
       if (
         finalInteractive.type === 'userSelect' ||
         finalInteractive.type === 'agentPlanAskUserSelect'

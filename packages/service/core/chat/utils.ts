@@ -14,10 +14,11 @@ export const addPreviewUrlToChatItems = async (
   async function addToChatflow(item: ChatItemType) {
     for await (const value of item.value) {
       if ('file' in value && value.file && value.file.key) {
-        value.file.url = await s3ChatSource.createGetChatFileURL({
+        const { url } = await s3ChatSource.createGetChatFileURL({
           key: value.file.key,
           external: true
         });
+        value.file.url = url;
       }
     }
   }

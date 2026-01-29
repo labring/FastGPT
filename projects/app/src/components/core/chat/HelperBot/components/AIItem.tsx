@@ -171,7 +171,7 @@ const AIItem = ({
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  console.log(chat, 111122);
+
   return (
     <Box
       _hover={{
@@ -222,7 +222,7 @@ const AIItem = ({
       </Box>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>
-        <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>
+        {/* <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>
           <MyTooltip label={t('common:Copy')}>
             <MyIconButton
               icon="copy"
@@ -249,7 +249,7 @@ const AIItem = ({
               // onClick={() => copyData(text ?? '')}
             />
           </MyTooltip>
-        </Flex>
+        </Flex> */}
       </Flex>
     </Box>
   );

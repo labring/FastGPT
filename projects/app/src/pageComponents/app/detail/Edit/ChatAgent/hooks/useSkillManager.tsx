@@ -13,7 +13,6 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -28,6 +27,7 @@ import {
   AppTypeList,
   ToolTypeList
 } from '@fastgpt/global/core/app/constants';
+import { useLatest } from 'ahooks';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -144,10 +144,12 @@ export const useSkillManager = ({
     });
   }, []);
 
+  const lastSelectedTools = useLatest(selectedTools);
   const onAddAppOrTool = useCallback(
     async (toolId: string) => {
+      console.log('Add tool', toolId);
       // Check tool exists, if exists, not update/add tool
-      const existsTool = selectedTools.find((tool) => tool.pluginId === toolId);
+      const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
         return existsTool.pluginId;
       }
@@ -167,19 +169,19 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool: SelectedToolItemType = {
+      const tool = {
         ...toolTemplate,
-        id: toolId
+        id: toolTemplate.pluginId!
       };
 
       onUpdateOrAddTool({
         ...tool,
-        configStatus: getToolConfigStatus(tool).status
+        configStatus: getToolConfigStatus({ tool }).status
       });
 
       return tool.id;
     },
-    [canSelectFile, canSelectImg, onUpdateOrAddTool, selectedTools, t, toast]
+    [canSelectFile, canSelectImg, lastSelectedTools, onUpdateOrAddTool, t, toast]
   );
 
   /* ===== Skill option ===== */
@@ -236,15 +238,14 @@ export const useSkillManager = ({
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
     return selectedTools.map((tool) => {
       const configStatus: SkillLabelItemType['configStatus'] = (() => {
-        if (isSubApp(tool.flowNodeType)) {
-          if (tool.pluginData?.error) {
-            return 'invalid';
-          }
+        if (tool.pluginData?.error) {
+          return 'invalid';
         }
-        return tool.configStatus || 'active';
+        return tool.configStatus || 'unconfigured';
       })();
       return {
         ...tool,
+        id: tool.pluginId!,
         configStatus
       };
     });
@@ -258,10 +259,13 @@ export const useSkillManager = ({
 
       if (isSubApp(tool.flowNodeType)) {
         const hasFormInput = checkNeedsUserConfiguration(tool);
-        if (!hasFormInput) return;
+        if (!hasFormInput) {
+          return;
+        }
+
         setConfigTool(tool);
       } else {
-        console.log('onClickSkill', id);
+        console.log('onClickSkill', tool);
       }
     },
     [selectedTools]
@@ -284,7 +288,7 @@ export const useSkillManager = ({
             onAddTool={(tool) =>
               onUpdateOrAddTool({
                 ...tool,
-                configStatus: 'active'
+                configStatus: 'configured'
               })
             }
           />

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -18,6 +18,11 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import dynamic from 'next/dynamic';
+
+const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
+  ssr: false
+});
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -34,12 +39,14 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime
+  chatTime,
+  onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   chatTime?: Date;
+  onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -179,12 +186,69 @@ export const WholeResponseContent = ({
             value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
           />
         )}
+        {activeModule.queryExtensionResult && (
+          <Row
+            label={t('chat:compress_llm_usage')}
+            value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+          />
+        )}
+
         {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
           <Row
             label={t('common:core.chat.response.Tool call tokens')}
             value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
           />
         )}
+        {/* LLM Request IDs */}
+        {activeModule?.llmRequestIds &&
+          activeModule.llmRequestIds.length > 0 &&
+          onOpenRequestIdDetail && (
+            <Row
+              label={t('chat:llm_request_ids')}
+              rawDom={
+                <Grid
+                  templateColumns={'repeat(auto-fill, minmax(250px, 1fr))'}
+                  gap={2}
+                  px={3}
+                  py={2}
+                >
+                  {activeModule.llmRequestIds.map((requestId, index) => (
+                    <Flex
+                      key={index}
+                      alignItems={'center'}
+                      bg={'white'}
+                      border={'base'}
+                      borderRadius={'md'}
+                      px={3}
+                      py={2}
+                      cursor={'pointer'}
+                      _hover={{
+                        borderColor: 'primary.500',
+                        color: 'primary.600',
+                        boxShadow: 'sm'
+                      }}
+                      onClick={() => onOpenRequestIdDetail(requestId)}
+                      title={t('common:Click_to_expand')}
+                    >
+                      <Box
+                        flex={'1 0 0'}
+                        width={0}
+                        fontFamily={'monospace'}
+                        fontSize={'xs'}
+                        textOverflow={'ellipsis'}
+                        overflow={'hidden'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {requestId}
+                      </Box>
+                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                    </Flex>
+                  ))}
+                </Grid>
+              }
+            />
+          )}
+        <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
         <Row
@@ -619,6 +683,17 @@ export const ResponseBox = React.memo(function ResponseBox({
   const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
+  // LLM Request Detail Modal state
+  const [selectedRequestId, setSelectedRequestId] = useState<string>();
+
+  const handleOpenRequestIdDetail = useCallback((requestId: string) => {
+    setSelectedRequestId(requestId);
+  }, []);
+
+  const handleCloseRequestIdModal = useCallback(() => {
+    setSelectedRequestId(undefined);
+  }, []);
+
   const flattedResponse = useMemo(() => {
     /* Flat response */
     function flattenArray(arr: ChatHistoryItemResType[]) {
@@ -747,6 +822,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               activeModule={activeModule}
               hideTabs={hideTabs}
               chatTime={chatTime}
+              onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
         </Flex>
@@ -812,11 +888,17 @@ export const ResponseBox = React.memo(function ResponseBox({
                   activeModule={activeModule}
                   hideTabs={hideTabs}
                   chatTime={chatTime}
+                  onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>
             </Flex>
           )}
         </Box>
+      )}
+
+      {/* LLM Request Detail Modal */}
+      {selectedRequestId && (
+        <RequestIdDetailModal onClose={handleCloseRequestIdModal} requestId={selectedRequestId} />
       )}
     </>
   );

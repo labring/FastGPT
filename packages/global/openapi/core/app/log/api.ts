@@ -15,15 +15,33 @@ export const GetLogKeysResponseSchema = z.object({
   logKeys: z
     .array(AppLogKeysSchema)
     .default([])
-    .meta({ example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME], description: '日志键' })
+    .meta({
+      example: [
+        {
+          key: AppLogKeysEnum.SOURCE,
+          enable: true
+        },
+        {
+          key: AppLogKeysEnum.CREATED_TIME,
+          enable: true
+        }
+      ],
+      description: '日志键'
+    })
 });
 export type getLogKeysResponseType = z.infer<typeof GetLogKeysResponseSchema>;
 
 export const UpdateLogKeysBodySchema = z.object({
   appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
-  logKeys: z
-    .array(AppLogKeysSchema)
-    .meta({ example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME], description: '日志键' })
+  logKeys: z.array(AppLogKeysSchema).meta({
+    example: [
+      {
+        key: AppLogKeysEnum.SOURCE,
+        enable: true
+      }
+    ],
+    description: '日志键'
+  })
 });
 export type updateLogKeysBody = z.infer<typeof UpdateLogKeysBodySchema>;
 
