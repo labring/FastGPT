@@ -101,6 +101,68 @@ echo "Downloaded config.json from $CONFIG"
 
 mv docker-compose.${VECTOR}.yml docker-compose.yml
 
+# 自动处理 S3 外部地址
+echo ""
+echo "Detecting available IP addresses for S3 external endpoint..."
+
+# 使用 ifconfig 获取所有 IPv4 地址（排除 127.0.0.1）
+IP_LIST=()
+while IFS= read -r line; do
+    IP_LIST+=("$line")
+done < <(ifconfig 2>/dev/null | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+
+# 显示所有检测到的 IP 地址供用户选择
+if [ ${#IP_LIST[@]} -gt 0 ]; then
+    echo "Available IP addresses:"
+    for i in "${!IP_LIST[@]}"; do
+        echo "  [$((i+1))] ${IP_LIST[$i]}"
+    done
+    echo "  [0] Enter custom IP or domain"
+    echo ""
+
+    read -p "Select IP address (1-${#IP_LIST[@]}, 0 for custom, Enter for #1): " ip_choice
+
+    # 默认选择第一个
+    if [ -z "$ip_choice" ]; then
+        ip_choice=1
+    fi
+
+    if [ "$ip_choice" == "0" ]; then
+        read -p "Enter your custom IP address or domain: " LOCAL_IP
+    elif [ "$ip_choice" -ge 1 ] 2>/dev/null && [ "$ip_choice" -le ${#IP_LIST[@]} ] 2>/dev/null; then
+        LOCAL_IP="${IP_LIST[$((ip_choice-1))]}"
+    else
+        echo "Invalid selection, using first IP: ${IP_LIST[0]}"
+        LOCAL_IP="${IP_LIST[0]}"
+    fi
+else
+    echo "Could not detect any IP address"
+    read -p "Enter your IP address or domain for S3 external endpoint: " LOCAL_IP
+fi
+
+# 替换 docker-compose.yml 中 192.168.0.2 为选定的地址
+if [ -n "$LOCAL_IP" ]; then
+    echo "Replacing 192.168.0.2 with $LOCAL_IP in docker-compose.yml..."
+
+    # 根据操作系统选择 sed 命令
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        sed -i '' "s/192\.168\.0\.2/$LOCAL_IP/g" docker-compose.yml
+    else
+        # Linux
+        sed -i "s/192\.168\.0\.2/$LOCAL_IP/g" docker-compose.yml
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo "Successfully updated S3 external endpoint to: http://$LOCAL_IP:9000"
+    else
+        echo "Warning: Failed to replace IP address. Please manually edit docker-compose.yml"
+    fi
+else
+    echo "Warning: No IP address provided. Please manually edit docker-compose.yml to replace 192.168.0.2"
+fi
+
+echo ""
 echo "Installation success! What's next:"
 echo "1. Edit the yml file: vim docker-compose.yml"
 echo "2. start the service: docker compose up -d"
