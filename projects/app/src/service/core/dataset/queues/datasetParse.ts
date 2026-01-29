@@ -297,7 +297,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         await MongoDatasetCollection.updateOne(
           { _id: collection._id },
           {
-            ...(title && { name: title }),
+            ...(title && collection.type === DatasetCollectionTypeEnum.link && { name: title }),
             rawTextLength: resultText.length,
             hashRawText: hashStr(resultText)
           },
