@@ -562,9 +562,8 @@ export const queryExtensionForAssistant = async ({
     );
 
     // 步骤4: 组合结果并去重
-    // 返回: [原始Query, 指代消除+标准化, 改写问题1标准化, 改写问题2标准化, ...]
+    // 返回: [指代消除+标准化, 改写问题1标准化, 改写问题2标准化, ...]
     const allQueries = [
-      query, // 原始query
       resolvedStandardized, // 指代消除+标准化
       ...standardizedRewriteQueries // 改写问题标准化
     ].filter((q) => q && q.trim().length > 0);
