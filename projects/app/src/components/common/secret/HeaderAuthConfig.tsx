@@ -67,7 +67,7 @@ const AuthValueDisplay = ({
             placeholder={'Value'}
             bg={'myGray.50'}
             h={8}
-            maxLength={200}
+            maxLength={400}
             {...register(fieldName as any, {
               required: true
             })}
