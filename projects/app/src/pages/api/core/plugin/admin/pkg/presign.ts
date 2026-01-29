@@ -23,17 +23,7 @@ async function handler(
     return Promise.reject('Filename is required');
   }
 
-  const result = await pluginClient.tool.upload.getUploadURL({
-    query: {
-      filename
-    }
-  });
-
-  if (result.status !== 200) {
-    return Promise.reject(result.body);
-  }
-
-  return result.body;
+  return await pluginClient.getToolUploadUrl(filename);
 }
 
 export default NextAPI(handler);

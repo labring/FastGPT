@@ -6,9 +6,7 @@ import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { addMinutes } from 'date-fns';
 
 const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
-  const res = await pluginClient.workflow.getTemplateList();
-  if (res.status === 200) return res.body as AppTemplateSchemaType[];
-  else return Promise.reject(res.body);
+  return (await pluginClient.listWorkflows()) as AppTemplateSchemaType[];
 };
 
 const getAppTemplates = async () => {

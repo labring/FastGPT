@@ -23,17 +23,7 @@ async function handler(
     return Promise.reject('Object name is required');
   }
 
-  const result = await pluginClient.tool.upload.parseUploadedTool({
-    query: {
-      objectName
-    }
-  });
-
-  if (result.status !== 200) {
-    return Promise.reject(result.body);
-  }
-
-  return result.body;
+  return await pluginClient.parseUploadedTool(objectName);
 }
 
 export default NextAPI(handler);
