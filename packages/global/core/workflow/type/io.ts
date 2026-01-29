@@ -88,29 +88,27 @@ export const InputConfigTypeSchema = z.object({
 export type InputConfigType = z.infer<typeof InputConfigTypeSchema>;
 
 // Workflow node input
-export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.and(
-  z.object({
-    selectedTypeIndex: z.number().optional(),
-    renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)), // Node Type. Decide on a render style
-    valueDesc: z.string().optional(), // data desc
-    value: z.any().optional(),
+export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend({
+  selectedTypeIndex: z.number().optional(),
+  renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)), // Node Type. Decide on a render style
+  valueDesc: z.string().optional(), // data desc
+  value: z.any().optional(),
 
-    debugLabel: z.string().optional(),
+  debugLabel: z.string().optional(),
 
-    description: z.string().optional(), // field desc
-    toolDescription: z.string().optional(), // If this field is not empty, it is entered as a tool
+  description: z.string().optional(), // field desc
+  toolDescription: z.string().optional(), // If this field is not empty, it is entered as a tool
 
-    enum: z.string().optional(),
-    inputList: z.array(InputConfigTypeSchema).optional(), // when key === 'system_input_config', this field is used
+  enum: z.string().optional(),
+  inputList: z.array(InputConfigTypeSchema).optional(), // when key === 'system_input_config', this field is used
 
-    // render components params
-    canEdit: z.boolean().optional(), // dynamic inputs
-    isPro: z.boolean().optional(), // Pro version field
-    isToolOutput: z.boolean().optional(),
+  // render components params
+  canEdit: z.boolean().optional(), // dynamic inputs
+  isPro: z.boolean().optional(), // Pro version field
+  isToolOutput: z.boolean().optional(),
 
-    deprecated: z.boolean().optional() // node deprecated
-  })
-);
+  deprecated: z.boolean().optional() // node deprecated
+});
 export type FlowNodeInputItemType = z.infer<typeof FlowNodeInputItemTypeSchema>;
 
 // Workflow node output
@@ -129,15 +127,22 @@ export const FlowNodeOutputItemTypeSchema = z.object({
 
   invalid: z.boolean().optional(),
   invalidCondition: z.optional(
-    z.function({
-      input: z.tuple([
-        z.object({
-          inputs: FlowNodeInputItemTypeSchema.array(),
-          llmModelList: LLMModelItemSchema.array()
-        })
-      ]),
-      output: z.boolean()
-    })
+    z
+      .function({
+        input: z.tuple([
+          z.object({
+            inputs: FlowNodeInputItemTypeSchema.array(),
+            llmModelList: LLMModelItemSchema.array()
+          })
+        ]),
+        output: z.boolean()
+      })
+      .meta({
+        override: {
+          type: 'string',
+          description: 'Function placeholder; not represented in JSON payloads'
+        }
+      })
   ),
 
   customFieldConfig: CustomFieldConfigTypeSchema.optional(),

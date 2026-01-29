@@ -4,12 +4,16 @@ export const TagsMap = {
   helperBot: '辅助助手',
   // Agent - log
   appLog: 'Agent 日志',
-  // Agent - common
-  appCommon: 'Agent 管理',
   // Ai -skill
   aiSkill: 'AI技能管理',
   // AI
   aiCommon: 'AI 通用 接口',
+
+  // App 管理
+  // Agent - common
+  appCommon: '通用应用管理',
+  appPer: '应用权限',
+  mcpTools: 'MCP 工具管理',
 
   // Chat - home
   chatPage: '对话页面通用',

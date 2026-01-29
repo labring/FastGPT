@@ -3,6 +3,7 @@ import type { OpenAPIPath } from '../../../type';
 import {
   DeleteHelperBotChatParamsSchema,
   GetHelperBotChatRecordsParamsSchema,
+  GetHelperBotChatRecordsResponseSchema,
   HelperBotCompletionsParamsSchema
 } from './api';
 import { TagsMap } from '../../../tag';
@@ -21,7 +22,7 @@ export const HelperBotPath: OpenAPIPath = {
           description: '成功返回记录列表',
           content: {
             'application/json': {
-              schema: z.array(z.any())
+              schema: GetHelperBotChatRecordsResponseSchema
             }
           }
         }

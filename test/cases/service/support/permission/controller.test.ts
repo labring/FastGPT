@@ -1,4 +1,3 @@
-import type { CreateAppBody } from '@/pages/api/core/app/create';
 import createAppAPI from '@/pages/api/core/app/create';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -10,6 +9,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeGroups, getFakeOrgs, getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
+import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 
 describe('test getClbsWithInfo', () => {
   it('should get ClbsWithInfo', async () => {
@@ -18,7 +18,7 @@ describe('test getClbsWithInfo', () => {
     const users = await getFakeUsers(3);
     const orgs = await getFakeOrgs();
     const groups = await getFakeGroups(3);
-    const app = await Call<CreateAppBody, {}, string>(createAppAPI, {
+    const app = await Call<CreateAppBodyType, {}, string>(createAppAPI, {
       auth: users.owner,
       body: {
         modules: [],

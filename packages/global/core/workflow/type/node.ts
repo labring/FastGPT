@@ -113,32 +113,30 @@ const HandleTypeSchema = z.object({
 });
 
 // system template
-export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.and(
-  z.object({
-    id: z.string(),
-    templateType: z.string(),
-    status: PluginStatusSchema.optional(),
+export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
+  id: z.string(),
+  templateType: z.string(),
+  status: PluginStatusSchema.optional(),
 
-    showSourceHandle: z.boolean().optional(),
-    showTargetHandle: z.boolean().optional(),
+  showSourceHandle: z.boolean().optional(),
+  showTargetHandle: z.boolean().optional(),
 
-    // Info
-    isTool: z.boolean().optional(), // can be connected by tool
+  // Info
+  isTool: z.boolean().optional(), // can be connected by tool
 
-    // Action
-    forbidDelete: z.boolean().optional(), // forbid delete
-    unique: z.boolean().optional(),
+  // Action
+  forbidDelete: z.boolean().optional(), // forbid delete
+  unique: z.boolean().optional(),
 
-    diagram: z.string().optional(),
-    courseUrl: z.string().optional(),
-    userGuide: z.string().optional(),
-    tags: z.array(z.string()).nullish(),
+  diagram: z.string().optional(),
+  courseUrl: z.string().optional(),
+  userGuide: z.string().optional(),
+  tags: z.array(z.string()).nullish(),
 
-    // @deprecated
-    sourceHandle: HandleTypeSchema.optional(),
-    targetHandle: HandleTypeSchema.optional()
-  })
-);
+  // @deprecated
+  sourceHandle: HandleTypeSchema.optional(),
+  targetHandle: HandleTypeSchema.optional()
+});
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 
 // Api response
@@ -178,37 +176,33 @@ export const NodeTemplateListTypeSchema = z.array(
 export type NodeTemplateListType = z.infer<typeof NodeTemplateListTypeSchema>;
 
 // react flow node type
-export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.and(
-  z.object({
-    nodeId: z.string(),
-    parentNodeId: z.string().optional(),
-    isError: z.boolean().optional(),
-    searchedText: z.string().optional(),
-    debugResult: z
-      .object({
-        status: z.enum(['running', 'success', 'skipped', 'failed']),
-        message: z.string().optional(),
-        showResult: z.boolean().optional(),
-        response: z.any().optional(),
-        isExpired: z.boolean().optional(),
-        interactiveResponse: InteractiveNodeResponseTypeSchema.optional()
-      })
-      .optional(),
-    isFolded: z.boolean().optional()
-  })
-);
+export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
+  nodeId: z.string(),
+  parentNodeId: z.string().optional(),
+  isError: z.boolean().optional(),
+  searchedText: z.string().optional(),
+  debugResult: z
+    .object({
+      status: z.enum(['running', 'success', 'skipped', 'failed']),
+      message: z.string().optional(),
+      showResult: z.boolean().optional(),
+      response: z.any().optional(),
+      isExpired: z.boolean().optional(),
+      interactiveResponse: InteractiveNodeResponseTypeSchema.optional()
+    })
+    .optional(),
+  isFolded: z.boolean().optional()
+});
 export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 
 // store node type
-export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.and(
-  z.object({
-    nodeId: z.string(),
-    position: z
-      .object({
-        x: z.number(),
-        y: z.number()
-      })
-      .optional()
-  })
-);
+export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
+  nodeId: z.string(),
+  position: z
+    .object({
+      x: z.number(),
+      y: z.number()
+    })
+    .optional()
+});
 export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;

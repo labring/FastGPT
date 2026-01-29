@@ -31,12 +31,10 @@ export const ToolsetChildSchema = z.object({
 });
 export const AdminSystemToolDetailSchema = AdminSystemToolListItemSchema.omit({
   hasSecretInput: true
-}).and(
-  z.object({
-    userGuide: z.string().nullish(),
-    inputList: z.array(ToolSecretInputItemSchema).optional(),
-    inputListVal: z.record(z.string(), z.any()).nullish(),
-    childTools: z.array(ToolsetChildSchema).optional()
-  })
-);
+}).extend({
+  userGuide: z.string().nullish(),
+  inputList: z.array(ToolSecretInputItemSchema).optional(),
+  inputListVal: z.record(z.string(), z.any()).nullish(),
+  childTools: z.array(ToolsetChildSchema).optional()
+});
 export type AdminSystemToolDetailType = z.infer<typeof AdminSystemToolDetailSchema>;

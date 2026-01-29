@@ -33,12 +33,10 @@ export const WorkflowTemplateTypeSchema = z.object({
 export type WorkflowTemplateType = z.infer<typeof WorkflowTemplateTypeSchema>;
 
 // template market
-export const TemplateMarketItemTypeSchema = WorkflowTemplateTypeSchema.and(
-  z.object({
-    tags: z.array(z.string()),
-    type: z.enum([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool])
-  })
-);
+export const TemplateMarketItemTypeSchema = WorkflowTemplateTypeSchema.extend({
+  tags: z.array(z.string()),
+  type: z.enum([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool])
+});
 export type TemplateMarketItemType = z.infer<typeof TemplateMarketItemTypeSchema>;
 
 // template market list

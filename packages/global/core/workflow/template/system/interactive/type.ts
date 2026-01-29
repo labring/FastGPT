@@ -110,24 +110,22 @@ export const UserSelectInteractiveSchema = z.object({
 export type UserSelectInteractive = z.infer<typeof UserSelectInteractiveSchema>;
 
 // User input
-export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.and(
-  z.object({
-    type: z.enum(FlowNodeInputTypeEnum),
-    key: z.string(),
-    label: z.string(),
-    value: z.any(),
-    valueType: z.enum(WorkflowIOValueTypeEnum),
-    description: z.string().optional(),
-    defaultValue: z.any().optional(),
-    required: z.boolean(),
+export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
+  type: z.enum(FlowNodeInputTypeEnum),
+  key: z.string(),
+  label: z.string(),
+  value: z.any(),
+  valueType: z.enum(WorkflowIOValueTypeEnum),
+  description: z.string().optional(),
+  defaultValue: z.any().optional(),
+  required: z.boolean(),
 
-    maxLength: z.number().optional(), // input & textarea
-    minLength: z.number().optional(), // password
-    max: z.number().optional(), // numberInput
-    min: z.number().optional(), // numberInput
-    list: z.array(z.object({ label: z.string(), value: z.string() })).optional() // select
-  })
-);
+  maxLength: z.number().optional(), // input & textarea
+  minLength: z.number().optional(), // password
+  max: z.number().optional(), // numberInput
+  min: z.number().optional(), // numberInput
+  list: z.array(z.object({ label: z.string(), value: z.string() })).optional() // select
+});
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput').or(z.literal('agentPlanAskUserForm')),
@@ -149,7 +147,7 @@ export const PaymentPauseInteractiveSchema = z.object({
 });
 export type PaymentPauseInteractive = z.infer<typeof PaymentPauseInteractiveSchema>;
 
-export const InteractiveNodeResponseTypeSchema = z.union([
+export const InteractiveNodeResponseTypeSchema = z.discriminatedUnion('type', [
   UserSelectInteractiveSchema,
   UserInputInteractiveSchema,
   ChildrenInteractiveSchema,
@@ -161,7 +159,8 @@ export const InteractiveNodeResponseTypeSchema = z.union([
 ]);
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;
 
-export const WorkflowInteractiveResponseTypeSchema = InteractiveBasicTypeSchema.and(
+export const WorkflowInteractiveResponseTypeSchema = z.intersection(
+  InteractiveBasicTypeSchema,
   InteractiveNodeResponseTypeSchema
 );
 export type WorkflowInteractiveResponseType = z.infer<typeof WorkflowInteractiveResponseTypeSchema>;

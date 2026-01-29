@@ -1,5 +1,6 @@
-import { PaginationPropsSchema } from '../../../type';
+import { PaginationPropsSchema, PaginationResponseSchema } from '../../../type';
 import {
+  HelperBotChatItemSiteSchema,
   type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema
@@ -10,14 +11,17 @@ import type { PaginationResponse } from '../../../../../web/common/fetch/type';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 
 // 分页获取记录
-export const GetHelperBotChatRecordsParamsSchema = z
-  .object({
-    type: HelperBotTypeEnumSchema,
-    chatId: z.string()
-  })
-  .and(PaginationPropsSchema);
+export const GetHelperBotChatRecordsParamsSchema = PaginationPropsSchema.extend({
+  type: HelperBotTypeEnumSchema,
+  chatId: z.string()
+});
 export type GetHelperBotChatRecordsParamsType = z.infer<typeof GetHelperBotChatRecordsParamsSchema>;
-export type GetHelperBotChatRecordsResponseType = PaginationResponse<HelperBotChatItemSiteType>;
+export const GetHelperBotChatRecordsResponseSchema = PaginationResponseSchema(
+  HelperBotChatItemSiteSchema
+);
+export type GetHelperBotChatRecordsResponseType = z.infer<
+  typeof GetHelperBotChatRecordsResponseSchema
+>;
 
 // 删除单组对话
 export const DeleteHelperBotChatParamsSchema = z.object({

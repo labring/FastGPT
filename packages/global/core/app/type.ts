@@ -14,14 +14,12 @@ import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config';
 
 // variable
-export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.and(
-  InputComponentPropsTypeSchema
-).and(
-  z.object({
-    type: z.enum(VariableInputEnum),
-    description: z.string()
-  })
-);
+export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.extend(
+  InputComponentPropsTypeSchema.shape
+).extend({
+  type: z.enum(VariableInputEnum),
+  description: z.string()
+});
 export type VariableItemType = z.infer<typeof VariableItemTypeSchema>;
 
 // tts

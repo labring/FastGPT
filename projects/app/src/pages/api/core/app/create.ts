@@ -1,11 +1,14 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
-import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import {
+  CreateAppBodySchema,
+  CreateAppResponseSchema,
+  type CreateAppBodyType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -31,32 +34,14 @@ import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import path from 'node:path';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 
-export type CreateAppBody = {
-  parentId?: ParentIdType;
-  name?: string;
-  avatar?: string;
-  intro?: string;
-  type?: AppTypeEnum;
-  modules: AppSchemaType['modules'];
-  edges?: AppSchemaType['edges'];
-  chatConfig?: AppSchemaType['chatConfig'];
-
-  templateId?: string;
-  utmParams?: ShortUrlParams;
-};
-
-async function handler(req: ApiRequestProps<CreateAppBody>) {
-  let { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
-    req.body;
-
-  if (!name || !type || !Array.isArray(modules)) {
-    return Promise.reject(CommonErrEnum.inheritPermissionError);
-  }
+async function handler(req: ApiRequestProps<CreateAppBodyType>) {
+  const parseResult = await CreateAppBodySchema.safeParseAsync(req.body);
+  const body = parseResult.success ? parseResult.data : req.body;
+  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
+    body;
 
   // 凭证校验
   const { teamId, tmbId, userId, isRoot } = parentId
@@ -117,7 +102,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     ...utmParams
   });
 
-  return appId;
+  return CreateAppResponseSchema.parse(appId);
 }
 
 export default NextAPI(handler);
@@ -207,7 +192,7 @@ export const onCreateApp = async ({
       { session, ordered: true }
     );
 
-    const appId = app._id;
+    const appId = String(app._id);
 
     if (!AppFolderTypeList.includes(type!)) {
       await MongoAppVersion.create(
@@ -231,7 +216,7 @@ export const onCreateApp = async ({
     await MongoResourcePermission.insertOne({
       teamId,
       tmbId,
-      resourceId: app._id,
+      resourceId: appId,
       permission: OwnerRoleVal,
       resourceType: PerResourceTypeEnum.app
     });

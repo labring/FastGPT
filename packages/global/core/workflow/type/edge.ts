@@ -8,9 +8,7 @@ export const StoreEdgeItemTypeSchema = z.object({
 });
 export type StoreEdgeItemType = z.infer<typeof StoreEdgeItemTypeSchema>;
 
-export const RuntimeEdgeItemTypeSchema = StoreEdgeItemTypeSchema.and(
-  z.object({
-    status: z.enum(['waiting', 'active', 'skipped'])
-  })
-);
+export const RuntimeEdgeItemTypeSchema = StoreEdgeItemTypeSchema.extend({
+  status: z.enum(['waiting', 'active', 'skipped'])
+});
 export type RuntimeEdgeItemType = z.infer<typeof RuntimeEdgeItemTypeSchema>;

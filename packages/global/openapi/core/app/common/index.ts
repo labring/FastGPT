@@ -1,13 +1,42 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
-import { GetAppPermissionQuerySchema, GetAppPermissionResponseSchema } from './api';
+import {
+  CreateAppBodySchema,
+  CreateAppResponseSchema,
+  GetAppPermissionQuerySchema,
+  GetAppPermissionResponseSchema
+} from './api';
 
 export const AppCommonPath: OpenAPIPath = {
+  '/core/app/create': {
+    post: {
+      summary: '创建应用',
+      description: '创建应用或文件夹',
+      tags: [TagsMap.appCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateAppBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功创建',
+          content: {
+            'application/json': {
+              schema: CreateAppResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/app/getPermission': {
     get: {
       summary: '获取应用权限',
       description: '根据应用 ID 获取当前用户对该应用的权限信息',
-      tags: [TagsMap.appCommon],
+      tags: [TagsMap.appPer],
       requestParams: {
         query: GetAppPermissionQuerySchema
       },

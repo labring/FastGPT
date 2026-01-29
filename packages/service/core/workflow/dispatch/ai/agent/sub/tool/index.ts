@@ -47,7 +47,11 @@ export const dispatchTool = async ({
   runningAppInfo,
   variables,
   workflowStreamResponse
-}: Props): Promise<DispatchSubAppResponse> => {
+}: Props): Promise<
+  DispatchSubAppResponse & {
+    toolParams: Record<string, any>;
+  }
+> => {
   const startTime = Date.now();
 
   const getErrResponse = (error: any) => {
