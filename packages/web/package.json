@@ -30,7 +30,7 @@
     "js-cookie": "^3.0.5",
     "lexical": "0.12.6",
     "lodash": "^4.17.23",
-    "next": "14.2.35",
+    "next": "16.1.5",
     "next-i18next": "15.4.2",
     "papaparse": "^5.4.1",
     "react": "18.3.1",
