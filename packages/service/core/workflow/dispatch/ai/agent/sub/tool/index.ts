@@ -52,6 +52,7 @@ export const dispatchTool = async ({
 
   const getErrResponse = (error: any) => {
     return {
+      toolParams: params,
       runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
       response: getErrText(error, 'Call tool error'),
       usages: []
@@ -130,8 +131,8 @@ export const dispatchTool = async ({
 
       const usagePoints = (() => {
         if (
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
+          system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
+          system_input_config?.type === SystemToolSecretInputTypeEnum.manual
         ) {
           return 0;
         }
@@ -149,6 +150,7 @@ export const dispatchTool = async ({
 
       return {
         response: JSON.stringify(result),
+        toolParams: params,
         result,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         usages: [
@@ -182,6 +184,7 @@ export const dispatchTool = async ({
       return {
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         response: JSON.stringify(result),
+        toolParams: params,
         result,
         usages: []
       };
@@ -226,6 +229,7 @@ export const dispatchTool = async ({
 
       if (errorMsg) {
         return {
+          toolParams: params,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
           response: errorMsg,
           usages: []
@@ -233,6 +237,7 @@ export const dispatchTool = async ({
       }
 
       return {
+        toolParams: params,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         response: typeof data === 'object' ? JSON.stringify(data) : data,
         result: data,

@@ -255,7 +255,7 @@ export const masterCall = async ({
         }
       });
     },
-    onCompressContext({ modelName, inputTokens, outputTokens, totalPoints, seconds }) {
+    onCompressContext: ({ modelName, inputTokens, outputTokens, totalPoints, seconds }) => {
       childrenResponses.push({
         nodeId: getNanoid(6),
         id: getNanoid(6),
@@ -272,6 +272,7 @@ export const masterCall = async ({
     handleToolResponse: async ({ call, messages }) => {
       addLog.debug('handleToolResponse', { toolName: call.function.name });
       const toolId = call.function.name;
+      const callId = call.id;
 
       const {
         response,
@@ -421,9 +422,10 @@ export const masterCall = async ({
               ...tool.params,
               ...toolCallParams
             };
+            // Remove sensitive data
 
             if (tool.type === 'tool') {
-              const { response, usages, runningTime, result } = await dispatchTool({
+              const { response, usages, runningTime, toolParams, result } = await dispatchTool({
                 tool: {
                   name: tool.name,
                   version: tool.version,
@@ -437,13 +439,13 @@ export const masterCall = async ({
               });
 
               childrenResponses.push({
-                nodeId: getNanoid(6),
-                id: getNanoid(6),
+                nodeId: callId,
+                id: callId,
                 runningTime,
                 moduleType: FlowNodeTypeEnum.tool,
                 moduleName: tool.name,
                 moduleLogo: tool.avatar,
-                toolInput: requestParams,
+                toolInput: toolParams,
                 toolRes: result || response,
                 totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
               });
@@ -473,8 +475,8 @@ export const masterCall = async ({
               });
 
               childrenResponses.push({
-                nodeId: getNanoid(6),
-                id: getNanoid(6),
+                nodeId: callId,
+                id: callId,
                 runningTime,
                 moduleType: FlowNodeTypeEnum.appModule,
                 moduleName: tool.name,
@@ -509,8 +511,8 @@ export const masterCall = async ({
               });
 
               childrenResponses.push({
-                nodeId: getNanoid(6),
-                id: getNanoid(6),
+                nodeId: callId,
+                id: callId,
                 runningTime,
                 moduleType: FlowNodeTypeEnum.pluginModule,
                 moduleName: tool.name,
@@ -559,6 +561,17 @@ export const masterCall = async ({
         usages,
         stop
       };
+    },
+    onToolCompress: ({ call, response, usage }) => {
+      const callId = call.id;
+      const nodeResponse = childrenResponses.findLast((item) => item.id === callId);
+      if (nodeResponse) {
+        nodeResponse.compressTextAgent = usage;
+        nodeResponse.totalPoints = nodeResponse.totalPoints
+          ? nodeResponse.totalPoints + usage.totalPoints
+          : usage.totalPoints;
+        nodeResponse.toolRes = response;
+      }
     },
     handleInteractiveTool: async ({ toolParams }) => {
       return {

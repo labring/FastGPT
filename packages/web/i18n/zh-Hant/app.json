@@ -60,6 +60,7 @@
   "change_app_type": "更改應用程式類型",
   "chat.collapse_deleted_items": "收起已刪除記錄",
   "chat.expand_deleted_items": "展開已刪除記錄",
+  "chat_agent_beta_tip": "Agent 模式處於測試階段，未來可能會進行比較大的交互/調度邏輯變更，建議僅在線使用，勿接入到自己的生產系統中。\n\nAgent 模式消耗的積分是普通應用的數十倍，請謹慎使用。",
   "chat_agent_description": "由AI驅動的Agent系統，可自行做決策、制定步驟、調用工具，並全程支持交互，適合流程不固定的任務。",
   "chat_agent_intro": "讓AI助手自主調用工具",
   "chat_debug": "聊天預覽",

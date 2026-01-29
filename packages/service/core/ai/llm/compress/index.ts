@@ -1,5 +1,5 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
-import { countGptMessagesTokens } from '../../../../common/string/tiktoken';
+import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
 import { addLog } from '../../../../common/system/log';
 import { calculateCompressionThresholds } from './constants';
 import type { CreateLLMResponseProps } from '../request';
@@ -257,7 +257,7 @@ export const compressLargeContent = async ({
     const chunkCount = chunks.length;
     const targetPerChunk = Math.floor(maxTokens / chunkCount);
 
-    addLog.info('[LLM chunk compression] Starting', {
+    addLog.debug('[LLM chunk compression] Starting', {
       chunkCount,
       chunkPerThresholds,
       targetPerChunk,
@@ -312,14 +312,8 @@ export const compressLargeContent = async ({
     };
   }
 
-  if (!content) {
-    return {
-      compressed: content
-    };
-  }
-
   // 使用准确的 token 统计
-  const currentTokens = await countGptMessagesTokens([{ role: 'user', content }]);
+  let currentTokens = await countPromptTokens(content);
 
   // 如果已经小于限制，直接返回
   if (currentTokens <= maxTokens) {
@@ -328,20 +322,14 @@ export const compressLargeContent = async ({
     };
   }
 
-  addLog.debug('[Compress large content] Starting', {
-    currentTokens,
-    maxTokens,
-    contentLength: content.length
-  });
-
   // 1. 移除 HTTP/HTTPS URLs
   content = content.replace(/https?:\/\/[^\s"'(),}\]]+/gi, '');
 
   // 2. 移除 Base64 编码内容（通常是很长的字母数字字符串）
   content = content.replace(/\b[a-zA-Z0-9+\/]{100,}={0,2}\b/g, '[BASE64_DATA]');
 
-  let tokens = await countGptMessagesTokens([{ role: 'user', content }]);
-  if (tokens <= maxTokens) {
+  currentTokens = await countPromptTokens(content);
+  if (currentTokens <= maxTokens) {
     return {
       compressed: content.trim()
     };
@@ -373,12 +361,18 @@ export const compressLargeContent = async ({
   content = content.replace(/[ \t]+/g, ' ');
   content = content.replace(/\n{3,}/g, '\n\n');
 
-  tokens = await countGptMessagesTokens([{ role: 'user', content }]);
-  if (tokens <= maxTokens) {
+  currentTokens = await countPromptTokens(content);
+  if (currentTokens <= maxTokens) {
     return {
       compressed: content.trim()
     };
   }
+
+  addLog.debug('[Compress large content] Starting', {
+    currentTokens,
+    maxTokens,
+    contentLength: content.length
+  });
 
   // 8. 分块 LLM 压缩
   try {

@@ -111,9 +111,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               setActiveTab(value);
             }}
           />
+
           {!isVariableVisible && activeTab === 'chat_debug' && (
             <VariablePopover chatType={ChatTypeEnum.test} />
           )}
+
           <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton

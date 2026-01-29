@@ -60,6 +60,7 @@
   "change_app_type": "Change App Type",
   "chat.collapse_deleted_items": "Collapse deleted records",
   "chat.expand_deleted_items": "Expand deleted records",
+  "chat_agent_beta_tip": "Agent mode is in the testing phase, and there may be major interaction/scheduling logic changes in the future. It is recommended to use it online only and not to connect it to your own production system.\n\nAgent mode consumes dozens of times more points than ordinary applications, so please use it with caution.",
   "chat_agent_description": "The Agent system driven by AI can make decisions, formulate steps, call tools, and support interaction throughout the entire process, making it suitable for tasks with unfixed processes.",
   "chat_agent_intro": "Let the AI ​​assistant call tools autonomously",
   "chat_debug": "Chat Preview",

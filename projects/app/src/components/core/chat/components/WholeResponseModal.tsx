@@ -188,16 +188,27 @@ export const WholeResponseContent = ({
         )}
         {activeModule.queryExtensionResult && (
           <Row
-            label={t('chat:compress_llm_usage')}
+            label={t('chat:query_extension_IO_tokens')}
             value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
           />
         )}
-
         {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
           <Row
             label={t('common:core.chat.response.Tool call tokens')}
             value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
           />
+        )}
+        {activeModule?.compressTextAgent && (
+          <>
+            <Row
+              label={t('chat:compress_llm_usage_point')}
+              value={`${activeModule.compressTextAgent.totalPoints}`}
+            />
+            <Row
+              label={t('chat:compress_llm_usage')}
+              value={`${activeModule.compressTextAgent.inputTokens}/${activeModule.compressTextAgent.outputTokens}`}
+            />
+          </>
         )}
         {/* LLM Request IDs */}
         {activeModule?.llmRequestIds &&

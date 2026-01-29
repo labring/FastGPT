@@ -63,6 +63,15 @@ type RunAgentCallProps = {
     interactive?: WorkflowInteractiveResponseType;
     stop?: boolean;
   }>;
+  onToolCompress?: (e: {
+    call: ChatCompletionMessageToolCall;
+    response: string;
+    usage: {
+      inputTokens: number;
+      outputTokens: number;
+      totalPoints: number;
+    };
+  }) => void;
 } & ResponseEvents;
 
 type RunAgentResponse = {
@@ -110,6 +119,7 @@ export const runAgentCall = async ({
   childrenInteractiveParams,
   handleInteractiveTool,
   handleToolResponse,
+  onToolCompress,
 
   onReasoning,
   onStreaming,
@@ -354,6 +364,15 @@ export const runAgentCall = async ({
       if (compressionUsage) {
         childrenUsages.push(compressionUsage);
         usagePush?.([compressionUsage]);
+        onToolCompress?.({
+          call: tool,
+          response: compressed_context,
+          usage: {
+            inputTokens: compressionUsage.inputTokens || 0,
+            outputTokens: compressionUsage.outputTokens || 0,
+            totalPoints: compressionUsage.totalPoints || 0
+          }
+        });
       }
 
       const toolMessage: ChatCompletionMessageParam = {
