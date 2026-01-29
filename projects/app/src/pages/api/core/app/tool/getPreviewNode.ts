@@ -8,7 +8,6 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import type { NextApiResponse } from 'next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
@@ -20,9 +19,9 @@ async function handler(
 ): Promise<FlowNodeTemplateType> {
   const { appId, versionId } = req.query;
 
-  const { source, pluginId } = splitCombineToolId(appId);
-  if (source === AppToolSourceEnum.personal) {
-    await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
+  const { authAppId } = splitCombineToolId(appId);
+  if (authAppId) {
+    await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
 
   return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });

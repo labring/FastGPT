@@ -34,7 +34,6 @@ export const PaginationPropsSchema = z.object({
   offset: z.union([z.number(), z.string()]).optional(),
   pageNum: z.union([z.number(), z.string()]).optional()
 });
-
 export type PaginationPropsType = z.infer<typeof PaginationPropsSchema>;
 
 export const PaginationResponseSchema = <T extends z.ZodType>(item: T) =>

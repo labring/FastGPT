@@ -34,7 +34,7 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
       }
     }))
   ) {
-    return Promise.reject('test');
+    return Promise.reject('Frequency limit exceeded');
   }
 
   const histories = await MongoHelperBotChatItem.find({
@@ -91,13 +91,13 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     aiResponse: result.aiResponse
   });
   // Push usage
-  pushHelperBotUsage({
-    teamId,
-    tmbId,
-    model: result.usage.model,
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens
-  });
+  // pushHelperBotUsage({
+  //   teamId,
+  //   tmbId,
+  //   model: result.usage.model,
+  //   inputTokens: result.usage.inputTokens,
+  //   outputTokens: result.usage.outputTokens
+  // });
 }
 
 export default NextAPI(handler);

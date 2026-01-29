@@ -111,23 +111,24 @@ export const agentSkillToToolRuntime = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        const { source, pluginId } = splitCombineToolId(tool.id);
+        const { pluginId, authAppId } = splitCombineToolId(tool.id);
+
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
-            appId: pluginId,
+            appId: tool.id,
             lang
           }),
-          ...(source === AppToolSourceEnum.personal
+          ...(authAppId
             ? [
                 authAppByTmbId({
                   tmbId,
-                  appId: pluginId,
+                  appId: authAppId,
                   per: ReadPermissionVal
                 })
               ]
             : [])
         ]);
-
+        // console.log('toolNode', toolNode)
         // Check if tool configuration is complete
         // 1. Add config value to toolNode.inputs
         toolNode.inputs.forEach((input) => {
@@ -266,17 +267,19 @@ export const agentSkillToToolRuntime = async ({
 
           return [];
         } else {
+          const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+
           return [
             {
               type: toolType,
-              id: pluginId,
+              id: cleanedPluginId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,
               requestSchema: formatSchema({
-                toolId: pluginId,
+                toolId: cleanedPluginId,
                 inputs: toolNode.inputs,
                 flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,
