@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getLLMRequestRecordAPI } from '@/web/core/ai/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -24,7 +24,7 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
   const { toast } = useToast();
 
   // 获取请求记录
-  const { data: record, loading } = useRequest2(() => getLLMRequestRecordAPI(requestId), {
+  const { data: record, loading } = useRequest(() => getLLMRequestRecordAPI(requestId), {
     manual: false,
     onError: () => {
       toast({

@@ -3,7 +3,7 @@ import type {
   SkillItemType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -58,7 +58,7 @@ export const useSkillManager = ({
   const { toast } = useToast();
 
   /* ===== System tool ===== */
-  const { data: systemTools = [] } = useRequest2(
+  const { data: systemTools = [] } = useRequest(
     async () => {
       const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
         return [];
@@ -95,7 +95,7 @@ export const useSkillManager = ({
   );
 
   /* ===== Team agents/tools ===== */
-  const { data: allTeamApps = [] } = useRequest2(() => getTeamAppTemplates({ parentId: null }), {
+  const { data: allTeamApps = [] } = useRequest(() => getTeamAppTemplates({ parentId: null }), {
     manual: false
   });
   const myTools = useMemo(

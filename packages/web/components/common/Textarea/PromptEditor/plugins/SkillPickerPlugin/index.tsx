@@ -23,7 +23,7 @@ import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import MyBox from '../../../../MyBox';
 import { useMount } from 'ahooks';
-import { useRequest2 } from '../../../../../../hooks/useRequest';
+import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 
@@ -138,7 +138,7 @@ export default function SkillPickerPlugin({
   );
 
   // Handle item selection (hover/keyboard navigation)
-  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest2(
+  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest(
     async ({
       currentColumnIndex,
       item,
@@ -180,7 +180,7 @@ export default function SkillPickerPlugin({
   // Handle item click (confirm selection)
   const itemClickLock = useRef(false);
   const [isItemClickLoading, setIsItemClickLoading] = useState(false);
-  const { runAsync: handleItemClick } = useRequest2(
+  const { runAsync: handleItemClick } = useRequest(
     async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
       if (!item.canClick || !option?.onClick || itemClickLock.current) return;
       itemClickLock.current = true;
@@ -234,7 +234,7 @@ export default function SkillPickerPlugin({
 
   // Handle folder toggle
   const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
-  const { runAsync: handleFolderToggle } = useRequest2(
+  const { runAsync: handleFolderToggle } = useRequest(
     async ({
       currentColumnIndex,
       item,

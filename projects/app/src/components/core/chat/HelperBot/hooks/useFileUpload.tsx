@@ -17,7 +17,7 @@ import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 import { getHelperBotFilePresign, getHelperBotFilePreview } from '../api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 type UseFileUploadOptions = {
@@ -235,7 +235,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   }, [fileList]);
 
   // Upload files
-  useRequest2(uploadFiles, {
+  useRequest(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
     refreshDeps: [fileList, type, chatId]
