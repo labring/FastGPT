@@ -22,15 +22,7 @@ async function handler(
 
   const { toolId } = req.query;
 
-  const result = await pluginClient.tool.upload.delete({
-    query: {
-      toolId
-    }
-  });
-
-  if (result.status !== 200) {
-    return Promise.reject(result.body);
-  }
+  const result = await pluginClient.deleteTool(toolId);
 
   const pluginId = `${AppToolSourceEnum.systemTool}-${toolId}`;
 
@@ -42,7 +34,7 @@ async function handler(
 
   await refreshVersionKey(SystemCacheKeyEnum.systemTool);
 
-  return result.body;
+  return result;
 }
 
 export default NextAPI(handler);
