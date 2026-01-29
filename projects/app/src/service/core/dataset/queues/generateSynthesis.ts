@@ -54,6 +54,7 @@ export async function generateSynthesis(): Promise<any> {
   global.synthesisQueueLen++;
 
   while (true) {
+    const startTime = Date.now();
     // get training data
     const {
       data,
@@ -202,8 +203,13 @@ export async function generateSynthesis(): Promise<any> {
             { session }
           );
 
-          addLog.info(
-            `[Synthesis Queue] Successfully processed chunk ${data.chunkIndex} with ${synthesisIndexes.length} synthesis indexes, next mode: ${nextMode}`
+          addLog.debug(
+            `[Synthesis Queue] Successfully processed chunk ${data.chunkIndex} with ${synthesisIndexes.length} synthesis indexes, next mode: ${nextMode}`,
+            {
+              'time(ms)': Date.now() - startTime,
+              questionsCount: questions.length,
+              synthesisIndexesCount: synthesisIndexes.length
+            }
           );
         });
 
@@ -228,7 +234,10 @@ export async function generateSynthesis(): Promise<any> {
         throw fetchError;
       }
     } catch (err: any) {
-      addLog.error(`[Synthesis Queue] Error`, err);
+      addLog.error(`[Synthesis Queue] Error`, {
+        error: err,
+        'time(ms)': Date.now() - startTime
+      });
 
       await MongoDatasetTraining.updateOne(
         {

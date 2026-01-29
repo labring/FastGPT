@@ -87,6 +87,7 @@ const chunkAnswerText = async ({
 };
 
 const processSmall2BigTask = async (data: TrainingDataType) => {
+  const startTime = Date.now();
   try {
     const answerText = data.a;
     // answer为空，或者 长度<chunkSize，进入下一阶段
@@ -96,8 +97,14 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
       small2bigConfig: data.collection?.small2bigConfig
     });
 
-    addLog.info(
-      `[Small2Big Queue] Generated ${childChunks.length} child chunks for chunk ${data.chunkIndex} (answer length: ${answerText.length})`
+    addLog.debug(
+      `[Small2Big Queue] Generated ${childChunks.length} child chunks for chunk ${data.chunkIndex} (answer length: ${answerText.length})`,
+      {
+        chunkIndex: data.chunkIndex,
+        answerLength: answerText.length,
+        childChunksCount: childChunks.length,
+        'chunkingTime(ms)': Date.now() - startTime
+      }
     );
 
     const originalIndexes = data.indexes || [];
@@ -130,12 +137,21 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         { session }
       );
 
-      addLog.info(
-        `[Small2Big Queue] Successfully processed chunk ${data.chunkIndex} with ${small2bigIndexes.length} small2big indexes, next mode: ${nextMode}`
+      addLog.debug(
+        `[Small2Big Queue] Successfully processed chunk ${data.chunkIndex} with ${small2bigIndexes.length} small2big indexes, next mode: ${nextMode}`,
+        {
+          'totalTime(ms)': Date.now() - startTime,
+          chunkIndex: data.chunkIndex,
+          small2bigIndexesCount: small2bigIndexes.length,
+          nextMode
+        }
       );
     });
   } catch (error) {
-    addLog.error(`[Small2Big Queue] Error processing task`, error);
+    addLog.error(`[Small2Big Queue] Error processing task`, {
+      error,
+      'time(ms)': Date.now() - startTime
+    });
 
     await MongoDatasetTraining.updateOne(
       { _id: data._id },
