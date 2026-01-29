@@ -22,7 +22,8 @@ export class S3PrivateBucket extends S3BaseBucket {
           credentials,
           endpoint: options.endpoint!,
           maxRetries: options.maxRetries!,
-          forcePathStyle: options.forcePathStyle
+          forcePathStyle: options.forcePathStyle,
+          publicAccessExtraSubPath: options.publicAccessExtraSubPath
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
@@ -38,7 +39,8 @@ export class S3PrivateBucket extends S3BaseBucket {
           credentials,
           endpoint: options.endpoint!,
           maxRetries: options.maxRetries!,
-          forcePathStyle: options.forcePathStyle
+          forcePathStyle: options.forcePathStyle,
+          publicAccessExtraSubPath: options.publicAccessExtraSubPath
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,

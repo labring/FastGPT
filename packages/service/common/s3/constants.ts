@@ -59,7 +59,8 @@ export function createDefaultStorageOptions() {
         },
         maxRetries: process.env.STORAGE_S3_MAX_RETRIES
           ? parseInt(process.env.STORAGE_S3_MAX_RETRIES)
-          : 3
+          : 3,
+        publicAccessExtraSubPath: process.env.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH || undefined
       } satisfies Omit<IAwsS3CompatibleStorageOptions, 'bucket'> & {
         publicBucket: string;
         privateBucket: string;
@@ -82,7 +83,8 @@ export function createDefaultStorageOptions() {
         },
         maxRetries: process.env.STORAGE_S3_MAX_RETRIES
           ? parseInt(process.env.STORAGE_S3_MAX_RETRIES)
-          : 3
+          : 3,
+        publicAccessExtraSubPath: process.env.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH || undefined
       } satisfies Omit<IAwsS3CompatibleStorageOptions, 'bucket'> & {
         publicBucket: string;
         privateBucket: string;

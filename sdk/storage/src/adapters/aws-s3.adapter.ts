@@ -42,7 +42,7 @@ import type {
 import { Upload } from '@aws-sdk/lib-storage';
 import { EmptyObjectError } from '../errors';
 import type { Readable } from 'node:stream';
-import { camelCase, chunk, isNotNil, kebabCase } from 'es-toolkit';
+import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 
@@ -366,10 +366,21 @@ export class AwsS3StorageAdapter implements IStorage {
 
     let url: string;
     if (this.options.forcePathStyle) {
-      url = `${this.options.endpoint}/${this.options.bucket}/${key}`;
+      if (this.options.publicAccessExtraSubPath) {
+        url = `${this.options.endpoint}/${trim(this.options.publicAccessExtraSubPath, '/')}/${this.options.bucket}/${key}`;
+      } else {
+        url = `${this.options.endpoint}/${this.options.bucket}/${key}`;
+      }
     } else {
       const endpoint = new URL(this.options.endpoint);
-      url = `${endpoint.protocol}//${this.options.bucket}.${endpoint.host}/${key}`;
+      const protocol = endpoint.protocol;
+      const host = endpoint.host;
+
+      if (this.options.publicAccessExtraSubPath) {
+        url = `${protocol}//${this.options.bucket}.${host}/${trim(this.options.publicAccessExtraSubPath, '/')}/${key}`;
+      } else {
+        url = `${protocol}//${this.options.bucket}.${host}/${key}`;
+      }
     }
 
     return {
