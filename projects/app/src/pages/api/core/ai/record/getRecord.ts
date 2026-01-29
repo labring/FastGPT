@@ -26,8 +26,12 @@ async function handler(
   if (
     !(await teamFrequencyLimit({
       teamId,
-      type: LimitTypeEnum.oneRequest,
-      res
+      type: LimitTypeEnum.custom,
+      res,
+      options: {
+        limit: 3,
+        seconds: 1
+      }
     }))
   ) {
     return;

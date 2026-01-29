@@ -44,7 +44,7 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
       </Box>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>
-        <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>
+        {/* <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>
           <MyTooltip label={t('common:Copy')}>
             <MyIconButton icon="copy" color={'myGray.500'} onClick={() => copyData(text ?? '')} />
           </MyTooltip>
@@ -57,7 +57,7 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
               onClick={() => copyData(text ?? '')}
             />
           </MyTooltip>
-        </Flex>
+        </Flex> */}
       </Flex>
     </Flex>
   );

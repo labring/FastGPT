@@ -30,6 +30,7 @@ import { textareaMinH } from '../ChatContainer/ChatBox/constants';
 import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
@@ -312,7 +313,26 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           onMessage: generatingMessage,
           abortCtrl: abortSignal
         });
-      } catch (error) {}
+      } catch (error) {
+        console.error(error);
+        setChatRecords((state) =>
+          state.map((item, index) => {
+            if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
+
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  text: {
+                    content: `Error: ${getErrText(error)}`
+                  }
+                }
+              ]
+            };
+          })
+        );
+      }
       setIsChatting(false);
     }
   );
