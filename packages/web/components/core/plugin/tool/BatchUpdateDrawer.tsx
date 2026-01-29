@@ -187,6 +187,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 alignItems="center"
                 justifyContent="space-between"
                 borderLeftRadius="md"
+                backgroundColor="white"
               >
                 <Flex alignItems="center" gap={2}>
                   <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} ml={1} />
