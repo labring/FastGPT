@@ -408,7 +408,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           };
         });
         // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
-        const lastToolIndex = masterMessages.findIndex((item) => item.role === 'tool');
+        const lastToolIndex = masterMessages.findLastIndex((item) => item.role === 'tool');
         if (lastToolIndex !== -1) {
           masterMessages[lastToolIndex].content = JSON.stringify(stepsResponse);
         }
@@ -436,6 +436,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)
         // addLog.debug(`Master agent message:${JSON.stringify(messages, null, 2)}`)
+        // addLog.debug(`Master agent message:${JSON.stringify(masterMessages, null, 2)}`)
         const result = await masterCall({
           ...props,
           masterMessages,

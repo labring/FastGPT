@@ -180,6 +180,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
     }
 
     // Check if we need to continue
+    // TODO: 输出超出模型输出上限
     if (finish_reason === 'length' && !error) {
       // Append assistant message and user continuation message
       currentMessages = currentMessages.slice(0, requestBody.messages.length);

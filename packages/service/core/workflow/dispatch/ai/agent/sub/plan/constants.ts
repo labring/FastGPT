@@ -34,7 +34,8 @@ export const PlanAgentTool: ChatCompletionTool = {
         },
         background: {
           type: 'string',
-          description: '辅助完成规划的背景信息，需要尽可能详细'
+          description:
+            '辅助完成规划的背景信息，需要尽可能详细，需要总结当前上下文中关于步骤执行和历史回复的信息'
         }
       },
       required: ['task', 'description']
