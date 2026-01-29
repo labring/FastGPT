@@ -112,22 +112,30 @@ export const agentSkillToToolRuntime = async ({
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
         const { source, pluginId } = splitCombineToolId(tool.id);
+
+        // Clean pluginId to remove characters not allowed by OpenAI Function Calling
+        // Only allows: letters, numbers, underscores, and hyphens
+        const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        // For MCP tools, we need to authenticate the parent toolset
+        // pluginId format for MCP tool: 'parentId/toolName', we extract 'parentId'
+        const mcpParentId = source === AppToolSourceEnum.mcp ? pluginId.split('/')[0] : null;
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
-            appId: pluginId,
+            appId: tool.id,
             lang
           }),
-          ...(source === AppToolSourceEnum.personal
+          ...(source === AppToolSourceEnum.personal || mcpParentId
             ? [
                 authAppByTmbId({
                   tmbId,
-                  appId: pluginId,
+                  appId: mcpParentId || pluginId,
                   per: ReadPermissionVal
                 })
               ]
             : [])
         ]);
-
+        // console.log('toolNode', toolNode)
         // Check if tool configuration is complete
         // 1. Add config value to toolNode.inputs
         toolNode.inputs.forEach((input) => {
@@ -269,14 +277,14 @@ export const agentSkillToToolRuntime = async ({
           return [
             {
               type: toolType,
-              id: pluginId,
+              id: cleanedPluginId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,
               requestSchema: formatSchema({
-                toolId: pluginId,
+                toolId: cleanedPluginId,
                 inputs: toolNode.inputs,
                 flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,

@@ -1,5 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getSystemToolsWithInstalled } from '../../../../app/tool/controller';
+import { getSystemToolsWithInstalled, getTeamMCPTools } from '../../../../app/tool/controller';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
 import { SubAppIds, systemSubInfo } from '../../../../workflow/dispatch/ai/agent/sub/constants';
@@ -25,11 +25,15 @@ ${tool}
 `;
   };
 
-  const tools = await getSystemToolsWithInstalled({
-    teamId,
-    isRoot
-  });
-  const installedTools = tools
+  const [systemTools, mcpTools] = await Promise.all([
+    getSystemToolsWithInstalled({
+      teamId,
+      isRoot
+    }),
+    getTeamMCPTools({ teamId })
+  ]);
+
+  const installedSystemTools = systemTools
     .filter((tool) => {
       return tool.installed && !tool.parentId;
     })
@@ -44,13 +48,15 @@ ${tool}
       return `- **${toolId}** [工具]: ${name} - ${description}`;
     });
 
+  const allTools = [...installedSystemTools, ...mcpTools];
+  console.log('mcpTools', mcpTools);
   // 添加文件读取工具
   const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
   const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;
-  installedTools.push(fileReadTool);
+  allTools.push(fileReadTool);
 
   return getPrompt({
-    tool: installedTools.length > 0 ? installedTools.join('\n') : '暂无已安装的工具'
+    tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具'
   });
 };
 

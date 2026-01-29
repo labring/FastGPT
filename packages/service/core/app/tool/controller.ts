@@ -62,6 +62,39 @@ type ChildAppType = AppToolTemplateItemType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
+/**
+ * 获取团队的 MCP 工具子工具列表
+ */
+export const getTeamMCPTools = async ({ teamId }: { teamId: string }): Promise<string[]> => {
+  const mcpToolApps = await MongoApp.find({
+    teamId,
+    type: AppTypeEnum.mcpToolSet,
+    deleteTime: null
+  }).lean();
+  const mcpToolPromises = mcpToolApps.map(async (app) => {
+    try {
+      const children = await getMCPChildren(app);
+
+      // 返回子工具列表（工具集本身不显示，只显示子工具）
+      return children.map((child) => {
+        const toolName = child.name;
+        const description = child.description || '暂无描述';
+        const toolId = child.id; // 格式: mcp-parentId/toolName
+
+        // 统一使用 [工具] 标签
+        return `- **${toolId}** [工具]: ${toolName} - ${description}`;
+      });
+    } catch (error) {
+      // 静默失败：记录错误但不影响整体流程
+      console.error(`Failed to get MCP children for app ${app._id}:`, error);
+      return [];
+    }
+  });
+
+  const allMcpTools = await Promise.all(mcpToolPromises);
+  return allMcpTools.flat();
+};
+
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
 
 export const getSystemToolsWithInstalled = async ({

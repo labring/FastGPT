@@ -22,6 +22,7 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
 
   const { teamId, tmbId, userId, isRoot } = await authCert({ req, authToken: true });
 
+  // return Promise.reject('test');
   // Limit
   if (
     !(await teamFrequencyLimit({
