@@ -28,7 +28,7 @@ export async function handler(
   return {
     list: tools.map((tool) => ({
       id: tool.id.replace(`${AppToolSourceEnum.systemTool}-`, ''),
-      version: tool.version,
+      version: tool.version ?? '',
       name: tool.name,
       description: tool.description,
       icon: tool.icon,
