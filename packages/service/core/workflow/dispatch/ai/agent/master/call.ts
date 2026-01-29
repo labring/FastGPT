@@ -190,7 +190,8 @@ export const masterCall = async ({
     outputTokens,
     childrenUsages,
     finish_reason,
-    requestIds
+    requestIds,
+    error: agentError
   } = await runAgentCall({
     maxRunAgentTimes: 100,
     body: {
@@ -595,6 +596,7 @@ export const masterCall = async ({
     moduleName: isStepCall ? i18nT('chat:step_call') : i18nT('chat:master_agent_call'),
     model: llmUsage.modelName,
     moduleLogo: isStepCall ? 'core/app/agent/child/stepCall' : 'core/app/type/agentFill',
+    ...(agentError && { errorText: getErrText(agentError) }),
     inputTokens,
     outputTokens,
     totalPoints: childTotalPoints + llmUsage.totalPoints,
