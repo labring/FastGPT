@@ -112,11 +112,10 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     // Get model from db and plugin
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
-      pluginClient.model.list().then((res) => {
-        if (res.status === 200) return res.body;
-        console.error('Get fastGPT plugin model error');
-        return [];
-      })
+      pluginClient
+        .listModels()
+        .then((res) => res)
+        .catch(() => [])
     ]);
 
     // Load system model from local
@@ -249,13 +248,9 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
   if (modelData.isCustom) return Promise.reject('Custom model not data');
 
   // Read file
-  const modelDefaulConfig = await pluginClient.model.list().then((res) => {
-    if (res.status === 200) {
-      return res.body.find((item) => item.model === model) as SystemModelItemType;
-    }
-
-    return Promise.reject('Can not get model config from plugin');
-  });
+  const modelDefaulConfig = await pluginClient
+    .listModels()
+    .then((models) => models.find((item) => item.model === model) as SystemModelItemType);
 
   return {
     ...modelDefaulConfig,
