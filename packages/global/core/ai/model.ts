@@ -18,8 +18,6 @@ const BaseModelItemSchema = z.object({
   isActive: z.boolean().optional(),
   isCustom: z.boolean().optional(),
   isDefault: z.boolean().optional(),
-  isDefaultDatasetTextModel: z.boolean().optional(),
-  isDefaultDatasetImageModel: z.boolean().optional(),
 
   // If has requestUrl, it will request the model directly
   requestUrl: z.string().optional(),
@@ -56,7 +54,12 @@ export const LLMModelItemSchema = PriceTypeSchema.and(BaseModelItemSchema).and(
 
     defaultSystemChatPrompt: z.string().optional(),
     defaultConfig: z.record(z.string(), z.any()).optional(),
-    fieldMap: z.record(z.string(), z.string()).optional()
+    fieldMap: z.record(z.string(), z.string()).optional(),
+
+    // LLM
+    isDefaultDatasetTextModel: z.boolean().optional(),
+    isDefaultDatasetImageModel: z.boolean().optional(),
+    isDefaultHelperBotModel: z.boolean().optional()
   })
 );
 export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;

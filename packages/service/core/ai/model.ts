@@ -26,6 +26,9 @@ export const getVlmModel = (model?: string) => {
   return list.find((item) => item.model === model || item.name === model) || list[0];
 };
 
+export const getDefaultHelperBotModel = (): LLMModelItemType =>
+  global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
+
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string) => {
   if (!model) return getDefaultEmbeddingModel();
