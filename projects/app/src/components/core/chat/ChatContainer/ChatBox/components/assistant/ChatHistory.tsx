@@ -73,7 +73,11 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
         // 当前是AI回答，找上一个人类问题
         const prevItem = chatRecords[currentIndex - 1];
         if (prevItem && prevItem.obj === ChatRoleEnum.Human) {
-          const question = formatChatValue2InputType(prevItem.value).text || '';
+          // 优先使用 rewriteStandardizedQuery，如果没有则使用原始问题
+          const question =
+            prevItem.rewriteStandardizedQuery ||
+            formatChatValue2InputType(prevItem.value).text ||
+            '';
           const rawAnswer = formatChatValue2InputType(currentItem.value).text || '';
           return { question, rawAnswer };
         }
