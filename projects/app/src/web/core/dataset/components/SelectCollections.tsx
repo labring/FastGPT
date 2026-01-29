@@ -1,7 +1,7 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FolderPath from '@/components/common/folder/Path';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -48,7 +48,7 @@ const SelectCollections = ({
 
   useQuery(['loadDatasetDetail', datasetId], () => loadDatasetDetail(datasetId));
 
-  const { data, loading: isLoading } = useRequest2(
+  const { data, loading: isLoading } = useRequest(
     () =>
       getDatasetCollections({
         datasetId,
@@ -87,8 +87,8 @@ const SelectCollections = ({
     getDatasetCollectionPathById(parentId)
   );
 
-  const { mutate, isLoading: isResponding } = useRequest({
-    mutationFn: async () => {
+  const { runAsync: mutate, loading: isResponding } = useRequest(
+    async () => {
       if (type === 'folder') {
         await onSuccess?.({ parentId: paths[paths.length - 1]?.parentId || '', collectionIds: [] });
       } else {
@@ -100,8 +100,10 @@ const SelectCollections = ({
 
       return null;
     },
-    errorToast: t('common:request_error')
-  });
+    {
+      errorToast: t('common:request_error')
+    }
+  );
 
   return (
     <MyModal

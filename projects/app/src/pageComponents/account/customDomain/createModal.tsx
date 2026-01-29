@@ -29,7 +29,7 @@ import type { ProviderEnum } from '@fastgpt/global/support/customDomain/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { generateCNAMEDomain } from '@fastgpt/global/support/customDomain/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   activeCustomDomain,
   checkCustomDomainDNSResolve,
@@ -117,7 +117,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
   const [DnsResolved, setDnsResolved] = useState<boolean>(false);
   const [startDnsResolve, setStartDnsResolve] = useState<boolean>(type === 'create');
 
-  const { runAsync: checkDNSResolve } = useRequest2(
+  const { runAsync: checkDNSResolve } = useRequest(
     () => checkCustomDomainDNSResolve({ cnameDomain, domain }),
     {
       manual: true,
@@ -128,13 +128,13 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
     }
   );
 
-  const { runAsync: activeDomain } = useRequest2(activeCustomDomain, {
+  const { runAsync: activeDomain } = useRequest(activeCustomDomain, {
     manual: true,
     onSuccess: () => onClose(),
     successToast: t('common:Success')
   });
 
-  const { runAsync: createDomain, loading: loadingCreatingDomain } = useRequest2(
+  const { runAsync: createDomain, loading: loadingCreatingDomain } = useRequest(
     createCustomDomain,
     {
       manual: true,

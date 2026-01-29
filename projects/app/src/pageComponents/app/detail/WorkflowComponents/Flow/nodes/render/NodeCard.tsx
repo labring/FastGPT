@@ -31,7 +31,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
@@ -237,7 +237,7 @@ const NodeCard = (props: Props) => {
     return false;
   }, [isAppNode, node]);
 
-  const { data: nodeTemplate } = useRequest2(
+  const { data: nodeTemplate } = useRequest(
     async () => {
       if (node?.pluginData?.error) {
         return undefined;
@@ -473,7 +473,7 @@ const NodeTitleSection = React.memo<{
     });
   }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
-  const { runAsync: onGetPermission } = useRequest2(getAppPermission, {
+  const { runAsync: onGetPermission } = useRequest(getAppPermission, {
     onSuccess(permission) {
       if (permission.hasWritePer) {
         window.open(`/app/detail?appId=${childAppId}`, '_blank');
@@ -601,7 +601,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     manual: false
   });
 
-  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest(
     async (versionId: string) => {
       if (!node) return;
 

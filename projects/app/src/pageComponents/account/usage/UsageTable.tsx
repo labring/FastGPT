@@ -25,7 +25,7 @@ import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
@@ -83,7 +83,7 @@ const UsageTableList = ({
 
   const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
 
-  const { runAsync: exportUsage } = useRequest2(
+  const { runAsync: exportUsage } = useRequest(
     async () => {
       await downloadFetch({
         url: `/api/proApi/support/wallet/usage/exportUsage`,

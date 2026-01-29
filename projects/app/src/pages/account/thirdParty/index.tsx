@@ -10,7 +10,7 @@ import { useState, useMemo } from 'react';
 import WorkflowVariableModal from '@/pageComponents/account/thirdParty/WorkflowVariableModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -79,7 +79,7 @@ const ThirdParty = () => {
     ]
   );
 
-  const { data: workflowVariables = [], loading } = useRequest2(
+  const { data: workflowVariables = [], loading } = useRequest(
     async (): Promise<ThirdPartyAccountType[]> => {
       return Promise.all(
         (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {

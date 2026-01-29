@@ -19,7 +19,7 @@ import {
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluation';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -75,7 +75,7 @@ const Evaluation = () => {
     setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
   }, [evaluationList]);
 
-  const { runAsync: onDeleteEval } = useRequest2(deleteEvaluation, {
+  const { runAsync: onDeleteEval } = useRequest(deleteEvaluation, {
     onSuccess: () => {
       fetchData();
     }

@@ -14,7 +14,7 @@ import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/pl
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
 import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
@@ -133,7 +133,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest2(
+  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest(
     async () => {
       const { list } = await getSystemInstalledPlugins({ type: 'tool' });
       return {
@@ -146,12 +146,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
+  const { data: allTags = [] } = useRequest(getMarketPlaceToolTags, {
     manual: false
   });
 
   // Controler
-  const { runAsync: handleInstallTool } = useRequest2(
+  const { runAsync: handleInstallTool } = useRequest(
     async (tool: ToolCardItemType) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {
@@ -228,7 +228,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     [updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
   );
 
-  const { runAsync: handleDeleteTool } = useRequest2(
+  const { runAsync: handleDeleteTool } = useRequest(
     async (tool: ToolCardItemType) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {

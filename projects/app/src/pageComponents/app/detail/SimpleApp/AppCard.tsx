@@ -20,7 +20,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postTransition2Workflow } from '@/web/core/app/api/app';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { type SimpleAppSnapshotType } from './useSnapshots';
@@ -47,7 +47,7 @@ const AppCard = ({
 
   // transition to workflow
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();
-  const { runAsync: onTransition, loading: transiting } = useRequest2(
+  const { runAsync: onTransition, loading: transiting } = useRequest(
     async () => {
       const { nodes, edges } = form2AppWorkflow(appForm, t);
       await onSaveApp({

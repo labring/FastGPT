@@ -2,7 +2,7 @@ import { getInvitationInfo, postAcceptInvitationLink } from '@/web/support/user/
 import { Box, Button, Flex, ModalBody, ModalCloseButton } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -18,12 +18,12 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
     router.push('/account/team');
   };
 
-  const { data: invitationInfo } = useRequest2(() => getInvitationInfo(invitelinkid), {
+  const { data: invitationInfo } = useRequest(() => getInvitationInfo(invitelinkid), {
     manual: false,
     onError: onClose
   });
 
-  const { runAsync: acceptInvitation, loading: accepting } = useRequest2(
+  const { runAsync: acceptInvitation, loading: accepting } = useRequest(
     () => postAcceptInvitationLink(invitelinkid),
     {
       manual: true,

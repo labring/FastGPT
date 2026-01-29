@@ -5,7 +5,7 @@ import { DatasetImportContext, defaultFormData } from '../Context';
 import dynamic from 'next/dynamic';
 import DataProcess from '../commonProgress/DataProcess';
 import { useRouter } from 'next/router';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
@@ -26,7 +26,7 @@ const ReTraining = () => {
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
 
-  const { loading } = useRequest2(() => getDatasetCollectionById(collectionId), {
+  const { loading } = useRequest(() => getDatasetCollectionById(collectionId), {
     refreshDeps: [collectionId],
     manual: false,
     onSuccess: (collection) => {

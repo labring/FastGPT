@@ -9,7 +9,7 @@ import type {
   GetResourceFolderListProps,
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetApiDatasetCataLogProps } from '@/pages/api/core/dataset/apiDataset/getCatalog';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useBoolean, useMemoizedFn, useMount } from 'ahooks';
@@ -70,7 +70,7 @@ const ApiDatasetForm = ({
   ]);
 
   // Unified function to get the current path
-  const { loading: isFetching } = useRequest2(
+  const { loading: isFetching } = useRequest(
     async () => {
       if (
         !datasetId &&
@@ -292,7 +292,7 @@ const BaseUrlSelector = ({ selectId, server, onConfirm, onClose }: Props) => {
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
 
-  const { runAsync: requestServer } = useRequest2(async (e: GetResourceFolderListProps) => {
+  const { runAsync: requestServer } = useRequest(async (e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId]);
@@ -400,7 +400,7 @@ const BaseUrlSelector = ({ selectId, server, onConfirm, onClose }: Props) => {
     }
   );
 
-  const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
+  const { runAsync: onConfirmSelect, loading: confirming } = useRequest(
     () => {
       if (selectedId) {
         return onConfirm(selectedId === rootId ? null : selectedId);

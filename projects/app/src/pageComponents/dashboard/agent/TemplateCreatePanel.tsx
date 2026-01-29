@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -45,7 +45,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
     runAsync: fetchTemplates,
     data: templateData,
     loading: isFetchingTemplates
-  } = useRequest2(
+  } = useRequest(
     (ids?: string[]) => {
       const excludeIds = (() => {
         try {
@@ -68,7 +68,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
 
   const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
 
-  const { runAsync: handleCreateFromTemplate } = useRequest2(
+  const { runAsync: handleCreateFromTemplate } = useRequest(
     async (templateId: string) => {
       setCreatingTemplateId(templateId);
       const templateDetail = await getTemplateMarketItemDetail(templateId);

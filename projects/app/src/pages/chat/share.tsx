@@ -22,7 +22,7 @@ import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
@@ -102,7 +102,7 @@ const OutLink = (props: Props) => {
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
 
   const initSign = useRef(false);
-  const { data, loading } = useRequest2(
+  const { data, loading } = useRequest(
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;

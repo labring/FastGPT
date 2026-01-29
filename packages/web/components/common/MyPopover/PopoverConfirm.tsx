@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
-import { useRequest2 } from '../../../hooks/useRequest';
+import { useRequest } from '../../../hooks/useRequest';
 import {
   Popover,
   PopoverTrigger,
@@ -56,7 +56,7 @@ const PopoverConfirm = ({
   const firstFieldRef = React.useRef(null);
   const { onOpen, onClose, isOpen } = useDisclosure();
 
-  const { runAsync: onclickConfirm, loading } = useRequest2(async () => onConfirm(), {
+  const { runAsync: onclickConfirm, loading } = useRequest(async () => onConfirm(), {
     onSuccess: onClose
   });
 

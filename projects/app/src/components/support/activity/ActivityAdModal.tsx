@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { getActivityAd } from '@/web/common/system/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   Box,
   Flex,
@@ -33,7 +33,7 @@ const ActivityAdModal = () => {
     listenStorageChange: true
   });
 
-  const { data } = useRequest2(
+  const { data } = useRequest(
     async () => {
       if (!feConfigs?.isPlus || !userInfo) return;
       return getActivityAd();

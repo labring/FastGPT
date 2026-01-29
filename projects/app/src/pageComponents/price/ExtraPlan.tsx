@@ -9,7 +9,7 @@ import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
@@ -38,7 +38,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const watchedDatasetSize = watchDatasetSize('datasetSize');
   const watchedDatasetMonth = watchDatasetSize('month');
 
-  const { runAsync: onclickBuyDatasetSize, loading: isLoadingBuyDatasetSize } = useRequest2(
+  const { runAsync: onclickBuyDatasetSize, loading: isLoadingBuyDatasetSize } = useRequest(
     async ({ datasetSize, month }: { datasetSize: number; month: number }) => {
       datasetSize = Math.ceil(datasetSize);
       month = Math.ceil(month);
@@ -82,7 +82,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     return t('common:one_year');
   };
 
-  const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(
+  const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest(
     async ({ points, month }: { points: number; month: number }) => {
       points = Math.ceil(points);
       month = Math.ceil(month);

@@ -40,7 +40,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
@@ -723,7 +723,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const { runAsync: onFeedback } = useRequest2(
+  const { runAsync: onFeedback } = useRequest(
     async () => {
       const plan = teamPlanStatus?.standard?.currentSubLevel
         ? subPlans?.standard?.[teamPlanStatus?.standard?.currentSubLevel]

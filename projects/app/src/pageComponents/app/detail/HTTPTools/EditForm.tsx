@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -60,7 +60,7 @@ const EditForm = ({
     onClose: onCloseConfigModal
   } = useDisclosure();
 
-  const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest2(
+  const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest(
     async (updatedToolList: HttpToolConfigType[]) =>
       await putUpdateHttpPlugin({
         appId: appDetail._id,
@@ -327,7 +327,7 @@ const ToolDetailModal = ({
     return initial;
   });
 
-  const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest2(
+  const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest(
     async (data: UpdateHttpPluginBody) => await putUpdateHttpPlugin(data),
     {
       manual: true,

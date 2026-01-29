@@ -15,7 +15,7 @@ import {
   Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteMemberPermission,
   getTeamClbs,
@@ -83,7 +83,7 @@ function PermissionManage({
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: searchResult } = useRequest2(() => GetSearchUserGroupOrg(searchKey), {
+  const { data: searchResult } = useRequest(() => GetSearchUserGroupOrg(searchKey), {
     manual: false,
     throttleWait: 500,
     debounceWait: 200,
@@ -114,7 +114,7 @@ function PermissionManage({
     };
   }, [collaboratorList, searchResult, searchKey]);
 
-  const { runAsync: onUpdatePermission, loading: addLoading } = useRequest2(
+  const { runAsync: onUpdatePermission, loading: addLoading } = useRequest(
     async ({ id, type, per }: { id: string; type: 'add' | 'remove'; per: PermissionValueType }) => {
       const clb = collaboratorList.find(
         (clb) => clb.tmbId === id || clb.groupId === id || clb.orgId === id
@@ -141,7 +141,7 @@ function PermissionManage({
     }
   );
 
-  const { runAsync: onDeleteMemberPermission, loading: deleteLoading } = useRequest2(
+  const { runAsync: onDeleteMemberPermission, loading: deleteLoading } = useRequest(
     async (props) => {
       if (onDelOneCollaborator) {
         return await onDelOneCollaborator(props);

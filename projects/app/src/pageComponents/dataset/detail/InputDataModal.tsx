@@ -12,7 +12,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -76,7 +76,7 @@ const InputDataModal = ({
   });
   const imagePreivewUrl = watch('imagePreivewUrl');
 
-  const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest2(
+  const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
     async () => {
       const [collection, dataItem] = await Promise.all([
         getDatasetCollectionById(collectionId),
@@ -118,7 +118,7 @@ const InputDataModal = ({
   );
 
   // Import new data
-  const { runAsync: sureImportData, loading: isImporting } = useRequest2(
+  const { runAsync: sureImportData, loading: isImporting } = useRequest(
     async (e: InputDataType) => {
       const data = { ...e };
 
@@ -155,7 +155,7 @@ const InputDataModal = ({
   );
 
   // Update data
-  const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateData, loading: isUpdating } = useRequest(
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 

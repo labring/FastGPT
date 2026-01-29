@@ -1,4 +1,4 @@
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
@@ -140,7 +140,7 @@ const ChatContextProvider = ({
     [onCloseSlider, router]
   );
 
-  const { runAsync: onUpdateHistory } = useRequest2(
+  const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
         appId,
@@ -173,7 +173,7 @@ const ChatContextProvider = ({
     }
   );
 
-  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(
+  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
         appId: appId,
@@ -189,7 +189,7 @@ const ChatContextProvider = ({
     }
   );
 
-  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest2(
+  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
         appId: appId,

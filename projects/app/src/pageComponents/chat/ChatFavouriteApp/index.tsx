@@ -13,7 +13,7 @@ import {
   TabList,
   Tabs
 } from '@chakra-ui/react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -76,7 +76,7 @@ const ChatFavouriteApp = () => {
   const selectedTag = watch('tag');
 
   // load all favourites for checked state and saving
-  const { loading: isSearching, data: favouriteApps = [] } = useRequest2(
+  const { loading: isSearching, data: favouriteApps = [] } = useRequest(
     async () => {
       return await getFavouriteApps({
         name: searchAppName,

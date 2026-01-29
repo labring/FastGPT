@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
@@ -45,7 +45,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   });
   const workflowStr = watch('workflowStr');
 
-  const { loading: isFetching } = useRequest2(
+  const { loading: isFetching } = useRequest(
     async () => {
       const url = getUtmWorkflow();
       if (!url) return;
@@ -92,7 +92,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [avatar, workflowStr]);
 
-  const { runAsync: onSubmit, loading: isCreating } = useRequest2(
+  const { runAsync: onSubmit, loading: isCreating } = useRequest(
     async ({ name, workflowStr }: FormType) => {
       const { workflow, appType } = await (async () => {
         try {

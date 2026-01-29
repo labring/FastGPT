@@ -32,7 +32,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
@@ -214,7 +214,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     }
   });
 
-  const { run: createNewData, loading: isCreating } = useRequest2(
+  const { run: createNewData, loading: isCreating } = useRequest(
     async (textList: string[]) => {
       if (textList.filter(Boolean).length === 0) {
         return Promise.resolve();

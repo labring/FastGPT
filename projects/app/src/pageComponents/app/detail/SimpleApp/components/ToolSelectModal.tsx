@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   type FlowNodeTemplateType,
@@ -74,7 +74,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     data: rawTemplates = [],
     runAsync: loadTemplates,
     loading: isLoading
-  } = useRequest2(
+  } = useRequest(
     async ({
       type = templateType,
       parentId = '',
@@ -125,7 +125,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     });
   }, [rawTemplates, selectedTagIds, templateType]);
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => {
       if (templateType === TemplateTypeEnum.systemTools)
         return getAppToolPaths({ sourceId: parentId, type: 'current' });
@@ -137,7 +137,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
-  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+  const { data: allTags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
@@ -150,7 +150,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     [loadTemplates]
   );
 
-  useRequest2(() => loadTemplates({ searchVal: searchKey }), {
+  useRequest(() => loadTemplates({ searchVal: searchKey }), {
     manual: false,
     throttleWait: 300,
     refreshDeps: [searchKey]
@@ -262,7 +262,7 @@ const RenderList = React.memo(function RenderList({
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
 
-  const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
+  const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
 

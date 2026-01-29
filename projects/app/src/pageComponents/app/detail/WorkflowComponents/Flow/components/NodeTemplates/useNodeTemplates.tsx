@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -29,11 +29,11 @@ export const useNodeTemplates = () => {
   );
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const { data: toolTags = [] } = useRequest2(getPluginToolTags, {
+  const { data: toolTags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
-  const { data: basicNodes } = useRequest2(
+  const { data: basicNodes } = useRequest(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates
@@ -82,7 +82,7 @@ export const useNodeTemplates = () => {
     data: teamAndSystemTools,
     loading: templatesIsLoading,
     runAsync: loadNodeTemplates
-  } = useRequest2(
+  } = useRequest(
     async ({
       parentId,
       type = templateType,

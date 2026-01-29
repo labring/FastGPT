@@ -23,7 +23,7 @@ import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
@@ -124,7 +124,7 @@ const HomeChatWindow = () => {
   }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 

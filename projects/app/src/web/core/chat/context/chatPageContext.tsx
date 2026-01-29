@@ -8,7 +8,7 @@ import {
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
@@ -77,7 +77,7 @@ export const ChatPageContextProvider = ({
   const [isInitedUser, setIsInitedUser] = useState(false);
 
   // Get recently used apps
-  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest2(
+  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
     () => getRecentlyUsedApps(),
     {
       manual: false,
@@ -108,7 +108,7 @@ export const ChatPageContextProvider = ({
     }
   }, [routeAppId, setAppId, userInfo]);
 
-  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2(
+  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest(
     async () => {
       if (!feConfigs.isPlus) return;
       return await getChatSetting();

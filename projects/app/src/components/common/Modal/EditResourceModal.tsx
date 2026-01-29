@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { ModalFooter, ModalBody, Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -33,7 +33,7 @@ const EditResourceModal = ({
   });
   const avatar = watch('avatar');
 
-  const { runAsync: onSave, loading } = useRequest2(
+  const { runAsync: onSave, loading } = useRequest(
     (data: EditResourceInfoFormType) => onEdit(data),
     {
       onSuccess: (res) => {

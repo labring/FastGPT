@@ -25,7 +25,7 @@ import {
   AccordionIcon
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -148,7 +148,7 @@ const ManualToolModal = ({
     onClose: onCloseCurlImport
   } = useDisclosure();
 
-  const { runAsync: onSubmit, loading: isSubmitting } = useRequest2(
+  const { runAsync: onSubmit, loading: isSubmitting } = useRequest(
     async (data: ManualToolFormType) => {
       if (bodyType === ContentTypes.json && bodyContent) {
         try {

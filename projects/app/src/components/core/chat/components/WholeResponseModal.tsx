@@ -13,7 +13,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
@@ -819,7 +819,7 @@ const WholeResponseModal = ({
   const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
-  const { loading: isLoading, data: response } = useRequest2(
+  const { loading: isLoading, data: response } = useRequest(
     () => getHistoryResponseData({ dataId }),
     {
       manual: false

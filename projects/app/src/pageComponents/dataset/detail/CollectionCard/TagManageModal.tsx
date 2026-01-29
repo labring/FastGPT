@@ -15,7 +15,7 @@ import {
   postAddTagsToCollections,
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -54,7 +54,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [currentEditTag]);
 
-  const { runAsync: onDeleteCollectionTag } = useRequest2(
+  const { runAsync: onDeleteCollectionTag } = useRequest(
     (tag: string) =>
       delDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -71,7 +71,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: onUpdateCollectionTag } = useRequest2(
+  const { runAsync: onUpdateCollectionTag } = useRequest(
     async (tag: DatasetTagType) => {
       return updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -88,7 +88,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: onSaveCollectionTag } = useRequest2(
+  const { runAsync: onSaveCollectionTag } = useRequest(
     async ({
       tag,
       originCollectionIds,
@@ -145,7 +145,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
+  const { data: tagUsages } = useRequest(() => getTagUsage(datasetDetail._id), {
     manual: false,
     refreshDeps: [collections]
   });
