@@ -8,7 +8,6 @@ import {
   useMemoizedFn,
   useScroll,
   useVirtualList,
-  useRequest,
   useThrottleEffect
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
