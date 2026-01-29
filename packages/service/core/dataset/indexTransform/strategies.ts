@@ -116,17 +116,15 @@ export class SmartBoundaryStrategy implements SynonymReplacementStrategy {
 
     for (const [stdName, aliasList] of Object.entries(synonymDict)) {
       for (const alias of aliasList) {
-        // 在文本中查找所有出现的位置（不区分大小写）
-        const lowerText = originalText.toLowerCase();
-        const lowerAlias = alias.toLowerCase();
-        let searchStart = 0;
+        // 使用正则表达式查找所有匹配（不区分大小写）
+        // 使用负向后顾断言 (?<!\w) 确保前面不是字母数字下划线
+        const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`(?<!\\w)${escapedAlias}`, 'gi');
 
-        while (searchStart < originalText.length) {
-          const matchIndex = lowerText.indexOf(lowerAlias, searchStart);
-          if (matchIndex === -1) break;
-
-          const start = matchIndex;
-          const end = matchIndex + alias.length;
+        let match: RegExpExecArray | null;
+        while ((match = pattern.exec(originalText)) !== null) {
+          const start = match.index;
+          const end = start + match[0].length;
 
           // 智能边界验证
           if (this.validateBoundary(originalText, start, end)) {
@@ -135,13 +133,11 @@ export class SmartBoundaryStrategy implements SynonymReplacementStrategy {
               end,
               alias,
               stdName,
-              length: alias.length,
-              matchedText: originalText.substring(start, end),
+              length: match[0].length,
+              matchedText: match[0],
               synonymMappingId: synonymMappingMap[alias] || ''
             });
           }
-
-          searchStart = matchIndex + 1;
         }
       }
     }
@@ -160,10 +156,10 @@ export class SmartBoundaryStrategy implements SynonymReplacementStrategy {
     // 检查是否跟随版本号 (如: AFv1.2.3, AF111.222.333)
     const isFollowVersion = isVersionFormat(afterChars);
 
-    // 智能边界处理：
-    // - 前面不能是字母数字（但可以是其他字符，如空格、标点、括号等）
+    // 智能边界处理（与旧逻辑保持一致）：
+    // - 前面不能是字母（但可以是数字、空格、标点、括号等）
     // - 后面不能是字母（除非是版本号格式），但可以是数字、标点等
-    const validBefore = !/[a-zA-Z0-9]/.test(beforeChar);
+    const validBefore = !/[a-zA-Z]/.test(beforeChar);
     const validAfter = !/[a-zA-Z]/.test(afterChar) || isFollowVersion;
 
     return validBefore && validAfter;
@@ -239,6 +235,11 @@ export class SmartBoundaryStrategy implements SynonymReplacementStrategy {
     for (let i = 0; i < matches.length; i++) {
       const matchItem = matches[i];
 
+      // 跳过无意义的替换（不记录转换信息，因为没有实际替换）
+      if (matchItem.matchedText === matchItem.stdName) {
+        continue;
+      }
+
       // 记录转换信息
       transformations.push({
         originalStartPos: matchItem.start,
@@ -256,10 +257,19 @@ export class SmartBoundaryStrategy implements SynonymReplacementStrategy {
 
     // 从后往前执行替换
     for (const matchItem of sortedMatches) {
+      // 优化：跳过无意义的替换（当匹配文本和标准词相同时）
+      if (matchItem.matchedText === matchItem.stdName) {
+        continue;
+      }
+
       const before = transformedText.substring(0, matchItem.start);
       const after = transformedText.substring(matchItem.end);
       transformedText = before + matchItem.stdName + after;
     }
+
+    // 注意：不做后处理去重，以保证 transformations 中的位置信息准确
+    // 如果原文中有相邻的同义词（如 "信服 sangfor"），替换后会变成 "深信服 深信服"
+    // 这种情况很少见，且保留位置信息对于恢复原文更重要
 
     return { transformedText, transformations };
   }

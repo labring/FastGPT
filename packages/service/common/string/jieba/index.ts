@@ -1584,8 +1584,7 @@ export async function jiebaSplitWithCustomDict({
   const cacheKey = generateCacheKey(customWords);
 
   // 尝试从缓存获取 jieba 实例
-  // let cachedJieba = jiebaCache.get(cacheKey);
-  let cachedJieba = null;
+  let cachedJieba = jiebaCache.get(cacheKey);
 
   if (!cachedJieba) {
     try {
@@ -1607,7 +1606,7 @@ export async function jiebaSplitWithCustomDict({
       // 创建自定义词典字符串
       // jieba 词典格式: 每行 "词语 词频 词性"
       // 参考: https://github.com/fxsjy/jieba
-      addLog.info('有效词汇检查:', {
+      addLog.debug('有效词汇检查:', {
         totalWords: validWords.length
       });
 
@@ -1616,7 +1615,7 @@ export async function jiebaSplitWithCustomDict({
         (word) => word && word.trim().length > 0 && !/[\n\r\t]/.test(word) && !word.includes(' ')
       );
 
-      addLog.info('过滤后词汇:', {
+      addLog.debug('过滤后词汇:', {
         originalCount: validWords.length,
         filteredCount: filteredWords.length
       });
@@ -1626,14 +1625,14 @@ export async function jiebaSplitWithCustomDict({
       if (filteredWords.length > 0) {
         const customDictLines = filteredWords.map((word) => `${word} 999999 n`).join('\n');
         customDictBuffer = new Uint8Array(Buffer.from(customDictLines + '\n', 'utf-8'));
-        addLog.info('自定义词典内容预览:', {
+        addLog.debug('自定义词典内容预览:', {
           lineCount: customDictLines.split('\n').length,
           preview: customDictLines.substring(0, 200)
         });
       } else {
         // 如果没有有效词汇，创建空词典
         customDictBuffer = new Uint8Array(Buffer.from('', 'utf-8'));
-        addLog.info('没有有效词汇，使用空词典');
+        addLog.debug('没有有效词汇，使用空词典');
       }
 
       // 创建新的 jieba 实例
@@ -1644,7 +1643,7 @@ export async function jiebaSplitWithCustomDict({
 
       // 尝试加载自定义词典
       try {
-        addLog.info('准备加载自定义词典:', {
+        addLog.debug('准备加载自定义词典:', {
           totalWords: filteredWords.length,
           bufferSize: customDictBuffer.length
         });
@@ -1653,7 +1652,7 @@ export async function jiebaSplitWithCustomDict({
         if (filteredWords.length > 0) {
           cachedJieba.loadDict(customDictBuffer);
         }
-        addLog.info('自定义词典加载成功');
+        addLog.debug('自定义词典加载成功');
       } catch (loadError) {
         addLog.error('加载自定义词典失败，将使用默认分词:', {
           error: loadError instanceof Error ? loadError.message : String(loadError),
@@ -1674,8 +1673,8 @@ export async function jiebaSplitWithCustomDict({
         }
       }
 
-      // 存入缓存,先不存进去，看效果会不会很慢
-      // jiebaCache.set(cacheKey, cachedJieba);
+      // 存入缓存
+      jiebaCache.set(cacheKey, cachedJieba);
     } catch (error) {
       addLog.error('创建自定义 jieba 实例失败，使用默认分词:', {
         error: error instanceof Error ? error.message : String(error),
