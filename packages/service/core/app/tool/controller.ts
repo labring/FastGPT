@@ -53,6 +53,13 @@ import { getCachedData } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { MongoTeamInstalledPlugin } from '../../plugin/schema/teamInstalledPluginSchema';
+import { MongoResourcePermission } from '../../../support/permission/schema';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { getGroupsByTmbId } from '../../../support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '../../../support/permission/org/controllers';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 type ChildAppType = AppToolTemplateItemType & {
   teamId?: string;
@@ -62,37 +69,102 @@ type ChildAppType = AppToolTemplateItemType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
-/**
- * 获取团队的 MCP 工具子工具列表
- */
-export const getTeamMCPTools = async ({ teamId }: { teamId: string }): Promise<string[]> => {
-  const mcpToolApps = await MongoApp.find({
-    teamId,
-    type: AppTypeEnum.mcpToolSet,
-    deleteTime: null
-  }).lean();
-  const mcpToolPromises = mcpToolApps.map(async (app) => {
-    try {
-      const children = await getMCPChildren(app);
-
-      // 返回子工具列表（工具集本身不显示，只显示子工具）
-      return children.map((child) => {
-        const toolName = child.name;
-        const description = child.description || '暂无描述';
-        const toolId = child.id; // 格式: mcp-parentId/toolName
-
-        // 统一使用 [工具] 标签
-        return `- **${toolId}** [工具]: ${toolName} - ${description}`;
+export const getMyTools = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
+  // Get team all app permissions
+  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
+    MongoResourcePermission.find({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
+    }).lean(),
+    getGroupsByTmbId({
+      tmbId,
+      teamId
+    }).then((item) => {
+      const map = new Map<string, 1>();
+      item.forEach((item) => {
+        map.set(String(item._id), 1);
       });
-    } catch (error) {
-      // 静默失败：记录错误但不影响整体流程
-      console.error(`Failed to get MCP children for app ${app._id}:`, error);
-      return [];
-    }
-  });
+      return map;
+    }),
+    getOrgIdSetWithParentByTmbId({
+      teamId,
+      tmbId
+    })
+  ]);
+  // Get my permissions
+  const myPerList = roleList.filter(
+    (item) =>
+      String(item.tmbId) === String(tmbId) ||
+      myGroupMap.has(String(item.groupId)) ||
+      myOrgSet.has(String(item.orgId))
+  );
 
-  const allMcpTools = await Promise.all(mcpToolPromises);
-  return allMcpTools.flat();
+  const myApps: {
+    _id: string;
+    name: string;
+    intro?: string;
+    tmbId: string;
+    type: AppTypeEnum;
+    parentId?: ParentIdType;
+    inheritPermission?: boolean;
+  }[] = await MongoApp.find(
+    { teamId, type: { $in: [AppTypeEnum.httpToolSet, AppTypeEnum.mcpToolSet] }, deleteTime: null },
+    '_id name intro tmbId type parentId inheritPermission'
+  ).lean();
+
+  // Add app permission and filter apps by read permission
+  const formatApps = myApps
+    .map((app) => {
+      const { Per, privateApp } = (() => {
+        const getPer = (appId: string) => {
+          const tmbRole = myPerList.find(
+            (item) => String(item.resourceId) === appId && !!item.tmbId
+          )?.permission;
+          const groupAndOrgRole = sumPer(
+            ...myPerList
+              .filter(
+                (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
+              )
+              .map((item) => item.permission)
+          );
+
+          return new AppPermission({
+            role: tmbRole ?? groupAndOrgRole,
+            isOwner: String(app.tmbId) === String(tmbId)
+          });
+        };
+
+        const getClbCount = (appId: string) => {
+          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
+        };
+
+        // Inherit app, check parent folder clb and it's own clb
+        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
+          return {
+            Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
+            privateApp: getClbCount(String(app.parentId)) <= 1
+          };
+        }
+
+        return {
+          Per: getPer(String(app._id)),
+          privateApp: getClbCount(String(app._id)) <= 1
+        };
+      })();
+
+      return {
+        ...app,
+        parentId: app.parentId,
+        permission: Per,
+        private: privateApp
+      };
+    })
+    .filter((app) => app.permission.hasReadPer);
+
+  return formatApps;
 };
 
 export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);

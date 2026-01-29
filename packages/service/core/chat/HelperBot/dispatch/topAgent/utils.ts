@@ -1,14 +1,17 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getSystemToolsWithInstalled, getTeamMCPTools } from '../../../../app/tool/controller';
+import { getSystemToolsWithInstalled, getMyTools } from '../../../../app/tool/controller';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
 import { SubAppIds, systemSubInfo } from '../../../../workflow/dispatch/ai/agent/sub/constants';
+
 export const generateResourceList = async ({
   teamId,
+  tmbId,
   isRoot,
   lang = 'zh-CN'
 }: {
   teamId: string;
+  tmbId: string;
   isRoot: boolean;
   lang?: localeType;
 }): Promise<string> => {
@@ -25,31 +28,40 @@ ${tool}
 `;
   };
 
-  const [systemTools, mcpTools] = await Promise.all([
+  // TODO: 知识库加进去
+  const [systemTools, myTools] = await Promise.all([
     getSystemToolsWithInstalled({
       teamId,
       isRoot
-    }),
-    getTeamMCPTools({ teamId })
+    }).then((res) =>
+      res
+        .filter((tool) => {
+          return tool.installed && !tool.parentId;
+        })
+        .map((tool) => {
+          const toolId = tool.id;
+          const name =
+            typeof tool.name === 'string'
+              ? tool.name
+              : tool.name?.en || tool.name?.[lang] || '未命名';
+          const intro =
+            typeof tool.intro === 'string'
+              ? tool.intro
+              : tool.intro?.en || tool.intro?.[lang] || '';
+          const description = tool.toolDescription || intro || '暂无描述';
+
+          return `- **${toolId}** [工具]: ${name} - ${description}`;
+        })
+    ),
+    getMyTools({ teamId, tmbId }).then((res) =>
+      res.map((tool) => {
+        const toolId = tool._id;
+        return `- **${toolId}** [工具]: ${tool.name} - ${tool.intro}`;
+      })
+    )
   ]);
 
-  const installedSystemTools = systemTools
-    .filter((tool) => {
-      return tool.installed && !tool.parentId;
-    })
-    .map((tool) => {
-      const toolId = tool.id;
-      const name =
-        typeof tool.name === 'string' ? tool.name : tool.name?.en || tool.name?.[lang] || '未命名';
-      const intro =
-        typeof tool.intro === 'string' ? tool.intro : tool.intro?.en || tool.intro?.[lang] || '';
-      const description = tool.toolDescription || intro || '暂无描述';
-
-      return `- **${toolId}** [工具]: ${name} - ${description}`;
-    });
-
-  const allTools = [...installedSystemTools, ...mcpTools];
-  console.log('mcpTools', mcpTools);
+  const allTools = [...systemTools, ...myTools];
   // 添加文件读取工具
   const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
   const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;

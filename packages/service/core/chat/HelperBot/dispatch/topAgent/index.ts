@@ -22,6 +22,7 @@ import type {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { parseJsonArgs } from '../../../../ai/utils';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>
@@ -41,6 +42,7 @@ export const dispatchTopAgent = async (
 
   const resourceList = await generateResourceList({
     teamId: user.teamId,
+    tmbId: user.tmbId,
     isRoot: user.isRoot
   });
   const systemPrompt = getPrompt({
@@ -56,7 +58,7 @@ export const dispatchTopAgent = async (
     ...historyMessages,
     { role: 'user' as const, content: query }
   ];
-  console.log(JSON.stringify(conversationMessages, null, 2));
+
   const llmResponse = await createLLMResponse({
     body: {
       messages: conversationMessages,
@@ -69,6 +71,12 @@ export const dispatchTopAgent = async (
         data: textAdaptGptResponse({ reasoning_content: text })
       });
     }
+    // onStreaming: ({ text }) => {
+    //   workflowResponseWrite?.({
+    //     event: SseResponseEventEnum.answer,
+    //     data: textAdaptGptResponse({ text })
+    //   });
+    // }
   });
 
   usage.inputTokens = llmResponse.usage.inputTokens;
@@ -78,7 +86,19 @@ export const dispatchTopAgent = async (
   const reasoningText = llmResponse.reasoningText;
   console.log('Top agent response:', answerText);
   try {
-    const responseJson = TopAgentAnswerSchema.parse(JSON.parse(answerText));
+    const result = await TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(answerText));
+
+    if (!result.success) {
+      return {
+        aiResponse: formatAIResponse({
+          text: answerText,
+          reasoning: reasoningText
+        }),
+        usage
+      };
+    }
+
+    const responseJson = result.data;
 
     if (responseJson.phase === 'generation') {
       addLog.debug('🔄 TopAgent: Configuration generation phase');
@@ -107,7 +127,7 @@ export const dispatchTopAgent = async (
         }),
         usage
       };
-    } else if (responseJson.phase === 'collection') {
+    } else {
       addLog.debug('📝 TopAgent: Information collection phase');
 
       const formDeata = responseJson.form;
@@ -158,15 +178,6 @@ export const dispatchTopAgent = async (
       return {
         aiResponse: formatAIResponse({
           text: responseJson.question,
-          reasoning: reasoningText
-        }),
-        usage
-      };
-    } else {
-      addLog.warn(`[Top agent] Unknown phase`, responseJson);
-      return {
-        aiResponse: formatAIResponse({
-          text: answerText,
           reasoning: reasoningText
         }),
         usage

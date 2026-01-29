@@ -30,10 +30,10 @@ export const authPluginByTmbId = async ({
   appId: string;
   per: PermissionValueType;
 }) => {
-  const { source } = splitCombineToolId(appId);
-  if (source === AppToolSourceEnum.personal) {
+  const { authAppId } = splitCombineToolId(appId);
+  if (authAppId) {
     const { app } = await authAppByTmbId({
-      appId,
+      appId: authAppId,
       tmbId,
       per
     });

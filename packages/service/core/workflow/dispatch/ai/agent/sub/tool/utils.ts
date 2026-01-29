@@ -111,25 +111,18 @@ export const agentSkillToToolRuntime = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        const { source, pluginId } = splitCombineToolId(tool.id);
+        const { pluginId, authAppId } = splitCombineToolId(tool.id);
 
-        // Clean pluginId to remove characters not allowed by OpenAI Function Calling
-        // Only allows: letters, numbers, underscores, and hyphens
-        const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-        // For MCP tools, we need to authenticate the parent toolset
-        // pluginId format for MCP tool: 'parentId/toolName', we extract 'parentId'
-        const mcpParentId = source === AppToolSourceEnum.mcp ? pluginId.split('/')[0] : null;
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
             appId: tool.id,
             lang
           }),
-          ...(source === AppToolSourceEnum.personal || mcpParentId
+          ...(authAppId
             ? [
                 authAppByTmbId({
                   tmbId,
-                  appId: mcpParentId || pluginId,
+                  appId: authAppId,
                   per: ReadPermissionVal
                 })
               ]
@@ -274,6 +267,8 @@ export const agentSkillToToolRuntime = async ({
 
           return [];
         } else {
+          const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+
           return [
             {
               type: toolType,
