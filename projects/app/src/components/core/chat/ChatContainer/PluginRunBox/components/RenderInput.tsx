@@ -7,7 +7,7 @@ import { PluginRunContext } from '../context';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -70,7 +70,7 @@ const RenderInput = () => {
     appId,
     chatId
   });
-  useRequest2(uploadFiles, {
+  useRequest(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
     refreshDeps: [fileList, outLinkAuthData]

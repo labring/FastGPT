@@ -8,7 +8,7 @@ import { useRouter } from 'next/router';
 import PermissionIconText from '@/components/support/permission/IconText';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -64,7 +64,7 @@ function List() {
     content: t('dataset:move.hint')
   });
 
-  const { runAsync: updateDataset } = useRequest2(onUpdateDataset);
+  const { runAsync: updateDataset } = useRequest(onUpdateDataset);
 
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
@@ -86,7 +86,7 @@ function List() {
     [editPerDatasetId, myDatasets]
   );
 
-  const { runAsync: exportDataset } = useRequest2(
+  const { runAsync: exportDataset } = useRequest(
     async ({ _id, name }: { _id: string; name: string }) => {
       await checkTeamExportDatasetLimit(_id);
 

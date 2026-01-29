@@ -9,7 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import TeamPlanStatusCard from './TeamPlanStatusCard';
@@ -54,7 +54,7 @@ const DashboardContainer = ({
   };
 
   // Template market
-  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest2(
+  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateTagList().then((res) => [
@@ -71,7 +71,7 @@ const DashboardContainer = ({
       refreshDeps: [currentTab]
     }
   );
-  const { data: templateData, loading: isLoadingTemplates } = useRequest2(
+  const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateMarketItemList({ type: appType })

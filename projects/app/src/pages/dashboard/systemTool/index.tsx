@@ -3,7 +3,7 @@
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -64,20 +64,20 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const loadingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const { data: tags = [] } = useRequest2(getPluginToolTags, {
+  const { data: tags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
   // TODO: 把 filter 放到后端
   const [tools, setTools] = useState<GetTeamPluginListResponseType>([]);
-  const { loading: loadingTools } = useRequest2(() => getTeamSystemPluginList({ type: 'tool' }), {
+  const { loading: loadingTools } = useRequest(() => getTeamSystemPluginList({ type: 'tool' }), {
     manual: false,
     onSuccess(data) {
       setTools(data);
     }
   });
 
-  const { runAsync: toggleInstall } = useRequest2(
+  const { runAsync: toggleInstall } = useRequest(
     async (data: { pluginId: string; installed: boolean }) => {
       const existingPromise = loadingPromisesRef.current.get(data.pluginId);
       if (existingPromise) {

@@ -10,41 +10,11 @@ interface Props extends UseMutationOptions<any, any, any, any> {
   errorToast?: string | null;
 }
 
-export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...props }: Props) => {
-  const { toast } = useToast();
-  const { t } = useTranslation();
-  const mutation = useMutation<unknown, unknown, any, unknown>({
-    ...props,
-    onSuccess(res, variables: void, context: unknown) {
-      onSuccess?.(res, variables, context);
-      successToast &&
-        toast({
-          title: successToast,
-          status: 'success'
-        });
-    },
-    onError(err: any, variables: void, context: unknown) {
-      onError?.(err, variables, context);
-
-      if (errorToast !== undefined) {
-        const errText = t(getErrText(err, errorToast || '') as any);
-        if (errText) {
-          toast({
-            title: errText,
-            status: 'error'
-          });
-        }
-      }
-    }
-  });
-
-  return mutation;
-};
-
 type UseRequestFunProps<TData, TParams extends any[]> = Parameters<
   typeof ahooksUseRequest<TData, TParams>
 >;
-export const useRequest2 = <TData, TParams extends any[]>(
+
+export const useRequest = <TData, TParams extends any[]>(
   server: UseRequestFunProps<TData, TParams>[0],
   options: UseRequestFunProps<TData, TParams>[1] & {
     errorToast?: string;

@@ -13,15 +13,17 @@ const ImportantInform = ({
   informs: UserInformSchema[];
   refetch: () => void;
 }) => {
-  const { mutate: onClickClose } = useRequest({
-    mutationFn: async (id: string) => {
+  const { runAsync: onClickClose } = useRequest(
+    async (id: string) => {
       await readInform(id);
     },
-    onSuccess: () => {
-      refetch();
-    },
-    errorToast: 'Failed to read the inform'
-  });
+    {
+      onSuccess: () => {
+        refetch();
+      },
+      errorToast: 'Failed to read the inform'
+    }
+  );
 
   return (
     <Box position={'fixed'} top={'3%'} left={'50%'} transform={'translateX(-50%)'} zIndex={99999}>

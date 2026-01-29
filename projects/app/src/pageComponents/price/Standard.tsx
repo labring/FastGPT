@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { type TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { postCreatePayBill } from '@/web/support/wallet/bill/api';
@@ -57,7 +57,7 @@ const Standard = ({
   }, [subPlans?.activityExpirationTime]);
 
   // 获取优惠券
-  const { data: coupons = [], runAsync: getCoupons } = useRequest2(
+  const { data: coupons = [], runAsync: getCoupons } = useRequest(
     async () => {
       if (!myStandardPlan?.teamId) return [];
       return getDiscountCouponList(myStandardPlan.teamId);
@@ -125,7 +125,7 @@ const Standard = ({
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   /* Get pay code */
-  const { runAsync: onPay, loading: isLoading } = useRequest2(postCreatePayBill, {
+  const { runAsync: onPay, loading: isLoading } = useRequest(postCreatePayBill, {
     onSuccess(res) {
       setQRPayData(res);
     }

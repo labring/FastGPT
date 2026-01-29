@@ -6,7 +6,7 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -66,7 +66,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       title: t('common:action_confirm')
     });
 
-  const { runAsync: onSave } = useRequest2(
+  const { runAsync: onSave } = useRequest(
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
@@ -81,7 +81,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const { runAsync: onRebuilding } = useRequest2(
+  const { runAsync: onRebuilding } = useRequest(
     (vectorModel: EmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
@@ -98,7 +98,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const { runAsync: onEditBaseInfo } = useRequest2(updateDataset, {
+  const { runAsync: onEditBaseInfo } = useRequest(updateDataset, {
     onSuccess() {
       setEditedDataset(undefined);
     },

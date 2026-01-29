@@ -27,7 +27,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   AppLogKeysEnum,
   AppLogKeysEnumMap,
@@ -128,7 +128,7 @@ const LogTable = ({
   const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
     `app_log_keys_${appId}`
   );
-  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
+  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
     async () => {
       return getLogKeys({ appId });
     },
@@ -153,7 +153,7 @@ const LogTable = ({
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
 
-  const { runAsync: exportLogs } = useRequest2(async () => {
+  const { runAsync: exportLogs } = useRequest(async () => {
     const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
     const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
     await downloadFetch({
@@ -237,7 +237,7 @@ const LogTable = ({
     type: 'delete'
   });
 
-  const { runAsync: handleDelete } = useRequest2(
+  const { runAsync: handleDelete } = useRequest(
     async (chatIds: string[]) => {
       await batchDeleteChatHistories({ appId, chatIds });
       await getData(pageNum);

@@ -17,7 +17,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
 import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -76,7 +76,7 @@ const QuickCreateDatasetModal = ({
       }
     });
 
-  const { runAsync: handleSelectFiles, loading: uploading } = useRequest2(
+  const { runAsync: handleSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
       await Promise.all(
         files.map(async ({ fileId, file }) => {
@@ -162,7 +162,7 @@ const QuickCreateDatasetModal = ({
     }
   );
 
-  const { runAsync: onCreate, loading: isCreating } = useRequest2(
+  const { runAsync: onCreate, loading: isCreating } = useRequest(
     async (data) => {
       return await postCreateDatasetWithFiles({
         datasetParams: {

@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
@@ -23,7 +23,7 @@ const PriceBox = () => {
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const [isButtonInView, setIsButtonInView] = useState(false);
 
-  const { data: teamSubPlan } = useRequest2(getTeamPlanStatus, {
+  const { data: teamSubPlan } = useRequest(getTeamPlanStatus, {
     manual: false,
     refreshDeps: [userInfo]
   });

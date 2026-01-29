@@ -18,7 +18,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
 import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
@@ -198,7 +198,7 @@ const TeamCloud = ({
 
   const { toast } = useToast();
 
-  const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
+  const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest(
     async (versionItem: VersionListItemType) => {
       const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
 
@@ -212,7 +212,7 @@ const TeamCloud = ({
     }
   );
 
-  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest2(
+  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest(
     async (item: VersionListItemType, name: string) => {
       await updateAppVersion({
         appId: item.appId,

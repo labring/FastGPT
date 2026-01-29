@@ -7,7 +7,7 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -78,7 +78,7 @@ const OptimizerPopover = ({
     return !optimizerInput.trim();
   }, [optimizerInput]);
 
-  const { runAsync: handleSendOptimization, loading } = useRequest2(async (isAuto?: boolean) => {
+  const { runAsync: handleSendOptimization, loading } = useRequest(async (isAuto?: boolean) => {
     if (isEmptyOptimizerInput && !isAuto) return;
 
     setOptimizedResult('');

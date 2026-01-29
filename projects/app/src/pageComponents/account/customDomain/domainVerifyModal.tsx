@@ -1,7 +1,7 @@
 import { ModalBody, Box, Input, Button, ModalFooter, Grid } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateCustomDomainVerifyFile } from '@/web/support/customDomain/api';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -18,7 +18,7 @@ function domainVerifyModal({ onClose, domain }: { onClose: () => void; domain: s
   const path = watch('path');
   const content = watch('content');
 
-  const { runAsync: updateVerifyFile, loading: isUpdating } = useRequest2(
+  const { runAsync: updateVerifyFile, loading: isUpdating } = useRequest(
     updateCustomDomainVerifyFile,
     {
       manual: true,

@@ -5,7 +5,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { getFlatAppResponses } from '@/global/core/chat/utils';
 const isLLMNode = (item: ChatHistoryItemResType) =>
@@ -14,7 +14,7 @@ const isLLMNode = (item: ChatHistoryItemResType) =>
 const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { t } = useTranslation();
-  const { loading: isLoading, data: contextModalData } = useRequest2(
+  const { loading: isLoading, data: contextModalData } = useRequest(
     () =>
       getHistoryResponseData({ dataId }).then((res) => {
         const flatResData = getFlatAppResponses(res || []);

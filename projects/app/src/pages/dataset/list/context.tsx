@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -76,7 +76,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     data: myDatasets = [],
     runAsync: loadMyDatasets,
     loading: isFetchingDatasets
-  } = useRequest2(
+  } = useRequest(
     () =>
       getDatasets({
         searchKey,
@@ -88,7 +88,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     }
   );
 
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest2(
+  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
     {
       manual: false,
@@ -96,7 +96,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     }
   );
 
-  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+  const { data: paths = [], runAsync: refetchPaths } = useRequest(
     async () => getDatasetPaths({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
@@ -104,7 +104,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     }
   );
 
-  const { runAsync: onUpdateDataset } = useRequest2(putDatasetById, {
+  const { runAsync: onUpdateDataset } = useRequest(putDatasetById, {
     onSuccess: () => Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()])
   });
 
@@ -135,7 +135,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
-  const { runAsync: onDelDataset } = useRequest2(delDatasetById, {
+  const { runAsync: onDelDataset } = useRequest(delDatasetById, {
     successToast: t('common:delete_success'),
     errorToast: t('common:dataset.Delete Dataset Error')
   });

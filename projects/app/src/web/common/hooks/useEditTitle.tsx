@@ -3,7 +3,7 @@ import { ModalFooter, ModalBody, Input, useDisclosure, Button, Box } from '@chak
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const useEditTitle = ({
@@ -85,7 +85,7 @@ export const useEditTitle = ({
       iconSrc?: string;
       closeBtnText?: string;
     }) => {
-      const { runAsync, loading } = useRequest2(onclickConfirm);
+      const { runAsync, loading } = useRequest(onclickConfirm);
 
       return (
         <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>

@@ -21,7 +21,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { useForm } from 'react-hook-form';
@@ -126,7 +126,7 @@ export const ModelEditModal = ({
     return '';
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
-  const { runAsync: updateModel, loading: updatingModel } = useRequest2(
+  const { runAsync: updateModel, loading: updatingModel } = useRequest(
     async (data: SystemModelItemType) => {
       for (const key in data) {
         // @ts-ignore
@@ -151,7 +151,7 @@ export const ModelEditModal = ({
   );
 
   const [key, setKey] = useState(0);
-  const { runAsync: loadDefaultConfig, loading: loadingDefaultConfig } = useRequest2(
+  const { runAsync: loadDefaultConfig, loading: loadingDefaultConfig } = useRequest(
     getSystemModelDefaultConfig,
     {
       onSuccess(res) {

@@ -5,7 +5,7 @@ import { useToggle } from 'ahooks';
 import { useState } from 'react';
 import IconButton from './IconButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList } from '@/web/support/user/team/org/api';
 import { getChildrenByOrg } from '@fastgpt/service/support/permission/org/controllers';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
@@ -25,7 +25,7 @@ function OrgTreeNode({
 }) {
   const [isExpanded, toggleIsExpanded] = useToggle(index === 0);
   const [canBeExpanded, setCanBeExpanded] = useState(true);
-  const { data: orgs = [], runAsync: getOrgs } = useRequest2(() =>
+  const { data: orgs = [], runAsync: getOrgs } = useRequest(() =>
     getOrgList({ orgId: org._id, withPermission: false })
   );
   const onClickExpand = async () => {

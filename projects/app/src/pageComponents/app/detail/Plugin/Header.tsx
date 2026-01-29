@@ -19,7 +19,7 @@ import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -75,7 +75,7 @@ const Header = () => {
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { runAsync: onClickSave, loading } = useRequest2(
+  const { runAsync: onClickSave, loading } = useRequest(
     async ({
       isPublish,
       versionName = formatTime2YMDHMS(new Date())

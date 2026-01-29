@@ -20,7 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
@@ -100,7 +100,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
   const deleteOrgHandler = (orgId: string) =>
     openDeleteOrgModal({ onConfirm: () => deleteOrgReq(orgId) })();
-  const { runAsync: deleteOrgReq } = useRequest2(deleteOrg, {
+  const { runAsync: deleteOrgReq } = useRequest(deleteOrg, {
     onSuccess: refresh
   });
 
@@ -115,11 +115,11 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
       type: 'delete'
     });
 
-  const { runAsync: deleteMemberReq } = useRequest2(deleteOrgMember, {
+  const { runAsync: deleteMemberReq } = useRequest(deleteOrgMember, {
     onSuccess: refresh
   });
 
-  const { runAsync: deleteMemberFromTeamReq } = useRequest2(delRemoveMember, {
+  const { runAsync: deleteMemberFromTeamReq } = useRequest(delRemoveMember, {
     onSuccess: refresh
   });
 

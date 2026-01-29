@@ -4,7 +4,7 @@ import { Box, Flex, Button, ModalBody } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import dayjs from 'dayjs';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDiscountCouponList } from '@/web/support/wallet/sub/discountCoupon/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRouter } from 'next/router';
@@ -21,7 +21,7 @@ const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
   const [billId, setBillId] = useState<string>();
   const teamId = userInfo?.team?.teamId;
 
-  const { data: coupons = [], loading } = useRequest2(
+  const { data: coupons = [], loading } = useRequest(
     async () => {
       if (!teamId) return [];
       return getDiscountCouponList(teamId);

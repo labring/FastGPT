@@ -26,7 +26,7 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 type packageStatus = 'active' | 'inactive' | 'expired';
 
@@ -34,7 +34,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { subPlans } = useSystemStore();
-  const { data: teamPlans = [], loading: isLoading } = useRequest2(
+  const { data: teamPlans = [], loading: isLoading } = useRequest(
     () =>
       getTeamPlans().then((res) => {
         return [

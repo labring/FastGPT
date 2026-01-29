@@ -29,7 +29,7 @@ import {
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
@@ -75,7 +75,7 @@ const BillTable = () => {
     refreshDeps: [billType]
   });
 
-  const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest2(
+  const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest(
     async (bill: BillSchemaType) => {
       const { status, description } = await checkBalancePayResult(bill._id);
       if (status === BillStatusEnum.SUCCESS) {
@@ -109,7 +109,7 @@ const BillTable = () => {
     }
   );
 
-  const { runAsync: handleCancelBill, loading: isCancelling } = useRequest2(
+  const { runAsync: handleCancelBill, loading: isCancelling } = useRequest(
     async (billId: string) => {
       await cancelBill({ billId });
     },

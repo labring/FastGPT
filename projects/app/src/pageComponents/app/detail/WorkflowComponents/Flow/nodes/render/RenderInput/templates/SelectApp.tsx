@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById } from '@/web/core/app/api';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -23,7 +23,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   } = useDisclosure();
 
   const value = item.value as SelectAppItemType | undefined;
-  const { data: appDetail, loading } = useRequest2(
+  const { data: appDetail, loading } = useRequest(
     () => {
       if (value?.id) return getAppDetailById(value.id);
       return Promise.resolve(null);

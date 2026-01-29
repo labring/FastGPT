@@ -15,7 +15,7 @@ import {
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
 import { postCreateApp } from '@/web/core/app/api';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
@@ -66,7 +66,7 @@ const TemplateMarket = ({
       .filter((item) => item.templates.length > 0);
   }, [templateList, templateTags]);
 
-  const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
+  const { runAsync: onUseTemplate, loading: isCreating } = useRequest(
     async (template: AppTemplateSchemaType) => {
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
 

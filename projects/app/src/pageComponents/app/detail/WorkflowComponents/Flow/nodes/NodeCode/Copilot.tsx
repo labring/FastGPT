@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -179,7 +179,7 @@ const NodeCopilot = ({
       return match;
     });
   };
-  const { runAsync: handleSendOptimization, loading } = useRequest2(async () => {
+  const { runAsync: handleSendOptimization, loading } = useRequest(async () => {
     if (isInputEmpty) return;
 
     const processedInput = replaceVariables(optimizerInput);

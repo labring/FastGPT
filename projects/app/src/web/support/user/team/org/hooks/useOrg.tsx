@@ -3,7 +3,7 @@ import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '../../../useUserStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '../../api';
@@ -40,7 +40,7 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     data: orgs = [],
     loading: isLoadingOrgs,
     refresh: refetchOrgs
-  } = useRequest2(
+  } = useRequest(
     () =>
       getOrgList({
         orgId: currentOrg._id,

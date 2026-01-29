@@ -14,7 +14,7 @@ import {
   ModalBody,
   ModalFooter
 } from '@chakra-ui/react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -69,7 +69,7 @@ const ModelTest = ({
     }
   });
 
-  const { loading: loadingModels } = useRequest2(getSystemModelList, {
+  const { loading: loadingModels } = useRequest(getSystemModelList, {
     manual: false,
     refreshDeps: [models],
     onSuccess(res) {
@@ -96,7 +96,7 @@ const ModelTest = ({
     }
   });
 
-  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest2(
+  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest(
     async () => {
       let errorNum = 0;
       setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
@@ -148,7 +148,7 @@ const ModelTest = ({
     }
   );
 
-  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest2(
+  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
     async (model: string) => {
       const start = Date.now();
 

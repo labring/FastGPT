@@ -28,7 +28,7 @@ import { TeamContext } from './context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { GetSearchUserGroupOrg, postSyncMembers } from '@/web/support/user/api';
 import {
@@ -123,13 +123,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
-  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(postSyncMembers, {
+  const { runAsync: onSyncMember, loading: isSyncing } = useRequest(postSyncMembers, {
     onSuccess: onRefreshMembers,
     successToast: t('account_team:sync_member_success'),
     errorToast: t('account_team:sync_member_failed')
   });
 
-  const { runAsync: onLeaveTeam } = useRequest2(delLeaveTeam, {
+  const { runAsync: onLeaveTeam } = useRequest(delLeaveTeam, {
     onSuccess() {
       const defaultTeam = myTeams[0];
       onSwitchTeam(defaultTeam.teamId);
@@ -137,11 +137,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:user_team_leave_team_failed')
   });
 
-  const { runAsync: onRemoveMember } = useRequest2(delRemoveMember, {
+  const { runAsync: onRemoveMember } = useRequest(delRemoveMember, {
     onSuccess: onRefreshMembers
   });
 
-  const { runAsync: onRestore } = useRequest2(postRestoreMember, {
+  const { runAsync: onRestore } = useRequest(postRestoreMember, {
     onSuccess: onRefreshMembers,
     successToast: t('common:Success'),
     errorToast: t('common:user.team.invite.Reject')

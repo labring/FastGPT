@@ -4,7 +4,7 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
-import { useRequest2 } from './useRequest';
+import { useRequest } from './useRequest';
 
 const threshold = 200;
 
@@ -70,10 +70,10 @@ export function useLinkedScroll<
     [dataList, defaultScroll]
   );
 
-  const { runAsync: callApi, loading: isLoading } = useRequest2(api);
+  const { runAsync: callApi, loading: isLoading } = useRequest(api);
 
   let scrollSign = useRef(false);
-  const { runAsync: loadInitData } = useRequest2(
+  const { runAsync: loadInitData } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       if (isLoading) return;
 
@@ -122,7 +122,7 @@ export function useLinkedScroll<
     }
   }, [dataList]);
 
-  const { runAsync: loadPrevData, loading: prevLoading } = useRequest2(
+  const { runAsync: loadPrevData, loading: prevLoading } = useRequest(
     async (scrollRef = containerRef) => {
       if (!anchorRef.current.top || !hasMorePrev || isLoading) return;
 
@@ -161,7 +161,7 @@ export function useLinkedScroll<
     }
   );
 
-  const { runAsync: loadNextData, loading: nextLoading } = useRequest2(
+  const { runAsync: loadNextData, loading: nextLoading } = useRequest(
     async (scrollRef = containerRef) => {
       if (!anchorRef.current.bottom || !hasMoreNext || isLoading) return;
 

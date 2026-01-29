@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -127,7 +127,7 @@ const EvaluationDetailModal = ({
     [t]
   );
 
-  const { runAsync: exportEval, loading: isDownloading } = useRequest2(async () => {
+  const { runAsync: exportEval, loading: isDownloading } = useRequest(async () => {
     await downloadFetch({
       url: `/api/proApi/core/app/evaluation/exportItems?evalId=${evalDetail._id}`,
       filename: `${evalDetail.name}.csv`,
@@ -138,21 +138,21 @@ const EvaluationDetailModal = ({
     });
   });
 
-  const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest2(deleteEvalItem, {
+  const { runAsync: delEvalItem, loading: isLoadingDelete } = useRequest(deleteEvalItem, {
     onSuccess: () => {
       fetchData();
       fetchEvalList();
     }
   });
 
-  const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest2(retryEvalItem, {
+  const { runAsync: rerunItem, loading: isLoadingRerun } = useRequest(retryEvalItem, {
     onSuccess: () => {
       fetchData();
       fetchEvalList();
     }
   });
 
-  const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: updateItem, loading: isLoadingUpdate } = useRequest(
     async (data: updateEvalItemBody) => {
       await updateEvalItem({ ...data, evalItemId: evalItem.evalItemId });
     },

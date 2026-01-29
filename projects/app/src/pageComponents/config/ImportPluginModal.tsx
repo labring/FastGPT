@@ -3,7 +3,7 @@ import { Box, Button, Flex, HStack, VStack } from '@chakra-ui/react';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import {
   getPkgPluginUploadURL,
@@ -43,7 +43,7 @@ const ImportPluginModal = ({
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
 
-  const { data: allTags = [] } = useRequest2(getMarketPlaceToolTags, {
+  const { data: allTags = [] } = useRequest(getMarketPlaceToolTags, {
     manual: false
   });
 
@@ -113,7 +113,7 @@ const ImportPluginModal = ({
     }
   };
 
-  const { runAsync: handleBatchUpload, loading: uploadLoading } = useRequest2(
+  const { runAsync: handleBatchUpload, loading: uploadLoading } = useRequest(
     async (files: SelectFileItemType[]) => {
       const newUploadedFiles: UploadedPluginFile[] = files.map((f) => ({
         ...f,
@@ -163,7 +163,7 @@ const ImportPluginModal = ({
     setSelectFiles((prev) => prev.filter((f) => f.name !== file.name));
   };
 
-  const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest2(
+  const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest(
     async () => {
       const successToolIds = uploadedFiles
         .filter((file) => (file.status === 'success' || file.status === 'duplicate') && file.toolId)

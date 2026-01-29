@@ -46,7 +46,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -287,7 +287,7 @@ function EditLinkModal({
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (e: OutLinkEditType) =>
       createShareChat({
         ...e,
@@ -299,7 +299,7 @@ function EditLinkModal({
       onSuccess: onCreate
     }
   );
-  const { runAsync: onclickUpdate, loading: updating } = useRequest2(putShareChat, {
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(putShareChat, {
     errorToast: t('common:update_failed'),
     onSuccess: onEdit
   });

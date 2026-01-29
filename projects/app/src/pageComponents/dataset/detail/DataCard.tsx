@@ -31,7 +31,7 @@ import {
   DatasetCollectionTypeEnum,
   ImportDataSourceEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -88,7 +88,7 @@ const DataCard = () => {
   const [editDataId, setEditDataId] = useState<string>();
 
   // Get collection info
-  const { data: collection, runAsync: reloadCollection } = useRequest2(
+  const { data: collection, runAsync: reloadCollection } = useRequest(
     () => getDatasetCollectionById(collectionId),
     {
       refreshDeps: [collectionId],
@@ -129,7 +129,7 @@ const DataCard = () => {
     }
   });
 
-  const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest2(
+  const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest(
     async (collectionId: string) => {
       await downloadFetch({
         url: '/api/core/dataset/collection/export',

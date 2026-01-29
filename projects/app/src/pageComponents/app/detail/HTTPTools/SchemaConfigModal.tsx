@@ -18,7 +18,7 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/tool';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
@@ -88,7 +88,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const headerSecret = watch('headerSecret');
   const apiSchemaStr = watch('apiSchemaStr');
 
-  const { runAsync: onClickUrlLoadApi, loading: isLoadingUrlApi } = useRequest2(
+  const { runAsync: onClickUrlLoadApi, loading: isLoadingUrlApi } = useRequest(
     async () => {
       if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
         return toast({
@@ -105,7 +105,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
       errorToast: t('common:plugin.Invalid Schema')
     }
   );
-  const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest2(
+  const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest(
     async (data: HttpToolsType) => {
       const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);

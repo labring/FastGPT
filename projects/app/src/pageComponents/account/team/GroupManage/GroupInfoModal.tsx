@@ -4,7 +4,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
@@ -45,7 +45,7 @@ function GroupInfoModal({
     }
   });
 
-  const { runAsync: onCreate, loading: isLoadingCreate } = useRequest2(
+  const { runAsync: onCreate, loading: isLoadingCreate } = useRequest(
     (data: GroupFormType) => {
       return postCreateGroup({
         name: data.name,
@@ -57,7 +57,7 @@ function GroupInfoModal({
     }
   );
 
-  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest(
     async (data: GroupFormType) => {
       if (!editGroup) return;
       return putUpdateGroup({

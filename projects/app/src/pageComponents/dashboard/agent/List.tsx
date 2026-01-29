@@ -8,7 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 import {
@@ -89,7 +89,7 @@ const List = () => {
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
 
-  const { runAsync: onPutAppById } = useRequest2(putAppById, {
+  const { runAsync: onPutAppById } = useRequest(putAppById, {
     onSuccess() {
       loadMyApps();
     }
@@ -109,7 +109,7 @@ const List = () => {
   });
 
   const { lastChatAppId, setLastChatAppId } = useChatStore();
-  const { runAsync: onclickDelApp } = useRequest2(
+  const { runAsync: onclickDelApp } = useRequest(
     (id: string) => {
       if (id === lastChatAppId) {
         setLastChatAppId('');
@@ -131,7 +131,7 @@ const List = () => {
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
     content: t('app:confirm_copy_app_tip')
   });
-  const { runAsync: onclickCopy } = useRequest2(postCopyApp, {
+  const { runAsync: onclickCopy } = useRequest(postCopyApp, {
     onSuccess({ appId }) {
       router.push(`/app/detail?appId=${appId}`);
       loadMyApps();
@@ -139,7 +139,7 @@ const List = () => {
     successToast: t('app:create_copy_success')
   });
 
-  const { runAsync: onResumeInheritPermission } = useRequest2(
+  const { runAsync: onResumeInheritPermission } = useRequest(
     () => {
       return resumeInheritPer(editPerApp!._id);
     },

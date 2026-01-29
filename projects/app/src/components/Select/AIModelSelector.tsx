@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -35,7 +35,7 @@ const OneRowSelector = ({
     getMyModelList
   } = useSystemStore();
 
-  const { data: myModels } = useRequest2(
+  const { data: myModels } = useRequest(
     async () => {
       const set = await getMyModelList();
       if (cacheModel) {
@@ -154,7 +154,7 @@ const MultipleRowSelector = ({
     getMyModelList
   } = useSystemStore();
 
-  const { data: myModels } = useRequest2(getMyModelList, {
+  const { data: myModels } = useRequest(getMyModelList, {
     manual: false
   });
 
