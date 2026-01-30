@@ -24,16 +24,15 @@ x-share-db-config: &x-share-db-config
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
 
-# 向量库相关配置 - SeekDB
+# 向量库相关配置
 x-vec-config: &x-vec-config
   SEEKDB_URL: mysql://root%40tenantname:tenantpassword@seekdb:3306/fastgpt
 
-
 version: '3.3'
 services:
-  # Vector DB - SeekDB
+  # Vector DB
   vectorDB:
-    image: seekdb/seekdb-ce:latest
+    image: oceanbase/seekdb:1.0.1.0-100000392025122619
     container_name: seekdb
     restart: always
     # ports: # 生产环境建议不要暴露
@@ -53,12 +52,11 @@ services:
       - ../seekdb/data:/var/lib/mysql
       - ../seekdb/config:/etc/mysql/conf.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       interval: 30s
       timeout: 10s
       retries: 1000
       start_period: 10s
-
 
   mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
@@ -73,7 +71,19 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -61,7 +61,7 @@ services:
 
 
   mongo:
-    image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
     restart: always
     networks:
@@ -109,7 +109,7 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   redis:
-    image: redis:7.2-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
     container_name: redis
     networks:
       - fastgpt
@@ -125,7 +125,7 @@ services:
     volumes:
       - ./redis/data:/data
   fastgpt-minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fastgpt-minio
     restart: always
     ports:
@@ -147,7 +147,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.5.1 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.5.1 # git
     ports:
       - 3000:3000
     networks:
@@ -199,13 +199,13 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.5.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.5.1
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.5.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.5.1
     networks:
       - fastgpt
     ports:
@@ -214,7 +214,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.4.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.4.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -231,7 +231,7 @@ services:
         condition: service_healthy
   # AI Proxy
   aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.3.2
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.2
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
@@ -259,7 +259,7 @@ services:
       timeout: 5s
       retries: 10
   aiproxy_pg:
-    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:

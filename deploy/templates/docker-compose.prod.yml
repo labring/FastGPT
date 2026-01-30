@@ -12,7 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  # @see https://fastgpt.cn/docs/introduction/development/object-storage
+  # @see https://doc.fastgpt.cn/docs/introduction/development/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
