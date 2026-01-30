@@ -133,12 +133,27 @@ export function initRerankTrainDataWorker() {
           });
         }
       } else {
-        // Retriable error with remaining attempts - don't persist errorMsg yet
-        addLog.info('[RerankTrainData] Retriable error, will retry', {
-          trainsetId,
-          attemptsMade: job.attemptsMade,
-          remainingAttempts: (job.opts.attempts ?? 0) - job.attemptsMade
-        });
+        // Retriable error with remaining attempts - reset status to pending for retry
+        try {
+          await MongoRerankTrainset.updateOne(
+            { _id: trainsetId },
+            {
+              status: RerankTrainsetStatusEnum.pending,
+              updateTime: new Date()
+            }
+          );
+
+          addLog.info('[RerankTrainData] Retriable error, status reset to pending for retry', {
+            trainsetId,
+            attemptsMade: job.attemptsMade,
+            remainingAttempts: (job.opts.attempts ?? 0) - job.attemptsMade
+          });
+        } catch (updateError) {
+          addLog.error('[RerankTrainData] Failed to reset trainset status for retry', {
+            trainsetId,
+            updateError: (updateError as Error).message
+          });
+        }
       }
     }
   });
