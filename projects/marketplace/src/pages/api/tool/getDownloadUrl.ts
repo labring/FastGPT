@@ -22,7 +22,7 @@ async function handler(
     return Promise.reject('toolId or toolIds is required');
   }
 
-  const filterTools = toolIds ? toolIds : [toolId];
+  const filterTools = toolIds && toolIds.length > 0 ? toolIds : toolId ? [toolId] : [];
   const tools = (await getToolList()).filter((item) => filterTools.includes(item.toolId));
 
   for await (const tool of tools) {

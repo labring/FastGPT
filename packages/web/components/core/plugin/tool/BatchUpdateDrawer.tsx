@@ -62,7 +62,6 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     hasSelections,
     toggleSelect,
     isSelected,
-    FloatingActionBar,
     setSelectedItems
   } = useTableMultipleSelect<ToolCardItemType>({
     list: updatableTools,

@@ -57,12 +57,6 @@ async function handler(
           isPromoted: isPromotedForUser
         });
       });
-    // .filter((tool) => {
-    //   // All installed plugins are returned
-    //   if (tool.installed) return true;
-    //   if (tool.status !== PluginStatusEnum.Normal) return false;
-    //   return true;
-    // });
   }
 
   return [];
