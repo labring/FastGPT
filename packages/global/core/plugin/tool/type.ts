@@ -1,5 +1,6 @@
 import z from 'zod';
 import { PluginStatusEnum, PluginStatusSchema } from '../type';
+import { UserTagsEnum } from '../../../support/user/type';
 
 // 无论哪种 Tool，都会有这一层配置
 export const SystemToolBasicConfigSchema = z.object({
@@ -14,6 +15,8 @@ export const SystemToolBasicConfigSchema = z.object({
 
 export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.extend({
   pluginId: z.string(),
+  promoteTags: z.array(UserTagsEnum).nullish(),
+  hideTags: z.array(UserTagsEnum).nullish(),
   customConfig: z
     .object({
       name: z.string(),

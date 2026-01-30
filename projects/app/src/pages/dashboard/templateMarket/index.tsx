@@ -5,14 +5,12 @@ import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   type AppTemplateSchemaType,
   type TemplateTypeSchemaType
 } from '@fastgpt/global/core/app/type';
-import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';

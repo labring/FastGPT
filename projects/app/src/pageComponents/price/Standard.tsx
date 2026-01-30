@@ -12,12 +12,12 @@ import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { getDiscountCouponList } from '@/web/support/wallet/sub/discountCoupon/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
   DiscountCouponStatusEnum,
   DiscountCouponTypeEnum
 } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import { formatActivityExpirationTime } from './utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum PackageChangeStatusEnum {
   buy = 'buy',
@@ -39,6 +39,7 @@ const Standard = ({
   onPaySuccess?: () => void;
 }) => {
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
 
   const packagePayTextMap = {
     [PackageChangeStatusEnum.buy]: t('common:pay.package_tip.buy'),
@@ -46,15 +47,25 @@ const Standard = ({
     [PackageChangeStatusEnum.upgrade]: t('common:pay.package_tip.upgrade')
   };
 
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
+
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
-  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
+  const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(
+    isWecomTeam ? SubModeEnum.year : SubModeEnum.month
+  );
   const hasActivityExpiration =
     !!subPlans?.activityExpirationTime && selectSubMode === SubModeEnum.year;
 
   useEffect(() => {
-    setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
-  }, [subPlans?.activityExpirationTime]);
+    // For WeCom teams, always default to yearly mode
+    if (isWecomTeam) {
+      setSelectSubMode(SubModeEnum.year);
+    } else {
+      setSelectSubMode(subPlans?.activityExpirationTime ? SubModeEnum.year : SubModeEnum.month);
+    }
+  }, [subPlans?.activityExpirationTime, isWecomTeam]);
 
   // 获取优惠券
   const { data: coupons = [], runAsync: getCoupons } = useRequest(
@@ -96,7 +107,10 @@ const Standard = ({
               ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
               ...(value.desc ? { desc: value.desc } : {}),
               ...(value.name ? { label: value.name } : {}),
-              price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
+              price:
+                isWecomTeam && value.wecom
+                  ? value.wecom.price
+                  : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
               maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
               maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
@@ -104,7 +118,10 @@ const Standard = ({
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
               annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
-              totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
+              totalPoints:
+                isWecomTeam && value.wecom
+                  ? value.wecom.points
+                  : value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
 
               // custom plan
               priceDescription: value.priceDescription,
@@ -115,6 +132,7 @@ const Standard = ({
       : [];
   }, [
     subPlans?.standard,
+    isWecomTeam,
     selectSubMode,
     myStandardPlan?.maxTeamMember,
     myStandardPlan?.maxApp,
@@ -127,7 +145,16 @@ const Standard = ({
   /* Get pay code */
   const { runAsync: onPay, loading: isLoading } = useRequest(postCreatePayBill, {
     onSuccess(res) {
-      setQRPayData(res);
+      // For WeChat Work payment, open payment URL in new tab
+      if (res.payUrl) {
+        window.open(res.payUrl, '_blank');
+        return;
+      }
+      // For other payment methods, show QR code modal
+      setQRPayData({
+        ...res,
+        billId: res.billId!
+      });
     }
   });
 
@@ -139,44 +166,46 @@ const Standard = ({
   return (
     <>
       <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-        <Flex>
-          <Box>
-            <Box
-              textAlign={'right'}
-              color="#DC7E03"
-              fontWeight="500"
-              fontStyle="italic"
-              fontFamily={'JiangChengXieHei'}
-              fontSize={'14px'}
-              lineHeight={'20px'}
-              letterSpacing={'0.1px'}
-              textTransform={'lowercase'}
-              mb={2}
-              mr={'-2'}
-            >
-              {t('common:pay_year_tip')}
+        {!isWecomTeam && (
+          <Flex>
+            <Box>
+              <Box
+                textAlign={'right'}
+                color="#DC7E03"
+                fontWeight="500"
+                fontStyle="italic"
+                fontFamily={'JiangChengXieHei'}
+                fontSize={'14px'}
+                lineHeight={'20px'}
+                letterSpacing={'0.1px'}
+                textTransform={'lowercase'}
+                mb={2}
+                mr={'-2'}
+              >
+                {t('common:pay_year_tip')}
+              </Box>
+              <RowTabs
+                list={[
+                  {
+                    label: t('common:support.wallet.subscription.mode.Month'),
+                    value: SubModeEnum.month
+                  },
+                  {
+                    label: (
+                      <Box whiteSpace={'nowrap'}>
+                        {t('common:support.wallet.subscription.mode.Year')}
+                      </Box>
+                    ),
+                    value: SubModeEnum.year
+                  }
+                ]}
+                value={selectSubMode}
+                onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
+              />
             </Box>
-            <RowTabs
-              list={[
-                {
-                  label: t('common:support.wallet.subscription.mode.Month'),
-                  value: SubModeEnum.month
-                },
-                {
-                  label: (
-                    <Box whiteSpace={'nowrap'}>
-                      {t('common:support.wallet.subscription.mode.Year')}
-                    </Box>
-                  ),
-                  value: SubModeEnum.year
-                }
-              ]}
-              value={selectSubMode}
-              onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
-            />
-          </Box>
-          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
-        </Flex>
+            <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
+          </Flex>
+        )}
 
         {/* card */}
         <Grid
@@ -197,6 +226,12 @@ const Standard = ({
               standardSubLevelMap[item.level].weight >
               standardSubLevelMap[myStandardPlan?.currentSubLevel || StandardSubLevelEnum.free]
                 .weight;
+
+            // For wecom teams with advanced plan, cannot buy basic plan
+            const isWecomDowngrade =
+              isWecomTeam &&
+              myStandardPlan?.currentSubLevel === StandardSubLevelEnum.advanced &&
+              item.level === StandardSubLevelEnum.basic;
 
             return (
               <Box
@@ -305,7 +340,9 @@ const Standard = ({
                   color={'myGray.900'}
                   mt={hasActivityExpiration ? 2 : 0}
                 >
-                  {t(item.label as any)}
+                  {isWecomTeam && item.level === StandardSubLevelEnum.free
+                    ? t('common:support.wallet.subscription.standardSubLevel.trial')
+                    : t(item.label as any)}
                 </Box>
                 <Flex alignItems={'center'}>
                   {item.level === StandardSubLevelEnum.custom ? (
@@ -339,6 +376,17 @@ const Standard = ({
                             ? matchedCoupon.discount * item.price
                             : (matchedCoupon.discount * item.price).toFixed(1)
                           : item.price}
+                        {isWecomTeam && item.level !== StandardSubLevelEnum.free && (
+                          <Box
+                            h={[8, '38px']}
+                            color={'myGray.600'}
+                            fontSize={'18px'}
+                            fontWeight={'500'}
+                            whiteSpace={'nowrap'}
+                          >
+                            {t('common:support.wallet.subscription.per_year')}
+                          </Box>
+                        )}
                         {item.level !== StandardSubLevelEnum.free && matchedCoupon && (
                           <Box
                             h={[8, '38px']}
@@ -355,7 +403,9 @@ const Standard = ({
                   )}
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
-                  {t(item.desc as any, { title: feConfigs?.systemTitle })}
+                  {isWecomTeam && item.level === StandardSubLevelEnum.free
+                    ? t('common:support.wallet.subscription.standardSubLevel.trial_desc')
+                    : t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
 
                 {/* Button */}
@@ -470,6 +520,24 @@ const Standard = ({
                         }}
                       >
                         {t('common:support.wallet.subscription.Upgrade plan')}
+                      </Button>
+                    );
+                  }
+                  // For wecom teams with advanced plan, disable basic plan purchase
+                  if (isWecomDowngrade) {
+                    return (
+                      <Button
+                        mt={buttonMarginTop}
+                        mb={buttonMarginBottom}
+                        h={buttonHeight}
+                        w={'100%'}
+                        variant={'whiteBase'}
+                        isDisabled
+                        _hover={{}}
+                        _active={{}}
+                        cursor={'not-allowed'}
+                      >
+                        {t('user:bill.buy_plan')}
                       </Button>
                     );
                   }

@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
-import { addMonths } from 'date-fns';
+import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
   setRedisCache,
@@ -52,8 +52,12 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const standard = plans[0];
 
   const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]
+    standard.currentSubLevel && standardPlans
+      ? standardPlans[
+          standard.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standard.currentSubLevel
+        ]
       : undefined;
 
   return {
@@ -83,18 +87,43 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
 export const initTeamFreePlan = async ({
   teamId,
+  isWecomTeam = false,
   session
 }: {
   teamId: string;
+  isWecomTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
+  const freePoints = isWecomTeam
+    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
     type: SubTypeEnum.standard,
     currentSubLevel: StandardSubLevelEnum.free
   });
+
+  // Get basic plan config for wecom mode
+  const specialConfig: Record<string, any> | null = (() => {
+    const config = global?.subPlans?.standard?.[StandardSubLevelEnum.basic];
+    if (isWecomTeam && config) {
+      return {
+        maxTeamMember: config.maxTeamMember,
+        maxApp: config.maxAppAmount,
+        maxDataset: config.maxDatasetAmount,
+        requestsPerMinute: config.requestsPerMinute,
+        chatHistoryStoreDuration: config.chatHistoryStoreDuration,
+        maxDatasetSize: config.maxDatasetSize,
+        websiteSyncPerDataset: config.websiteSyncPerDataset,
+        appRegistrationCount: config.appRegistrationCount,
+        auditLogStoreDuration: config.auditLogStoreDuration,
+        ticketResponseTime: config.ticketResponseTime,
+        customDomain: config.customDomain
+      } as TeamSubSchemaType;
+    }
+    return null;
+  })();
 
   // Reset one month free plan
   if (freePlan) {
@@ -111,6 +140,14 @@ export const initTeamFreePlan = async ({
       freePlan.surplusPoints && freePlan.surplusPoints < 0
         ? freePlan.surplusPoints + freePoints
         : freePoints;
+
+    // Apply basic plan config for wecom, but with limited points and dataset size
+    if (specialConfig) {
+      for (const key in specialConfig) {
+        (freePlan as any)[key] = specialConfig[key];
+      }
+    }
+
     return freePlan.save({ session });
   }
 
@@ -122,13 +159,14 @@ export const initTeamFreePlan = async ({
         currentMode: SubModeEnum.month,
         nextMode: SubModeEnum.month,
         startTime: new Date(),
-        expiredTime: addMonths(new Date(), 1),
+        expiredTime: isWecomTeam ? addDays(new Date(), 15) : addMonths(new Date(), 1),
 
         currentSubLevel: StandardSubLevelEnum.free,
         nextSubLevel: StandardSubLevelEnum.free,
 
         totalPoints: freePoints,
-        surplusPoints: freePoints
+        surplusPoints: freePoints,
+        ...(specialConfig && specialConfig)
       }
     ],
     { session, ordered: true }
@@ -178,7 +216,11 @@ export const getTeamPlanStatus = async ({
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
       ? standardPlan?.maxDatasetSize ||
-        standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize ||
+        standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]?.maxDatasetSize ||
         Infinity
       : Infinity;
   const totalDatasetSize =
@@ -187,13 +229,43 @@ export const getTeamPlanStatus = async ({
 
   const standardConstants =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]
+      ? standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]
       : undefined;
 
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
   return {
-    [SubTypeEnum.standard]: standardPlan,
+    [SubTypeEnum.standard]:
+      standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
+        ? {
+            ...standardPlan,
+            maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
+            maxApp: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
+            maxDataset: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
+            requestsPerMinute:
+              standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+            chatHistoryStoreDuration:
+              standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+            maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+            websiteSyncPerDataset:
+              standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+            appRegistrationCount:
+              standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+            auditLogStoreDuration:
+              standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+            ticketResponseTime:
+              standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+            customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+            maxUploadFileSize:
+              standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+            maxUploadFileCount:
+              standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+          }
+        : standardPlan,
     standardConstants: standardConstants
       ? {
           ...standardConstants,
@@ -212,7 +284,10 @@ export const getTeamPlanStatus = async ({
             standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
           ticketResponseTime:
             standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain
+          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+          maxUploadFileSize: standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+          maxUploadFileCount:
+            standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
         }
       : undefined,
 

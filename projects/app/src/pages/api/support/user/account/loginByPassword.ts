@@ -15,6 +15,7 @@ import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password, code, language = 'zh-CN' } = req.body as PostLoginProps;
@@ -40,6 +41,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   if (user.status === UserStatusEnum.forbidden) {
     return Promise.reject('Invalid account!');
+  }
+
+  if (user) {
+    if (user.username.startsWith('wecom-')) {
+      return Promise.reject(new UserError('Wecom user can not login with password'));
+    }
   }
 
   const userDetail = await getUserDetail({

@@ -3,43 +3,49 @@ title: 'V4.14.6(进行中)'
 description: 'FastGPT V4.14.6 更新说明'
 ---
 
-
-## 🚀 新增内容
-
-1. Markdown 表格支持导出 csv。
-2. 系统工具可配置自定义的分类属性
+## 更新指南
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.6
-- 更新 FastGPT 商业版镜像tag: v4.14.6
+- 更新 FastGPT 镜像 tag: v4.14.6
+- 更新 FastGPT 商业版镜像 tag: v4.14.6
 - 更新 fastgpt-plugin 镜像 tag: v0.4.0
 - mcp_server 无需更新
-- Sandbox 无需更新
+- sandbox 无需更新
 - AIProxy 无需更新
-- mongo 5.x 版本修改成 5.0.32 版本，解决 CVE-2025-14847 漏洞。直接修改镜像 tag 成 `5.0.32`。
+- mongo 无需更新
 
-### 2. 执行升级脚本
+## 🚀 新增内容
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+1. 系统工具可配置自定义的分类属性。
+2. 订阅套餐支持配置最大文件上传数量和大小。
+3. 插件市场支持批量更新插件。
+4. 云服务支持企微特定版接入。
+5. Seekdb 向量库预设配置。
 
-```bash
-curl --location --request POST 'https://{{host}}/api/admin/initv4146' \
---header 'rootkey: {{rootkey}}' \
---header 'Content-Type: application/json'
-```
 
-1. 迁移系统工具的系统密钥配置
-    
 ## ⚙️ 优化
 
+### 功能优化
 1. 工作流触摸板移动时，遇到输入框后会被强制阻拦。
 2. 工作流粘贴节点，精确按鼠标位置粘贴。
 3. 精确移除请求 LLM 时多余的系统字段，避免部分模型接口报错。
+
+### 代码质量
+
+1. useRequest2 替代 useRequest。
+
 
 ## 🐛 修复
 
 1. 系统工具工具集设置系统密钥后，子工具无法读取到设置的系统密钥
 2. 日期选择器溢出问题，增加了动态位置适配。
+3. 工作流编排页面系统工具“探索更多”跳转地址错误
+4. 模型头像缺省值 /imgs/model/huggingface.svg 路径错误
 
 ## 插件
+
+1. 添加飞书多维表格的引导教程文档
+2. 企微相关的插件：获取企微企业 access_token; 企微智能表工具集
+3. 新增模型 qwen-flash
+4. 调整 qwen3-max 和 qwen-plus 的预设参数

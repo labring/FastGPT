@@ -19,7 +19,7 @@ import { Alert } from '@/components/docs/Alert';
 <Alert icon="🤖" context="success">
 
 - MongoDB：用于存储除了向量外的各类数据
-- PostgreSQL/Milvus/Oceanbase：存储向量数据
+- PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
 - AIProxy: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
 
 </Alert>
@@ -53,6 +53,26 @@ import { Alert } from '@/components/docs/Alert';
 Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
 
 由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
+
+### SeekDB版本
+
+SeekDB 是基于 MySQL 协议的高性能向量数据库，与 OceanBase 协议完全兼容，支持高效的向量检索。
+
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
+
+<Alert icon="🤖" context="success">
+
+SeekDB 使用 MySQL 协议，与 OceanBase 完全兼容：
+- 支持 1536 维向量检索
+- 内置 HNSW 索引算法
+- 提供批量插入和查询优化
+- 自动重试和连接池管理
+
+</Alert>
 
 ## 前置工作
 
@@ -103,7 +123,7 @@ brew install orbstack
 
 #### 方法一：使用脚本部署
 
-<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本']}>
+<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本','SeekDB版本']}>
   <Tab value="PgVector版本">
 国内镜像(阿里云)
 
@@ -163,6 +183,29 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 
   zilliz 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
   </Tab>
+  <Tab value="SeekDB版本">
+      国内镜像(阿里云)
+
+      ```bash
+      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=seekdb
+      ```
+
+      非国内镜像(dockhub, ghcr)
+
+      ```bash
+      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=seekdb
+      ```
+      需要在 Linux/MacOS/Windows WSL 环境下执行
+
+      <Alert icon="🤖" context="success">
+
+      SeekDB 使用 MySQL 协议，兼容 OceanBase 的所有特性：
+      - 端口：3306（默认）
+      - 连接字符串格式：`mysql://root%40tenantname:password@host:3306/database`
+      - 环境变量：`SEEKDB_URL`
+
+      </Alert>
+  </Tab>
 </Tabs>
 
 #### 方法二：手动下载部署
@@ -181,6 +224,9 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 - Zilliz
   - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+- SeekDB
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.seekdb.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.seekdb.yml)
 
 下载 config.json 文件
 - [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
