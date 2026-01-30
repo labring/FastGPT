@@ -68,6 +68,14 @@ export interface ICommonStorageOptions {
     /** SecretAccessKey / SecretKey / SK */
     secretAccessKey: string;
   };
+
+  /**
+   * 公共访问时额外添加的子路径，可选。
+   *
+   * 说明：
+   * - 用于在公共访问时添加额外的前缀，例如 `/sub-path`。
+   */
+  publicAccessExtraSubPath?: string;
 }
 
 /**

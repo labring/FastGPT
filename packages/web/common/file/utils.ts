@@ -141,6 +141,7 @@ export const putFileToS3 = async ({
   maxSize?: number;
   t: any;
 }) => {
+  console.log(headers);
   try {
     const res = await axios.put(url, file, {
       headers: {
@@ -153,6 +154,6 @@ export const putFileToS3 = async ({
       onSuccess?.();
     }
   } catch (error) {
-    Promise.reject(parseS3UploadError({ t, error, maxSize }));
+    return Promise.reject(parseS3UploadError({ t, error, maxSize }));
   }
 };
