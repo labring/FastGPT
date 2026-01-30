@@ -6,9 +6,9 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import type {
-  GetPathNamesBodyType,
-  GetPathNamesResponseType
+import {
+  GetPathNamesBodySchema,
+  type GetPathNamesResponseType
 } from '@fastgpt/global/openapi/core/dataset/pluginDataset/api';
 
 const getFullPath = async (
@@ -30,10 +30,10 @@ const getFullPath = async (
 };
 
 async function handler(
-  req: ApiRequestProps<GetPathNamesBodyType>,
+  req: ApiRequestProps,
   _res: ApiResponseType<GetPathNamesResponseType>
 ): Promise<GetPathNamesResponseType> {
-  const { datasetId, parentId, pluginDatasetServer } = req.body;
+  const { datasetId, parentId, pluginDatasetServer } = GetPathNamesBodySchema.parse(req.body);
   if (!parentId) return '';
 
   const serverConfig = await (async () => {

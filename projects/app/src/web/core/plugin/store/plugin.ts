@@ -5,8 +5,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 type State = {
   pluginDatasets: PluginDatasetType[];
-  pluginDatasetsVersionKey?: string;
-  setPluginDatasets: (data: PluginDatasetType[], versionKey?: string) => void;
+  setPluginDatasets: (data: PluginDatasetType[]) => void;
   updatePluginDatasetStatus: (data: { sourceId: string; status: number }) => void;
   getDatasetTypeConfig: (
     type: string,
@@ -28,18 +27,16 @@ export const usePluginStore = create<State>()(
     persist(
       immer((set, get) => ({
         pluginDatasets: [],
-        pluginDatasetsVersionKey: undefined,
-        setPluginDatasets(data, versionKey) {
+        setPluginDatasets(data) {
           set((state) => {
             state.pluginDatasets = data;
-            if (versionKey) {
-              state.pluginDatasetsVersionKey = versionKey;
-            }
           });
         },
         updatePluginDatasetStatus({ sourceId, status }) {
           set((state) => {
-            const item = state.pluginDatasets.find((d) => d.sourceId === sourceId);
+            const item = state.pluginDatasets.find(
+              (d: PluginDatasetType) => d.sourceId === sourceId
+            );
             if (item) item.status = status;
           });
         },
@@ -74,8 +71,7 @@ export const usePluginStore = create<State>()(
       {
         name: 'pluginStore',
         partialize: (state) => ({
-          pluginDatasets: state.pluginDatasets,
-          pluginDatasetsVersionKey: state.pluginDatasetsVersionKey
+          pluginDatasets: state.pluginDatasets
         })
       }
     )

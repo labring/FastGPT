@@ -12,18 +12,13 @@ export const clientInitData = async (
 }> => {
   try {
     const { initDataBufferId } = useSystemStore.getState();
-    const { pluginDatasets, pluginDatasetsVersionKey } = usePluginStore.getState();
 
-    // 只有当本地有 pluginDatasets 数据时才发送 versionKey，避免缓存命中但数据为空的问题
-    const effectiveVersionKey =
-      pluginDatasets && pluginDatasets.length > 0 ? pluginDatasetsVersionKey : undefined;
-
-    const res = await getSystemInitData(initDataBufferId, effectiveVersionKey);
+    const res = await getSystemInitData(initDataBufferId);
 
     useSystemStore.getState().initStaticData(res);
 
     if (res.pluginDatasets) {
-      usePluginStore.getState().setPluginDatasets(res.pluginDatasets, res.pluginDatasetsVersionKey);
+      usePluginStore.getState().setPluginDatasets(res.pluginDatasets);
     }
 
     return {

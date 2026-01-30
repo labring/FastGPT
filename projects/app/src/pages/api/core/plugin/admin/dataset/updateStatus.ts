@@ -19,7 +19,6 @@ async function handler(
 
   await MongoSystemPluginDataset.updateOne({ sourceId }, { status }, { upsert: true });
 
-  // 刷新 versionKey，使所有客户端缓存失效
   await refreshPluginDatasetsVersionKey();
 
   return { sourceId, status };

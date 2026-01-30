@@ -1,5 +1,6 @@
 import { SystemCacheKeyEnum } from './type';
 import { refreshSystemTools } from '../../core/app/tool/controller';
+import { refreshPluginDatasets } from '../../core/dataset/pluginDataset/controller';
 
 export const initCache = () => {
   global.systemCache = {
@@ -13,6 +14,11 @@ export const initCache = () => {
       versionKey: '',
       data: null,
       refreshFunc: () => Promise.resolve(null)
+    },
+    [SystemCacheKeyEnum.pluginDatasets]: {
+      versionKey: '',
+      data: [],
+      refreshFunc: refreshPluginDatasets
     }
   };
 };

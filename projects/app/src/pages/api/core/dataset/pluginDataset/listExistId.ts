@@ -3,16 +3,16 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import type {
-  ListExistIdQueryType,
-  ListExistIdResponseType
+import {
+  ListExistIdQuerySchema,
+  type ListExistIdResponseType
 } from '@fastgpt/global/openapi/core/dataset/pluginDataset/api';
 
 async function handler(
-  req: ApiRequestProps<{}, ListExistIdQueryType>,
+  req: ApiRequestProps,
   _res: ApiResponseType<ListExistIdResponseType>
 ): Promise<ListExistIdResponseType> {
-  const { datasetId } = req.query;
+  const { datasetId } = ListExistIdQuerySchema.parse(req.query);
 
   const { dataset } = await authDataset({
     req,

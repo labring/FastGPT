@@ -28,17 +28,16 @@ export type InitDateResponse = {
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
   aiproxyIdMap?: AiproxyMapProviderType;
   pluginDatasets?: PluginDatasetType[];
-  pluginDatasetsVersionKey?: string;
 };
 
 async function handler(
-  req: ApiRequestProps<{}, { bufferId?: string; pluginDatasetsVersionKey?: string }>,
+  req: ApiRequestProps<{}, { bufferId?: string }>,
   res: NextApiResponse
 ): Promise<InitDateResponse> {
-  const { bufferId, pluginDatasetsVersionKey } = req.query;
+  const { bufferId } = req.query;
 
-  // 获取 pluginDatasets 数据
-  const pluginDatasetsResult = await getPluginDatasets({ versionKey: pluginDatasetsVersionKey });
+  // 获取 pluginDatasets 数据（使用服务端缓存）
+  const pluginDatasets = await getPluginDatasets();
 
   try {
     await authCert({ req, authToken: true });
@@ -47,10 +46,7 @@ async function handler(
       return {
         bufferId: global.systemInitBufferId,
         systemVersion: global.systemVersion,
-        pluginDatasets: pluginDatasetsResult.isRefreshed
-          ? pluginDatasetsResult.pluginDatasets
-          : undefined,
-        pluginDatasetsVersionKey: pluginDatasetsResult.versionKey
+        pluginDatasets
       };
     }
 
@@ -63,10 +59,7 @@ async function handler(
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
       aiproxyIdMap: global.aiproxyIdMapCache,
-      pluginDatasets: pluginDatasetsResult.isRefreshed
-        ? pluginDatasetsResult.pluginDatasets
-        : undefined,
-      pluginDatasetsVersionKey: pluginDatasetsResult.versionKey
+      pluginDatasets
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -94,10 +87,7 @@ async function handler(
       feConfigs: global.feConfigs,
       modelProviders: global.ModelProviderRawCache,
       aiproxyIdMap: global.aiproxyIdMapCache,
-      pluginDatasets: pluginDatasetsResult.isRefreshed
-        ? pluginDatasetsResult.pluginDatasets
-        : undefined,
-      pluginDatasetsVersionKey: pluginDatasetsResult.versionKey
+      pluginDatasets
     };
   }
 }
