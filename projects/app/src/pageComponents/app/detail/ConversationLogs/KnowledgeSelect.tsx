@@ -115,10 +115,7 @@ const KnowledgeSelect = ({
       // 但只有在搜索框未聚焦时才执行此逻辑
       if (inputRef.current && document.activeElement !== inputRef.current) {
         inputRef.current.focus();
-        // 使用 setTimeout 0 确保焦点设置后立即失焦
-        setTimeout(() => {
-          inputRef.current?.blur();
-        }, 0);
+        inputRef.current?.blur();
       }
     }, 200);
   }, []);
@@ -137,6 +134,7 @@ const KnowledgeSelect = ({
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
+
     // 设置关闭定时器(延迟200ms)
     closeTimeoutRef.current = setTimeout(() => {
       setHoveredKnowledgeId(null);
@@ -144,10 +142,7 @@ const KnowledgeSelect = ({
       // 但只有在搜索框未聚焦时才执行此逻辑
       if (inputRef.current && document.activeElement !== inputRef.current) {
         inputRef.current.focus();
-        // 使用 setTimeout 0 确保焦点设置后立即失焦
-        setTimeout(() => {
-          inputRef.current?.blur();
-        }, 0);
+        inputRef.current?.blur();
       }
     }, 200);
   }, []);
@@ -198,6 +193,10 @@ const KnowledgeSelect = ({
     // 设置关闭定时器(延迟200ms)
     selectedItemCloseTimeoutRef.current = setTimeout(() => {
       setHoveredSelectedItemForPopover(null);
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current?.blur();
+      }
     }, 200);
   }, []);
 
@@ -218,6 +217,10 @@ const KnowledgeSelect = ({
     // 设置关闭定时器(延迟200ms)
     selectedItemCloseTimeoutRef.current = setTimeout(() => {
       setHoveredSelectedItemForPopover(null);
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current?.blur();
+      }
     }, 200);
   }, []);
 
@@ -617,7 +620,7 @@ const KnowledgeSelect = ({
             {correctedQuoteList.map((knowledge) => (
               <Popover
                 key={knowledge.datasetDataId}
-                isOpen={hoveredSelectedItemForPopover === knowledge.datasetDataId}
+                isOpen={!isOpen && hoveredSelectedItemForPopover === knowledge.datasetDataId}
                 placement="right"
                 closeOnBlur={false}
                 isLazy

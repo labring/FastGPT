@@ -244,6 +244,7 @@ const CorrectionModal = ({
       maxW="800px"
       w="90vw"
       closeOnOverlayClick={false}
+      closeOnEsc={false}
       isLoading={isInitializing}
     >
       <ModalBody>

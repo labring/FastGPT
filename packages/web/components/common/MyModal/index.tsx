@@ -22,6 +22,7 @@ export interface MyModalProps extends ModalContentProps {
   isOpen?: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
+  closeOnEsc?: boolean;
   size?: 'md' | 'lg';
   showCloseButton?: boolean;
 }
@@ -37,6 +38,7 @@ const MyModal = ({
   w = 'auto',
   maxW = ['90vw', '600px'],
   closeOnOverlayClick = true,
+  closeOnEsc,
   iconColor,
   size = 'md',
   showCloseButton = true,
@@ -55,6 +57,7 @@ const MyModal = ({
       allowPinchZoom
       scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}
+      closeOnEsc={closeOnEsc}
       returnFocusOnClose={false}
     >
       <ModalOverlay zIndex={props.zIndex} />
