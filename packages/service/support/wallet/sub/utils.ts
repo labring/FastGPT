@@ -105,7 +105,7 @@ export const initTeamFreePlan = async ({
   });
 
   // Get basic plan config for wecom mode
-  const specialConfig = (() => {
+  const specialConfig: Record<string, any> | null = (() => {
     const config = global?.subPlans?.standard?.[StandardSubLevelEnum.basic];
     if (isWecomTeam && config) {
       return {
@@ -144,8 +144,7 @@ export const initTeamFreePlan = async ({
     // Apply basic plan config for wecom, but with limited points and dataset size
     if (specialConfig) {
       for (const key in specialConfig) {
-        // @ts-ignore
-        freePlan[key] = specialConfig[key];
+        (freePlan as any)[key] = specialConfig[key];
       }
     }
 
