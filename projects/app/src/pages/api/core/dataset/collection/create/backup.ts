@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);

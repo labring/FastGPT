@@ -14,12 +14,20 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
 import { formatActivityExpirationTime } from './utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
+  const { userInfo, teamPlanStatus } = useUserStore();
+
+  // For Wecom teams, free plan should not be able to buy extra plan
+  const isDisabledBuy =
+    userInfo?.team.isWecomTeam &&
+    teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free;
 
   // 额外的知识库索引量
   const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
@@ -58,6 +66,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       });
       setQRPayData({
         tip: t('common:button.extra_dataset_size_tip'),
+        billId: res.billId!,
         ...res
       });
     },
@@ -95,6 +104,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
       setQRPayData({
         tip: t('common:button.extra_points_tip'),
+        billId: res.billId!,
         ...res
       });
     },
@@ -301,6 +311,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               selectedPackageIndex === undefined || !extraPointsPackages[selectedPackageIndex]
             }
             onClick={() => {
+              if (isDisabledBuy) {
+                return toast({
+                  status: 'warning',
+                  title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                });
+              }
               if (selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]) {
                 const selectedPackage = extraPointsPackages[selectedPackageIndex];
                 onclickBuyExtraPoints({
@@ -461,7 +477,15 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               h={['40px', '44px']}
               variant={'primaryGhost'}
               isLoading={isLoadingBuyDatasetSize}
-              onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
+              onClick={(e) => {
+                if (isDisabledBuy) {
+                  return toast({
+                    status: 'warning',
+                    title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                  });
+                }
+                handleSubmitDatasetSize(onclickBuyDatasetSize)(e);
+              }}
               color={'primary.700'}
               fontSize={['14px', '16px']}
             >

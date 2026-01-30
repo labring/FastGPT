@@ -62,7 +62,7 @@ async function handler(
         systemKeyCost: tool.systemKeyCost
       });
     }),
-    tags: systemTool.tags || []
+    tags: systemDbTool?.customConfig?.tags || systemTool.tags || []
   });
 }
 

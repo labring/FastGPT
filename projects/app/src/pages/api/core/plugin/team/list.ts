@@ -10,6 +10,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
 
 export type listQuery = GetTeamSystemPluginListQueryType;
 
@@ -24,27 +25,37 @@ async function handler(
   const type = req.query.type;
   const lang = getLocale(req);
 
-  const { teamId, isRoot } = await authCert({ req, authToken: true });
+  const { teamId, isRoot, tmbId } = await authCert({ req, authToken: true });
 
   if (type === 'tool') {
-    const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
+    // Get user tags for filtering
+    const userDetail = await getUserDetail({ tmbId });
+    const userTags = userDetail.tags || [];
+
+    const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
 
     return tools
       .filter((tool) => {
-        return !tool.parentId;
+        // Only return the top-level tools
+        if (tool.parentId) return false;
+        // Uninstall & Offline tool, filter out
+        if (!tool.installed && tool.status !== PluginStatusEnum.Normal) return false;
+        return true;
       })
       .map((tool) => {
+        // Check if this tool should be promoted for current user
+        const isPromotedForUser =
+          userTags.length > 0 &&
+          tool.promoteTags &&
+          tool.promoteTags.length > 0 &&
+          tool.promoteTags.some((promoteTag) => userTags.includes(promoteTag));
+
         return TeamPluginListItemSchema.parse({
           ...tool,
           name: parseI18nString(tool.name, lang),
-          intro: parseI18nString(tool.intro, lang)
+          intro: parseI18nString(tool.intro, lang),
+          isPromoted: isPromotedForUser
         });
-      })
-      .filter((tool) => {
-        // All installed plugins are returned
-        if (tool.installed) return true;
-        if (tool.status !== PluginStatusEnum.Normal) return false;
-        return true;
       });
   }
 

@@ -6,7 +6,8 @@ export const ChatFileUploadSchema = z.object({
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional()
+  expiredTime: z.date().optional(),
+  maxFileSize: z.number().positive().optional()
 });
 export type CheckChatFileKeys = z.infer<typeof ChatFileUploadSchema>;
 

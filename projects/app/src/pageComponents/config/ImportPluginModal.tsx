@@ -210,7 +210,6 @@ const ImportPluginModal = ({
       <Box flex={1} px={8} overflow={'auto'}>
         <FileSelectorBox
           maxCount={100}
-          maxSize="100MB"
           fileType=".pkg"
           selectFiles={selectFiles}
           setSelectFiles={onSelectFiles}

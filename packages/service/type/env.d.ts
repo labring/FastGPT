@@ -18,6 +18,7 @@ declare global {
       VECTOR_VQ_LEVEL: string;
       PG_URL: string;
       OCEANBASE_URL: string;
+      SEEKDB_URL: string;
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
 

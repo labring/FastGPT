@@ -184,7 +184,7 @@ const NodeTemplateListHeader = ({
               _hover={{
                 color: 'primary.600'
               }}
-              onClick={() => router.push('/plugin/tool')}
+              onClick={() => router.push('/dashboard/systemTool')}
               gap={1}
               ml={4}
             >

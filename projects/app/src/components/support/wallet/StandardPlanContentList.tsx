@@ -8,9 +8,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
-import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -26,20 +28,34 @@ const StandardPlanContentList = ({
   standplan?: TeamSubSchemaType;
 }) => {
   const { t } = useTranslation();
-  const { subPlans } = useSystemStore();
+
+  const { subPlans, feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const planContent = useMemo(() => {
-    const plan = subPlans?.standard?.[level];
+    const isWecomTeam = !!userInfo?.team?.isWecomTeam;
+    const formatMode = isWecomTeam ? SubModeEnum.year : mode;
+
+    // For wecom teams, free plan should use basic plan config
+    const effectiveLevel = isWecomTeam && level === 'free' ? 'basic' : level;
+    const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
+    // For wecom free plan (trial), use WecomFreePlan constants
+
     return {
-      price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
+      price: plan.price * (formatMode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
-      totalPoints:
-        standplan?.totalPoints ?? plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
       annualBonusPoints:
-        mode === SubModeEnum.month ? 0 : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+        formatMode === SubModeEnum.month
+          ? 0
+          : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+      totalPoints:
+        standplan?.totalPoints ??
+        (isWecomTeam
+          ? plan.wecom?.points ?? 2000
+          : plan.totalPoints * (formatMode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
       maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
@@ -51,12 +67,19 @@ const StandardPlanContentList = ({
       auditLogStoreDuration: standplan?.auditLogStoreDuration ?? plan.auditLogStoreDuration,
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
-      customDomain: standplan?.customDomain ?? plan.customDomain
+      customDomain: standplan?.customDomain ?? plan.customDomain,
+      maxUploadFileSize: formatFileSize(
+        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
+          1024 ** 2
+      ),
+      maxUploadFileCount:
+        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
     };
   }, [
     subPlans?.standard,
     level,
     mode,
+    userInfo?.team?.isWecomTeam,
     standplan?.totalPoints,
     standplan?.annualBonusPoints,
     standplan?.requestsPerMinute,
@@ -69,7 +92,11 @@ const StandardPlanContentList = ({
     standplan?.auditLogStoreDuration,
     standplan?.appRegistrationCount,
     standplan?.ticketResponseTime,
-    standplan?.customDomain
+    standplan?.customDomain,
+    standplan?.maxUploadFileSize,
+    standplan?.maxUploadFileCount,
+    feConfigs?.uploadFileMaxSize,
+    feConfigs?.uploadFileMaxAmount
   ]);
 
   return planContent ? (
@@ -225,6 +252,15 @@ const StandardPlanContentList = ({
           <QuestionTip ml={1} label={t('common:n_custom_domain_amount_tip')} />
         </Flex>
       )}
+      <Flex alignItems={'center'}>
+        <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
+        <Box color={'myGray.600'}>
+          {t('common:n_max_upload_file_limit', {
+            count: planContent.maxUploadFileCount,
+            size: planContent.maxUploadFileSize
+          })}
+        </Box>
+      </Flex>
     </Grid>
   ) : null;
 };
