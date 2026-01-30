@@ -7,9 +7,9 @@ import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter'
 import { axios } from '../../common/api/axios';
 import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import { getApiDatasetRequest } from './apiDataset';
+import { getPluginDatasetRequest } from './pluginDataset';
 import Papa from 'papaparse';
-import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import { text2Chunks } from '../../worker/function';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -268,7 +268,7 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  return (await getApiDatasetRequest(pluginDatasetServer)).getFileContent({
+  return (await getPluginDatasetRequest(pluginDatasetServer)).getFileContent({
     teamId,
     tmbId,
     apiFileId,

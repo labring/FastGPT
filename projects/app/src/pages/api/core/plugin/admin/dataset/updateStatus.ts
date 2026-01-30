@@ -2,11 +2,12 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemPluginDataset } from '@fastgpt/service/core/dataset/pluginDataset/schema';
+import { refreshPluginDatasetsVersionKey } from '@fastgpt/service/core/dataset/pluginDataset/controller';
 import {
   UpdatePluginDatasetStatusBodySchema,
   type UpdatePluginDatasetStatusBody,
   type UpdatePluginDatasetStatusResponse
-} from '@/global/core/config/api';
+} from '@fastgpt/global/openapi/core/plugin/admin/dataset/api';
 
 async function handler(
   req: ApiRequestProps<UpdatePluginDatasetStatusBody>,
@@ -16,7 +17,10 @@ async function handler(
 
   const { sourceId, status } = UpdatePluginDatasetStatusBodySchema.parse(req.body);
 
-  await MongoSystemPluginDataset.findOneAndUpdate({ sourceId }, { status }, { upsert: true });
+  await MongoSystemPluginDataset.updateOne({ sourceId }, { status }, { upsert: true });
+
+  // 刷新 versionKey，使所有客户端缓存失效
+  await refreshPluginDatasetsVersionKey();
 
   return { sourceId, status };
 }

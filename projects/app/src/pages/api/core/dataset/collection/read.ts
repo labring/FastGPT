@@ -7,7 +7,7 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
+import { getPluginDatasetRequest } from '@fastgpt/service/core/dataset/pluginDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
@@ -91,11 +91,11 @@ async function handler(
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      return (await getApiDatasetRequest(collection.dataset.pluginDatasetServer)).getFilePreviewUrl(
-        {
-          apiFileId: collection.apiFileId
-        }
-      );
+      return (
+        await getPluginDatasetRequest(collection.dataset.pluginDatasetServer)
+      ).getFilePreviewUrl({
+        apiFileId: collection.apiFileId
+      });
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.dataset.externalReadUrl) {

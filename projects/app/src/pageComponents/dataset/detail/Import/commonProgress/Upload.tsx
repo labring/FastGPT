@@ -21,7 +21,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import {
-  postCreateDatasetApiDatasetCollection,
+  postCreateDatasetPluginDatasetCollection,
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
@@ -92,7 +92,7 @@ const Upload = () => {
           .filter((item) => item.apiFile)
           .map((item) => item.apiFile!);
 
-        await postCreateDatasetApiDatasetCollection({
+        await postCreateDatasetPluginDatasetCollection({
           ...data,
           parentId,
           datasetId: datasetDetail._id,

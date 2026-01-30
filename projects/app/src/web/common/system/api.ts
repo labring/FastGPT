@@ -6,9 +6,10 @@ import type {
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 
-export const getSystemInitData = (bufferId?: string) =>
+export const getSystemInitData = (bufferId?: string, pluginDatasetsVersionKey?: string) =>
   GET<InitDateResponse>('/common/system/getInitData', {
-    bufferId
+    bufferId,
+    pluginDatasetsVersionKey
   });
 
 // model permissions

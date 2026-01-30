@@ -38,7 +38,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '知识库',
-      tags: [TagsMap.datasetCollection]
+      tags: [TagsMap.datasetCollection, TagsMap.datasetPluginDataset]
     },
     {
       name: '插件系统',
@@ -54,7 +54,12 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '管理员-插件管理',
-      tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
+      tags: [
+        TagsMap.pluginAdmin,
+        TagsMap.pluginMarketplace,
+        TagsMap.pluginToolAdmin,
+        TagsMap.pluginDatasetAdmin
+      ]
     }
   ]
 });

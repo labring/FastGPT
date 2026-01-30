@@ -15,6 +15,7 @@ export const TagsMap = {
   // Dataset
   datasetCollection: '集合',
   datasetData: '数据',
+  datasetPluginDataset: '插件数据源',
 
   // Plugin
   pluginToolTag: '工具标签',
@@ -40,6 +41,7 @@ export const TagsMap = {
   pluginMarketplace: '插件市场',
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
+  pluginDatasetAdmin: '管理员知识库来源管理',
   // Data
   adminDashboard: '仪表盘',
   // Inform

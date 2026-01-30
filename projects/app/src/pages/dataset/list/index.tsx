@@ -183,16 +183,20 @@ const Dataset = () => {
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
-                        {
-                          icon: 'core/dataset/otherDataset',
-                          label: t('dataset:other_dataset'),
-                          description: t('dataset:external_other_dataset_desc'),
-                          menuList: [
-                            {
-                              children: pluginDatasetMenuItems
-                            }
-                          ]
-                        }
+                        ...(pluginDatasetMenuItems.length > 0
+                          ? [
+                              {
+                                icon: 'core/dataset/otherDataset',
+                                label: t('dataset:other_dataset'),
+                                description: t('dataset:external_other_dataset_desc'),
+                                menuList: [
+                                  {
+                                    children: pluginDatasetMenuItems
+                                  }
+                                ]
+                              }
+                            ]
+                          : [])
                       ]
                     },
                     {

@@ -12,7 +12,6 @@ import type {
   I18nStringStrictType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
-import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export type SystemModelSchemaType = {
   _id: string;
@@ -43,9 +42,6 @@ declare global {
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
   var aiproxyIdMapCache: AiproxyMapProviderType;
-
-  // Plugin dataset sources cache
-  var PluginDatasetSourcesCache: PluginDatasetSourceConfig[];
 
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;

@@ -1,7 +1,7 @@
 import { usePluginDatasetRequest } from './plugin/api';
-import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 
-export const getApiDatasetRequest = async (pluginServer?: PluginDatasetServerType) => {
+export const getPluginDatasetRequest = async (pluginServer?: PluginDatasetServerType) => {
   if (!pluginServer?.pluginId) {
     return Promise.reject('Missing pluginDatasetServer');
   }

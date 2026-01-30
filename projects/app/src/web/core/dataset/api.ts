@@ -13,7 +13,7 @@ import type {
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
-  ApiDatasetCreateDatasetCollectionV2Params,
+  PluginDatasetCreateCollectionV2Params,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
   DatasetUpdateBody,
@@ -50,11 +50,16 @@ import type {
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import type {
-  listExistIdQuery,
-  listExistIdResponse
-} from '@/pages/api/core/dataset/apiDataset/listExistId';
+  ListPluginDatasetFilesBodyType,
+  ListExistIdQueryType,
+  ListExistIdResponseType,
+  GetCatalogBodyType,
+  GetCatalogResponseType,
+  GetPathNamesBodyType,
+  GetPathNamesResponseType,
+  GetConfigResponseType
+} from '@fastgpt/global/openapi/core/dataset/pluginDataset/api';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
 import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
@@ -68,22 +73,13 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginFileItemType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
-import type {
-  GetApiDatasetCataLogResponse,
-  GetApiDatasetCataLogProps
-} from '@/pages/api/core/dataset/apiDataset/getCatalog';
-import type {
-  GetApiDatasetPathBody,
-  GetApiDatasetPathResponse
-} from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 import type {
   DatasetCreateWithFilesBody,
   DatasetCreateWithFilesResponse
 } from '@/pages/api/core/dataset/createWithFiles';
-import type { GetPluginDatasetConfigResponse } from '@/pages/api/core/dataset/pluginDataset/getConfig';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -209,8 +205,8 @@ export const postCreateDatasetExternalFileCollection = (
   POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
     timeout: 360000
   });
-export const postCreateDatasetApiDatasetCollection = (
-  data: ApiDatasetCreateDatasetCollectionV2Params
+export const postCreateDatasetPluginDatasetCollection = (
+  data: PluginDatasetCreateCollectionV2Params
 ) =>
   POST(`/core/dataset/collection/create/apiCollectionV2`, data, {
     timeout: 360000
@@ -306,18 +302,18 @@ export const getTrainingError = (data: getTrainingErrorBody) =>
 export const getCollectionSource = (data: readCollectionSourceBody) =>
   POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);
 
-/* ================== apiDataset ======================== */
-export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
-  POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
-export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
-  GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
+/* ================== pluginDataset files ======================== */
+export const getPluginDatasetFileList = (data: ListPluginDatasetFilesBodyType) =>
+  POST<PluginFileItemType[]>('/core/dataset/pluginDataset/list', data);
+export const getPluginDatasetFileListExistId = (data: ListExistIdQueryType) =>
+  GET<ListExistIdResponseType>('/core/dataset/pluginDataset/listExistId', data);
 
-export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
-  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
+export const getPluginDatasetCatalog = (data: GetCatalogBodyType) =>
+  POST<GetCatalogResponseType>('/core/dataset/pluginDataset/getCatalog', data);
 
-export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
-  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);
+export const getPluginDatasetPaths = (data: GetPathNamesBodyType) =>
+  POST<GetPathNamesResponseType>('/core/dataset/pluginDataset/getPathNames', data);
 
 /* ================== pluginDataset ======================== */
 export const getPluginDatasetSourceConfig = (sourceId: string) =>
-  GET<GetPluginDatasetConfigResponse>('/core/dataset/pluginDataset/getConfig', { sourceId });
+  GET<GetConfigResponseType>('/core/dataset/pluginDataset/getConfig', { sourceId });

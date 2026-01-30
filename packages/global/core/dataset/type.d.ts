@@ -14,7 +14,7 @@ import type {
   ParagraphChunkAIModeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
-import type { PluginDatasetServerType } from './apiDataset/type';
+import type { PluginDatasetServerType } from './pluginDataset/type';
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';

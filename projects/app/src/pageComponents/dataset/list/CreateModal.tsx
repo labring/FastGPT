@@ -19,6 +19,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
+import PluginDatasetForm from '../PluginDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
@@ -254,7 +255,7 @@ const CreateModal = ({
         </Flex>
 
         {/* @ts-ignore */}
-        <ApiDatasetForm type={sourceId} form={form} />
+        <PluginDatasetForm type={sourceId} form={form} />
       </ModalBody>
 
       <ModalFooter px={9}>

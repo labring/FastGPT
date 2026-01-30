@@ -2,7 +2,7 @@ import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api
 import type { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { UseFormReturn } from 'react-hook-form';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginFileItemType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 
 export type ImportSourceItemType = {
   id: string;
@@ -35,7 +35,7 @@ export type ImportSourceItemType = {
 
   // api dataset
   apiFileId?: string;
-  apiFile?: APIFileItemType;
+  apiFile?: PluginFileItemType;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

@@ -6,11 +6,11 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import type {
   PluginDatasetServerType,
   PluginFormFieldConfig
-} from '@fastgpt/global/core/dataset/apiDataset/type';
+} from '@fastgpt/global/core/dataset/pluginDataset/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import {
-  getApiDatasetPaths,
-  getApiDatasetCatalog,
+  getPluginDatasetPaths,
+  getPluginDatasetCatalog,
   getPluginDatasetSourceConfig
 } from '@/web/core/dataset/api';
 import FormFieldRenderer from './FormFieldRenderer';
@@ -72,7 +72,7 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
       const currentServer = getValues('pluginDatasetServer');
       if (!currentServer?.pluginId) return t('dataset:rootdirectory');
 
-      return getApiDatasetPaths({
+      return getPluginDatasetPaths({
         datasetId,
         parentId,
         pluginDatasetServer: currentServer
@@ -162,7 +162,7 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
           selectId={pluginConfig[currentTreeSelectField] || 'root'}
           server={(e) => {
             const { basePath, folderToken, ...restConfig } = pluginDatasetServer.config;
-            return getApiDatasetCatalog({
+            return getPluginDatasetCatalog({
               parentId: e.parentId,
               pluginDatasetServer: { ...pluginDatasetServer, config: restConfig }
             });

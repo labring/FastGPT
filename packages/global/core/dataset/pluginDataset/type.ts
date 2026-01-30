@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { I18nStringSchema } from '../../plugin/type';
 
-export const APIFileItemSchema = z.object({
+export const PluginFileItemSchema = z.object({
   id: z.string(),
   rawId: z.string(),
   parentId: z.string().nullable(),
@@ -11,7 +11,7 @@ export const APIFileItemSchema = z.object({
   createTime: z.coerce.date(),
   hasChild: z.boolean().optional()
 });
-export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
+export type PluginFileItemType = z.infer<typeof PluginFileItemSchema>;
 
 export const PluginDatasetServerSchema = z.object({
   pluginId: z.string(), // "feishu" | "yuque" | "wecom" | any plugin ID
@@ -51,16 +51,16 @@ export const PluginDatasetSourceConfigSchema = z.object({
 });
 export type PluginDatasetSourceConfig = z.infer<typeof PluginDatasetSourceConfigSchema>;
 
-export const ApiFileReadContentResponseSchema = z.object({
+export const PluginFileReadContentResponseSchema = z.object({
   title: z.string().optional(),
   rawText: z.string()
 });
-export type ApiFileReadContentResponse = z.infer<typeof ApiFileReadContentResponseSchema>;
+export type PluginFileReadContentResponse = z.infer<typeof PluginFileReadContentResponseSchema>;
 
-export const APIFileReadResponseSchema = z.object({
+export const PluginFileReadResponseSchema = z.object({
   url: z.string()
 });
-export type APIFileReadResponse = z.infer<typeof APIFileReadResponseSchema>;
+export type PluginFileReadResponse = z.infer<typeof PluginFileReadResponseSchema>;
 
-export const ApiDatasetDetailResponseSchema = APIFileItemSchema;
-export type ApiDatasetDetailResponse = APIFileItemType;
+export const PluginDatasetDetailResponseSchema = PluginFileItemSchema;
+export type PluginDatasetDetailResponse = PluginFileItemType;

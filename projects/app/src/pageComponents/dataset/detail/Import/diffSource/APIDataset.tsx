@@ -6,7 +6,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getApiDatasetFileList, getApiDatasetFileListExistId } from '@/web/core/dataset/api';
+import { getPluginDatasetFileList, getPluginDatasetFileListExistId } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -14,7 +14,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
-import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { type PluginFileItemType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
 
@@ -47,7 +47,7 @@ const CustomAPIFileInput = () => {
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
-  const [selectFiles, setSelectFiles] = useState<APIFileItemType[]>([]);
+  const [selectFiles, setSelectFiles] = useState<PluginFileItemType[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [parent, setParent] = useState<ParentTreePathItemType>({
     parentId: '',
@@ -59,7 +59,7 @@ const CustomAPIFileInput = () => {
 
   const { data: fileList = [], loading } = useRequest(
     async () => {
-      return getApiDatasetFileList({
+      return getPluginDatasetFileList({
         datasetId: datasetDetail._id,
         parentId: parent?.parentId,
         searchKey: searchKey
@@ -74,7 +74,9 @@ const CustomAPIFileInput = () => {
 
   const { data: existIdList = new Set() } = useRequest(
     async () => {
-      return new Set<string>(await getApiDatasetFileListExistId({ datasetId: datasetDetail._id }));
+      return new Set<string>(
+        await getPluginDatasetFileListExistId({ datasetId: datasetDetail._id })
+      );
     },
     {
       manual: false
@@ -88,13 +90,13 @@ const CustomAPIFileInput = () => {
       setIsSelectAll(true);
       setSelectFiles([]);
     } else {
-      setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItemType[]);
+      setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as PluginFileItemType[]);
     }
   });
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest(
     async () => {
-      const finalSelectedFiles: APIFileItemType[] = await (async () => {
+      const finalSelectedFiles: PluginFileItemType[] = await (async () => {
         if (isSelectAll) {
           return [
             {

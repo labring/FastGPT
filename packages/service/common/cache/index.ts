@@ -1,6 +1,6 @@
 import './init';
 import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
-import type { SystemCacheKeyEnum } from './type';
+import type { SystemCacheKeyEnum, AllCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
@@ -9,10 +9,10 @@ const cachePrefix = `VERSION_KEY:`;
 
 /**
  *
- * @param key SystemCacheKeyEnum
+ * @param key AllCacheKeyEnum (SystemCacheKeyEnum or VersionOnlyCacheKeyEnum)
  * @param id string (teamId, tmbId, etc), if '*' is used, all keys will be refreshed
  */
-export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string | '*') => {
+export const refreshVersionKey = async (key: `${AllCacheKeyEnum}`, id?: string | '*') => {
   const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
 
@@ -32,7 +32,7 @@ export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: strin
   }
 };
 
-export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
+export const getVersionKey = async (key: `${AllCacheKeyEnum}`, id?: string) => {
   const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
 

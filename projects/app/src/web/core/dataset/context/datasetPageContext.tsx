@@ -18,7 +18,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
-import { filterPluginDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { filterPluginDatasetServerPublicData } from '@fastgpt/global/core/dataset/pluginDataset/utils';
 
 type DatasetPageContextType = {
   datasetId: string;

@@ -1,29 +1,19 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type {
-  ApiDatasetDetailResponse,
-  PluginDatasetServerType
-} from '@fastgpt/global/core/dataset/apiDataset/type';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
+import type { PluginDatasetDetailResponse } from '@fastgpt/global/core/dataset/pluginDataset/type';
+import { getPluginDatasetRequest } from '@fastgpt/service/core/dataset/pluginDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-
-export type GetApiDatasetPathQuery = {};
-
-export type GetApiDatasetPathBody = {
-  datasetId?: string;
-  parentId?: ParentIdType;
-  pluginDatasetServer?: PluginDatasetServerType;
-};
-
-export type GetApiDatasetPathResponse = string;
+import type {
+  GetPathNamesBodyType,
+  GetPathNamesResponseType
+} from '@fastgpt/global/openapi/core/dataset/pluginDataset/api';
 
 const getFullPath = async (
   currentId: string,
-  getFileDetail: ({ apiFileId }: { apiFileId: string }) => Promise<ApiDatasetDetailResponse>
+  getFileDetail: ({ apiFileId }: { apiFileId: string }) => Promise<PluginDatasetDetailResponse>
 ): Promise<string> => {
   const response = await getFileDetail({ apiFileId: currentId });
 
@@ -40,9 +30,9 @@ const getFullPath = async (
 };
 
 async function handler(
-  req: ApiRequestProps<GetApiDatasetPathBody, any>,
-  res: ApiResponseType<GetApiDatasetPathResponse>
-): Promise<GetApiDatasetPathResponse> {
+  req: ApiRequestProps<GetPathNamesBodyType>,
+  _res: ApiResponseType<GetPathNamesResponseType>
+): Promise<GetPathNamesResponseType> {
   const { datasetId, parentId, pluginDatasetServer } = req.body;
   if (!parentId) return '';
 
@@ -64,13 +54,13 @@ async function handler(
     }
   })();
 
-  const apiDataset = await getApiDatasetRequest(serverConfig);
+  const pluginDataset = await getPluginDatasetRequest(serverConfig);
 
-  if (!apiDataset?.getFileDetail) {
+  if (!pluginDataset?.getFileDetail) {
     return Promise.reject(DatasetErrEnum.noApiServer);
   }
 
-  return await getFullPath(parentId, apiDataset.getFileDetail);
+  return await getFullPath(parentId, pluginDataset.getFileDetail);
 }
 
 export default NextAPI(handler);

@@ -1,27 +1,22 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
-
-export type GetPluginDatasetConfigQuery = { sourceId: string };
-export type GetPluginDatasetConfigResponse = PluginDatasetSourceConfig;
+import type {
+  GetConfigQueryType,
+  GetConfigResponseType
+} from '@fastgpt/global/openapi/core/dataset/pluginDataset/api';
 
 async function handler(
-  req: ApiRequestProps<{}, GetPluginDatasetConfigQuery>
-): Promise<GetPluginDatasetConfigResponse> {
+  req: ApiRequestProps<{}, GetConfigQueryType>,
+  _res: ApiResponseType<GetConfigResponseType>
+): Promise<GetConfigResponseType> {
   const { sourceId } = req.query;
 
   if (!sourceId) {
     return Promise.reject('sourceId is required');
   }
 
-  const res = await pluginClient.dataset.source.config({ query: { sourceId } });
-
-  if (res.status === 200) {
-    return res.body as GetPluginDatasetConfigResponse;
-  }
-
-  return Promise.reject(res.body);
+  return await pluginClient.dataset.getSourceConfig(sourceId);
 }
 
 export default NextAPI(handler);

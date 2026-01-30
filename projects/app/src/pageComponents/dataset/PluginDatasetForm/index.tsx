@@ -1,11 +1,11 @@
 import React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import type { PluginDatasetSourceId } from '@fastgpt/global/sdk/fastgpt-plugin';
-import PluginDatasetForm from './PluginDatasetForm';
+import PluginDatasetFormContent from './PluginDatasetForm';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
-const ApiDatasetForm = ({
+const PluginDatasetForm = ({
   type,
   datasetId,
   form
@@ -22,7 +22,7 @@ const ApiDatasetForm = ({
     return null;
   }
 
-  return <PluginDatasetForm pluginId={type} datasetId={datasetId} form={form} />;
+  return <PluginDatasetFormContent pluginId={type} datasetId={datasetId} form={form} />;
 };
 
-export default ApiDatasetForm;
+export default PluginDatasetForm;

@@ -1,4 +1,4 @@
-import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetDetailResponse } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import type {
   DeepRagSearchProps,
   SearchDatasetDataResponse

@@ -5,12 +5,12 @@ import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
+import PluginDatasetForm from '@/pageComponents/dataset/PluginDatasetForm';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getDocPath } from '@/web/common/system/doc';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginDatasetServerType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 export type EditAPIDatasetInfoFormType = {
@@ -75,7 +75,7 @@ const EditAPIDatasetInfoModal = ({
           </Flex>
         )}
         {/* @ts-ignore */}
-        <ApiDatasetForm datasetId={datasetDetail._id} type={type} form={form} />
+        <PluginDatasetForm datasetId={datasetDetail._id} type={type} form={form} />
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={form.handleSubmit(onSave)} px={6}>

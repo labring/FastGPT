@@ -1,8 +1,8 @@
 import type {
-  ApiFileReadContentResponse,
-  ApiDatasetDetailResponse,
+  PluginFileReadContentResponse,
+  PluginDatasetDetailResponse,
   PluginDatasetServerType
-} from '@fastgpt/global/core/dataset/apiDataset/type';
+} from '@fastgpt/global/core/dataset/pluginDataset/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { readFileRawTextByUrl } from '../../read';
@@ -12,20 +12,13 @@ export const usePluginDatasetRequest = (pluginServer: PluginDatasetServerType) =
   const { pluginId, config } = pluginServer;
 
   const listFiles = async ({ parentId }: { searchKey?: string; parentId?: ParentIdType }) => {
-    const res = await pluginClient.dataset.source.listFiles({
-      body: {
-        sourceId: pluginId,
-        config,
-        parentId: parentId ?? undefined
-      }
+    const files = await pluginClient.dataset.listFiles({
+      sourceId: pluginId,
+      config,
+      parentId: parentId ?? undefined
     });
 
-    if (res.status !== 200) {
-      const errorBody = res.body as { error?: string };
-      return Promise.reject(errorBody?.error || 'Failed to list files');
-    }
-
-    return res.body.map((file) => ({
+    return files.map((file) => ({
       ...file,
       rawId: file.rawId || file.id,
       parentId: file.parentId ?? null,
@@ -47,21 +40,14 @@ export const usePluginDatasetRequest = (pluginServer: PluginDatasetServerType) =
     apiFileId: string;
     customPdfParse?: boolean;
     datasetId: string;
-  }): Promise<ApiFileReadContentResponse> => {
-    const res = await pluginClient.dataset.source.getContent({
-      body: {
-        sourceId: pluginId,
-        config,
-        fileId: apiFileId
-      }
+  }): Promise<PluginFileReadContentResponse> => {
+    const contentRes = await pluginClient.dataset.getContent({
+      sourceId: pluginId,
+      config,
+      fileId: apiFileId
     });
 
-    if (res.status !== 200) {
-      const errorBody = res.body as { error?: string };
-      return Promise.reject(errorBody?.error || 'Failed to get file content');
-    }
-
-    const { title, rawText, previewUrl } = res.body;
+    const { title, rawText, previewUrl } = contentRes;
 
     // 如果插件返回了原始文本，直接使用
     if (rawText) {
@@ -105,41 +91,26 @@ export const usePluginDatasetRequest = (pluginServer: PluginDatasetServerType) =
   };
 
   const getFilePreviewUrl = async ({ apiFileId }: { apiFileId: string }) => {
-    const res = await pluginClient.dataset.source.getPreviewUrl({
-      body: {
-        sourceId: pluginId,
-        config,
-        fileId: apiFileId
-      }
+    const res = await pluginClient.dataset.getPreviewUrl({
+      sourceId: pluginId,
+      config,
+      fileId: apiFileId
     });
 
-    if (res.status !== 200) {
-      const errorBody = res.body as { error?: string };
-      return Promise.reject(errorBody?.error || 'Failed to get preview url');
-    }
-
-    return res.body.url;
+    return res.url;
   };
 
   const getFileDetail = async ({
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    const res = await pluginClient.dataset.source.getDetail({
-      body: {
-        sourceId: pluginId,
-        config,
-        fileId: apiFileId
-      }
+  }): Promise<PluginDatasetDetailResponse> => {
+    const file = await pluginClient.dataset.getDetail({
+      sourceId: pluginId,
+      config,
+      fileId: apiFileId
     });
 
-    if (res.status !== 200) {
-      const errorBody = res.body as { error?: string };
-      return Promise.reject(errorBody?.error || 'Failed to get file detail');
-    }
-
-    const file = res.body;
     return {
       id: file.id,
       rawId: file.rawId || file.id,

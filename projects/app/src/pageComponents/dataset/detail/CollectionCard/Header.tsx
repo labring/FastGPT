@@ -12,7 +12,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
-import { useMemo } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {

@@ -6,7 +6,7 @@ import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
-import { filterPluginDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { filterPluginDatasetServerPublicData } from '@fastgpt/global/core/dataset/pluginDataset/utils';
 
 type Query = {
   id: string;

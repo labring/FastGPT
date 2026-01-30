@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { PluginFormFieldConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { PluginFormFieldConfig } from '@fastgpt/global/core/dataset/pluginDataset/type';
 
 type FormFieldRendererProps = {
   field: PluginFormFieldConfig;

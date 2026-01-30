@@ -1,4 +1,4 @@
-import type { ApiDatasetCreateDatasetCollectionV2Params } from '@fastgpt/global/core/dataset/api.d';
+import type { PluginDatasetCreateCollectionV2Params } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
@@ -10,14 +10,14 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+import { getPluginDatasetRequest } from '@fastgpt/service/core/dataset/pluginDataset';
+import type { PluginFileItemType } from '@fastgpt/global/core/dataset/pluginDataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
-async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2Params>) {
+async function handler(req: ApiRequestProps<PluginDatasetCreateCollectionV2Params>) {
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2P
     per: WritePermissionVal
   });
 
-  return createApiDatasetCollection({
+  return createPluginDatasetCollection({
     ...req.body,
     teamId,
     tmbId,
@@ -36,14 +36,14 @@ async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2P
 
 export default NextAPI(handler);
 
-export const createApiDatasetCollection = async ({
+export const createPluginDatasetCollection = async ({
   apiFiles,
   customPdfParse,
   teamId,
   tmbId,
   dataset,
   ...body
-}: ApiDatasetCreateDatasetCollectionV2Params & {
+}: PluginDatasetCreateCollectionV2Params & {
   teamId: string;
   tmbId: string;
   dataset: DatasetSchemaType & {
@@ -70,10 +70,10 @@ export const createApiDatasetCollection = async ({
 
   // Get all apiFileId with top level parent ID
   const getFilesRecursively = async (
-    files: APIFileItemType[],
+    files: PluginFileItemType[],
     topLevelParentId?: string
-  ): Promise<(APIFileItemType & { apiFileParentId?: string })[]> => {
-    const allFiles: (APIFileItemType & { apiFileParentId?: string })[] = [];
+  ): Promise<(PluginFileItemType & { apiFileParentId?: string })[]> => {
+    const allFiles: (PluginFileItemType & { apiFileParentId?: string })[] = [];
 
     for (const file of files) {
       // if the directory is selected, then the top level parent id of all files is the directory id
@@ -95,7 +95,7 @@ export const createApiDatasetCollection = async ({
 
       if (file.hasChild) {
         const folderFiles = await (
-          await getApiDatasetRequest(dataset.pluginDatasetServer)
+          await getPluginDatasetRequest(dataset.pluginDatasetServer)
         ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
         const subFiles = await getFilesRecursively(folderFiles, currentTopLevelParentId);
         allFiles.push(...subFiles.filter((f) => f.type === 'file'));

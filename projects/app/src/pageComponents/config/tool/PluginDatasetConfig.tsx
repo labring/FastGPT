@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { updatePluginDatasetStatus } from '@/web/core/config/api';
+import { updatePluginDatasetStatus } from '@/web/core/plugin/admin/dataset/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 const PluginDatasetConfig = () => {

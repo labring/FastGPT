@@ -22,8 +22,6 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
-import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import type { PluginDatasetSourceConfig } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -222,21 +220,5 @@ export async function initAppTemplateTypes() {
     );
   } catch (error) {
     console.error('Error initializing system templates:', error);
-  }
-}
-
-export async function initPluginDatasetSources(): Promise<void> {
-  try {
-    const res = await pluginClient.dataset.source.list();
-
-    if (res.status === 200) {
-      global.PluginDatasetSourcesCache = res.body as PluginDatasetSourceConfig[];
-    } else {
-      console.warn('Failed to load plugin dataset sources:', res.body);
-      global.PluginDatasetSourcesCache = [];
-    }
-  } catch (error) {
-    console.warn('Failed to load plugin dataset sources:', error);
-    global.PluginDatasetSourcesCache = [];
   }
 }

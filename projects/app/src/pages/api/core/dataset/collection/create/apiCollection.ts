@@ -1,13 +1,13 @@
-import type { ApiDatasetCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
+import type { PluginDatasetCreateCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import { createApiDatasetCollection } from './apiCollectionV2';
+import { getPluginDatasetRequest } from '@fastgpt/service/core/dataset/pluginDataset';
+import { createPluginDatasetCollection } from './apiCollectionV2';
 
-async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionParams>) {
+async function handler(req: ApiRequestProps<PluginDatasetCreateCollectionParams>) {
   const { apiFileId, ...body } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
@@ -19,12 +19,12 @@ async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionPar
   });
 
   const fileDetail = await (
-    await getApiDatasetRequest(dataset.pluginDatasetServer)
+    await getPluginDatasetRequest(dataset.pluginDatasetServer)
   ).getFileDetail({
     apiFileId
   });
 
-  return createApiDatasetCollection({
+  return createPluginDatasetCollection({
     apiFiles: [fileDetail],
     teamId,
     tmbId,

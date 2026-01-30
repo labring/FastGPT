@@ -11,9 +11,11 @@ import {
 import { TagsMap } from '../../../tag';
 import { z } from 'zod';
 import { AdminPluginToolPath } from './tool';
+import { AdminPluginDatasetPath } from './dataset';
 
 export const PluginAdminPath: OpenAPIPath = {
   ...AdminPluginToolPath,
+  ...AdminPluginDatasetPath,
 
   // Pkg Plugin
   '/core/plugin/admin/pkg/presign': {
