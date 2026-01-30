@@ -83,7 +83,6 @@ const SystemToolConfigModal = ({
     'status',
     'defaultInstalled',
     'inputListVal',
-    'childTools',
     'promoteTags',
     'hideTags'
   ]);
