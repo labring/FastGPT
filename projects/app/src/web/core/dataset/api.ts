@@ -218,16 +218,18 @@ export const postImportFaqByTemplate = ({
   file,
   percentListen,
   datasetId,
-  overwriteDuplicate
+  overwriteDuplicate,
+  enableEnhance
 }: {
   file: File;
   percentListen: (percent: number) => void;
   datasetId: string;
   overwriteDuplicate?: boolean;
+  enableEnhance?: boolean;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify({ datasetId, overwriteDuplicate }));
+  formData.append('data', JSON.stringify({ datasetId, overwriteDuplicate, enableEnhance }));
 
   return POST<{ collectionId: string }>(
     `/core/dataset/collection/create/custom/template`,
@@ -280,7 +282,7 @@ export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectio
  * 支持多种文件格式: txt, md, html, pdf, docx, pptx, xlsx, csv, doc, ppt
  */
 export const postCreateCustomFileIdCollection = (
-  data: CustomFileIdImportBody & { overwriteDuplicate?: boolean }
+  data: CustomFileIdImportBody & { overwriteDuplicate?: boolean; enableEnhance?: boolean }
 ) =>
   POST<CustomFileIdImportResponse>(`/core/dataset/collection/create/custom/fileId`, data, {
     timeout: 360000
@@ -290,7 +292,9 @@ export const postCreateCustomFileIdCollection = (
  * 静态网页 - 通过网页链接创建知识库集合
  * 自动抓取网页内容并处理
  */
-export const postCreateCustomLinkCollection = (data: CustomLinkImportBody) =>
+export const postCreateCustomLinkCollection = (
+  data: CustomLinkImportBody & { enableEnhance?: boolean }
+) =>
   POST<CustomLinkImportResponse>(`/core/dataset/collection/create/custom/link`, data, {
     timeout: 360000
   });

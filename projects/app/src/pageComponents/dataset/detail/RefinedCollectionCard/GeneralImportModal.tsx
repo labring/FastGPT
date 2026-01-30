@@ -8,7 +8,8 @@ import {
   Flex,
   HStack,
   VStack,
-  Text
+  Text,
+  Switch
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -30,6 +31,7 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const MAX_LINKS_COUNT = 10;
 
@@ -55,6 +57,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [uploadingLinks, setUploadingLinks] = useState(false);
+  const [enableEnhance, setEnableEnhance] = useState(true);
 
   const successFiles = selectFiles.filter((item) => !item.errorMsg && !item.isUploading);
 
@@ -186,7 +189,8 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
               datasetId,
               fileId: file.dbFileId!,
               name: file.sourceName,
-              overwriteDuplicate
+              overwriteDuplicate,
+              enableEnhance
             });
           } catch (error) {
             console.error('Upload file error:', error);
@@ -198,7 +202,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
         })
       );
     },
-    [datasetId, toast]
+    [datasetId, toast, enableEnhance]
   );
 
   // 上传链接集合
@@ -212,7 +216,8 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
           try {
             await postCreateCustomLinkCollection({
               datasetId,
-              link
+              link,
+              enableEnhance
             });
           } catch (error) {
             console.error('Upload link error:', link, error);
@@ -228,7 +233,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
     } finally {
       setUploadingLinks(false);
     }
-  }, [datasetId, linkValidation.validLinks, toast]);
+  }, [datasetId, linkValidation.validLinks, toast, enableEnhance]);
 
   const handleConfirm = useCallback(async () => {
     // 验证链接数量和格式
@@ -459,6 +464,22 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
             </HStack>
           </Flex>
         </ModalBody>
+
+        {/* 增强索引开关 */}
+        <HStack justify="space-between" px={8} pb={4}>
+          <HStack spacing={2}>
+            <Text fontSize="sm" color="myGray.900">
+              {t('dataset:enable_enhance_index')}
+            </Text>
+            <QuestionTip label={t('dataset:enable_enhance_index_tip')} />
+          </HStack>
+          <Switch
+            isChecked={enableEnhance}
+            onChange={(e) => setEnableEnhance(e.target.checked)}
+            colorScheme="blue"
+            size="md"
+          />
+        </HStack>
 
         <ModalFooter>
           <Button variant="whiteBase" mr={2} onClick={handleCancel}>

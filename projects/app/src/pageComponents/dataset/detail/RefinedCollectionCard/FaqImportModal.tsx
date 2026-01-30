@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, HStack, ModalBody, ModalFooter, VStack } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  HStack,
+  ModalBody,
+  ModalFooter,
+  VStack,
+  Text,
+  Switch
+} from '@chakra-ui/react';
 import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -33,6 +42,7 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
   });
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [enableEnhance, setEnableEnhance] = useState(true);
 
   const { runAsync: uploadFiles, loading: isImporting } = useRequest2(
     async (filesToUpload: SelectFileItemType[], replaceFiles: string[] = []) => {
@@ -52,6 +62,7 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
           datasetId,
           file: filesToUpload[i].file,
           overwriteDuplicate,
+          enableEnhance,
           percentListen: (filePercent) => {
             // 计算总体进度：已完成文件的比例 + 当前文件的上传进度
             const totalPercent = Math.floor((i / totalFiles) * 100 + filePercent / totalFiles);
@@ -266,6 +277,23 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
             )}
           </VStack>
         </ModalBody>
+
+        {/* 增强索引开关 */}
+        <HStack justify="space-between" px={6} pb={4}>
+          <HStack spacing={2}>
+            <Text fontSize="sm" color="myGray.900">
+              {t('dataset:enable_enhance_index')}
+            </Text>
+            <QuestionTip label={t('dataset:enable_enhance_index_tip')} />
+          </HStack>
+          <Switch
+            isChecked={enableEnhance}
+            onChange={(e) => setEnableEnhance(e.target.checked)}
+            colorScheme="blue"
+            size="md"
+          />
+        </HStack>
+
         <ModalFooter>
           <Button isLoading={isImporting} variant="whiteBase" mr={2} onClick={onClose}>
             {t('dataset:cancel')}

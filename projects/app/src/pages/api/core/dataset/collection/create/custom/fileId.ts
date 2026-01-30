@@ -34,6 +34,7 @@ export type CustomFileIdImportBody = {
   name?: string; // Optional: Custom name (defaults to filename)
   tags?: string[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
+  enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
 
 // Response type
@@ -109,7 +110,7 @@ function validateFileExtension(extension: string): void {
 async function handler(
   req: ApiRequestProps<CustomFileIdImportBody>
 ): Promise<CustomFileIdImportResponse> {
-  const { datasetId, fileId, parentId, name, tags, overwriteDuplicate } = req.body;
+  const { datasetId, fileId, parentId, name, tags, overwriteDuplicate, enableEnhance } = req.body;
 
   // 1. Auth
   const { teamId, tmbId, dataset } = await authDataset({
@@ -230,6 +231,21 @@ async function handler(
     modeConfig: importMode
   });
 
+  // 6.1 If enableEnhance is false, disable all enhance config
+  const finalEnhanceConfig =
+    enableEnhance === false
+      ? {
+          dataEnhanceCollectionName: false,
+          imageIndex: false,
+          autoIndexes: false,
+          hypeIndexes: false,
+          indexPrefixTitle: false,
+          small2bigIndexes: false,
+          syntheticIndex: false,
+          small2bigConfig: undefined
+        }
+      : adjustedEnhanceConfig;
+
   // 7. Log adjustments for debugging
   logAdaptiveAdjustments(datasetId, adjustments);
 
@@ -278,14 +294,14 @@ async function handler(
       indexSize: importMode.chunkConfig?.indexSize || 1024,
 
       // Enhance config (with adaptive adjustment)
-      dataEnhanceCollectionName: adjustedEnhanceConfig.dataEnhanceCollectionName ?? false,
-      imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
-      autoIndexes: adjustedEnhanceConfig.autoIndexes ?? false,
-      hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
-      indexPrefixTitle: adjustedEnhanceConfig.indexPrefixTitle ?? false,
-      small2bigIndexes: adjustedEnhanceConfig.small2bigIndexes ?? false,
-      syntheticIndex: adjustedEnhanceConfig.syntheticIndex,
-      small2bigConfig: adjustedEnhanceConfig.small2bigConfig,
+      dataEnhanceCollectionName: finalEnhanceConfig.dataEnhanceCollectionName ?? false,
+      imageIndex: finalEnhanceConfig.imageIndex ?? false,
+      autoIndexes: finalEnhanceConfig.autoIndexes ?? false,
+      hypeIndexes: finalEnhanceConfig.hypeIndexes ?? false,
+      indexPrefixTitle: finalEnhanceConfig.indexPrefixTitle ?? false,
+      small2bigIndexes: finalEnhanceConfig.small2bigIndexes ?? false,
+      syntheticIndex: finalEnhanceConfig.syntheticIndex,
+      small2bigConfig: finalEnhanceConfig.small2bigConfig,
 
       // Prompt config
       autoIndexesPrompt: importMode.promptConfig?.autoIndexesPrompt || '',

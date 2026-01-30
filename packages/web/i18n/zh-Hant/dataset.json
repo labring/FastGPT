@@ -292,6 +292,8 @@
   "column_enabled": "啟用",
   "default_column_description": "預設值是資料表表自帶的描述",
   "confirm": "確認",
+  "enable_enhance_index": "增強索引",
+  "enable_enhance_index_tip": "開啟後將使用系統配置的增強索引策略（如自動索引、合成索引等），關閉後不執行任何增強處理",
   "edit_database_config_warning": "資料來源已配置，發生 {{changedCount}} 個資料表存在列的變更，{{deletedCount}} 個資料表已不存在，請修正最新資料。",
   "edit_database_warning": "修改資料庫資訊後，當前正在存取資料庫的應用將斷開重連，可能會導致正在執行的應用無法檢索到結果。",
   "database_config": "配置",
