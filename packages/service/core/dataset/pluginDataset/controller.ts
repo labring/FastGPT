@@ -8,8 +8,10 @@ export type { PluginDatasetType } from './type';
 
 export async function refreshPluginDatasets(): Promise<PluginDatasetType[]> {
   try {
-    const sourceList = await pluginClient.dataset.listSources();
-    const configs = await MongoSystemPluginDataset.find({}, 'sourceId status').lean();
+    const [sourceList, configs] = await Promise.all([
+      pluginClient.dataset.listSources(),
+      MongoSystemPluginDataset.find({}, 'sourceId status').lean()
+    ]);
     const configMap = new Map(configs.map((c) => [c.sourceId, c.status]));
 
     return sourceList.map((source) => ({
