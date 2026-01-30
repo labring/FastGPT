@@ -79,7 +79,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const [showBatchUpdateDrawer, setShowBatchUpdateDrawer] = useState(false);
-  const [batchUpdatingToolIds, batchUpdatingToolIdsDispatch] = useSet<string>();
 
   // Type filter
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
@@ -271,34 +270,26 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     }
   );
 
-  const handleBatchUpdate = useCallback(
+  const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
       if (toolIds.length === 0) return;
 
-      // Mark all tools as updating
-      toolIds.forEach((id) => batchUpdatingToolIdsDispatch.add(id));
+      // 1. Batch get download URLs
+      const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
 
-      try {
-        // 1. Batch get download URLs
-        const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
+      // 2. Batch install (update)
+      await intallPluginWithUrl({ downloadUrls });
 
-        // 2. Batch install (update)
-        await intallPluginWithUrl({ downloadUrls });
+      // 3. Refresh installed plugins list
+      await refreshInstalledPlugins();
 
-        // 3. Refresh installed plugins list
-        await refreshInstalledPlugins();
-
-        // 4. Close Drawer
-        setShowBatchUpdateDrawer(false);
-      } catch (error) {
-        // Error handling by useRequest
-        throw error;
-      } finally {
-        // Clear updating status
-        toolIds.forEach((id) => batchUpdatingToolIdsDispatch.remove(id));
-      }
+      // 4. Close Drawer
+      setShowBatchUpdateDrawer(false);
     },
-    [batchUpdatingToolIdsDispatch, refreshInstalledPlugins]
+    {
+      manual: true,
+      successToast: t('common:Success')
+    }
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -748,7 +739,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setShowBatchUpdateDrawer(false)}
           updatableTools={updatableTools}
           onBatchUpdate={handleBatchUpdate}
-          isBatchUpdating={batchUpdatingToolIds.size > 0}
+          isBatchUpdating={isBatchUpdating}
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />
