@@ -1,5 +1,5 @@
 /* oceanbase vector crud */
-import { DatasetVectorTableName } from '../constants';
+import { DatasetVectorTableName, OceanBaseIndexConfig } from '../constants';
 import { ObClient } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
@@ -21,7 +21,7 @@ export class ObVectorCtrl implements VectorControllerType {
         );
       `);
       await ObClient.query(
-        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=inner_product, type=hnsw, m=32, ef_construction=128);`
+        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=${OceanBaseIndexConfig.distance}, type=${OceanBaseIndexConfig.type}, m=16, ef_construction=200);`
       );
       await ObClient.query(
         `CREATE INDEX IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName}(team_id, dataset_id, collection_id);`
@@ -135,13 +135,13 @@ export class ObVectorCtrl implements VectorControllerType {
     >(
       `BEGIN;
           SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
-          SELECT id, collection_id, inner_product(vector, [${vector}]) AS score
+          SELECT id, collection_id, ${OceanBaseIndexConfig.distanceFunc}(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'
               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
               ${forbidCollectionSql}
-            ORDER BY score desc APPROXIMATE LIMIT ${limit};
+            ORDER BY score ${OceanBaseIndexConfig.orderDirection} APPROXIMATE LIMIT ${limit};
         COMMIT;`
     ).then(([rows]) => rows[2]);
 
@@ -149,7 +149,7 @@ export class ObVectorCtrl implements VectorControllerType {
       results: rows.map((item) => ({
         id: String(item.id),
         collectionId: item.collection_id,
-        score: item.score
+        score: OceanBaseIndexConfig.scoreTransform(item.score)
       }))
     };
   };
