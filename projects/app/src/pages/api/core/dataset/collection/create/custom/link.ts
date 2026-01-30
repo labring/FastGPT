@@ -23,6 +23,7 @@ export type CustomLinkImportBody = {
   parentId?: string; // Optional: Parent directory ID
   name?: string; // Optional: Custom name (defaults to extracted from link)
   tags?: string[]; // Optional: Tags
+  enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
 
 // Response type
@@ -81,7 +82,7 @@ function extractNameFromLink(link: string): string {
 async function handler(
   req: ApiRequestProps<CustomLinkImportBody>
 ): Promise<CustomLinkImportResponse> {
-  const { datasetId, link, parentId, name, tags } = req.body;
+  const { datasetId, link, parentId, name, tags, enableEnhance } = req.body;
 
   // 1. Auth
   const { teamId, tmbId, dataset } = await authDataset({
@@ -103,6 +104,17 @@ async function handler(
     dataset,
     modeConfig: importMode
   });
+
+  // 4.1 If enableEnhance is false, disable all enhance config
+  const finalEnhanceConfig =
+    enableEnhance === false
+      ? {
+          autoIndexes: false,
+          hypeIndexes: false,
+          imageIndex: false,
+          syntheticIndex: false
+        }
+      : adjustedEnhanceConfig;
 
   // 5. Log adjustments for debugging
   logAdaptiveAdjustments(datasetId, adjustments);
@@ -146,10 +158,10 @@ async function handler(
       indexSize: importMode.chunkConfig?.indexSize || 1024,
 
       // Enhance config (with adaptive adjustment)
-      autoIndexes: adjustedEnhanceConfig.autoIndexes ?? false,
-      hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
-      imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
-      syntheticIndex: adjustedEnhanceConfig.syntheticIndex,
+      autoIndexes: finalEnhanceConfig.autoIndexes ?? false,
+      hypeIndexes: finalEnhanceConfig.hypeIndexes ?? false,
+      imageIndex: finalEnhanceConfig.imageIndex ?? false,
+      syntheticIndex: finalEnhanceConfig.syntheticIndex,
 
       // Prompt config
       autoIndexesPrompt: importMode.promptConfig?.autoIndexesPrompt || '',

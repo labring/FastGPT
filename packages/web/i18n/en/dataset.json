@@ -292,6 +292,8 @@
   "column_enabled": "Status",
   "default_column_description": "Default value: Predefined description in the table",
   "confirm": "OK",
+  "enable_enhance_index": "Enhanced Index",
+  "enable_enhance_index_tip": "When enabled, the system-configured enhanced indexing strategies (e.g., auto-indexing, synthetic indexing) will be applied. When disabled, no enhancement processing will be performed.",
   "edit_database_config_warning": "Data source configuration is complete. {{changedCount}} tables have column changes, and {{deletedCount}} no longer exist. Please refresh the data source.",
   "edit_database_warning": "After the database information is modified, apps connecting to it will be disconnected and may fail to retrieve information.",
   "database_config": "Settings",

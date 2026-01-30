@@ -26,6 +26,7 @@ export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
+  enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
 export type CustomTemplateImportResponse = {
   overwritten?: boolean; // Whether overwrite operation was performed
@@ -234,6 +235,21 @@ async function handler(
       `[TemplateImport] EnhanceConfig - autoIndexes: ${enhanceConfig.autoIndexes || false}, small2bigIndexes: ${enhanceConfig.small2bigIndexes || false}, syntheticIndex: ${enhanceConfig.syntheticIndex !== false}`
     );
 
+    // 6.1 If enableEnhance is false, disable all enhance config
+    const finalEnhanceConfig =
+      data.enableEnhance === false
+        ? {
+            autoIndexes: false,
+            small2bigIndexes: false,
+            syntheticIndex: false,
+            hypeIndexes: false,
+            hypeIndexPrompt: '',
+            small2bigConfig: undefined,
+            autoIndexesPrompt: undefined,
+            imageIndexPrompt: undefined
+          }
+        : enhanceConfig;
+
     // 7. 创建集合并插入数据
     const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
@@ -247,14 +263,14 @@ async function handler(
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
-        autoIndexes: enhanceConfig.autoIndexes || false,
-        small2bigIndexes: enhanceConfig.small2bigIndexes || false,
-        syntheticIndex: enhanceConfig.syntheticIndex !== false, // 默认true
-        hypeIndexes: enhanceConfig.hypeIndexes || false,
-        hypeIndexPrompt: enhanceConfig.hypeIndexPrompt || '',
-        small2bigConfig: enhanceConfig.small2bigConfig,
-        autoIndexesPrompt: enhanceConfig.autoIndexesPrompt,
-        imageIndexPrompt: enhanceConfig.imageIndexPrompt
+        autoIndexes: finalEnhanceConfig.autoIndexes || false,
+        small2bigIndexes: finalEnhanceConfig.small2bigIndexes || false,
+        syntheticIndex: finalEnhanceConfig.syntheticIndex !== false, // 默认true
+        hypeIndexes: finalEnhanceConfig.hypeIndexes || false,
+        hypeIndexPrompt: finalEnhanceConfig.hypeIndexPrompt || '',
+        small2bigConfig: finalEnhanceConfig.small2bigConfig,
+        autoIndexesPrompt: finalEnhanceConfig.autoIndexesPrompt,
+        imageIndexPrompt: finalEnhanceConfig.imageIndexPrompt
       }
     });
 

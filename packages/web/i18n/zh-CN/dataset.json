@@ -291,6 +291,8 @@
   "column_enabled": "启用",
   "default_column_description": "默认值是数据表表自带的描述",
   "confirm": "确认",
+  "enable_enhance_index": "增强索引",
+  "enable_enhance_index_tip": "开启后将使用系统配置的增强索引策略（如自动索引、合成索引等），关闭后不执行任何增强处理",
   "edit_database_config_warning": "数据源已配置，发生 {{changedCount}} 个数据表存在列的更改，{{deletedCount}} 个数据表已不存在，请修正最新数据。",
   "edit_database_warning": "修改数据库信息后，当前正在访问数据库的应用将断开重连，可能会导致正在运行的应用无法检索到结果。",
   "database_config": "配置",
