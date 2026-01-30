@@ -44,7 +44,9 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       throw new Error('Invalid storage vendor: expected "minio"');
     }
 
-    options.forcePathStyle = true;
+    // NOTE:
+    // Maybe some self-hosted MinIO services don't support path style access,
+    // options.forcePathStyle = true;
     super(options);
 
     // 解析 endpoint URL
@@ -59,7 +61,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       accessKey: options.credentials.accessKeyId,
       secretKey: options.credentials.secretAccessKey,
       region: options.region,
-      pathStyle: true // MinIO 强制使用 path style
+      pathStyle: options.forcePathStyle
     });
   }
 
