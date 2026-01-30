@@ -12,7 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  # @see https://doc.fastgpt.cn/docs/introduction/development/object-storage
+  # @see https://fastgpt.cn/docs/introduction/development/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -26,15 +26,40 @@ x-share-db-config: &x-share-db-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-${{vec.config}}
+  SEEKDB_URL: mysql://root%40tenantname:tenantpassword@seekdb:3306/fastgpt
 
 version: '3.3'
 services:
   # Vector DB
-${{vec.db}}
+  vectorDB:
+    image: oceanbase/seekdb:1.0.1.0-100000392025122619
+    container_name: seekdb
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 3306:3306
+    networks:
+      - fastgpt
+    environment:
+      # SeekDB 连接配置（兼容 MySQL 协议）
+      - MYSQL_ROOT_PASSWORD=seekdbpassword
+      # SeekDB 租户配置（与 OceanBase 兼容）
+      - OB_TENANT_NAME=tenantname
+      - OB_TENANT_PASSWORD=tenantpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+      - OB_SERVER_IP=127.0.0.1
+    volumes:
+      - ../seekdb/data:/var/lib/mysql
+      - ../seekdb/config:/etc/mysql/conf.d
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 10s
 
   mongo:
-    image: ${{mongo.image}}:${{mongo.tag}} # cpu 不支持 AVX 时候使用 4.4.29
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
     restart: always
     networks:
@@ -46,7 +71,19 @@ ${{vec.db}}
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,7 +119,7 @@ ${{vec.db}}
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   redis:
-    image: ${{redis.image}}:${{redis.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
     container_name: redis
     networks:
       - fastgpt
@@ -98,7 +135,7 @@ ${{vec.db}}
     volumes:
       - ./redis/data:/data
   fastgpt-minio:
-    image: ${{minio.image}}:${{minio.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fastgpt-minio
     restart: always
     ports:
@@ -120,7 +157,7 @@ ${{vec.db}}
 
   fastgpt:
     container_name: fastgpt
-    image: ${{fastgpt.image}}:${{fastgpt.tag}} # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.5.1 # git
     ports:
       - 3000:3000
     networks:
@@ -172,13 +209,13 @@ ${{vec.db}}
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ${{fastgpt-sandbox.image}}:${{fastgpt-sandbox.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.5.1
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ${{fastgpt-mcp_server.image}}:${{fastgpt-mcp_server.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.5.1
     networks:
       - fastgpt
     ports:
@@ -187,7 +224,7 @@ ${{vec.db}}
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ${{fastgpt-plugin.image}}:${{fastgpt-plugin.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.4.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -204,7 +241,7 @@ ${{vec.db}}
         condition: service_healthy
   # AI Proxy
   aiproxy:
-    image: ${{aiproxy.image}}:${{aiproxy.tag}}
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.2
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
@@ -232,7 +269,7 @@ ${{vec.db}}
       timeout: 5s
       retries: 10
   aiproxy_pg:
-    image: ${{aiproxy-pg.image}}:${{aiproxy-pg.tag}} # docker hub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
@@ -253,4 +290,3 @@ networks:
   fastgpt:
   aiproxy:
   vector:
-${{vec.extra}}

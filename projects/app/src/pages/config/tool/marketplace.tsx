@@ -727,6 +727,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"
+          // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
         />

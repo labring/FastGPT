@@ -13,17 +13,15 @@ async function handler(
 ): Promise<ToolListResponse> {
   const data = await getToolList();
 
-  return Array.from(
-    data
-      .filter((item) => {
-        if (item.parentId) return false;
-        return true;
-      })
-      .map(({ toolId, version }) => ({
-        toolId,
-        version
-      }))
-  );
+  return data
+    .filter((item) => {
+      if (item.parentId) return false;
+      return true;
+    })
+    .map(({ toolId, version }) => ({
+      toolId,
+      version
+    }));
 }
 
 export default NextAPI(handler);

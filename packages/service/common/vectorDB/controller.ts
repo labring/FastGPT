@@ -1,10 +1,11 @@
 /* vector crud */
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
+import { SeekVectorCtrl } from './seekdb';
 import { getVectorsByText } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
+import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
 import {
   setRedisCache,
@@ -17,9 +18,10 @@ import {
 import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
-const getVectorObj = () => {
-  if (PG_ADDRESS) return new PgVectorCtrl();
+const getVectorObj = (): VectorControllerType => {
+  if (SEEKDB_ADDRESS) return new SeekVectorCtrl();
   if (OCEANBASE_ADDRESS) return new ObVectorCtrl();
+  if (PG_ADDRESS) return new PgVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
 
   return new PgVectorCtrl();

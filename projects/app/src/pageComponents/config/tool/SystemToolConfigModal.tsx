@@ -54,7 +54,7 @@ const SystemToolConfigModal = ({
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
-  const { register, reset, handleSubmit, setValue, watch, control } = useForm<UpdateToolBodyType>();
+  const { register, reset, handleSubmit, setValue, watch } = useForm<UpdateToolBodyType>();
 
   const { data: tool, loading } = useRequest(() => getAdminSystemToolDetail({ toolId }), {
     onSuccess(res) {
@@ -79,11 +79,10 @@ const SystemToolConfigModal = ({
   });
 
   // 从表单 watch 可变数据
-  const [status, defaultInstalled, inputListVal, childTools, promoteTags, hideTags] = watch([
+  const [status, defaultInstalled, inputListVal, promoteTags, hideTags] = watch([
     'status',
     'defaultInstalled',
     'inputListVal',
-    'childTools',
     'promoteTags',
     'hideTags'
   ]);

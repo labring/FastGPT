@@ -13,7 +13,8 @@
     "milvus-minio": "RELEASE.2023-03-20T20-16-18Z",
     "milvus-etcd": "v3.5.5",
     "milvus-standalone": "v2.4.3",
-    "oceanbase": "4.3.5-lts"
+    "oceanbase": "4.3.5-lts",
+    "seekdb": "1.0.1.0-100000392025122619"
   },
   "images": {
     "cn": {
@@ -30,7 +31,8 @@
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
-      "oceanbase": "oceanbase/oceanbase-ce"
+      "oceanbase": "oceanbase/oceanbase-ce",
+      "seekdb": "oceanbase/seekdb"
     },
     "global": {
       "fastgpt": "ghcr.io/labring/fastgpt",
@@ -46,7 +48,8 @@
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
-      "oceanbase": "oceanbase/oceanbase-ce"
+      "oceanbase": "oceanbase/oceanbase-ce",
+      "seekdb": "oceanbase/seekdb"
     }
   }
 }

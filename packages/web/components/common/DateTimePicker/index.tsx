@@ -14,6 +14,7 @@ const DateTimePicker = ({
   defaultDate,
   selectedDateTime,
   disabled,
+  isDisabled,
   ...props
 }: {
   onChange?: (dateTime: Date | undefined) => void;
@@ -21,6 +22,7 @@ const DateTimePicker = ({
   defaultDate?: Date;
   selectedDateTime?: Date;
   disabled?: Matcher[];
+  isDisabled?: boolean;
 } & Omit<BoxProps, 'onChange'>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -111,11 +113,15 @@ const DateTimePicker = ({
         pr={3}
         py={1}
         borderRadius={'sm'}
-        cursor={'pointer'}
-        bg={'myGray.50'}
         fontSize={'sm'}
-        onClick={() => setShowSelected((state) => !state)}
         alignItems={'center'}
+        {...(isDisabled
+          ? { cursor: 'not-allowed', bg: 'myGray.100', opacity: 0.6 }
+          : {
+              cursor: 'pointer',
+              bg: 'myGray.50',
+              onClick: () => setShowSelected((state) => !state)
+            })}
         {...props}
       >
         <Box color={'myGray.600'} fontWeight={'400'} flex={1}>
