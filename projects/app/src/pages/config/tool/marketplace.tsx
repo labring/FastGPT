@@ -157,7 +157,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     manual: false
   });
 
-  const { data: marketplaceVersions } = useRequest2(getMarketplaceToolVersions, {
+  const { data: marketplaceVersions } = useRequest(getMarketplaceToolVersions, {
     manual: false
   });
 
@@ -291,7 +291,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         // 4. Close Drawer
         setShowBatchUpdateDrawer(false);
       } catch (error) {
-        // Error handling by useRequest2
+        // Error handling by useRequest
         throw error;
       } finally {
         // Clear updating status

@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTeamMembers, putTransferTeamOwnership } from '@/web/support/user/team/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -61,7 +61,7 @@ export function TransferOwnershipModal({
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
 
-  const { runAsync: onTransfer, loading } = useRequest2(
+  const { runAsync: onTransfer, loading } = useRequest(
     async () => {
       if (!selectedMember) return;
       await putTransferTeamOwnership(selectedMember.userId);

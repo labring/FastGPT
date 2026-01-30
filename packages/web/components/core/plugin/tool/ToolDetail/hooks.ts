@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ToolDetailResponseType, ToolDetailExtendedType } from './types';
 import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
-import { useRequest2 } from '../../../../../hooks/useRequest';
+import { useRequest } from '../../../../../hooks/useRequest';
 
 export type UseToolDetailProps = {
   toolId?: string;
@@ -23,7 +23,7 @@ export const useToolDetail = ({
     data: toolDetail,
     loading: loadingDetail,
     run: fetchToolDetail
-  } = useRequest2(
+  } = useRequest(
     async (id: string) => {
       if (!onFetchDetail) return undefined;
       const detail = await onFetchDetail(id);
