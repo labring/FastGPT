@@ -25,7 +25,6 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import { getAdminSystemToolDetail, putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
-import type { AdminSystemToolDetailType } from '@fastgpt/global/core/plugin/admin/tool/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
@@ -125,7 +124,7 @@ const SystemToolConfigModal = ({
   );
 
   const { runAsync: onSubmit, loading: submitting } = useRequest(
-    (formData: AdminSystemToolDetailType) =>
+    (formData: UpdateToolBodyType) =>
       putAdminUpdateTool({
         ...formData,
         pluginId: toolId
