@@ -1,0 +1,26 @@
+  vectorDB:
+    image:  ${{seekdb.image}}:${{seekdb.tag}}
+    container_name: seekdb
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 3306:3306
+    networks:
+      - fastgpt
+    environment:
+      # SeekDB 连接配置（兼容 MySQL 协议）
+      - MYSQL_ROOT_PASSWORD=seekdbpassword
+      # SeekDB 租户配置（与 OceanBase 兼容）
+      - OB_TENANT_NAME=tenantname
+      - OB_TENANT_PASSWORD=tenantpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+      - OB_SERVER_IP=127.0.0.1
+    volumes:
+      - ../seekdb/data:/var/lib/mysql
+      - ../seekdb/config:/etc/mysql/conf.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 10s
