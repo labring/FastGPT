@@ -98,10 +98,12 @@ function generateI18nErrorKey(errorMessage: string): string {
  * @returns 检索结果（包含 retrievalTime、rerankTime、retrievalResults）
  */
 export async function searchDatasetDataForAssistant(
-  props: SearchDatasetDataProps
+  props: SearchDatasetDataProps & { retrievalStartTime?: number }
 ): Promise<SearchDatasetDataResponse> {
   // 【步骤 1】检索开始计时
-  const retrievalStartTime = Date.now();
+  // 如果传入了 retrievalStartTime（来自 defaultSearchDatasetData），使用传入的时间
+  // 这样可以将 correction 和 FAQ 检索的耗时也计入 retrievalTime
+  const retrievalStartTime = props.retrievalStartTime ?? Date.now();
 
   let {
     teamId,

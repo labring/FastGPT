@@ -1229,7 +1229,8 @@ export const defaultSearchDatasetData = async ({
         ...props,
         reRankQuery: rewriteQuery,
         queries: concatQueries,
-        datasetIds
+        datasetIds,
+        retrievalStartTime // 传递检索开始时间，确保 correction 和 FAQ 检索时间被计入
       })
     : await searchDatasetData({
         ...props,
