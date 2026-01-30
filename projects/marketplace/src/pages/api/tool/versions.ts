@@ -20,7 +20,7 @@ async function handler(
     })
     .map(({ toolId, version }) => ({
       toolId,
-      version
+      version: version ?? ''
     }));
 }
 

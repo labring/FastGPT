@@ -159,7 +159,7 @@ const ToolkitMarketplace = () => {
   const displayTools: ToolCardItemType[] = useMemo(() => {
     if (!tools || !Array.isArray(tools) || !toolTags) return [];
 
-    return tools.map((tool: ToolListItem) => {
+    return tools.map((tool) => {
       return {
         id: tool.toolId,
         name: parseI18nString(tool.name || '', i18n.language) || '',
