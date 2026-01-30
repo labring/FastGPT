@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn, useMount } from 'ahooks';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
@@ -39,7 +39,7 @@ const FolderTreeSelectModal = ({
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
 
-  const { runAsync: requestServer } = useRequest2(async (e: GetResourceFolderListProps) => {
+  const { runAsync: requestServer } = useRequest(async (e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId]);
@@ -146,7 +146,7 @@ const FolderTreeSelectModal = ({
     }
   );
 
-  const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
+  const { runAsync: onConfirmSelect, loading: confirming } = useRequest(
     () => {
       if (selectedId) {
         return onConfirm(selectedId === ROOT_ID ? null : selectedId);

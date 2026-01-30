@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type {
   PluginDatasetServerType,
@@ -64,7 +64,7 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
     [getValues, setValue, pluginId]
   );
 
-  const { loading: isFetchingPath, runAsync: fetchPathNames } = useRequest2(
+  const { loading: isFetchingPath, runAsync: fetchPathNames } = useRequest(
     async (fieldKey: string, parentIdOverride?: string) => {
       const parentId = parentIdOverride ?? pluginConfig[fieldKey];
       if (!parentId) return t('dataset:rootdirectory');

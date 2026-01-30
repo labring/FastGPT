@@ -18,7 +18,7 @@ export const useToolDetail = ({
 }: UseToolDetailProps) => {
   const [readmeContent, setReadmeContent] = useState<string>('');
 
-  // 使用 useRequest2 替代手动的 useEffect，避免无限请求问题
+  // 使用 useRequest 替代手动的 useEffect，避免无限请求问题
   const {
     data: toolDetail,
     loading: loadingDetail,
