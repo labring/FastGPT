@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "pg",
+    "pgUrl": "postgresql://username:password@localhost:5432/postgres"
+  },
+  "target": {
+    "type": "oceanbase",
+    "oceanbaseUrl": "mysql://root@tenantname:tenantpassword@localhost:2881/test"
+  },
+  "batchSize": 1000,
+  "checkpointDir": "./checkpoints",
+  "enableCDC": false,
+  "cdcPollInterval": 5000
+}

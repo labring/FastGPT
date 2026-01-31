@@ -1,0 +1,24 @@
+{
+  "name": "@fastgpt/vector-migration",
+  "version": "1.0.0",
+  "description": "向量数据迁移工具，支持 PostgreSQL、OceanBase、Milvus",
+  "main": "cli.ts",
+  "scripts": {
+    "migrate": "tsx cli.ts migrate",
+    "migrate-online": "tsx cli.ts migrate-online",
+    "status": "tsx cli.ts status",
+    "reset": "tsx cli.ts reset"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "mysql2": "^3.6.5",
+    "@zilliz/milvus2-sdk-node": "^2.3.7",
+    "dayjs": "^1.11.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/pg": "^8.10.9",
+    "tsx": "^4.7.0",
+    "typescript": "^5.1.3"
+  }
+}
