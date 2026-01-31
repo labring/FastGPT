@@ -28,11 +28,11 @@ export default defineConfig({
     include: [
       'test/test.ts',
       'test/cases/**/*.test.ts',
-      'test/vectorDB/**/*.test.ts',
       'projects/app/test/**/*.test.ts',
       'projects/sandbox/test/**/*.test.ts',
       'projects/marketplace/test/**/*.test.ts'
     ],
+    exclude: ['test/vectorDB/**'],
     testTimeout: 20000,
     hookTimeout: 30000,
     reporters: ['github-actions', 'default']

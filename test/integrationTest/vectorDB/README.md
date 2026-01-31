@@ -29,8 +29,8 @@ cp test/.env.test.template test/.env.test.local
 # 仅运行单元测试（未配置 .env.test.local 或未设 PG_URL 时，vectorDB 集成测试会跳过）
 pnpm test
 
-# 运行 vectorDB 集成测试（需在 test/.env.test.local 中配置 PG_URL 等）
-pnpm test test/vectorDB
+# 运行所有向量库测试（包含 vectorDB 集成测试与相关单元测试）
+pnpm test:vector
 ```
 
 ## 结构说明
