@@ -21,6 +21,47 @@ import { customNanoid } from '@fastgpt/global/common/string/tools';
 // Migration state storage (in-memory for now, can be extended to MongoDB)
 const migrationStates = new Map<string, MigrationState>();
 
+// Maximum concurrent migrations allowed
+const MAX_CONCURRENT_MIGRATIONS = 3;
+
+// State retention time: 24 hours for completed/failed/cancelled states
+const STATE_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+// Clean up old migration states periodically
+function cleanupOldStates(): void {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+
+  for (const [id, state] of migrationStates) {
+    // Only clean up completed, failed, or cancelled states
+    if (state.status === 'completed' || state.status === 'failed' || state.status === 'cancelled') {
+      const endTime = state.endTime?.getTime() || 0;
+      if (now - endTime > STATE_RETENTION_MS) {
+        keysToDelete.push(id);
+      }
+    }
+  }
+
+  for (const key of keysToDelete) {
+    migrationStates.delete(key);
+    addLog.info(`[Migration] Cleaned up old state: ${key}`);
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupOldStates, 60 * 60 * 1000);
+
+// Get count of active (running) migrations
+function getActiveMigrationCount(): number {
+  let count = 0;
+  for (const state of migrationStates.values()) {
+    if (state.status === 'preparing' || state.status === 'full_sync' || state.status === 'incremental_sync') {
+      count++;
+    }
+  }
+  return count;
+}
+
 export class VectorMigrationController {
   private config: MigrationConfig;
   private migrationId: string;
@@ -85,6 +126,31 @@ export class VectorMigrationController {
     const startTime = Date.now();
     const idMappings = new Map<string, string>();
     const allErrors: MigrationError[] = [];
+
+    // Check concurrent migration limit
+    const activeMigrations = getActiveMigrationCount();
+    if (activeMigrations >= MAX_CONCURRENT_MIGRATIONS) {
+      this.state.status = 'failed';
+      this.state.endTime = new Date();
+      this.state.errors.push({
+        type: 'unknown',
+        message: `Too many concurrent migrations. Maximum ${MAX_CONCURRENT_MIGRATIONS} allowed, currently ${activeMigrations} running.`,
+        timestamp: new Date(),
+        retryable: true
+      });
+      migrationStates.set(this.migrationId, this.state);
+
+      return {
+        success: false,
+        migrationId: this.migrationId,
+        totalRecords: 0,
+        migratedRecords: 0,
+        failedRecords: 1,
+        idMappings,
+        errors: this.state.errors,
+        duration: Date.now() - startTime
+      };
+    }
 
     try {
       this.state.status = 'preparing';
@@ -199,9 +265,19 @@ export class VectorMigrationController {
       this.state.endTime = new Date();
       migrationStates.set(this.migrationId, this.state);
 
-      // Close connections
+      // Close connections with error handling
       if ('close' in importer && typeof importer.close === 'function') {
-        await importer.close();
+        try {
+          await importer.close();
+        } catch (closeError: any) {
+          addLog.warn('[Migration] Error closing importer connection', closeError);
+          allErrors.push({
+            type: 'unknown',
+            message: `Failed to close connection: ${closeError.message || 'Unknown error'}`,
+            timestamp: new Date(),
+            retryable: false
+          });
+        }
       }
 
       const duration = Date.now() - startTime;

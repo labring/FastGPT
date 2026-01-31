@@ -6,7 +6,7 @@
 import type { VectorExporter, VectorRecord, MigrationError } from './type';
 import { DatasetVectorTableName } from '../constants';
 import { PgClient, connectPg } from '../pg/controller';
-import { ObClient } from '../oceanbase/controller';
+import { ObClient, getClient as getObClient } from '../oceanbase/controller';
 import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 import type { RowDataPacket } from 'mysql2/promise';
 import dayjs from 'dayjs';
@@ -40,37 +40,46 @@ export class PgExporter implements VectorExporter {
     hasMore: boolean;
     lastId?: string;
   }> {
-    await connectPg();
+    const pg = await connectPg();
 
     const { afterId, limit, teamId, datasetId } = options;
     const whereConditions: string[] = [];
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (afterId) {
-      whereConditions.push(`id > ${afterId}`);
+      whereConditions.push(`id > $${paramIndex++}`);
+      params.push(afterId);
     }
     if (teamId) {
-      whereConditions.push(`team_id = '${teamId}'`);
+      whereConditions.push(`team_id = $${paramIndex++}`);
+      params.push(teamId);
     }
     if (datasetId) {
-      whereConditions.push(`dataset_id = '${datasetId}'`);
+      whereConditions.push(`dataset_id = $${paramIndex++}`);
+      params.push(datasetId);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    params.push(limit + 1);
 
-    const { rows } = await PgClient.query<{
+    const { rows } = await pg.query<{
       id: string;
       vector: string;
       team_id: string;
       dataset_id: string;
       collection_id: string;
       createtime: Date;
-    }>(`
+    }>(
+      `
       SELECT id, vector::text, team_id, dataset_id, collection_id, createtime
       FROM ${DatasetVectorTableName}
       ${whereClause}
       ORDER BY id ASC
-      LIMIT ${limit + 1}
-    `);
+      LIMIT $${paramIndex}
+    `,
+      params
+    );
 
     const hasMore = rows.length > limit;
     const records = rows.slice(0, limit).map((row) => ({
@@ -90,22 +99,24 @@ export class PgExporter implements VectorExporter {
   }
 
   async exportByTimeRange(start: Date, end: Date): Promise<VectorRecord[]> {
-    await connectPg();
+    const pg = await connectPg();
 
-    const { rows } = await PgClient.query<{
+    const { rows } = await pg.query<{
       id: string;
       vector: string;
       team_id: string;
       dataset_id: string;
       collection_id: string;
       createtime: Date;
-    }>(`
+    }>(
+      `
       SELECT id, vector::text, team_id, dataset_id, collection_id, createtime
       FROM ${DatasetVectorTableName}
-      WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}'
-        AND '${dayjs(end).format('YYYY-MM-DD HH:mm:ss')}'
+      WHERE createtime BETWEEN $1 AND $2
       ORDER BY id ASC
-    `);
+    `,
+      [start, end]
+    );
 
     return rows.map((row) => ({
       id: String(row.id),
@@ -146,22 +157,28 @@ export class OceanBaseExporter implements VectorExporter {
     hasMore: boolean;
     lastId?: string;
   }> {
+    const client = await getObClient();
     const { afterId, limit, teamId, datasetId } = options;
     const whereConditions: string[] = [];
+    const params: (string | number)[] = [];
 
     if (afterId) {
-      whereConditions.push(`id > ${afterId}`);
+      whereConditions.push(`id > ?`);
+      params.push(afterId);
     }
     if (teamId) {
-      whereConditions.push(`team_id = '${teamId}'`);
+      whereConditions.push(`team_id = ?`);
+      params.push(teamId);
     }
     if (datasetId) {
-      whereConditions.push(`dataset_id = '${datasetId}'`);
+      whereConditions.push(`dataset_id = ?`);
+      params.push(datasetId);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    params.push(limit + 1);
 
-    const rows = await ObClient.query<
+    const [rows] = await client.query<
       ({
         id: string;
         vector: string;
@@ -170,13 +187,16 @@ export class OceanBaseExporter implements VectorExporter {
         collection_id: string;
         createtime: Date;
       } & RowDataPacket)[]
-    >(`
+    >(
+      `
       SELECT id, CAST(vector AS CHAR) as vector, team_id, dataset_id, collection_id, createtime
       FROM ${DatasetVectorTableName}
       ${whereClause}
       ORDER BY id ASC
-      LIMIT ${limit + 1}
-    `).then(([rows]) => rows);
+      LIMIT ?
+    `,
+      params
+    );
 
     const hasMore = rows.length > limit;
     const records = rows.slice(0, limit).map((row) => ({
@@ -196,7 +216,8 @@ export class OceanBaseExporter implements VectorExporter {
   }
 
   async exportByTimeRange(start: Date, end: Date): Promise<VectorRecord[]> {
-    const rows = await ObClient.query<
+    const client = await getObClient();
+    const [rows] = await client.query<
       ({
         id: string;
         vector: string;
@@ -205,13 +226,15 @@ export class OceanBaseExporter implements VectorExporter {
         collection_id: string;
         createtime: Date;
       } & RowDataPacket)[]
-    >(`
+    >(
+      `
       SELECT id, CAST(vector AS CHAR) as vector, team_id, dataset_id, collection_id, createtime
       FROM ${DatasetVectorTableName}
-      WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}'
-        AND '${dayjs(end).format('YYYY-MM-DD HH:mm:ss')}'
+      WHERE createtime BETWEEN ? AND ?
       ORDER BY id ASC
-    `).then(([rows]) => rows);
+    `,
+      [start, end]
+    );
 
     return rows.map((row) => ({
       id: String(row.id),

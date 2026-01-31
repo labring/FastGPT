@@ -86,24 +86,39 @@ export class PgImporter implements VectorImporter {
       return { insertedIds, idMappings, errors };
     }
 
+    const client = await pool.connect();
     try {
-      // Build bulk insert with explicit IDs
-      const values = records
-        .map((record) => {
-          const vectorStr = `[${record.vector.join(',')}]`;
-          const timestamp = record.createTime.toISOString();
-          return `(${record.id}, '${vectorStr}', '${record.teamId}', '${record.datasetId}', '${record.collectionId}', '${timestamp}')`;
-        })
-        .join(',');
+      // Start transaction for batch insert
+      await client.query('BEGIN');
+
+      // Build parameterized bulk insert with explicit IDs
+      const valueParams: (string | number)[] = [];
+      const valuePlaceholders: string[] = [];
+      let paramIndex = 1;
+
+      for (const record of records) {
+        const vectorStr = `[${record.vector.join(',')}]`;
+        valuePlaceholders.push(
+          `($${paramIndex++}, $${paramIndex++}::vector, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`
+        );
+        valueParams.push(
+          record.id,
+          vectorStr,
+          record.teamId,
+          record.datasetId,
+          record.collectionId,
+          record.createTime.toISOString()
+        );
+      }
 
       const sql = `
         INSERT INTO ${DatasetVectorTableName} (id, vector, team_id, dataset_id, collection_id, createtime)
-        VALUES ${values}
+        VALUES ${valuePlaceholders.join(',')}
         ON CONFLICT (id) DO NOTHING
         RETURNING id
       `;
 
-      const result = await pool.query<{ id: string }>(sql);
+      const result = await client.query<{ id: string }>(sql, valueParams);
 
       for (const row of result.rows) {
         insertedIds.push(String(row.id));
@@ -113,7 +128,12 @@ export class PgImporter implements VectorImporter {
       for (const record of records) {
         idMappings.set(record.id, record.id);
       }
+
+      // Commit transaction
+      await client.query('COMMIT');
     } catch (error: any) {
+      // Rollback transaction on error
+      await client.query('ROLLBACK');
       addLog.error('[Migration] PG import batch error', error);
       errors.push({
         type: 'unknown',
@@ -121,6 +141,8 @@ export class PgImporter implements VectorImporter {
         timestamp: new Date(),
         retryable: true
       });
+    } finally {
+      client.release();
     }
 
     return { insertedIds, idMappings, errors };
@@ -130,7 +152,8 @@ export class PgImporter implements VectorImporter {
     if (ids.length === 0) return;
 
     const pool = await this.getPool();
-    await pool.query(`DELETE FROM ${DatasetVectorTableName} WHERE id IN (${ids.join(',')})`);
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+    await pool.query(`DELETE FROM ${DatasetVectorTableName} WHERE id IN (${placeholders})`, ids);
   }
 
   async getCount(): Promise<number> {
@@ -218,29 +241,47 @@ export class OceanBaseImporter implements VectorImporter {
       return { insertedIds, idMappings, errors };
     }
 
+    const connection = await pool.getConnection();
     try {
-      // Build bulk insert with explicit IDs
-      const values = records
-        .map((record) => {
-          const vectorStr = `[${record.vector.join(',')}]`;
-          const timestamp = record.createTime.toISOString().replace('T', ' ').replace('Z', '');
-          return `(${record.id}, '${vectorStr}', '${record.teamId}', '${record.datasetId}', '${record.collectionId}', '${timestamp}')`;
-        })
-        .join(',');
+      // Start transaction for batch insert
+      await connection.beginTransaction();
+
+      // Build parameterized bulk insert with explicit IDs
+      const valueParams: (string | number)[] = [];
+      const valuePlaceholders: string[] = [];
+
+      for (const record of records) {
+        const vectorStr = `[${record.vector.join(',')}]`;
+        const timestamp = record.createTime.toISOString().replace('T', ' ').replace('Z', '');
+        valuePlaceholders.push('(?, ?, ?, ?, ?, ?)');
+        valueParams.push(
+          record.id,
+          vectorStr,
+          record.teamId,
+          record.datasetId,
+          record.collectionId,
+          timestamp
+        );
+      }
 
       const sql = `
         INSERT IGNORE INTO ${DatasetVectorTableName} (id, vector, team_id, dataset_id, collection_id, createtime)
-        VALUES ${values}
+        VALUES ${valuePlaceholders.join(',')}
       `;
 
-      await pool.query(sql);
+      await connection.query(sql, valueParams);
 
       // For OceanBase with explicit IDs, mappings are 1:1
       for (const record of records) {
         insertedIds.push(record.id);
         idMappings.set(record.id, record.id);
       }
+
+      // Commit transaction
+      await connection.commit();
     } catch (error: any) {
+      // Rollback transaction on error
+      await connection.rollback();
       addLog.error('[Migration] OceanBase import batch error', error);
       errors.push({
         type: 'unknown',
@@ -248,6 +289,8 @@ export class OceanBaseImporter implements VectorImporter {
         timestamp: new Date(),
         retryable: true
       });
+    } finally {
+      connection.release();
     }
 
     return { insertedIds, idMappings, errors };
@@ -257,7 +300,8 @@ export class OceanBaseImporter implements VectorImporter {
     if (ids.length === 0) return;
 
     const pool = await this.getPool();
-    await pool.query(`DELETE FROM ${DatasetVectorTableName} WHERE id IN (${ids.join(',')})`);
+    const placeholders = ids.map(() => '?').join(',');
+    await pool.query(`DELETE FROM ${DatasetVectorTableName} WHERE id IN (${placeholders})`, ids);
   }
 
   async getCount(): Promise<number> {
