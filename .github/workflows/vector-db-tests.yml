@@ -1,0 +1,50 @@
+name: Vector DB Integration Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-oceanbase:
+    runs-on: ubuntu-latest
+
+    services:
+      oceanbase:
+        image: oceanbase/oceanbase-ce:latest
+        env:
+          MODE: mini
+          OB_root_PASSWORD: root_password
+        ports:
+          - 2881:2881
+        options: >-
+          --health-cmd "mysql -h 127.0.0.1 -P 2881 -u root@test -proot_password -e 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'pnpm'
+
+    - name: Install Dependencies
+      run: pnpm install
+
+    - name: Run OceanBase Connection Test
+      env:
+        DB_HOST: 127.0.0.1
+        DB_PORT: 2881
+        DB_USER: root@test
+        DB_PASSWORD: root_password
+        DB_NAME: test
+      run: npx tsx scripts/test-oceanbase.ts
