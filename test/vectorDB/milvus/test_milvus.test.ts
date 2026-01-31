@@ -8,7 +8,7 @@
  *   MILVUS_ADDRESS=host:port MILVUS_TOKEN=token npx vitest run test/vectorDB/milvus/test_milvus.test.ts
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MilvusClient, DataType, LoadState } from '@zilliz/milvus2-sdk-node';
+import { MilvusClient, LoadState } from '@zilliz/milvus2-sdk-node';
 import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus';
 import {
   DatasetVectorDbName,
