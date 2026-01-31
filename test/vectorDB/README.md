@@ -1,34 +1,42 @@
 # 向量数据库集成测试
 
-对 FastGPT 各向量库控制器（PGVector、后续 Oceanbase/Milvus）做真实环境下的集成测试，保证向量相关操作兼容和稳定。
+对 FastGPT 各向量库控制器（PGVector、后续 Oceanbase/Milvus）做真实环境下的集成测试，保证向量相关操作兼容和稳定。采用**工厂模式**：同一套数据集（fixtures）和同一套用例（factory）驱动 n 个向量库测试。
 
 ## 环境变量
 
-| 变量 | 说明 | 适用测试 |
-|------|------|----------|
-| `PG_URL` | PostgreSQL + pgvector 连接串 | `pg.integration.test.ts` |
-| `OCEANBASE_URL` | Oceanbase 连接串（后续） | Oceanbase 集成测试 |
-| `MILVUS_ADDRESS` | Milvus 地址（后续） | Milvus 集成测试 |
+测试环境变量由 **test/.env.test.local** 提供（不提交到 git）。请复制模板并填写：
 
-未设置对应环境变量时，该组集成测试会**整体跳过**，不会报错。
+```bash
+cp test/.env.test.template test/.env.test.local
+# 编辑 test/.env.test.local，填入 PG_URL 等
+```
+
+`setup.ts` 会在测试启动时读取 `test/.env.test.local` 并注入到 `process.env`。
+
+| 变量 | 说明 | 适用驱动 |
+|------|------|----------|
+| `PG_URL` | PostgreSQL + pgvector 连接串 | PgVectorCtrl |
+| `OCEANBASE_URL` | Oceanbase 连接串（后续） | ObVectorCtrl |
+| `MILVUS_ADDRESS` | Milvus 地址（后续） | MilvusCtrl |
+
+未设置对应环境变量时，该驱动的集成测试会**整体跳过**，不会报错。
 
 ## 运行方式
 
 在项目根目录执行：
 
 ```bash
-# 仅运行单元测试（不设 PG_URL 时，vectorDB 集成测试会跳过）
+# 仅运行单元测试（未配置 .env.test.local 或未设 PG_URL 时，vectorDB 集成测试会跳过）
 pnpm test
 
-# 运行 PG 集成测试（需先启动带 pgvector 的 PostgreSQL 并设置 PG_URL）
-PG_URL=postgresql://user:pass@localhost:5432/dbname pnpm test test/vectorDB
+# 运行 vectorDB 集成测试（需在 test/.env.test.local 中配置 PG_URL 等）
+pnpm test test/vectorDB
 ```
 
-## 测试数据
+## 结构说明
 
-所有向量库使用**同一份测试数据**，定义在 `fixtures.ts`：
+- **fixtures.ts**：统一测试数据（`TEST_TEAM_ID`、`TEST_DATASET_ID`、`TEST_COLLECTION_ID`、1536 维 `TEST_VECTORS`），所有向量库共用。
+- **factory.ts**：工厂函数 `runVectorDBTests(driver)`，同一套用例（init、insert、getVectorCount、embRecall、getVectorDataByTime、delete）供各驱动复用。
+- **integration.test.ts**：注册各驱动（PG、后续 Oceanbase/Milvus），按 `driver.envKey` 决定是否跳过；每个驱动执行同一套 `runVectorDBTests(driver)`。
 
-- `TEST_TEAM_ID` / `TEST_DATASET_ID` / `TEST_COLLECTION_ID`：隔离测试数据
-- `TEST_VECTORS`：1536 维固定向量，用于 insert 与 embRecall
-
-后续为 Oceanbase、Milvus 增加集成测试时，复用同一份 fixtures，仅替换控制器实现（`ObVectorCtrl`、`MilvusCtrl`）与对应 `skipIf` 条件即可。
+新增向量库时：在 `integration.test.ts` 的 `drivers` 数组中增加一项（`name`、`envKey`、`createCtrl`），无需改 fixtures 或 factory。

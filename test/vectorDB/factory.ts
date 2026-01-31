@@ -1,8 +1,9 @@
 /**
- * PgVectorCtrl integration tests. Run only when PG_URL is set.
- * Uses real PostgreSQL + pgvector; no mocks.
+ * Factory: same test suite (same dataset from fixtures) for n vector DB drivers.
+ * Each driver provides createCtrl(); the suite runs init, insert, getVectorCount, embRecall, getVectorDataByTime, delete.
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it } from 'vitest';
+import type { VectorControllerType } from '@fastgpt/service/common/vectorDB/type';
 import { EmbeddingRecallItemSchema } from '@fastgpt/service/common/vectorDB/type';
 import {
   TEST_TEAM_ID,
@@ -11,19 +12,17 @@ import {
   TEST_VECTORS
 } from './fixtures';
 
-vi.unmock('@fastgpt/service/common/vectorDB/constants');
-vi.unmock('@fastgpt/service/common/vectorDB/pg');
+export type VectorDBDriver = {
+  name: string;
+  envKey: string;
+  createCtrl: () => Promise<VectorControllerType>;
+};
 
-const runWhenPgUrlSet = !!process.env.PG_URL;
-
-describe.skipIf(!runWhenPgUrlSet)('PgVectorCtrl 集成测试', () => {
-  let PgVectorCtrl: typeof import('@fastgpt/service/common/vectorDB/pg').PgVectorCtrl;
-  let ctrl: InstanceType<typeof PgVectorCtrl>;
+export function runVectorDBTests(driver: VectorDBDriver): void {
+  let ctrl: VectorControllerType;
 
   beforeAll(async () => {
-    const mod = await import('@fastgpt/service/common/vectorDB/pg');
-    PgVectorCtrl = mod.PgVectorCtrl;
-    ctrl = new PgVectorCtrl();
+    ctrl = await driver.createCtrl();
     await ctrl.init();
   }, 30000);
 
@@ -151,4 +150,4 @@ describe.skipIf(!runWhenPgUrlSet)('PgVectorCtrl 集成测试', () => {
     },
     15000
   );
-});
+}

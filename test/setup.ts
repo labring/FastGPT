@@ -1,5 +1,25 @@
-import './mocks';
 import { existsSync, readFileSync } from 'fs';
+import path from 'path';
+
+// Load test env from test/.env.test.local (optional; copy from .env.test.template)
+const envTestLocalPath = path.resolve(process.cwd(), 'test', '.env.test.local');
+if (existsSync(envTestLocalPath)) {
+  const content = readFileSync(envTestLocalPath, 'utf-8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (key) process.env[key] = value;
+  }
+}
+
+import './mocks';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
 import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';
