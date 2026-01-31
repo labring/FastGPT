@@ -24,7 +24,7 @@ type PluginDatasetFormProps = {
 
 const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps) => {
   const { t } = useTranslation();
-  const { setValue, watch, getValues } = form;
+  const { setValue, watch, getValues, register } = form;
 
   const pluginDatasetServer = watch('pluginDatasetServer');
   const pluginConfig = pluginDatasetServer?.config || {};
@@ -154,6 +154,8 @@ const PluginDatasetForm = ({ pluginId, datasetId, form }: PluginDatasetFormProps
           treeSelectLoading={isFetchingPath && currentTreeSelectField === field.key}
           treeSelectDisplayValue={pathNames[field.key]}
           canOpenTreeSelect={isConfigComplete()}
+          register={register}
+          fieldPath={`pluginDatasetServer.config.${field.key}`}
         />
       ))}
 

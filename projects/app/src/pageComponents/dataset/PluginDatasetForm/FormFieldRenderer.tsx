@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Flex, Input, Button, Box, Select } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import type { UseFormRegister } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -15,6 +16,9 @@ type FormFieldRendererProps = {
   treeSelectLoading?: boolean;
   treeSelectDisplayValue?: string;
   canOpenTreeSelect?: boolean;
+
+  register?: UseFormRegister<any>;
+  fieldPath?: string;
 };
 
 const FormFieldRenderer = ({
@@ -24,7 +28,9 @@ const FormFieldRenderer = ({
   onOpenTreeSelect,
   treeSelectLoading,
   treeSelectDisplayValue,
-  canOpenTreeSelect = true
+  canOpenTreeSelect = true,
+  register,
+  fieldPath
 }: FormFieldRendererProps) => {
   const { i18n, t } = useTranslation();
   const lang = i18n.language;
@@ -42,19 +48,29 @@ const FormFieldRenderer = ({
 
   // 渲染 input 类型
   const renderInput = useCallback(() => {
+    const registerProps =
+      register && fieldPath ? register(fieldPath as any, { required: field.required }) : undefined;
+
     return (
       <Input
         bg={'myWhite.600'}
         placeholder={placeholder || label}
         maxLength={200}
         value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        {...registerProps}
+        onChange={(e) => {
+          registerProps?.onChange(e);
+          onChange(e.target.value);
+        }}
       />
     );
-  }, [value, placeholder, label, onChange]);
+  }, [value, placeholder, label, onChange, register, fieldPath, field.required]);
 
   // 渲染 password 类型
   const renderPassword = useCallback(() => {
+    const registerProps =
+      register && fieldPath ? register(fieldPath as any, { required: field.required }) : undefined;
+
     return (
       <Input
         bg={'myWhite.600'}
@@ -62,20 +78,31 @@ const FormFieldRenderer = ({
         placeholder={placeholder || label}
         maxLength={200}
         value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        {...registerProps}
+        onChange={(e) => {
+          registerProps?.onChange(e);
+          onChange(e.target.value);
+        }}
       />
     );
-  }, [value, placeholder, label, onChange]);
+  }, [value, placeholder, label, onChange, register, fieldPath, field.required]);
 
   // 渲染 select 类型
   const renderSelect = useCallback(() => {
     const options = field.options || [];
+    const registerProps =
+      register && fieldPath ? register(fieldPath as any, { required: field.required }) : undefined;
+
     return (
       <Select
         bg={'myWhite.600'}
         placeholder={placeholder}
         value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        {...registerProps}
+        onChange={(e) => {
+          registerProps?.onChange(e);
+          onChange(e.target.value);
+        }}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -84,7 +111,7 @@ const FormFieldRenderer = ({
         ))}
       </Select>
     );
-  }, [field.options, value, placeholder, lang, t, onChange]);
+  }, [field.options, value, placeholder, lang, onChange, register, fieldPath, field.required]);
 
   // 渲染 tree-select 类型
   const renderTreeSelect = useCallback(() => {
