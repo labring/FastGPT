@@ -11,7 +11,10 @@ export const TeamPluginListItemSchema = z.object({
   name: z.string(),
   intro: z.string().optional(),
   author: z.string().optional(),
-  tags: z.array(z.string()).nullish(),
+  tags: z
+    .array(z.string().nullish())
+    .nullish()
+    .transform((val) => val?.filter((v) => v !== null && v !== undefined)),
   status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
   installed: z.boolean(),
   associatedPluginId: z.string().optional()
