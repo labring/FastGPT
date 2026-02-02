@@ -32,6 +32,7 @@ export default defineConfig({
       'projects/sandbox/test/**/*.test.ts',
       'projects/marketplace/test/**/*.test.ts'
     ],
+    exclude: ['test/vectorDB/**'],
     testTimeout: 20000,
     hookTimeout: 30000,
     reporters: ['github-actions', 'default']

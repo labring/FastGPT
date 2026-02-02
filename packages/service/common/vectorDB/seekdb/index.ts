@@ -6,7 +6,6 @@
  */
 
 // 导出 OceanBase 控制器（复用）
-export { ObClient as SeekClient } from '../oceanbase/controller';
 export { ObVectorCtrl as SeekVectorCtrl } from '../oceanbase';
 
 // 导出类型

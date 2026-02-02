@@ -76,7 +76,7 @@ const vector = {
   ob: {
     db: '',
     config: `\
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 `,
     extra: `\
 configs:
@@ -89,7 +89,7 @@ configs:
   seekdb: {
     db: '',
     config: `\
-  SEEKDB_URL: mysql://root%40tenantname:tenantpassword@seekdb:3306/fastgpt
+  SEEKDB_URL: mysql://root:seekdbpassword@seekdb:2881/mysql
 `,
     extra: ``
   },

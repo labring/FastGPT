@@ -1,5 +1,6 @@
 import './mocks';
 import { existsSync, readFileSync } from 'fs';
+
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
 import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';

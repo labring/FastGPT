@@ -19,8 +19,8 @@ import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const getVectorObj = (): VectorControllerType => {
-  if (SEEKDB_ADDRESS) return new SeekVectorCtrl();
-  if (OCEANBASE_ADDRESS) return new ObVectorCtrl();
+  if (SEEKDB_ADDRESS) return new SeekVectorCtrl({ type: 'seekdb' });
+  if (OCEANBASE_ADDRESS) return new ObVectorCtrl({ type: 'oceanbase' });
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
 
