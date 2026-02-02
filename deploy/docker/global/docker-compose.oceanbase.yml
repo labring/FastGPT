@@ -26,7 +26,7 @@ x-share-db-config: &x-share-db-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 
 
 version: '3.3'
@@ -52,8 +52,8 @@ services:
       - OB_SERVER_IP=127.0.0.1
       # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
     volumes:
-      - ../ob/data:/root/ob
-      - ../ob/config:/root/.obd/cluster
+      - ./ob/data:/root/ob
+      - ./ob/config:/root/.obd/cluster
     configs:
       - source: init_sql
         target: /root/boot/init.d/init.sql

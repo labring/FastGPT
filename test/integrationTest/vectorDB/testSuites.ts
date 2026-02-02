@@ -9,15 +9,19 @@ const insertTestVectors = async (
 ) => {
   const insertIds: string[] = [];
 
-  for (let index = 0; index < TEST_VECTORS.length; index += 1) {
-    const { insertIds: ids } = await vectorCtrl.insert({
-      teamId,
-      datasetId,
-      collectionId: TEST_COLLECTION_IDS[index],
-      vectors: [TEST_VECTORS[index]]
-    });
-    insertIds.push(ids[0]);
-  }
+  await Promise.all(
+    TEST_VECTORS.map(async (vector, index) => {
+      const { insertIds: ids } = await vectorCtrl.insert({
+        teamId,
+        datasetId,
+        collectionId: TEST_COLLECTION_IDS[index],
+        vectors: [vector]
+      });
+      insertIds.push(ids[0]);
+    })
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   return insertIds;
 };
