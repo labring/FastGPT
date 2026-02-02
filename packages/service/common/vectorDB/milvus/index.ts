@@ -220,24 +220,27 @@ export class MilvusCtrl implements VectorControllerType {
         .filter((id) => !forbidCollectionIdList.includes(id));
     })();
     const collectionIdQuery = formatFilterCollectionId
-      ? `and (collectionId in [${formatFilterCollectionId.map((id) => `"${id}"`)}])`
+      ? `and (collectionId in [${formatFilterCollectionId.map((id) => `"${id}"`).join(',')}])`
       : ``;
     // Empty data
     if (formatFilterCollectionId && formatFilterCollectionId.length === 0) {
       return { results: [] };
     }
 
-    const { results } = await retryFn(() =>
+    const filterStr =
+      `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${id}"`).join(',')}]) ${collectionIdQuery} ${forbidColQuery}`.trim();
+
+    const searchResult = await retryFn(() =>
       client.search({
         collection_name: DatasetVectorTableName,
-        data: vector,
+        vector: vector,
         limit,
-        filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${id}"`).join(',')}]) ${collectionIdQuery} ${forbidColQuery}`,
+        expr: filterStr,
         output_fields: ['collectionId']
       })
     );
 
-    const rows = results as {
+    const rows = (searchResult.results || []) as {
       score: number;
       id: string;
       collectionId: string;
@@ -280,9 +283,9 @@ export class MilvusCtrl implements VectorControllerType {
       filter: filter || undefined
     });
 
-    const total = result.data?.[0]?.['count(*)'] as number;
+    const total = result.data?.[0]?.['count(*)'];
 
-    return total;
+    return Number(total);
   };
 
   getVectorDataByTime: VectorControllerType['getVectorDataByTime'] = async (start, end) => {
