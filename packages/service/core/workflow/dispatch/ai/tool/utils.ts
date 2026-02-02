@@ -1,5 +1,4 @@
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -20,7 +19,7 @@ export const updateToolInputValue = ({
 
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
   return response.map((item) => {
-    if (item.type === ChatItemValueTypeEnum.tool) {
+    if (item.tools) {
       const formatTools = item.tools?.map((tool) => {
         return {
           ...tool,

@@ -9,7 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';

@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash';
 import { type SystemModelItemType } from './type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 
 export const getDefaultLLMModel = () => global?.systemDefaultModel.llm!;
 export const getLLMModel = (model?: string | LLMModelItemType) => {
@@ -25,6 +25,9 @@ export const getVlmModel = (model?: string) => {
   const list = getVlmModelList();
   return list.find((item) => item.model === model || item.name === model) || list[0];
 };
+
+export const getDefaultHelperBotModel = (): LLMModelItemType =>
+  global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
 
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string) => {

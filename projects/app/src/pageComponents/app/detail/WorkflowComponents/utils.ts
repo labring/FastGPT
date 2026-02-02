@@ -9,7 +9,7 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import {
   type FlowNodeItemType,
   type StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 

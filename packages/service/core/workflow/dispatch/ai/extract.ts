@@ -1,7 +1,7 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -12,7 +12,7 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import { getNodeErrResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
@@ -23,7 +23,6 @@ import {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
   getExtractJsonToolPrompt
@@ -196,7 +195,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonToolPrompt({
               systemPrompt: description,
@@ -211,7 +209,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -300,7 +297,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonPrompt({
               systemPrompt: description,
@@ -316,7 +312,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }

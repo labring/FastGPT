@@ -1,5 +1,4 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { runWorkflow } from '../../index';
@@ -8,7 +7,7 @@ import type { DispatchFlowResponse } from '../../type';
 import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { parseToolArgs } from '../../../../ai/utils';
+import { parseJsonArgs } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
@@ -99,8 +98,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     };
   };
 
-  // SSE 响应实例
-  const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
   // 工具响应原始值
   const toolRunResponses: DispatchFlowResponse[] = [];
 
@@ -111,7 +108,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     assistantMessages,
     interactiveResponse,
     finish_reason,
-    error
+    error,
+    requestIds
   } = await runAgentCall({
     maxRunAgentTimes: 50,
     body: {
@@ -136,7 +134,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     onReasoning({ text }) {
       if (!aiChatReasoning) return;
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           reasoning_content: text
@@ -146,7 +143,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     onStreaming({ text }) {
       if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text
@@ -175,7 +171,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     onToolParam({ tool, params }) {
       if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
-        write,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
@@ -201,7 +196,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       }
 
       // Init tool params and run
-      const startParams = parseToolArgs(call.function.arguments);
+      const startParams = parseJsonArgs(call.function.arguments);
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
       initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
 
@@ -311,6 +306,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     .flat();
 
   return {
+    requestIds,
     error,
     toolDispatchFlowResponses: toolRunResponses,
     toolCallInputTokens: inputTokens,

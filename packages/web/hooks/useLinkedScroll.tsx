@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { type LinkedListResponse, type LinkedPaginationProps } from '../common/fetch/type';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
+import { useScroll, useMemoizedFn, useDebounceEffect, useLatest } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useRequest } from './useRequest';
 
@@ -197,7 +197,7 @@ export function useLinkedScroll<
     }
   );
 
-  const ScrollData = useMemoizedFn(
+  const ScrollData = useCallback(
     ({
       children,
       ScrollContainerRef,
@@ -258,7 +258,8 @@ export function useLinkedScroll<
           )}
         </MyBox>
       );
-    }
+    },
+    [isLoading]
   );
 
   return {

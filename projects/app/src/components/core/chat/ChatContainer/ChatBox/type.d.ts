@@ -3,6 +3,10 @@ import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type UserInputFileItemType = {
   id: string;
@@ -27,7 +31,7 @@ export type ChatBoxInputFormType = {
 export type ChatBoxInputType = {
   text?: string;
   files?: UserInputFileItemType[];
-  isInteractivePrompt?: boolean;
+  interactive?: WorkflowInteractiveResponseType;
   hideInUI?: boolean;
 };
 

@@ -87,7 +87,7 @@ async function handler(
     filteredItems = shuffled.slice(0, randomNumber);
   }
 
-  const list = filteredItems.map((item) => {
+  const list = filteredItems.map<AppTemplateSchemaType>((item) => {
     // Check if this template should be promoted for current user
     const isPromotedForUser =
       item.promoteTags &&
@@ -113,7 +113,7 @@ async function handler(
       type: item.type,
       author: item.author,
       userGuide: item.userGuide,
-      workflow: {}
+      workflow: {} as AppTemplateSchemaType['workflow']
     };
   });
 

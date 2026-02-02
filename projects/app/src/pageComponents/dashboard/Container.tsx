@@ -112,12 +112,16 @@ const DashboardContainer = ({
             typeName: t('app:type.All')
           },
           {
-            typeId: AppTypeEnum.simple,
-            typeName: t('app:type.Chat_Agent')
+            typeId: AppTypeEnum.chatAgent,
+            typeName: t('app:type.Chat_Agent_v2')
           },
           {
             typeId: AppTypeEnum.workflow,
             typeName: t('app:type.Workflow bot')
+          },
+          {
+            typeId: AppTypeEnum.simple,
+            typeName: t('app:type.Chat_Agent')
           }
         ]
       },

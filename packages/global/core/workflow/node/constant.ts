@@ -135,7 +135,8 @@ export enum FlowNodeTypeEnum {
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  agent = 'tools',
+  agent = 'agent',
+  toolCall = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
   lafModule = 'lafModule',
@@ -281,7 +282,6 @@ export const NodeGradients = {
   salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
 };
-
 export const NodeBorderColors = {
   pink: 'rgba(255, 161, 206, 0.6)',
   blue: 'rgba(104, 192, 255, 0.6)',
@@ -303,3 +303,24 @@ export const NodeBorderColors = {
   salmon: 'rgba(255, 160, 160, 0.6)',
   gray: 'rgba(136, 136, 136, 0.6)'
 };
+export const NodeColorSchemaEnum = [
+  'pink',
+  'blue',
+  'blueLight',
+  'blueDark',
+  'orange',
+  'purple',
+  'teal',
+  'green',
+  'greenLight',
+  'indigo',
+  'coral',
+  'lime',
+  'violet',
+  'violetDeep',
+  'yellowGreen',
+  'lafTeal',
+  'skyBlue',
+  'salmon',
+  'gray'
+] as const;

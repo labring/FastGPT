@@ -12,7 +12,7 @@ import {
 
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
@@ -46,7 +46,7 @@ const QGConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('common:core.app.Question Guide')}</FormLabel>
+      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_question_guide')}>

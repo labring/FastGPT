@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
