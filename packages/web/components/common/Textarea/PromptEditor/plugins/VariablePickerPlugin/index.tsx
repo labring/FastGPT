@@ -35,8 +35,12 @@ export default function VariablePickerPlugin({
           nodeToRemove.remove();
         }
         selection.insertNodes([$createTextNode(`{{${selectedOption.key}}}`)]);
-        closeMenu();
       });
+
+      // Close menu after editor update to avoid flushSync warning
+      setTimeout(() => {
+        closeMenu();
+      }, 0);
     },
     [editor]
   );

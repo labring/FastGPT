@@ -1,6 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { getResDataQuery } from '@/pages/api/core/chat/record/getResData';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type {
   InitChatResponse,
   InitOutLinkChatProps,

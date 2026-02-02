@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
@@ -101,7 +101,7 @@ async function appSplitMigration(teamId: string) {
     // update parentIds
     // update rps
     {
-      const ops: AnyBulkWriteOperation<AppSchema>[] = [];
+      const ops: AnyBulkWriteOperation<AppSchemaType>[] = [];
       const rpOps: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
 
       for (const folder of allFolders) {

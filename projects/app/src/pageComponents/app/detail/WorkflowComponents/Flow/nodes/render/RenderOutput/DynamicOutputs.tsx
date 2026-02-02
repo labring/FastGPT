@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { Box, Flex, Input, HStack } from '@chakra-ui/react';
 import {
   FlowNodeOutputTypeEnum,

@@ -1,7 +1,10 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { MongoApp } from '../app/schema';
+import type {
+  AIChatItemType,
+  ChatHistoryItemResType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -9,7 +12,10 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  checkInteractiveResponseStatus,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {
   FlowNodeTypeEnum,
@@ -25,6 +31,8 @@ import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
 export type Props = {
   chatId: string;
@@ -50,7 +58,7 @@ export type Props = {
 const beforProcess = (props: Props) => {
   // Remove url
   props.userContent.value.forEach((item) => {
-    if (item.type === ChatItemValueTypeEnum.file && item.file?.key) {
+    if (item.file?.key) {
       item.file.url = '';
     }
   });
@@ -73,12 +81,12 @@ const afterProcess = async ({
           const keys: string[] = [];
 
           // 1. chat file
-          if (valueItem.type === ChatItemValueTypeEnum.file && valueItem.file?.key) {
+          if ('file' in valueItem && valueItem.file?.key) {
             keys.push(valueItem.file.key);
           }
 
           // 2. plugin input
-          if (valueItem.type === 'text' && valueItem.text?.content) {
+          if ('text' in valueItem && valueItem.text?.content) {
             try {
               const parsed = JSON.parse(valueItem.text.content);
               // 2.1 plugin input - 数组格式
@@ -153,26 +161,24 @@ const formatAiContent = ({
 
   const citeCollectionIds = new Set<string>();
 
-  const nodeResponses = responseData?.map((responseItem) => {
+  const dealResponseData = (responseItem: ChatHistoryItemResType) => {
     if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
-      return {
-        ...responseItem,
-        quoteList: responseItem.quoteList.map((quote) => {
-          citeCollectionIds.add(quote.collectionId);
-          return {
-            id: quote.id,
-            chunkIndex: quote.chunkIndex,
-            datasetId: quote.datasetId,
-            collectionId: quote.collectionId,
-            sourceId: quote.sourceId,
-            sourceName: quote.sourceName,
-            score: quote.score
-          };
-        })
-      };
+      // @ts-ignore
+      responseItem.quoteList = responseItem.quoteList.map((quote) => {
+        citeCollectionIds.add(quote.collectionId);
+        return {
+          id: quote.id,
+          chunkIndex: quote.chunkIndex,
+          datasetId: quote.datasetId,
+          collectionId: quote.collectionId,
+          sourceId: quote.sourceId,
+          sourceName: quote.sourceName,
+          score: quote.score
+        };
+      });
     }
-    return responseItem;
-  });
+  };
+  getFlatAppResponses(responseData || []).forEach(dealResponseData);
 
   return {
     aiResponse: {
@@ -181,7 +187,7 @@ const formatAiContent = ({
       errorMsg,
       citeCollectionIds: Array.from(citeCollectionIds)
     },
-    nodeResponses,
+    nodeResponses: responseData,
     citeCollectionIds
   };
 };
@@ -206,7 +212,7 @@ const getChatDataLog = async ({
   };
 };
 
-export async function saveChat(props: Props) {
+export const pushChatRecords = async (props: Props) => {
   beforProcess(props);
 
   const {
@@ -392,11 +398,21 @@ export async function saveChat(props: Props) {
       addLog.error('Push chat log error', error);
     }
   } catch (error) {
-    addLog.error(`update chat history error`, error);
+    addLog.error(`Save chat history error`, error);
   }
-}
+};
 
-export const updateInteractiveChat = async (props: Props) => {
+/* 
+  更新交互节点，包含两种情况：
+  1. 更新当前的 items，并把 value 追加到当前 items
+  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
+*/
+export const updateInteractiveChat = async ({
+  interactive,
+  ...props
+}: Props & {
+  interactive: WorkflowInteractiveResponseType;
+}) => {
   beforProcess(props);
 
   const {
@@ -413,25 +429,34 @@ export const updateInteractiveChat = async (props: Props) => {
   } = props;
   if (!chatId) return;
 
+  const { variables: variableList } = getAppChatConfig({
+    chatConfig: appChatConfig,
+    systemConfigNode: getGuideModule(nodes),
+    isPublicFetch: false
+  });
+
   const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
     _id: -1
   });
 
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
-  // Update interactive value
-  const interactiveValue = chatItem.value[chatItem.value.length - 1];
+  // Get interactive value
+  interactive.params = interactive.params || {};
 
-  if (
-    !interactiveValue ||
-    interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
-    !interactiveValue.interactive?.params
-  ) {
-    return;
+  // Get interactive response
+  const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
+
+  // 如果是发送一条新的 user 消息，则直接用推送记录的方式
+  const status = checkInteractiveResponseStatus({
+    interactive,
+    input: userInteractiveVal
+  });
+  if (status === 'query') {
+    return await pushChatRecords(props);
   }
 
   const parsedUserInteractiveVal = (() => {
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
     try {
       return JSON.parse(userInteractiveVal);
     } catch (err) {
@@ -444,70 +469,93 @@ export const updateInteractiveChat = async (props: Props) => {
     errorMsg
   });
 
-  const { variables: variableList } = getAppChatConfig({
-    chatConfig: appChatConfig,
-    systemConfigNode: getGuideModule(nodes),
-    isPublicFetch: false
-  });
+  /* 
+    在原来 chat_items 上更新。
+    1. 更新交互响应结果
+    2. 合并 chat_item 数据
+    3. 合并 chat_item_response 数据
+  */
+  // Update interactive value
+  {
+    // 提取嵌套在子流程里的交互节点
+    const finalInteractive = extractDeepestInteractive(interactive);
 
-  let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
+    if (
+      finalInteractive.type === 'userSelect' ||
+      finalInteractive.type === 'agentPlanAskUserSelect'
+    ) {
+      finalInteractive.params.userSelectedVal = userInteractiveVal;
+    } else if (
+      (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
+      typeof parsedUserInteractiveVal === 'object'
+    ) {
+      finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
+        const itemValue = parsedUserInteractiveVal[item.key];
+        if (itemValue === undefined) return item;
 
-  if (finalInteractive.type === 'userSelect') {
-    finalInteractive.params.userSelectedVal = parsedUserInteractiveVal;
-  } else if (
-    finalInteractive.type === 'userInput' &&
-    typeof parsedUserInteractiveVal === 'object'
-  ) {
-    finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
-      const itemValue = parsedUserInteractiveVal[item.key];
-      if (itemValue === undefined) return item;
-
-      // 如果是密码类型，加密后存储
-      if (item.type === FlowNodeInputTypeEnum.password) {
-        const decryptedVal = anyValueDecrypt(itemValue);
-        if (typeof decryptedVal === 'string') {
+        // 如果是密码类型，加密后存储
+        if (item.type === FlowNodeInputTypeEnum.password) {
+          const decryptedVal = anyValueDecrypt(itemValue);
+          if (typeof decryptedVal === 'string') {
+            return {
+              ...item,
+              value: encryptSecretValue({
+                value: decryptedVal,
+                secret: ''
+              } as SecretValueType)
+            };
+          }
           return {
             ...item,
-            value: encryptSecretValue({
-              value: decryptedVal,
-              secret: ''
-            } as SecretValueType)
+            value: itemValue
           };
         }
+
         return {
           ...item,
           value: itemValue
         };
-      }
+      });
+      finalInteractive.params.submitted = true;
+    } else if (finalInteractive.type === 'paymentPause') {
+      chatItem.value.pop();
+    } else if (finalInteractive.type === 'agentPlanCheck') {
+      finalInteractive.params.confirmed = true;
+    }
 
-      return {
-        ...item,
-        value: itemValue
+    // 将最新的 interactive 赋值给最后一条消息（最后一条必然是带交互的消息）
+    chatItem.value[chatItem.value.length - 1].interactive = interactive;
+  }
+
+  // Update current items
+  {
+    if (aiContent.customFeedbacks) {
+      chatItem.customFeedbacks = chatItem.customFeedbacks
+        ? [...chatItem.customFeedbacks, ...aiContent.customFeedbacks]
+        : aiContent.customFeedbacks;
+    }
+    if (aiContent.value) {
+      chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
+    }
+    if (aiResponse.citeCollectionIds) {
+      chatItem.citeCollectionIds = chatItem.citeCollectionIds
+        ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
+        : aiResponse.citeCollectionIds;
+    }
+
+    if (aiContent.memories) {
+      chatItem.memories = {
+        ...chatItem.memories,
+        ...aiContent.memories
       };
-    });
-    finalInteractive.params.submitted = true;
-  } else if (finalInteractive.type === 'paymentPause') {
-    chatItem.value.pop();
+    }
+
+    chatItem.durationSeconds = chatItem.durationSeconds
+      ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
+      : durationSeconds;
   }
 
-  if (aiResponse.customFeedbacks) {
-    chatItem.customFeedbacks = chatItem.customFeedbacks
-      ? [...chatItem.customFeedbacks, ...aiResponse.customFeedbacks]
-      : aiResponse.customFeedbacks;
-  }
-  if (aiResponse.value) {
-    chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
-  }
-  if (aiResponse.citeCollectionIds) {
-    chatItem.citeCollectionIds = chatItem.citeCollectionIds
-      ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
-      : aiResponse.citeCollectionIds;
-  }
-
-  chatItem.durationSeconds = chatItem.durationSeconds
-    ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
-    : durationSeconds;
-
+  chatItem.markModified('value');
   await mongoSessionRun(async (session) => {
     await chatItem.save({ session });
     await MongoChat.updateOne(
@@ -528,7 +576,10 @@ export const updateInteractiveChat = async (props: Props) => {
 
     // Create chat item respones
     if (nodeResponses) {
-      // Merge
+      /* 
+        Merge with last response data
+        如果是从嵌套的 node 里触发的交互，这里需要进行一个合并，否则会导致出现两次相同的 node（child response 无法合并起来）
+      */
       const lastResponse = await MongoChatItemResponse.findOneAndDelete({
         appId,
         chatId,
@@ -541,8 +592,7 @@ export const updateInteractiveChat = async (props: Props) => {
         .session(session);
 
       const newResponses = lastResponse?.data
-        ? // @ts-ignore
-          mergeChatResponseData([lastResponse?.data, ...nodeResponses])
+        ? mergeChatResponseData([lastResponse?.data, ...nodeResponses])
         : nodeResponses;
 
       await MongoChatItemResponse.create(

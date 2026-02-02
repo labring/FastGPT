@@ -1,4 +1,4 @@
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -95,7 +95,7 @@ export async function findAppAndAllChildren({
   teamId: string;
   appId: string;
   fields?: string;
-}): Promise<AppSchema[]> {
+}): Promise<AppSchemaType[]> {
   const find = async (id: string) => {
     const children = await MongoApp.find(
       {
@@ -143,7 +143,7 @@ export const deleteAppDataProcessor = async ({
   app,
   teamId
 }: {
-  app: AppSchema;
+  app: AppSchemaType;
   teamId: string;
 }) => {
   const appId = String(app._id);

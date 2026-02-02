@@ -10,7 +10,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -206,7 +206,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolName] = pluginId.split('/');
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version

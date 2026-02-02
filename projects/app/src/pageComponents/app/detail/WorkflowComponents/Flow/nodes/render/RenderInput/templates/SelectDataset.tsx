@@ -97,9 +97,9 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
           <DatasetSelectModal
             defaultSelectedDatasets={selectedDatasets.map((item) => ({
               datasetId: item.datasetId,
-              vectorModel: item.vectorModel,
               name: item.name,
-              avatar: item.avatar
+              avatar: item.avatar,
+              vectorModel: item.vectorModel
             }))}
             onChange={(e) => {
               onChangeNode({

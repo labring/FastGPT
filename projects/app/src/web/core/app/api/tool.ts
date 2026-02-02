@@ -16,21 +16,21 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
-import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import type {
   getToolVersionListProps,
   getToolVersionResponse
 } from '@/pages/api/core/app/tool/getVersionList';
-import type {
-  McpGetChildrenmQuery,
-  McpGetChildrenmResponse
-} from '@/pages/api/core/app/mcpTools/getChildren';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
+import type {
+  UpdateMcpToolsBodyType,
+  CreateMcpToolsBodyType,
+  GetMcpChildrenQueryType,
+  GetMcpChildrenResponseType
+} from '@fastgpt/global/openapi/core/app/mcpTools/api';
 
 /* ============ team plugin ============== */
 export const getTeamAppTemplates = async (data?: {
@@ -47,7 +47,9 @@ export const getTeamAppTemplates = async (data?: {
         ...item,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        appType: app.type,
+        isFolder: false
       }));
       // handle http toolset
     } else if (app.type === AppTypeEnum.httpToolSet) {
@@ -59,7 +61,9 @@ export const getTeamAppTemplates = async (data?: {
         name: item.name,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        appType: app.type,
+        isFolder: false
       }));
     }
   }
@@ -87,7 +91,8 @@ export const getTeamAppTemplates = async (data?: {
       showStatus: false,
       version: app.pluginData?.nodeVersion,
       isTool: true,
-      sourceMember: app.sourceMember
+      sourceMember: app.sourceMember,
+      appType: app.type
     }))
   );
 };
@@ -108,10 +113,10 @@ export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/tool/getVersionList', data);
 
 /* ============ mcp tools ============== */
-export const postCreateMCPTools = (data: createMCPToolsBody) =>
+export const postCreateMCPTools = (data: CreateMcpToolsBodyType) =>
   POST<string>('/core/app/mcpTools/create', data);
 
-export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
+export const postUpdateMCPTools = (data: UpdateMcpToolsBodyType) =>
   POST('/core/app/mcpTools/update', data);
 
 export const getMCPTools = (data: getMCPToolsBody) =>
@@ -120,8 +125,8 @@ export const getMCPTools = (data: getMCPToolsBody) =>
 export const postRunMCPTool = (data: RunMCPToolBody) =>
   POST('/support/mcp/client/runTool', data, { timeout: 300000 });
 
-export const getMcpChildren = (data: McpGetChildrenmQuery) =>
-  GET<McpGetChildrenmResponse>('/core/app/mcpTools/getChildren', data);
+export const getMcpChildren = (data: GetMcpChildrenQueryType) =>
+  GET<GetMcpChildrenResponseType>('/core/app/mcpTools/getChildren', data);
 
 /* ============ http tools ============== */
 export const getApiSchemaByUrl = (url: string) =>
