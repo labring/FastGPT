@@ -8,7 +8,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
   removeAIResponseCite
@@ -85,7 +85,7 @@ export async function handler(
         });
 
         if (showRunningStatus === false) {
-          item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
+          item.value = item.value.filter((v) => !('tool' in v));
         }
       }
     });

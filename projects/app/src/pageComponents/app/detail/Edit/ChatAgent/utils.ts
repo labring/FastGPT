@@ -1,4 +1,7 @@
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import {
+  AppFormEditFormV1TypeSchema,
+  type SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type {
@@ -61,9 +64,15 @@ export const appWorkflow2AgentForm = ({
       if (tools) {
         defaultAppForm.selectedTools = tools.map((tool) => ({
           ...tool,
-          id: tool.pluginId,
-          configStatus: getToolConfigStatus(tool).status
+          id: tool.pluginId!,
+          configStatus: getToolConfigStatus({ tool }).status
         }));
+      }
+
+      // Dataset configuration
+      const datasetParams = inputMap.get(NodeInputKeyEnum.datasetParams);
+      if (datasetParams) {
+        defaultAppForm.dataset = datasetParams;
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -189,24 +198,46 @@ export function agentForm2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
-              value: data.selectedTools.map((tool) => ({
-                id: tool.pluginId,
+              value: data.selectedTools.map((tool) => {
+                return {
+                  id: tool.pluginId,
 
-                config: tool.inputs.reduce(
-                  (acc, input) => {
-                    // Special tool
-                    if (
-                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                      input.key === NodeInputKeyEnum.history
-                    ) {
-                      acc[input.key] = data.aiSettings.maxHistories;
-                    }
-                    acc[input.key] = input.value;
-                    return acc;
-                  },
-                  {} as Record<string, any>
-                )
-              }))
+                  config: tool.inputs.reduce(
+                    (acc, input) => {
+                      // Special tool
+                      if (
+                        tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                        input.key === NodeInputKeyEnum.history
+                      ) {
+                        acc[input.key] = data.aiSettings.maxHistories;
+                      }
+                      acc[input.key] = input.value;
+                      return acc;
+                    },
+                    {} as Record<string, any>
+                  )
+                };
+              })
+            },
+            // Dataset configuration
+            {
+              key: NodeInputKeyEnum.datasetParams,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.object,
+              value: AppFormEditFormV1TypeSchema.shape.dataset.parse({
+                datasets: data.dataset.datasets,
+                similarity: data.dataset.similarity,
+                limit: data.dataset.limit,
+                searchMode: data.dataset.searchMode,
+                embeddingWeight: data.dataset.embeddingWeight,
+                usingReRank: data.dataset.usingReRank,
+                rerankModel: data.dataset.rerankModel,
+                rerankWeight: data.dataset.rerankWeight,
+                datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
+                datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
+                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg
+              })
             }
           ],
           outputs: AgentNode.outputs
@@ -224,6 +255,7 @@ export function agentForm2AppWorkflow(
   }
 
   const workflow = agentChatTemplate();
+
   return {
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
@@ -276,7 +308,7 @@ export const loadGeneratedTools = async ({
         return {
           ...tool,
           id: toolId,
-          configStatus: getToolConfigStatus(tool).status
+          configStatus: getToolConfigStatus({ tool }).status
         };
       })
     )

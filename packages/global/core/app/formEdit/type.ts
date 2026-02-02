@@ -7,11 +7,9 @@ import { NodeInputKeyEnum } from '../../workflow/constants';
 export type AgentSubAppItemType = {};
 
 /* ===== Tool ===== */
-export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.and(
-  z.object({
-    configStatus: z.enum(['active', 'waitingForConfig', 'invalid']).optional()
-  })
-);
+export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
+  configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional()
+});
 export type SelectedToolItemType = z.infer<typeof SelectedToolItemTypeSchema>;
 
 export const AppFormEditFormV1TypeSchema = z.object({
@@ -29,11 +27,9 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatResponseFormat]: z.string().optional(),
     [NodeInputKeyEnum.aiChatJsonSchema]: z.string().optional()
   }),
-  dataset: AppDatasetSearchParamsTypeSchema.and(
-    z.object({
-      datasets: z.array(SelectedDatasetSchema)
-    })
-  ),
+  dataset: AppDatasetSearchParamsTypeSchema.extend({
+    datasets: z.array(SelectedDatasetSchema)
+  }),
   selectedTools: z.array(SelectedToolItemTypeSchema),
   chatConfig: AppChatConfigTypeSchema
 });

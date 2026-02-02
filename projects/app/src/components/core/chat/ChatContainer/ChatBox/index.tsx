@@ -64,6 +64,7 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -388,6 +389,8 @@ const ChatBox = ({
             }
             return item;
           }
+
+          // Agent
           if (event === SseResponseEventEnum.plan && plan) {
             return {
               ...item,
@@ -449,7 +452,7 @@ const ChatBox = ({
       generatingScroll(forceScroll);
     }
   );
-  console.log(chatRecords, 'chatRecords');
+
   // 重置输入内容
   const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
     if (!TextareaDom.current) return;
@@ -638,7 +641,7 @@ const ChatBox = ({
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 这里，无论是否为交互模式，最后都是 Human 的消息。
+            // 这里，无论是否为交互模式，都要确保最后一条消息都是 Human 的消息。
             const messages = chats2GPTMessages({
               messages: newChatList.slice(0, -1).map((item) => {
                 if (item.obj === ChatRoleEnum.Human) {
@@ -653,7 +656,7 @@ const ChatBox = ({
             });
 
             const { responseText } = await onStartChat({
-              messages, // 保证最后一条是 Human 的消息
+              messages,
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
@@ -973,7 +976,8 @@ const ChatBox = ({
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
         sendPrompt({
-          text: data.text
+          text: data.text,
+          interactive: lastInteractive
         });
       }
     };
@@ -1012,7 +1016,8 @@ const ChatBox = ({
       ) {
         sendPrompt({
           text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
-          hideInUI: true
+          hideInUI: true,
+          interactive: lastInteractive
         });
       }
     },
@@ -1113,7 +1118,7 @@ const ChatBox = ({
       const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
       const nextIsDeleted =
         index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-      console.log(isDeleted, 2323);
+
       if (isDeleted && !prevIsDeleted) {
         // 开始新的删除组
         currentGroup = {
@@ -1207,7 +1212,6 @@ const ChatBox = ({
                   <Box py={item.hideInUI ? 0 : 6}>
                     {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                       <ChatItem
-                        type={item.obj}
                         avatar={userAvatar}
                         chat={item}
                         onRetry={retryInput(item.dataId)}
@@ -1217,7 +1221,6 @@ const ChatBox = ({
                     )}
                     {item.obj === ChatRoleEnum.AI && (
                       <ChatItem
-                        type={item.obj}
                         avatar={appAvatar}
                         chat={item}
                         isLastChild={index === processedRecords.length - 1}

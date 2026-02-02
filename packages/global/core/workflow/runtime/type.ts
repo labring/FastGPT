@@ -129,6 +129,7 @@ export type RuntimeNodeItemType = {
   catchError?: boolean;
 };
 
+// 知识库未 schema 改造，这里用不了
 // export const DispatchNodeResponseSchema = z.object({
 //   // common
 //   moduleLogo: z.string().nullish(),
@@ -145,8 +146,9 @@ export type RuntimeNodeItemType = {
 //   nodeOutputs: z.record(z.string(), z.any()).nullish(),
 //   mergeSignId: z.string().nullish(),
 
+//   llmRequestIds: z.array(z.string()).nullish(), // LLM 请求追踪 ID 列表
+
 //   // bill
-//   tokens: z.number().nullish(), // @deprecated
 //   inputTokens: z.number().nullish(),
 //   outputTokens: z.number().nullish(),
 //   model: z.string().nullish(),
@@ -258,7 +260,8 @@ export type RuntimeNodeItemType = {
 //   // @deprecated
 //   extensionModel: z.string().nullish(),
 //   extensionResult: z.string().nullish(),
-//   extensionTokens: z.number().nullish()
+//   extensionTokens: z.number().nullish(),
+//   tokens: z.number().nullish()
 // });
 export type DispatchNodeResponseType = {
   // common
@@ -266,6 +269,8 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  // LLM request tracking
+  llmRequestIds?: string[]; // LLM 请求追踪 ID 列表
 
   // Client will toast
   error?: Record<string, any> | string;
@@ -353,6 +358,14 @@ export type DispatchNodeResponseType = {
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
+  // Agent call
+  stepQuery?: string;
+  // Compress chunk
+  compressTextAgent?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalPoints: number;
+  };
 
   // code
   codeLog?: string;

@@ -44,8 +44,8 @@ export const COMPRESSION_CONFIG = {
    * - 再 1 轮 = 60k (60%) ⚠️ 触发压缩 → 30k
    * - 预留：55k - 30k = 25k（还能跑 4 轮）
    */
-  MESSAGE_THRESHOLD: 0.8, // 55% 触发压缩
-  MESSAGE_TARGET_RATIO: 0.5, // 压缩到 50%（即原 55% → 27.5%）
+  MESSAGE_THRESHOLD: 0.8,
+  MESSAGE_TARGET_RATIO: 0.5,
 
   /**
    * === 单个 tool response ===
@@ -61,15 +61,28 @@ export const COMPRESSION_CONFIG = {
   SINGLE_TOOL_TARGET: 0.25,
 
   /**
-   * === 分块压缩 ===
+   * === 文件读取结果压缩 ===
    *
-   * 用途：当单个 tool response 超过限制时，将内容分块并行压缩
+   * 触发场景：文件解析工具返回的文件内容超过限制
+   * 内容特点：通常是大型文档、PDF 等文件的完整文本内容
    *
    * 示例（maxContext=100k）：
-   * - 单块最大：50k tokens
-   * - 120k 内容 → 切分成 3 块，每块约 40k
+   * - 文件内容 = 40k (40%) ✅ 不触发
+   * - 文件内容 = 60k (60%) ⚠️ 触发压缩 → 25k
    */
-  CHUNK_SIZE_RATIO: 0.5 // 单块不超过 maxContext 的 50%
+  FILE_READ_RESPONSE_MAX: 0.5, // 50% 触发压缩
+  FILE_READ_RESPONSE_TARGET: 0.25, // 压缩到 25%
+
+  /**
+   * === 分块压缩 ===
+   */
+  CHUNK_SIZE_RATIO: 0.5, // 单块不超过 maxContext 的 50%
+
+  /**
+   * === 知识库检索工具的压缩阈值 ===
+   * 策略：使用 LLM 根据查询相关性自动选择最相关的一半分块
+   */
+  DATASET_SEARCH_SELECTION_RATIO: 0.2
 } as const;
 
 /**
@@ -96,7 +109,18 @@ export const calculateCompressionThresholds = (maxContext: number) => {
       target: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_TARGET)
     },
 
-    // 分块大小
-    chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO)
+    // 文件读取结果压缩阈值
+    fileReadResponse: {
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_MAX),
+      target: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_TARGET)
+    },
+
+    // 分块压缩中每个分块的分割大小，用来划分原始大块的内容，压缩的目标是根据实际的 maxtoken / 分块数量 来决定的
+    chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO),
+
+    // 知识库检索工具阈值，到达阈值会触发选择最相关的一半分块内容（筛选）
+    datasetSearchSelection: Math.floor(
+      maxContext * COMPRESSION_CONFIG.DATASET_SEARCH_SELECTION_RATIO
+    )
   };
 };

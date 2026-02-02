@@ -5,7 +5,6 @@ import type { TextNode } from 'lexical';
 import { getSkillRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 
@@ -75,7 +74,17 @@ function SkillLabelPlugin({
         icon: undefined,
         skillType: FlowNodeTypeEnum.tool,
         status: 'invalid',
-        onClick: () => {}
+        onClick: (id) => {
+          // Delete the skill node from editor
+          editor.update(() => {
+            const nodes = editor.getEditorState()._nodeMap;
+            nodes.forEach((node) => {
+              if (node instanceof SkillNode && node.getSkillKey() === id) {
+                node.remove();
+              }
+            });
+          });
+        }
       });
     };
 
@@ -89,6 +98,24 @@ function SkillLabelPlugin({
   // Sync tool name, avatar, status and configure handler for each skill node
   useEffect(() => {
     if (selectedSkills.length === 0) return;
+
+    // Wrapped click handler: delete if invalid, otherwise call original onClickSkill
+    const handleClick = (id: string, status: SkillLabelItemType['configStatus']) => {
+      if (status === 'invalid') {
+        // Delete the skill node from editor
+        editor.update(() => {
+          const nodes = editor.getEditorState()._nodeMap;
+          nodes.forEach((node) => {
+            if (node instanceof SkillNode && node.getSkillKey() === id) {
+              node.remove();
+            }
+          });
+        });
+      } else {
+        // Call original click handler for configuration
+        onClickSkill(id);
+      }
+    };
 
     // Perform all operations in a single editor.update() to avoid node reference issues
     // This ensures we work within the same editor state snapshot
@@ -106,47 +133,34 @@ function SkillLabelPlugin({
             writableNode.__icon = tool.avatar;
             writableNode.__skillType = tool.flowNodeType;
             writableNode.__status = tool.configStatus;
-            writableNode.__onClick = onClickSkill;
+            writableNode.__onClick = (id) => handleClick(id, tool.configStatus);
           }
         }
       });
     });
   }, [selectedSkills, editor, onClickSkill]);
 
-  // Monitor skill node mutations and detect when they are removed from editor
-  // Call onRemoveSkill callback when a skill node is deleted from the editor content
+  // Monitor skill node mutations and notify parent on destruction
   useEffect(() => {
-    if (!onRemoveSkill) return;
+    const unregister = editor.registerMutationListener(SkillNode, (mutatedNodes) => {
+      const currentState = editor.getEditorState();
 
-    const unregister = editor.registerMutationListener(
-      SkillNode,
-      (mutatedNodes, { prevEditorState, updateTags }) => {
-        // mutatedNodes is a Map<NodeKey, NodeMutation>
-        // NodeMutation can be 'created', 'destroyed', or 'updated'
-        console.log('SkillNode mutation detected:', mutatedNodes);
-        mutatedNodes.forEach((mutation, nodeKey) => {
-          console.log(`Node ${nodeKey} mutation: ${mutation}`);
-          if (mutation === 'destroyed') {
-            // Get the skill ID from the previous reference before the node was destroyed
-            const skillId = previousIdsRef.current.get(nodeKey);
-            console.log(`Skill node destroyed, skillId: ${skillId}`);
-            if (skillId) {
-              onRemoveSkill(skillId);
-              previousIdsRef.current.delete(nodeKey);
-            }
-          } else if (mutation === 'created') {
-            // Track newly created skill nodes by reading from current editor state
-            const currentState = editor.getEditorState();
-            const node = currentState._nodeMap.get(nodeKey);
-            if (node instanceof SkillNode) {
-              const skillId = node.getSkillKey();
-              console.log(`Skill node created, skillId: ${skillId}`);
-              previousIdsRef.current.set(nodeKey, skillId);
-            }
+      mutatedNodes.forEach((mutation, nodeKey) => {
+        if (mutation === 'destroyed') {
+          const removedId = previousIdsRef.current.get(nodeKey);
+          if (removedId) {
+            onRemoveSkill(removedId);
           }
-        });
-      }
-    );
+          previousIdsRef.current.delete(nodeKey);
+          return;
+        }
+
+        const node = currentState._nodeMap.get(nodeKey);
+        if (node instanceof SkillNode) {
+          previousIdsRef.current.set(nodeKey, node.getSkillKey());
+        }
+      });
+    });
 
     // Initialize with current state
     editor.getEditorState().read(() => {

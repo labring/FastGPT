@@ -184,7 +184,8 @@ export const streamFetch = ({
           // failed stream
           if (
             !res.ok ||
-            !res.headers.get('content-type')?.startsWith(EventStreamContentType) ||
+            (res.headers.get('content-type') &&
+              !res.headers.get('content-type')?.startsWith(EventStreamContentType)) ||
             res.status !== 200
           ) {
             try {

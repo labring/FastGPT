@@ -106,20 +106,16 @@ export const getHistoryFileLinks = (histories: ChatItemType[]) => {
   return histories
     .filter((item) => {
       if (item.obj === ChatRoleEnum.Human) {
-        return item.value.filter((value) => value.file);
+        return item.value.some((value) => value.file);
       }
       return false;
     })
-    .map((item) => {
-      const value = item.value as UserChatItemValueItemType[];
-      const files = value
-        .map((item) => {
-          return item.file?.url;
-        })
-        .filter(Boolean) as string[];
-      return files;
-    })
-    .flat();
+    .flatMap((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return item.value.map((value) => value.file?.url).filter(Boolean) as string[];
+      }
+      return [];
+    });
 };
 
 export const getFileContentFromLinks = async ({

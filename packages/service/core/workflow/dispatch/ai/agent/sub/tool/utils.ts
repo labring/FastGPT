@@ -2,7 +2,6 @@ import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getChildAppPreviewNode } from '../../../../../../app/tool/controller';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
 import { addLog } from '../../../../../../../common/system/log';
@@ -12,6 +11,7 @@ import { getSystemToolRunTimeNodeFromSystemToolset } from '../../../../../../wor
 import { MongoApp } from '../../../../../../app/schema';
 import { getMCPChildren } from '../../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
@@ -21,7 +21,9 @@ import {
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 export const agentSkillToToolRuntime = async ({
   tools,
@@ -56,7 +58,7 @@ export const agentSkillToToolRuntime = async ({
       }
 
       if (input.key === NodeInputKeyEnum.toolData) {
-        jsonSchema = (input.value as McpToolDataType).inputSchema;
+        jsonSchema = (input.value as McpToolDataType)?.inputSchema;
       }
     }
 
@@ -65,12 +67,13 @@ export const agentSkillToToolRuntime = async ({
       name: name,
       intro: toolDescription || intro
     });
+    const formatToolId = `t${toolId}`;
 
     if (jsonSchema) {
       return {
         type: 'function',
         function: {
-          name: toolId,
+          name: formatToolId,
           description,
           parameters: jsonSchema
         }
@@ -93,7 +96,7 @@ export const agentSkillToToolRuntime = async ({
     return {
       type: 'function',
       function: {
-        name: toolId,
+        name: formatToolId,
         description,
         parameters: {
           type: 'object',
@@ -107,40 +110,71 @@ export const agentSkillToToolRuntime = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        const { source, pluginId } = splitCombineToolId(tool.id);
+        const { pluginId, authAppId } = splitCombineToolId(tool.id);
+
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
-            appId: pluginId,
+            appId: tool.id,
             lang
           }),
-          ...(source === AppToolSourceEnum.personal
+          ...(authAppId
             ? [
                 authAppByTmbId({
                   tmbId,
-                  appId: pluginId,
+                  appId: authAppId,
                   per: ReadPermissionVal
                 })
               ]
             : [])
         ]);
+        // console.log('toolNode', toolNode)
+        // Check if tool configuration is complete
+        // 1. Add config value to toolNode.inputs
+        toolNode.inputs.forEach((input) => {
+          const value = tool.config[input.key];
+          if (value) {
+            input.value = value;
+          }
+        });
+        // 2. Check config status
+        const configStatus = getToolConfigStatus({
+          tool: toolNode
+        });
+        if (configStatus.status === 'waitingForConfig') {
+          addLog.warn(`[Agent] tool config incomplete`, {
+            toolId: tool.id,
+            toolName: toolNode.name
+          });
+          return [];
+        }
 
-        const removePrefixId = pluginId.replace(`${source}-`, '');
-        const requestToolId = `t${removePrefixId}`;
+        const toolType = (() => {
+          if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {
+            return 'workflow';
+          }
+          if (toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+            return 'toolWorkflow';
+          }
+          return 'tool';
+        })();
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
-          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0].value;
+          const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0]?.value;
+          const httpToolsetVal = toolNode.toolConfig?.httpToolSet;
+
           if (systemToolId) {
             const children = await getSystemToolRunTimeNodeFromSystemToolset({
               toolSetNode: {
                 toolConfig: toolNode.toolConfig,
                 inputs: toolNode.inputs,
-                nodeId: requestToolId
+                nodeId: pluginId
               },
               lang
             });
 
             return children.map((child) => ({
+              type: 'tool',
               id: child.nodeId,
               name: child.name,
               avatar: child.avatar,
@@ -161,22 +195,58 @@ export const agentSkillToToolRuntime = async ({
             if (!app) return [];
             const toolList = await getMCPChildren(app);
 
-            const parentId = mcpToolsetVal.toolId ?? toolNode.pluginId;
+            const toolSetId = mcpToolsetVal.toolId ?? toolNode.pluginId;
             const children = toolList.map((tool, index) => {
               const newToolNode = getMCPToolRuntimeNode({
+                toolSetId,
+                nodeId: `${toolSetId}${index}`,
                 avatar: toolNode.avatar,
-                tool,
-                // New ?? Old
-                parentId
+                tool: {
+                  ...tool,
+                  name: `${toolNode.name}/${tool.name}`
+                }
               });
-              newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
-              newToolNode.name = `${toolNode.name}/${tool.name}`;
 
               return newToolNode;
             });
 
             return children.map((child) => {
               return {
+                type: 'tool',
+                id: child.nodeId,
+                name: child.name,
+                avatar: child.avatar,
+                version: child.version,
+                toolConfig: child.toolConfig,
+                params: tool.config,
+                requestSchema: formatSchema({
+                  toolId: child.nodeId,
+                  inputs: child.inputs,
+                  flowNodeType: child.flowNodeType,
+                  name: child.name,
+                  toolDescription: child.toolDescription,
+                  intro: child.intro
+                })
+              };
+            });
+          } else if (httpToolsetVal) {
+            const children = httpToolsetVal.toolList.map((tool: HttpToolConfigType, index) => {
+              const newToolNode = getHTTPToolRuntimeNode({
+                tool: {
+                  ...tool,
+                  name: `${toolNode.name}/${tool.name}`
+                },
+                nodeId: `${pluginId}${index}`,
+                avatar: toolNode.avatar,
+                toolSetId: pluginId
+              });
+
+              return newToolNode;
+            });
+
+            return children.map((child) => {
+              return {
+                type: 'tool',
                 id: child.nodeId,
                 name: child.name,
                 avatar: child.avatar,
@@ -197,16 +267,19 @@ export const agentSkillToToolRuntime = async ({
 
           return [];
         } else {
+          const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+
           return [
             {
-              id: requestToolId,
+              type: toolType,
+              id: cleanedPluginId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,
               requestSchema: formatSchema({
-                toolId: requestToolId,
+                toolId: cleanedPluginId,
                 inputs: toolNode.inputs,
                 flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,

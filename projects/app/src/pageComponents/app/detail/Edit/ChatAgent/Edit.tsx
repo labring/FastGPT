@@ -10,7 +10,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type SimpleAppSnapshotType } from '../FormComponent/useSnapshots';
 import { agentForm2AppWorkflow } from './utils';
 import styles from '../FormComponent/styles.module.scss';
-import dynamic from 'next/dynamic';
+import { useTranslation } from 'next-i18next';
 
 const Edit = ({
   appForm,
@@ -21,6 +21,7 @@ const Edit = ({
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
 }) => {
+  const { t } = useTranslation();
   const { isPc } = useSystem();
   const [renderEdit, setRenderEdit] = useState(true);
 
@@ -46,7 +47,16 @@ const Edit = ({
           flex={'1'}
         >
           <Box {...cardStyles} boxShadow={'2'}>
-            <AppCard appForm={appForm} setPast={setPast} form2WorkflowFn={agentForm2AppWorkflow} />
+            <AppCard
+              appForm={appForm}
+              setPast={setPast}
+              form2WorkflowFn={agentForm2AppWorkflow}
+              configToWorkflow={false}
+            />
+          </Box>
+
+          <Box mt={4} p={4} {...cardStyles} boxShadow={'2'} whiteSpace={'pre-wrap'} fontSize={'sm'}>
+            {t('app:chat_agent_beta_tip')}
           </Box>
 
           <Box pb={4}>

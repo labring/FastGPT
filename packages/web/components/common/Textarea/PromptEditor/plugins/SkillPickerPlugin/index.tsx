@@ -23,7 +23,7 @@ import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import MyBox from '../../../../MyBox';
 import { useMount } from 'ahooks';
-import { useRequest2 } from '../../../../../../hooks/useRequest';
+import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 
@@ -138,7 +138,7 @@ export default function SkillPickerPlugin({
   );
 
   // Handle item selection (hover/keyboard navigation)
-  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest2(
+  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest(
     async ({
       currentColumnIndex,
       item,
@@ -178,43 +178,53 @@ export default function SkillPickerPlugin({
   );
 
   // Handle item click (confirm selection)
-  const { runAsync: handleItemClick, loading: isItemClickLoading } = useRequest2(
+  const itemClickLock = useRef(false);
+  const [isItemClickLoading, setIsItemClickLoading] = useState(false);
+  const { runAsync: handleItemClick } = useRequest(
     async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
-      if (!item.canClick || !option?.onClick) return;
+      if (!item.canClick || !option?.onClick || itemClickLock.current) return;
+      itemClickLock.current = true;
+      setIsItemClickLoading(true);
+      try {
+        // Step 1: Execute async onClick to get skillId (outside editor.update)
+        const skillId = await option.onClick(item.id);
 
-      // Step 1: Execute async onClick to get skillId (outside editor.update)
-      const skillId = await option.onClick(item.id);
+        // Step 2: Update editor with the skillId (inside a fresh editor.update)
+        if (skillId) {
+          console.log(skillId, 2222);
+          editor.update(() => {
+            // Re-acquire selection in this update cycle to avoid stale node references
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return;
 
-      // Step 2: Update editor with the skillId (inside a fresh editor.update)
-      if (skillId) {
-        console.log(skillId, 2222);
-        editor.update(() => {
-          // Re-acquire selection in this update cycle to avoid stale node references
-          const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
+            // Re-acquire nodes in this update cycle
+            const nodes = selection.getNodes();
+            nodes.forEach((node) => {
+              if ($isTextNode(node)) {
+                const text = node.getTextContent();
+                const atIndex = text.lastIndexOf('@');
+                if (atIndex !== -1) {
+                  // Remove the '@' trigger character
+                  const beforeAt = text.substring(0, atIndex);
+                  const afterAt = text.substring(atIndex + 1);
+                  node.setTextContent(beforeAt + afterAt);
 
-          // Re-acquire nodes in this update cycle
-          const nodes = selection.getNodes();
-          nodes.forEach((node) => {
-            if ($isTextNode(node)) {
-              const text = node.getTextContent();
-              const atIndex = text.lastIndexOf('@');
-              if (atIndex !== -1) {
-                // Remove the '@' trigger character
-                const beforeAt = text.substring(0, atIndex);
-                const afterAt = text.substring(atIndex + 1);
-                node.setTextContent(beforeAt + afterAt);
-
-                // Move cursor to where '@' was
-                const newOffset = beforeAt.length;
-                node.select(newOffset, newOffset);
+                  // Move cursor to where '@' was
+                  const newOffset = beforeAt.length;
+                  node.select(newOffset, newOffset);
+                }
               }
-            }
-          });
+            });
 
-          // Insert skill node text at current selection
-          selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-        });
+            // Insert skill node text at current selection
+            selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+          });
+        }
+      } catch (error) {
+        return Promise.reject(error);
+      } finally {
+        itemClickLock.current = false;
+        setIsItemClickLoading(false);
       }
     },
     {
@@ -224,7 +234,7 @@ export default function SkillPickerPlugin({
 
   // Handle folder toggle
   const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
-  const { runAsync: handleFolderToggle } = useRequest2(
+  const { runAsync: handleFolderToggle } = useRequest(
     async ({
       currentColumnIndex,
       item,

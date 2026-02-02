@@ -4,7 +4,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
-import { getInitialPlanPrompt, getContinuePlanPrompt } from './prompt';
+import { getInitialPlanPrompt, getContinuePlanPrompt, getInitialPlanQuery } from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -15,13 +15,24 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import { AIAskAnswerSchema, AIAskTool } from './ask/constants';
-import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import {
+  AgentPlanSchema,
+  AgentStepItemSchema,
+  type AgentPlanType
+} from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
 import { parseSystemPrompt } from '../../utils';
 import { addLog } from '../../../../../../../common/system/log';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { i18nT } from '../../../../../../../../web/i18n/utils';
+import { SubAppIds } from '../constants';
+import type { PlanAgentParamsType } from './constants';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 type PlanAgentConfig = {
   systemPrompt?: string;
@@ -31,38 +42,63 @@ type PlanAgentConfig = {
   stream?: boolean;
 };
 
-type PlanMode = 'initial' | 'continue';
-
-type DispatchPlanAgentProps = PlanAgentConfig & {
-  checkIsStopping: () => boolean;
-
-  historyMessages: ChatCompletionMessageParam[];
-  interactive?: WorkflowInteractiveResponseType;
-  userInput: string;
-  background?: string;
-  referencePlans?: string;
-
-  completionTools: ChatCompletionTool[];
-  getSubAppInfo: GetSubAppInfoFnType;
-
-  mode?: PlanMode; // 'initial' | 'continue', 默认为 'initial'
+type InitialParams = {
+  mode: 'initial';
 };
+// 肯定是从 initial 进入的，所以上下文继承 InitialParams
+type InteractiveParams = {
+  mode: 'interactive';
+  interactive: WorkflowInteractiveResponseType;
+  planMessages: ChatCompletionMessageParam[];
+  queryInput: string;
+};
+// 只需要一个 query，里面包含了任务目标和步骤执行结果
+type ContinueParams = {
+  mode: 'continue';
+  query: string;
+};
+
+type DispatchPlanAgentProps = PlanAgentConfig &
+  PlanAgentParamsType & {
+    checkIsStopping: () => boolean;
+    completionTools: ChatCompletionTool[];
+    getSubAppInfo: GetSubAppInfoFnType;
+  } & (InitialParams | ContinueParams | InteractiveParams);
 
 export type DispatchPlanAgentResponse = {
   askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
   plan?: AgentPlanType;
+  planBuffer: PlanAgentParamsType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
+  nodeResponse: ChatHistoryItemResType;
 };
 
-const parsePlan = async (text: string) => {
+const parsePlan = async ({
+  text,
+  task,
+  description,
+  background
+}: {
+  text: string;
+} & PlanAgentParamsType) => {
   if (!text) {
     return;
   }
 
-  const params = await AgentPlanSchema.safeParseAsync(parseJsonArgs(text));
+  const result = parseJsonArgs(text);
+  if (!result) {
+    return;
+  }
+
+  const params = await AgentPlanSchema.safeParseAsync({
+    ...result,
+    task,
+    description,
+    background
+  });
   if (!params.success) {
-    addLog.warn(`[Plan Agent] Plan response is not valid`, { text });
+    addLog.warn(`[Plan Agent] Not plan`, { text });
     return;
   }
 
@@ -86,7 +122,7 @@ const parseAskInteractive = async (
             data.form?.map((item) => {
               return {
                 type: item.type as FlowNodeInputTypeEnum,
-                key: getNanoid(6),
+                key: item.label,
                 label: item.label,
                 value: '',
                 required: false,
@@ -115,109 +151,104 @@ const parseAskInteractive = async (
   }
 };
 
+/* 
+  调用场景
+  1. 首轮调用 plan：history + query
+  2. 首轮 plan + 交互： 直接拼接
+  3. 第二次调用 plan: history + query + response + new query
+  4. 第二次 plan + 交互：直接拼接
+*/
 export const dispatchPlanAgent = async ({
   checkIsStopping,
-  historyMessages,
-  userInput,
-  interactive,
   completionTools,
   getSubAppInfo,
   systemPrompt,
   model,
-  mode = 'initial'
+  task,
+  description,
+  background,
+  ...props
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
+  const startTime = Date.now();
   const modelData = getLLMModel(model);
 
-  const parsedSystemPrompt = parseSystemPrompt({ systemPrompt, getSubAppInfo });
+  // 移除 plan 工具
+  completionTools = completionTools.filter((item) => item.function.name !== SubAppIds.plan);
 
   // 根据 mode 选择对应的提示词
-  const planPrompt =
-    mode === 'continue'
-      ? getContinuePlanPrompt({ getSubAppInfo, completionTools })
-      : getInitialPlanPrompt({ getSubAppInfo, completionTools });
+  const planPrompt = (() => {
+    if (props.mode === 'initial' || props.mode === 'interactive') {
+      return getInitialPlanPrompt({ getSubAppInfo, completionTools });
+    } else {
+      return getContinuePlanPrompt({ getSubAppInfo, completionTools });
+    }
+  })();
 
   const requestMessages: ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: [
-        planPrompt,
-        parsedSystemPrompt
-          ? `<user_background>
-          ${parsedSystemPrompt}
-
-          请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
-          如果和user_background没有任何关系则忽略参考信息。
-
-          **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。
-          </user_background>`
-          : ''
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    },
-    ...historyMessages
+      content: [planPrompt, systemPrompt ? systemPrompt : undefined].filter(Boolean).join('\n\n')
+    }
   ];
 
   // 分类：query/user select/user form
-  const lastMessages = requestMessages[requestMessages.length - 1];
 
   // 上一轮是 Ask 模式，进行工具调用拼接
-  if (
-    (interactive?.type === 'agentPlanAskUserForm' ||
-      interactive?.type === 'agentPlanAskUserSelect' ||
-      interactive?.type === 'agentPlanAskQuery') &&
-    lastMessages.role === 'assistant' &&
-    lastMessages.tool_calls
-  ) {
-    requestMessages.push({
-      role: 'tool',
-      tool_call_id: lastMessages.tool_calls[0].id,
-      content: userInput
-    });
-    // requestMessages.push({
-    //   role: 'assistant',
-    //   content: '请基于以上收集的用户信息，重新生成完整的计划，严格按照 JSON Schema 输出。'
-    // });
-  }
-  // else {
-  //   requestMessages.push({
-  //     role: 'user',
-  //     content: userInput
-  //   });
-  // }
+  if (props.mode === 'interactive') {
+    const lastMessages = props.planMessages[props.planMessages.length - 1];
 
-  if (mode === 'continue') {
+    if (lastMessages.role === 'assistant' && lastMessages.tool_calls) {
+      requestMessages.push(...props.planMessages);
+      requestMessages.push({
+        role: 'tool',
+        tool_call_id: lastMessages.tool_calls[0].id,
+        content: props.queryInput
+      });
+    } else {
+      addLog.error('Plan interactive mode error', { planMessages: props.planMessages });
+      return Promise.reject('Plan interactive mode error');
+    }
+  } else if (props.mode === 'initial') {
     requestMessages.push({
       role: 'user',
-      content: userInput
+      content: getInitialPlanQuery({
+        task,
+        description,
+        background
+      })
+    });
+  } else if (props.mode === 'continue') {
+    requestMessages.push({
+      role: 'user',
+      content: props.query
     });
   }
-  console.log('Plan request messages');
-  console.dir({ requestMessages }, { depth: null });
-  console.log('userInput:', userInput, 'mode:', mode, 'interactive?.type:', interactive?.type);
-  // console.log('lastMessages', JSON.stringify(lastMessages, null, 2))
+  // console.log('Plan request messages');
+  // console.dir({ requestMessages }, { depth: null });
+  // console.log('userInput:', userInput, 'mode:', mode, 'interactive?.type:', interactive?.type);
 
   let {
     answerText,
     toolCalls = [],
     usage,
-    getEmptyResponseTip,
-    completeMessages
+    completeMessages,
+    responseEmptyTip,
+    requestId
   } = await createLLMResponse({
     isAborted: checkIsStopping,
     body: {
       model: modelData.model,
       messages: requestMessages,
       stream: true,
-      tools: [AIAskTool],
+      tools: props.mode === 'continue' ? undefined : [AIAskTool],
       tool_choice: 'auto',
       toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
       parallel_tool_calls: false
     }
   });
 
-  if (!answerText && !toolCalls.length) {
-    return Promise.reject(getEmptyResponseTip());
+  if (responseEmptyTip) {
+    return Promise.reject(responseEmptyTip);
   }
 
   /* 
@@ -227,7 +258,12 @@ export const dispatchPlanAgent = async ({
     3. text + confirm: 成功生成工具 + 确认操作
   */
   // 获取生成的 plan
-  const plan = await parsePlan(answerText);
+  const plan = await parsePlan({
+    text: answerText,
+    task,
+    description,
+    background
+  });
   // 获取交互结果
   const askInteractive = await parseAskInteractive(toolCalls);
 
@@ -237,13 +273,35 @@ export const dispatchPlanAgent = async ({
     outputTokens: usage.outputTokens
   });
 
+  const nodeId = getNanoid(6);
+  const nodeResponse: ChatHistoryItemResType = {
+    nodeId: nodeId,
+    id: nodeId,
+    moduleType: FlowNodeTypeEnum.emptyNode,
+    moduleName:
+      props.mode === 'continue' ? i18nT('chat:reflection_agent') : i18nT('chat:plan_agent'),
+    moduleLogo: 'core/app/agent/child/plan',
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    totalPoints,
+    model: modelName,
+    runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+    llmRequestIds: [requestId]
+  };
+
   return {
     askInteractive,
     plan,
+    planBuffer: {
+      task,
+      description,
+      background
+    },
     completeMessages,
+    nodeResponse,
     usages: [
       {
-        moduleName: '任务规划',
+        moduleName: i18nT('account_usage:agent_call'),
         model: modelName,
         totalPoints,
         inputTokens: usage.inputTokens,

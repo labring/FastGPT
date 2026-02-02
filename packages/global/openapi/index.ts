@@ -25,8 +25,12 @@ export const openAPIDocument = createDocument({
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
+      name: '我的应用/工具管理',
+      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.appPer]
+    },
+    {
       name: 'Agent 应用',
-      tags: [TagsMap.appCommon, TagsMap.appLog, TagsMap.publishChannel]
+      tags: [TagsMap.appLog, TagsMap.publishChannel]
     },
     {
       name: 'AI 相关',
@@ -57,6 +61,10 @@ export const openAPIDocument = createDocument({
     {
       name: '用户体系',
       tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+    },
+    {
+      name: '通用-核心功能',
+      tags: [TagsMap.aiCommon]
     },
     {
       name: '通用-辅助功能',

@@ -44,29 +44,32 @@ const AIChatItemSchema = z.object({
 });
 export type AIChatItemType = z.infer<typeof AIChatItemSchema>;
 
-const HelperBotChatRoleSchema = z.union([
+const HelperBotChatRoleSchema = z.discriminatedUnion('obj', [
   UserChatItemSchema,
   SystemChatItemSchema,
   AIChatItemSchema
 ]);
-export const HelperBotChatItemSchema = z
-  .object({
+
+export const HelperBotChatItemSchema = z.intersection(
+  z.object({
     _id: ObjectIdSchema,
     userId: z.string(),
     chatId: z.string(),
     dataId: z.string(),
     createTime: z.date(),
     memories: z.record(z.string(), z.any()).nullish()
-  })
-  .and(HelperBotChatRoleSchema);
+  }),
+  HelperBotChatRoleSchema
+);
 export type HelperBotChatItemType = z.infer<typeof HelperBotChatItemSchema>;
 
-/* 客户端 UI 展示的类型 */
-export const HelperBotChatItemSiteSchema = z
-  .object({
+/* 客户端 UI User Interface 展示的类型 */
+export const HelperBotChatItemSiteSchema = z.intersection(
+  z.object({
     _id: ObjectIdSchema,
     dataId: z.string(),
     createTime: z.date()
-  })
-  .and(HelperBotChatRoleSchema);
+  }),
+  HelperBotChatRoleSchema
+);
 export type HelperBotChatItemSiteType = z.infer<typeof HelperBotChatItemSiteSchema>;

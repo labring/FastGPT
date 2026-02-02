@@ -275,33 +275,32 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      // mcpToolsetVal.toolId-旧版 MCP
+      const toolSetId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
       toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
+          nodeId: `${toolSetNode.nodeId}${index}`,
+          toolSetId,
           avatar: toolSetNode.avatar,
-          tool,
-          // New ?? Old
-          parentId
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
+          }
         });
-        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
 
-        nodes.push({
-          ...newToolNode,
-          name: `${toolSetNode.name}/${tool.name}`
-        });
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     } else if (httpToolsetVal) {
-      const parentId = toolSetNode.pluginId || '';
       httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
         const newToolNode = getHTTPToolRuntimeNode({
           tool: {
             ...tool,
             name: `${toolSetNode.name}/${tool.name}`
           },
-          nodeId: `${parentId}${index}`,
+          nodeId: `${toolSetNode.nodeId}${index}`,
           avatar: toolSetNode.avatar,
-          parentId
+          toolSetId: toolSetNode.pluginId!
         });
 
         nodes.push(newToolNode);

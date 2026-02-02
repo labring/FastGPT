@@ -35,6 +35,8 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 };
 
 export type RunToolResponse = {
+  requestIds: string[];
+  error: string;
   toolDispatchFlowResponses: DispatchFlowResponse[];
   toolCallInputTokens: number;
   toolCallOutputTokens: number;

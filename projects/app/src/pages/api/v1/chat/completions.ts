@@ -341,8 +341,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -378,8 +376,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       durationSeconds
     };
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({ interactive, ...params });
     } else {
       await pushChatRecords(params);
     }

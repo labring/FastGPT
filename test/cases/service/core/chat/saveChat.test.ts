@@ -10,7 +10,11 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -472,7 +476,21 @@ describe('pushChatRecords', () => {
         { chatId: '' },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: undefined
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItems = await MongoChatItem.find({ appId: testAppId });
       expect(chatItems).toHaveLength(0);
@@ -480,7 +498,21 @@ describe('pushChatRecords', () => {
 
     it('should skip update if no AI chat item found', async () => {
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: undefined
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+      await updateInteractiveChat({ interactive, ...props });
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
       expect(chat).toBeNull();
@@ -502,7 +534,21 @@ describe('pushChatRecords', () => {
       });
 
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: undefined
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+      await updateInteractiveChat({ interactive, ...props });
 
       // Should not create a chat record
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
@@ -525,7 +571,21 @@ describe('pushChatRecords', () => {
       });
 
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: undefined
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+      await updateInteractiveChat({ interactive, ...props });
 
       // Should not create a chat record
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
@@ -564,22 +624,44 @@ describe('pushChatRecords', () => {
                 text: { content: 'Option 1' }
               }
             ]
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            responseData: []
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: undefined
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItem = await MongoChatItem.findOne({
         appId: testAppId,
         chatId: props.chatId,
         obj: ChatRoleEnum.AI
       });
+      console.log(chatItem?.value, 1212);
       if (chatItem) {
         if (chatItem.obj === ChatRoleEnum.AI) {
-          if (chatItem?.value[0].interactive?.type === 'userSelect') {
-            expect(chatItem?.value[0].interactive?.params.userSelectedVal).toBe('Option 1');
+          const lastValue = chatItem.value[chatItem.value.length - 1];
+          if (lastValue.interactive?.type === 'userSelect') {
+            expect(lastValue.interactive?.params.userSelectedVal).toBe('Option 1');
           } else {
             throw new Error('chatItem does not have userSelect interactive');
           }
@@ -627,12 +709,38 @@ describe('pushChatRecords', () => {
                 text: { content: JSON.stringify({ username: 'john_doe' }) }
               }
             ]
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            responseData: []
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userInput' as const,
+        params: {
+          description: '',
+          submitted: false,
+          inputForm: [
+            {
+              key: 'username',
+              type: FlowNodeInputTypeEnum.input,
+              label: 'Username',
+              value: undefined,
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: false
+            }
+          ]
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -641,9 +749,10 @@ describe('pushChatRecords', () => {
       });
       if (chatItem) {
         if (chatItem.obj === ChatRoleEnum.AI) {
-          if (chatItem?.value[0].interactive?.type === 'userInput') {
-            expect(chatItem?.value[0].interactive?.params.submitted).toBe(true);
-            expect(chatItem?.value[0].interactive?.params.inputForm[0].value).toBe('john_doe');
+          const lastValue = chatItem.value[chatItem.value.length - 1];
+          if (lastValue.interactive?.type === 'userInput') {
+            expect(lastValue.interactive?.params.submitted).toBe(true);
+            expect(lastValue.interactive?.params.inputForm[0].value).toBe('john_doe');
           } else {
             throw new Error('chatItem does not have userInput interactive');
           }
@@ -677,7 +786,18 @@ describe('pushChatRecords', () => {
 
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'paymentPause' as const,
+        params: {
+          description: 'Payment required',
+          continue: false
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -704,7 +824,13 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'userSelect',
-              params: { options: ['A', 'B'] }
+              params: {
+                description: '',
+                userSelectOptions: [
+                  { key: 'a', value: 'A' },
+                  { key: 'b', value: 'B' }
+                ]
+              }
             }
           }
         ]
@@ -725,7 +851,21 @@ describe('pushChatRecords', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'a', value: 'A' },
+            { key: 'b', value: 'B' }
+          ]
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -764,7 +904,21 @@ describe('pushChatRecords', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'a', value: 'A' },
+            { key: 'b', value: 'B' }
+          ]
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const chatItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -793,7 +947,13 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'userSelect',
-              params: { options: ['A', 'B'] }
+              params: {
+                description: '',
+                userSelectOptions: [
+                  { key: 'a', value: 'A' },
+                  { key: 'b', value: 'B' }
+                ]
+              }
             }
           }
         ]
@@ -833,7 +993,21 @@ describe('pushChatRecords', () => {
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
 
-      await updateInteractiveChat(props);
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'a', value: 'A' },
+            { key: 'b', value: 'B' }
+          ]
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
 
       const responses = await MongoChatItemResponse.find({
         appId: testAppId,

@@ -14,14 +14,12 @@ import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config';
 
 // variable
-export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.and(
-  InputComponentPropsTypeSchema
-).and(
-  z.object({
-    type: z.enum(VariableInputEnum),
-    description: z.string()
-  })
-);
+export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.extend(
+  InputComponentPropsTypeSchema.shape
+).extend({
+  type: z.enum(VariableInputEnum),
+  description: z.string()
+});
 export type VariableItemType = z.infer<typeof VariableItemTypeSchema>;
 
 // tts
@@ -168,7 +166,9 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 
   datasetSearchUsingExtensionQuery: z.boolean().optional(),
   datasetSearchExtensionModel: z.string().optional(),
-  datasetSearchExtensionBg: z.string().optional()
+  datasetSearchExtensionBg: z.string().optional(),
+
+  collectionFilterMatch: z.string().optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 

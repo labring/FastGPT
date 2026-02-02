@@ -1,6 +1,9 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -38,6 +41,7 @@ import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({
@@ -161,7 +165,8 @@ export const appWorkflow2Form = ({
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other,
         pluginData: node.pluginData,
-        toolConfig: node.toolConfig
+        toolConfig: node.toolConfig,
+        configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({

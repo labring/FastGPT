@@ -9,8 +9,9 @@ import { MongoHelperBotChatItem } from '@fastgpt/service/core/chat/HelperBot/cha
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchMap } from '@fastgpt/service/core/chat/HelperBot/dispatch/index';
 import { pushChatRecords } from '@fastgpt/service/core/chat/HelperBot/utils';
-import { pushHelperBotUsage } from '@/service/support/wallet/usage/push';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
+import { addSeconds } from 'date-fns';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -20,6 +21,15 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
   );
 
   const { teamId, tmbId, userId, isRoot } = await authCert({ req, authToken: true });
+
+  // Limit
+  await authFrequencyLimit({
+    eventId: `${tmbId}-helperBot-completions`,
+    maxAmount: 10,
+    expiredTime: addSeconds(new Date(), 60)
+  }).catch((err) => {
+    return Promise.reject('Frequency limit exceeded');
+  });
 
   const histories = await MongoHelperBotChatItem.find({
     userId,
@@ -75,13 +85,13 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     aiResponse: result.aiResponse
   });
   // Push usage
-  pushHelperBotUsage({
-    teamId,
-    tmbId,
-    model: result.usage.model,
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens
-  });
+  // pushHelperBotUsage({
+  //   teamId,
+  //   tmbId,
+  //   model: result.usage.model,
+  //   inputTokens: result.usage.inputTokens,
+  //   outputTokens: result.usage.outputTokens
+  // });
 }
 
 export default NextAPI(handler);

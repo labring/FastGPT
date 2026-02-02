@@ -372,7 +372,7 @@ const EditForm = ({
             onRemoveTool={(id) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.id !== id) || []
+                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
               }));
             }}
           />

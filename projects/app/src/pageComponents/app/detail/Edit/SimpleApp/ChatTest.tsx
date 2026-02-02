@@ -17,7 +17,7 @@ import { cardStyles } from '../../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import type { Form2WorkflowFnType } from './type';
+import type { Form2WorkflowFnType } from '../FormComponent/type';
 
 type Props = {
   appForm: AppFormEditFormType;

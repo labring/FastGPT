@@ -80,6 +80,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         if (model.isDefaultDatasetImageModel) {
           _systemDefaultModel.datasetImageLLM = model;
         }
+        if (model.model === process.env.HELPER_BOT_MODEL) {
+          _systemDefaultModel.helperBotLLM = model;
+        }
       } else if (model.type === ModelTypeEnum.embedding) {
         _embeddingModelMap.set(model.model, model);
         _embeddingModelMap.set(model.name, model);
@@ -164,6 +167,13 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       });
     });
 
+    // Sort model list
+    _systemActiveModelList.sort((a, b) => {
+      const providerA = getModelProvider(a.provider, language);
+      const providerB = getModelProvider(b.provider, language);
+      return providerA.order - providerB.order;
+    });
+
     // Default model check
     {
       if (!_systemDefaultModel.llm) {
@@ -179,6 +189,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
           (item) => item.vision
         );
       }
+      if (!_systemDefaultModel.helperBotLLM) {
+        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
+          (item) => item.type === ModelTypeEnum.llm
+        );
+      }
       if (!_systemDefaultModel.embedding) {
         _systemDefaultModel.embedding = Array.from(_embeddingModelMap.values())[0];
       }
@@ -192,13 +207,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.rerank = Array.from(_reRankModelMap.values())[0];
       }
     }
-
-    // Sort model list
-    _systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider, language);
-      const providerB = getModelProvider(b.provider, language);
-      return providerA.order - providerB.order;
-    });
 
     // Set global value
     {

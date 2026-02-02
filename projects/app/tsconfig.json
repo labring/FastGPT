@@ -7,15 +7,6 @@
       "@test/*": ["../../test/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.d.ts",
-    "../../packages/**/*.d.ts",
-    "../../test/list.test.ts",
-    "../../packages/service/core/workflow/dispatch/ai/agent/type.ts",
-    "../../packages/service/core/workflow/dispatch/type.ts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../../packages/**/*.d.ts"],
   "exclude": ["**/*.test.ts"]
 }

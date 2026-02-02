@@ -30,18 +30,31 @@ export function splitCombineToolId(id: string) {
     };
   }
 
+  // mcp-appId, mcp-appId/toolname
   if (source === 'mcp') {
+    const [parentId, toolName] = pluginId.split('/');
     return {
       source: AppToolSourceEnum.mcp,
-      pluginId
+      pluginId,
+      authAppId: parentId
     };
   }
   if (source === 'http') {
+    const [parentId, toolName] = pluginId.split('/');
     return {
       source: AppToolSourceEnum.http,
-      pluginId
+      pluginId,
+      parentId
     };
   }
+  if (source === 'personal') {
+    return {
+      source: AppToolSourceEnum.personal,
+      pluginId,
+      parentId: pluginId
+    };
+  }
+
   return { source, pluginId: id };
 }
 

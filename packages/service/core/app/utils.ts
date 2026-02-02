@@ -4,7 +4,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './tool/controller';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -48,7 +47,7 @@ export async function rewriteAppWorkflowToDetail({
   const datasetIdSet = new Set<string>();
 
   const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
-    const { source, pluginId } = splitCombineToolId(id);
+    const { authAppId } = splitCombineToolId(id);
 
     try {
       const [preview] = await Promise.all([
@@ -57,11 +56,11 @@ export async function rewriteAppWorkflowToDetail({
           versionId,
           lang
         }),
-        ...(source === AppToolSourceEnum.personal
+        ...(authAppId
           ? [
               authAppByTmbId({
                 tmbId: ownerTmbId,
-                appId: pluginId,
+                appId: authAppId,
                 per: ReadPermissionVal
               })
             ]

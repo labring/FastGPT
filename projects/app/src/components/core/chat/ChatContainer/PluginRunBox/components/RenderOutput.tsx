@@ -41,6 +41,7 @@ const RenderOutput = () => {
                     key={key}
                     value={value as AIChatItemValueItemType}
                     isLastResponseValue={true}
+                    isLastChild={true}
                     isChatting={isChatting}
                   />
                 );

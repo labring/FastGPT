@@ -55,6 +55,9 @@ const LabelStyles: BoxProps = {
 };
 
 export type AIChatSettingsModalProps = {
+  showMaxToken?: boolean;
+  showTemperature?: boolean;
+  showTopP?: boolean;
   showStopSign?: boolean;
   showResponseFormat?: boolean;
 };
@@ -64,6 +67,9 @@ const AIChatSettingsModal = ({
   onSuccess,
   defaultData,
   llmModels = [],
+  showMaxToken = true,
+  showTemperature = true,
+  showTopP = true,
   showStopSign = true,
   showResponseFormat = true
 }: AIChatSettingsModalProps & {
@@ -95,17 +101,15 @@ const AIChatSettingsModal = ({
   const llmSupportVision = !!selectedModel?.vision;
   const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
   const llmSupportReasoning = !!selectedModel?.reasoning;
-
-  const topP = watch(NodeInputKeyEnum.aiChatTopP);
   const llmSupportTopP = !!selectedModel?.showTopP;
-
-  const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
   const llmSupportStopSign = !!selectedModel?.showStopSign;
-
-  const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
-  const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
   const llmSupportResponseFormat =
     !!selectedModel?.responseFormatList && selectedModel?.responseFormatList.length > 0;
+
+  const topP = watch(NodeInputKeyEnum.aiChatTopP);
+  const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
+  const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
+  const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -255,32 +259,34 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        <Flex {...FlexItemStyles}>
-          <Box {...LabelStyles}>
-            <Box>{t('app:max_tokens')}</Box>
-            <Switch
-              isChecked={maxToken !== undefined}
-              size={'sm'}
-              onChange={(e) => {
-                setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
-              }}
-            />
-          </Box>
-          <Box flex={'1 0 0'}>
-            <InputSlider
-              min={0}
-              max={tokenLimit}
-              step={200}
-              isDisabled={maxToken === undefined}
-              value={maxToken}
-              onChange={(val) => {
-                setValue(NodeInputKeyEnum.aiChatMaxToken, val);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        {llmSupportTemperature && (
+        {showMaxToken && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Box>{t('app:max_tokens')}</Box>
+              <Switch
+                isChecked={maxToken !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <InputSlider
+                min={0}
+                max={tokenLimit}
+                step={200}
+                isDisabled={maxToken === undefined}
+                value={maxToken}
+                onChange={(val) => {
+                  setValue(NodeInputKeyEnum.aiChatMaxToken, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportTemperature && showTemperature && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -310,7 +316,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportTopP && (
+        {llmSupportTopP && showTopP && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>

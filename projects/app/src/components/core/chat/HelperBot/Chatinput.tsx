@@ -4,7 +4,6 @@ import React, { useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   type ChatBoxInputFormType,
   type ChatBoxInputType,

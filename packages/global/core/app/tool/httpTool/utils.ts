@@ -51,21 +51,21 @@ export const getHTTPToolRuntimeNode = ({
   tool,
   nodeId,
   avatar = 'core/app/type/httpToolsFill',
-  parentId
+  toolSetId
 }: {
   tool: Omit<HttpToolConfigType, 'path' | 'method'>;
-  nodeId?: string;
+  nodeId: string;
   avatar?: string;
-  parentId: string;
+  toolSetId: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: nodeId || getNanoid(16),
+    nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
     toolConfig: {
       httpTool: {
-        toolId: `${AppToolSourceEnum.http}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),

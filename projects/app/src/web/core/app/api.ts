@@ -1,11 +1,13 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
 import type { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
-import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 
 import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
-import type { GetAppPermissionResponseType } from '@fastgpt/global/openapi/core/app/common/api';
+import type {
+  CreateAppBodyType,
+  GetAppPermissionResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 /**
  * 获取应用列表
@@ -18,7 +20,7 @@ export const getMyApps = (data?: ListAppBody) =>
 /**
  * 创建一个应用
  */
-export const postCreateApp = (data: CreateAppBody) => POST<string>('/core/app/create', data);
+export const postCreateApp = (data: CreateAppBodyType) => POST<string>('/core/app/create', data);
 
 export const getMyAppsByTags = (data: {}) => POST(`/proApi/core/chat/team/getApps`, data);
 /**

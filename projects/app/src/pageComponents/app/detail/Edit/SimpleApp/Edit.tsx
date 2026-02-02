@@ -9,7 +9,7 @@ import { cardStyles } from '../../constants';
 import styles from '../FormComponent/styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type SimpleAppSnapshotType } from '../FormComponent/useSnapshots';
-import ChatTest from '../FormComponent/ChatTest';
+import ChatTest from './ChatTest';
 import { form2AppWorkflow } from './utils';
 
 const Edit = ({
