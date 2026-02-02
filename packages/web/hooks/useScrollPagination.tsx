@@ -2,19 +2,18 @@ import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
   useMemoizedFn,
   useScroll,
   useVirtualList,
-  useRequest,
   useThrottleEffect
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import type { PaginationType, PaginationResponseType } from '../../global/openapi/api';
+import { useRequest } from './useRequest';
+import type { PaginationPropsType, PaginationResponseType } from '@fastgpt/global/openapi/type';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -31,8 +30,8 @@ export type ScrollListType = ({
 } & BoxProps) => React.JSX.Element;
 
 export function useVirtualScrollPagination<
-  TParams extends PaginationProps,
-  TData extends PaginationResponse
+  TParams extends PaginationPropsType,
+  TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -179,8 +178,8 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationType,
-  TData extends PaginationResponseType<any>
+  TParams extends PaginationPropsType,
+  TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
   {

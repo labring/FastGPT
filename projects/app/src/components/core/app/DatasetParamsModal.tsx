@@ -172,7 +172,7 @@ const DatasetParamsModal = ({
         />
         {currentTabType === SearchSettingTabEnum.searchMode && (
           <Box mt={3}>
-            <LeftRadio<`${DatasetSearchModeEnum}`>
+            <LeftRadio<DatasetSearchModeEnum>
               py={2.5}
               gridGap={4}
               list={[

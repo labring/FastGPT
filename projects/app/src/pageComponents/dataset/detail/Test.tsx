@@ -35,7 +35,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 type FormType = {
   inputText: string;
   searchParams: {
-    searchMode: `${DatasetSearchModeEnum}`;
+    searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
 
     usingReRank?: boolean;

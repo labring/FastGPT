@@ -2,8 +2,9 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Box } from '@chakra-ui/react';
 import { useTheme } from '@chakra-ui/system';
 import React from 'react';
+import type { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
-const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
+const ChatAvatar = ({ src, type }: { src?: string; type: `${ChatRoleEnum}` }) => {
   const theme = useTheme();
   return (
     <Box

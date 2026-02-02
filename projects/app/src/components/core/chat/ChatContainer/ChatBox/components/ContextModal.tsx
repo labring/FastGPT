@@ -7,9 +7,10 @@ import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+
 const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);

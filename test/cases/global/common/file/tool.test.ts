@@ -356,7 +356,7 @@ describe('文件工具函数测试', () => {
 
         expect(result).toEqual({
           type: ChatFileTypeEnum.file,
-          name: 'null',
+          name: url,
           url
         });
       });
@@ -367,7 +367,7 @@ describe('文件工具函数测试', () => {
 
         expect(result).toEqual({
           type: ChatFileTypeEnum.file,
-          name: 'null',
+          name: url,
           url
         });
       });
@@ -378,7 +378,7 @@ describe('文件工具函数测试', () => {
 
         expect(result).toEqual({
           type: ChatFileTypeEnum.file,
-          name: 'null',
+          name: url,
           url
         });
       });
@@ -455,7 +455,7 @@ describe('文件工具函数测试', () => {
 
         expect(result).toEqual({
           type: ChatFileTypeEnum.file,
-          name: 'null',
+          name: url,
           url
         });
       });
@@ -465,7 +465,7 @@ describe('文件工具函数测试', () => {
         const result = parseUrlToFileType(url);
 
         expect(result?.type).toBe(ChatFileTypeEnum.image);
-        expect(result?.name).toBe('file%20name.jpg');
+        expect(result?.name).toBe('file name.jpg');
       });
 
       it('should handle URL with multiple dots in filename', () => {
@@ -504,7 +504,7 @@ describe('文件工具函数测试', () => {
 
         expect(result).toEqual({
           type: ChatFileTypeEnum.file,
-          name: 'null',
+          name: url,
           url
         });
       });

@@ -8,7 +8,7 @@ export const delay = (ms: number) =>
 export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
   while (true) {
     try {
-      return fn();
+      return await fn();
     } catch (error) {
       if (attempts <= 0) {
         return Promise.reject(error);

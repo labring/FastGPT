@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';

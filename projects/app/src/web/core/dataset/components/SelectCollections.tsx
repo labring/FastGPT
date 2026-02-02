@@ -13,6 +13,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '../context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const SelectCollections = ({
   datasetId,
@@ -29,8 +30,8 @@ const SelectCollections = ({
   datasetId: string;
   type: 'folder' | 'collection';
   onClose: () => void;
-  onChange?: (e: { parentId: string; collectionIds: string[] }) => void | Promise<void>;
-  onSuccess?: (e: { parentId: string; collectionIds: string[] }) => void | Promise<void>;
+  onChange?: (e: { parentId: ParentIdType; collectionIds: string[] }) => void | Promise<void>;
+  onSuccess?: (e: { parentId: ParentIdType; collectionIds: string[] }) => void | Promise<void>;
   defaultSelectedId?: string[];
   title?: string;
   tip?: string;
@@ -44,7 +45,7 @@ const SelectCollections = ({
   const { Loading } = useLoading();
   const [selectedDatasetCollectionIds, setSelectedDatasetCollectionIds] =
     useState<string[]>(defaultSelectedId);
-  const [parentId, setParentId] = useState('');
+  const [parentId, setParentId] = useState<ParentIdType>('');
 
   useQuery(['loadDatasetDetail', datasetId], () => loadDatasetDetail(datasetId));
 

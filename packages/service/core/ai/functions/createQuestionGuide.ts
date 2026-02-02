@@ -1,4 +1,4 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt

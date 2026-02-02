@@ -1,4 +1,4 @@
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -162,74 +162,76 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
-    // 1. Search vector
-    const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
-      formatModelChars2Points({
-        model: vectorModel.model,
+    {
+      // 1. Search vector
+      const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
+        formatModelChars2Points({
+          model: vectorModel.model,
+          inputTokens: embeddingTokens
+        });
+      nodeDispatchUsages.push({
+        totalPoints: embeddingTotalPoints,
+        moduleName: node.name,
+        model: embeddingModelName,
         inputTokens: embeddingTokens
       });
-    nodeDispatchUsages.push({
-      totalPoints: embeddingTotalPoints,
-      moduleName: node.name,
-      model: embeddingModelName,
-      inputTokens: embeddingTokens
-    });
-    // 2. Rerank
-    if (usingReRank) {
-      const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
-        formatModelChars2Points({
-          model: rerankModelData?.model,
+      // 2. Rerank
+      if (searchUsingReRank) {
+        const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
+          formatModelChars2Points({
+            model: rerankModelData?.model,
+            inputTokens: reRankInputTokens
+          });
+        nodeDispatchUsages.push({
+          totalPoints: reRankTotalPoints,
+          moduleName: i18nT('account_usage:rerank'),
+          model: reRankModelName,
           inputTokens: reRankInputTokens
         });
-      nodeDispatchUsages.push({
-        totalPoints: reRankTotalPoints,
-        moduleName: i18nT('account_usage:rerank'),
-        model: reRankModelName,
-        inputTokens: reRankInputTokens
-      });
-    }
-    // 3. Query extension
-    if (queryExtensionResult) {
-      const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-        model: queryExtensionResult.llmModel,
-        inputTokens: queryExtensionResult.inputTokens,
-        outputTokens: queryExtensionResult.outputTokens
-      });
-      nodeDispatchUsages.push({
-        totalPoints: llmPoints,
-        moduleName: i18nT('common:core.module.template.Query extension'),
-        model: llmModelName,
-        inputTokens: queryExtensionResult.inputTokens,
-        outputTokens: queryExtensionResult.outputTokens
-      });
-
-      const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
-        formatModelChars2Points({
-          model: queryExtensionResult.embeddingModel,
-          inputTokens: queryExtensionResult.embeddingTokens
+      }
+      // 3. Query extension
+      if (queryExtensionResult) {
+        const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+          model: queryExtensionResult.llmModel,
+          inputTokens: queryExtensionResult.inputTokens,
+          outputTokens: queryExtensionResult.outputTokens
         });
-      nodeDispatchUsages.push({
-        totalPoints: embeddingPoints,
-        moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
-        model: embeddingModelName,
-        inputTokens: queryExtensionResult.embeddingTokens,
-        outputTokens: 0
-      });
-    }
-    // 4. Deep search
-    if (deepSearchResult) {
-      const { totalPoints, modelName } = formatModelChars2Points({
-        model: deepSearchResult.model,
-        inputTokens: deepSearchResult.inputTokens,
-        outputTokens: deepSearchResult.outputTokens
-      });
-      nodeDispatchUsages.push({
-        totalPoints,
-        moduleName: i18nT('common:deep_rag_search'),
-        model: modelName,
-        inputTokens: deepSearchResult.inputTokens,
-        outputTokens: deepSearchResult.outputTokens
-      });
+        nodeDispatchUsages.push({
+          totalPoints: llmPoints,
+          moduleName: i18nT('common:core.module.template.Query extension'),
+          model: llmModelName,
+          inputTokens: queryExtensionResult.inputTokens,
+          outputTokens: queryExtensionResult.outputTokens
+        });
+
+        const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
+          formatModelChars2Points({
+            model: queryExtensionResult.embeddingModel,
+            inputTokens: queryExtensionResult.embeddingTokens
+          });
+        nodeDispatchUsages.push({
+          totalPoints: embeddingPoints,
+          moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+          model: embeddingModelName,
+          inputTokens: queryExtensionResult.embeddingTokens,
+          outputTokens: 0
+        });
+      }
+      // 4. Deep search
+      if (deepSearchResult) {
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: deepSearchResult.model,
+          inputTokens: deepSearchResult.inputTokens,
+          outputTokens: deepSearchResult.outputTokens
+        });
+        nodeDispatchUsages.push({
+          totalPoints,
+          moduleName: i18nT('common:deep_rag_search'),
+          model: modelName,
+          inputTokens: deepSearchResult.inputTokens,
+          outputTokens: deepSearchResult.outputTokens
+        });
+      }
     }
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
 

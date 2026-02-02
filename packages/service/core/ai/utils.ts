@@ -1,4 +1,4 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
@@ -330,9 +330,9 @@ export const parseLLMStreamResponse = () => {
   };
 };
 
-export const parseToolArgs = <T = Record<string, any>>(toolArgs: string) => {
+export const parseJsonArgs = <T = Record<string, any>>(str: string) => {
   try {
-    return json5.parse(sliceJsonStr(toolArgs)) as T;
+    return json5.parse(sliceJsonStr(str)) as T;
   } catch {
     return;
   }

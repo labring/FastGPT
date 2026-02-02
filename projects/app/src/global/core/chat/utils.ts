@@ -3,9 +3,10 @@ import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type ToolCiteLinksType } from '@fastgpt/global/core/chat/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 export function transformPreviewHistories(
   histories: ChatItemType[],
@@ -19,19 +20,6 @@ export function transformPreviewHistories(
     };
   });
 }
-
-export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
-  return res
-    .map((item) => {
-      return [
-        item,
-        ...getFlatAppResponses(item.pluginDetail || []),
-        ...getFlatAppResponses(item.toolDetail || []),
-        ...getFlatAppResponses(item.loopDetail || [])
-      ];
-    })
-    .flat();
-};
 
 const extractCitationIdsFromText = (text: string): string[] => {
   if (!text) return [];

@@ -3,9 +3,9 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  NodeOutputItemType,
   ToolRunResponseItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -22,9 +22,8 @@ import type {
   ModuleDispatchProps,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -101,7 +100,7 @@ export async function dispatchWorkFlow({
 
   // Check url valid
   const invalidInput = query.some((item) => {
-    if (item.type === ChatItemValueTypeEnum.file && item.file?.url) {
+    if ('file' in item && item.file?.url) {
       if (!validateFileUrlDomain(item.file.url)) {
         return true;
       }
@@ -137,7 +136,7 @@ export async function dispatchWorkFlow({
     await addPreviewUrlToChatItems(histories, 'chatFlow'),
     // Add preview url to query
     ...query.map(async (item) => {
-      if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) return;
+      if (!item.file?.key) return;
       const { url } = await getS3ChatSource().createGetChatFileURL({
         key: item.file.key,
         external: true
@@ -248,7 +247,7 @@ export async function dispatchWorkFlow({
   });
 }
 
-type RunWorkflowProps = ChatDispatchProps & {
+export type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   mcpClientMemory: Record<string, MCPClient>;
@@ -451,6 +450,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
     }
 
+    private usagePush(usages: ChatNodeUsageType[]) {
+      if (usageId) {
+        pushChatItemUsage({
+          teamId,
+          usageId,
+          nodeUsages: usages
+        });
+      }
+      if (concatUsage) {
+        concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
+
+      this.chatNodeUsages = this.chatNodeUsages.concat(usages);
+    }
+
     async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
       node: RuntimeNodeItemType;
       runStatus: 'run';
@@ -532,6 +546,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
         mcpClientMemory,
+        usagePush: this.usagePush.bind(this),
         lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
           : undefined,
@@ -610,30 +625,37 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return {};
       })();
 
+      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       // format response data. Add modulename and module type
       const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
-        return {
+        const val = {
+          moduleName: node.name,
+          moduleType: node.flowNodeType,
+          moduleLogo: node.avatar,
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
           id: getNanoid(),
           nodeId: node.nodeId,
-          moduleName: node.name,
-          moduleType: node.flowNodeType,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
+        nodeResponses.push(val);
+        return val;
       })();
 
       // Response node response
-      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
-        data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeResponse,
-          data: responseAllData
-            ? formatResponseData
-            : filterPublicNodeResponseData({
-                nodeRespones: [formatResponseData],
-                responseDetail
-              })[0]
+      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && nodeResponses.length > 0) {
+        const filteredResponses = responseAllData
+          ? nodeResponses
+          : filterPublicNodeResponseData({
+              nodeRespones: nodeResponses,
+              responseDetail
+            });
+        filteredResponses.forEach((item) => {
+          data.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeResponse,
+            data: item
+          });
         });
       }
 
@@ -711,6 +733,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         answerText,
         reasoningText,
         responseData,
+        nodeResponses,
         nodeDispatchUsages,
         toolResponses,
         assistantResponses,
@@ -733,6 +756,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         if (responseData) {
           this.chatResponses.push(responseData);
         }
+        if (nodeResponses) {
+          this.chatResponses.push(...nodeResponses);
+        }
 
         // Collect custom feedbacks
         if (customFeedbacks && Array.isArray(customFeedbacks)) {
@@ -741,18 +767,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         // Push usage in real time. Avoid a workflow usage a large number of points
         if (nodeDispatchUsages) {
-          if (usageId) {
-            pushChatItemUsage({
-              teamId,
-              usageId,
-              nodeUsages: nodeDispatchUsages
-            });
-          }
-          if (concatUsage) {
-            concatUsage(nodeDispatchUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
-          }
-
-          this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
+          this.usagePush(nodeDispatchUsages);
         }
 
         if (
@@ -771,7 +786,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         } else {
           if (reasoningText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.reasoning,
               reasoning: {
                 content: reasoningText
               }
@@ -779,7 +793,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
           if (answerText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: answerText
               }
@@ -1039,7 +1052,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
 
       return {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: interactiveResult
       };
     }
@@ -1070,7 +1082,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     if (
       item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
       item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-      item.flowNodeType !== FlowNodeTypeEnum.agent
+      item.flowNodeType !== FlowNodeTypeEnum.toolCall
     ) {
       item.isEntry = false;
     }
@@ -1198,10 +1210,10 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
-    if (item.type === ChatItemValueTypeEnum.text) {
+    if (item.text) {
       let text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
         lastItem.text.content += text;
         continue;
       }
@@ -1212,7 +1224,6 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // If result is empty, auto add a text message
   if (result.length === 0) {
     result.push({
-      type: ChatItemValueTypeEnum.text,
       text: { content: '' }
     });
   }
