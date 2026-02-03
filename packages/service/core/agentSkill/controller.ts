@@ -38,16 +38,14 @@ type ListSkillsParams = {
  * Create a new skill
  */
 export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
-  const [skill] = await MongoAgentSkill.create(
-    [
-      {
-        ...data,
-        source: AgentSkillSourceEnum.personal,
-        updateTime: new Date()
-      }
-    ],
-    { session }
-  );
+  const skill = new MongoAgentSkill({
+    ...data,
+    source: AgentSkillSourceEnum.personal,
+    currentVersion: 0,
+    versionCount: 0,
+    updateTime: new Date()
+  });
+  await skill.save({ session });
   return skill._id.toString();
 }
 
@@ -67,6 +65,25 @@ export async function updateSkill(
   await MongoAgentSkill.updateOne(
     { _id: skillId, deleteTime: null },
     { $set: updateData },
+    { session }
+  );
+}
+
+/**
+ * Update currentStorage for a skill
+ */
+export async function updateCurrentStorage(
+  skillId: string,
+  storageInfo: {
+    bucket: string;
+    key: string;
+    size: number;
+  },
+  session?: ClientSession
+): Promise<void> {
+  await MongoAgentSkill.updateOne(
+    { _id: skillId, deleteTime: null },
+    { $set: { currentStorage: storageInfo, updateTime: new Date() } },
     { session }
   );
 }
@@ -200,6 +217,8 @@ export async function importSkill(
         avatar: skill.avatar,
         teamId,
         tmbId,
+        currentVersion: 0,
+        versionCount: 0,
         createTime: new Date(),
         updateTime: new Date()
       }

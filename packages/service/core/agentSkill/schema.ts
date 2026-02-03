@@ -61,6 +61,20 @@ const AgentSkillSchema = new Schema({
   deleteTime: {
     type: Date,
     default: null
+  },
+  // === Version Control ===
+  currentVersion: {
+    type: Number,
+    default: 0
+  },
+  versionCount: {
+    type: Number,
+    default: 0
+  },
+  currentStorage: {
+    bucket: String,
+    key: String,
+    size: Number
   }
 });
 
