@@ -1,0 +1,257 @@
+import { MongoAgentSkill } from './schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkill/constants';
+import type {
+  AgentSkillSchemaType,
+  AgentSkillListItemType,
+  SkillPackageType
+} from '@fastgpt/global/core/agentSkill/type';
+import type { ClientSession } from '../../common/mongo';
+import { MongoUser } from '../../support/user/schema';
+
+// Types for service operations
+type CreateSkillData = {
+  name: string;
+  description: string;
+  markdown: string;
+  author: string;
+  category: string[];
+  config: Record<string, any>;
+  avatar?: string;
+  teamId: string;
+  tmbId: string;
+};
+
+type UpdateSkillData = Partial<Omit<CreateSkillData, 'author' | 'teamId' | 'tmbId'>>;
+
+type ListSkillsParams = {
+  source?: 'store' | 'mine';
+  teamId?: string;
+  searchKey?: string;
+  category?: string;
+  page: number;
+  pageSize: number;
+};
+
+// ==================== CRUD Operations ====================
+
+/**
+ * Create a new skill
+ */
+export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
+  const [skill] = await MongoAgentSkill.create(
+    [
+      {
+        ...data,
+        source: AgentSkillSourceEnum.personal,
+        updateTime: new Date()
+      }
+    ],
+    { session }
+  );
+  return skill._id.toString();
+}
+
+/**
+ * Update an existing skill
+ */
+export async function updateSkill(
+  skillId: string,
+  data: UpdateSkillData,
+  session?: ClientSession
+): Promise<void> {
+  const updateData = {
+    ...data,
+    updateTime: new Date()
+  };
+
+  await MongoAgentSkill.updateOne(
+    { _id: skillId, deleteTime: null },
+    { $set: updateData },
+    { session }
+  );
+}
+
+/**
+ * Soft delete a skill (only personal skills can be deleted)
+ */
+export async function deleteSkill(skillId: string, session?: ClientSession): Promise<void> {
+  const skill = await MongoAgentSkill.findOne({
+    _id: skillId,
+    deleteTime: null
+  });
+
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+
+  if (skill.source === AgentSkillSourceEnum.system) {
+    throw new Error('Cannot delete system skill');
+  }
+
+  await MongoAgentSkill.updateOne(
+    { _id: skillId },
+    { $set: { deleteTime: new Date() } },
+    { session }
+  );
+}
+
+/**
+ * Get skill by ID
+ */
+export async function getSkillById(skillId: string): Promise<AgentSkillSchemaType | null> {
+  const skill = await MongoAgentSkill.findOne({
+    _id: skillId,
+    deleteTime: null
+  }).lean();
+
+  return skill as AgentSkillSchemaType | null;
+}
+
+// ==================== List Operations ====================
+
+/**
+ * List skills with pagination and filtering
+ */
+export async function listSkills(
+  params: ListSkillsParams
+): Promise<{ list: AgentSkillListItemType[]; total: number }> {
+  const { source, teamId, searchKey, category, page, pageSize } = params;
+
+  // Build query
+  const query: Record<string, any> = {
+    deleteTime: null
+  };
+
+  // Source filter
+  if (source === 'store') {
+    query.source = AgentSkillSourceEnum.system;
+  } else if (source === 'mine' && teamId) {
+    query.source = AgentSkillSourceEnum.personal;
+    query.teamId = teamId;
+  }
+
+  // Category filter
+  if (category) {
+    query.category = category;
+  }
+
+  // Search key (text search on name and description)
+  if (searchKey) {
+    query.$or = [
+      { name: { $regex: searchKey, $options: 'i' } },
+      { description: { $regex: searchKey, $options: 'i' } }
+    ];
+  }
+
+  // Execute query with pagination
+  const skip = (page - 1) * pageSize;
+
+  const [skills, total] = await Promise.all([
+    MongoAgentSkill.find(query)
+      .select('_id source name description author category avatar createTime updateTime')
+      .sort({ createTime: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .lean(),
+    MongoAgentSkill.countDocuments(query)
+  ]);
+
+  return {
+    list: skills as AgentSkillListItemType[],
+    total
+  };
+}
+
+// ==================== Import/Export ====================
+
+/**
+ * Import skill from package
+ */
+export async function importSkill(
+  packageData: SkillPackageType,
+  teamId: string,
+  tmbId: string,
+  userId: string,
+  session?: ClientSession
+): Promise<string> {
+  const { skill, markdown } = packageData;
+
+  // Check if name already exists for this team
+  const existingSkill = await MongoAgentSkill.findOne({
+    name: skill.name,
+    teamId,
+    deleteTime: null
+  });
+
+  if (existingSkill) {
+    throw new Error('Skill with this name already exists');
+  }
+
+  const [newSkill] = await MongoAgentSkill.create(
+    [
+      {
+        source: AgentSkillSourceEnum.personal,
+        name: skill.name,
+        description: skill.description,
+        markdown,
+        author: userId,
+        category: skill.category,
+        config: skill.config || {},
+        avatar: skill.avatar,
+        teamId,
+        tmbId,
+        createTime: new Date(),
+        updateTime: new Date()
+      }
+    ],
+    { session }
+  );
+
+  return newSkill._id.toString();
+}
+
+// ==================== Permission Checks ====================
+
+/**
+ * Check if user can modify/delete a skill
+ */
+export async function canModifySkill(skillId: string, tmbId: string): Promise<boolean> {
+  const skill = await MongoAgentSkill.findOne({
+    _id: skillId,
+    deleteTime: null
+  });
+
+  if (!skill) {
+    return false;
+  }
+
+  // System skills cannot be modified
+  if (skill.source === AgentSkillSourceEnum.system) {
+    return false;
+  }
+
+  // Only the creator can modify
+  return skill.tmbId?.toString() === tmbId;
+}
+
+/**
+ * Check if skill name already exists for a team
+ */
+export async function checkSkillNameExists(
+  name: string,
+  teamId: string,
+  excludeId?: string
+): Promise<boolean> {
+  const query: Record<string, any> = {
+    name,
+    teamId,
+    deleteTime: null
+  };
+
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+
+  const count = await MongoAgentSkill.countDocuments(query);
+  return count > 0;
+}
