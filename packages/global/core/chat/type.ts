@@ -187,11 +187,19 @@ export type ChatItemSchemaType = ChatItemObjItemType & {
   deleteTime?: Date | null;
 };
 
+// Client error show
+const ClientErrorShowSchema = z.object({
+  moduleName: z.string(),
+  errorText: z.string()
+});
+export type ClientErrorShowType = z.infer<typeof ClientErrorShowSchema>;
+
 export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
   toolCiteLinks?: ToolCiteLinksType[];
+  errorText?: ErrorTextItemType;
 };
 
 export type ChatItemType = ChatItemObjItemType & {

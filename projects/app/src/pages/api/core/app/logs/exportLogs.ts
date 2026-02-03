@@ -44,12 +44,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     dateEnd,
     sources,
     tmbIds,
+    outLinkUids,
     chatSearch,
     title,
     sourcesMap,
     logKeys = [],
     feedbackType,
-    unreadOnly
+    unreadOnly,
+    errorFilter
   } = ExportChatLogsBodySchema.parse(req.body);
 
   const locale = getLocale(req);
@@ -90,13 +92,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     }
   ]);
 
-  // 从已查询的团队成员中过滤匹配搜索关键词的成员（复用 teamMemberWithContact，避免额外查询）
-  const matchedTmbIds = chatSearch
-    ? teamMemberWithContact
-        .filter((m) => new RegExp(replaceRegChars(chatSearch), 'i').test(m.name))
-        .map((m) => new Types.ObjectId(m.memberId))
-    : [];
-
   const where = {
     appId: new Types.ObjectId(appId),
     // Feedback type filtering (BEFORE pagination for performance)
@@ -125,7 +120,21 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         hasUnreadBadFeedback: true
       }),
     ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) } }),
+    ...(tmbIds || outLinkUids
+      ? {
+          $or: [
+            ...(tmbIds?.length
+              ? [
+                  {
+                    tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) },
+                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
+                  }
+                ]
+              : []),
+            ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
+          ]
+        }
+      : {}),
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
@@ -135,17 +144,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           $or: [
             { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
             { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { outLinkUid: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            // 只有当 outLinkUid 为空时，才通过团队成员名称搜索（与显示逻辑一致）
-            ...(matchedTmbIds.length > 0
-              ? [
-                  {
-                    tmbId: { $in: matchedTmbIds },
-                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
-                  }
-                ]
-              : [])
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
           ]
         }
       : undefined)
@@ -272,13 +271,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
             {
               $group: {
                 _id: null,
-                // errorCount from chatItemResponse data
                 errorCountFromResponse: {
                   $sum: {
                     $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
                   }
                 },
-                // totalPoints from chatItemResponse data
                 totalPointsFromResponse: {
                   $sum: { $ifNull: ['$data.totalPoints', 0] }
                 }
@@ -331,7 +328,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
               0
             ]
           },
-          // Merge errorCount from both sources
           errorCount: {
             $add: [
               { $ifNull: [{ $arrayElemAt: ['$chatData.errorCountFromChatItem', 0] }, 0] },
@@ -340,7 +336,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
               }
             ]
           },
-          // Merge totalPoints from both sources
           totalPoints: {
             $add: [
               { $ifNull: [{ $arrayElemAt: ['$chatData.totalPointsFromChatItem', 0] }, 0] },
@@ -395,6 +390,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
         }
       },
+      ...(errorFilter === 'has_error' ? [{ $match: { errorCount: { $gt: 0 } } }] : []),
       {
         $project: {
           _id: 1,
