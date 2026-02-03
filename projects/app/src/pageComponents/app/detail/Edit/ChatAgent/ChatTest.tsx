@@ -23,7 +23,12 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
-import { SubAppIds } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
+import {
+  SubAppIds,
+  systemSubInfo
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -143,12 +148,35 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
+                const fileUploadEnabled = !!formData.fileUploadEnabled;
                 // 过滤掉内部工具
                 const internalToolIds = Object.values(SubAppIds);
                 const filteredToolIds = (formData.tools || []).filter(
                   (toolId) => !internalToolIds.includes(toolId as SubAppIds)
                 );
+                const internalOnlyToolIds = (formData.tools || []).filter((toolId) =>
+                  internalToolIds.includes(toolId as SubAppIds)
+                );
 
+                const internalTools: AppFormEditFormType['selectedTools'] = internalOnlyToolIds
+                  .filter((toolId) => toolId !== SubAppIds.fileRead)
+                  .map((toolId) => {
+                    const info = systemSubInfo[toolId as SubAppIds];
+                    if (!info) return undefined;
+                    return {
+                      id: toolId,
+                      pluginId: toolId,
+                      name: info.name,
+                      avatar: info.avatar,
+                      intro: info.toolDescription,
+                      flowNodeType: FlowNodeTypeEnum.tool,
+                      templateType: FlowNodeTemplateTypeEnum.tools,
+                      inputs: [],
+                      outputs: [],
+                      configStatus: 'configured'
+                    };
+                  })
+                  .filter(Boolean) as AppFormEditFormType['selectedTools'];
                 const newTools = await loadGeneratedTools({
                   newToolIds: filteredToolIds,
                   existsTools: appForm.selectedTools,
@@ -158,14 +186,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 setAppForm((prev) => {
                   const newForm: AppFormEditFormType = {
                     ...prev,
-                    selectedTools: newTools,
+                    selectedTools: [...internalTools, ...newTools],
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt
                     },
                     chatConfig: {
                       ...prev.chatConfig,
-                      fileSelectConfig: formData.fileUploadEnabled
+                      fileSelectConfig: fileUploadEnabled
                         ? {
                             ...prev.chatConfig.fileSelectConfig,
                             canSelectFile: true

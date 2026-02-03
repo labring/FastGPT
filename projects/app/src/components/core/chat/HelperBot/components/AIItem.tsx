@@ -11,17 +11,39 @@ import {
   HStack,
   Button
 } from '@chakra-ui/react';
+import { keyframes } from '@emotion/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
 import { Controller, useForm } from 'react-hook-form';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputRender from '@/components/core/app/formRender';
+import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/ChatAvatar';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+
+const isTextValue = (value: unknown): value is { text: { content: string } } =>
+  !!value && typeof value === 'object' && 'text' in value;
+const isReasoningValue = (value: unknown): value is { reasoning: { content: string } } =>
+  !!value && typeof value === 'object' && 'reasoning' in value;
+const isCollectionFormValue = (value: unknown): value is { collectionForm: UserInputInteractive } =>
+  !!value && typeof value === 'object' && 'collectionForm' in value;
+const isPlanHintValue = (value: unknown): value is { planHint: { type: 'generation' } } =>
+  !!value && typeof value === 'object' && 'planHint' in value;
+
+const waitingDot = keyframes`
+  0% { opacity: 0.2; }
+  20% { opacity: 1; }
+  100% { opacity: 0.2; }
+`;
+
+const blink = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+`;
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -93,10 +115,12 @@ const RenderText = React.memo(function RenderText({
 });
 const RenderCollectionForm = React.memo(function RenderCollectionForm({
   collectionForm,
-  onSubmit
+  onSubmit,
+  showDescription = true
 }: {
   collectionForm: UserInputInteractive;
   onSubmit: (formData: string) => void;
+  showDescription?: boolean;
 }) {
   const { t } = useTranslation();
   const { control, handleSubmit } = useForm();
@@ -105,7 +129,7 @@ const RenderCollectionForm = React.memo(function RenderCollectionForm({
 
   return (
     <Box>
-      <Box mb={3}>{collectionForm.params.description}</Box>
+      {showDescription && <Box mb={3}>{collectionForm.params.description}</Box>}
       <Flex flexDirection={'column'} gap={3}>
         {collectionForm.params.inputForm.map((input) => {
           const inputType = nodeInputTypeToInputType([input.type]);
@@ -169,8 +193,23 @@ const AIItem = ({
   isLastChild: boolean;
   onSubmitCollectionForm: (formData: string) => void;
 }) => {
-  const { t } = useTranslation();
-  const { copyData } = useCopyData();
+  const aiAvatar = getWebReqUrl('/imgs/bot.svg');
+  const hasPlanHint = chat.value.some((value) => isPlanHintValue(value));
+  const hasCollectionForm = chat.value.some((value) => isCollectionFormValue(value));
+  const questionText = chat.value.find((value) => isTextValue(value))?.text?.content;
+  const fallbackQuestion = chat.value.find((value) => isCollectionFormValue(value))?.collectionForm
+    ?.params?.description;
+  const hasTextContent = chat.value.some(
+    (value) => isTextValue(value) && value.text?.content?.trim()
+  );
+  const hasReasoningContent = chat.value.some(
+    (value) => isReasoningValue(value) && value.reasoning?.content?.trim()
+  );
+  const hasRenderableContent = hasTextContent || hasReasoningContent || hasCollectionForm;
+  const shouldShowWaiting =
+    !hasPlanHint && !hasCollectionForm && isChatting && isLastChild && !hasRenderableContent;
+  const shouldShowQuestion =
+    !hasPlanHint && hasCollectionForm && !hasTextContent && !hasReasoningContent;
 
   return (
     <Box
@@ -180,46 +219,93 @@ const AIItem = ({
         }
       }}
     >
-      <Box
-        px={4}
-        py={3}
-        borderRadius={'sm'}
-        display="inline-block"
-        maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
-        color={'myGray.900'}
-        bg={'myGray.100'}
-      >
-        {chat.value.map((value, i) => {
-          if ('text' in value && value.text) {
-            return (
-              <RenderText
-                key={i}
-                showAnimation={isChatting && isLastChild}
-                text={value.text.content}
+      <Flex alignItems={'flex-start'} justifyContent={'flex-start'} gap={2} w={'100%'}>
+        <ChatAvatar type={ChatRoleEnum.AI} src={aiAvatar} />
+        <Box
+          px={4}
+          py={3}
+          borderRadius={'sm'}
+          display="inline-block"
+          maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
+          color={'myGray.900'}
+          bg={'myGray.100'}
+        >
+          {hasPlanHint && (
+            <Box color={'myGray.500'} fontSize={'sm'}>
+              规划已生成，您可继续对话来微调当前规划
+            </Box>
+          )}
+          {shouldShowWaiting && (
+            <Flex alignItems={'center'} gap={2} color={'myGray.500'} fontSize={'sm'}>
+              <Box
+                w={'6px'}
+                h={'6px'}
+                borderRadius={'full'}
+                bg={'green.500'}
+                animation={`${blink} 1.5s infinite`}
               />
-            );
-          }
-          if ('reasoning' in value && value.reasoning) {
-            return (
-              <RenderResoningContent
-                key={i}
-                isChatting={isChatting}
-                isLastResponseValue={isLastChild}
-                content={value.reasoning.content}
-              />
-            );
-          }
-          if ('collectionForm' in value && value.collectionForm) {
-            return (
-              <RenderCollectionForm
-                key={i}
-                collectionForm={value.collectionForm}
-                onSubmit={onSubmitCollectionForm}
-              />
-            );
-          }
-        })}
-      </Box>
+              <Box>
+                正在回答请稍后
+                <Box as="span" animation={`${waitingDot} 1.2s infinite`}>
+                  .
+                </Box>
+                <Box as="span" animation={`${waitingDot} 1.2s 0.2s infinite`}>
+                  .
+                </Box>
+                <Box as="span" animation={`${waitingDot} 1.2s 0.4s infinite`}>
+                  .
+                </Box>
+              </Box>
+            </Flex>
+          )}
+          {shouldShowQuestion && (questionText || fallbackQuestion) && (
+            <Box
+              px={3}
+              py={2}
+              borderRadius={'md'}
+              bg={'myGray.50'}
+              color={'myGray.700'}
+              fontSize={'sm'}
+              display={'inline-block'}
+            >
+              {questionText || fallbackQuestion}
+            </Box>
+          )}
+          {!hasPlanHint &&
+            hasRenderableContent &&
+            chat.value.map((value, i) => {
+              if (isTextValue(value)) {
+                return (
+                  <RenderText
+                    key={i}
+                    showAnimation={isChatting && isLastChild}
+                    text={value.text.content}
+                  />
+                );
+              }
+              if (isReasoningValue(value)) {
+                return (
+                  <RenderResoningContent
+                    key={i}
+                    isChatting={isChatting}
+                    isLastResponseValue={isLastChild}
+                    content={value.reasoning.content}
+                  />
+                );
+              }
+              if (isCollectionFormValue(value)) {
+                return (
+                  <RenderCollectionForm
+                    key={i}
+                    collectionForm={value.collectionForm}
+                    onSubmit={onSubmitCollectionForm}
+                    showDescription={!shouldShowQuestion}
+                  />
+                );
+              }
+            })}
+        </Box>
+      </Flex>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>
         {/* <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>

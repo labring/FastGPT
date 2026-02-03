@@ -60,7 +60,8 @@ ${tool}
       })
     )
   ]);
-
+  // console.log('systemTools tools ', systemTools);
+  // console.log('my tools ', myTools);
   const allTools = [...systemTools, ...myTools];
   // 添加文件读取工具
   const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
@@ -78,11 +79,14 @@ export const buildMetadataInfo = (metadata?: TopAgentParamsType): string => {
 
   const sections: string[] = [];
 
-  if (metadata.role) {
-    sections.push(`**预设角色**: ${metadata.role}`);
-  }
-  if (metadata.taskObject) {
-    sections.push(`**预设任务目标**: ${metadata.taskObject}`);
+  // if (metadata.role) {
+  //   sections.push(`**预设角色**: ${metadata.role}`);
+  // }
+  // if (metadata.taskObject) {
+  //   sections.push(`**预设任务目标**: ${metadata.taskObject}`);
+  // }
+  if (metadata.systemPrompt) {
+    sections.push(`${metadata.systemPrompt}`);
   }
   if (metadata.selectedTools && metadata.selectedTools.length > 0) {
     sections.push(

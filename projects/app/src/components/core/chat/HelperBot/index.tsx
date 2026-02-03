@@ -160,6 +160,16 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
               })
             };
           }
+          if (event === SseResponseEventEnum.plan) {
+            return {
+              ...item,
+              value: item.value.concat({
+                planHint: {
+                  type: 'generation'
+                }
+              })
+            };
+          }
           if (
             event === SseResponseEventEnum.topAgentConfig &&
             formData &&

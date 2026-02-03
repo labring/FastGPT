@@ -9,39 +9,48 @@ import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/ChatAvatar';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { text, files = [] } = formatChatValue2InputType(chat.value);
+  const userInfo = useUserStore((state) => state.userInfo);
+  const humanAvatar = userInfo?.avatar || getWebReqUrl('/imgs/botClosed.svg');
 
   // TODO: delete chatitem
 
   return (
     <Flex
       direction={'column'}
-      alignItems={'end'}
+      alignItems={'flex-end'}
       _hover={{
         '& .controler': {
           display: 'flex'
         }
       }}
     >
-      <Box
-        px={4}
-        py={3}
-        borderRadius={'sm'}
-        display="inline-block"
-        maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
-        color={'myGray.900'}
-        bg={'primary.100'}
-        order={0}
-      >
-        <Flex flexDirection={'column'} gap={4}>
-          {files.length > 0 && <FileBlock files={files} />}
-          {text && <Markdown source={text} />}
-        </Flex>
-      </Box>
+      <Flex alignItems={'flex-start'} justifyContent={'flex-end'} gap={2} w={'100%'}>
+        <Box
+          px={4}
+          py={3}
+          borderRadius={'sm'}
+          display="inline-block"
+          maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
+          color={'myGray.900'}
+          bg={'primary.100'}
+          order={0}
+        >
+          <Flex flexDirection={'column'} gap={4}>
+            {files.length > 0 && <FileBlock files={files} />}
+            {text && <Markdown source={text} />}
+          </Flex>
+        </Box>
+        <ChatAvatar type={ChatRoleEnum.Human} src={humanAvatar} />
+      </Flex>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>
         {/* <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>
