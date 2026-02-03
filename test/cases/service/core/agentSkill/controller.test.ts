@@ -11,6 +11,10 @@ import {
   importSkill
 } from '@fastgpt/service/core/agentSkill/controller';
 import {
+  parseSkillMarkdown,
+  extractSkillFromMarkdown
+} from '@fastgpt/service/core/agentSkill/utils';
+import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
 } from '@fastgpt/global/core/agentSkill/constants';
@@ -515,7 +519,16 @@ describe('AgentSkill Controller', () => {
         markdown: '# Imported Skill\n\nThis is imported.'
       };
 
-      const skillId = await importSkill(packageData, testTeamId, testTmbId, testUserId);
+      // Create a mock ZIP buffer
+      const mockZipBuffer = Buffer.from('mock zip content');
+
+      const skillId = await importSkill(
+        packageData,
+        testTeamId,
+        testTmbId,
+        testUserId,
+        mockZipBuffer
+      );
 
       expect(skillId).toBeDefined();
 
@@ -537,13 +550,257 @@ describe('AgentSkill Controller', () => {
         markdown: '# Test'
       };
 
+      const mockZipBuffer = Buffer.from('mock zip content');
+
       // First import
-      await importSkill(packageData, testTeamId, testTmbId, testUserId);
+      await importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer);
 
       // Second import should fail
-      await expect(importSkill(packageData, testTeamId, testTmbId, testUserId)).rejects.toThrow(
-        'Skill with this name already exists'
-      );
+      await expect(
+        importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer)
+      ).rejects.toThrow('Skill with this name already exists');
+    });
+  });
+
+  // ==================== Parse SKILL.md ====================
+  describe('parseSkillMarkdown', () => {
+    it('should parse YAML frontmatter correctly', () => {
+      const markdown = `---
+name: web-search
+description: Search the web
+metadata:
+  author: test
+  version: "1.0"
+  category: search,tool
+---
+
+# Web Search
+
+This is the content.`;
+
+      const result = parseSkillMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.frontmatter.name).toBe('web-search');
+      expect(result.frontmatter.description).toBe('Search the web');
+      expect(result.frontmatter.metadata).toEqual({
+        author: 'test',
+        version: '1.0',
+        category: ['search', 'tool']
+      });
+      expect(result.content).toContain('# Web Search');
+    });
+
+    it('should return error when frontmatter is missing', () => {
+      const markdown = `# No Frontmatter
+
+This content has no frontmatter.`;
+
+      const result = parseSkillMarkdown(markdown);
+
+      expect(result.error).toContain('SKILL.md must contain YAML frontmatter');
+    });
+
+    it('should parse array values correctly', () => {
+      const markdown = `---
+name: test-skill
+description: A test
+category: [search, tool, coding]
+---
+
+# Test`;
+
+      const result = parseSkillMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.frontmatter.category).toEqual(['search', 'tool', 'coding']);
+    });
+
+    it('should parse boolean values correctly', () => {
+      const markdown = `---
+name: test-skill
+description: A test
+metadata:
+  enabled: true
+  disabled: false
+---
+
+# Test`;
+
+      const result = parseSkillMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.frontmatter.metadata.enabled).toBe(true);
+      expect(result.frontmatter.metadata.disabled).toBe(false);
+    });
+  });
+
+  // ==================== Extract Skill from Markdown ====================
+  describe('extractSkillFromMarkdown', () => {
+    it('should extract skill with minimal required fields', () => {
+      const markdown = `---
+name: test-skill
+description: A test skill
+---
+
+# Test Skill`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.skill).toBeDefined();
+      expect(result.skill.name).toBe('test-skill');
+      expect(result.skill.description).toBe('A test skill');
+      expect(result.skill.category).toEqual(['other']); // default
+      expect(result.skill.config).toEqual({});
+    });
+
+    it('should extract skill with metadata category', () => {
+      const markdown = `---
+name: web-search
+description: Search the web
+metadata:
+  category: search,tool
+---
+
+# Web Search`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.skill.category).toEqual(['search', 'tool']);
+    });
+
+    it('should extract skill with license and compatibility', () => {
+      const markdown = `---
+name: test-skill
+description: A test skill
+license: MIT
+compatibility: Requires Python 3.8+
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.skill.config.license).toBe('MIT');
+      expect(result.skill.config.compatibility).toBe('Requires Python 3.8+');
+    });
+
+    it('should extract metadata fields to config', () => {
+      const markdown = `---
+name: test-skill
+description: A test skill
+metadata:
+  author: test-user
+  version: "1.0.0"
+  apiUrl: https://example.com
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.skill.config.author).toBe('test-user');
+      expect(result.skill.config.version).toBe('1.0.0');
+      expect(result.skill.config.apiUrl).toBe('https://example.com');
+    });
+
+    it('should return error when name is missing', () => {
+      const markdown = `---
+description: A test skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Frontmatter field "name" is required');
+      expect(result.skill).toBeNull();
+    });
+
+    it('should return error when description is missing', () => {
+      const markdown = `---
+name: test-skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Frontmatter field "description" is required');
+      expect(result.skill).toBeNull();
+    });
+
+    it('should return error for invalid name format - uppercase', () => {
+      const markdown = `---
+name: Test-Skill
+description: A test skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Name must contain only lowercase letters');
+      expect(result.skill).toBeNull();
+    });
+
+    it('should return error for invalid name format - starts with hyphen', () => {
+      const markdown = `---
+name: -test-skill
+description: A test skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Name must contain only lowercase letters');
+      expect(result.skill).toBeNull();
+    });
+
+    it('should return error for invalid name format - consecutive hyphens', () => {
+      const markdown = `---
+name: test--skill
+description: A test skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Name must contain only lowercase letters');
+      expect(result.skill).toBeNull();
+    });
+
+    it('should return error for name too long', () => {
+      const markdown = `---
+name: ${'a'.repeat(51)}
+description: A test skill
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toContain('Name must be less than 50 characters');
+    });
+
+    it('should truncate description if too long', () => {
+      const markdown = `---
+name: test-skill
+description: ${'a'.repeat(600)}
+---
+
+# Test`;
+
+      const result = extractSkillFromMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.skill.description.length).toBe(500); // truncated
     });
   });
 });

@@ -46,6 +46,7 @@
     "json5": "^2.2.3",
     "jsondiffpatch": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
     "lodash": "^4.17.23",
     "mermaid": "^10.9.4",
     "minio": "^8.0.5",
