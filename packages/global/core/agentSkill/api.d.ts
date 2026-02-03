@@ -1,5 +1,5 @@
 import type { AgentSkillCategoryEnum, AgentSkillSourceEnum } from './constants';
-import type { AgentSkillConfigType } from './type';
+import type { AgentSkillConfigType, ExtractedSkillPackage } from './type';
 
 // ==================== List Skills ====================
 export type ListSkillsQuery = {

@@ -5,7 +5,7 @@ import type {
   AgentSkillListItemType,
   SkillPackageType
 } from '@fastgpt/global/core/agentSkill/type';
-import type { ClientSession } from '../../common/mongo';
+import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoUser } from '../../support/user/schema';
 
 // Types for service operations
@@ -182,51 +182,72 @@ export async function listSkills(
 // ==================== Import/Export ====================
 
 /**
- * Import skill from package
+ * Import skill from package with full workflow (transaction)
+ * This function expects to be called inside mongoSessionRun
  */
 export async function importSkill(
   packageData: SkillPackageType,
   teamId: string,
   tmbId: string,
   userId: string,
+  zipBuffer: Buffer,
   session?: ClientSession
 ): Promise<string> {
   const { skill, markdown } = packageData;
 
-  // Check if name already exists for this team
-  const existingSkill = await MongoAgentSkill.findOne({
+  // Import storage services
+  const { uploadSkillPackage } = await import('./storage');
+  const { createVersion } = await import('./versionController');
+
+  // Create skill record first
+  const newSkill = new MongoAgentSkill({
+    source: AgentSkillSourceEnum.personal,
     name: skill.name,
+    description: skill.description,
+    markdown,
+    author: userId,
+    category: skill.category,
+    config: skill.config || {},
+    avatar: skill.avatar,
     teamId,
-    deleteTime: null
+    tmbId,
+    currentVersion: 0,
+    versionCount: 1, // Will have v0
+    createTime: new Date(),
+    updateTime: new Date()
+  });
+  await newSkill.save({ session });
+
+  const newSkillId = newSkill._id.toString();
+
+  // Upload ZIP to MinIO
+  const storageInfo = await uploadSkillPackage({
+    teamId,
+    skillId: newSkillId,
+    version: 0,
+    zipBuffer
   });
 
-  if (existingSkill) {
-    throw new Error('Skill with this name already exists');
-  }
+  // Update skill's currentStorage field
+  await updateCurrentStorage(newSkillId, storageInfo, session);
 
-  const [newSkill] = await MongoAgentSkill.create(
-    [
-      {
-        source: AgentSkillSourceEnum.personal,
-        name: skill.name,
-        description: skill.description,
-        markdown,
-        author: userId,
-        category: skill.category,
-        config: skill.config || {},
-        avatar: skill.avatar,
-        teamId,
-        tmbId,
-        currentVersion: 0,
-        versionCount: 0,
-        createTime: new Date(),
-        updateTime: new Date()
-      }
-    ],
-    { session }
+  // Create v0 version record
+  await createVersion(
+    {
+      skillId: newSkillId,
+      tmbId,
+      version: 0,
+      versionName: 'Initial import',
+      markdown,
+      config: skill.config || {},
+      description: skill.description,
+      category: skill.category,
+      storage: storageInfo
+    },
+    session
   );
 
-  return newSkill._id.toString();
+  return newSkillId;
 }
 
 // ==================== Permission Checks ====================

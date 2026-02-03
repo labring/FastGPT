@@ -117,3 +117,20 @@ export type SkillPackageType = {
   };
   markdown: string;
 };
+
+// ZIP entry information
+export type ZipEntryInfo = {
+  name: string; // Path relative to ZIP root (e.g. 'SKILL.md', 'resources/image.png')
+  size: number; // File size in bytes
+  isDirectory: boolean; // Whether it's a directory
+  uncompressedSize?: number; // Uncompressed size (for compressed files)
+  compressionMethod?: number; // Compression method used
+};
+
+// Extended skill package result from extraction
+export type ExtractedSkillPackage = {
+  skillPackage: SkillPackageType; // Parsed skill package
+  zipBuffer: Buffer; // Complete ZIP file buffer for storage
+  zipEntries: ZipEntryInfo[]; // All entries metadata
+  totalSize: number; // Total ZIP size in bytes
+};

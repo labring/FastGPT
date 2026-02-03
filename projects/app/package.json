@@ -50,6 +50,7 @@
     "jsondiffpatch": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
     "lodash": "catalog:",
+    "jszip": "^3.10.1",
     "mermaid": "^10.9.4",
     "minio": "catalog:",
     "nanoid": "^5.1.3",
