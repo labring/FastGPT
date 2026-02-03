@@ -1,0 +1,118 @@
+projects/app/src/pages/api/core/app/agent/skills/create.ts
+  f0520f157f97f281 5,116-119,137,139
+  81448d3ec2b4a343 6-9,84,86-93,111-115,120-130,134-135
+test/cases/service/core/agentSkill/storage.test.ts
+  81448d3ec2b4a343 1-173
+test/cases/service/core/agentSkill/skillMdBuilder.test.ts
+  81448d3ec2b4a343 1-207
+packages/service/core/agentSkill/versionSchema.ts
+  81448d3ec2b4a343 1-103
+packages/global/core/agentSkill/constants.ts
+  81448d3ec2b4a343 51-52
+packages/service/core/agentSkill/schema.ts
+  169324e2eb7e5f45 64-77
+packages/service/core/agentSkill/versionController.ts
+  81448d3ec2b4a343 1-40,42-45,48-237
+  6d1616abf3d01f9b 41,46-47
+packages/service/core/agentSkill/skillMdBuilder.ts
+  81448d3ec2b4a343 1-169
+packages/service/core/agentSkill/zipBuilder.ts
+  81448d3ec2b4a343 1-211
+packages/service/core/agentSkill/controller.ts
+  169324e2eb7e5f45 44-45,221
+  6d1616abf3d01f9b 41,47-48
+  f0520f157f97f281 74-90
+test/cases/service/core/agentSkill/zipBuilder.test.ts
+  81448d3ec2b4a343 1-278
+packages/service/core/agentSkill/storage.ts
+  81448d3ec2b4a343 1-206
+packages/global/core/agentSkill/type.d.ts
+  169324e2eb7e5f45 30-38,57-85
+test/cases/service/core/agentSkill/version.test.ts
+  81448d3ec2b4a343 1-692
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.36",
+  "base_commit_sha": "17444c85e6bb3ea32e9d36f15f70f5de6b23daa5",
+  "prompts": {
+    "169324e2eb7e5f45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03697cea-aba0-45af-a7e3-f4c158d434e4",
+        "model": "glm-4.7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 0,
+      "accepted_lines": 56,
+      "overriden_lines": 0
+    },
+    "4afb7cf26a00e743": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ecea508-34c3-4977-a262-47bcb72f15a1",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 11,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    },
+    "6d1616abf3d01f9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6201de24-8003-400d-b1d5-0650a6a0873e",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 34,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    },
+    "81448d3ec2b4a343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3266ba3a-f647-4d56-aea6-4d18b9bda939",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2474,
+      "total_deletions": 18,
+      "accepted_lines": 2450,
+      "overriden_lines": 0
+    },
+    "f0520f157f97f281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd9f0f4d-f744-45c0-8d7e-87ddfbd0290b",
+        "model": "glm-4.7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 51,
+      "total_deletions": 23,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    },
+    "fc0b8352c338d028": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85cdb374-50f7-4edb-9242-0835a46ab155",
+        "model": "kimi-k2.5"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
