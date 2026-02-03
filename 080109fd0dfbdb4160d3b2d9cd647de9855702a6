@@ -1,0 +1,37 @@
+projects/app/src/pages/api/core/app/agent/skills/detail.ts
+  9c85a09891e552d8 1-74
+test/cases/service/core/agentSkill/utils.test.ts
+  9c85a09891e552d8 1-257
+test/cases/service/core/agentSkill/controller.test.ts
+  9c85a09891e552d8 1-535
+projects/app/src/pages/api/core/app/agent/skills/create.ts
+  9c85a09891e552d8 1-102
+projects/app/src/pages/api/core/app/agent/skills/list.ts
+  9c85a09891e552d8 1-61
+packages/global/core/agentSkill/constants.ts
+  9c85a09891e552d8 1-50
+packages/service/core/agentSkill/controller.ts
+  9c85a09891e552d8 1-257
+projects/app/src/pages/api/core/app/agent/skills/delete.ts
+  9c85a09891e552d8 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.36",
+  "base_commit_sha": "080109fd0dfbdb4160d3b2d9cd647de9855702a6",
+  "prompts": {
+    "9c85a09891e552d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81966e0e-9130-4617-b75b-76baf05939a1",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2891,
+      "total_deletions": 73,
+      "accepted_lines": 2818,
+      "overriden_lines": 0
+    }
+  }
+}
