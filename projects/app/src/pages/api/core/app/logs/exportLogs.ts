@@ -90,6 +90,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     }
   ]);
 
+  // 从已查询的团队成员中过滤匹配搜索关键词的成员（复用 teamMemberWithContact，避免额外查询）
+  const matchedTmbIds = chatSearch
+    ? teamMemberWithContact
+        .filter((m) => new RegExp(replaceRegChars(chatSearch), 'i').test(m.name))
+        .map((m) => new Types.ObjectId(m.memberId))
+    : [];
+
   const where = {
     appId: new Types.ObjectId(appId),
     // Feedback type filtering (BEFORE pagination for performance)
@@ -128,7 +135,17 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           $or: [
             { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
             { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { outLinkUid: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            // 只有当 outLinkUid 为空时，才通过团队成员名称搜索（与显示逻辑一致）
+            ...(matchedTmbIds.length > 0
+              ? [
+                  {
+                    tmbId: { $in: matchedTmbIds },
+                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
+                  }
+                ]
+              : [])
           ]
         }
       : undefined)

@@ -519,7 +519,7 @@ const LogTable = ({
           </Box>
           <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
           <Input
-            placeholder={t('app:logs_search_chat')}
+            placeholder={t('app:logs_search_placeholder')}
             value={chatSearch}
             onChange={(e) => setChatSearch(e.target.value)}
             fontSize={'sm'}

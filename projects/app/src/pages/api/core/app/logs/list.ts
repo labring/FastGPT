@@ -12,6 +12,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -38,12 +39,25 @@ async function handler(
   }
 
   // 凭证校验
-  await authApp({
+  const { teamId } = await authApp({
     req,
     authToken: true,
     appId,
     per: AppReadChatLogPerVal
   });
+
+  // 查询匹配搜索关键词的团队成员
+  const matchedTmbIds = chatSearch
+    ? await MongoTeamMember.find(
+        {
+          teamId: new Types.ObjectId(teamId),
+          name: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') }
+        },
+        '_id'
+      )
+        .lean()
+        .then((members) => members.map((m) => new Types.ObjectId(m._id)))
+    : [];
 
   const where = {
     appId: new Types.ObjectId(appId),
@@ -83,7 +97,17 @@ async function handler(
           $or: [
             { chatId: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
             { title: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
-            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
+            { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            { outLinkUid: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } },
+            // 只有当 outLinkUid 为空时，才通过团队成员名称搜索（与显示逻辑一致）
+            ...(matchedTmbIds.length > 0
+              ? [
+                  {
+                    tmbId: { $in: matchedTmbIds },
+                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
+                  }
+                ]
+              : [])
           ]
         }
       : undefined)
@@ -324,12 +348,21 @@ async function handler(
     };
   });
 
-  // 获取有 tmbId 的人员
+  // 获取有 tmbId 的人员信息
   const listWithSourceMember = await addSourceMember({ list: listWithRegion });
-  // 获取没有 tmbId 的人员
-  const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
+  const sourceMemberIds = new Set(listWithSourceMember.map((item) => String(item._id)));
+
+  // 获取没有成员信息的记录（包括没有 tmbId 的，以及 tmbId 对应的成员已被删除的）
+  const listWithoutSourceMember = listWithRegion.filter(
+    (item) => !sourceMemberIds.has(String(item._id))
+  );
+
+  // 合并列表并按 updateTime 降序排序，保持原始查询顺序
+  const mergedList = listWithSourceMember.concat(listWithoutSourceMember);
+  mergedList.sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
+
   return GetAppChatLogsResponseSchema.parse({
-    list: listWithSourceMember.concat(listWithoutTmbId),
+    list: mergedList,
     total
   });
 }

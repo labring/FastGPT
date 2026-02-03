@@ -252,7 +252,7 @@
   "logs_points_per_chat": "单次会话平均积分消耗",
   "logs_points_per_chat_description": "工作流运行一次平均消耗多少积分",
   "logs_response_time": "平均响应时长",
-  "logs_search_chat": "标题,会话 ID",
+  "logs_search_placeholder": "搜索标题/会话ID/使用者",
   "logs_source": "来源",
   "logs_source_count": "渠道用户",
   "logs_source_count_description": "各渠道用户的数量",

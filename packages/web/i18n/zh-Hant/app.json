@@ -246,7 +246,7 @@
   "logs_points_per_chat": "單次會話平均積分消耗",
   "logs_points_per_chat_description": "工作流運行一次平均消耗多少積分",
   "logs_response_time": "平均回應時長",
-  "logs_search_chat": "標題,會話 ID",
+  "logs_search_placeholder": "搜尋標題/會話ID/使用者",
   "logs_source": "來源",
   "logs_source_count_description": "各渠道用戶的數量",
   "logs_title": "標題",

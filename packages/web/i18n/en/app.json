@@ -247,7 +247,7 @@
   "logs_points_per_chat": "Average points consumption for a single session",
   "logs_points_per_chat_description": "How many points are consumed on average for a workflow operation",
   "logs_response_time": "Average Response Time",
-  "logs_search_chat": "title, session ID",
+  "logs_search_placeholder": "Search title/session ID/user",
   "logs_source": "source",
   "logs_source_count_description": "Number of users across channels",
   "logs_title": "Title",
