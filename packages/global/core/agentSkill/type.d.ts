@@ -27,6 +27,15 @@ export type AgentSkillSchemaType = {
   createTime: Date;
   updateTime: Date;
   deleteTime?: Date | null;
+
+  // === Version Control ===
+  currentVersion: number; // Current active version number
+  versionCount: number; // Total version count
+  currentStorage?: {
+    bucket: string;
+    key: string; // e.g.g. skills/{teamId}/{skillId}/v{n}/package.zip
+    size: number;
+  };
 };
 
 // List view (lightweight)
@@ -44,6 +53,35 @@ export type AgentSkillListItemType = {
 
 // Detail view (full)
 export type AgentSkillDetailType = AgentSkillSchemaType;
+
+// Skill Version Schema
+export type SkillVersionSchemaType = {
+  _id: string;
+  skillId: string;
+  tmbId: string;
+  version: number;
+  versionName?: string;
+  // Snapshot of skill data
+  markdown: string;
+  config: Record<string, any>;
+  description: string;
+  category: string[];
+  // Storage information
+  storage: {
+    bucket: string;
+    key: string;
+    size: number;
+    checksum?: string;
+  };
+  // Import source (optional)
+  importSource?: {
+    originalFilename: string;
+    importedAt: Date;
+  };
+  isActive: boolean;
+  isDeleted: boolean;
+  createdAt: Date;
+};
 
 // Skill config type
 export type AgentSkillConfigType = {
