@@ -8,8 +8,11 @@ import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { loadVectorDBEnv } from './utils/env';
 
 vi.stubEnv('NODE_ENV', 'test');
+
+loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
 
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));

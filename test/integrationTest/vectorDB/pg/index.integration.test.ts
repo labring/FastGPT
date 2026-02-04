@@ -1,11 +1,15 @@
-import { describe } from 'vitest';
-import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
+import { describe, vi } from 'vitest';
 import { createVectorDBTestSuite } from '../testSuites';
 
-const isEnabled = Boolean(process.env.PG_URL);
-const describePg = isEnabled ? describe : describe.skip;
+// Unmock vector controllers for integration tests
+vi.unmock('@fastgpt/service/common/vectorDB/pg');
+vi.unmock('@fastgpt/service/common/vectorDB/constants');
 
-describePg('PG Vector Integration', () => {
+import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
+
+const isEnabled = Boolean(process.env.PG_URL);
+
+describe.skipIf(!isEnabled)('PG Vector Integration', () => {
   const vectorCtrl = new PgVectorCtrl();
   createVectorDBTestSuite(vectorCtrl);
 });

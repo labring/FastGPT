@@ -1,9 +1,9 @@
 {
   "tags": {
-    "fastgpt": "v4.14.6",
+    "fastgpt": "v4.14.6.1",
     "fastgpt-sandbox": "v4.14.6",
     "fastgpt-mcp_server": "v4.14.6",
-    "fastgpt-plugin": "v0.5.0",
+    "fastgpt-plugin": "v0.5.1",
     "aiproxy": "v0.3.2",
     "aiproxy-pg": "0.8.0-pg15",
     "mongo": "5.0.32",

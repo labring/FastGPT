@@ -1,11 +1,15 @@
-import { describe } from 'vitest';
-import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus';
+import { describe, vi } from 'vitest';
 import { createVectorDBTestSuite } from '../testSuites';
 
-const isEnabled = Boolean(process.env.MILVUS_ADDRESS);
-const describePg = isEnabled ? describe : describe.skip;
+// Unmock vector controllers for integration tests
+vi.unmock('@fastgpt/service/common/vectorDB/milvus');
+vi.unmock('@fastgpt/service/common/vectorDB/constants');
 
-describePg('Milvus Vector Integration', () => {
+import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus';
+
+const isEnabled = Boolean(process.env.MILVUS_ADDRESS);
+
+describe.skipIf(!isEnabled)('Milvus Vector Integration', () => {
   const vectorCtrl = new MilvusCtrl();
   createVectorDBTestSuite(vectorCtrl);
 });
