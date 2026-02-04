@@ -110,7 +110,8 @@ const UserFilter = ({
         px: 1,
         borderRadius: 'sm',
         bg: 'myGray.100',
-        w: '76px'
+        w: '76px',
+        overflow: 'hidden'
       }}
       inputValue={searchKey}
       setInputValue={setSearchKey}
