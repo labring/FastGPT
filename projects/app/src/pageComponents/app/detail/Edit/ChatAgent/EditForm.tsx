@@ -76,8 +76,13 @@ const EditForm = ({
         }
       });
     },
-    canSelectFile: appForm.chatConfig.fileSelectConfig?.canSelectFile,
-    canSelectImg: appForm.chatConfig.fileSelectConfig?.canSelectImg
+    canUploadFile: !!(
+      appForm.chatConfig.fileSelectConfig?.canSelectFile ||
+      appForm.chatConfig.fileSelectConfig?.canSelectImg ||
+      appForm.chatConfig.fileSelectConfig?.canSelectVideo ||
+      appForm.chatConfig.fileSelectConfig?.canSelectAudio ||
+      appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
+    )
   });
 
   const {

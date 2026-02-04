@@ -50,14 +50,12 @@ export const useSkillManager = ({
   selectedTools,
   onUpdateOrAddTool,
   onDeleteTool,
-  canSelectFile,
-  canSelectImg
+  canUploadFile
 }: {
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
+  canUploadFile?: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -202,8 +200,7 @@ export const useSkillManager = ({
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
-        canSelectFile,
-        canSelectImg
+        canUploadFile
       });
       if (!toolValid) {
         toast({
@@ -225,7 +222,7 @@ export const useSkillManager = ({
 
       return tool.id;
     },
-    [canSelectFile, canSelectImg, lastSelectedTools, onUpdateOrAddTool, t, toast]
+    [canUploadFile, lastSelectedTools, onUpdateOrAddTool, t, toast]
   );
 
   /* ===== Skill option ===== */
@@ -280,7 +277,6 @@ export const useSkillManager = ({
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
-    const canUseFileRead = canSelectFile || canSelectImg;
     const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
     const fileReadName = t('chat:file_parse');
 
@@ -290,7 +286,7 @@ export const useSkillManager = ({
           return 'invalid';
         }
         if (tool.pluginId === SubAppIds.fileRead) {
-          return canUseFileRead ? 'configured' : 'invalid';
+          return canUploadFile ? 'configured' : 'invalid';
         }
         return tool.configStatus || 'unconfigured';
       })();
@@ -313,12 +309,12 @@ export const useSkillManager = ({
         templateType: FlowNodeTemplateTypeEnum.tools,
         inputs: [],
         outputs: [],
-        configStatus: canUseFileRead ? 'configured' : 'invalid'
+        configStatus: canUploadFile ? 'configured' : 'invalid'
       });
     }
 
     return tools;
-  }, [selectedTools, canSelectFile, canSelectImg, t]);
+  }, [selectedTools, canUploadFile, t]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(

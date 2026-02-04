@@ -288,8 +288,13 @@ export const loadGeneratedTools = async ({
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
-          canSelectFile: fileSelectConfig?.canSelectFile,
-          canSelectImg: fileSelectConfig?.canSelectImg
+          canUploadFile: !!(
+            fileSelectConfig?.canSelectFile ||
+            fileSelectConfig?.canSelectImg ||
+            fileSelectConfig?.canSelectVideo ||
+            fileSelectConfig?.canSelectAudio ||
+            fileSelectConfig?.canSelectCustomFileExtension
+          )
         });
         if (!toolValid) {
           return;

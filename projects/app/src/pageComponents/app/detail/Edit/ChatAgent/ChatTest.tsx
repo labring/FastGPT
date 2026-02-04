@@ -149,34 +149,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               metadata={topAgentMetadata}
               onApply={async (formData) => {
                 const fileUploadEnabled = !!formData.fileUploadEnabled;
-                // 过滤掉内部工具
-                const internalToolIds = Object.values(SubAppIds);
+                // 过滤掉 file_read 不在 selected tools 中
                 const filteredToolIds = (formData.tools || []).filter(
-                  (toolId) => !internalToolIds.includes(toolId as SubAppIds)
+                  (toolId) => toolId !== SubAppIds.fileRead
                 );
-                const internalOnlyToolIds = (formData.tools || []).filter((toolId) =>
-                  internalToolIds.includes(toolId as SubAppIds)
-                );
-
-                const internalTools: AppFormEditFormType['selectedTools'] = internalOnlyToolIds
-                  .filter((toolId) => toolId !== SubAppIds.fileRead)
-                  .map((toolId) => {
-                    const info = systemSubInfo[toolId as SubAppIds];
-                    if (!info) return undefined;
-                    return {
-                      id: toolId,
-                      pluginId: toolId,
-                      name: info.name,
-                      avatar: info.avatar,
-                      intro: info.toolDescription,
-                      flowNodeType: FlowNodeTypeEnum.tool,
-                      templateType: FlowNodeTemplateTypeEnum.tools,
-                      inputs: [],
-                      outputs: [],
-                      configStatus: 'configured'
-                    };
-                  })
-                  .filter(Boolean) as AppFormEditFormType['selectedTools'];
                 const newTools = await loadGeneratedTools({
                   newToolIds: filteredToolIds,
                   existsTools: appForm.selectedTools,
@@ -186,7 +162,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 setAppForm((prev) => {
                   const newForm: AppFormEditFormType = {
                     ...prev,
-                    selectedTools: [...internalTools, ...newTools],
+                    selectedTools: [...newTools],
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt
