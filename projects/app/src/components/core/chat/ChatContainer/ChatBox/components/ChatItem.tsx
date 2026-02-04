@@ -524,7 +524,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
           bg={'white'}
         >
           <Flex alignItems={'center'} mb={2}>
-            <MyIcon name={'common/warn'} w={'16px'} color={'#FB9B2F'} mr={2} />
+            <MyIcon name={'common/warn'} w={'16px'} color={'yellow.500'} mr={2} />
             <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.600'}>
               {t('chat:log.error.error_prefix')} - {errorText.moduleName}
             </Box>

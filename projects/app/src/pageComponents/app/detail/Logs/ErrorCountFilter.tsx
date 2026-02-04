@@ -13,15 +13,13 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-export type ErrorFilterValue = 'all' | 'has_error';
-
 const ErrorCountFilter = ({
   errorFilter,
   setErrorFilter,
   menuButtonProps
 }: {
-  errorFilter: ErrorFilterValue;
-  setErrorFilter: (errorFilter: ErrorFilterValue) => void;
+  errorFilter: 'all' | 'has_error';
+  setErrorFilter: (errorFilter: 'all' | 'has_error') => void;
   menuButtonProps?: ButtonProps;
 }) => {
   const { t } = useTranslation();

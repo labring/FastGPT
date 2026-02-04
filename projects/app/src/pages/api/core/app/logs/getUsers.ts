@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 
 async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<GetLogUsersResponse> {
-  const { appId, dateStart, dateEnd, searchKey } = GetLogUsersBodySchema.parse(req.body);
+  const { appId, dateStart, dateEnd, searchKey, sources } = GetLogUsersBodySchema.parse(req.body);
 
   if (!appId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -37,7 +37,8 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
           updateTime: {
             $gte: new Date(dateStart),
             $lte: new Date(dateEnd)
-          }
+          },
+          ...(sources?.length && { source: { $in: sources } })
         }
       },
       {

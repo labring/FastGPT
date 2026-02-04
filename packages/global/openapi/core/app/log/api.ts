@@ -297,7 +297,14 @@ export const GetLogUsersBodySchema = z.object({
   searchKey: z.string().optional().meta({
     example: 'user',
     description: '搜索关键词'
-  })
+  }),
+  sources: z
+    .array(z.string())
+    .optional()
+    .meta({
+      example: ['online', 'share'],
+      description: '来源筛选'
+    })
 });
 export type GetLogUsersBody = z.infer<typeof GetLogUsersBodySchema>;
 

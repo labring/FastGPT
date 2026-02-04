@@ -45,7 +45,7 @@ import dynamic from 'next/dynamic';
 import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
-import ErrorCountFilter, { type ErrorFilterValue } from './ErrorCountFilter';
+import ErrorCountFilter from './ErrorCountFilter';
 import UserFilter, { type SelectedUserType } from './UserFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -75,10 +75,10 @@ const LogTable = ({
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
-  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
-  const [errorFilter, setErrorFilter] = useState<ErrorFilterValue>('all');
+  const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
+  const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
 
   // source
   const sourceList = useMemo(
@@ -480,6 +480,7 @@ const LogTable = ({
             <UserFilter
               appId={appId}
               dateRange={dateRange}
+              sources={isSelectAllSource ? undefined : chatSources}
               selectedUsers={selectedUsers}
               setSelectedUsers={setSelectedUsers}
               isSelectAll={isSelectAllUser}

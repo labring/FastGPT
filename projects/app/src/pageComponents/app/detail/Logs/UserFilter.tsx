@@ -7,6 +7,7 @@ import { getLogUsers } from '@/web/core/app/api/log';
 import type { LogUserType } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 
 export type SelectedUserType = {
   outLinkUid: string | null;
@@ -32,13 +33,15 @@ const parseUserKey = (key: string): SelectedUserType => {
 const UserFilter = ({
   appId,
   dateRange,
+  sources,
   selectedUsers,
   setSelectedUsers,
   isSelectAll,
   setIsSelectAll
 }: {
   appId: string;
-  dateRange: { from?: Date; to?: Date };
+  dateRange: DateRangeType;
+  sources?: string[];
   selectedUsers: SelectedUserType[];
   setSelectedUsers: (users: SelectedUserType[]) => void;
   isSelectAll: boolean;
@@ -53,11 +56,12 @@ const UserFilter = ({
         appId,
         dateStart: dayjs(dateRange.from || new Date()).format(),
         dateEnd: dayjs(dateRange.to || new Date()).format(),
-        searchKey: searchKey || undefined
+        searchKey: searchKey || undefined,
+        sources
       }),
     {
       manual: false,
-      refreshDeps: [appId, dateRange.from, dateRange.to, searchKey],
+      refreshDeps: [appId, dateRange.from, dateRange.to, searchKey, sources],
       debounceWait: 300
     }
   );

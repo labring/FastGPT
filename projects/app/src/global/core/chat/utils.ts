@@ -1,11 +1,11 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  type ChatHistoryItemResType,
-  type ChatItemType,
-  type ToolCiteLinksType,
-  type ErrorTextItemType
+import type {
+  ChatHistoryItemResType,
+  ChatItemType,
+  ToolCiteLinksType,
+  ErrorTextItemType
 } from '@fastgpt/global/core/chat/type';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
