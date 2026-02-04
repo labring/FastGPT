@@ -11,6 +11,7 @@ import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type ResponseDataType = {
   success: boolean;
@@ -176,15 +177,17 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         getFormatText: true
       });
 
+      const sourceName = title || getNanoid();
+
       getS3RawTextSource().addRawTextBuffer({
         sourceId: previewUrl,
-        sourceName: title || '',
+        sourceName,
         text: rawText,
         customPdfParse
       });
 
       return {
-        title,
+        title: sourceName,
         rawText
       };
     }
