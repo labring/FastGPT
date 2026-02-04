@@ -302,6 +302,7 @@ export async function searchDatasetData(
 
     let tagCollectionIdList: string[] | undefined = undefined;
     let createTimeCollectionIdList: string[] | undefined = undefined;
+    let inputCollectionIdList: string[] | undefined = undefined;
 
     try {
       const jsonMatch =
@@ -428,15 +429,28 @@ export async function searchDatasetData(
         createTimeCollectionIdList = collections.map((item) => String(item._id));
       }
 
-      // Concat tag and time
-      const collectionIds = (() => {
-        if (tagCollectionIdList && createTimeCollectionIdList) {
-          return tagCollectionIdList.filter((id) =>
-            (createTimeCollectionIdList as string[]).includes(id)
-          );
+      // collectionIds
+      const inputCollectionIds = jsonMatch?.collectionIds as string[] | undefined;
+      if (Array.isArray(inputCollectionIds) && inputCollectionIds.length > 0) {
+        inputCollectionIdList = await getAllCollectionIds({
+          parentCollectionIds: inputCollectionIds
+        });
+        if (inputCollectionIdList && inputCollectionIdList.length === 0) {
+          return [];
         }
+      }
 
-        return tagCollectionIdList || createTimeCollectionIdList;
+      // Concat tag, time and collectionIds
+      const collectionIds = (() => {
+        const lists = [
+          tagCollectionIdList,
+          createTimeCollectionIdList,
+          inputCollectionIdList
+        ].filter((list): list is string[] => list !== undefined);
+
+        if (lists.length === 0) return undefined;
+
+        return lists.reduce((acc, list) => acc.filter((id) => list.includes(id)));
       })();
 
       return await getAllCollectionIds({
