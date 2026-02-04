@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "build": "tsc --noEmit && bun build src/index.ts --outdir=dist --target=bun",
     "start": "bun run src/index.ts",
+    "start:prod": "bun run dist/index.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
