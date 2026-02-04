@@ -26,7 +26,8 @@ const parseEnvFile = (filePath: string) => {
 
 export const loadVectorDBEnv = (options: LoadVectorEnvOptions = {}) => {
   const envFileNames = options.envFileNames ?? ['.env.test.local'];
-  const baseDir = resolve(__dirname);
+  // __dirname is test/utils/, go up one level to test/
+  const baseDir = resolve(__dirname, '..');
 
   for (const envFileName of envFileNames) {
     const filePath = resolve(baseDir, envFileName);

@@ -15,7 +15,7 @@
     "previewIcon": "node ./scripts/icon/index.js",
     "create:i18n": "node ./scripts/i18n/index.js",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts"
   },
   "devDependencies": {
