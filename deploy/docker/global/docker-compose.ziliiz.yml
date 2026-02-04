@@ -121,7 +121,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.6 # git
+    image: ghcr.io/labring/fastgpt:v4.14.6.1 # git
     ports:
       - 3000:3000
     networks:
@@ -188,7 +188,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.5.0
+    image: ghcr.io/labring/fastgpt-plugin:v0.5.1
     container_name: fastgpt-plugin
     restart: always
     networks:
