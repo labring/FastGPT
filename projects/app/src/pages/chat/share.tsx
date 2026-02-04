@@ -524,7 +524,8 @@ export async function getServerSideProps(context: any) {
         'chat',
         'workflow',
         'login',
-        'database_client'
+        'database_client',
+        'sangfor'
       ]))
     }
   };
