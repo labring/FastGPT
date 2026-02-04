@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Test files
+test
+*.test.ts
+vitest.config.ts
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist
+*.log
+
+# Documentation
+*.md
+!README.md
