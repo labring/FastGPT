@@ -25,6 +25,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -441,17 +442,11 @@ export async function searchDatasetData(
       }
 
       // Concat tag, time and collectionIds
-      const collectionIds = (() => {
-        const lists = [
-          tagCollectionIdList,
-          createTimeCollectionIdList,
-          inputCollectionIdList
-        ].filter((list): list is string[] => list !== undefined);
-
-        if (lists.length === 0) return undefined;
-
-        return lists.reduce((acc, list) => acc.filter((id) => list.includes(id)));
-      })();
+      const collectionIds = computeFilterIntersection([
+        tagCollectionIdList,
+        createTimeCollectionIdList,
+        inputCollectionIdList
+      ]);
 
       return await getAllCollectionIds({
         parentCollectionIds: collectionIds

@@ -3,6 +3,18 @@ import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../common/system/log';
 
+export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
+  const validLists = lists.filter((list): list is string[] => list !== undefined);
+
+  if (validLists.length === 0) return undefined;
+
+  // reduce without initial value uses first element as accumulator
+  return validLists.reduce((acc, list) => {
+    const set = new Set(list);
+    return acc.filter((id) => set.has(id));
+  });
+};
+
 export const datasetSearchQueryExtension = async ({
   query,
   llmModel,
