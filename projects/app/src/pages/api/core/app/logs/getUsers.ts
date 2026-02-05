@@ -30,6 +30,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
     per: AppReadChatLogPerVal
   });
 
+  // Get tmbId and outlinkUid
   const aggregateResult = await MongoChat.aggregate(
     [
       {
@@ -52,7 +53,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
         }
       },
       { $sort: { count: -1 } },
-      { $limit: 50 }
+      { $limit: 100 }
     ],
     { ...readFromSecondary }
   );
@@ -75,27 +76,29 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
 
   const searchPattern = searchKey ? new RegExp(replaceRegChars(searchKey), 'i') : null;
 
-  const list = aggregateResult
-    .map((item): LogUserType => {
-      const outLinkUid = item._id.outLinkUid || null;
-      const tmbId = item._id.tmbId ? String(item._id.tmbId) : null;
+  const list = aggregateResult.map((item): LogUserType => {
+    const outLinkUid = item._id.outLinkUid || null;
+    const tmbId = item._id.tmbId ? String(item._id.tmbId) : null;
 
-      const { name, avatar } = (() => {
-        if (outLinkUid) {
-          return { name: outLinkUid, avatar: DEFAULT_USER_AVATAR };
-        }
-        if (tmbId) {
-          const member = tmbMap.get(tmbId);
-          return { name: member?.name || tmbId, avatar: member?.avatar };
-        }
-        return { name: '-', avatar: DEFAULT_USER_AVATAR };
-      })();
+    const { name, avatar } = (() => {
+      if (outLinkUid) {
+        return { name: outLinkUid, avatar: DEFAULT_USER_AVATAR };
+      }
+      if (tmbId) {
+        const member = tmbMap.get(tmbId);
+        return { name: member?.name || tmbId, avatar: member?.avatar };
+      }
+      return { name: '-', avatar: DEFAULT_USER_AVATAR };
+    })();
 
-      return { outLinkUid, tmbId, name, avatar, count: item.count };
-    })
-    .filter((item) => !searchPattern || searchPattern.test(item.name));
+    return { outLinkUid, tmbId, name, avatar, count: item.count };
+  });
 
-  return { list };
+  return {
+    list: searchPattern
+      ? list.filter((item) => !searchPattern || searchPattern.test(item.name)).slice(0, 50)
+      : list.slice(0, 50)
+  };
 }
 
 export default NextAPI(handler);
