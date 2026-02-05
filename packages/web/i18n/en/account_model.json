@@ -3,7 +3,7 @@
   "aipoint_usage": "AI points",
   "all": "All",
   "api_key": "API key",
-  "avg_response_time": "Average call time (seconds)",
+  "avg_response_time": "Average call duration (seconds)",
   "avg_ttfb": "Average first word duration (seconds)",
   "azure": "Azure",
   "base_url": "Base url",
