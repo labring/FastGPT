@@ -22,13 +22,15 @@ export const addOutLinkUsage = ({
 };
 
 export const pushResult2Remote = async ({
-  outLinkUid,
   shareId,
+  chatId,
+  outLinkUid,
   appName,
   flowResponses
 }: {
+  shareId: string;
+  chatId: string;
   outLinkUid?: string; // raw id, not parse
-  shareId?: string;
   appName: string;
   flowResponses?: ChatHistoryItemResType[];
 }) => {
@@ -46,7 +48,8 @@ export const pushResult2Remote = async ({
       data: {
         token: outLinkUid,
         appName,
-        responseData: flowResponses
+        responseData: flowResponses,
+        chatId
       }
     });
   } catch (error) {}
