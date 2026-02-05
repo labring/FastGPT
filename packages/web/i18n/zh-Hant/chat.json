@@ -90,7 +90,7 @@
   "not_query": "缺少查詢內容",
   "not_select_file": "尚未選取檔案",
   "plan_agent": "規劃 Agent",
-  "plan_check_tip": "請確認計劃或在輸入框中輸入新要求",
+  "plan_check_tip": "規劃已生成，您可繼續對話來微調當前規劃",
   "plugins_output": "外掛程式輸出",
   "press_to_speak": "按住說話",
   "query_extension_IO_tokens": "問題最佳化輸入/輸出 Tokens",

@@ -23,15 +23,6 @@ import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
-const isTextValue = (value: unknown): value is { text: { content: string } } =>
-  !!value && typeof value === 'object' && 'text' in value;
-const isReasoningValue = (value: unknown): value is { reasoning: { content: string } } =>
-  !!value && typeof value === 'object' && 'reasoning' in value;
-const isCollectionFormValue = (value: unknown): value is { collectionForm: UserInputInteractive } =>
-  !!value && typeof value === 'object' && 'collectionForm' in value;
-const isPlanHintValue = (value: unknown): value is { planHint: { type: 'generation' } } =>
-  !!value && typeof value === 'object' && 'planHint' in value;
-
 const accordionButtonStyle = {
   w: 'auto',
   bg: 'white',
@@ -180,19 +171,7 @@ const AIItem = ({
   isLastChild: boolean;
   onSubmitCollectionForm: (formData: string) => void;
 }) => {
-  const aiAvatar = getWebReqUrl('/imgs/bot.svg');
-  const hasPlanHint = chat.value.some((value) => isPlanHintValue(value));
-  const hasCollectionForm = chat.value.some((value) => isCollectionFormValue(value));
-  const hasTextContent = chat.value.some(
-    (value) => isTextValue(value) && value.text?.content?.trim()
-  );
-  const hasReasoningContent = chat.value.some(
-    (value) => isReasoningValue(value) && value.reasoning?.content?.trim()
-  );
-  const hasRenderableContent = hasTextContent || hasReasoningContent || hasCollectionForm;
-  const shouldShowWaiting =
-    !hasPlanHint && !hasCollectionForm && isChatting && isLastChild && !hasRenderableContent;
-
+  const { t } = useTranslation();
   return (
     <Box
       _hover={{
@@ -202,7 +181,7 @@ const AIItem = ({
       }}
     >
       <Flex alignItems={'flex-start'} justifyContent={'flex-start'} gap={2} w={'100%'}>
-        <ChatAvatar type={ChatRoleEnum.AI} src={aiAvatar} />
+        <ChatAvatar type={ChatRoleEnum.AI} src={'/imgs/bot.svg'} />
         <Box
           px={4}
           py={3}
@@ -212,42 +191,47 @@ const AIItem = ({
           color={'myGray.900'}
           bg={'myGray.100'}
         >
-          {hasPlanHint && (
-            <RenderText showAnimation={false} text="规划已生成，您可继续对话来微调当前规划" />
-          )}
-          {shouldShowWaiting && <RenderText showAnimation={true} text="正在回答请稍后..." />}
-          {!hasPlanHint &&
-            hasRenderableContent &&
-            chat.value.map((value, i) => {
-              if (isTextValue(value)) {
-                return (
-                  <RenderText
-                    key={i}
-                    showAnimation={isChatting && isLastChild}
-                    text={value.text.content}
-                  />
-                );
-              }
-              if (isReasoningValue(value)) {
-                return (
-                  <RenderResoningContent
-                    key={i}
-                    isChatting={isChatting}
-                    isLastResponseValue={isLastChild}
-                    content={value.reasoning.content}
-                  />
-                );
-              }
-              if (isCollectionFormValue(value)) {
-                return (
-                  <RenderCollectionForm
-                    key={i}
-                    collectionForm={value.collectionForm}
-                    onSubmit={onSubmitCollectionForm}
-                  />
-                );
-              }
-            })}
+          {!chat.value.some((value) => value && 'planHint' in value) &&
+            !chat.value.some(
+              (value) =>
+                (value && 'text' in value && value.text?.content?.trim()) ||
+                (value && 'reasoning' in value && value.reasoning?.content?.trim()) ||
+                (value && 'collectionForm' in value && value.collectionForm)
+            ) && <RenderText showAnimation={false} text={t('chat:chat.waiting_for_response')} />}
+
+          {chat.value.map((value, i) => {
+            if ('planHint' in value) {
+              return <RenderText key={i} showAnimation={false} text={t('chat:plan_check_tip')} />;
+            }
+            if ('text' in value && value.text) {
+              return (
+                <RenderText
+                  key={i}
+                  showAnimation={isChatting && isLastChild}
+                  text={value.text.content}
+                />
+              );
+            }
+            if ('reasoning' in value && value.reasoning) {
+              return (
+                <RenderResoningContent
+                  key={i}
+                  isChatting={isChatting}
+                  isLastResponseValue={isLastChild}
+                  content={value.reasoning.content}
+                />
+              );
+            }
+            if ('collectionForm' in value && value.collectionForm) {
+              return (
+                <RenderCollectionForm
+                  key={i}
+                  collectionForm={value.collectionForm}
+                  onSubmit={onSubmitCollectionForm}
+                />
+              );
+            }
+          })}
         </Box>
       </Flex>
       {/* Controller */}

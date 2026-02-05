@@ -91,7 +91,7 @@
   "not_query": "缺少查询内容",
   "not_select_file": "未选择文件",
   "plan_agent": "规划 Agent",
-  "plan_check_tip": "请确认计划或在输入框中输入新要求",
+  "plan_check_tip": "规划已生成，您可继续对话来微调当前规划",
   "plugins_output": "插件输出",
   "press_to_speak": "按住说话",
   "query_extension_IO_tokens": "问题优化输入/输出 Tokens",
