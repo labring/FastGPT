@@ -232,15 +232,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     }
 
     console.log(
-      JSON.stringify(
-        _systemActiveModelList.map((item) => ({
-          provider: item.provider,
-          model: item.model,
-          name: item.name
-        })),
-        null,
-        2
-      ),
       `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
     );
   } catch (error) {
