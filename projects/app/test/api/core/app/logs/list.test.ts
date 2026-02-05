@@ -13,7 +13,7 @@ import type {
   getAppChatLogsBody,
   getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('logs list API - errorFilter', () => {
@@ -84,7 +84,8 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       source: 'online',
       updateTime: now,
-      title: 'Chat without error'
+      title: 'Chat without error',
+      errorCount: 0
     });
 
     const chat2 = await MongoChat.create({
@@ -94,7 +95,8 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       source: 'online',
       updateTime: now,
-      title: 'Chat with error'
+      title: 'Chat with error',
+      errorCount: 1
     });
 
     // Create chat items - one with error
@@ -105,7 +107,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Normal response' } }],
+        value: [{ text: { content: 'Normal response' } }],
         responseData: []
       },
       {
@@ -114,7 +116,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Error response' } }],
+        value: [{ text: { content: 'Error response' } }],
         responseData: [
           {
             nodeId: 'node-1',
@@ -159,7 +161,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: now,
-        title: 'Chat without error'
+        title: 'Chat without error',
+        errorCount: 0
       },
       {
         chatId: 'chat-error-filter-2',
@@ -168,7 +171,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: now,
-        title: 'Chat with error'
+        title: 'Chat with error',
+        errorCount: 1
       },
       {
         chatId: 'chat-error-filter-3',
@@ -177,7 +181,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: now,
-        title: 'Another chat without error'
+        title: 'Another chat without error',
+        errorCount: 0
       }
     ]);
 
@@ -189,7 +194,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Normal response' } }],
+        value: [{ text: { content: 'Normal response' } }],
         responseData: []
       },
       {
@@ -198,7 +203,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Error response' } }],
+        value: [{ text: { content: 'Error response' } }],
         responseData: [
           {
             nodeId: 'node-1',
@@ -215,7 +220,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Another normal response' } }],
+        value: [{ text: { content: 'Another normal response' } }],
         responseData: []
       }
     ]);
@@ -258,7 +263,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: new Date(now.getTime() - i * 1000),
-        title: `Chat with error ${i}`
+        title: `Chat with error ${i}`,
+        errorCount: 1
       });
     }
 
@@ -270,7 +276,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: new Date(now.getTime() - (i + 5) * 1000),
-        title: `Chat without error ${i}`
+        title: `Chat without error ${i}`,
+        errorCount: 0
       });
     }
 
@@ -283,7 +290,7 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       appId: testAppId,
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Error response' } }],
+      value: [{ text: { content: 'Error response' } }],
       responseData: [
         {
           nodeId: 'node-1',
@@ -301,7 +308,7 @@ describe('logs list API - errorFilter', () => {
       tmbId: testTmbId,
       appId: testAppId,
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Normal response' } }],
+      value: [{ text: { content: 'Normal response' } }],
       responseData: []
     }));
 
@@ -345,7 +352,7 @@ describe('logs list API - errorFilter', () => {
       teamId: testTeamId,
       userId: user2._id,
       name: 'Test Member 2',
-      role: TeamMemberRoleEnum.member,
+      role: TeamMemberRoleEnum.owner,
       status: 'active',
       createTime: new Date(),
       defaultTeam: false
@@ -361,7 +368,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: now,
-        title: 'User 1 with error'
+        title: 'User 1 with error',
+        errorCount: 1
       },
       // User 1 without error
       {
@@ -371,7 +379,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         source: 'online',
         updateTime: now,
-        title: 'User 1 without error'
+        title: 'User 1 without error',
+        errorCount: 0
       },
       // User 2 with error
       {
@@ -381,7 +390,8 @@ describe('logs list API - errorFilter', () => {
         tmbId: teamMember2._id,
         source: 'online',
         updateTime: now,
-        title: 'User 2 with error'
+        title: 'User 2 with error',
+        errorCount: 1
       }
     ]);
 
@@ -393,7 +403,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Error' } }],
+        value: [{ text: { content: 'Error' } }],
         responseData: [
           {
             nodeId: 'node-1',
@@ -410,7 +420,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: testTmbId,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Normal' } }],
+        value: [{ text: { content: 'Normal' } }],
         responseData: []
       },
       {
@@ -419,7 +429,7 @@ describe('logs list API - errorFilter', () => {
         tmbId: teamMember2._id,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'Error' } }],
+        value: [{ text: { content: 'Error' } }],
         responseData: [
           {
             nodeId: 'node-1',
