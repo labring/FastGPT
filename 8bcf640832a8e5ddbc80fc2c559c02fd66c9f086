@@ -1,0 +1,144 @@
+packages/service/core/agentSkill/sandboxController.ts
+  6f362237ae0dc308 221,224-227,444
+  61d12ae956e6147f 167
+  2ca8f832d0544e9b 326
+  05a774ac6827dffb 1,6-7,14,19,46,51,56,63,74,104,111,114,131,143,158,171,175,178,183,192,197,199,201,211-212,423,457,472
+  58bceb7caba2f3dd 3,29-31,62,79,89-90,93,103,108,115,118-119,122,125-126,144,148,187-188,194,204-205,267,296,304-307,309,318,321-322,344-345,360-362,364,373,421-422,424,426,433,442,450,458-460,462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.42",
+  "base_commit_sha": "8bcf640832a8e5ddbc80fc2c559c02fd66c9f086",
+  "prompts": {
+    "05a774ac6827dffb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24469618-eafd-4c98-826b-7677527e16c4",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2561,
+      "total_deletions": 0,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    },
+    "169324e2eb7e5f45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03697cea-aba0-45af-a7e3-f4c158d434e4",
+        "model": "glm-4.7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "2ca8f832d0544e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6effb07-536c-4e10-9b6e-4d2118c80032",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 32,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "3921922ae3bda8ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8630d4c-d56e-4053-8788-df1b061e604c",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 3,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "58bceb7caba2f3dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "871fd036-f8d5-4e57-bff4-1c7028b72ee1",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3080,
+      "total_deletions": 555,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    },
+    "61d12ae956e6147f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a91a42b-bdb1-4efe-8baf-a16d580ff879",
+        "model": "kimi-for-coding"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "6a37a3ff225c8e62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd142cd4-7c62-420b-97fe-3b1d64e48896",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 481,
+      "total_deletions": 15,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "6f362237ae0dc308": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a351d6d2-3faa-4d05-96b5-b24396fe6cef",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 44,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "6f738f5a374cdc53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a2cf8b2-d484-47c5-a502-9fcfbd2c2e10",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 38,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "81448d3ec2b4a343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3266ba3a-f647-4d56-aea6-4d18b9bda939",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2474,
+      "total_deletions": 18,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
