@@ -39,7 +39,7 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
           py={3}
           borderRadius={'sm'}
           display="inline-block"
-          maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
+          maxW={['calc(80% - 25px)', 'calc(80% - 40px)']}
           color={'myGray.900'}
           bg={'primary.100'}
           order={0}
