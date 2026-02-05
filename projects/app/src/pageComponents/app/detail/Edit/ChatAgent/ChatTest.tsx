@@ -23,12 +23,7 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
-import {
-  SubAppIds,
-  systemSubInfo
-} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { SubAppIds } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
