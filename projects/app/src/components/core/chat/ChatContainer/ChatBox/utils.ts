@@ -113,7 +113,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
     interactive,
     input: interactiveVal
   });
-  console.log(status, interactive, interactiveVal, 12121);
+
   const formatHistories = (() => {
     if (status === 'query') {
       return histories;

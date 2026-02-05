@@ -233,7 +233,7 @@ export const checkInteractiveResponseStatus = ({
   interactive,
   input
 }: {
-  interactive: WorkflowInteractiveResponseType;
+  interactive: { type: WorkflowInteractiveResponseType['type'] };
   input: string;
 }): 'submit' | 'query' => {
   if (interactive.type === 'agentPlanAskQuery') {

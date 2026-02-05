@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { SubAppIds } from '../../constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import z from 'zod';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
@@ -59,10 +59,10 @@ export const AIAskTool: ChatCompletionTool = {
             properties: {
               type: {
                 description: `问题类型，可选值为：
-      input: 文本输入框
-      numberInput: 数字输入框
-      select: 单选
-      multipleSelect: 多选`,
+                    input: 文本输入框
+                    numberInput: 数字输入框
+                    select: 单选
+                    multipleSelect: 多选`,
                 type: 'string',
                 enum: ['input', 'numberInput', 'select', 'multipleSelect']
               },
