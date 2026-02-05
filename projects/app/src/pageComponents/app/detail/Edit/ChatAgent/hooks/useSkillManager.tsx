@@ -288,7 +288,7 @@ export const useSkillManager = ({
         if (tool.pluginId === SubAppIds.fileRead) {
           return canUploadFile ? 'configured' : 'invalid';
         }
-        return tool.configStatus || 'unconfigured';
+        return tool.configStatus || 'waitingForConfig';
       })();
       return {
         ...tool,
