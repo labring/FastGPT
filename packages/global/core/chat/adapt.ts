@@ -99,6 +99,14 @@ export const chats2GPTMessages = ({
       const aiResults: ChatCompletionMessageParam[] = [];
       let pendingReasoningText: string | undefined;
 
+      const applyReasoningText = (
+        message: ChatCompletionMessageParam,
+        reasoningText?: string
+      ) => {
+        if (reasoningText !== undefined) {
+          message.reasoning_text = reasoningText;
+        }
+      };
       const takePendingReasoningText = () => {
         const reasoningText = pendingReasoningText;
         pendingReasoningText = undefined;
@@ -108,7 +116,9 @@ export const chats2GPTMessages = ({
       //AI
       item.value.forEach((value, i) => {
         if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning?.content) {
-          pendingReasoningText = value.reasoning.content;
+          pendingReasoningText = pendingReasoningText
+            ? `${pendingReasoningText}${value.reasoning.content}`
+            : value.reasoning.content;
           return;
         }
         if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
@@ -135,10 +145,7 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls
           };
-          const reasoningText = takePendingReasoningText();
-          if (reasoningText !== undefined) {
-            assistantMessage.reasoning_text = reasoningText;
-          }
+          applyReasoningText(assistantMessage, takePendingReasoningText());
           aiResults.push(assistantMessage);
           aiResults.push(...toolResponse);
         } else if (
@@ -163,10 +170,7 @@ export const chats2GPTMessages = ({
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.text.content
             };
-            const reasoningText = takePendingReasoningText();
-            if (reasoningText !== undefined) {
-              assistantMessage.reasoning_text = reasoningText;
-            }
+            applyReasoningText(assistantMessage, takePendingReasoningText());
             aiResults.push(assistantMessage);
           }
         } else if (value.type === ChatItemValueTypeEnum.interactive) {
@@ -175,10 +179,7 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             interactive: value.interactive
           };
-          const reasoningText = takePendingReasoningText();
-          if (reasoningText !== undefined) {
-            assistantMessage.reasoning_text = reasoningText;
-          }
+          applyReasoningText(assistantMessage, takePendingReasoningText());
           aiResults.push(assistantMessage);
         }
       });
@@ -187,14 +188,15 @@ export const chats2GPTMessages = ({
       if (reasoningText !== undefined) {
         const lastResult = aiResults.length > 0 ? aiResults[aiResults.length - 1] : undefined;
         if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          lastResult.reasoning_text = reasoningText;
+          applyReasoningText(lastResult, reasoningText);
         } else {
-          aiResults.push({
+          const assistantMessage: ChatCompletionMessageParam = {
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: '',
-            reasoning_text: reasoningText
-          });
+            content: ''
+          };
+          applyReasoningText(assistantMessage, reasoningText);
+          aiResults.push(assistantMessage);
         }
       }
 
