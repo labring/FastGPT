@@ -69,7 +69,7 @@ const OutLink = (props: Props) => {
     authToken,
     customUid,
     showWorkorder,
-    hideMenu,
+    hideMenu = '0',
     ...customVariables
   } = router.query as {
     shareId: string;
@@ -77,7 +77,7 @@ const OutLink = (props: Props) => {
     showHead: '0' | '1';
     authToken: string;
     showWorkorder: '0' | '1';
-    hideMenu?: '0' | '1';
+    hideMenu: '0' | '1';
     [key: string]: string;
   };
   const { isPc } = useSystem();
