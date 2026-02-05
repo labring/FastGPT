@@ -117,7 +117,7 @@ export const chats2GPTMessages = ({
       item.value.forEach((value, i) => {
         if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning?.content) {
           pendingReasoningText = pendingReasoningText
-            ? `${pendingReasoningText}${value.reasoning.content}`
+            ? `${pendingReasoningText}\n${value.reasoning.content}`
             : value.reasoning.content;
           return;
         }
