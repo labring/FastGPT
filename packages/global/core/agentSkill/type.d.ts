@@ -1,4 +1,4 @@
-import type { AgentSkillSourceEnum, AgentSkillCategoryEnum } from './constants';
+import type { AgentSkillSourceEnum, AgentSkillCategoryEnum, SandboxTypeEnum } from './constants';
 
 export type AgentSkillSchemaType = {
   _id: string;
@@ -133,4 +133,63 @@ export type ExtractedSkillPackage = {
   zipBuffer: Buffer; // Complete ZIP file buffer for storage
   zipEntries: ZipEntryInfo[]; // All entries metadata
   totalSize: number; // Total ZIP size in bytes
+};
+
+// ==================== Skill Sandbox Types ====================
+
+export type SkillSandboxSchemaType = {
+  _id: string;
+  skillId: string;
+  sandboxType: `${SandboxTypeEnum}`;
+  teamId: string;
+  tmbId: string;
+
+  sandbox: {
+    provider: string;
+    sandboxId: string;
+    image: {
+      repository: string;
+      tag?: string;
+    };
+    status: {
+      state: string;
+      message?: string;
+      reason?: string;
+    };
+    createdAt: Date;
+    expiresAt?: Date;
+  };
+
+  endpoint?: {
+    host: string;
+    port: number;
+    protocol: 'http' | 'https';
+    url: string;
+  };
+
+  storage?: {
+    bucket: string;
+    key: string;
+    size: number;
+    uploadedAt: Date;
+  };
+
+  metadata?: Map<string, any>;
+
+  createTime: Date;
+  updateTime: Date;
+  deleteTime?: Date | null;
+  lastActivityTime: Date;
+};
+
+export type SkillSandboxEndpointType = {
+  host: string;
+  port: number;
+  protocol: 'http' | 'https';
+  url: string;
+};
+
+export type SandboxImageConfigType = {
+  repository: string;
+  tag?: string;
 };

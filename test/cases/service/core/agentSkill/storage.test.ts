@@ -117,7 +117,7 @@ describe('storage', () => {
         size: mockZipBuffer.length
       };
 
-      const result = await downloadSkillPackage(storageInfo);
+      const result = await downloadSkillPackage({ storageInfo });
 
       expect(Buffer.isBuffer(result)).toBe(true);
       expect(result.toString()).toBe('mock zip content');
@@ -131,7 +131,7 @@ describe('storage', () => {
       };
 
       // Mock should handle the download
-      await expect(downloadSkillPackage(storageInfo)).resolves.toBeDefined();
+      await expect(downloadSkillPackage({ storageInfo })).resolves.toBeDefined();
     });
   });
 
@@ -151,14 +151,17 @@ describe('storage', () => {
   // ==================== getSkillStorageInfo ====================
   describe('getSkillStorageInfo', () => {
     it('should return storage info for existing object', async () => {
-      const key = `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`;
-
-      const result = await getSkillStorageInfo(key);
+      const result = await getSkillStorageInfo({
+        teamId: mockTeamId,
+        skillId: mockSkillId,
+        version: 0
+      });
 
       expect(result).toEqual({
         bucket: 'fastgpt-private',
-        key,
-        exists: true
+        key: `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
+        exists: true,
+        size: 0
       });
     });
 

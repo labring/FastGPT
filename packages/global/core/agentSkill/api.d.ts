@@ -84,3 +84,73 @@ export type ImportSkillBody = {
 };
 
 export type ImportSkillResponse = string; // skillId
+
+// ==================== Skill Sandbox API ====================
+
+// Create Edit-Debug Sandbox
+export type CreateEditDebugSandboxBody = {
+  skillId: string;
+  image?: {
+    repository: string;
+    tag?: string;
+  };
+  timeout?: number; // in seconds, default 3600
+};
+
+export type CreateEditDebugSandboxResponse = {
+  sandboxId: string; // MongoDB _id
+  providerSandboxId: string; // Provider's sandbox ID
+  endpoint: {
+    host: string;
+    port: number;
+    protocol: 'http' | 'https';
+    url: string;
+  };
+  status: {
+    state: string;
+    message?: string;
+  };
+  expiresAt?: string; // ISO date string
+};
+
+// Get Sandbox Info
+export type GetSandboxInfoQuery = {
+  sandboxId: string;
+};
+
+export type GetSandboxInfoResponse = {
+  sandboxId: string;
+  skillId: string;
+  sandboxType: string;
+  providerSandboxId: string;
+  endpoint?: {
+    host: string;
+    port: number;
+    protocol: 'http' | 'https';
+    url: string;
+  };
+  status: {
+    state: string;
+    message?: string;
+  };
+  createTime: string;
+  lastActivityTime: string;
+  expiresAt?: string;
+};
+
+// Delete Sandbox
+export type DeleteSandboxBody = {
+  sandboxId: string;
+};
+
+export type DeleteSandboxResponse = void;
+
+// Renew Sandbox Expiration
+export type RenewSandboxBody = {
+  sandboxId: string;
+  additionalSeconds?: number; // default 3600
+};
+
+export type RenewSandboxResponse = {
+  expiresAt?: string;
+};
