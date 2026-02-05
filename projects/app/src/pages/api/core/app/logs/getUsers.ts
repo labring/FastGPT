@@ -14,6 +14,7 @@ import {
   type LogUserType,
   type GetLogUsersResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
+import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 
 async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<GetLogUsersResponse> {
   const { appId, dateStart, dateEnd, searchKey, sources } = GetLogUsersBodySchema.parse(req.body);
@@ -58,7 +59,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
 
   const tmbIds = aggregateResult
     .filter((item) => item._id.tmbId && !item._id.outLinkUid)
-    .map((item) => new Types.ObjectId(item._id.tmbId));
+    .map((item) => item._id.tmbId);
 
   const teamMembers = tmbIds.length
     ? await MongoTeamMember.find(
@@ -81,13 +82,13 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
 
       const { name, avatar } = (() => {
         if (outLinkUid) {
-          return { name: outLinkUid, avatar: undefined };
+          return { name: outLinkUid, avatar: DEFAULT_USER_AVATAR };
         }
         if (tmbId) {
           const member = tmbMap.get(tmbId);
           return { name: member?.name || tmbId, avatar: member?.avatar };
         }
-        return { name: '-', avatar: undefined };
+        return { name: '-', avatar: DEFAULT_USER_AVATAR };
       })();
 
       return { outLinkUid, tmbId, name, avatar, count: item.count };

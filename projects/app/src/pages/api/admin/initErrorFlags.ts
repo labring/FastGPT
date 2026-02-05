@@ -10,31 +10,57 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
  * Initialize error count for chat records
  *
  * Strategy:
- * 1. Aggregate error count from chatItem.responseData[].errorText
- * 2. Aggregate error count from chatItemResponse.data.errorText
- * 3. Merge and sum by (appId, chatId)
- * 4. Use batchRun to update errorCount concurrently
+ * 1. Create temporary indexes for migration
+ * 2. Aggregate all chats with error from chatItem and chatItemResponse
+ * 3. Use batchRun to update error counts concurrently
  */
 
 const CONCURRENCY = 10;
 
-type ChatErrorCount = {
+type ChatErrorInfo = {
   appId: string;
   chatId: string;
   errorCount: number;
 };
 
 /**
- * Get error count from ChatItem for each chat
+ * Create temporary indexes for migration performance
  */
-async function getErrorCountFromChatItem(): Promise<ChatErrorCount[]> {
-  addLog.info('Aggregating error count from chatItems...');
+async function createTemporaryIndexes(): Promise<void> {
+  addLog.info('Creating temporary indexes for migration...');
 
-  const results = await MongoChatItem.aggregate<ChatErrorCount>(
+  try {
+    await Promise.all([
+      MongoChatItem.collection.createIndex({ 'responseData.errorText': 1, appId: 1, chatId: 1 }, {
+        name: 'temp_error_migration_chatitem',
+        partialFilterExpression: { 'responseData.errorText': { $exists: true } },
+        background: true
+      } as any),
+      MongoChatItemResponse.collection.createIndex({ 'data.errorText': 1, appId: 1, chatId: 1 }, {
+        name: 'temp_error_migration_response',
+        partialFilterExpression: { 'data.errorText': { $exists: true } },
+        background: true
+      } as any)
+    ]);
+
+    addLog.info('Temporary indexes created successfully');
+  } catch (error: any) {
+    addLog.warn('Error creating indexes (may already exist):', error);
+  }
+}
+
+/**
+ * Get all unique chats that have error
+ */
+async function getChatsWithError(): Promise<ChatErrorInfo[]> {
+  addLog.info('Aggregating chats with error...');
+
+  // Get errors from chatItem
+  const chatItemErrorsPromise = MongoChatItem.aggregate<ChatErrorInfo>(
     [
       {
         $match: {
-          'responseData.errorText': { $exists: true, $ne: null }
+          'responseData.errorText': { $exists: true }
         }
       },
       {
@@ -73,21 +99,12 @@ async function getErrorCountFromChatItem(): Promise<ChatErrorCount[]> {
     { allowDiskUse: true, maxTimeMS: 6000000 }
   );
 
-  addLog.info(`Found ${results.length.toLocaleString()} chats with error from chatItems`);
-  return results;
-}
-
-/**
- * Get error count from ChatItemResponse for each chat
- */
-async function getErrorCountFromResponse(): Promise<ChatErrorCount[]> {
-  addLog.info('Aggregating error count from chatItemResponses...');
-
-  const results = await MongoChatItemResponse.aggregate<ChatErrorCount>(
+  // Get errors from chatItemResponse
+  const responseErrorsPromise = MongoChatItemResponse.aggregate<ChatErrorInfo>(
     [
       {
         $match: {
-          'data.errorText': { $exists: true, $ne: null }
+          'data.errorText': { $exists: true }
         }
       },
       {
@@ -111,8 +128,34 @@ async function getErrorCountFromResponse(): Promise<ChatErrorCount[]> {
     { allowDiskUse: true, maxTimeMS: 6000000 }
   );
 
-  addLog.info(`Found ${results.length.toLocaleString()} chats with error from chatItemResponses`);
-  return results;
+  // Execute both queries in parallel
+  const [chatItemErrors, responseErrors] = await Promise.all([
+    chatItemErrorsPromise,
+    responseErrorsPromise
+  ]);
+
+  addLog.info(`Found ${chatItemErrors.length.toLocaleString()} chats with error from chatItem`);
+  addLog.info(
+    `Found ${responseErrors.length.toLocaleString()} chats with error from chatItemResponse`
+  );
+
+  // Deduplicate in application layer using Map
+  const chatMap = new Map<string, ChatErrorInfo>();
+
+  for (const chat of [...chatItemErrors, ...responseErrors]) {
+    const key = `${chat.appId}_${chat.chatId}`;
+    const existing = chatMap.get(key);
+    if (existing) {
+      existing.errorCount += chat.errorCount;
+    } else {
+      chatMap.set(key, { ...chat });
+    }
+  }
+
+  const result = Array.from(chatMap.values());
+  addLog.info(`Found ${result.length.toLocaleString()} unique chats with error (after merge)`);
+
+  return result;
 }
 
 /**
@@ -126,27 +169,11 @@ export async function migrateErrorCount() {
   addLog.info(`Concurrency: ${CONCURRENCY}`);
   addLog.info('========================================');
 
-  // Get error counts from both sources
-  const [chatItemErrors, responseErrors] = await Promise.all([
-    getErrorCountFromChatItem(),
-    getErrorCountFromResponse()
-  ]);
+  // Step 1: Create temporary indexes
+  await createTemporaryIndexes();
 
-  // Merge and sum by (appId, chatId)
-  const chatMap = new Map<string, ChatErrorCount>();
-
-  for (const item of [...chatItemErrors, ...responseErrors]) {
-    const key = `${item.appId}_${item.chatId}`;
-    const existing = chatMap.get(key);
-    if (existing) {
-      existing.errorCount += item.errorCount;
-    } else {
-      chatMap.set(key, { ...item });
-    }
-  }
-
-  const chats = Array.from(chatMap.values());
-  addLog.info(`Found ${chats.length.toLocaleString()} unique chats with error (after merge)`);
+  // Step 2: Get all chats with error
+  const chats = await getChatsWithError();
 
   if (chats.length === 0) {
     addLog.info('No chats with error found');
@@ -158,7 +185,7 @@ export async function migrateErrorCount() {
     };
   }
 
-  // Process all chats using batchRun
+  // Step 3: Process all chats using batchRun
   addLog.info(`Processing ${chats.length.toLocaleString()} chats...`);
 
   let succeeded = 0;
@@ -209,7 +236,7 @@ export async function migrateErrorCount() {
   };
 }
 
-export default NextAPI(async function handler(req, res) {
+export default NextAPI(async function handler(req) {
   await authCert({ req, authRoot: true });
 
   const result = await migrateErrorCount();
