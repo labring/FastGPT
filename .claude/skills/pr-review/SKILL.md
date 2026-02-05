@@ -1,7 +1,11 @@
 ---
 name: pr-review
-description: 进行 Pull Request 代码审查,包括代码质量、安全性、性能、架构合理性等方面的全面评估。当用户要求审查 PR 或提到 "review pr"、"检查 PR" 等关键词时激活。
+description: 当用户传入一个 review 的 pr 链接时候，触发该 skill，对 pr 进行代码审查。
 ---
+
+# When to Use This Skill
+
+用户传入一个 review 的 pr 链接
 
 # PR Review 代码审查技能
 
