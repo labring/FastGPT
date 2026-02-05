@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { ChannelStatusEnum } from './constants';
 
 export type ChannelInfoType = {
@@ -55,17 +56,19 @@ export type ChannelLogListItemType = {
   ip: string;
 };
 
-export type DashboardDataItemType = {
-  channel_id?: number;
-  model: string;
-  request_count?: number;
-  used_amount?: number;
-  exception_count?: number;
-  total_time_milliseconds?: number;
-  total_ttfb_milliseconds?: number;
-  input_tokens?: number;
-  output_tokens?: number;
-  total_tokens?: number;
-  max_rpm?: number;
-  max_tpm?: number;
-};
+export const DashboardDataItemSchema = z.object({
+  channel_id: z.number().optional(),
+  model: z.string(),
+  request_count: z.number().optional().default(0),
+  used_amount: z.number().optional().default(0),
+  exception_count: z.number().optional().default(0),
+  total_time_milliseconds: z.number().optional().default(0),
+  total_ttfb_milliseconds: z.number().optional().default(0),
+  input_tokens: z.number().optional().default(0),
+  output_tokens: z.number().optional().default(0),
+  total_tokens: z.number().optional().default(0),
+  max_rpm: z.number().optional().default(0),
+  max_tpm: z.number().optional().default(0),
+  cache_hit_count: z.number().default(0)
+});
+export type DashboardDataItemType = z.infer<typeof DashboardDataItemSchema>;
