@@ -20,7 +20,11 @@ import {
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -179,10 +183,16 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
           variables
         });
       }
-
       return {
         obj: ChatRoleEnum.Human,
         value: [
+          ...(variables.fileUrlList || []).map((url: string) => ({
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: url,
+              url: url
+            }
+          })),
           {
             text: {
               content: variables.question
@@ -200,7 +210,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       variables = {};
     } else {
       delete variables.question;
-      variables.system_fileUrlList = variables.fileUrlList;
       delete variables.fileUrlList;
     }
 

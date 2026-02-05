@@ -157,9 +157,9 @@ export const AiChatModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static,
       invalid: true,
-      invalidCondition: ({ inputs, llmModelList }) => {
+      invalidCondition: ({ inputs, llmModelMap }) => {
         const model = inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
-        const modelItem = llmModelList.find((item) => item.model === model);
+        const modelItem = llmModelMap[model];
         return modelItem?.reasoning !== true;
       }
     },

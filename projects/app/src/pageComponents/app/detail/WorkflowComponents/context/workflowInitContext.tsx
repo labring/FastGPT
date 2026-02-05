@@ -165,7 +165,8 @@ const WorkflowInitContextProvider = ({
           return {
             key: output.key,
             label: output.label,
-            valueType: output.valueType
+            valueType: output.valueType,
+            invalid: output.invalid
           };
         })
       });
