@@ -99,11 +99,10 @@ export const chats2GPTMessages = ({
       const aiResults: ChatCompletionMessageParam[] = [];
       let pendingReasoningText: string | undefined;
 
-      const attachPendingReasoning = (message: ChatCompletionMessageParam) => {
-        if (pendingReasoningText !== undefined) {
-          message.reasoning_text = pendingReasoningText;
-          pendingReasoningText = undefined;
-        }
+      const consumePendingReasoningText = () => {
+        const reasoningText = pendingReasoningText;
+        pendingReasoningText = undefined;
+        return reasoningText;
       };
 
       //AI
@@ -136,7 +135,10 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls
           };
-          attachPendingReasoning(assistantMessage);
+          const reasoningText = consumePendingReasoningText();
+          if (reasoningText !== undefined) {
+            assistantMessage.reasoning_text = reasoningText;
+          }
           aiResults.push(assistantMessage);
           aiResults.push(...toolResponse);
         } else if (
@@ -161,7 +163,10 @@ export const chats2GPTMessages = ({
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.text.content
             };
-            attachPendingReasoning(assistantMessage);
+            const reasoningText = consumePendingReasoningText();
+            if (reasoningText !== undefined) {
+              assistantMessage.reasoning_text = reasoningText;
+            }
             aiResults.push(assistantMessage);
           }
         } else if (value.type === ChatItemValueTypeEnum.interactive) {
@@ -170,23 +175,28 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             interactive: value.interactive
           };
-          attachPendingReasoning(assistantMessage);
+          const reasoningText = consumePendingReasoningText();
+          if (reasoningText !== undefined) {
+            assistantMessage.reasoning_text = reasoningText;
+          }
           aiResults.push(assistantMessage);
         }
       });
 
       if (pendingReasoningText !== undefined) {
-        const lastResult = aiResults[aiResults.length - 1];
-        if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          attachPendingReasoning(lastResult);
-        } else {
-          const assistantMessage: ChatCompletionMessageParam = {
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: ''
-          };
-          attachPendingReasoning(assistantMessage);
-          aiResults.push(assistantMessage);
+        const reasoningText = consumePendingReasoningText();
+        if (reasoningText !== undefined) {
+          const lastResult = aiResults[aiResults.length - 1];
+          if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+            lastResult.reasoning_text = reasoningText;
+          } else {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: '',
+              reasoning_text: reasoningText
+            });
+          }
         }
       }
 
