@@ -35,15 +35,15 @@ const popoverMarkdownStyles = {
   '& .markdown': { fontSize: '13px' },
   '& .markdown p': { fontSize: '13px', lineHeight: '1.5', margin: '6px 0' },
   '& .markdown h1, & .markdown h2, & .markdown h3, & .markdown h4, & .markdown h5, & .markdown h6':
-    {
-      fontSize: '14px',
-      lineHeight: '1.5',
-      margin: '8px 0 6px'
-    },
+  {
+    fontSize: '14px',
+    lineHeight: '1.5',
+    margin: '8px 0 6px'
+  },
   '& .markdown ul, & .markdown ol': { fontSize: '13px', paddingLeft: '18px', margin: '6px 0' },
   '& .markdown li': { margin: '3px 0' },
   '& .markdown code': { fontSize: '12px', padding: '2px 4px' },
-  '& .markdown pre': { fontSize: '12px', padding: '8px', margin: '6px 0' },
+  '& .markdown pre': { fontSize: '12px', padding: '8px' },
   '& .markdown table': { fontSize: '12px', width: '100%' },
   '& .markdown table th': { fontSize: '12px', padding: '4px 8px' },
   '& .markdown table td': { fontSize: '12px', padding: '4px 8px' },
@@ -428,29 +428,28 @@ const KnowledgeSelect = ({
           w="100%"
           boxShadow="0px 32px 64px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px 0px rgba(19, 51, 107, 0.2)"
         >
-          <MyBox h="230px" isLoading={isLoading && searchKeyword !== ''}>
-            {!searchKeyword ? (
-              <Flex h="100%" alignItems="center" justifyContent="center">
-                <EmptyTip
-                  text={t('app:knowledge_search_input_tip')}
-                  pt="20px"
-                  pb="40px"
-                  iconSize="32px"
-                />
-              </Flex>
-            ) : !isLoading && knowledgeList.length === 0 ? (
-              <Flex h="100%" alignItems="center" justifyContent="center">
-                <EmptyTip
-                  text={t('app:knowledge_search_no_results')}
-                  pt="20px"
-                  pb="40px"
-                  iconSize="32px"
-                />
-              </Flex>
-            ) : !isLoading && knowledgeList.length > 0 ? (
-              <ScrollData h="230px" overflowY="auto" p={3}>
-                <VStack spacing={1.5} align="stretch">
-                  {knowledgeList.map((knowledge) => {
+          {!searchKeyword ? (
+            <Flex h="230px" alignItems="center" justifyContent="center">
+              <EmptyTip
+                text={t('app:knowledge_search_input_tip')}
+                pt="20px"
+                pb="40px"
+                iconSize="32px"
+              />
+            </Flex>
+          ) : !isLoading && knowledgeList.length === 0 ? (
+            <Flex h="230px" alignItems="center" justifyContent="center">
+              <EmptyTip
+                text={t('app:knowledge_search_no_results')}
+                pt="20px"
+                pb="40px"
+                iconSize="32px"
+              />
+            </Flex>
+          ) : (
+            <ScrollData h="230px" p={3}>
+              <VStack spacing={1.5} align="stretch">
+                {knowledgeList.map((knowledge) => {
                     const isDisabled = isKnowledgeDisabled(knowledge);
                     const knowledgeItem = (
                       <Popover
@@ -484,12 +483,12 @@ const KnowledgeSelect = ({
                               isDisabled
                                 ? {}
                                 : {
-                                    borderColor: selectedKnowledgeIds.includes(
-                                      knowledge.datasetDataId
-                                    )
-                                      ? 'primary.600'
-                                      : 'myGray.300'
-                                  }
+                                  borderColor: selectedKnowledgeIds.includes(
+                                    knowledge.datasetDataId
+                                  )
+                                    ? 'primary.600'
+                                    : 'myGray.300'
+                                }
                             }
                             onClick={() => !isDisabled && handleKnowledgeToggle(knowledge)}
                             onMouseEnter={() =>
@@ -604,12 +603,11 @@ const KnowledgeSelect = ({
                       );
                     }
 
-                    return knowledgeItem;
-                  })}
-                </VStack>
-              </ScrollData>
-            ) : null}
-          </MyBox>
+                  return knowledgeItem;
+                })}
+              </VStack>
+            </ScrollData>
+          )}
         </PopoverContent>
       </Popover>
 

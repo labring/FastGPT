@@ -404,7 +404,7 @@ const ChatBox = ({
           scrollToBottom();
         }, 100);
       }
-    } catch (error) {}
+    } catch (error) { }
   }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
@@ -457,8 +457,8 @@ const ChatBox = ({
           allVariableList?.forEach((item) => {
             const val =
               variables[item.key] === '' ||
-              variables[item.key] === undefined ||
-              variables[item.key] === null
+                variables[item.key] === undefined ||
+                variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
@@ -491,13 +491,13 @@ const ChatBox = ({
                 })),
                 ...(text
                   ? [
-                      {
-                        type: ChatItemValueTypeEnum.text,
-                        text: {
-                          content: text
-                        }
+                    {
+                      type: ChatItemValueTypeEnum.text,
+                      text: {
+                        content: text
                       }
-                    ]
+                    }
+                  ]
                   : [])
               ] as UserChatItemValueItemType[],
               status: ChatStatusEnum.finish
@@ -520,8 +520,8 @@ const ChatBox = ({
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
             isInteractivePrompt
-              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+              // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
+              ? setUserSelectResultToHistories(newChatList.slice(0, -2), text)
               : newChatList
           );
 
@@ -728,9 +728,9 @@ const ChatBox = ({
         state.map((chatItem) =>
           chatItem.dataId === chat.dataId
             ? {
-                ...chatItem,
-                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-              }
+              ...chatItem,
+              userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+            }
             : chatItem
         )
       );
@@ -742,7 +742,7 @@ const ChatBox = ({
           userGoodFeedback: isGoodFeedback ? undefined : 'yes',
           ...outLinkAuthData
         });
-      } catch (error) {}
+      } catch (error) { }
     };
   });
   const onCloseUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
@@ -786,7 +786,7 @@ const ChatBox = ({
             dataId: chat.dataId,
             ...outLinkAuthData
           });
-        } catch (error) {}
+        } catch (error) { }
       };
     } else {
       return () => setFeedbackId(chat.dataId);
@@ -816,9 +816,9 @@ const ChatBox = ({
           state.map((chatItem) =>
             chatItem.obj === ChatRoleEnum.AI && chatItem.dataId === chat.dataId
               ? {
-                  ...chatItem,
-                  customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
-                }
+                ...chatItem,
+                customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
+              }
               : chatItem
           )
         );
@@ -952,9 +952,11 @@ const ChatBox = ({
       const containerRect = container.getBoundingClientRect();
       const elementRect = variableInput.getBoundingClientRect();
 
-      setIsVariableVisible(
-        elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom
-      );
+      const showVariable = isAssistantType
+        ? true
+        : elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom;
+
+      setIsVariableVisible(showVariable);
     };
 
     const container = ScrollContainerRef.current;
@@ -966,7 +968,7 @@ const ChatBox = ({
         container.removeEventListener('scroll', checkVariableVisibility);
       };
     }
-  }, [chatType, setIsVariableVisible]);
+  }, [chatType, isAssistantType, setIsVariableVisible]);
 
   const RenderRecords = useMemo(() => {
     return (
@@ -1003,7 +1005,7 @@ const ChatBox = ({
                   item.time &&
                   chatRecords[index - 1].time !== undefined &&
                   new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
-                    10 * 60 * 1000 && <TimeBox time={item.time} />}
+                  10 * 60 * 1000 && <TimeBox time={item.time} />}
 
                 <Box py={item.hideInUI ? 0 : 6}>
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
@@ -1169,7 +1171,7 @@ const ChatBox = ({
                 chatId,
                 dataId: readFeedbackData.dataId
               });
-            } catch (error) {}
+            } catch (error) { }
             setReadFeedbackData(undefined);
           }}
         />
@@ -1194,9 +1196,9 @@ const ChatBox = ({
               state.map((chatItem) =>
                 chatItem.dataId === adminMarkData.dataId
                   ? {
-                      ...chatItem,
-                      adminFeedback
-                    }
+                    ...chatItem,
+                    adminFeedback
+                  }
                   : chatItem
               )
             );
