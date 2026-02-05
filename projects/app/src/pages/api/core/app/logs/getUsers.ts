@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
         }
       },
       { $sort: { count: -1 } },
-      { $limit: 100 }
+      { $limit: 50 }
     ],
     { ...readFromSecondary }
   );
@@ -93,8 +93,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
 
       return { outLinkUid, tmbId, name, avatar, count: item.count };
     })
-    .filter((item) => !searchPattern || searchPattern.test(item.name))
-    .slice(0, 50);
+    .filter((item) => !searchPattern || searchPattern.test(item.name));
 
   return { list };
 }

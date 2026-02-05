@@ -147,7 +147,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
             { customTitle: { $regex: new RegExp(`${replaceRegChars(chatSearch)}`, 'i') } }
           ]
         }
-      : undefined)
+      : undefined),
+    ...(errorFilter === 'has_error' && { errorCount: { $gt: 0 } })
   };
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
@@ -208,28 +209,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
                     $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
                   }
                 },
-                errorCount: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $gt: [
-                          {
-                            $size: {
-                              $filter: {
-                                input: { $ifNull: ['$responseData', []] },
-                                as: 'item',
-                                cond: { $ne: [{ $ifNull: ['$$item.errorText', null] }, null] }
-                              }
-                            }
-                          },
-                          0
-                        ]
-                      },
-                      1,
-                      0
-                    ]
-                  }
-                },
                 totalPoints: {
                   $sum: {
                     $reduce: {
@@ -271,11 +250,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
             {
               $group: {
                 _id: null,
-                errorCountFromResponse: {
-                  $sum: {
-                    $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
-                  }
-                },
                 totalPointsFromResponse: {
                   $sum: { $ifNull: ['$data.totalPoints', 0] }
                 }
@@ -328,14 +302,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
               0
             ]
           },
-          errorCount: {
-            $add: [
-              { $ifNull: [{ $arrayElemAt: ['$chatData.errorCountFromChatItem', 0] }, 0] },
-              {
-                $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0]
-              }
-            ]
-          },
+          errorCount: { $ifNull: ['$errorCount', 0] },
           totalPoints: {
             $add: [
               { $ifNull: [{ $arrayElemAt: ['$chatData.totalPointsFromChatItem', 0] }, 0] },
@@ -390,7 +357,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
         }
       },
-      ...(errorFilter === 'has_error' ? [{ $match: { errorCount: { $gt: 0 } } }] : []),
       {
         $project: {
           _id: 1,
