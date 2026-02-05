@@ -667,6 +667,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             <>
               {datasetDetail.status === DatasetStatusEnum.active && (
                 <HStack gap={2}>
+                  {!hasTrainingData && feConfigs?.isPlus && (
+                    <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
+                      {t('dataset:immediate_sync')}
+                    </Button>
+                  )}
                   <Flex
                     px={3.5}
                     py={2}
@@ -685,11 +690,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       })
                     }
                   >
-                    {!hasTrainingData && feConfigs?.isPlus && (
-                      <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
-                        {t('dataset:immediate_sync')}
-                      </Button>
-                    )}
                     <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
                       {t('dataset:add_file')}
                     </Box>
