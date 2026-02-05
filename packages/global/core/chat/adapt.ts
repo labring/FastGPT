@@ -99,7 +99,7 @@ export const chats2GPTMessages = ({
       const aiResults: ChatCompletionMessageParam[] = [];
       let pendingReasoningText: string | undefined;
 
-      const consumePendingReasoningText = () => {
+      const takePendingReasoningText = () => {
         const reasoningText = pendingReasoningText;
         pendingReasoningText = undefined;
         return reasoningText;
@@ -135,7 +135,7 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls
           };
-          const reasoningText = consumePendingReasoningText();
+          const reasoningText = takePendingReasoningText();
           if (reasoningText !== undefined) {
             assistantMessage.reasoning_text = reasoningText;
           }
@@ -163,7 +163,7 @@ export const chats2GPTMessages = ({
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.text.content
             };
-            const reasoningText = consumePendingReasoningText();
+            const reasoningText = takePendingReasoningText();
             if (reasoningText !== undefined) {
               assistantMessage.reasoning_text = reasoningText;
             }
@@ -175,7 +175,7 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             interactive: value.interactive
           };
-          const reasoningText = consumePendingReasoningText();
+          const reasoningText = takePendingReasoningText();
           if (reasoningText !== undefined) {
             assistantMessage.reasoning_text = reasoningText;
           }
@@ -184,19 +184,17 @@ export const chats2GPTMessages = ({
       });
 
       if (pendingReasoningText !== undefined) {
-        const reasoningText = consumePendingReasoningText();
-        if (reasoningText !== undefined) {
-          const lastResult = aiResults[aiResults.length - 1];
-          if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-            lastResult.reasoning_text = reasoningText;
-          } else {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: '',
-              reasoning_text: reasoningText
-            });
-          }
+        const reasoningText = takePendingReasoningText();
+        const lastResult = aiResults[aiResults.length - 1];
+        if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          lastResult.reasoning_text = reasoningText;
+        } else {
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: '',
+            reasoning_text: reasoningText
+          });
         }
       }
 
