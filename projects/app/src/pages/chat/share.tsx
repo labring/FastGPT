@@ -42,6 +42,7 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -334,10 +335,10 @@ const Render = (props: Props) => {
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
 
-  const chatHistoryProviderParams = useMemo(() => {
+  const chatHistoryProviderParams = useMemoEnhance(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId || '' };
   }, [authToken, customUid, localUId, shareId]);
-  const chatRecordProviderParams = useMemo(() => {
+  const chatRecordProviderParams = useMemoEnhance(() => {
     return {
       appId,
       shareId,
@@ -387,7 +388,7 @@ const Render = (props: Props) => {
     }
   });
 
-  return source === ChatSourceEnum.share ? (
+  return source === ChatSourceEnum.share && chatHistoryProviderParams.outLinkUid ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}

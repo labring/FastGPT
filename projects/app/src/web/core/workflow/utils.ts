@@ -33,6 +33,8 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 
 /* ====== node ======= */
 export const nodeTemplate2FlowNode = ({
@@ -158,6 +160,21 @@ export const storeNode2FlowNode = ({
           })
       )
   };
+
+  // Format output invalid
+  const llmList = useSystemStore.getState().llmModelList;
+  const llmModelMap = llmList.reduce(
+    (acc, model) => {
+      acc[model.model] = model;
+      return acc;
+    },
+    {} as Record<string, LLMModelItemType>
+  );
+  nodeItem.outputs.forEach((output) => {
+    if (output.invalidCondition) {
+      output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelMap });
+    }
+  });
 
   return {
     id: storeNode.nodeId,
