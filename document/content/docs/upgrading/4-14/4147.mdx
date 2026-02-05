@@ -13,6 +13,7 @@ aiproxy: 0.3.15
 2. 临时增加 LLM 请求追踪，方便调试。会保留所有 LLM 的请求体和响应（默认保留 6 小时，通过 `LLM_REQUEST_TRACKING_RETENTION_HOURS` 变量调整）
 3. 知识库搜索，支持指定 collectionIds 来进行筛选。
 4. 模型监控增加缓存命中率。
+5. 分享链接，自定义鉴权模式下，finish 事件会传输 chatId。
 
 ## ⚙️ 优化
 
