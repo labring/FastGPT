@@ -69,6 +69,7 @@ const OutLink = (props: Props) => {
     authToken,
     customUid,
     showWorkorder,
+    hideMenu,
     ...customVariables
   } = router.query as {
     shareId: string;
@@ -76,6 +77,7 @@ const OutLink = (props: Props) => {
     showHead: '0' | '1';
     authToken: string;
     showWorkorder: '0' | '1';
+    hideMenu?: '0' | '1';
     [key: string]: string;
   };
   const { isPc } = useSystem();
@@ -279,6 +281,7 @@ const OutLink = (props: Props) => {
                     totalRecordsCount={totalRecordsCount}
                     showHistory={showHistory === '1'}
                     reserveSpace={showWorkorder !== undefined}
+                    hideMenu={hideMenu === '1'}
                   />
                 ) : null}
                 {/* chat box */}
