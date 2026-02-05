@@ -190,11 +190,11 @@ export type ChatItemSchemaType = ChatItemObjItemType & {
 };
 
 // Client error show
-const ClientErrorShowSchema = z.object({
+const ErrorTextItemSchema = z.object({
   moduleName: z.string(),
   errorText: z.string()
 });
-export type ClientErrorShowType = z.infer<typeof ClientErrorShowSchema>;
+export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
 
 export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
