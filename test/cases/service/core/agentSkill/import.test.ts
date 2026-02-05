@@ -402,7 +402,7 @@ description: Missing name
         'script.js': 'console.log("test");',
         'style.css': '.class { color: red; }',
         'data.xml': '<root></root>',
-        'archive.tar.gz': 'tar content'
+        'archive.tar.xz': 'tar content'
       });
 
       const result = await extractSkillPackage(tempFile);

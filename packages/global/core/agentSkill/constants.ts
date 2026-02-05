@@ -50,3 +50,26 @@ export const AgentSkillCategoryMap: Record<
 export const skillCollectionName = 'agent_skills';
 
 export const skillVersionCollectionName = 'skill_versions';
+
+export const skillSandboxCollectionName = 'skill_sandbox_info';
+
+// Sandbox types
+export enum SandboxTypeEnum {
+  editDebug = 'edit-debug',
+  sessionRuntime = 'session-runtime'
+}
+
+// Sandbox status states
+export enum SandboxStateEnum {
+  pending = 'Pending',
+  running = 'Running',
+  failed = 'Failed',
+  succeeded = 'Succeeded',
+  unknown = 'Unknown'
+}
+
+// Sandbox protocol types
+export enum SandboxProtocolEnum {
+  http = 'http',
+  https = 'https'
+}
