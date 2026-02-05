@@ -183,9 +183,9 @@ export const chats2GPTMessages = ({
         }
       });
 
-      if (pendingReasoningText !== undefined) {
-        const reasoningText = takePendingReasoningText();
-        const lastResult = aiResults[aiResults.length - 1];
+      const reasoningText = takePendingReasoningText();
+      if (reasoningText !== undefined) {
+        const lastResult = aiResults.length > 0 ? aiResults[aiResults.length - 1] : undefined;
         if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
           lastResult.reasoning_text = reasoningText;
         } else {
