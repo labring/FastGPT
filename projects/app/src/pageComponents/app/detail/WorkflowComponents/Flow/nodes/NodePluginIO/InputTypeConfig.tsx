@@ -185,8 +185,6 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.customVariable,
       FlowNodeInputTypeEnum.hidden,
       FlowNodeInputTypeEnum.switch,
-      VariableInputEnum.timePointSelect,
-      VariableInputEnum.timeRangeSelect,
       VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal
