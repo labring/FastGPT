@@ -435,6 +435,10 @@ export const removeUnauthModels = async ({
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
+          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
+          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+            return;
+          }
           if (!allowedModels.has(input.value)) {
             input.value = undefined;
           }
