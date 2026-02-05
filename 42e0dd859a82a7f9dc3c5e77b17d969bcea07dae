@@ -1,0 +1,132 @@
+packages/service/core/agentSkill/sandboxSchema.ts
+  3921922ae3bda8ef 127
+packages/service/core/agentSkill/sandboxController.ts
+  05a774ac6827dffb 1,6-7,14,19,46,51,56,63,74,104,111,114,131,143,158,170,174,177,182,191,196,198,200,210-211,422,456,471
+  58bceb7caba2f3dd 3,29-31,62,79,89-90,93,103,108,115,118-119,122,125-126,144,148,186-187,193,203-204,266,295,303-306,308,317,320-321,343-344,359-361,363,372,420-421,423,425,432,441,449,457-459,461
+  2ca8f832d0544e9b 325
+  6f362237ae0dc308 220,223-226,443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.42",
+  "base_commit_sha": "42e0dd859a82a7f9dc3c5e77b17d969bcea07dae",
+  "prompts": {
+    "05a774ac6827dffb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24469618-eafd-4c98-826b-7677527e16c4",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2561,
+      "total_deletions": 0,
+      "accepted_lines": 1998,
+      "overriden_lines": 47
+    },
+    "2ca8f832d0544e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6effb07-536c-4e10-9b6e-4d2118c80032",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 32,
+      "accepted_lines": 13,
+      "overriden_lines": 2
+    },
+    "3921922ae3bda8ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8630d4c-d56e-4053-8788-df1b061e604c",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "48cad208dc45db7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "072b4337-be9f-4051-a670-1ca8bac383f0",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "576658aa6ffc4148": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af04e3bf-69f3-4ec0-972a-43d3f6289d9e",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "58bceb7caba2f3dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "871fd036-f8d5-4e57-bff4-1c7028b72ee1",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3080,
+      "total_deletions": 555,
+      "accepted_lines": 2682,
+      "overriden_lines": 107
+    },
+    "6f362237ae0dc308": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a351d6d2-3faa-4d05-96b5-b24396fe6cef",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 44,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "7ad01757efa847c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13c2ba2c-344a-42d5-98d9-b3c62e636007",
+        "model": "kimi-for-coding"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 47,
+      "total_deletions": 15,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bb2e8569f9da7afa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "458c62e3-1035-45bb-86a3-37badddb8cd8",
+        "model": "kimi-k2.5"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
