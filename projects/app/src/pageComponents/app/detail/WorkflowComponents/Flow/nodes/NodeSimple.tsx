@@ -60,7 +60,20 @@ const NodeSimple = ({
         {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
       </NodeCard>
     );
-  }, [isTool, inputs, nodeId, outputs, minW, maxW, selected, data, t, catchError]);
+  }, [
+    minW,
+    maxW,
+    selected,
+    data,
+    isTool,
+    nodeId,
+    inputs,
+    commonInputs,
+    t,
+    successOutputs,
+    errorOutputs,
+    catchError
+  ]);
 
   return Render;
 };
