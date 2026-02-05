@@ -29,6 +29,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -243,6 +244,15 @@ export const rewriteRuntimeWorkFlow = async ({
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
+
+    // Check is valid and filter
+    const configStatus = getToolConfigStatus({
+      tool: toolSetNode
+    });
+    if (configStatus.status === 'invalid' || configStatus.status === 'waitingForConfig') {
+      continue;
+    }
+
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
     const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
     const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;

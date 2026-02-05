@@ -64,7 +64,9 @@ export const validateToolConfiguration = ({
   return true;
 };
 
-export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType): boolean => {
+export const checkNeedsUserConfiguration = (toolTemplate: {
+  inputs: FlowNodeTemplateType['inputs'];
+}): boolean => {
   const formRenderTypesMap: Record<string, boolean> = {
     [FlowNodeInputTypeEnum.input]: true,
     [FlowNodeInputTypeEnum.textarea]: true,
@@ -104,7 +106,9 @@ export const checkNeedsUserConfiguration = (toolTemplate: FlowNodeTemplateType):
 export const getToolConfigStatus = ({
   tool
 }: {
-  tool: FlowNodeTemplateType;
+  tool: {
+    inputs: FlowNodeTemplateType['inputs'];
+  };
 }): {
   needConfig: boolean;
   status: SelectedToolItemType['configStatus'];
