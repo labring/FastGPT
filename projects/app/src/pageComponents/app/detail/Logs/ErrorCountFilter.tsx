@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { ButtonProps } from '@chakra-ui/react';
+import type { ButtonProps, PlacementWithLogical } from '@chakra-ui/react';
 import {
   Menu,
   MenuButton,
@@ -16,11 +16,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 const ErrorCountFilter = ({
   errorFilter,
   setErrorFilter,
-  menuButtonProps
+  menuButtonProps,
+  placement
 }: {
   errorFilter: 'all' | 'has_error';
   setErrorFilter: (errorFilter: 'all' | 'has_error') => void;
   menuButtonProps?: ButtonProps;
+  placement?: PlacementWithLogical;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -47,7 +49,7 @@ const ErrorCountFilter = ({
       closeOnSelect={true}
       strategy={'fixed'}
       autoSelect={false}
-      placement="bottom"
+      placement={placement}
     >
       <MenuButton
         as={Button}

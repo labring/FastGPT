@@ -1,6 +1,5 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { PipelineStage } from '@fastgpt/service/common/mongo';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
@@ -82,22 +81,24 @@ async function handler(
       unreadOnly && {
         hasUnreadBadFeedback: true
       }),
+    ...(errorFilter === 'has_error' && {
+      errorCount: { $gt: 0 }
+    }),
     ...(sources && { source: { $in: sources } }),
-    ...(tmbIds || outLinkUids
-      ? {
-          $or: [
-            ...(tmbIds?.length
-              ? [
-                  {
-                    tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) },
-                    $or: [{ outLinkUid: { $exists: false } }, { outLinkUid: { $in: [null, ''] } }]
-                  }
-                ]
-              : []),
-            ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
-          ]
-        }
-      : {}),
+    // User filter: tmbIds(排除外链用户) 或 outLinkUids
+    ...((tmbIds?.length || outLinkUids?.length) && {
+      $or: [
+        ...(tmbIds?.length
+          ? [
+              {
+                tmbId: { $in: tmbIds.map((id) => new Types.ObjectId(id)) },
+                outLinkUid: { $in: [null, ''] }
+              }
+            ]
+          : []),
+        ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
+      ]
+    }),
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
@@ -113,244 +114,191 @@ async function handler(
       : undefined)
   };
 
-  const lookupAndComputeStages: PipelineStage[] = [
-    {
-      $lookup: {
-        from: ChatItemCollectionName,
-        let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
-              }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              messageCount: { $sum: 1 },
-              totalResponseTime: {
-                $sum: {
-                  $cond: [{ $eq: ['$obj', 'AI'] }, { $ifNull: ['$durationSeconds', 0] }, 0]
+  // Execute both queries
+  const [listResult, total] = await Promise.all([
+    // Execute the main aggregation
+    MongoChat.aggregate(
+      [
+        { $match: where },
+        { $sort: { updateTime: -1 } },
+        { $skip: offset },
+        { $limit: pageSize },
+        // Match chat_items for other statistics
+        {
+          $lookup: {
+            from: ChatItemCollectionName,
+            let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                  }
                 }
               },
-              aiMessageCount: {
-                $sum: {
-                  $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
-                }
-              },
-              adminMark: {
-                $sum: {
-                  $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
-                }
-              },
-              goodFeedback: {
-                $sum: {
-                  $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
-                }
-              },
-              badFeedback: {
-                $sum: {
-                  $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
-                }
-              },
-              customFeedback: {
-                $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
-              },
-              errorCountFromChatItem: {
-                $sum: {
-                  $cond: [
-                    {
-                      $gt: [
-                        {
-                          $size: {
-                            $filter: {
-                              input: { $ifNull: ['$responseData', []] },
-                              as: 'item',
-                              cond: { $ne: [{ $ifNull: ['$$item.errorText', null] }, null] }
-                            }
-                          }
-                        },
-                        0
-                      ]
-                    },
-                    1,
-                    0
-                  ]
-                }
-              },
-              totalPointsFromChatItem: {
-                $sum: {
-                  $reduce: {
-                    input: { $ifNull: ['$responseData', []] },
-                    initialValue: 0,
-                    in: { $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }] }
+              {
+                $group: {
+                  _id: null,
+                  messageCount: { $sum: 1 },
+                  totalResponseTime: {
+                    $sum: {
+                      $cond: [{ $eq: ['$obj', 'AI'] }, { $ifNull: ['$durationSeconds', 0] }, 0]
+                    }
+                  },
+                  aiMessageCount: {
+                    $sum: {
+                      $cond: [{ $eq: ['$obj', 'AI'] }, 1, 0]
+                    }
+                  },
+                  adminMark: {
+                    $sum: {
+                      $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
+                    }
+                  },
+                  goodFeedback: {
+                    $sum: {
+                      $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
+                    }
+                  },
+                  badFeedback: {
+                    $sum: {
+                      $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
+                    }
+                  },
+                  customFeedback: {
+                    $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
+                  },
+                  totalPointsFromChatItem: {
+                    $sum: {
+                      $reduce: {
+                        input: { $ifNull: ['$responseData', []] },
+                        initialValue: 0,
+                        in: { $add: ['$$value', { $ifNull: ['$$this.totalPoints', 0] }] }
+                      }
+                    }
                   }
                 }
               }
-            }
+            ],
+            as: 'chatItemsData'
           }
-        ],
-        as: 'chatItemsData'
-      }
-    },
-    {
-      $lookup: {
-        from: ChatItemResponseCollectionName,
-        let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
-              }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              errorCountFromResponse: {
-                $sum: {
-                  $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
+        },
+        // Match chatItemResponses
+        {
+          $lookup: {
+            from: ChatItemResponseCollectionName,
+            let: { appId: new Types.ObjectId(appId), chatId: '$chatId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                  }
                 }
               },
-              totalPointsFromResponse: {
-                $sum: { $ifNull: ['$data.totalPoints', 0] }
+              {
+                $group: {
+                  _id: null,
+                  // totalPoints from chatItemResponse data
+                  totalPointsFromResponse: {
+                    $sum: { $ifNull: ['$data.totalPoints', 0] }
+                  }
+                }
               }
-            }
+            ],
+            as: 'chatItemResponsesData'
           }
-        ],
-        as: 'chatItemResponsesData'
-      }
-    },
-    {
-      $lookup: {
-        from: AppVersionCollectionName,
-        localField: 'appVersionId',
-        foreignField: '_id',
-        as: 'versionData'
-      }
-    },
-    {
-      $addFields: {
-        messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
-        userGoodFeedbackCount: {
-          $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
         },
-        userBadFeedbackCount: {
-          $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
+        // Match app versions (use simple lookup for better performance with index)
+        {
+          $lookup: {
+            from: AppVersionCollectionName,
+            localField: 'appVersionId',
+            foreignField: '_id',
+            as: 'versionData'
+          }
         },
-        customFeedbacksCount: {
-          $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
-        },
-        markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
-        averageResponseTime: {
-          $cond: [
-            {
-              $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
+        {
+          $addFields: {
+            messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
+            // Use feedback counts from Chat table (redundant fields)
+            userGoodFeedbackCount: {
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
             },
-            {
-              $divide: [
-                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
-                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+            userBadFeedbackCount: {
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
+            },
+            customFeedbacksCount: {
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
+            },
+            markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+            averageResponseTime: {
+              $cond: [
+                {
+                  $gt: [{ $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 0] }, 0]
+                },
+                {
+                  $divide: [
+                    { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalResponseTime', 0] }, 0] },
+                    { $ifNull: [{ $arrayElemAt: ['$chatItemsData.aiMessageCount', 0] }, 1] }
+                  ]
+                },
+                0
               ]
             },
-            0
-          ]
-        },
-        errorCount: {
-          $add: [
-            { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCountFromChatItem', 0] }, 0] },
-            {
-              $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] }, 0]
-            }
-          ]
-        },
-        totalPoints: {
-          $add: [
-            { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },
-            {
-              $ifNull: [{ $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] }, 0]
-            }
-          ]
-        },
-        versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
-      }
-    },
-    {
-      $project: {
-        _id: { $toString: '$_id' },
-        chatId: 1,
-        title: 1,
-        customTitle: 1,
-        source: 1,
-        sourceName: 1,
-        updateTime: 1,
-        createTime: 1,
-        messageCount: 1,
-        userGoodFeedbackCount: 1,
-        userBadFeedbackCount: 1,
-        customFeedbacksCount: 1,
-        markCount: 1,
-        averageResponseTime: 1,
-        errorCount: 1,
-        totalPoints: 1,
-        outLinkUid: 1,
-        tmbId: {
-          $cond: {
-            if: { $eq: ['$tmbId', null] },
-            then: null,
-            else: { $toString: '$tmbId' }
+            errorCount: { $ifNull: ['$errorCount', 0] },
+            totalPoints: {
+              $add: [
+                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },
+                {
+                  $ifNull: [
+                    { $arrayElemAt: ['$chatItemResponsesData.totalPointsFromResponse', 0] },
+                    0
+                  ]
+                }
+              ]
+            },
+            versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
           }
         },
-        versionName: 1,
-        region: '$metadata.originIp'
-      }
-    }
-  ];
+        {
+          $project: {
+            _id: { $toString: '$_id' },
+            chatId: 1,
+            title: 1,
+            customTitle: 1,
+            source: 1,
+            sourceName: 1,
+            updateTime: 1,
+            createTime: 1,
+            messageCount: 1,
+            userGoodFeedbackCount: 1,
+            userBadFeedbackCount: 1,
+            customFeedbacksCount: 1,
+            markCount: 1,
+            averageResponseTime: 1,
+            errorCount: 1,
+            totalPoints: 1,
+            outLinkUid: 1,
+            tmbId: {
+              $cond: {
+                if: { $eq: ['$tmbId', null] },
+                then: null,
+                else: { $toString: '$tmbId' }
+              }
+            },
+            versionName: 1,
+            region: '$metadata.originIp'
+          }
+        }
+      ],
+      { ...readFromSecondary }
+    ),
+    // Execute the count pipeline
+    MongoChat.countDocuments(where, { ...readFromSecondary })
+  ]);
 
-  const hasErrorFilter = errorFilter === 'has_error';
-
-  const { list, total } = await (async () => {
-    if (hasErrorFilter) {
-      const fullPipeline: PipelineStage[] = [
-        { $match: where },
-        { $sort: { updateTime: -1 } },
-        ...lookupAndComputeStages,
-        { $match: { errorCount: { $gt: 0 } } }
-      ];
-
-      const listPipeline: PipelineStage[] = [
-        ...fullPipeline,
-        { $skip: offset },
-        { $limit: pageSize }
-      ];
-      const countPipeline: PipelineStage[] = [...fullPipeline, { $count: 'total' }];
-
-      const [listRes, countRes] = await Promise.all([
-        MongoChat.aggregate(listPipeline, { ...readFromSecondary }),
-        MongoChat.aggregate(countPipeline, { ...readFromSecondary })
-      ]);
-
-      return { list: listRes, total: (countRes[0]?.total as number) ?? 0 };
-    }
-
-    const listPipeline: PipelineStage[] = [
-      { $match: where },
-      { $sort: { updateTime: -1 } },
-      { $skip: offset },
-      { $limit: pageSize },
-      ...lookupAndComputeStages
-    ];
-
-    const [listRes, countRes] = await Promise.all([
-      MongoChat.aggregate(listPipeline, { ...readFromSecondary }),
-      MongoChat.countDocuments(where, { ...readFromSecondary })
-    ]);
-
-    return { list: listRes, total: countRes };
-  })();
+  const list = listResult;
 
   const listWithRegion = list.map((item) => {
     const ip = item.region;
@@ -363,18 +311,12 @@ async function handler(
     };
   });
 
+  // 获取有 tmbId 的人员
   const listWithSourceMember = await addSourceMember({ list: listWithRegion });
-  const sourceMemberIds = new Set(listWithSourceMember.map((item) => String(item._id)));
-
-  const listWithoutSourceMember = listWithRegion.filter(
-    (item) => !sourceMemberIds.has(String(item._id))
-  );
-
-  const mergedList = listWithSourceMember.concat(listWithoutSourceMember);
-  mergedList.sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
-
+  // 获取没有 tmbId 的人员
+  const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
   return GetAppChatLogsResponseSchema.parse({
-    list: mergedList,
+    list: listWithSourceMember.concat(listWithoutTmbId),
     total
   });
 }

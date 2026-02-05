@@ -66,6 +66,8 @@ export type ChatSchemaType = {
   hasBadFeedback?: boolean;
   hasUnreadGoodFeedback?: boolean;
   hasUnreadBadFeedback?: boolean;
+  // Error count (redundant field for performance)
+  errorCount?: number;
 
   deleteTime?: Date | null;
 };

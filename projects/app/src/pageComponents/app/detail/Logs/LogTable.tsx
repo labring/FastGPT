@@ -310,6 +310,7 @@ const LogTable = ({
           <ErrorCountFilter
             errorFilter={errorFilter}
             setErrorFilter={setErrorFilter}
+            placement="right"
             menuButtonProps={{
               fontSize: '12.8px',
               fontWeight: 'medium',

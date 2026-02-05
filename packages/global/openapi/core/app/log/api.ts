@@ -296,7 +296,7 @@ export const GetLogUsersBodySchema = z.object({
   }),
   searchKey: z.string().optional().meta({
     example: 'user',
-    description: '搜索关键词'
+    description: '搜索用户名'
   }),
   sources: z
     .array(z.string())

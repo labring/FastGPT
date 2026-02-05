@@ -295,6 +295,9 @@ export const pushChatRecords = async (props: Props) => {
         );
       }
 
+      // Count errors in current response
+      const currentErrorCount = nodeResponses?.filter((item) => item.errorText).length ?? 0;
+
       await MongoChat.updateOne(
         {
           appId,
@@ -321,7 +324,8 @@ export const pushChatRecords = async (props: Props) => {
           },
           $setOnInsert: {
             createTime: new Date()
-          }
+          },
+          ...(currentErrorCount > 0 && { $inc: { errorCount: currentErrorCount } })
         },
         {
           session,
