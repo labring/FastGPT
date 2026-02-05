@@ -176,13 +176,18 @@ export const chats2GPTMessages = ({
       });
 
       if (pendingReasoningText !== undefined) {
-        const assistantMessage: ChatCompletionMessageParam = {
-          dataId,
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: ''
-        };
-        attachPendingReasoning(assistantMessage);
-        aiResults.push(assistantMessage);
+        const lastResult = aiResults[aiResults.length - 1];
+        if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          attachPendingReasoning(lastResult);
+        } else {
+          const assistantMessage: ChatCompletionMessageParam = {
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: ''
+          };
+          attachPendingReasoning(assistantMessage);
+          aiResults.push(assistantMessage);
+        }
       }
 
       // Auto add empty assistant message

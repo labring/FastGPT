@@ -264,7 +264,6 @@ export const loadRequestMessages = async ({
   const formatAssistantItem = (
     item: ChatCompletionAssistantMessageParam & { reasoning_text?: string }
   ) => {
-    const reasoningText = item.reasoning_text;
     return {
       role: item.role,
       content: item.content,
@@ -272,8 +271,8 @@ export const loadRequestMessages = async ({
       name: item.name,
       refusal: item.refusal,
       tool_calls: item.tool_calls,
-      ...(retainReasoning && reasoningText !== undefined
-        ? { reasoning_content: reasoningText }
+      ...(retainReasoning && item.reasoning_text !== undefined
+        ? { reasoning_content: item.reasoning_text }
         : {})
     };
   };
