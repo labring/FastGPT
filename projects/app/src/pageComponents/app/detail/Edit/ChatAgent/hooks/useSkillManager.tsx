@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -28,6 +29,7 @@ import {
   ToolTypeList
 } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
+import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -38,21 +40,19 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
     [FlowNodeTypeEnum.appModule]: true,
     [FlowNodeTypeEnum.pluginModule]: true
   };
-  return !!subAppTypeMap[flowNodeType];
+  return subAppTypeMap[flowNodeType];
 };
 
 export const useSkillManager = ({
   selectedTools,
   onUpdateOrAddTool,
   onDeleteTool,
-  canSelectFile,
-  canSelectImg
+  canUploadFile
 }: {
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
+  canUploadFile: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -63,7 +63,7 @@ export const useSkillManager = ({
       const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
         return [];
       });
-      return data
+      const apiTools = data
         .map<SkillItemType>((item) => {
           return {
             id: item.id,
@@ -82,6 +82,20 @@ export const useSkillManager = ({
           };
         })
         .filter((item) => !item.parentId);
+
+      // Merge internal tools
+      const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
+      if (fileReadInfo) {
+        apiTools.unshift({
+          id: SubAppIds.fileRead,
+          label: t(fileReadInfo.name),
+          icon: fileReadInfo.avatar,
+          description: fileReadInfo.toolDescription,
+          canClick: true
+        });
+      }
+
+      return apiTools;
     },
     {
       manual: false
@@ -154,12 +168,16 @@ export const useSkillManager = ({
         return existsTool.pluginId;
       }
 
+      // Check if it's a sub agent tool
+      if (toolId in systemSubInfo) {
+        return toolId;
+      }
+
       const toolTemplate = await getToolPreviewNode({ appId: toolId });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
-        canSelectFile,
-        canSelectImg
+        canUploadFile
       });
       if (!toolValid) {
         toast({
@@ -181,7 +199,7 @@ export const useSkillManager = ({
 
       return tool.id;
     },
-    [canSelectFile, canSelectImg, lastSelectedTools, onUpdateOrAddTool, t, toast]
+    [canUploadFile, lastSelectedTools, onUpdateOrAddTool, t, toast]
   );
 
   /* ===== Skill option ===== */
@@ -236,20 +254,44 @@ export const useSkillManager = ({
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
-    return selectedTools.map((tool) => {
+    const tools = selectedTools.map((tool) => {
       const configStatus: SkillLabelItemType['configStatus'] = (() => {
         if (tool.pluginData?.error) {
           return 'invalid';
         }
-        return tool.configStatus || 'noConfig';
+        if (tool.pluginId === SubAppIds.fileRead) {
+          return canUploadFile ? 'configured' : 'invalid';
+        }
+        return tool.configStatus || 'waitingForConfig';
       })();
       return {
         ...tool,
         id: tool.pluginId!,
+        name: tool.name,
         configStatus
       };
     });
-  }, [selectedTools]);
+
+    // Merge file read tool
+    if (canUploadFile) {
+      const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
+
+      tools.push({
+        id: SubAppIds.fileRead,
+        pluginId: SubAppIds.fileRead,
+        name: t(fileReadInfo.name),
+        avatar: fileReadInfo.avatar,
+        intro: fileReadInfo.toolDescription,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        inputs: [],
+        outputs: [],
+        configStatus: 'noConfig'
+      });
+    }
+
+    return tools;
+  }, [selectedTools, canUploadFile, t]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(

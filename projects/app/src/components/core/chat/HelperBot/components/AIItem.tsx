@@ -14,14 +14,13 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { Controller, useForm } from 'react-hook-form';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputRender from '@/components/core/app/formRender';
+import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/ChatAvatar';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -92,11 +91,15 @@ const RenderText = React.memo(function RenderText({
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
 const RenderCollectionForm = React.memo(function RenderCollectionForm({
+  isLastValue,
   collectionForm,
-  onSubmit
+  onSubmit,
+  showDescription = true
 }: {
+  isLastValue: boolean;
   collectionForm: UserInputInteractive;
   onSubmit: (formData: string) => void;
+  showDescription?: boolean;
 }) {
   const { t } = useTranslation();
   const { control, handleSubmit } = useForm();
@@ -105,7 +108,7 @@ const RenderCollectionForm = React.memo(function RenderCollectionForm({
 
   return (
     <Box>
-      <Box mb={3}>{collectionForm.params.description}</Box>
+      {showDescription && <Box mb={3}>{collectionForm.params.description}</Box>}
       <Flex flexDirection={'column'} gap={3}>
         {collectionForm.params.inputForm.map((input) => {
           const inputType = nodeInputTypeToInputType([input.type]);
@@ -138,7 +141,7 @@ const RenderCollectionForm = React.memo(function RenderCollectionForm({
         })}
       </Flex>
 
-      {!submitted && (
+      {!submitted && isLastValue && (
         <Flex justifyContent={'flex-end'} mt={4}>
           <Button
             size={'sm'}
@@ -170,8 +173,6 @@ const AIItem = ({
   onSubmitCollectionForm: (formData: string) => void;
 }) => {
   const { t } = useTranslation();
-  const { copyData } = useCopyData();
-
   return (
     <Box
       _hover={{
@@ -180,46 +181,62 @@ const AIItem = ({
         }
       }}
     >
-      <Box
-        px={4}
-        py={3}
-        borderRadius={'sm'}
-        display="inline-block"
-        maxW={['calc(100% - 25px)', 'calc(100% - 40px)']}
-        color={'myGray.900'}
-        bg={'myGray.100'}
-      >
-        {chat.value.map((value, i) => {
-          if ('text' in value && value.text) {
-            return (
-              <RenderText
-                key={i}
-                showAnimation={isChatting && isLastChild}
-                text={value.text.content}
-              />
-            );
-          }
-          if ('reasoning' in value && value.reasoning) {
-            return (
-              <RenderResoningContent
-                key={i}
-                isChatting={isChatting}
-                isLastResponseValue={isLastChild}
-                content={value.reasoning.content}
-              />
-            );
-          }
-          if ('collectionForm' in value && value.collectionForm) {
-            return (
-              <RenderCollectionForm
-                key={i}
-                collectionForm={value.collectionForm}
-                onSubmit={onSubmitCollectionForm}
-              />
-            );
-          }
-        })}
-      </Box>
+      <Flex alignItems={'flex-start'} justifyContent={'flex-start'} gap={2} w={'100%'}>
+        <ChatAvatar type={ChatRoleEnum.AI} src={'/imgs/bot.svg'} />
+        <Box
+          px={4}
+          py={3}
+          borderRadius={'sm'}
+          display="inline-block"
+          maxW={['calc(80% - 25px)', 'calc(80% - 40px)']}
+          color={'myGray.900'}
+          bg={'myGray.100'}
+        >
+          {chat.value.length === 1 &&
+          (!('text' in chat.value[0]) || !chat.value[0].text?.content) ? (
+            <RenderText showAnimation={true} text={t('chat:chat.waiting_for_response')} />
+          ) : (
+            <>
+              {chat.value.map((value, i) => {
+                if ('planHint' in value) {
+                  return (
+                    <RenderText key={i} showAnimation={false} text={t('chat:plan_check_tip')} />
+                  );
+                }
+                if ('text' in value && value.text) {
+                  return (
+                    <RenderText
+                      key={i}
+                      showAnimation={isChatting && isLastChild}
+                      text={value.text.content}
+                    />
+                  );
+                }
+                if ('reasoning' in value && value.reasoning) {
+                  return (
+                    <RenderResoningContent
+                      key={i}
+                      isChatting={isChatting}
+                      isLastResponseValue={isLastChild}
+                      content={value.reasoning.content}
+                    />
+                  );
+                }
+                if ('collectionForm' in value && value.collectionForm) {
+                  return (
+                    <RenderCollectionForm
+                      key={i}
+                      isLastValue={isLastChild && i === chat.value.length - 1}
+                      collectionForm={value.collectionForm}
+                      onSubmit={onSubmitCollectionForm}
+                    />
+                  );
+                }
+              })}
+            </>
+          )}
+        </Box>
+      </Flex>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>
         {/* <Flex className="controler" display={['flex', 'none']} alignItems={'center'} gap={1}>

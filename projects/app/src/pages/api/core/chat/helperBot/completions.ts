@@ -12,6 +12,8 @@ import { pushChatRecords } from '@fastgpt/service/core/chat/HelperBot/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -47,12 +49,6 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     id: chatId,
     showNodeStatus: true
   });
-  // console.log('=== HelperBot Completions ===');
-  // console.log('chatId:', chatId);
-  // console.log('chatItemId:', chatItemId);
-  // console.log('query:', query);
-  // console.log('files:', files);
-  // console.log('metadata:', JSON.stringify(metadata, null, 2));
 
   // 执行不同逻辑
   const fn = dispatchMap[metadata.type];

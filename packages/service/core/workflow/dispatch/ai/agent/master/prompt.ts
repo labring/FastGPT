@@ -1,4 +1,4 @@
-import { SubAppIds } from '../sub/constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 export const getMasterSystemPrompt = (systemPrompt?: string) => {
   return `<!-- Master Agent 决策系统 -->

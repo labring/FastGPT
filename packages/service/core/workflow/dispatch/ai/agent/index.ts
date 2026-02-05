@@ -21,7 +21,7 @@ import {
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { filterMemoryMessages } from '../utils';
-import { SubAppIds, systemSubInfo } from './sub/constants';
+import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
 

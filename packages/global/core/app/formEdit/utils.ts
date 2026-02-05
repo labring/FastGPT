@@ -10,12 +10,10 @@ import type { SelectedToolItemType } from './type';
 */
 export const validateToolConfiguration = ({
   toolTemplate,
-  canSelectFile,
-  canSelectImg
+  canUploadFile
 }: {
   toolTemplate: FlowNodeTemplateType;
-  canSelectFile?: boolean;
-  canSelectImg?: boolean;
+  canUploadFile?: boolean;
 }): boolean => {
   // 检查文件上传配置
   const oneFileInput =
@@ -23,7 +21,6 @@ export const validateToolConfiguration = ({
       input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
     ).length === 1;
 
-  const canUploadFile = canSelectFile || canSelectImg;
   const hasValidFileInput = oneFileInput && !!canUploadFile;
 
   // 检查是否有无效的输入配置
