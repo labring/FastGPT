@@ -158,6 +158,8 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
   const { isPc } = useSystem();
 
   const [showFeedbackContent, setShowFeedbackContent] = useState(false);
+
+  // Error variables
   const [errorExpanded, setErrorExpanded] = useState(false);
   const errorContentRef = useRef<HTMLDivElement>(null);
   const errorContentSize = useSize(errorContentRef);
