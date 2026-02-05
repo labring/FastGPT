@@ -99,7 +99,7 @@ export const chats2GPTMessages = ({
       const aiResults: ChatCompletionMessageParam[] = [];
       let pendingReasoningText: string | undefined;
 
-      const applyPendingReasoning = (message: ChatCompletionMessageParam) => {
+      const attachPendingReasoning = (message: ChatCompletionMessageParam) => {
         if (pendingReasoningText !== undefined) {
           message.reasoning_text = pendingReasoningText;
           pendingReasoningText = undefined;
@@ -136,7 +136,7 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls
           };
-          applyPendingReasoning(assistantMessage);
+          attachPendingReasoning(assistantMessage);
           aiResults.push(assistantMessage);
           aiResults.push(...toolResponse);
         } else if (
@@ -155,14 +155,13 @@ export const chats2GPTMessages = ({
             typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
-            applyPendingReasoning(lastResult);
           } else {
             const assistantMessage: ChatCompletionMessageParam = {
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.text.content
             };
-            applyPendingReasoning(assistantMessage);
+            attachPendingReasoning(assistantMessage);
             aiResults.push(assistantMessage);
           }
         } else if (value.type === ChatItemValueTypeEnum.interactive) {
@@ -171,24 +170,19 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             interactive: value.interactive
           };
-          applyPendingReasoning(assistantMessage);
+          attachPendingReasoning(assistantMessage);
           aiResults.push(assistantMessage);
         }
       });
 
       if (pendingReasoningText !== undefined) {
-        const lastResult = aiResults[aiResults.length - 1];
-        if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          applyPendingReasoning(lastResult);
-        } else {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: '',
-            reasoning_text: pendingReasoningText
-          });
-          pendingReasoningText = undefined;
-        }
+        const assistantMessage: ChatCompletionMessageParam = {
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: ''
+        };
+        attachPendingReasoning(assistantMessage);
+        aiResults.push(assistantMessage);
       }
 
       // Auto add empty assistant message
