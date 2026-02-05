@@ -23,7 +23,7 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
-import { SubAppIds } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -98,7 +98,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
             py={1}
             list={[
               {
-                label: '辅助生成',
+                label: t('app:helper_bot'),
                 value: 'helper'
               },
               {
@@ -144,10 +144,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               metadata={topAgentMetadata}
               onApply={async (formData) => {
                 const fileUploadEnabled = !!formData.fileUploadEnabled;
-                // 过滤掉 file_read 不在 selected tools 中
+
+                // Filter internal tools
                 const filteredToolIds = (formData.tools || []).filter(
-                  (toolId) => toolId !== SubAppIds.fileRead
+                  (toolId) => !(toolId in systemSubInfo)
                 );
+
                 const newTools = await loadGeneratedTools({
                   newToolIds: filteredToolIds,
                   existsTools: appForm.selectedTools,

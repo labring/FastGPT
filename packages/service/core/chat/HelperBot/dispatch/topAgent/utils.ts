@@ -2,7 +2,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSystemToolsWithInstalled, getMyTools } from '../../../../app/tool/controller';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
-import { SubAppIds, systemSubInfo } from '../../../../workflow/dispatch/ai/agent/sub/constants';
+import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 export const generateResourceList = async ({
   teamId,

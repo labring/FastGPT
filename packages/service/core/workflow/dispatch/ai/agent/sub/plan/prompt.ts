@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { SubAppIds } from '../constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { AIAskTool } from './ask/constants';
 import type { GetSubAppInfoFnType } from '../../type';
 import type { PlanAgentParamsType } from './constants';

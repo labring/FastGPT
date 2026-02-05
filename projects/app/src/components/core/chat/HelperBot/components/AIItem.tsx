@@ -21,7 +21,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputRender from '@/components/core/app/formRender';
 import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/ChatAvatar';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -92,10 +91,12 @@ const RenderText = React.memo(function RenderText({
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
 const RenderCollectionForm = React.memo(function RenderCollectionForm({
+  isLastValue,
   collectionForm,
   onSubmit,
   showDescription = true
 }: {
+  isLastValue: boolean;
   collectionForm: UserInputInteractive;
   onSubmit: (formData: string) => void;
   showDescription?: boolean;
@@ -140,7 +141,7 @@ const RenderCollectionForm = React.memo(function RenderCollectionForm({
         })}
       </Flex>
 
-      {!submitted && (
+      {!submitted && isLastValue && (
         <Flex justifyContent={'flex-end'} mt={4}>
           <Button
             size={'sm'}
@@ -191,47 +192,49 @@ const AIItem = ({
           color={'myGray.900'}
           bg={'myGray.100'}
         >
-          {!chat.value.some((value) => value && 'planHint' in value) &&
-            !chat.value.some(
-              (value) =>
-                (value && 'text' in value && value.text?.content?.trim()) ||
-                (value && 'reasoning' in value && value.reasoning?.content?.trim()) ||
-                (value && 'collectionForm' in value && value.collectionForm)
-            ) && <RenderText showAnimation={false} text={t('chat:chat.waiting_for_response')} />}
-
-          {chat.value.map((value, i) => {
-            if ('planHint' in value) {
-              return <RenderText key={i} showAnimation={false} text={t('chat:plan_check_tip')} />;
-            }
-            if ('text' in value && value.text) {
-              return (
-                <RenderText
-                  key={i}
-                  showAnimation={isChatting && isLastChild}
-                  text={value.text.content}
-                />
-              );
-            }
-            if ('reasoning' in value && value.reasoning) {
-              return (
-                <RenderResoningContent
-                  key={i}
-                  isChatting={isChatting}
-                  isLastResponseValue={isLastChild}
-                  content={value.reasoning.content}
-                />
-              );
-            }
-            if ('collectionForm' in value && value.collectionForm) {
-              return (
-                <RenderCollectionForm
-                  key={i}
-                  collectionForm={value.collectionForm}
-                  onSubmit={onSubmitCollectionForm}
-                />
-              );
-            }
-          })}
+          {chat.value.length === 1 &&
+          (!('text' in chat.value[0]) || !chat.value[0].text?.content) ? (
+            <RenderText showAnimation={true} text={t('chat:chat.waiting_for_response')} />
+          ) : (
+            <>
+              {chat.value.map((value, i) => {
+                if ('planHint' in value) {
+                  return (
+                    <RenderText key={i} showAnimation={false} text={t('chat:plan_check_tip')} />
+                  );
+                }
+                if ('text' in value && value.text) {
+                  return (
+                    <RenderText
+                      key={i}
+                      showAnimation={isChatting && isLastChild}
+                      text={value.text.content}
+                    />
+                  );
+                }
+                if ('reasoning' in value && value.reasoning) {
+                  return (
+                    <RenderResoningContent
+                      key={i}
+                      isChatting={isChatting}
+                      isLastResponseValue={isLastChild}
+                      content={value.reasoning.content}
+                    />
+                  );
+                }
+                if ('collectionForm' in value && value.collectionForm) {
+                  return (
+                    <RenderCollectionForm
+                      key={i}
+                      isLastValue={isLastChild && i === chat.value.length - 1}
+                      collectionForm={value.collectionForm}
+                      onSubmit={onSubmitCollectionForm}
+                    />
+                  );
+                }
+              })}
+            </>
+          )}
         </Box>
       </Flex>
       {/* Controller */}

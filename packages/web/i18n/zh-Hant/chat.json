@@ -10,7 +10,7 @@
   "balance_not_enough_pause": "由於 AI 積分不足，暫停運行工作流",
   "chat.quote.No Data": "找不到該文件",
   "chat.quote.deleted": "該資料已被刪除～",
-  "chat.waiting_for_response": "請等待對話完成",
+  "chat.waiting_for_response": "正在努力思考中",
   "chat_history": "對話紀錄",
   "chat_input_guide_lexicon_is_empty": "尚未設定詞彙庫",
   "chat_test_app": "除錯-{{name}}",

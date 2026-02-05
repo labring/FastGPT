@@ -29,10 +29,7 @@ import {
   ToolTypeList
 } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
-import {
-  SubAppIds,
-  systemSubInfo
-} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
+import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -55,7 +52,7 @@ export const useSkillManager = ({
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
-  canUploadFile?: boolean;
+  canUploadFile: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -86,6 +83,7 @@ export const useSkillManager = ({
         })
         .filter((item) => !item.parentId);
 
+      // Merge internal tools
       const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
       if (fileReadInfo) {
         apiTools.unshift({
@@ -171,29 +169,8 @@ export const useSkillManager = ({
       }
 
       // Check if it's a sub agent tool
-      if (toolId === SubAppIds.fileRead) {
+      if (toolId in systemSubInfo) {
         return toolId;
-      }
-      if (systemSubInfo[toolId]) {
-        const subAgentInfo = systemSubInfo[toolId];
-        const tool = {
-          id: toolId,
-          pluginId: toolId,
-          name: subAgentInfo.name,
-          avatar: subAgentInfo.avatar,
-          intro: subAgentInfo.toolDescription,
-          flowNodeType: FlowNodeTypeEnum.tool,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          inputs: [],
-          outputs: []
-        };
-
-        onUpdateOrAddTool({
-          ...tool,
-          configStatus: 'configured'
-        });
-
-        return tool.id;
       }
 
       const toolTemplate = await getToolPreviewNode({ appId: toolId });
@@ -277,9 +254,6 @@ export const useSkillManager = ({
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
-    const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
-    const fileReadName = t('chat:file_parse');
-
     const tools = selectedTools.map((tool) => {
       const configStatus: SkillLabelItemType['configStatus'] = (() => {
         if (tool.pluginData?.error) {
@@ -293,23 +267,26 @@ export const useSkillManager = ({
       return {
         ...tool,
         id: tool.pluginId!,
-        name: tool.pluginId === SubAppIds.fileRead ? fileReadName : tool.name,
+        name: tool.name,
         configStatus
       };
     });
 
-    if (fileReadInfo && !tools.some((tool) => tool.pluginId === SubAppIds.fileRead)) {
+    // Merge file read tool
+    if (canUploadFile) {
+      const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
+
       tools.push({
         id: SubAppIds.fileRead,
         pluginId: SubAppIds.fileRead,
-        name: fileReadName,
+        name: t(fileReadInfo.name),
         avatar: fileReadInfo.avatar,
         intro: fileReadInfo.toolDescription,
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.tools,
         inputs: [],
         outputs: [],
-        configStatus: canUploadFile ? 'configured' : 'invalid'
+        configStatus: 'noConfig'
       });
     }
 

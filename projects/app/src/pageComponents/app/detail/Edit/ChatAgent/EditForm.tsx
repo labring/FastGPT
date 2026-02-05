@@ -47,7 +47,6 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({

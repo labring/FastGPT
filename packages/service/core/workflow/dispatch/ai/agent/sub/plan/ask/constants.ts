@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { SubAppIds } from '../../constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import z from 'zod';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 

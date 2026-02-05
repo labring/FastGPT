@@ -31,6 +31,8 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { rewriteHistoriesByInteractiveResponse } from '../ChatContainer/ChatBox/utils';
+import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 
 const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
@@ -258,7 +260,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       }
 
       const chatItemDataId = getNanoid(24);
-      const newChatList: HelperBotChatItemSiteType[] = [
+      let newChatList: HelperBotChatItemSiteType[] = [
         ...chatRecords,
         // 用户消息
         {
@@ -275,26 +277,22 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           ]
         },
         // AI 消息 - 空白,用于接收流式输出
-        ...(query
-          ? [
-              {
-                _id: getNanoid(24),
-                createTime: new Date(),
-                dataId: chatItemDataId,
-                obj: ChatRoleEnum.AI,
-                value: [
-                  {
-                    text: {
-                      content: ''
-                    }
-                  }
-                ]
+        {
+          _id: getNanoid(24),
+          createTime: new Date(),
+          dataId: chatItemDataId,
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              text: {
+                content: ''
               }
-            ]
-          : [])
+            }
+          ]
+        }
       ];
-      setChatRecords(newChatList);
 
+      setChatRecords(newChatList);
       resetInputVal({});
       scrollToBottom();
 
@@ -383,7 +381,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
                 chat={item}
                 isChatting={isChatting}
                 isLastChild={index === chatRecords.length - 1}
-                onSubmitCollectionForm={(data) => handleSendMessage({ query: data })}
+                onSubmitCollectionForm={(data) => handleSendMessage({ collectionFormData: data })}
               />
             )}
           </Box>
