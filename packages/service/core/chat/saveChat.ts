@@ -180,6 +180,8 @@ const formatAiContent = ({
   };
   getFlatAppResponses(responseData || []).forEach(dealResponseData);
 
+  const errorCount = responseData?.filter((item) => item.errorText).length ?? 0;
+
   return {
     aiResponse: {
       ...aiResponse,
@@ -188,7 +190,8 @@ const formatAiContent = ({
       citeCollectionIds: Array.from(citeCollectionIds)
     },
     nodeResponses: responseData,
-    citeCollectionIds
+    citeCollectionIds,
+    errorCount
   };
 };
 
@@ -262,7 +265,7 @@ export const pushChatRecords = async (props: Props) => {
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const { aiResponse, nodeResponses } = formatAiContent({
+    const { aiResponse, nodeResponses, errorCount } = formatAiContent({
       aiContent,
       durationSeconds,
       errorMsg
@@ -321,7 +324,8 @@ export const pushChatRecords = async (props: Props) => {
           },
           $setOnInsert: {
             createTime: new Date()
-          }
+          },
+          ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
         },
         {
           session,
@@ -463,7 +467,7 @@ export const updateInteractiveChat = async ({
       return userInteractiveVal;
     }
   })();
-  const { aiResponse, nodeResponses } = formatAiContent({
+  const { aiResponse, nodeResponses, errorCount } = formatAiContent({
     aiContent,
     durationSeconds,
     errorMsg
@@ -567,7 +571,8 @@ export const updateInteractiveChat = async ({
         $set: {
           variables,
           updateTime: new Date()
-        }
+        },
+        ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
       },
       {
         session

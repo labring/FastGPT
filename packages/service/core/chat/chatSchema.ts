@@ -92,6 +92,11 @@ const ChatSchema = new Schema({
   hasBadFeedback: Boolean,
   hasUnreadGoodFeedback: Boolean,
   hasUnreadBadFeedback: Boolean,
+  // Error count (redundant field for performance)
+  errorCount: {
+    type: Number,
+    default: 0
+  },
 
   searchKey: String,
   deleteTime: {
@@ -189,6 +194,19 @@ try {
     {
       partialFilterExpression: {
         hasUnreadBadFeedback: true
+      }
+    }
+  );
+  // Has error filter
+  ChatSchema.index(
+    {
+      appId: 1,
+      errorCount: 1,
+      updateTime: -1
+    },
+    {
+      partialFilterExpression: {
+        errorCount: { $gt: 0 }
       }
     }
   );
