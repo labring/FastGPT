@@ -24,7 +24,6 @@ import { AppContext } from '../../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -287,7 +286,7 @@ const RenderList = React.memo(function RenderList({
           }
         });
       }
-      console.log(res, getToolConfigStatus({ tool: res }).status);
+
       onAddTool({
         ...res,
         configStatus: getToolConfigStatus({ tool: res }).status
