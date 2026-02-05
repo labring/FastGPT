@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
-import { SubAppIds } from '../constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { PlanAgentParamsType } from './constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 

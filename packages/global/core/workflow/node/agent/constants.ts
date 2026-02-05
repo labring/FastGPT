@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export enum SubAppIds {
   plan = 'plan_agent',

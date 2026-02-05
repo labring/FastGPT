@@ -23,7 +23,7 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
-import { SubAppIds } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/constants';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -98,7 +98,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
             py={1}
             list={[
               {
-                label: '辅助生成',
+                label: t('app:helper_bot'),
                 value: 'helper'
               },
               {
@@ -143,10 +143,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               type={HelperBotTypeEnum.topAgent}
               metadata={topAgentMetadata}
               onApply={async (formData) => {
-                // 过滤掉内部工具
-                const internalToolIds = Object.values(SubAppIds);
+                const fileUploadEnabled = !!formData.fileUploadEnabled;
+
+                // Filter internal tools
                 const filteredToolIds = (formData.tools || []).filter(
-                  (toolId) => !internalToolIds.includes(toolId as SubAppIds)
+                  (toolId) => !(toolId in systemSubInfo)
                 );
 
                 const newTools = await loadGeneratedTools({
@@ -158,14 +159,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 setAppForm((prev) => {
                   const newForm: AppFormEditFormType = {
                     ...prev,
-                    selectedTools: newTools,
+                    selectedTools: [...newTools],
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt
                     },
                     chatConfig: {
                       ...prev.chatConfig,
-                      fileSelectConfig: formData.fileUploadEnabled
+                      fileSelectConfig: fileUploadEnabled
                         ? {
                             ...prev.chatConfig.fileSelectConfig,
                             canSelectFile: true

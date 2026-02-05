@@ -7,7 +7,7 @@ import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { SubAppIds } from '../sub/constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { dispatchFileRead } from '../sub/file';
 import { dispatchTool } from '../sub/tool';

@@ -266,8 +266,13 @@ const RenderList = React.memo(function RenderList({
 
       const toolValid = validateToolConfiguration({
         toolTemplate: res,
-        canSelectFile: fileSelectConfig?.canSelectFile,
-        canSelectImg: fileSelectConfig?.canSelectImg
+        canUploadFile: !!(
+          fileSelectConfig?.canSelectFile ||
+          fileSelectConfig?.canSelectImg ||
+          fileSelectConfig?.canSelectVideo ||
+          fileSelectConfig?.canSelectAudio ||
+          fileSelectConfig?.canSelectCustomFileExtension
+        )
       });
       if (!toolValid) {
         return toast({
@@ -286,7 +291,6 @@ const RenderList = React.memo(function RenderList({
           }
         });
       }
-
       onAddTool({
         ...res,
         configStatus: getToolConfigStatus({ tool: res }).status

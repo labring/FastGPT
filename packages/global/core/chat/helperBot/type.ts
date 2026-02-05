@@ -35,6 +35,11 @@ export const AIChatItemValueItemSchema = z.union([
   }),
   z.object({
     collectionForm: UserInputInteractiveSchema
+  }),
+  z.object({
+    planHint: z.object({
+      type: z.literal('generation')
+    })
   })
 ]);
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueItemSchema>;

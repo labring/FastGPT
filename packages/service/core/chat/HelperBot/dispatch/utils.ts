@@ -1,14 +1,22 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
+type PlanHintType = {
+  planHint?: {
+    type: 'generation';
+  };
+};
+
 export const formatAIResponse = ({
   text,
   reasoning,
-  collectionForm
+  collectionForm,
+  planHint
 }: {
   text: string;
   reasoning?: string;
   collectionForm?: UserInputInteractive;
+  planHint?: PlanHintType['planHint'];
 }): AIChatItemValueItemType[] => {
   const result: AIChatItemValueItemType[] = [];
 
@@ -29,6 +37,12 @@ export const formatAIResponse = ({
   if (collectionForm) {
     result.push({
       collectionForm
+    });
+  }
+
+  if (planHint) {
+    result.push({
+      planHint
     });
   }
 

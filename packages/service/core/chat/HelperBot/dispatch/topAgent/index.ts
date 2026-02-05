@@ -86,16 +86,48 @@ export const dispatchTopAgent = async (
   const reasoningText = llmResponse.reasoningText;
   console.log('Top agent response:', answerText);
   try {
-    const result = await TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(answerText));
+    const parseAnswer = (text: string) => {
+      return TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(text));
+    };
+    let result = await parseAnswer(answerText);
 
     if (!result.success) {
-      return {
-        aiResponse: formatAIResponse({
-          text: answerText,
-          reasoning: reasoningText
-        }),
-        usage
-      };
+      addLog.warn('[Top agent] JSON parse failed, try repair', { text: answerText });
+
+      const repairSystemPrompt = `${systemPrompt}
+        <json_repair>
+        Return ONLY valid JSON. Do not include code fences or extra text.
+        Convert the previous assistant output into the required JSON format.
+        If information is insufficient, output a collection JSON with the most critical question.
+        </json_repair>`;
+      const repairResponse = await createLLMResponse({
+        body: {
+          messages: [
+            { role: 'system' as const, content: repairSystemPrompt },
+            ...historyMessages,
+            {
+              role: 'user' as const,
+              content: `Previous assistant output:\n${answerText}`
+            }
+          ],
+          model: modelData,
+          stream: true
+        }
+      });
+      usage.inputTokens += repairResponse.usage.inputTokens;
+      usage.outputTokens += repairResponse.usage.outputTokens;
+
+      result = await parseAnswer(repairResponse.answerText);
+      if (!result.success) {
+        addLog.warn('[Top agent] JSON repair failed', { text: repairResponse.answerText });
+        return {
+          aiResponse: formatAIResponse({
+            text: answerText,
+            reasoning: reasoningText
+          }),
+          usage
+        };
+      }
     }
 
     const responseJson = result.data;
@@ -120,10 +152,20 @@ export const dispatchTopAgent = async (
         });
       }
 
+      workflowResponseWrite?.({
+        event: SseResponseEventEnum.plan,
+        data: {
+          type: 'generation'
+        }
+      });
+
       return {
         aiResponse: formatAIResponse({
           text: buildDisplayText(responseJson), // 构建显示文本
-          reasoning: reasoningText
+          reasoning: reasoningText,
+          planHint: {
+            type: 'generation'
+          }
         }),
         usage
       };
