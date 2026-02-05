@@ -806,6 +806,40 @@ describe('loadRequestMessages function tests', () => {
       expect(result).toHaveLength(1);
       expect(result[0].content).toBe('null');
     });
+
+    it('should preserve reasoning content for assistant messages when enabled', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'Answer',
+          reasoning_text: 'Think'
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, retainReasoning: true });
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as any).reasoning_content).toBe('Think');
+    });
+
+    it('should preserve reasoning content for tool calls when enabled', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: null,
+          reasoning_text: 'Tool thinking',
+          tool_calls: [
+            { id: 'call1', type: 'function', function: { name: 'doThing', arguments: '{}' } }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, retainReasoning: true });
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as any).reasoning_content).toBe('Tool thinking');
+      expect((result[0] as any).tool_calls).toHaveLength(1);
+    });
   });
 
   describe('Complex scenarios', () => {

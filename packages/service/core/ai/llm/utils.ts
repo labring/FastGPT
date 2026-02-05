@@ -92,11 +92,13 @@ export const filterGPTMessageByMaxContext = async ({
 export const loadRequestMessages = async ({
   messages,
   useVision = false,
-  origin
+  origin,
+  retainReasoning = false
 }: {
   messages: ChatCompletionMessageParam[];
   useVision?: boolean;
   origin?: string;
+  retainReasoning?: boolean;
 }) => {
   const parseSystemMessage = (
     content: string | ChatCompletionContentPartText[]
@@ -259,14 +261,20 @@ export const loadRequestMessages = async ({
     return loadImageContent;
   };
 
-  const formatAssistantItem = (item: ChatCompletionAssistantMessageParam) => {
+  const formatAssistantItem = (
+    item: ChatCompletionAssistantMessageParam & { reasoning_text?: string }
+  ) => {
+    const reasoningContent = item.reasoning_text;
     return {
       role: item.role,
       content: item.content,
       function_call: item.function_call,
       name: item.name,
       refusal: item.refusal,
-      tool_calls: item.tool_calls
+      tool_calls: item.tool_calls,
+      ...(retainReasoning && reasoningContent !== undefined
+        ? { reasoning_content: reasoningContent }
+        : {})
     };
   };
   const parseAssistantContent = (

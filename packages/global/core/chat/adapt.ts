@@ -97,9 +97,21 @@ export const chats2GPTMessages = ({
       });
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+      let pendingReasoningText: string | undefined;
+
+      const applyPendingReasoning = (message: ChatCompletionMessageParam) => {
+        if (pendingReasoningText !== undefined) {
+          message.reasoning_text = pendingReasoningText;
+          pendingReasoningText = undefined;
+        }
+      };
 
       //AI
       item.value.forEach((value, i) => {
+        if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning?.content) {
+          pendingReasoningText = value.reasoning.content;
+          return;
+        }
         if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
@@ -119,11 +131,13 @@ export const chats2GPTMessages = ({
               content: tool.response
             });
           });
-          aiResults.push({
+          const assistantMessage: ChatCompletionMessageParam = {
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls
-          });
+          };
+          applyPendingReasoning(assistantMessage);
+          aiResults.push(assistantMessage);
           aiResults.push(...toolResponse);
         } else if (
           value.type === ChatItemValueTypeEnum.text &&
@@ -141,21 +155,41 @@ export const chats2GPTMessages = ({
             typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
+            applyPendingReasoning(lastResult);
           } else {
-            aiResults.push({
+            const assistantMessage: ChatCompletionMessageParam = {
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               content: value.text.content
-            });
+            };
+            applyPendingReasoning(assistantMessage);
+            aiResults.push(assistantMessage);
           }
         } else if (value.type === ChatItemValueTypeEnum.interactive) {
-          aiResults.push({
+          const assistantMessage: ChatCompletionMessageParam = {
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             interactive: value.interactive
-          });
+          };
+          applyPendingReasoning(assistantMessage);
+          aiResults.push(assistantMessage);
         }
       });
+
+      if (pendingReasoningText !== undefined) {
+        const lastResult = aiResults[aiResults.length - 1];
+        if (lastResult && lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          applyPendingReasoning(lastResult);
+        } else {
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: '',
+            reasoning_text: pendingReasoningText
+          });
+          pendingReasoningText = undefined;
+        }
+      }
 
       // Auto add empty assistant message
       results = results.concat(
