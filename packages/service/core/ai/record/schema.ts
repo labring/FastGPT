@@ -3,9 +3,9 @@ import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai
 
 export const LLMRequestRecordCollectionName = 'llm_request_records';
 
-const expiredDays = process.env.LLM_REQUEST_TRACKING_RETENTION_DAYS
-  ? Number(process.env.LLM_REQUEST_TRACKING_RETENTION_DAYS)
-  : 7;
+const expiredHours = process.env.LLM_REQUEST_TRACKING_RETENTION_HOURS
+  ? Number(process.env.LLM_REQUEST_TRACKING_RETENTION_HOURS)
+  : 6;
 
 const LLMRequestRecordSchema = new Schema({
   requestId: {
@@ -24,7 +24,7 @@ const LLMRequestRecordSchema = new Schema({
   createdAt: {
     type: Date,
     default: () => new Date(),
-    expires: expiredDays * 24 * 60 * 60 // n days
+    expires: expiredHours * 60 * 60 // n hours
   }
 });
 

@@ -7,7 +7,7 @@ description: 'FastGPT V4.14.7 更新说明'
 ## 🚀 新增内容
 
 1. 基于上下文工程的 Agent 模式，适合长任务拆解的场景。(测试版)
-2. 增加 LLM 请求追踪，会保留所有 LLM 的请求体和响应（默认保留 7 天）
+2. 临时增加 LLM 请求追踪，方便调试。会保留所有 LLM 的请求体和响应（默认保留 6 小时，通过 `LLM_REQUEST_TRACKING_RETENTION_HOURS` 变量调整）
 3. 知识库搜索，支持指定 collectionIds 来进行筛选。
 
 ## ⚙️ 优化
