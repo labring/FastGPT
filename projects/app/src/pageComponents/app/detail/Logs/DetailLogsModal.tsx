@@ -82,15 +82,6 @@ const DetailLogsModal = ({
     }
   );
 
-  const handleScrollToChatItem = React.useCallback((dataId: string) => {
-    setTimeout(() => {
-      const element = document.querySelector(`[data-chat-id="${dataId}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
-  }, []);
-
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;

@@ -66,6 +66,8 @@ export type ChatSchemaType = {
   hasBadFeedback?: boolean;
   hasUnreadGoodFeedback?: boolean;
   hasUnreadBadFeedback?: boolean;
+  // Error count (redundant field for performance)
+  errorCount?: number;
 
   deleteTime?: Date | null;
 };
@@ -187,11 +189,19 @@ export type ChatItemSchemaType = ChatItemObjItemType & {
   deleteTime?: Date | null;
 };
 
+// Client error show
+const ErrorTextItemSchema = z.object({
+  moduleName: z.string(),
+  errorText: z.string()
+});
+export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
+
 export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
   toolCiteLinks?: ToolCiteLinksType[];
+  errorText?: ErrorTextItemType;
 };
 
 export type ChatItemType = ChatItemObjItemType & {
