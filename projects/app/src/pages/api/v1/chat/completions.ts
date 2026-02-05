@@ -483,7 +483,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
+      pushResult2Remote({
+        outLinkUid,
+        shareId,
+        appName: app.name,
+        flowResponses,
+        chatId: saveChatId
+      });
       addOutLinkUsage({
         shareId,
         totalPoints
