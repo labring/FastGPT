@@ -13,11 +13,14 @@ import ProTag from '@/components/ProTip/Tag';
 import ProText from '@/components/ProTip/ProText';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useLocalStorageState } from 'ahooks';
 
 const Logs = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
+  const [viewMode, setViewMode] = useLocalStorageState<'chart' | 'table'>(`app_log_view_mode`, {
+    defaultValue: feConfigs.isPlus ? 'chart' : 'table'
+  });
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
