@@ -9,9 +9,9 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
-  ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from './type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
@@ -30,7 +30,7 @@ import { delChatRecordById } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type.d';
+import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
