@@ -150,7 +150,9 @@ const ManualToolModal = ({
 
   const { runAsync: onSubmit, loading: isSubmitting } = useRequest(
     async (data: ManualToolFormType) => {
-      if (bodyType === ContentTypes.json && bodyContent) {
+      // 如果 bodyContent 包含变量占位符 {{$VARIABLE_NODE_ID.xxx$}}，跳过 JSON 验证
+      const variableRegex = new RegExp(`\\{\\{\\$${VARIABLE_NODE_ID}\\.[^$]+\\$\\}\\}`);
+      if (bodyType === ContentTypes.json && bodyContent && !variableRegex.test(bodyContent)) {
         try {
           JSON.parse(bodyContent);
         } catch (error) {
