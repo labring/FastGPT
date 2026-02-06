@@ -134,14 +134,6 @@ export const customNanoid = (str: string, size: number) => customAlphabet(str, s
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export const getRegQueryStr = (text: string, flags = 'i') => {
-  const formatText = replaceRegChars(text);
-  const chars = formatText.split('');
-  const regexPattern = chars.join('.*');
-
-  return new RegExp(regexPattern, flags);
-};
-
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
   str = str.trim();
