@@ -155,6 +155,7 @@ export const appWorkflow2Form = ({
       defaultAppForm.selectedTools.push({
         id: node.nodeId,
         pluginId: node.pluginId,
+        isFolder: node.isFolder,
         name: node.name,
         avatar: node.avatar,
         intro: node.intro || '',
@@ -165,7 +166,10 @@ export const appWorkflow2Form = ({
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other,
         pluginData: node.pluginData,
+        courseUrl: node.pluginData?.courseUrl,
         toolConfig: node.toolConfig,
+        hasSystemSecret: node.hasSystemSecret,
+        systemKeyCost: node.systemKeyCost,
         configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {

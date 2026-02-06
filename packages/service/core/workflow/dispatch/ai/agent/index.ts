@@ -182,9 +182,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const formatId = id.slice(1);
       return (agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId))!;
     };
-    console.log(11111);
-    console.dir(agentCompletionTools, { depth: null });
-    console.dir(agentSubAppsMap, { depth: null });
+
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: systemPrompt,
       getSubAppInfo
