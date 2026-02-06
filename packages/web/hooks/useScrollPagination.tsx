@@ -13,7 +13,7 @@ import {
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from './useRequest';
-import type { PaginationPropsType, PaginationResponseType } from '@fastgpt/global/openapi/type';
+import type { PaginationType, PaginationResponseType } from '@fastgpt/global/openapi/api';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -30,7 +30,7 @@ export type ScrollListType = ({
 } & BoxProps) => React.JSX.Element;
 
 export function useVirtualScrollPagination<
-  TParams extends PaginationPropsType,
+  TParams extends PaginationType,
   TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
@@ -178,7 +178,7 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationPropsType,
+  TParams extends PaginationType,
   TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
@@ -196,7 +196,7 @@ export function useScrollPagination<
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
-    params?: Omit<TParams, 'offset' | 'pageSize'>;
+    params?: Omit<TParams, 'pageNum' | 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;

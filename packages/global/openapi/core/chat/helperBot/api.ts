@@ -1,4 +1,5 @@
-import { PaginationPropsSchema, PaginationResponseSchema } from '../../../type';
+import { PaginationResponseSchema } from '../../../api';
+import { PaginationSchema } from '../../../api';
 import {
   HelperBotChatItemSiteSchema,
   type HelperBotChatItemSiteType,
@@ -11,7 +12,7 @@ import type { PaginationResponse } from '../../../../../web/common/fetch/type';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 
 // 分页获取记录
-export const GetHelperBotChatRecordsParamsSchema = PaginationPropsSchema.extend({
+export const GetHelperBotChatRecordsParamsSchema = PaginationSchema.extend({
   type: HelperBotTypeEnumSchema,
   chatId: z.string()
 });
