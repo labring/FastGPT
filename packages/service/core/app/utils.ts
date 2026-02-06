@@ -82,11 +82,12 @@ export async function rewriteAppWorkflowToDetail({
   /* Add node(App Type) versionlabel and latest sign ==== */
   await Promise.all(
     nodes.map(async (node) => {
-      // Tool node
+      // Tool node(简易模式/工作流)
       if (node.pluginId) {
         const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
         if (result.success) {
           const preview = result.data!;
+          node.isFolder = preview.isFolder;
           node.pluginData = {
             name: preview.name,
             avatar: preview.avatar,
@@ -103,7 +104,6 @@ export async function rewriteAppWorkflowToDetail({
           node.systemKeyCost = preview.systemKeyCost;
           node.hasTokenFee = preview.hasTokenFee;
           node.hasSystemSecret = preview.hasSystemSecret;
-          node.isFolder = preview.isFolder;
 
           node.toolConfig = preview.toolConfig;
           node.toolDescription = preview.toolDescription;
