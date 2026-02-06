@@ -460,6 +460,17 @@ describe('文件工具函数测试', () => {
         });
       });
 
+      it('should fall back when decodeURIComponent throws', () => {
+        const url = 'https://example.com/download?filename=%E0%A4%A';
+        const result = parseUrlToFileType(url);
+
+        expect(result).toEqual({
+          type: ChatFileTypeEnum.file,
+          name: url,
+          url
+        });
+      });
+
       it('should handle URL with special characters in filename', () => {
         const url = 'https://example.com/file%20name.jpg';
         const result = parseUrlToFileType(url);

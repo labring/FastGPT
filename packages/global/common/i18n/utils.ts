@@ -4,8 +4,8 @@ export const parseI18nString = (str: I18nStringType | string = '', lang = 'en') 
   if (!str || typeof str === 'string') return str;
 
   // 尝试使用当前语言
-  if (str[lang as localeType]) {
-    return str[lang as localeType] || '';
+  if (lang in str) {
+    return str[lang as keyof I18nStringType] || '';
   }
 
   // 如果当前语言是繁体中文但没有对应翻译，优先回退到简体中文
