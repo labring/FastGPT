@@ -29,4 +29,4 @@ export const getAppChartData = (data: getChartDataBody) =>
   POST<getChartDataResponse>('/proApi/core/app/logs/getChartData', data);
 
 export const getLogUsers = (data: GetLogUsersBody) =>
-  POST<GetLogUsersResponse>('/core/app/logs/getUsers', data);
+  POST<GetLogUsersResponse>('/core/app/logs/getUsers', data, { maxQuantity: 1 });

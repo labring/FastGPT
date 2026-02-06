@@ -50,7 +50,11 @@ const UserFilter = ({
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: usersData, loading } = useRequest(
+  const {
+    data: usersData,
+    loading,
+    run
+  } = useRequest(
     () =>
       getLogUsers({
         appId,
@@ -60,7 +64,7 @@ const UserFilter = ({
         sources
       }),
     {
-      manual: false,
+      manual: true,
       refreshDeps: [appId, dateRange.from, dateRange.to, searchKey, sources],
       debounceWait: 300
     }
@@ -116,6 +120,7 @@ const UserFilter = ({
       inputValue={searchKey}
       setInputValue={setSearchKey}
       isLoading={loading}
+      onOpenFunc={() => run()}
     />
   );
 };
