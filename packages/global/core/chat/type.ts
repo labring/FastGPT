@@ -5,7 +5,6 @@ import type { FlowNodeTypeEnum } from '../workflow/node/constant';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchemaType, VariableItemType } from '../app/type';
 import type { DispatchNodeResponseType } from '../workflow/runtime/type';
-import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import z from 'zod';
