@@ -40,3 +40,6 @@ coverage
 document/.source
 
 projects/app/worker/
+
+# Agent
+.codex
