@@ -81,7 +81,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       type: 'function',
       function: {
         name: item.nodeId,
-        description: item.toolDescription || item.intro || item.name,
+        description: `${item.name}: ${item.toolDescription || item.intro}`,
         parameters: {
           type: 'object',
           properties,
@@ -154,6 +154,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
       const toolNode = toolNodesMap.get(call.function.name);
       if (toolNode) {
         workflowStreamResponse?.({
+          id: call.id,
           event: SseResponseEventEnum.toolCall,
           data: {
             tool: {
@@ -171,6 +172,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
     onToolParam({ tool, params }) {
       if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
+        id: tool.id,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
@@ -212,6 +214,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
 
       if (isResponseAnswerText) {
         workflowStreamResponse?.({
+          id: call.id,
           event: SseResponseEventEnum.toolResponse,
           data: {
             tool: {
@@ -263,6 +266,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
 
       if (isResponseAnswerText) {
         workflowStreamResponse?.({
+          id: toolParams.toolCallId,
           event: SseResponseEventEnum.toolResponse,
           data: {
             tool: {

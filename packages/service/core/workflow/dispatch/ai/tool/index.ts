@@ -35,6 +35,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -85,7 +86,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
         return tool;
       })
-      .filter(Boolean)
+      .filter((tool) => {
+        if (!tool) return false;
+        // Check is valid and filter
+        const configStatus = getToolConfigStatus({
+          tool
+        });
+        if (configStatus.status === 'invalid' || configStatus.status === 'waitingForConfig') {
+          return false;
+        }
+        return true;
+      })
       .map<ToolNodeItemType>((tool) => {
         const toolParams: FlowNodeInputItemType[] = [];
         // Raw json schema(MCP tool)
