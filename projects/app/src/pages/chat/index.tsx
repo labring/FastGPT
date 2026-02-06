@@ -156,7 +156,8 @@ export async function getServerSideProps(context: any) {
         'dashboard_evaluation',
         'evaluation',
         'train',
-        'database_client'
+        'database_client',
+        'sangfor'
       ]))
     }
   };
