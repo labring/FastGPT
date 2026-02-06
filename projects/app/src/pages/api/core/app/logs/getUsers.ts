@@ -86,7 +86,7 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
       }
       if (tmbId) {
         const member = tmbMap.get(tmbId);
-        return { name: member?.name || tmbId, avatar: member?.avatar };
+        return { name: member?.name || tmbId, avatar: member?.avatar || DEFAULT_USER_AVATAR };
       }
       return { name: '-', avatar: DEFAULT_USER_AVATAR };
     })();
