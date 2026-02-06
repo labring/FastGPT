@@ -34,6 +34,7 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
+import { SmallAddIcon } from '@chakra-ui/icons';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -257,16 +258,6 @@ const EditForm = ({
             </Flex>
             <Button
               variant={'transparentBase'}
-              leftIcon={<MyIcon name="common/addLight" w={'0.8rem'} />}
-              iconSpacing={1}
-              size={'sm'}
-              fontSize={'sm'}
-              onClick={onOpenDatasetSelect}
-            >
-              {t('common:Choose')}
-            </Button>
-            <Button
-              variant={'transparentBase'}
               leftIcon={<MyIcon name={'edit'} w={'14px'} />}
               iconSpacing={1}
               size={'sm'}
@@ -274,6 +265,17 @@ const EditForm = ({
               onClick={onOpenDatasetParams}
             >
               {t('common:Params')}
+            </Button>
+            <Button
+              mr={'-5px'}
+              variant={'transparentBase'}
+              leftIcon={<SmallAddIcon />}
+              iconSpacing={1}
+              size={'sm'}
+              fontSize={'sm'}
+              onClick={onOpenDatasetSelect}
+            >
+              {t('common:Choose')}
             </Button>
           </Flex>
           {appForm.dataset.datasets?.length > 0 && (
