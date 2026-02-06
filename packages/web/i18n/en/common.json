@@ -855,6 +855,7 @@
   "error.fileNotFound": "File not found~",
   "error.inheritPermissionError": "Inherit permission Error",
   "error.invalid_params": "Invalid parameter",
+  "error.llm_track_expired": "Request details expired",
   "error.missingParams": "Insufficient parameters",
   "error.s3_upload_auth_failed": "No permission to upload file",
   "error.s3_upload_bucket_not_found": "bucket not found",

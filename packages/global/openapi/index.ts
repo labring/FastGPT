@@ -42,13 +42,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '对话管理',
-      tags: [
-        TagsMap.chatPage,
-        TagsMap.chatHistory,
-        TagsMap.chatController,
-        TagsMap.chatFeedback,
-        TagsMap.chatSetting
-      ]
+      tags: [TagsMap.chatHistory, TagsMap.chatController, TagsMap.chatFeedback]
     },
     {
       name: '知识库',

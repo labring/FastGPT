@@ -5,10 +5,62 @@ import {
   CreateMcpToolsResponseSchema,
   GetMcpChildrenQuerySchema,
   GetMcpChildrenResponseSchema,
-  UpdateMcpToolsBodySchema
+  UpdateMcpToolsBodySchema,
+  GetMcpToolsBodySchema,
+  GetMcpToolsResponseSchema,
+  RunMcpToolBodySchema,
+  RunMcpToolResponseSchema
 } from './api';
 
 export const McpToolsPath: OpenAPIPath = {
+  '/core/app/mcpTools/getTools': {
+    post: {
+      summary: '解析 MCP 工具列表',
+      description: '解析 MCP 工具列表',
+      tags: [TagsMap.mcpTools],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetMcpToolsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功解析 MCP 工具列表',
+          content: {
+            'application/json': {
+              schema: GetMcpToolsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/mcpTools/runTool': {
+    post: {
+      summary: '运行 MCP 工具',
+      description: '运行 MCP 工具',
+      tags: [TagsMap.mcpTools],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: RunMcpToolBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功运行 MCP 工具',
+          content: {
+            'application/json': {
+              schema: RunMcpToolResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/app/mcpTools/create': {
     post: {
       summary: '创建 MCP 工具集',

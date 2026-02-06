@@ -16,9 +16,6 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
-import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
-import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 import type {
   getToolVersionListProps,
   getToolVersionResponse
@@ -29,7 +26,11 @@ import type {
   UpdateMcpToolsBodyType,
   CreateMcpToolsBodyType,
   GetMcpChildrenQueryType,
-  GetMcpChildrenResponseType
+  GetMcpChildrenResponseType,
+  GetMcpToolsBodyType,
+  GetMcpToolsResponseType,
+  RunMcpToolBodyType,
+  RunMcpToolResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 
 /* ============ team plugin ============== */
@@ -119,11 +120,11 @@ export const postCreateMCPTools = (data: CreateMcpToolsBodyType) =>
 export const postUpdateMCPTools = (data: UpdateMcpToolsBodyType) =>
   POST('/core/app/mcpTools/update', data);
 
-export const getMCPTools = (data: getMCPToolsBody) =>
-  POST<McpToolConfigType[]>('/support/mcp/client/getTools', data);
+export const getMCPTools = (data: GetMcpToolsBodyType) =>
+  POST<GetMcpToolsResponseType>('/core/app/mcpTools/getTools', data);
 
-export const postRunMCPTool = (data: RunMCPToolBody) =>
-  POST('/support/mcp/client/runTool', data, { timeout: 300000 });
+export const postRunMCPTool = (data: RunMcpToolBodyType) =>
+  POST<RunMcpToolResponseType>('/core/app/mcpTools/runTool', data, { timeout: 300000 });
 
 export const getMcpChildren = (data: GetMcpChildrenQueryType) =>
   GET<GetMcpChildrenResponseType>('/core/app/mcpTools/getChildren', data);

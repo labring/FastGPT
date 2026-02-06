@@ -9,6 +9,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/api';
 import { addSeconds } from 'date-fns';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export type GetRecordQuery = {
   requestId: string;
@@ -34,14 +35,10 @@ async function handler(
 
   const { requestId } = GetLLMRequestRecordParamsSchema.parse(req.query);
 
-  if (!requestId) {
-    return Promise.reject('requestId is required');
-  }
-
   const record = await getLLMRequestRecord(requestId);
 
   if (!record) {
-    return Promise.reject('Record not found');
+    return Promise.reject(i18nT('common:error.llm_track_expired'));
   }
 
   return LLMRequestRecordSchema.parse({
