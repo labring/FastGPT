@@ -564,10 +564,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
-            const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
             if (result.error) {
               // Run error and not catch error, skip all edges
@@ -612,13 +612,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             };
           } catch (error) {
             // Skip all edges and return error
+            let skipHandleId = targetEdges.map((item) => item.sourceHandle);
+            if (node.catchError) {
+              skipHandleId = skipHandleId.filter((item) => item !== errorHandleId);
+            }
+
             return {
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: getErrText(error)
               },
-              [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
-                (item) => item.sourceHandle
-              )
+              [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
             };
           }
         }
