@@ -120,7 +120,17 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   try {
     while (continuationCount < maxContinuations) {
-      console.log(JSON.stringify(currentMessages, null, 2));
+      console.debug(
+        'LLM Request Body:',
+        JSON.stringify(
+          {
+            ...requestBody,
+            messages: currentMessages
+          },
+          null,
+          2
+        )
+      );
       const { response, isStreamResponse: currentIsStreamResponse } = await createChatCompletion({
         body: {
           ...requestBody,
@@ -141,7 +151,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
         isStreamResponse = currentIsStreamResponse;
       }
 
-      const { answerText, reasoningText, toolCalls, finish_reason, usage, error } =
+      let { answerText, reasoningText, toolCalls, finish_reason, usage, error } =
         await (async () => {
           if (currentIsStreamResponse) {
             return createStreamResponse({
@@ -163,6 +173,16 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
             });
           }
         })();
+
+      // Format toolCalls
+      // 1. Auto complete arguments, avoid model not support "" arguments
+      toolCalls = toolCalls?.map((tool) => ({
+        ...tool,
+        function: {
+          ...tool.function,
+          arguments: tool.function.arguments || '{}'
+        }
+      }));
 
       // Accumulate results
       accumulatedAnswerText += answerText;

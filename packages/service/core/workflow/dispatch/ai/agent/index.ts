@@ -189,8 +189,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       userSystemPrompt: systemPrompt,
       getSubAppInfo
     });
-    // console.log(JSON.stringify(agentCompletionTools, null, 2), 'topAgent completionTools');
-    // console.dir(agentSubAppsMap, {depth:null});
 
     /* ===== AI Start ===== */
     const parsePlanCallResult = (result: DispatchPlanAgentResponse) => {
@@ -422,11 +420,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           // 如果有交互需求（Ask），直接返回
           if (continueResult) return continueResult;
-
-          // 如果 agentPlan 被清空（返回空步骤数组），说明规划完成，跳出 agentPlan 分支
-          // 如果 agentPlan 有新步骤，继续循环执行
         }
 
+        // 如果 agentPlan 被清空（返回空步骤数组），说明规划完成，跳出 agentPlan 分支
+        // 如果 agentPlan 有新步骤，继续循环执行
         if (!agentPlan) {
           addLog.debug(`Planning complete, hand over to master agent`);
           continue;
@@ -434,9 +431,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       } else {
         addLog.debug(`Start master agent`);
 
-        // addLog.debug(`Master historiesMessages:${JSON.stringify(historiesMessages, null, 2)}`)
-        // addLog.debug(`Master agent message:${JSON.stringify(messages, null, 2)}`)
-        // addLog.debug(`Master agent message:${JSON.stringify(masterMessages, null, 2)}`)
         const result = await masterCall({
           ...props,
           masterMessages,
