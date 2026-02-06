@@ -11,7 +11,7 @@ import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/ty
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type { GetMcpToolsBodyType } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { getMCPTools } from '@/web/core/app/api/tool';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -40,7 +40,7 @@ const EditForm = ({
   const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest(
-    async (data: getMCPToolsBody) => await getMCPTools(data),
+    async (data: GetMcpToolsBodyType) => await getMCPTools(data),
     {
       onSuccess: (res) => {
         setToolList(res);

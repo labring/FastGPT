@@ -31,6 +31,9 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
         status: 'error',
         isClosable: true
       });
+      setTimeout(() => {
+        onClose();
+      }, 1000);
     }
   });
 

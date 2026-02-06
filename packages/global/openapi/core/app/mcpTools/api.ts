@@ -95,3 +95,64 @@ export const GetMcpChildrenResponseSchema = z.array(McpChildrenItemSchema).meta(
   description: 'MCP 工具列表'
 });
 export type GetMcpChildrenResponseType = z.infer<typeof GetMcpChildrenResponseSchema>;
+
+// Get MCP tools from remote server
+export const GetMcpToolsBodySchema = z
+  .object({
+    url: z.string().meta({
+      example: 'https://example.com/mcp',
+      description: 'MCP 服务地址'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.optional().meta({
+      example: { Authorization: { value: 'token', secret: '********' } },
+      description: '请求头密钥'
+    })
+  })
+  .meta({
+    example: {
+      url: 'https://example.com/mcp',
+      headerSecret: {}
+    }
+  });
+export type GetMcpToolsBodyType = z.infer<typeof GetMcpToolsBodySchema>;
+
+export const GetMcpToolsResponseSchema = z.array(McpToolConfigSchema).meta({
+  example: [],
+  description: 'MCP 工具配置列表'
+});
+export type GetMcpToolsResponseType = z.infer<typeof GetMcpToolsResponseSchema>;
+
+// Run MCP tool
+export const RunMcpToolBodySchema = z
+  .object({
+    url: z.string().meta({
+      example: 'https://example.com/mcp',
+      description: 'MCP 服务地址'
+    }),
+    toolName: z.string().meta({
+      example: 'search',
+      description: '工具名称'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.optional().meta({
+      example: { Authorization: { value: 'token' } },
+      description: '请求头密钥'
+    }),
+    params: z.record(z.string(), z.any()).meta({
+      example: { query: 'hello' },
+      description: '工具调用参数'
+    })
+  })
+  .meta({
+    example: {
+      url: 'https://example.com/mcp',
+      toolName: 'search',
+      headerSecret: {},
+      params: { query: 'hello' }
+    }
+  });
+export type RunMcpToolBodyType = z.infer<typeof RunMcpToolBodySchema>;
+
+export const RunMcpToolResponseSchema = z.any().meta({
+  description: '工具调用结果'
+});
+export type RunMcpToolResponseType = z.infer<typeof RunMcpToolResponseSchema>;

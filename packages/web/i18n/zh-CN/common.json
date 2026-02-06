@@ -861,6 +861,7 @@
   "error.fileNotFound": "文件找不到了~",
   "error.inheritPermissionError": "权限继承错误",
   "error.invalid_params": "参数无效",
+  "error.llm_track_expired": "请求详情已过期",
   "error.missingParams": "参数缺失",
   "error.s3_upload_auth_failed": "无权上传文件",
   "error.s3_upload_bucket_not_found": "找不到存储桶",

@@ -854,6 +854,7 @@
   "error.fileNotFound": "找不到檔案",
   "error.inheritPermissionError": "繼承權限錯誤",
   "error.invalid_params": "參數無效",
+  "error.llm_track_expired": "請求詳情已過期",
   "error.missingParams": "參數不足",
   "error.s3_upload_auth_failed": "無權上傳文件",
   "error.s3_upload_bucket_not_found": "找不到存儲桶",
