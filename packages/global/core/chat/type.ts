@@ -2,7 +2,6 @@ import type { SearchDataResponseItemType } from '../dataset/type';
 import type { ChatSourceEnum, ChatStatusEnum } from './constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
 import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { NodeOutputKeyEnum } from '../workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchemaType, VariableItemType } from '../app/type';
 import type { DispatchNodeResponseType } from '../workflow/runtime/type';
@@ -207,32 +206,6 @@ export type ResponseTagItemType = {
 export type ChatItemType = ChatItemObjItemType & {
   dataId?: string;
 } & ResponseTagItemType;
-
-// Frontend type
-export type ChatSiteItemType = ChatItemObjItemType & {
-  _id?: string;
-  id: string;
-  dataId: string;
-  status: `${ChatStatusEnum}`;
-  moduleName?: string;
-  ttsBuffer?: Uint8Array;
-  responseData?: ChatHistoryItemResType[];
-  time?: Date;
-  durationSeconds?: number;
-  errorMsg?: string;
-  deleteTime?: Date | null;
-  collapseTop?: {
-    count: number;
-    dataIds: string[];
-    isExpanded: boolean;
-  };
-  collapseBottom?: {
-    count: number;
-    dataIds: string[];
-    isExpanded: boolean;
-  };
-} & ChatBoxInputType &
-  ResponseTagItemType;
 
 /* --------- chat item response ---------- */
 export type ChatItemResponseSchemaType = {

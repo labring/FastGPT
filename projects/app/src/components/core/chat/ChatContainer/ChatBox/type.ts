@@ -1,12 +1,10 @@
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { ChatFileTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type {
-  InteractiveNodeResponseType,
-  WorkflowInteractiveResponseType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+  ChatHistoryItemResType,
+  ChatItemObjItemType,
+  ResponseTagItemType
+} from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type UserInputFileItemType = {
   id: string;
@@ -46,3 +44,29 @@ export type ComponentRef = {
   restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
+
+// Frontend type
+export type ChatSiteItemType = ChatItemObjItemType & {
+  _id?: string;
+  id: string;
+  dataId: string;
+  status: `${ChatStatusEnum}`;
+  moduleName?: string;
+  ttsBuffer?: Uint8Array;
+  responseData?: ChatHistoryItemResType[];
+  time?: Date;
+  durationSeconds?: number;
+  errorMsg?: string;
+  deleteTime?: Date | null;
+  collapseTop?: {
+    count: number;
+    dataIds: string[];
+    isExpanded: boolean;
+  };
+  collapseBottom?: {
+    count: number;
+    dataIds: string[];
+    isExpanded: boolean;
+  };
+} & ChatBoxInputType &
+  ResponseTagItemType;

@@ -1,4 +1,5 @@
-import { type ChatItemValueItemType, type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from './type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
