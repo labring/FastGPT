@@ -167,11 +167,17 @@ export const masterCall = async ({
       return { requestMessages };
     }
 
+    // Calculate if user has available tools (exclude plan tool)
+    const hasUserTools =
+      completionTools.filter((tool) => tool.function.name !== SubAppIds.plan).length > 0;
+
+    console.log('completionTools', completionTools);
+
     // Get history messages
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: getMasterSystemPrompt(systemPrompt)
+        content: getMasterSystemPrompt(systemPrompt, hasUserTools)
       },
       ...masterMessages
     ];
