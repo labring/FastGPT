@@ -18,7 +18,7 @@ import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/
 import type { NodeProps } from 'reactflow';
 import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
@@ -101,12 +101,22 @@ const Workflow = () => {
 
   const [movingCanvas, setMovingCanvas] = useState(false);
 
-  // 异步 fitView：等待所有节点加载完成后再执行
   const { fitView } = useReactFlow();
   const fitViewDone = useRef(false);
+  const reactFlowInitialized = useRef(false);
+
+  const onInit = useCallback(() => {
+    reactFlowInitialized.current = true;
+  }, []);
+
   useEffect(() => {
-    // 确保仅自动布局一次。且所有节点都渲染完成。
-    if (fitViewDone.current || !nodes.length || !nodes.every((node) => node.width && node.height))
+    // 自动定位画布：需等待 ReactFlow 初始化完成(onInit) + 节点数据加载并渲染出宽高后执行，仅执行一次
+    if (
+      !reactFlowInitialized.current ||
+      fitViewDone.current ||
+      !nodes.length ||
+      !nodes.every((node) => node.width && node.height)
+    )
       return;
 
     fitViewDone.current = true;
@@ -153,6 +163,7 @@ const Workflow = () => {
           edges={edges}
           minZoom={minZoom}
           maxZoom={maxZoom}
+          onInit={onInit}
           defaultEdgeOptions={defaultEdgeOptions}
           elevateEdgesOnSelect
           connectionLineComponent={CustomConnectionLine}
