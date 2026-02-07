@@ -41,17 +41,17 @@ export const dispatchTopAgent = async (
     outputTokens: 0
   };
 
-  const resourceList = await generateResourceList({
+  const { resourceList, presetKnowledgeInfo } = await generateResourceList({
     teamId: user.teamId,
     tmbId: user.tmbId,
     isRoot: user.isRoot,
     lang: user.lang,
     metadata: data
   });
-  const systemPrompt = await getPrompt({
+  const systemPrompt = getPrompt({
     resourceList,
     metadata: data,
-    teamId: user.teamId
+    presetKnowledgeInfo
   });
 
   const historyMessages = helperChats2GPTMessages({

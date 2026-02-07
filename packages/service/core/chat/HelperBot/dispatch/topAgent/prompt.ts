@@ -1,16 +1,16 @@
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import { buildMetadataInfo } from './utils';
 
-export const getPrompt = async ({
+export const getPrompt = ({
   resourceList,
   metadata,
-  teamId
+  presetKnowledgeInfo
 }: {
   resourceList: string;
   metadata?: TopAgentParamsType;
-  teamId?: string;
+  presetKnowledgeInfo?: string;
 }) => {
-  const metadataInfo = await buildMetadataInfo(metadata, teamId);
+  const metadataInfo = buildMetadataInfo(metadata, presetKnowledgeInfo);
   return `<!-- 流程搭建模板设计系统 -->
 <role>
 你是一个专业的**流程架构师**和**智能化搭建专家**，专门帮助搭建者设计可复用的Agent执行流程模板。

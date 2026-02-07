@@ -74,7 +74,10 @@ export const generateResourceList = async ({
   isRoot: boolean;
   lang?: localeType;
   metadata?: TopAgentParamsType;
-}): Promise<string> => {
+}): Promise<{
+  resourceList: string;
+  presetKnowledgeInfo?: string;
+}> => {
   const getPrompt = ({ tool, dataset }: { tool: string; dataset: string }) => {
     return `## 可用资源列表
 ### 工具
@@ -135,17 +138,32 @@ ${dataset}
   const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;
   allTools.push(fileReadTool);
 
-  return getPrompt({
-    tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具',
-    dataset: datasetLines.length > 0 ? datasetLines.join('\n') : '暂未配置知识库'
-  });
+  const selectedDatasetLines = myDatasets
+    .filter((dataset) => selectedSet.has(String(dataset._id)))
+    .map(
+      (item) => `  - **${item.name || '未命名'}** (ID: ${item._id}): ${item.intro || '暂无描述'}`
+    );
+
+  const presetKnowledgeInfo = metadata?.selectedDatasets?.length
+    ? selectedDatasetLines.length > 0
+      ? `**预设知识库（高优先级）**:\n${selectedDatasetLines.join('\n')}`
+      : `**预设知识库**: ${metadata.selectedDatasets.join(', ')}`
+    : undefined;
+
+  return {
+    resourceList: getPrompt({
+      tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具',
+      dataset: datasetLines.length > 0 ? datasetLines.join('\n') : '暂未配置知识库'
+    }),
+    presetKnowledgeInfo
+  };
 };
 
 // 构建预设信息部分
-export const buildMetadataInfo = async (
+export const buildMetadataInfo = (
   metadata?: TopAgentParamsType,
-  teamId?: string
-): Promise<string> => {
+  presetKnowledgeInfo?: string
+): string => {
   if (!metadata) return '';
 
   const sections: string[] = [];
@@ -160,35 +178,7 @@ export const buildMetadataInfo = async (
   }
 
   if (metadata.selectedDatasets?.length) {
-    if (teamId) {
-      try {
-        const datasets = await MongoDataset.find({
-          _id: { $in: metadata.selectedDatasets },
-          teamId,
-          deleteTime: null
-        })
-          .select('_id name intro')
-          .lean();
-
-        if (datasets.length > 0) {
-          sections.push(
-            `**预设知识库（高优先级）**:\n${datasets
-              .map(
-                (item) =>
-                  `  - **${item.name || '未命名'}** (ID: ${item._id}): ${item.intro || '暂无描述'}`
-              )
-              .join('\n')}`
-          );
-        } else {
-          sections.push(`**预设知识库**: ${metadata.selectedDatasets.join(', ')}`);
-        }
-      } catch (error) {
-        console.error('Failed to query dataset info for metadata:', error);
-        sections.push(`**预设知识库**: ${metadata.selectedDatasets.join(', ')}`);
-      }
-    } else {
-      sections.push(`**预设知识库**: ${metadata.selectedDatasets.join(', ')}`);
-    }
+    sections.push(presetKnowledgeInfo || `**预设知识库**: ${metadata.selectedDatasets.join(', ')}`);
   }
 
   if (metadata.fileUpload !== undefined && metadata.fileUpload !== null) {
