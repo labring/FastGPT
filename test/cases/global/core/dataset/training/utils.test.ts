@@ -29,6 +29,7 @@ import {
   getIndexSizeSelectList,
   computedCollectionChunkSettings
 } from '@fastgpt/global/core/dataset/training/utils';
+import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
 // Helper: Create mock LLM model
 const createMockLLMModel = (overrides: Partial<LLMModelItemType> = {}): LLMModelItemType => ({
@@ -282,7 +283,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('auto chunkSettingMode', () => {
     it('should set default auto settings when chunkSettingMode is auto', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto,
         llmModel: defaultLLMModel,
         vectorModel: defaultVectorModel
@@ -298,7 +299,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should use default chunkSettingMode as auto when not specified', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         llmModel: defaultLLMModel,
         vectorModel: defaultVectorModel
       });
@@ -310,7 +311,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('custom chunkSettingMode', () => {
     it('should set paragraphChunkDeep when chunkSplitMode is paragraph', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSplitMode: DataChunkSplitModeEnum.paragraph,
         paragraphChunkDeep: 3,
@@ -322,7 +323,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should set paragraphChunkDeep to 0 when chunkSplitMode is not paragraph', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSplitMode: DataChunkSplitModeEnum.size,
         paragraphChunkDeep: 3,
@@ -334,7 +335,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should use default paragraphChunkDeep of 5 when not specified', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSplitMode: DataChunkSplitModeEnum.paragraph,
         llmModel: defaultLLMModel,
@@ -345,7 +346,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should limit chunkSize to getLLMMaxChunkSize when provided', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSize: 50000,
         llmModel: defaultLLMModel,
@@ -357,7 +358,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should keep chunkSize when less than getLLMMaxChunkSize', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSize: 5000,
         llmModel: defaultLLMModel,
@@ -368,7 +369,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should set chunkSize to undefined when not provided in custom mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         llmModel: defaultLLMModel,
         vectorModel: defaultVectorModel
@@ -378,7 +379,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should preserve indexSize in custom mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         indexSize: 768,
         llmModel: defaultLLMModel,
@@ -391,7 +392,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('QA trainingType', () => {
     it('should use getLLMDefaultChunkSize for autoChunkSize in QA mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         trainingType: DatasetCollectionDataProcessModeEnum.qa,
         chunkSettingMode: ChunkSettingModeEnum.auto,
         llmModel: defaultLLMModel,
@@ -403,7 +404,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should use getMaxIndexSize for indexSize in QA mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         trainingType: DatasetCollectionDataProcessModeEnum.qa,
         chunkSettingMode: ChunkSettingModeEnum.auto,
         llmModel: defaultLLMModel,
@@ -415,7 +416,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should preserve chunkSize in QA custom mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         trainingType: DatasetCollectionDataProcessModeEnum.qa,
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSize: 4000,
@@ -429,7 +430,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('autoIndexes handling', () => {
     it('should use getAutoIndexSize when autoIndexes is true', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         trainingType: DatasetCollectionDataProcessModeEnum.chunk,
         chunkSettingMode: ChunkSettingModeEnum.auto,
         autoIndexes: true,
@@ -442,7 +443,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should use getAutoIndexSize when autoIndexes is false', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         trainingType: DatasetCollectionDataProcessModeEnum.chunk,
         chunkSettingMode: ChunkSettingModeEnum.auto,
         autoIndexes: false,
@@ -457,7 +458,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('without models', () => {
     it('should work without llmModel', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto,
         vectorModel: defaultVectorModel
       });
@@ -467,7 +468,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should work without vectorModel', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto,
         llmModel: defaultLLMModel
       });
@@ -477,7 +478,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should work without any models', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto
       });
 
@@ -509,7 +510,7 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('char split mode', () => {
     it('should set paragraphChunkDeep to 0 when chunkSplitMode is char', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSplitMode: DataChunkSplitModeEnum.char,
         paragraphChunkDeep: 5,
@@ -523,13 +524,13 @@ describe('computedCollectionChunkSettings', () => {
 
   describe('edge cases', () => {
     it('should handle empty input object', () => {
-      const result = computedCollectionChunkSettings({});
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({});
       expect(result).toBeDefined();
       expect(result.chunkSplitMode).toBe(DataChunkSplitModeEnum.paragraph);
     });
 
     it('should preserve other properties in the input', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto,
         imageIndex: true,
         indexPrefixTitle: true,
@@ -544,7 +545,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should handle chunkSplitter in custom mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.custom,
         chunkSplitter: '---',
         llmModel: defaultLLMModel,
@@ -555,7 +556,7 @@ describe('computedCollectionChunkSettings', () => {
     });
 
     it('should clear chunkSplitter in auto mode', () => {
-      const result = computedCollectionChunkSettings({
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
         chunkSettingMode: ChunkSettingModeEnum.auto,
         chunkSplitter: '---',
         llmModel: defaultLLMModel,

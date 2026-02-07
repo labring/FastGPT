@@ -17,6 +17,11 @@ export default defineConfig({
       all: false, // 只包含被测试实际覆盖的文件，不包含空目录
       include: ['projects/**/*.ts', 'packages/**/*.ts'],
       exclude: [
+        '**/node_modules/**',
+        '**/*.spec.ts',
+        '**/*/*.d.ts',
+        '**/test/**',
+        '**/*.test.ts',
         '**/*/constants.ts',
         '**/*/*.const.ts',
         '**/*/type.ts',
@@ -24,10 +29,6 @@ export default defineConfig({
         '**/*/type/*',
         '**/*/schema.ts',
         '**/*/*.schema.ts',
-        '**/node_modules/**',
-        '**/test/**',
-        '**/*.test.ts',
-        '**/*.spec.ts',
         'packages/global/openapi/**/*',
         'packages/global/core/workflow/template/**/*'
       ],
