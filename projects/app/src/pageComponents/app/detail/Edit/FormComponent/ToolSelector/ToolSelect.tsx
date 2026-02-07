@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

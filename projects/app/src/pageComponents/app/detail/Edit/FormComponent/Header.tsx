@@ -24,7 +24,7 @@ import {
   type SimpleAppSnapshotType
 } from './useSnapshots';
 import PublishHistories from '../../PublishHistoriesSlider';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';

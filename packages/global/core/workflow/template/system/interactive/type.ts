@@ -2,7 +2,7 @@ import { NodeOutputItemSchema } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
-import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config';
+import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
 

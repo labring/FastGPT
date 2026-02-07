@@ -8,7 +8,7 @@ import {
   type ChatInputGuideConfigType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,

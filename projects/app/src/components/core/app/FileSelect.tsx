@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';

@@ -1,3 +1,4 @@
+/* v8 ignore file */
 import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
