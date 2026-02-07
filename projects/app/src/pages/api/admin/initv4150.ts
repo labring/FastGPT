@@ -33,12 +33,10 @@ async function createTemporaryIndexes(): Promise<void> {
     await Promise.all([
       MongoChatItem.collection.createIndex({ 'responseData.errorText': 1, appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_chatitem',
-        partialFilterExpression: { 'responseData.errorText': { $exists: true } },
         background: true
       } as any),
       MongoChatItemResponse.collection.createIndex({ 'data.errorText': 1, appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_response',
-        partialFilterExpression: { 'data.errorText': { $exists: true } },
         background: true
       } as any)
     ]);
@@ -49,6 +47,16 @@ async function createTemporaryIndexes(): Promise<void> {
   }
 }
 
+// Remove temp indexes
+async function removeTemporaryIndexes(): Promise<void> {
+  addLog.info('Removing temporary indexes...');
+  await Promise.all([
+    MongoChatItem.collection.dropIndex('temp_error_migration_chatitem'),
+    MongoChatItemResponse.collection.dropIndex('temp_error_migration_response')
+  ]);
+  addLog.info('Temporary indexes removed successfully');
+}
+
 /**
  * Get all unique chats that have error
  */
@@ -56,7 +64,11 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
   addLog.info('Aggregating chats with error...');
 
   // Get errors from chatItem
-  const chatItemErrorsPromise = MongoChatItem.aggregate<ChatErrorInfo>(
+  const chatItemErrorsPromise = MongoChatItem.aggregate<{
+    appId: string;
+    chatId: string;
+    errorCount: number;
+  }>(
     [
       {
         $match: {
@@ -77,30 +89,17 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
             }
           }
         }
-      },
-      {
-        $group: {
-          _id: {
-            appId: '$appId',
-            chatId: '$chatId'
-          },
-          errorCount: { $sum: '$errorCount' }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          appId: { $toString: '$_id.appId' },
-          chatId: '$_id.chatId',
-          errorCount: 1
-        }
       }
     ],
     { allowDiskUse: true, maxTimeMS: 6000000 }
   );
 
   // Get errors from chatItemResponse
-  const responseErrorsPromise = MongoChatItemResponse.aggregate<ChatErrorInfo>(
+  const responseErrorsPromise = MongoChatItemResponse.aggregate<{
+    appId: string;
+    chatId: string;
+    errorCount: number;
+  }>(
     [
       {
         $match: {
@@ -108,20 +107,20 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
         }
       },
       {
-        $group: {
-          _id: {
-            appId: '$appId',
-            chatId: '$chatId'
-          },
-          errorCount: { $sum: 1 }
-        }
-      },
-      {
         $project: {
           _id: 0,
-          appId: { $toString: '$_id.appId' },
-          chatId: '$_id.chatId',
-          errorCount: 1
+          appId: 1,
+          chatId: 1,
+          errorCount: { $literal: 1 }
+        }
+      },
+      // 聚合 appId 和 chatId
+      {
+        $group: {
+          _id: { appId: '$appId', chatId: '$chatId' },
+          appId: { $first: '$appId' },
+          chatId: { $first: '$chatId' },
+          errorCount: { $sum: 1 }
         }
       }
     ],
@@ -143,7 +142,7 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
   const chatMap = new Map<string, ChatErrorInfo>();
 
   for (const chat of [...chatItemErrors, ...responseErrors]) {
-    const key = `${chat.appId}_${chat.chatId}`;
+    const key = `${String(chat.appId)}_${chat.chatId}`;
     const existing = chatMap.get(key);
     if (existing) {
       existing.errorCount += chat.errorCount;
@@ -174,6 +173,9 @@ export async function migrateErrorCount() {
 
   // Step 2: Get all chats with error
   const chats = await getChatsWithError();
+
+  // Remove temporary indexes
+  await removeTemporaryIndexes();
 
   if (chats.length === 0) {
     addLog.info('No chats with error found');

@@ -15,6 +15,16 @@ export default defineConfig({
       reporter: ['html', 'json-summary', 'json'],
       reportOnFailure: true,
       include: ['projects/**/*.ts', 'packages/**/*.ts'],
+      exclude: [
+        '**/*/constants.ts',
+        '**/*/type.ts',
+        '**/*/types.ts',
+        '**/node_modules/**',
+        '**/test/**',
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        'packages/global/openapi/**/*'
+      ],
       cleanOnRerun: false
     },
     outputFile: 'test-results.json',
