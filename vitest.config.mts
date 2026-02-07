@@ -19,6 +19,7 @@ export default defineConfig({
         '**/*/constants.ts',
         '**/*/type.ts',
         '**/*/types.ts',
+        '**/*/type/*',
         '**/*/schema.ts',
         '**/*/*.schema.ts',
         '**/node_modules/**',
@@ -26,7 +27,7 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.spec.ts',
         'packages/global/openapi/**/*',
-        'packages/global/core/workflow/template/system/**/*'
+        'packages/global/core/workflow/template/**/*'
       ],
       cleanOnRerun: false
     },

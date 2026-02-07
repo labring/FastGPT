@@ -388,6 +388,267 @@ describe('datasetSearchResultConcat', () => {
     });
   });
 
+  describe('Score value comparison tests', () => {
+    it('should take max value when second list has higher score', () => {
+      const items1 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.5, index: 0 } // Lower score
+        ])
+      ];
+
+      const items2 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 } // Higher score
+        ])
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(1);
+
+      const embeddingScore = result[0].score.find((s) => s.type === SearchScoreTypeEnum.embedding);
+      expect(embeddingScore).toBeDefined();
+      expect(embeddingScore!.value).toBe(0.9); // Should take higher value from second list
+    });
+
+    it('should handle items with empty score arrays', () => {
+      const items1 = [createSearchItem('1', 'Question 1', [])]; // Empty score array
+
+      const items2 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }
+        ])
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].score).toHaveLength(2); // embedding + rrf
+
+      const embeddingScore = result[0].score.find((s) => s.type === SearchScoreTypeEnum.embedding);
+      expect(embeddingScore).toBeDefined();
+      expect(embeddingScore!.value).toBe(0.9);
+    });
+
+    it('should handle both items with empty score arrays', () => {
+      const items1 = [createSearchItem('1', 'Question 1', [])];
+      const items2 = [createSearchItem('1', 'Question 1', [])];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].score).toHaveLength(1); // Only rrf
+
+      const rrfScore = result[0].score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+      expect(rrfScore).toBeDefined();
+    });
+  });
+
+  describe('RRF index tests', () => {
+    it('should set correct index for multiple items after sorting', () => {
+      const items1 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }
+        ]),
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.8, index: 1 }
+        ])
+      ];
+
+      const items2 = [
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.fullText, value: 0.95, index: 0 }
+        ]) // This will give item2 higher RRF score
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 2.0, list: items2 } // Higher weight for fullText
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(2);
+
+      // Verify each item has correct index
+      result.forEach((item, expectedIndex) => {
+        const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+        expect(rrfScore).toBeDefined();
+        expect(rrfScore!.index).toBe(expectedIndex);
+      });
+    });
+  });
+
+  describe('Additional edge cases', () => {
+    it('should handle single item in each list with different ids', () => {
+      const items1 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }
+        ])
+      ];
+
+      const items2 = [
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.fullText, value: 0.8, index: 0 }
+        ])
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(2);
+
+      // Both items should have RRF scores
+      const item1 = result.find((item) => item.id === '1')!;
+      const item2 = result.find((item) => item.id === '2')!;
+
+      expect(item1.score.find((s) => s.type === SearchScoreTypeEnum.rrf)).toBeDefined();
+      expect(item2.score.find((s) => s.type === SearchScoreTypeEnum.rrf)).toBeDefined();
+    });
+
+    it('should handle multiple items at same rank position', () => {
+      const items1 = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }
+        ])
+      ];
+
+      const items2 = [
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.fullText, value: 0.8, index: 0 }
+        ])
+      ];
+
+      const items3 = [
+        createSearchItem('3', 'Question 3', [
+          { type: SearchScoreTypeEnum.reRank, value: 0.7, index: 0 }
+        ])
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 },
+        { weight: 1.0, list: items3 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(3);
+
+      // All items should have same RRF score (1/61)
+      result.forEach((item) => {
+        const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+        expect(rrfScore).toBeDefined();
+        expect(rrfScore!.value).toBeCloseTo(1 / 61, 6);
+      });
+    });
+
+    it('should preserve other properties when merging', () => {
+      const items1 = [
+        {
+          id: '1',
+          datasetId: 'dataset1',
+          collectionId: 'collection1',
+          sourceName: 'source1',
+          sourceId: 'sourceId1',
+          q: 'Question 1',
+          a: 'Answer 1',
+          chunkIndex: 5,
+          updateTime: new Date('2024-01-01'),
+          score: [{ type: SearchScoreTypeEnum.embedding as const, value: 0.9, index: 0 }]
+        }
+      ];
+
+      const items2 = [
+        {
+          id: '1',
+          datasetId: 'dataset2', // Different dataset
+          collectionId: 'collection2',
+          sourceName: 'source2',
+          sourceId: 'sourceId2',
+          q: 'Question 1 modified',
+          a: 'Answer 1 modified',
+          chunkIndex: 10,
+          updateTime: new Date('2024-02-01'),
+          score: [{ type: SearchScoreTypeEnum.fullText as const, value: 0.8, index: 0 }]
+        }
+      ];
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(1);
+
+      // Should preserve properties from first occurrence
+      expect(result[0].datasetId).toBe('dataset1');
+      expect(result[0].collectionId).toBe('collection1');
+      expect(result[0].sourceName).toBe('source1');
+      expect(result[0].q).toBe('Question 1');
+      expect(result[0].a).toBe('Answer 1');
+      expect(result[0].chunkIndex).toBe(5);
+    });
+
+    it('should handle large number of items', () => {
+      const items1 = Array.from({ length: 100 }, (_, i) =>
+        createSearchItem(`item-${i}`, `Question ${i}`, [
+          { type: SearchScoreTypeEnum.embedding, value: 1 - i * 0.01, index: i }
+        ])
+      );
+
+      const items2 = Array.from({ length: 100 }, (_, i) =>
+        createSearchItem(`item-${99 - i}`, `Question ${99 - i}`, [
+          { type: SearchScoreTypeEnum.fullText, value: 1 - i * 0.01, index: i }
+        ])
+      );
+
+      const input = [
+        { weight: 1.0, list: items1 },
+        { weight: 1.0, list: items2 }
+      ];
+
+      const result = datasetSearchResultConcat(input);
+
+      expect(result).toHaveLength(100);
+
+      // Verify all items have RRF scores
+      result.forEach((item) => {
+        const rrfScore = item.score.find((s) => s.type === SearchScoreTypeEnum.rrf);
+        expect(rrfScore).toBeDefined();
+        expect(rrfScore!.value).toBeGreaterThan(0);
+      });
+
+      // Verify sorting
+      for (let i = 0; i < result.length - 1; i++) {
+        const currentRrf = result[i].score.find((s) => s.type === SearchScoreTypeEnum.rrf)!.value;
+        const nextRrf = result[i + 1].score.find((s) => s.type === SearchScoreTypeEnum.rrf)!.value;
+        expect(currentRrf).toBeGreaterThanOrEqual(nextRrf);
+      }
+    });
+  });
+
   describe('Edge weight tests', () => {
     it('should handle zero weight', () => {
       const items1 = [
