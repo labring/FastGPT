@@ -87,11 +87,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // markdown cannot be directly modified through this API
+    // Use version management to update skill content
+    if (markdown !== undefined) {
+      return jsonRes(res, {
+        code: 400,
+        error:
+          'Cannot directly modify markdown through this API. Use version management workflow instead.'
+      });
+    }
+
     // Build update data (only include defined fields)
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description.trim();
-    if (markdown !== undefined) updateData.markdown = markdown.trim();
     if (category !== undefined) updateData.category = category;
     if (config !== undefined) updateData.config = config;
     if (avatar !== undefined) updateData.avatar = avatar;
