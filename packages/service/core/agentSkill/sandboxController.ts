@@ -5,8 +5,8 @@
  *
  */
 
-import { createSandbox } from '@sandbox_provider';
-import type { ISandbox } from '@sandbox_provider';
+import { createSandbox } from '@anyany/sandbox_provider';
+import type { ISandbox } from '@anyany/sandbox_provider';
 import { MongoSkillSandbox } from './sandboxSchema';
 import { MongoAgentSkill } from './schema';
 import { MongoSkillVersion } from './versionSchema';
@@ -420,6 +420,94 @@ export async function renewSandboxExpiration(
     return updatedInfo.expiresAt;
   } catch (error) {
     addLog.error('[Sandbox] Failed to renew sandbox expiration', { error });
+    throw error;
+  } finally {
+    if (sandbox) {
+      await sandbox.close();
+    }
+  }
+}
+
+/**
+ * Package skill directory in sandbox
+ *
+ * Creates a package.zip file containing all files in the sandbox working directory
+ *
+ * @param params - Parameters for packaging
+ * @param params.providerSandboxId - Provider sandbox ID
+ * @param params.workDirectory - Working directory (defaults to homeDirectory)
+ * @returns Buffer containing the package.zip file
+ *
+ * @throws Error if packaging fails or file cannot be read
+ */
+export async function packageSkillInSandbox(params: {
+  providerSandboxId: string;
+  workDirectory?: string;
+}): Promise<Buffer> {
+  const { providerSandboxId, workDirectory } = params;
+
+  const providerConfig = getSandboxProviderConfig();
+  const defaults = getSandboxDefaults();
+  const targetDir = workDirectory || defaults.homeDirectory;
+
+  addLog.info('[Sandbox] Packaging skill in sandbox', {
+    providerSandboxId,
+    workDirectory: targetDir
+  });
+
+  let sandbox: ISandbox | null = null;
+
+  try {
+    // Create sandbox instance
+    sandbox = createSandbox({
+      provider: 'opensandbox',
+      connection: {
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+        runtime: providerConfig.runtime
+      }
+    });
+
+    // Connect to existing sandbox
+    await sandbox.connect(providerSandboxId);
+
+    // Execute zip command to package the directory
+    // -r: recursive, -x: exclude pattern (exclude package.zip itself)
+    const zipCommand = `cd ${targetDir} && zip -r package.zip . -x 'package.zip'`;
+
+    addLog.info('[Sandbox] Executing zip command');
+
+    const zipResult = await sandbox.execute(zipCommand);
+
+    if (zipResult.exitCode !== 0) {
+      throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
+    }
+
+    addLog.info('[Sandbox] Zip command executed successfully', {
+      stdout: zipResult.stdout
+    });
+
+    // Read the generated package.zip file
+    const zipFilePath = `${targetDir}/package.zip`;
+
+    addLog.info('[Sandbox] Reading package.zip from sandbox', { path: zipFilePath });
+
+    const files = await sandbox.readFiles([zipFilePath]);
+
+    if (!files || files.length === 0) {
+      throw new Error('Package file not found in sandbox');
+    }
+
+    addLog.info('[Sandbox] Package read successfully', {
+      size: files[0].content.length
+    });
+
+    return Buffer.from(files[0].content);
+  } catch (error) {
+    addLog.error('[Sandbox] Failed to package skill', {
+      providerSandboxId,
+      error
+    });
     throw error;
   } finally {
     if (sandbox) {
