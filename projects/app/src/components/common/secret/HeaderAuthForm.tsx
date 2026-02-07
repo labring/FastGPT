@@ -27,14 +27,14 @@ const AuthValueDisplay = ({
   showInput,
   index = 0,
   onEdit,
-  value,
+  value = '',
   onChange,
   bg
 }: {
   showInput: boolean;
   index?: number;
   onEdit: (index?: number) => void;
-  value: string;
+  value?: string;
   onChange: (value: string) => void;
   bg: string;
 }) => {

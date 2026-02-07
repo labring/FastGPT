@@ -37,7 +37,7 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';

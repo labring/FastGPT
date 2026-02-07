@@ -1,7 +1,7 @@
-import { AppSchemaTypeSchema } from './type';
-import { SourceMemberSchema } from '../../support/user/type';
+import { AppSchemaTypeSchema } from '../type';
+import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
-import { ObjectIdSchema } from '../../common/type/mongo';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 
 export const AppVersionSchema = z.object({
   _id: ObjectIdSchema,

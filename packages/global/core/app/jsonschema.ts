@@ -126,8 +126,7 @@ export const jsonSchema2NodeOutput = (
     required: jsonSchema?.required?.includes(key),
     type: FlowNodeOutputTypeEnum.static,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
-    description: value.description,
-    toolDescription: value['x-tool-description'] ?? value.description ?? key
+    description: value.description
   }));
 };
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {

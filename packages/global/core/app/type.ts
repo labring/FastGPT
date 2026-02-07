@@ -11,7 +11,7 @@ import type { WorkflowTemplateBasicType } from '../workflow/type';
 import type { SourceMemberType, UserTagsEnum } from '../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { AppFileSelectConfigTypeSchema } from './type/config';
+import { AppFileSelectConfigTypeSchema } from './type/config.schema';
 
 // variable
 export const VariableItemTypeSchema = AppFileSelectConfigTypeSchema.extend(

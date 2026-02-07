@@ -36,7 +36,7 @@ import {
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({

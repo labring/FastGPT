@@ -19,6 +19,8 @@ export default defineConfig({
         '**/*/constants.ts',
         '**/*/type.ts',
         '**/*/types.ts',
+        '**/*/schema.ts',
+        '**/*/*.schema.ts',
         '**/node_modules/**',
         '**/test/**',
         '**/*.test.ts',

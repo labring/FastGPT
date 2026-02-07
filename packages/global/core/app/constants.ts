@@ -4,7 +4,7 @@ import {
   type AppAutoExecuteConfigType,
   type AppQGConfigType
 } from './type';
-import type { AppFileSelectConfigType } from './type/config';
+import type { AppFileSelectConfigType } from './type/config.schema';
 
 export enum AppTypeEnum {
   folder = 'folder',
