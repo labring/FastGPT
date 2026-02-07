@@ -25,7 +25,8 @@ export default defineConfig({
         '**/test/**',
         '**/*.test.ts',
         '**/*.spec.ts',
-        'packages/global/openapi/**/*'
+        'packages/global/openapi/**/*',
+        'packages/global/core/workflow/template/system/**/*'
       ],
       cleanOnRerun: false
     },

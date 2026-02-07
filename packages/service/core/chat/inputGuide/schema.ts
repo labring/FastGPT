@@ -1,7 +1,7 @@
 import { AppCollectionName } from '../../app/schema';
 import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import type { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type.d';
+import type { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type';
 
 export const ChatInputGuideCollectionName = 'chat_input_guides';
 
