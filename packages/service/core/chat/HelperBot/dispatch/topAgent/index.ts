@@ -9,7 +9,8 @@ import {
   generateResourceList,
   extractResourcesFromPlan,
   buildSystemPrompt,
-  buildDisplayText
+  buildDisplayText,
+  getKnowledgeDatasetDetails
 } from './utils';
 import { TopAgentAnswerSchema, TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
@@ -43,11 +44,14 @@ export const dispatchTopAgent = async (
   const resourceList = await generateResourceList({
     teamId: user.teamId,
     tmbId: user.tmbId,
-    isRoot: user.isRoot
-  });
-  const systemPrompt = getPrompt({
-    resourceList,
+    isRoot: user.isRoot,
+    lang: user.lang,
     metadata: data
+  });
+  const systemPrompt = await getPrompt({
+    resourceList,
+    metadata: data,
+    teamId: user.teamId
   });
 
   const historyMessages = helperChats2GPTMessages({
@@ -136,11 +140,17 @@ export const dispatchTopAgent = async (
       addLog.debug('🔄 TopAgent: Configuration generation phase');
 
       const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
-
+      const knowledgesDetail = await getKnowledgeDatasetDetails({
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        isRoot: user.isRoot,
+        datasetIds: knowledges
+      });
       const formData = TopAgentFormDataSchema.parse({
         systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
         tools, // 从 execution_plan 提取
-        knowledges, // 从 execution_plan 提取
+        knowledges: knowledgesDetail.map((item) => item.datasetId),
+        knowledgesDetail,
         fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
         executionPlan: responseJson.execution_plan // 保存原始 execution_plan
       });

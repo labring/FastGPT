@@ -47,12 +47,14 @@ export const useSkillManager = ({
   selectedTools,
   onUpdateOrAddTool,
   onDeleteTool,
-  canUploadFile
+  canUploadFile,
+  hasSelectedDataset
 }: {
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   canUploadFile: boolean;
+  hasSelectedDataset: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -262,8 +264,12 @@ export const useSkillManager = ({
         if (tool.pluginId === SubAppIds.fileRead) {
           return canUploadFile ? 'configured' : 'invalid';
         }
+        if (tool.pluginId === SubAppIds.datasetSearch) {
+          return hasSelectedDataset ? 'configured' : 'invalid';
+        }
         return tool.configStatus || 'waitingForConfig';
       })();
+
       return {
         ...tool,
         id: tool.pluginId!,
@@ -290,8 +296,26 @@ export const useSkillManager = ({
       });
     }
 
+    // Merge dataset search tool when datasets are selected
+    if (hasSelectedDataset) {
+      const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
+
+      tools.push({
+        id: SubAppIds.datasetSearch,
+        pluginId: SubAppIds.datasetSearch,
+        name: t(datasetSearchInfo.name),
+        avatar: datasetSearchInfo.avatar,
+        intro: datasetSearchInfo.toolDescription,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        inputs: [],
+        outputs: [],
+        configStatus: 'configured'
+      });
+    }
+
     return tools;
-  }, [selectedTools, canUploadFile, t]);
+  }, [selectedTools, canUploadFile, hasSelectedDataset, t]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(

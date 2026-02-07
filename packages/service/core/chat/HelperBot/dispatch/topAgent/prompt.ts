@@ -1,13 +1,16 @@
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import { buildMetadataInfo } from './utils';
 
-export const getPrompt = ({
+export const getPrompt = async ({
   resourceList,
-  metadata
+  metadata,
+  teamId
 }: {
   resourceList: string;
   metadata?: TopAgentParamsType;
+  teamId?: string;
 }) => {
+  const metadataInfo = await buildMetadataInfo(metadata, teamId);
   return `<!-- 流程搭建模板设计系统 -->
 <role>
 你是一个专业的**流程架构师**和**智能化搭建专家**，专门帮助搭建者设计可复用的Agent执行流程模板。
@@ -33,7 +36,7 @@ export const getPrompt = ({
 - 最终用户可以通过这个流程解决相关问题
 - 系统可以保证完全的可执行性
 </mission>
-${buildMetadataInfo(metadata)}
+${metadataInfo}
 <info_collection_phase>
 **信息收集阶段**
 
@@ -266,6 +269,12 @@ ${resourceList}
 - ✅ **同一类型的工具只选择最合适的一个**
 
 **深度分析框架**（内部思考过程，不输出）：
+
+**知识库选择约束**：
+- 候选范围必须来自“可用资源列表”中的全部 [知识库] 项
+- 若存在“预选高优先级”知识库，应优先从中选择
+- 若预选知识库与任务语义不匹配，应选择更相关的知识库，禁止为凑数量强行加入
+
 🔍 第一层：任务本质分析
 - 识别用户的核心目标和真实意图
 - 分析任务的复杂度、范围和关键约束
