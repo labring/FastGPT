@@ -112,7 +112,19 @@ describe('addStatisticalDataToHistoryItem', () => {
         {
           ...mockResponseData,
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          quoteList: [{ id: quoteId, q: 'test', a: 'answer' }],
+          quoteList: [
+            {
+              id: quoteId,
+              q: 'test',
+              a: 'answer',
+              datasetId: 'ds1',
+              collectionId: 'col1',
+              sourceName: 'source1',
+              chunkIndex: 0,
+              updateTime: new Date(),
+              score: []
+            }
+          ],
           runningTime: 0.5
         },
         {
@@ -121,6 +133,9 @@ describe('addStatisticalDataToHistoryItem', () => {
           runningTime: 1,
           toolDetail: [
             {
+              id: 'detail1',
+              nodeId: 'detailNode1',
+              moduleName: 'Detail Chat',
               moduleType: FlowNodeTypeEnum.chatNode,
               runningTime: 0.5
             }
@@ -134,7 +149,19 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(result).toEqual({
       ...item,
       llmModuleAccount: 3,
-      totalQuoteList: [{ id: quoteId, q: 'test', a: 'answer' }],
+      totalQuoteList: [
+        {
+          id: quoteId,
+          q: 'test',
+          a: 'answer',
+          datasetId: 'ds1',
+          collectionId: 'col1',
+          sourceName: 'source1',
+          chunkIndex: 0,
+          updateTime: expect.any(Date),
+          score: []
+        }
+      ],
       historyPreviewLength: 1
     });
   });
@@ -171,12 +198,18 @@ describe('addStatisticalDataToHistoryItem', () => {
           runningTime: 1,
           pluginDetail: [
             {
+              id: 'plugin1',
+              nodeId: 'pluginNode1',
+              moduleName: 'Plugin Chat',
               moduleType: FlowNodeTypeEnum.chatNode,
               runningTime: 0.5
             }
           ],
           loopDetail: [
             {
+              id: 'loop1',
+              nodeId: 'loopNode1',
+              moduleName: 'Loop Tool',
               moduleType: FlowNodeTypeEnum.toolCall,
               runningTime: 0.3
             }
