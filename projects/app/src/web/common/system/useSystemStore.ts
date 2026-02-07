@@ -7,7 +7,7 @@ import type {
   RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
-} from '@fastgpt/global/core/ai/model';
+} from '@fastgpt/global/core/ai/model.schema';
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';

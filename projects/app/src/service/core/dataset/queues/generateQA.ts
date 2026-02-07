@@ -9,7 +9,7 @@ import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize

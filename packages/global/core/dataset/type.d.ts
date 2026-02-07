@@ -1,4 +1,4 @@
-import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/model';
+import type { LLMModelItemType, EmbeddingModelItemType } from '../ai/model.schema';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import type {

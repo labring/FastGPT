@@ -3,7 +3,7 @@ import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/cor
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType

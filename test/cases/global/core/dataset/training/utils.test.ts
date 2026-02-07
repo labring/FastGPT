@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType, EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
+import type {
+  LLMModelItemType,
+  EmbeddingModelItemType
+} from '@fastgpt/global/core/ai/model.schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,

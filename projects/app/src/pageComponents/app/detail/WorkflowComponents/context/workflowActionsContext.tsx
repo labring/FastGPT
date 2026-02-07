@@ -12,7 +12,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {

@@ -1,5 +1,5 @@
 import { getEmbeddingModel } from '../../../../service/core/ai/model';
-import { type EmbeddingModelItemType, type LLMModelItemType } from '../../../core/ai/model';
+import { type EmbeddingModelItemType, type LLMModelItemType } from '../../ai/model.schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,
@@ -113,7 +113,7 @@ export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
 }: {
   llmModel?: LLMModelItemType;
   vectorModel?: EmbeddingModelItemType;
-} & T) => {
+} & T): ChunkSettingsType => {
   const {
     trainingType = DatasetCollectionDataProcessModeEnum.chunk,
     chunkSettingMode = ChunkSettingModeEnum.auto,

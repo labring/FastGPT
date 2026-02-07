@@ -1,4 +1,4 @@
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
+import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '../config';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';

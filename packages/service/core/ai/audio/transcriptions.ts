@@ -2,7 +2,7 @@ import type fs from 'fs';
 import { getAxiosConfig } from '../config';
 import { axios } from '../../../common/api/axios';
 import FormData from 'form-data';
-import { type STTModelType } from '@fastgpt/global/core/ai/model';
+import { type STTModelType } from '@fastgpt/global/core/ai/model.schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 export const aiTranscriptions = async ({

@@ -1,4 +1,7 @@
-import { type EmbeddingModelItemType, type LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import {
+  type EmbeddingModelItemType,
+  type LLMModelItemType
+} from '@fastgpt/global/core/ai/model.schema';
 import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
