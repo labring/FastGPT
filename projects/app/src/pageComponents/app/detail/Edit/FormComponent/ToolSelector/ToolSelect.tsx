@@ -17,7 +17,7 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 const ToolSelect = ({
   topAgentSelectedTools,

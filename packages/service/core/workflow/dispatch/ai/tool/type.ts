@@ -8,7 +8,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { DispatchFlowResponse } from '../../type';
 import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{

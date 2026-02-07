@@ -33,7 +33,7 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';

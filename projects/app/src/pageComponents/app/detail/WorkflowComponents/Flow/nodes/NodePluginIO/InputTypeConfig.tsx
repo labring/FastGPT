@@ -42,7 +42,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';

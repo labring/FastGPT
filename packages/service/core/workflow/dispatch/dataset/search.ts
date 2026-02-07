@@ -12,7 +12,7 @@ import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
-import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { addLog } from '../../../../common/system/log';
 

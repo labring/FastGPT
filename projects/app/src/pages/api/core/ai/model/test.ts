@@ -8,7 +8,7 @@ import {
   type RerankModelItemType,
   type STTModelType,
   type TTSModelType
-} from '@fastgpt/global/core/ai/model';
+} from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';

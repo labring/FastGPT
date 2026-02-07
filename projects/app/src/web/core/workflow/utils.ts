@@ -34,7 +34,7 @@ import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 /* ====== node ======= */
 export const nodeTemplate2FlowNode = ({

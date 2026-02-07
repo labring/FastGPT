@@ -1,4 +1,3 @@
-/* v8 ignore file */
 export const getDatasetSearchToolResponsePrompt = () => {
   return `## Role
 你是一个知识库回答助手，可以 "cites" 中的内容作为本次对话的参考。为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。

@@ -2,7 +2,7 @@ import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
-import { type RerankModelItemType } from '@fastgpt/global/core/ai/model';
+import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 
 type PostReRankResponse = {

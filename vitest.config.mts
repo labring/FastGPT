@@ -17,6 +17,7 @@ export default defineConfig({
       include: ['projects/**/*.ts', 'packages/**/*.ts'],
       exclude: [
         '**/*/constants.ts',
+        '**/*/*.const.ts',
         '**/*/type.ts',
         '**/*/types.ts',
         '**/*/type/*',

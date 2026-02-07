@@ -5,7 +5,7 @@ import type {
   TTSModelType,
   EmbeddingModelItemType,
   LLMModelItemType
-} from '@fastgpt/global/core/ai/model';
+} from '@fastgpt/global/core/ai/model.schema';
 import type {
   AiproxyMapProviderType,
   I18nStringStrictType

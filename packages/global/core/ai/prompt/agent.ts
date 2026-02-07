@@ -1,4 +1,3 @@
-/* v8 ignore file */
 export const Prompt_AgentQA = {
   description: `<Context></Context> 标记中是一段文本，学习和分析它，并整理学习成果：
 - 提出问题并给出每个问题的答案。

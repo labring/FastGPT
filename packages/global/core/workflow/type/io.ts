@@ -1,4 +1,4 @@
-import { LLMModelItemSchema } from '../../ai/model';
+import { LLMModelItemSchema } from '../../ai/model.schema';
 import { LLMModelTypeEnum } from '../../ai/constants';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';

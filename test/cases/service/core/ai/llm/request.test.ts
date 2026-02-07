@@ -5,7 +5,7 @@ import type {
   StreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
