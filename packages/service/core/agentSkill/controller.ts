@@ -5,7 +5,7 @@ import type {
   AgentSkillListItemType,
   SkillPackageType
 } from '@fastgpt/global/core/agentSkill/type';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
+import type { ClientSession } from '../../common/mongo';
 import { MongoUser } from '../../support/user/schema';
 
 // Types for service operations
@@ -21,7 +21,11 @@ type CreateSkillData = {
   tmbId: string;
 };
 
-type UpdateSkillData = Partial<Omit<CreateSkillData, 'author' | 'teamId' | 'tmbId'>>;
+// UpdateSkillData excludes markdown to ensure consistency with version management
+// markdown updates must go through version workflow to keep package.zip in sync
+type UpdateSkillData = Partial<
+  Pick<CreateSkillData, 'name' | 'description' | 'category' | 'config' | 'avatar'>
+>;
 
 type ListSkillsParams = {
   source?: 'store' | 'mine';
@@ -51,6 +55,12 @@ export async function createSkill(data: CreateSkillData, session?: ClientSession
 
 /**
  * Update an existing skill
+ *
+ * Note: This function does NOT update markdown field.
+ * To update skill content (markdown), use version management workflow:
+ * - Create a new version with updated markdown
+ * - Generate and upload new package.zip
+ * - Update currentVersion and currentStorage accordingly
  */
 export async function updateSkill(
   skillId: string,

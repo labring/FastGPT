@@ -1,5 +1,10 @@
 import type { AgentSkillCategoryEnum, AgentSkillSourceEnum } from './constants';
-import type { AgentSkillConfigType, ExtractedSkillPackage } from './type';
+import type {
+  AgentSkillConfigType,
+  ExtractedSkillPackage,
+  SkillPackageType,
+  ZipEntryInfo
+} from './type';
 
 // ==================== List Skills ====================
 export type ListSkillsQuery = {
@@ -154,3 +159,25 @@ export type RenewSandboxBody = {
 export type RenewSandboxResponse = {
   expiresAt?: string;
 };
+
+// ==================== Save/Deploy Skill ====================
+export type SaveDeploySkillBody = {
+  skillId: string;
+  versionName?: string;
+  description?: string;
+};
+
+export type SaveDeploySkillResponse = {
+  skillId: string;
+  version: number;
+  versionName: string;
+  storage: {
+    bucket: string;
+    key: string;
+    size: number;
+  };
+  createdAt: string;
+};
+
+// ==================== Export Types from type.d.ts ====================
+export type { ExtractedSkillPackage, SkillPackageType, ZipEntryInfo };

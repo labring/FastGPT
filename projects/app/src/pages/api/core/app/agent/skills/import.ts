@@ -152,7 +152,7 @@ async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPack
 
   // Filter files based on whether SKILL.md is in a subdirectory
   let filteredFiles = files;
-  let processedZipBuffer = zipBuffer;
+  let processedZipBuffer: ArrayBuffer | Buffer = zipBuffer;
 
   if (subDir) {
     // Only include files in the subdirectory
@@ -201,17 +201,21 @@ async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPack
     const file = zip.files[key];
     return {
       name: key,
-      size: file._data?.uncompressedSize || 0,
+      size: 0, // Compressed size not easily accessible
       isDirectory: file.dir,
-      uncompressedSize: file._data?.uncompressedSize || 0,
+      uncompressedSize: 0, // Uncompressed size not easily accessible without _data
       compressionMethod: 8 // Default compression method (DEFLATE)
     };
   });
 
   return {
     skillPackage: result.package!,
-    zipBuffer: Buffer.from(processedZipBuffer),
+    zipBuffer: Buffer.isBuffer(processedZipBuffer)
+      ? processedZipBuffer
+      : Buffer.from(processedZipBuffer),
     zipEntries: entriesMetadata,
-    totalSize: processedZipBuffer.byteLength
+    totalSize: Buffer.isBuffer(processedZipBuffer)
+      ? processedZipBuffer.length
+      : processedZipBuffer.byteLength
   };
 }

@@ -9,10 +9,8 @@ import { findInactiveSandboxes } from './sandboxController';
 import { MongoSkillSandbox } from './sandboxSchema';
 import { getSandboxDefaults, getSandboxProviderConfig } from './sandboxConfig';
 import { addLog } from '../../common/system/log';
-// @ts-ignore - sandbox_provider is an external dependency
-import { createSandbox } from 'sandbox_provider';
-// @ts-ignore
-import type { ISandbox } from 'sandbox_provider';
+import { createSandbox } from '@anyany/sandbox_provider';
+import type { ISandbox } from '@anyany/sandbox_provider';
 
 /**
  * Cleanup a single inactive sandbox
