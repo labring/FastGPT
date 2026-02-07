@@ -113,7 +113,7 @@ export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
 }: {
   llmModel?: LLMModelItemType;
   vectorModel?: EmbeddingModelItemType;
-} & T): ChunkSettingsType => {
+} & T): T => {
   const {
     trainingType = DatasetCollectionDataProcessModeEnum.chunk,
     chunkSettingMode = ChunkSettingModeEnum.auto,
@@ -123,7 +123,7 @@ export const computedCollectionChunkSettings = <T extends ChunkSettingsType>({
     indexSize,
     autoIndexes
   } = data;
-  const cloneChunkSettings = cloneDeep(data);
+  const cloneChunkSettings = cloneDeep(data) as T;
 
   if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
     delete cloneChunkSettings.qaPrompt;
