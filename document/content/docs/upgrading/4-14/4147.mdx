@@ -1,11 +1,46 @@
 ---
-title: 'V4.15.0(进行中)'
-description: 'FastGPT V4.15.0 更新说明'
+title: 'V4.14.7(包含升级脚本)'
+description: 'FastGPT V4.14.7 更新说明'
 ---
 
-## 升级指南
+## 更新指南
 
-aiproxy: 0.3.15
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像 tag: v4.14.7
+- 更新 FastGPT 商业版镜像 tag: v4.14.7
+- 更新 fastgpt-plugin 镜像 tag: v0.5.2
+- mcp_server 无需更新
+- sandbox 无需更新
+- 更新 AIProxy 镜像 tag: 0.3.15
+- mongo 无需更新
+
+### 2. 更新系统插件
+
+前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）
+
+* base64Decode：base64 解码转化
+* dallle3: dall-e 3 图片生成
+* docDiff: 文档差异对比
+* drawing: BI图表
+* gptImage: gpt 图片生成
+* markdownTransform: markdown 转换文件
+* mineru: Mineru pdf解析
+* minimax: minimax 对话
+* openrouterMultiModal: openrouter 多模态
+* stability: stability 图片生成
+
+### 3. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 会将对话日志中，含错误的记录添加到统计表里。
 
 ## 🚀 新增内容
 
