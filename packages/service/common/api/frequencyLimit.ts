@@ -7,28 +7,13 @@ import z from 'zod';
 import { addLog } from '../system/log';
 
 export enum LimitTypeEnum {
-  chat = 'chat',
-  custom = 'custom'
+  chat = 'chat'
 }
 
 const FrequencyLimitOptionSchema = z.union([
   z.object({
     type: z.literal(LimitTypeEnum.chat),
     teamId: z.string()
-  }),
-  z.object({
-    type: z.literal(LimitTypeEnum.custom),
-    teamId: z.string(),
-    options: z
-      .object({
-        limit: z.number(),
-        seconds: z.number()
-      })
-      .default({
-        limit: 1,
-        seconds: 1
-      })
-      .optional()
   })
 ]);
 type FrequencyLimitOption = z.infer<typeof FrequencyLimitOptionSchema>;
@@ -45,12 +30,6 @@ const getLimitData = async (data: FrequencyLimitOption) => {
     };
   }
 
-  if (data.type === LimitTypeEnum.custom) {
-    return {
-      limit: data.options?.limit ?? 1,
-      seconds: data.options?.seconds ?? 1
-    };
-  }
   return;
 };
 
@@ -61,10 +40,9 @@ const getLimitData = async (data: FrequencyLimitOption) => {
 export const teamFrequencyLimit = async ({
   teamId,
   type,
-  res,
-  ...props
+  res
 }: FrequencyLimitOption & { res: NextApiResponse }) => {
-  const data = await getLimitData({ type, teamId, ...props });
+  const data = await getLimitData({ type, teamId });
   if (!data) return true;
 
   const { limit, seconds } = data;
