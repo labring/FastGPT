@@ -206,7 +206,7 @@ export type AppTemplateSchemaType = {
   };
   isQuickTemplate?: boolean;
   order?: number;
-  // TODO: 对于建议应用，是另一个格式
+  // TODO: 对于chat agent，是另一个格式
   workflow: WorkflowTemplateBasicType;
 };
 
