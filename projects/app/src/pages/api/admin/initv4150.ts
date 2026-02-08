@@ -33,10 +33,12 @@ async function createTemporaryIndexes(): Promise<void> {
     await Promise.all([
       MongoChatItem.collection.createIndex({ 'responseData.errorText': 1, appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_chatitem',
+        partialFilterExpression: { 'responseData.errorText': { $exists: true } },
         background: true
       } as any),
       MongoChatItemResponse.collection.createIndex({ 'data.errorText': 1, appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_response',
+        partialFilterExpression: { 'data.errorText': { $exists: true } },
         background: true
       } as any)
     ]);
@@ -112,15 +114,6 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
           appId: 1,
           chatId: 1,
           errorCount: { $literal: 1 }
-        }
-      },
-      // 聚合 appId 和 chatId
-      {
-        $group: {
-          _id: { appId: '$appId', chatId: '$chatId' },
-          appId: { $first: '$appId' },
-          chatId: { $first: '$chatId' },
-          errorCount: { $sum: 1 }
         }
       }
     ],
