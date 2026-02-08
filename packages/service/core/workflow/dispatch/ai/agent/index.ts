@@ -182,10 +182,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const formatId = id.slice(1);
       return (agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId))!;
     };
-    console.log('systemPrompt', systemPrompt);
+
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: systemPrompt,
-      getSubAppInfo
+      selectedDataset: datasetParams?.datasets
     });
 
     /* ===== AI Start ===== */

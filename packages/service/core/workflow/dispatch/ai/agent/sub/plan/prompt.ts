@@ -1,5 +1,6 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { AIAskTool } from './ask/constants';
 import type { GetSubAppInfoFnType } from '../../type';
 import type { PlanAgentParamsType } from './constants';
@@ -23,21 +24,32 @@ const getSubAppPrompt = ({
 
 export const parseUserSystemPrompt = ({
   userSystemPrompt,
-  getSubAppInfo
+  selectedDataset = []
 }: {
   userSystemPrompt?: string;
-  getSubAppInfo: GetSubAppInfoFnType;
+  selectedDataset?: SelectedDatasetType[];
 }) => {
-  if (!userSystemPrompt) {
+  const presetKnowledgePrompt =
+    selectedDataset.length > 0
+      ? `<preset_resources>
+已选知识库:
+${selectedDataset
+  .map((item) => `- ${item.name || item.datasetId} (ID: ${item.datasetId})`)
+  .join('\n')}
+</preset_resources>`
+      : '';
+
+  if (!userSystemPrompt && !presetKnowledgePrompt) {
     return '';
   }
 
-  return `${userSystemPrompt}
+  return `${userSystemPrompt || ''}${
+    userSystemPrompt && presetKnowledgePrompt ? '\n\n' : ''
+  }${presetKnowledgePrompt}${userSystemPrompt || presetKnowledgePrompt ? '\n\n' : ''}
+请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
+如果和user_background没有任何关系则忽略参考信息。
 
-          请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
-          如果和user_background没有任何关系则忽略参考信息。
-
-          **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
+**重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
 };
 
 // 通用的基础部分

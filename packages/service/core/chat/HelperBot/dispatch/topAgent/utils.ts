@@ -66,17 +66,14 @@ export const generateResourceList = async ({
   teamId,
   tmbId,
   isRoot,
-  lang = 'zh-CN',
-  metadata
+  lang = 'zh-CN'
 }: {
   teamId: string;
   tmbId: string;
   isRoot: boolean;
   lang?: localeType;
-  metadata?: TopAgentParamsType;
 }): Promise<{
   resourceList: string;
-  presetKnowledgeInfo?: string;
 }> => {
   const getPrompt = ({ tool, dataset }: { tool: string; dataset: string }) => {
     return `## 可用资源列表
@@ -124,13 +121,11 @@ ${dataset}
     getAccessibleDatasets({ teamId, tmbId, isRoot })
   ]);
 
-  const selectedSet = new Set(metadata?.selectedDatasets || []);
   const datasetLines = myDatasets.map((dataset) => {
     const id = String(dataset._id);
     const name = dataset.name || '未命名知识库';
     const intro = dataset.intro || '暂无描述';
-    const presetTag = selectedSet.has(id) ? '（预选高优先级）' : '';
-    return `- **${id}** [知识库]: ${name} - ${intro}${presetTag}`;
+    return `- **${id}** [知识库]: ${name} - ${intro}`;
   });
 
   const allTools = [...systemTools, ...myTools];
@@ -138,32 +133,16 @@ ${dataset}
   const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;
   allTools.push(fileReadTool);
 
-  const selectedDatasetLines = myDatasets
-    .filter((dataset) => selectedSet.has(String(dataset._id)))
-    .map(
-      (item) => `  - **${item.name || '未命名'}** (ID: ${item._id}): ${item.intro || '暂无描述'}`
-    );
-
-  const presetKnowledgeInfo = metadata?.selectedDatasets?.length
-    ? selectedDatasetLines.length > 0
-      ? `**预设知识库（高优先级）**:\n${selectedDatasetLines.join('\n')}`
-      : `**预设知识库**: ${metadata.selectedDatasets.join(', ')}`
-    : undefined;
-
   return {
     resourceList: getPrompt({
       tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具',
       dataset: datasetLines.length > 0 ? datasetLines.join('\n') : '暂未配置知识库'
-    }),
-    presetKnowledgeInfo
+    })
   };
 };
 
 // 构建预设信息部分
-export const buildMetadataInfo = (
-  metadata?: TopAgentParamsType,
-  presetKnowledgeInfo?: string
-): string => {
+export const buildMetadataInfo = (metadata?: TopAgentParamsType): string => {
   if (!metadata) return '';
 
   const sections: string[] = [];
@@ -178,7 +157,9 @@ export const buildMetadataInfo = (
   }
 
   if (metadata.selectedDatasets?.length) {
-    sections.push(presetKnowledgeInfo || `**预设知识库**: ${metadata.selectedDatasets.join(', ')}`);
+    sections.push(
+      `**预设知识库**: 搭建者已预先选择了以下知识库 ID: ${metadata.selectedDatasets.join(', ')}`
+    );
   }
 
   if (metadata.fileUpload !== undefined && metadata.fileUpload !== null) {
@@ -187,14 +168,9 @@ export const buildMetadataInfo = (
     );
   }
 
-  sections.push(
-    `**知识库选择规则**: 候选范围是当前用户可访问的全部知识库；预设知识库优先，但若任务语义不匹配，可选择其他更相关的知识库。`
-  );
-
   if (sections.length === 0) return '';
 
   return `
-<preset_info>
 搭建者已提供以下预设信息,这些信息具有**高优先级**,请在后续的信息收集和规划中优先参考:
 
 ${sections.join('\n')}
@@ -203,7 +179,6 @@ ${sections.join('\n')}
 - 在规划阶段,优先使用预设知识库,但必须保证与任务语义相关
 - 禁止把明显不相关的知识库纳入步骤（例如医疗知识库用于旅游规划）
 - 若预设知识库不匹配任务,可从可访问知识库中选择更相关者
-</preset_info>
 `;
 };
 

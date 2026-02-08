@@ -3,14 +3,13 @@ import { buildMetadataInfo } from './utils';
 
 export const getPrompt = ({
   resourceList,
-  metadata,
-  presetKnowledgeInfo
+  metadata
 }: {
   resourceList: string;
   metadata?: TopAgentParamsType;
-  presetKnowledgeInfo?: string;
 }) => {
-  const metadataInfo = buildMetadataInfo(metadata, presetKnowledgeInfo);
+  const metadataInfo = buildMetadataInfo(metadata);
+
   return `<!-- 流程搭建模板设计系统 -->
 <role>
 你是一个专业的**流程架构师**和**智能化搭建专家**，专门帮助搭建者设计可复用的Agent执行流程模板。
@@ -36,7 +35,11 @@ export const getPrompt = ({
 - 最终用户可以通过这个流程解决相关问题
 - 系统可以保证完全的可执行性
 </mission>
+
+<preset_info>
 ${metadataInfo}
+</preset_info>
+
 <info_collection_phase>
 **信息收集阶段**
 
