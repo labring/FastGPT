@@ -31,12 +31,14 @@ async function createTemporaryIndexes(): Promise<void> {
 
   try {
     await Promise.all([
-      MongoChatItem.collection.createIndex({ 'responseData.errorText': 1, appId: 1, chatId: 1 }, {
+      // Simple index for efficient lookup: only index docs with errorText
+      // Query will use hint() to force index usage
+      MongoChatItem.collection.createIndex({ appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_chatitem',
         partialFilterExpression: { 'responseData.errorText': { $exists: true } },
         background: true
       } as any),
-      MongoChatItemResponse.collection.createIndex({ 'data.errorText': 1, appId: 1, chatId: 1 }, {
+      MongoChatItemResponse.collection.createIndex({ appId: 1, chatId: 1 }, {
         name: 'temp_error_migration_response',
         partialFilterExpression: { 'data.errorText': { $exists: true } },
         background: true
@@ -47,16 +49,6 @@ async function createTemporaryIndexes(): Promise<void> {
   } catch (error: any) {
     addLog.warn('Error creating indexes (may already exist):', error);
   }
-}
-
-// Remove temp indexes
-async function removeTemporaryIndexes(): Promise<void> {
-  addLog.info('Removing temporary indexes...');
-  await Promise.all([
-    MongoChatItem.collection.dropIndex('temp_error_migration_chatitem'),
-    MongoChatItemResponse.collection.dropIndex('temp_error_migration_response')
-  ]);
-  addLog.info('Temporary indexes removed successfully');
 }
 
 /**
@@ -91,9 +83,30 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
             }
           }
         }
+      },
+      {
+        $group: {
+          _id: {
+            appId: '$appId',
+            chatId: '$chatId'
+          },
+          errorCount: { $sum: '$errorCount' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          appId: { $toString: '$_id.appId' },
+          chatId: '$_id.chatId',
+          errorCount: 1
+        }
       }
     ],
-    { allowDiskUse: true, maxTimeMS: 6000000 }
+    {
+      allowDiskUse: true,
+      maxTimeMS: 6000000,
+      hint: 'temp_error_migration_chatitem' // Force use of our index
+    }
   );
 
   // Get errors from chatItemResponse
@@ -109,15 +122,28 @@ async function getChatsWithError(): Promise<ChatErrorInfo[]> {
         }
       },
       {
+        $group: {
+          _id: {
+            appId: '$appId',
+            chatId: '$chatId'
+          },
+          errorCount: { $sum: 1 }
+        }
+      },
+      {
         $project: {
           _id: 0,
-          appId: 1,
-          chatId: 1,
-          errorCount: { $literal: 1 }
+          appId: '$_id.appId',
+          chatId: '$_id.chatId',
+          errorCount: 1
         }
       }
     ],
-    { allowDiskUse: true, maxTimeMS: 6000000 }
+    {
+      allowDiskUse: true,
+      maxTimeMS: 6000000,
+      hint: 'temp_error_migration_response' // Force use of our index
+    }
   );
 
   // Execute both queries in parallel
@@ -166,9 +192,6 @@ export async function migrateErrorCount() {
 
   // Step 2: Get all chats with error
   const chats = await getChatsWithError();
-
-  // Remove temporary indexes
-  await removeTemporaryIndexes();
 
   if (chats.length === 0) {
     addLog.info('No chats with error found');
