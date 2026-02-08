@@ -298,6 +298,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     };
   }
 
+  // Filter out edges that link to non-existent nodes (orphan edges)
+  const nodeIds = new Set(runtimeNodes.map((node) => node.nodeId));
+  runtimeEdges = runtimeEdges.filter((edge) => {
+    const sourceExists = nodeIds.has(edge.source);
+    const targetExists = nodeIds.has(edge.target);
+    return sourceExists && targetExists;
+  });
+
   const startTime = Date.now();
 
   await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges, lang: data.lang });
