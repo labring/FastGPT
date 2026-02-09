@@ -30,6 +30,8 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
 
+import { addLog } from '../../../common/system/log';
+
 export const getWorkflowResponseWrite = ({
   res,
   detail,
@@ -87,6 +89,67 @@ export const getWorkflowChildResponseWrite = ({
   return (e: Parameters<WorkflowResponseType>[0]) => {
     return fn({ ...e, id, stepId });
   };
+};
+
+export const filterOrphanEdges = ({
+  edges,
+  nodes,
+  workflowId,
+  mode
+}: {
+  edges: RuntimeEdgeItemType[];
+  nodes: RuntimeNodeItemType[];
+  workflowId: string;
+  mode?: string;
+}) => {
+  const filterStartTime = Date.now();
+  const validNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const originalEdgeCount = edges.length;
+  const orphanEdges: RuntimeEdgeItemType[] = [];
+
+  const filteredEdges = edges.filter((edge) => {
+    const sourceExists = validNodeIds.has(edge.source);
+    const targetExists = validNodeIds.has(edge.target);
+
+    // Log orphan edges for debugging
+    if (!sourceExists || !targetExists) {
+      addLog.warn('Orphan edge detected and filtered', {
+        edge,
+        sourceExists,
+        targetExists,
+        workflowId
+      });
+      if (mode === 'debug') {
+        orphanEdges.push(edge);
+      }
+    }
+
+    return sourceExists && targetExists;
+  });
+
+  const filteredCount = originalEdgeCount - filteredEdges.length;
+  if (filteredCount > 0) {
+    addLog.info(`Filtered ${filteredCount} orphan edge(s) from workflow`, {
+      workflowId,
+      originalCount: originalEdgeCount,
+      finalCount: filteredEdges.length
+    });
+
+    if (mode === 'debug' && orphanEdges.length > 0) {
+      addLog.debug('Orphan edges details', { orphanEdges });
+    }
+  }
+
+  const filterDuration = Date.now() - filterStartTime;
+  if (filterDuration > 100) {
+    addLog.warn('Orphan edge filtering took significant time', {
+      duration: filterDuration,
+      nodeCount: nodes.length,
+      edgeCount: originalEdgeCount
+    });
+  }
+
+  return filteredEdges;
 };
 
 export const filterToolNodeIdByEdges = ({

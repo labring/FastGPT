@@ -42,7 +42,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
+import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType, filterOrphanEdges } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
@@ -298,12 +298,22 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     };
   }
 
-  // Filter out edges that link to non-existent nodes (orphan edges)
-  const nodeIds = new Set(runtimeNodes.map((node) => node.nodeId));
-  runtimeEdges = runtimeEdges.filter((edge) => {
-    const sourceExists = nodeIds.has(edge.source);
-    const targetExists = nodeIds.has(edge.target);
-    return sourceExists && targetExists;
+  /**
+   * Filter out orphan edges to prevent runtime errors
+   *
+   * Orphan edges can occur in edge cases such as:
+   * - Data migration where node references become stale
+   * - Manual database edits that remove nodes but not edges
+   * - Frontend glitches that create invalid edge references
+   *
+   * Without this filter, the workflow dispatch would fail with undefined errors
+   * when trying to access non-existent nodes during execution.
+   */
+  runtimeEdges = filterOrphanEdges({
+    edges: runtimeEdges,
+    nodes: runtimeNodes,
+    workflowId: data.runningAppInfo.id,
+    mode: data.mode
   });
 
   const startTime = Date.now();
