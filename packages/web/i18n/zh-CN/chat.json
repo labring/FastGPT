@@ -102,7 +102,7 @@
   "question_tip": "从上到下，为各个模块的响应顺序",
   "read_file": "文件解析",
   "read_raw_source": "打开原文",
-  "reasoning_text": "思考过程",
+  "reasoning_content": "思考过程",
   "reflection_agent": "反思 Agent",
   "release_cancel": "松开取消",
   "release_send": "松开发送，上滑取消",

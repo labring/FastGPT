@@ -102,7 +102,7 @@
   "question_tip": "From top to bottom, the response order of each module",
   "read_file": "File parsing",
   "read_raw_source": "Open the original text",
-  "reasoning_text": "Thinking process",
+  "reasoning_content": "Thinking process",
   "reflection_agent": "Reflection Agent",
   "release_cancel": "Release Cancel",
   "release_send": "Release send, slide up to cancel",

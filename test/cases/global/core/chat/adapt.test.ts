@@ -520,7 +520,7 @@ describe('GPTMessages2Chats', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'Final answer',
-        reasoning_text: 'Let me think about this...'
+        reasoning_content: 'Let me think about this...'
       }
     ];
 

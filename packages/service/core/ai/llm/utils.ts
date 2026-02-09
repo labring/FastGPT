@@ -260,14 +260,19 @@ export const loadRequestMessages = async ({
     return loadImageContent;
   };
 
-  const formatAssistantItem = (item: ChatCompletionAssistantMessageParam) => {
+  const formatAssistantItem = (
+    item: ChatCompletionAssistantMessageParam & {
+      reasoning_content?: string;
+    }
+  ) => {
     return {
       role: item.role,
-      content: item.content,
-      function_call: item.function_call,
-      name: item.name,
-      refusal: item.refusal,
-      tool_calls: item.tool_calls
+      content: item.content || undefined,
+      reasoning_content: item.reasoning_content || undefined,
+      function_call: item.function_call || undefined,
+      name: item.name || undefined,
+      refusal: item.refusal || undefined,
+      tool_calls: item.tool_calls || undefined
     };
   };
   const parseAssistantContent = (
@@ -404,7 +409,7 @@ export const loadRequestMessages = async ({
                 : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.tool_calls || item.function_call) {
+          if (item.tool_calls || item.function_call || item.reasoning_content) {
             return formatAssistantItem(item);
           }
 

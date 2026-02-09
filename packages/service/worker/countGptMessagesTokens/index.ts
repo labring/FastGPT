@@ -100,8 +100,8 @@ parentPort?.on(
               .join('');
           })();
 
-          // Only the last message computed reasoning_text
-          const reasoningText = index === messages.length - 1 ? item.reasoning_text || '' : '';
+          // Only the last message computed reasoning_content
+          const reasoningText = index === messages.length - 1 ? item.reasoning_content || '' : '';
 
           return (
             sum +

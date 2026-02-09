@@ -101,7 +101,7 @@
   "question_tip": "由上至下，各個模組的回應順序",
   "read_file": "文件解析",
   "read_raw_source": "開啟原文",
-  "reasoning_text": "思考過程",
+  "reasoning_content": "思考過程",
   "reflection_agent": "反思 Agent",
   "release_cancel": "鬆開取消",
   "release_send": "鬆開傳送，上滑取消",

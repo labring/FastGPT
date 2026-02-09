@@ -85,7 +85,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       }),
     {
       manual: false,
-      refreshDeps: [parentId, searchKey]
+      refreshDeps: [parentId, searchKey],
+      throttleWait: 300
     }
   );
 

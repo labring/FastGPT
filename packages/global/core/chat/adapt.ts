@@ -313,10 +313,10 @@ export const GPTMessages2Chats = ({
       ) {
         const value: AIChatItemValueItemType[] = [];
 
-        if (typeof item.reasoning_text === 'string' && item.reasoning_text) {
+        if (typeof item.reasoning_content === 'string' && item.reasoning_content) {
           value.push({
             reasoning: {
-              content: item.reasoning_text
+              content: item.reasoning_content
             }
           });
         }
