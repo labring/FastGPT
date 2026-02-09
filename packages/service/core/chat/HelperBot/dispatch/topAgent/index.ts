@@ -92,24 +92,23 @@ export const dispatchTopAgent = async (
       return TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(text));
     };
     let result = await parseAnswer(answerText);
-
+    // console.dir({ label: 'Top agent parsed result', result }, {
+    //   depth: null,
+    //   maxArrayLength: null
+    // });
     if (!result.success) {
       addLog.warn('[Top agent] JSON parse failed, try repair', { text: answerText });
 
-      const repairSystemPrompt = `${systemPrompt}
-        <json_repair>
-        Return ONLY valid JSON. Do not include code fences or extra text.
-        Convert the previous assistant output into the required JSON format.
-        If information is insufficient, output a collection JSON with the most critical question.
-        </json_repair>`;
+      const repairPrompt = `当前查询的用户问题：${query} \n辅助助手上一次的输出:\n${answerText}，\nJSON 解析的报错信息：\n${result.error} \n
+         查看JSON 的报错信息来修正 JSON 格式错误，并仅返回正确的 JSON，确保 JSON 格式正确无误且可以被解析。不要包含任何多余的信息。`;
       const repairResponse = await createLLMResponse({
         body: {
           messages: [
-            { role: 'system' as const, content: repairSystemPrompt },
+            { role: 'system' as const, content: systemPrompt },
             ...historyMessages,
             {
               role: 'user' as const,
-              content: `Previous assistant output:\n${answerText}`
+              content: repairPrompt
             }
           ],
           model: modelData,
@@ -120,6 +119,13 @@ export const dispatchTopAgent = async (
       usage.outputTokens += repairResponse.usage.outputTokens;
 
       result = await parseAnswer(repairResponse.answerText);
+      console.dir(
+        { label: 'Top agent parsed result', result },
+        {
+          depth: null,
+          maxArrayLength: null
+        }
+      );
       if (!result.success) {
         addLog.warn('[Top agent] JSON repair failed', { text: repairResponse.answerText });
         return {
