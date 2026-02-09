@@ -160,6 +160,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                   const newForm: AppFormEditFormType = {
                     ...prev,
                     selectedTools: [...newTools],
+                    dataset:
+                      formData.datasets && formData.datasets.length > 0
+                        ? {
+                            ...prev.dataset,
+                            datasets: formData.datasets
+                          }
+                        : prev.dataset,
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt

@@ -15,14 +15,14 @@ import { TopAgentAnswerSchema, TopAgentFormDataSchema } from './type';
 import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import type {
-  UserInputFormItemType,
-  UserInputInteractive
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../ai/utils';
+import { MongoDataset } from '../../../../dataset/schema';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>
@@ -40,11 +40,13 @@ export const dispatchTopAgent = async (
     outputTokens: 0
   };
 
-  const resourceList = await generateResourceList({
+  const { resourceList } = await generateResourceList({
     teamId: user.teamId,
     tmbId: user.tmbId,
-    isRoot: user.isRoot
+    isRoot: user.isRoot,
+    lang: user.lang
   });
+
   const systemPrompt = getPrompt({
     resourceList,
     metadata: data
@@ -84,7 +86,7 @@ export const dispatchTopAgent = async (
 
   const answerText = llmResponse.answerText;
   const reasoningText = llmResponse.reasoningText;
-  console.log('Top agent response:', answerText);
+  // console.log('Top agent response:', answerText);
   try {
     const parseAnswer = (text: string) => {
       return TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(text));
@@ -136,11 +138,14 @@ export const dispatchTopAgent = async (
       addLog.debug('🔄 TopAgent: Configuration generation phase');
 
       const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
-
+      const filterDatasets = await filterValidDatasets({
+        teamId: user.teamId,
+        datasetIds: knowledges
+      });
       const formData = TopAgentFormDataSchema.parse({
         systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
         tools, // 从 execution_plan 提取
-        knowledges, // 从 execution_plan 提取
+        datasets: filterDatasets,
         fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
         executionPlan: responseJson.execution_plan // 保存原始 execution_plan
       });
@@ -235,4 +240,34 @@ export const dispatchTopAgent = async (
       usage
     };
   }
+};
+
+const filterValidDatasets = async ({
+  teamId,
+  datasetIds
+}: {
+  teamId: string;
+  datasetIds: string[];
+}): Promise<SelectedDatasetType[]> => {
+  // Check datasetIds is
+  const result = await MongoDataset.find(
+    {
+      teamId,
+      _id: {
+        $$in: datasetIds.filter((id) => {
+          const parse = ObjectIdSchema.safeParse(id);
+          return parse.success;
+        })
+      }
+    },
+    '_id avatar name vectorModel'
+  ).lean();
+  return result.map((item) => ({
+    datasetId: String(item._id),
+    avatar: item.avatar,
+    name: item.name,
+    vectorModel: {
+      model: item.vectorModel
+    }
+  }));
 };
