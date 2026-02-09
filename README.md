@@ -37,7 +37,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
-| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
+| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.jpg) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 <a href="#readme">
@@ -47,11 +47,11 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 ## 💡 RoadMap
 
 `1` 应用编排能力
+   - [x] 规划 Agent 模式。
    - [x] 对话工作流、插件工作流，包含基础的 RPA 节点。
    - [x] 用户交互
    - [x] 双向 MCP 
-   - [ ] Agent 模式
-   - [ ] AI 生成工作流
+   - [ ] 辅助生成工作流
 
 `2` 应用调试能力
    - [x] 知识库单点搜索测试
@@ -74,7 +74,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] completions 接口 (chat 模式对齐 GPT 接口)
    - [x] 知识库 CRUD
    - [x] 对话 CRUD
-   - [ ] 自动化 OpenAPI 接口
+   - [x] 自动化 OpenAPI 接口
   
 `5` 运营能力
    - [x] 免登录分享窗口
