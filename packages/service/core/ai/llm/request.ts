@@ -120,17 +120,17 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   try {
     while (continuationCount < maxContinuations) {
-      console.debug(
-        'LLM Request Body:',
-        JSON.stringify(
-          {
-            ...requestBody,
-            messages: currentMessages
-          },
-          null,
-          2
-        )
-      );
+      // console.debug(
+      //   'LLM Request Body:',
+      //   JSON.stringify(
+      //     {
+      //       ...requestBody,
+      //       messages: currentMessages
+      //     },
+      //     null,
+      //     2
+      //   )
+      // );
       const { response, isStreamResponse: currentIsStreamResponse } = await createChatCompletion({
         body: {
           ...requestBody,
