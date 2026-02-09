@@ -75,6 +75,8 @@ export const masterCall = async ({
     chatConfig,
     runningUserInfo,
     runningAppInfo,
+    chatId,
+    uid,
     variables,
     externalProvider,
     stream,
@@ -171,7 +173,7 @@ export const masterCall = async ({
     const hasUserTools =
       completionTools.filter((tool) => tool.function.name !== SubAppIds.plan).length > 0;
 
-    console.log('completionTools', completionTools);
+    console.log('completionTools(detail)', JSON.stringify(completionTools, null, 2));
 
     // Get history messages
     const messages: ChatCompletionMessageParam[] = [
@@ -277,7 +279,7 @@ export const masterCall = async ({
       });
     },
     handleToolResponse: async ({ call, messages }) => {
-      addLog.debug('handleToolResponse', { toolName: call.function.name });
+      // addLog.debug('handleToolResponse', { toolName: call.function.name });
       const toolId = call.function.name;
       const callId = call.id;
 
@@ -441,6 +443,8 @@ export const masterCall = async ({
                 params: requestParams,
                 runningUserInfo,
                 runningAppInfo,
+                chatId,
+                uid,
                 variables,
                 workflowStreamResponse: stepStreamResponse
               });
