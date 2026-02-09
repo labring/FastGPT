@@ -11,6 +11,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { parseJsonArgs } from '../../utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 /**
  * 压缩 对话历史
@@ -49,7 +50,7 @@ export const compressRequestMessages = async ({
 
   const messageTokens = await countGptMessagesTokens(otherMessages);
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
-  console.log('messageTokens', messageTokens, 'thresholds', thresholds);
+
   if (messageTokens < thresholds.threshold) {
     return {
       messages
@@ -269,19 +270,17 @@ export const compressLargeContent = async ({
       outputTokens: 0
     };
 
-    const compressedChunks = await Promise.all(
-      chunks.map(async (chunk, index) => {
-        const result = await compressSingleChunk({
-          chunk,
-          targetTokens: targetPerChunk,
-          model,
-          chunkIndex: index
-        });
-        usage.inputTokens += result.usage?.inputTokens || 0;
-        usage.outputTokens += result.usage?.outputTokens || 0;
-        return result.compressed;
-      })
-    );
+    const compressedChunks = await batchRun(chunks, async (chunk, index) => {
+      const result = await compressSingleChunk({
+        chunk,
+        targetTokens: targetPerChunk,
+        model,
+        chunkIndex: index
+      });
+      usage.inputTokens += result.usage?.inputTokens || 0;
+      usage.outputTokens += result.usage?.outputTokens || 0;
+      return result.compressed;
+    });
 
     let merged = compressedChunks.join('\n\n');
 

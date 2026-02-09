@@ -19,14 +19,18 @@ export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T>
   }
 };
 
-export const batchRun = async <T>(arr: T[], fn: (arr: T) => any, batchSize = 10) => {
+export const batchRun = async <T>(
+  arr: T[],
+  fn: (item: T, index?: number) => any,
+  batchSize = 10
+) => {
   const batchArr = new Array(batchSize).fill(null);
   const result: any[] = [];
-
+  let index = 0;
   const batchFn = async () => {
     const data = arr.shift();
     if (data) {
-      result.push(await fn(data));
+      result.push(await fn(data, index++));
       return batchFn();
     }
   };

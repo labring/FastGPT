@@ -6,7 +6,7 @@ export const SecretValueTypeSchema = z
     secret: z.string().optional()
   })
   .meta({
-    description: '密钥值类型，value 为明文，srcret 为密文，如果了 value 则优先使用 value。',
+    description: '密钥值类型，value 为明文，secret 为密文，如果了 value 则优先使用 value。',
     example: {
       value: '1234567890',
       secret: ''

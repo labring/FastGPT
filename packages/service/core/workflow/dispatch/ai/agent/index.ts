@@ -180,7 +180,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
     const getSubApp = (id: string) => {
       const formatId = id.slice(1);
-      return (agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId))!;
+      return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
     const formatedSystemPrompt = parseUserSystemPrompt({

@@ -30,6 +30,7 @@ import { getMasterSystemPrompt } from './prompt';
 import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
 import { dispatchApp, dispatchPlugin } from '../sub/app';
+import { addLog } from '../../../../../../common/system/log';
 
 type Response = {
   stepResponse?: {
@@ -61,7 +62,7 @@ export const masterCall = async ({
   systemPrompt?: string;
 
   getSubAppInfo: GetSubAppInfoFnType;
-  getSubApp: (id: string) => SubAppRuntimeType;
+  getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
 
@@ -397,9 +398,9 @@ export const masterCall = async ({
                 stop: true
               };
             } catch (error) {
-              console.log(error, 111);
+              addLog.error('dispatchPlanAgent error', { error });
               return {
-                response: getErrText(error),
+                response: `Plan error: ${getErrText(error)}`,
                 stop: false
               };
             }
@@ -418,7 +419,7 @@ export const masterCall = async ({
 
             if (call.function.arguments && !toolCallParams) {
               return {
-                response: 'params is not object',
+                response: 'Params is not object',
                 usages: []
               };
             }
@@ -544,7 +545,7 @@ export const masterCall = async ({
           }
         } catch (error) {
           return {
-            response: getErrText(error),
+            response: `Tool error: ${getErrText(error)}`,
             usages: []
           };
         }

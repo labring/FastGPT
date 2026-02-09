@@ -254,7 +254,7 @@ const filterValidDatasets = async ({
     {
       teamId,
       _id: {
-        $$in: datasetIds.filter((id) => {
+        $in: datasetIds.filter((id) => {
           const parse = ObjectIdSchema.safeParse(id);
           return parse.success;
         })
