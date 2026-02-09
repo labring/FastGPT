@@ -97,16 +97,7 @@ const nextConfig = {
         ...config.resolve,
         fallback: {
           ...config.resolve.fallback,
-          fs: false,
-          stream: false,
-          net: false,
-          tls: false,
-          crypto: false,
-          http: false,
-          https: false,
-          zlib: false,
-          dns: false,
-          http2: false
+          fs: false
         }
       };
     }
@@ -149,13 +140,7 @@ const nextConfig = {
       'bullmq',
       '@zilliz/milvus2-sdk-node',
       'tiktoken',
-      '@opentelemetry/api-logs',
-      '@logtape/logtape',
-      '@logtape/otel',
-      '@logtape/pretty',
-      '@grpc/grpc-js',
-      '@opentelemetry/exporter-logs-otlp-grpc',
-      '@opentelemetry/otlp-grpc-exporter-base'
+      '@opentelemetry/api-logs'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true,

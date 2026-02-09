@@ -1,6 +1,8 @@
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import { connectionMongo, type ClientSession } from './index';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const timeout = 60000;
 
@@ -20,12 +22,19 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
     } catch (error) {
       if (!session.transaction.isCommitted) {
         await session.abortTransaction();
+        logger.warn('MongoDB session transaction aborted', {
+          error
+        });
       } else {
-        addLog.warn('Un catch mongo session error', { error });
+        logger.warn('Unexpected MongoDB session error after commit', {
+          error
+        });
+        const result = await fn(session);
+
+        await session.commitTransaction();
+
+        return result as T;
       }
-      return Promise.reject(error);
-    } finally {
-      await session.endSession();
     }
   });
 };

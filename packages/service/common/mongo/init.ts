@@ -1,5 +1,4 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../system/log';
 import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
 
@@ -34,7 +33,10 @@ export async function connectMongo(props: {
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      logger.error('MongoDB connection error', { error: error.message, stack: error.stack });
+      logger.error('MongoDB connection error', {
+        error,
+        readyState: db.connection.readyState
+      });
     });
     db.connection.on('connected', async () => {
       logger.info('MongoDB connected successfully');
@@ -62,11 +64,7 @@ export async function connectMongo(props: {
 
     return db;
   } catch (error) {
-    logger.error('MongoDB connection failed, retrying...', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    addLog.error('Mongo connect error', error);
+    logger.error('MongoDB connection failed, will retry', { error });
 
     await db.disconnect();
 

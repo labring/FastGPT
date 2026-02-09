@@ -19,7 +19,11 @@ export const LogCategories = {
     MONGO: ['infra', 'mongo'] as const,
     POSTGRES: ['infra', 'postgres'] as const,
     REDIS: ['infra', 'redis'] as const,
-    VECTOR: ['infra', 'vector'] as const
+    VECTOR: ['infra', 'vector'] as const,
+    QUEUE: ['infra', 'queue'] as const,
+    S3: ['infra', 's3'] as const,
+    GEO: ['infra', 'geo'] as const,
+    OTEL: ['infra', 'otel'] as const
   },
 
   // HTTP 层
