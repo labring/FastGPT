@@ -10,6 +10,8 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { getOrgsByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 async function handler(
   req: ApiRequestProps<InvokeUserInfoBodyType, InvokeUserInfoQueryType>,
@@ -26,10 +28,16 @@ async function handler(
     getGroupsByTmbId({ tmbId, teamId })
   ]);
 
+  const team = await MongoTeam.findById(teamId, {
+    name: 1
+  }).lean();
+
+  if (!team) throw new Error('Team not found');
+
   const orgInfos = await MongoOrgModel.find(
     {
       _id: {
-        $in: orgs.map((org) => org._id)
+        $in: orgs.map((org) => org.orgId)
       }
     },
     {
@@ -49,7 +57,7 @@ async function handler(
       })) || [],
     groups:
       groups.map((group) => ({
-        name: group.name
+        name: group.name === DefaultGroupName ? team?.name : group.name
       })) || []
   };
 }
