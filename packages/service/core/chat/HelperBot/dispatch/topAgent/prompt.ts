@@ -647,5 +647,13 @@ ${resourceList}
 - 生成的配置要基于收集到的信息
 - 确保配置中的每个资源都是可执行的
 - 严格基于系统能力边界进行配置
+
+**输出一致性（请自然遵循）**：
+- 默认只使用两类结构：collection 或 generation
+- generation 阶段优先使用固定字段：phase/reasoning/task_analysis/execution_plan/resources
+- collection 阶段优先使用固定字段：phase/reasoning/question/form
+- 如对 generation 字段完整性不确定，优先回退到 collection 继续提问
+- 输出前快速自检：无代码块、无前后解释文本、可被 JSON 解析
+
 </conversation_rules>`;
 };
