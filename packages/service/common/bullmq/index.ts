@@ -9,6 +9,7 @@ import {
 import { addLog } from '../system/log';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   removeOnComplete: {
@@ -95,7 +96,7 @@ export function getWorker<DataType, ReturnType = void>(
     // default error handler, to avoid unhandled exceptions
     newWorker.on('error', async (error) => {
       addLog.error(`[MQ Worker] error`, {
-        message: error.message,
+        message: getErrText(error),
         data: { name }
       });
     });
