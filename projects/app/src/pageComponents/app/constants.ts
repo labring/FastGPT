@@ -2,14 +2,6 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const createAppTypeMap = {
-  [AppTypeEnum.chatAgent]: {
-    type: AppTypeEnum.chatAgent,
-    icon: 'core/app/type/agentFill',
-    title: i18nT('app:type.Chat_Agent_v2'),
-    intro: i18nT('app:chat_agent_intro'),
-    description: i18nT('app:chat_agent_description'),
-    imgUrl: '/imgs/app/type/chatAgent.svg'
-  },
   [AppTypeEnum.workflow]: {
     type: AppTypeEnum.workflow,
     icon: 'core/app/type/workflowFill',
@@ -25,6 +17,14 @@ export const createAppTypeMap = {
     intro: i18nT('app:type_simple_intro'),
     description: i18nT('app:type_simple_description'),
     imgUrl: '/imgs/app/simpleAgentPreview.svg'
+  },
+  [AppTypeEnum.chatAgent]: {
+    type: AppTypeEnum.chatAgent,
+    icon: 'core/app/type/agentFill',
+    title: i18nT('app:type.Chat_Agent_v2'),
+    intro: i18nT('app:chat_agent_intro'),
+    description: i18nT('app:chat_agent_description'),
+    imgUrl: '/imgs/app/type/chatAgent.svg'
   },
   [AppTypeEnum.workflowTool]: {
     type: AppTypeEnum.workflowTool,

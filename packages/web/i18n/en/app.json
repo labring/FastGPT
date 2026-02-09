@@ -491,7 +491,7 @@
   "tts_close": "Close",
   "type.All": "All",
   "type.Chat_Agent": "Dialogue Agent",
-  "type.Chat_Agent_v2": "Dialogue Agent V2",
+  "type.Chat_Agent_v2": "Chat Agent V2(Beta)",
   "type.Create http plugin tip": "Batch create plugins through OpenAPI Schema, compatible with GPTs format.",
   "type.Create mcp tools tip": "Automatically parse and batch create callable MCP tools by entering the MCP address",
   "type.Create one plugin tip": "Customizable input and output workflows, usually used to encapsulate reusable workflows.",
