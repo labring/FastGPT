@@ -20,7 +20,6 @@ import { getStepCallQuery, getStepDependon } from './dependon';
 import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
-import { addLog } from '../../../../../../common/system/log';
 import type { WorkflowResponseItemType } from '../../../type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -75,6 +74,8 @@ export const masterCall = async ({
     chatConfig,
     runningUserInfo,
     runningAppInfo,
+    chatId,
+    uid,
     variables,
     externalProvider,
     stream,
@@ -167,11 +168,15 @@ export const masterCall = async ({
       return { requestMessages };
     }
 
+    // Calculate if user has available tools (exclude plan tool)
+    const hasUserTools =
+      completionTools.filter((tool) => tool.function.name !== SubAppIds.plan).length > 0;
+
     // Get history messages
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: getMasterSystemPrompt(systemPrompt)
+        content: getMasterSystemPrompt(systemPrompt, hasUserTools)
       },
       ...masterMessages
     ];
@@ -271,7 +276,7 @@ export const masterCall = async ({
       });
     },
     handleToolResponse: async ({ call, messages }) => {
-      addLog.debug('handleToolResponse', { toolName: call.function.name });
+      // addLog.debug('handleToolResponse', { toolName: call.function.name });
       const toolId = call.function.name;
       const callId = call.id;
 
@@ -435,6 +440,8 @@ export const masterCall = async ({
                 params: requestParams,
                 runningUserInfo,
                 runningAppInfo,
+                chatId,
+                uid,
                 variables,
                 workflowStreamResponse: stepStreamResponse
               });

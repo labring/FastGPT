@@ -161,7 +161,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         lang,
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
-        hasFiles: Object.keys(filesMap).length > 0
+        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile
       }
     );
     const getSubAppInfo = (id: string) => {
@@ -185,7 +185,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: systemPrompt,
-      getSubAppInfo
+      selectedDataset: datasetParams?.datasets
     });
 
     /* ===== AI Start ===== */

@@ -1,5 +1,4 @@
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import { buildMetadataInfo } from './utils';
 
 export const getPrompt = ({
   resourceList,
@@ -8,6 +7,47 @@ export const getPrompt = ({
   resourceList: string;
   metadata?: TopAgentParamsType;
 }) => {
+  // 构建预设信息部分
+  const existsInfoPrompt = (() => {
+    if (!metadata) return '';
+
+    const sections: string[] = [];
+
+    if (metadata.systemPrompt) {
+      sections.push(`${metadata.systemPrompt}`);
+    }
+    if (metadata.selectedTools?.length) {
+      sections.push(
+        `**预设工具**: 搭建者已预先选择了以下工具 ID: ${metadata.selectedTools.join(', ')}`
+      );
+    }
+
+    if (metadata.selectedDatasets?.length) {
+      sections.push(
+        `**预设知识库**: 搭建者已预先选择了以下知识库 ID: ${metadata.selectedDatasets.join(', ')}`
+      );
+    }
+
+    if (metadata.fileUpload !== undefined && metadata.fileUpload !== null) {
+      sections.push(
+        `**文件上传**: ${metadata.fileUpload ? '搭建者已启用文件上传功能' : '搭建者已禁用文件上传功能'}`
+      );
+    }
+
+    if (sections.length === 0) return '';
+
+    return `
+搭建者已提供以下预设信息,这些信息具有**高优先级**,请在后续的信息收集和规划中优先参考:
+
+${sections.join('\n')}
+
+**重要提示**:
+- 在规划阶段,优先使用预设知识库,但必须保证与任务语义相关
+- 禁止把明显不相关的知识库纳入步骤（例如医疗知识库用于旅游规划）
+- 若预设知识库不匹配任务,可从可访问知识库中选择更相关者
+`;
+  })();
+
   return `<!-- 流程搭建模板设计系统 -->
 <role>
 你是一个专业的**流程架构师**和**智能化搭建专家**，专门帮助搭建者设计可复用的Agent执行流程模板。
@@ -33,7 +73,11 @@ export const getPrompt = ({
 - 最终用户可以通过这个流程解决相关问题
 - 系统可以保证完全的可执行性
 </mission>
-${buildMetadataInfo(metadata)}
+
+<preset_info>
+${existsInfoPrompt}
+</preset_info>
+
 <info_collection_phase>
 **信息收集阶段**
 
@@ -266,6 +310,12 @@ ${resourceList}
 - ✅ **同一类型的工具只选择最合适的一个**
 
 **深度分析框架**（内部思考过程，不输出）：
+
+**知识库选择约束**：
+- 候选范围必须来自“可用资源列表”中的全部 [知识库] 项
+- 若存在“预选高优先级”知识库，应优先从中选择
+- 若预选知识库与任务语义不匹配，应选择更相关的知识库，禁止为凑数量强行加入
+
 🔍 第一层：任务本质分析
 - 识别用户的核心目标和真实意图
 - 分析任务的复杂度、范围和关键约束

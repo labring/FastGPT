@@ -81,7 +81,8 @@ const EditForm = ({
       appForm.chatConfig.fileSelectConfig?.canSelectVideo ||
       appForm.chatConfig.fileSelectConfig?.canSelectAudio ||
       appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
-    )
+    ),
+    hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0
   });
 
   const {

@@ -19,6 +19,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
+import { getS3ChatSource } from '../../../../../../../common/s3/sources/chat';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -36,6 +37,8 @@ export type Props = {
   };
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   runningAppInfo: ChatDispatchProps['runningAppInfo'];
+  chatId: ChatDispatchProps['chatId'];
+  uid: ChatDispatchProps['uid'];
   variables: ChatDispatchProps['variables'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
@@ -45,6 +48,8 @@ export const dispatchTool = async ({
   params: { system_input_config, ...params },
   runningUserInfo,
   runningAppInfo,
+  chatId,
+  uid,
   variables,
   workflowStreamResponse
 }: Props): Promise<
@@ -110,7 +115,12 @@ export const dispatchTool = async ({
           },
           tool: {
             id: formatToolId,
-            version: version || tool.versionList?.[0]?.value || ''
+            version: version || tool.versionList?.[0]?.value || '',
+            prefix: getS3ChatSource().getToolFilePrefix({
+              appId: runningAppInfo.id,
+              chatId,
+              uId: uid
+            })
           },
           time: variables.cTime
         },
