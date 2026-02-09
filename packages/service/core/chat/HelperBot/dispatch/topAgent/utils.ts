@@ -1,6 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSystemToolsWithInstalled, getMyTools } from '../../../../app/tool/controller';
-import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { MongoDataset } from '../../../../dataset/schema';
@@ -8,27 +7,8 @@ import { MongoResourcePermission } from '../../../../../support/permission/schem
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
-import { getEmbeddingModel } from '../../../../ai/model';
 
-const getAccessibleDatasets = async ({
-  teamId,
-  tmbId,
-  isRoot
-}: {
-  teamId: string;
-  tmbId: string;
-  isRoot: boolean;
-}) => {
-  if (isRoot) {
-    return MongoDataset.find({
-      teamId,
-      deleteTime: null
-    })
-      .select('_id name intro avatar vectorModel')
-      .sort({ updateTime: -1 })
-      .lean();
-  }
-
+const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.dataset,
@@ -118,15 +98,15 @@ ${dataset}
         return `- **${toolId}** [工具]: ${tool.name} - ${tool.intro}`;
       })
     ),
-    getAccessibleDatasets({ teamId, tmbId, isRoot })
+    getAccessibleDatasets({ teamId, tmbId }).then((res) => {
+      return res.map((dataset) => {
+        const id = String(dataset._id);
+        const name = dataset.name || '未命名知识库';
+        const intro = dataset.intro || '暂无描述';
+        return `- **${id}** [知识库]: ${name} - ${intro}`;
+      });
+    })
   ]);
-
-  const datasetLines = myDatasets.map((dataset) => {
-    const id = String(dataset._id);
-    const name = dataset.name || '未命名知识库';
-    const intro = dataset.intro || '暂无描述';
-    return `- **${id}** [知识库]: ${name} - ${intro}`;
-  });
 
   const allTools = [...systemTools, ...myTools];
   const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
@@ -136,78 +116,9 @@ ${dataset}
   return {
     resourceList: getPrompt({
       tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具',
-      dataset: datasetLines.length > 0 ? datasetLines.join('\n') : '暂未配置知识库'
+      dataset: myDatasets.length > 0 ? myDatasets.join('\n') : '暂未配置知识库'
     })
   };
-};
-
-// 构建预设信息部分
-export const buildMetadataInfo = (metadata?: TopAgentParamsType): string => {
-  if (!metadata) return '';
-
-  const sections: string[] = [];
-
-  if (metadata.systemPrompt) {
-    sections.push(`${metadata.systemPrompt}`);
-  }
-  if (metadata.selectedTools?.length) {
-    sections.push(
-      `**预设工具**: 搭建者已预先选择了以下工具 ID: ${metadata.selectedTools.join(', ')}`
-    );
-  }
-
-  if (metadata.selectedDatasets?.length) {
-    sections.push(
-      `**预设知识库**: 搭建者已预先选择了以下知识库 ID: ${metadata.selectedDatasets.join(', ')}`
-    );
-  }
-
-  if (metadata.fileUpload !== undefined && metadata.fileUpload !== null) {
-    sections.push(
-      `**文件上传**: ${metadata.fileUpload ? '搭建者已启用文件上传功能' : '搭建者已禁用文件上传功能'}`
-    );
-  }
-
-  if (sections.length === 0) return '';
-
-  return `
-搭建者已提供以下预设信息,这些信息具有**高优先级**,请在后续的信息收集和规划中优先参考:
-
-${sections.join('\n')}
-
-**重要提示**:
-- 在规划阶段,优先使用预设知识库,但必须保证与任务语义相关
-- 禁止把明显不相关的知识库纳入步骤（例如医疗知识库用于旅游规划）
-- 若预设知识库不匹配任务,可从可访问知识库中选择更相关者
-`;
-};
-
-export const getKnowledgeDatasetDetails = async ({
-  teamId,
-  tmbId,
-  isRoot,
-  datasetIds
-}: {
-  teamId: string;
-  tmbId: string;
-  isRoot: boolean;
-  datasetIds: string[];
-}) => {
-  if (!datasetIds.length) return [];
-
-  const datasetIdSet = new Set(datasetIds);
-  const accessible = await getAccessibleDatasets({ teamId, tmbId, isRoot });
-
-  return accessible
-    .filter((item) => datasetIdSet.has(String(item._id)))
-    .map((item) => ({
-      datasetId: String(item._id),
-      name: item.name || '未命名知识库',
-      avatar: item.avatar || '',
-      vectorModel: {
-        model: getEmbeddingModel(item.vectorModel).model
-      }
-    }));
 };
 
 /**

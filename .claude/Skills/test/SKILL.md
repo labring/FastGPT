@@ -15,6 +15,16 @@ packages 里的测试，写在 FastGPT/test/cases 目录下，子路径对应 pa
 
 `packages/global/common/error/s3.ts`文件，对应的测例文件路径为 `test/cases/global/common/error/s3.test.ts`。
 
+<<<<<<< HEAD
+=======
+并且，可以通过 @fastgpt 来导入 packages 里的文件。
+例如：
+
+```typescript
+import { s3 } from '@fastgpt/global/common/error/s3';
+```
+
+>>>>>>> e4c836104 (perf: prompt)
 ### projects 测试
 
 projects 里的测试，写在 FastGPT/projects/app/test 目录下，子路径对应 projects 的目录结构。

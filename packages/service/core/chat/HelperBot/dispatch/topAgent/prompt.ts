@@ -1,5 +1,4 @@
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import { buildMetadataInfo } from './utils';
 
 export const getPrompt = ({
   resourceList,
@@ -8,7 +7,46 @@ export const getPrompt = ({
   resourceList: string;
   metadata?: TopAgentParamsType;
 }) => {
-  const metadataInfo = buildMetadataInfo(metadata);
+  // 构建预设信息部分
+  const existsInfoPrompt = (() => {
+    if (!metadata) return '';
+
+    const sections: string[] = [];
+
+    if (metadata.systemPrompt) {
+      sections.push(`${metadata.systemPrompt}`);
+    }
+    if (metadata.selectedTools?.length) {
+      sections.push(
+        `**预设工具**: 搭建者已预先选择了以下工具 ID: ${metadata.selectedTools.join(', ')}`
+      );
+    }
+
+    if (metadata.selectedDatasets?.length) {
+      sections.push(
+        `**预设知识库**: 搭建者已预先选择了以下知识库 ID: ${metadata.selectedDatasets.join(', ')}`
+      );
+    }
+
+    if (metadata.fileUpload !== undefined && metadata.fileUpload !== null) {
+      sections.push(
+        `**文件上传**: ${metadata.fileUpload ? '搭建者已启用文件上传功能' : '搭建者已禁用文件上传功能'}`
+      );
+    }
+
+    if (sections.length === 0) return '';
+
+    return `
+搭建者已提供以下预设信息,这些信息具有**高优先级**,请在后续的信息收集和规划中优先参考:
+
+${sections.join('\n')}
+
+**重要提示**:
+- 在规划阶段,优先使用预设知识库,但必须保证与任务语义相关
+- 禁止把明显不相关的知识库纳入步骤（例如医疗知识库用于旅游规划）
+- 若预设知识库不匹配任务,可从可访问知识库中选择更相关者
+`;
+  })();
 
   return `<!-- 流程搭建模板设计系统 -->
 <role>
@@ -37,7 +75,7 @@ export const getPrompt = ({
 </mission>
 
 <preset_info>
-${metadataInfo}
+${existsInfoPrompt}
 </preset_info>
 
 <info_collection_phase>

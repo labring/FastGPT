@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AICollectionAnswerSchema } from '../type';
+import { SelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 
 // 执行计划步骤中的资源引用类型
 export const StepResourceRefSchema = z.object({
@@ -24,20 +25,7 @@ export type ExecutionPlanType = z.infer<typeof ExecutionPlanSchema>;
 export const TopAgentFormDataSchema = z.object({
   systemPrompt: z.string().optional(),
   tools: z.array(z.string()).optional().default([]),
-  knowledges: z.array(z.string()).optional().default([]),
-  knowledgesDetail: z
-    .array(
-      z.object({
-        datasetId: z.string(),
-        name: z.string(),
-        avatar: z.string().optional(),
-        vectorModel: z.object({
-          model: z.string()
-        })
-      })
-    )
-    .optional()
-    .default([]),
+  datasets: z.array(SelectedDatasetSchema).optional().default([]),
   fileUploadEnabled: z.boolean().optional().default(false),
   executionPlan: z.any().optional()
 });

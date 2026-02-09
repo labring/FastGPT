@@ -29,25 +29,24 @@ export const parseUserSystemPrompt = ({
   userSystemPrompt?: string;
   selectedDataset?: SelectedDatasetType[];
 }) => {
-  const presetKnowledgePrompt =
+  const presetDatasetPrompt =
     selectedDataset.length > 0
       ? `<preset_resources>
 已选知识库:
-${selectedDataset
-  .map((item) => `- ${item.name || item.datasetId} (ID: ${item.datasetId})`)
-  .join('\n')}
+${selectedDataset.map((item) => `- ${item.name} (ID: ${item.datasetId})`).join('\n')}
 </preset_resources>`
       : '';
 
-  if (!userSystemPrompt && !presetKnowledgePrompt) {
+  if (!userSystemPrompt && !presetDatasetPrompt) {
     return '';
   }
 
-  return `${userSystemPrompt || ''}${
-    userSystemPrompt && presetKnowledgePrompt ? '\n\n' : ''
-  }${presetKnowledgePrompt}${userSystemPrompt || presetKnowledgePrompt ? '\n\n' : ''}
-请参考用户的任务信息来匹配是否和当前的user_background一致，如果一致请优先遵循参考的步骤安排和偏好
-如果和user_background没有任何关系则忽略参考信息。
+  const list = [userSystemPrompt, presetDatasetPrompt];
+
+  return `${list.filter(Boolean).join('\n\n')}
+
+请参考用户的任务信息来匹配是否和当前的 <user_background></user_background> 一致，如果一致请优先遵循参考的步骤安排和偏好
+如果和 <user_background></user_background> 没有任何关系则忽略参考信息。
 
 **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
 };

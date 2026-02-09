@@ -161,13 +161,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     ...prev,
                     selectedTools: [...newTools],
                     dataset:
-                      formData.knowledgesDetail && formData.knowledgesDetail.length > 0
+                      formData.datasets && formData.datasets.length > 0
                         ? {
                             ...prev.dataset,
-                            datasets: formData.knowledgesDetail.map((item) => ({
-                              ...item,
-                              avatar: item.avatar ?? ''
-                            }))
+                            datasets: formData.datasets
                           }
                         : prev.dataset,
                     aiSettings: {

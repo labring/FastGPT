@@ -20,7 +20,6 @@ import { getStepCallQuery, getStepDependon } from './dependon';
 import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
-import { addLog } from '../../../../../../common/system/log';
 import type { WorkflowResponseItemType } from '../../../type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -172,8 +171,6 @@ export const masterCall = async ({
     // Calculate if user has available tools (exclude plan tool)
     const hasUserTools =
       completionTools.filter((tool) => tool.function.name !== SubAppIds.plan).length > 0;
-
-    console.log('completionTools(detail)', JSON.stringify(completionTools, null, 2));
 
     // Get history messages
     const messages: ChatCompletionMessageParam[] = [
