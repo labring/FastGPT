@@ -510,7 +510,7 @@
   "tts_close": "关闭",
   "type.All": "全部",
   "type.Chat_Agent": "对话 Agent",
-  "type.Chat_Agent_v2": "对话 Agent V2",
+  "type.Chat_Agent_v2": "对话 Agent V2(Beta)",
   "type.Create http plugin tip": "通过 OpenAPI Schema 批量创建工具（兼容GPTs）、通过curl或手动创建工具",
   "type.Create http toolset tip": "通过 OpenAPI Schema 批量创建工具(兼容GPTs)",
   "type.Create mcp tools tip": "通过输入 MCP 地址，自动解析并批量创建可调用的 MCP 工具",
