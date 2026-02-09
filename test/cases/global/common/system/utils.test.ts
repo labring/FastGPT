@@ -108,8 +108,7 @@ describe('system utils', () => {
 
       expect(result).toHaveLength(15);
       expect(fn).toHaveBeenCalledTimes(15);
-      // Check all values are present (order may vary due to concurrent execution)
-      expect(result.sort((a, b) => a - b)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
+      expect(result).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
     });
 
     it('should handle empty array', async () => {
@@ -184,19 +183,98 @@ describe('system utils', () => {
       ]);
     });
 
-    it('should process all items even with varying processing times', async () => {
+    it('should preserve result order even with varying processing times', async () => {
       const arr = [5, 4, 3, 2, 1];
       const fn = async (x: number) => {
-        // Simulate varying processing times
+        // Simulate varying processing times - smaller values finish faster
         await delay(x * 2);
         return x * 10;
       };
 
       const result = await batchRun(arr, fn, 3);
 
-      // All items should be processed, order may vary due to concurrent execution
-      expect(result).toHaveLength(5);
-      expect(result.sort((a, b) => a - b)).toEqual([10, 20, 30, 40, 50]);
+      // Result order must match original array order, not completion order
+      expect(result).toEqual([50, 40, 30, 20, 10]);
+    });
+
+    it('should pass correct index to callback for each item', async () => {
+      const arr = ['a', 'b', 'c', 'd', 'e'];
+      const receivedIndices: number[] = [];
+
+      await batchRun(
+        arr,
+        async (item, index) => {
+          receivedIndices.push(index);
+          return item;
+        },
+        3
+      );
+
+      // Every index from 0 to arr.length-1 should be received exactly once
+      expect(receivedIndices.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    });
+
+    it('should have index matching the original array position', async () => {
+      const arr = ['x', 'y', 'z'];
+      const indexItemPairs: Array<[number, string]> = [];
+
+      await batchRun(
+        arr,
+        async (item, index) => {
+          indexItemPairs.push([index, item]);
+          return item;
+        },
+        2
+      );
+
+      // Each index should correspond to the correct item in the original array
+      for (const [index, item] of indexItemPairs) {
+        expect(arr[index]).toBe(item);
+      }
+    });
+
+    it('should preserve index-result mapping with concurrent async delays', async () => {
+      // Items with reverse delay: first item takes longest, last item finishes first
+      const arr = [100, 80, 60, 40, 20];
+      const fn = async (item: number, index: number) => {
+        await delay(item); // Longer items take more time
+        return { index, value: item };
+      };
+
+      const result = await batchRun(arr, fn, 5);
+
+      // Despite different completion times, result[i] must correspond to arr[i]
+      expect(result).toEqual([
+        { index: 0, value: 100 },
+        { index: 1, value: 80 },
+        { index: 2, value: 60 },
+        { index: 3, value: 40 },
+        { index: 4, value: 20 }
+      ]);
+    });
+
+    it('should pass sequential indices starting from 0', async () => {
+      const arr = [10, 20, 30];
+      const indices: number[] = [];
+
+      await batchRun(
+        arr,
+        async (_item, index) => {
+          indices.push(index);
+        },
+        1 // batchSize=1 ensures sequential execution
+      );
+
+      expect(indices).toEqual([0, 1, 2]);
+    });
+
+    it('should not mutate the original array', async () => {
+      const arr = [1, 2, 3, 4, 5];
+      const arrCopy = [...arr];
+
+      await batchRun(arr, async (x) => x * 2, 3);
+
+      expect(arr).toEqual(arrCopy);
     });
   });
 });

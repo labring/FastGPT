@@ -258,7 +258,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           ),
           toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
           mergeSignId: nodeId,
-          finishReason: finish_reason
+          finishReason: finish_reason,
+          llmRequestIds: requestIds
         },
         [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
           (sum, item) => sum + item.runTimes,

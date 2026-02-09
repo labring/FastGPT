@@ -87,7 +87,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
-  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
+  POST<DatasetListItemType[]>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);

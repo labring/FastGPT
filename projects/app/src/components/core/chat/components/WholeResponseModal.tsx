@@ -275,7 +275,7 @@ export const WholeResponseContent = ({
           value={activeModule?.maxToken}
         />
 
-        <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
+        <Row label={t('chat:reasoning_content')} value={activeModule?.reasoningText} />
         <Row
           label={t('common:core.chat.response.module historyPreview')}
           rawDom={

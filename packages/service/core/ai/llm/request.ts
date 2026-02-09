@@ -67,7 +67,7 @@ type LLMResponse = {
   };
 
   requestMessages: ChatCompletionMessageParam[];
-  assistantMessage: ChatCompletionMessageParam[];
+  assistantMessage?: ChatCompletionMessageParam;
   completeMessages: ChatCompletionMessageParam[];
 };
 
@@ -120,17 +120,17 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   try {
     while (continuationCount < maxContinuations) {
-      // console.debug(
-      //   'LLM Request Body:',
-      //   JSON.stringify(
-      //     {
-      //       ...requestBody,
-      //       messages: currentMessages
-      //     },
-      //     null,
-      //     2
-      //   )
-      // );
+      console.debug(
+        'LLM Request Body:',
+        JSON.stringify(
+          {
+            ...requestBody,
+            messages: currentMessages
+          },
+          null,
+          2
+        )
+      );
       const { response, isStreamResponse: currentIsStreamResponse } = await createChatCompletion({
         body: {
           ...requestBody,
@@ -218,7 +218,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
           {
             role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
             ...(accumulatedAnswerText && { content: accumulatedAnswerText }),
-            ...(accumulatedReasoningText && { reasoning_text: accumulatedReasoningText })
+            ...(accumulatedReasoningText && { reasoning_content: accumulatedReasoningText })
           },
           {
             role: ChatCompletionRequestMessageRoleEnum.User as 'user',
@@ -247,45 +247,32 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
       error: currentError
     };
 
-    const assistantMessage: ChatCompletionMessageParam[] = [
-      ...(answerText || reasoningText
-        ? [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-              content: answerText,
-              reasoning_text: reasoningText
-            }
-          ]
-        : []),
-      ...(toolCalls?.length
-        ? [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-              tool_calls: toolCalls
-            }
-          ]
-        : [])
-    ];
+    const assistantMessage: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
+      ...(answerText && { content: answerText }),
+      ...(reasoningText && { reasoning_content: reasoningText }),
+      ...(toolCalls?.length && { tool_calls: toolCalls })
+    };
 
     // Usage count
     const inputTokens =
       usage?.prompt_tokens ||
       (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
     const outputTokens =
-      usage?.completion_tokens || (await countGptMessagesTokens(assistantMessage));
+      usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
 
     // 异步保存 LLM 请求追踪记录
     saveLLMRequestRecord({
       requestId,
       body: requestBody,
       response: {
-        answerText,
-        reasoningText,
-        toolCalls,
+        ...(answerText && { answerText }),
+        ...(reasoningText && { reasoningText }),
+        ...(toolCalls?.length && { toolCalls }),
         finish_reason,
         usage: {
-          inputTokens: inputTokens,
-          outputTokens: outputTokens
+          inputTokens,
+          outputTokens
         },
         error
       }
@@ -340,7 +327,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
       requestMessages,
       assistantMessage,
-      completeMessages: [...requestMessages, ...assistantMessage]
+      completeMessages: [...requestMessages, assistantMessage]
     };
   } catch (error) {
     // 异步保存 LLM 请求追踪记录
@@ -368,7 +355,6 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
         outputTokens: 0
       },
       requestMessages: requestBody.messages,
-      assistantMessage: [],
       completeMessages: [...requestBody.messages]
     };
   }

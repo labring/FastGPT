@@ -330,8 +330,10 @@ export const runAgentCall = async ({
     // 3. 更新 messages
     const cloneRequestMessages = requestMessages.slice();
     // 推送 AI 生成后的 assistantMessages
-    assistantMessages.push(...llmAssistantMessage);
-    requestMessages.push(...llmAssistantMessage);
+    if (llmAssistantMessage) {
+      assistantMessages.push(llmAssistantMessage);
+      requestMessages.push(llmAssistantMessage);
+    }
 
     // 4. Call tools
     let toolCallStep = false;
