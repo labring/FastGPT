@@ -17,7 +17,7 @@ description: 'FastGPT V4.14.7 更新说明'
 
 ### 2. 更新系统插件
 
-前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）
+前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）。可以直接下载[zip 包](https://github.com/labring/fastgpt-plugin/raw/refs/heads/main/.github/assets/upgrade_pkg.zip)直接安装。
 
 * base64Decode：base64 解码转化
 * dallle3: dall-e 3 图片生成
@@ -77,6 +77,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 
 ## 插件
 
+1. 新增获取用户信息工具。
+2. 增加 kimi2.5 模型预设。
+
 ## 代码质量
 
 1. 增加向量数据库集成测试。
+2. 完善 packages/global 单元测试，提高覆盖到 90+。
