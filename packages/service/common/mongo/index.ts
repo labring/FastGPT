@@ -1,7 +1,10 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../logger';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export default mongoose;
 export * from 'mongoose';
@@ -74,8 +77,10 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
         };
 
         if (duration > 2000) {
+          logger.warn('MongoDB slow query (>2s)', getLogData());
           addLog.warn(`[Mongo Slow] Level2`, getLogData());
         } else if (duration > 500) {
+          logger.warn('MongoDB slow query (>500ms)', getLogData());
           addLog.warn(`[Mongo Slow] Level1`, getLogData());
         }
       }
@@ -115,7 +120,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
 export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionMongo.models[name]) return connectionMongo.models[name] as Model<T>;
-  if (!isTestEnv) console.log('Load model======', name);
+  if (!isTestEnv) logger.debug('Loading MongoDB model', { modelName: name });
   addCommonMiddleware(schema);
 
   const model = connectionMongo.model<T>(name, schema);
@@ -128,7 +133,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 
 export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionLogMongo.models[name]) return connectionLogMongo.models[name] as Model<T>;
-  console.log('Load model======', name);
+  logger.debug('Loading MongoDB log model', { modelName: name });
 
   const model = connectionLogMongo.model<T>(name, schema);
 
@@ -151,6 +156,10 @@ const syncMongoIndex = async (model: Model<any>) => {
   try {
     await model.syncIndexes({ background: true });
   } catch (error) {
+    logger.error('Failed to sync MongoDB indexes', {
+      modelName: model.modelName,
+      error: error instanceof Error ? error.message : String(error)
+    });
     addLog.error('Create index error', error);
   }
 };

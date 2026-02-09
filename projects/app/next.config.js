@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env.ANALYZE === 'true'
 });
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -44,7 +44,7 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'geolocation=(self), microphone=(self), camera=(self)'
           }
-        ],
+        ]
       }
     ];
   },
@@ -55,8 +55,8 @@ const nextConfig = {
       ...(config.ignoreWarnings || []),
       {
         module: /@scalar\/api-reference-react/,
-        message: /autoprefixer/,
-      },
+        message: /autoprefixer/
+      }
     ];
 
     Object.assign(config.resolve.alias, {
@@ -91,14 +91,22 @@ const nextConfig = {
       config.externals.push('@node-rs/jieba');
 
       if (nextRuntime === 'nodejs') {
-
       }
     } else {
       config.resolve = {
         ...config.resolve,
         fallback: {
           ...config.resolve.fallback,
-          fs: false
+          fs: false,
+          stream: false,
+          net: false,
+          tls: false,
+          crypto: false,
+          http: false,
+          https: false,
+          zlib: false,
+          dns: false,
+          http2: false
         }
       };
     }
@@ -114,12 +122,7 @@ const nextConfig = {
       // 减少文件监听范围
       config.watchOptions = {
         ...config.watchOptions,
-        ignored: [
-          '**/node_modules',
-          '**/.git',
-          '**/dist',
-          '**/coverage'
-        ],
+        ignored: ['**/node_modules', '**/.git', '**/dist', '**/coverage']
       };
       // 启用持久化缓存
       config.cache = {
@@ -130,7 +133,7 @@ const nextConfig = {
         },
         cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
         maxMemoryGenerations: isDev ? 5 : Infinity,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 天
       };
     }
 
@@ -146,7 +149,13 @@ const nextConfig = {
       'bullmq',
       '@zilliz/milvus2-sdk-node',
       'tiktoken',
-      '@opentelemetry/api-logs'
+      '@opentelemetry/api-logs',
+      '@logtape/logtape',
+      '@logtape/otel',
+      '@logtape/pretty',
+      '@grpc/grpc-js',
+      '@opentelemetry/exporter-logs-otlp-grpc',
+      '@opentelemetry/otlp-grpc-exporter-base'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true,
@@ -155,4 +164,3 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-

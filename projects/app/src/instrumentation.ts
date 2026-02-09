@@ -8,6 +8,9 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       await import('@fastgpt/service/common/proxy');
 
+      const { configureLogger } = await import('@fastgpt/service/common/logger');
+      await configureLogger();
+
       // 基础系统初始化
       const [
         { connectMongo },
@@ -101,10 +104,17 @@ export async function register() {
       startTrainingQueue(true);
       trackTimerProcess();
 
-      console.log('Init system success');
+      const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
+      const logger = getLogger(LogCategories.APP);
+      logger.info('System initialized successfully');
     }
   } catch (error) {
-    console.log('Init system error', error);
+    const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
+    const logger = getLogger(LogCategories.ERROR);
+    logger.error('System initialization failed', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     exit(1);
   }
 }

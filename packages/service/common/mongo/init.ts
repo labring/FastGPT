@@ -1,6 +1,9 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
@@ -24,20 +27,20 @@ export async function connectMongo(props: {
     db.connection.removeAllListeners('disconnected');
   };
 
-  console.log('MongoDB start connect');
+  logger.info('Starting MongoDB connection');
   try {
     // Remove existing listeners to prevent duplicates
     RemoveListeners();
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      console.error('mongo error', error);
+      logger.error('MongoDB connection error', { error: error.message, stack: error.stack });
     });
     db.connection.on('connected', async () => {
-      console.log('mongo connected');
+      logger.info('MongoDB connected successfully');
     });
     db.connection.on('disconnected', async () => {
-      console.error('mongo disconnected');
+      logger.warn('MongoDB disconnected');
     });
 
     await db.connect(url, {
@@ -59,6 +62,10 @@ export async function connectMongo(props: {
 
     return db;
   } catch (error) {
+    logger.error('MongoDB connection failed, retrying...', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     addLog.error('Mongo connect error', error);
 
     await db.disconnect();
