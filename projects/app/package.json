@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.15.0",
+  "version": "4.14.7",
   "private": false,
   "scripts": {
     "dev": "npm run build:workers && next dev",

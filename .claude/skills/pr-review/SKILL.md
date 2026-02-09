@@ -167,15 +167,18 @@ PR 审查输出分为两个部分:
 - **评论内容**: 具体的问题描述和建议
 
 
-#### 步骤 2: 添加行级代码评论
+#### 步骤 2: 提交代码审查评论
 
-GitHub CLI 支持在特定行添加评论。评论数据格式为 JSON:
+GitHub CLI 的 `gh pr review` 命令不支持直接提交行级评论，需要使用 GitHub API。
 
 ```bash
-# 1. 准备行级评论 JSON 文件
-cat > /tmp/line-comments.json << 'EOF'
+# 1. 获取仓库信息
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+
+# 2. 准备 review 数据（包含行级评论）
+cat > /tmp/review-data.json << 'EOF'
 {
-  "body": "行级代码审查评论",
+  "body": "## 📊 代码审查总结\n\n详细的审查意见请查看下方的行级评论。",
   "event": "COMMENT",
   "comments": [
     {
@@ -192,9 +195,12 @@ cat > /tmp/line-comments.json << 'EOF'
 }
 EOF
 
-# 2. 提交整体审查报告和行级评论
-gh pr review <number> --body-file /tmp/pr-review.md --json > /tmp/review-result.json
+# 3. 使用 GitHub API 提交 review
+gh api repos/$REPO/pulls/<number>/reviews \
+  --method POST \
+  --input /tmp/review-data.json
 ```
+
 
 #### 步骤 3: 生成整体审查报告
 
