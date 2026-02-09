@@ -1,8 +1,12 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+  CompletionFinishReason
+} from '@fastgpt/global/core/ai/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { runWorkflow } from '../../index';
-import type { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type';
+import type { DispatchToolModuleProps, ToolNodeItemType } from './type';
 import type { DispatchFlowResponse } from '../../type';
 import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -12,8 +16,21 @@ import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
+import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
-export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunToolResponse> => {
+type ResponseType = {
+  requestIds: string[];
+  error?: string;
+  toolDispatchFlowResponses: DispatchFlowResponse[];
+  toolCallInputTokens: number;
+  toolCallOutputTokens: number;
+  completeMessages: ChatCompletionMessageParam[];
+  assistantResponses: AIChatItemValueItemType[];
+  finish_reason: CompletionFinishReason;
+  toolWorkflowInteractiveResponse?: ToolCallChildrenInteractive;
+};
+
+export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
     res,

@@ -21,7 +21,6 @@ import {
   type AgentPlanType
 } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
-import { parseSystemPrompt } from '../../utils';
 import { addLog } from '../../../../../../../common/system/log';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {

@@ -1,4 +1,4 @@
-import React, { useCallback, useImperativeHandle, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useImperativeHandle, useRef, useState } from 'react';
 
 import HelperBotContextProvider, { type HelperBotProps } from './context';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
@@ -31,8 +31,6 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { rewriteHistoriesByInteractiveResponse } from '../ChatContainer/ChatBox/utils';
-import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 
 const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
@@ -352,6 +350,12 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       setChatId(getNanoid(12));
     }
   }));
+
+  useEffect(() => {
+    return () => {
+      abortRequest();
+    };
+  }, []);
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'100%'} position={'relative'}>

@@ -11,10 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  type InteractiveNodeResponseType,
-  type WorkflowInteractiveResponseType
-} from '../template/system/interactive/type';
+import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
@@ -541,6 +538,7 @@ export function replaceEditorVariable({
   // Build replacement map first to avoid modifying string during iteration
   const replacements: Array<{ pattern: string; replacement: string }> = [];
 
+  const variableRegex = /[.*+?^${}()|[\]\\]/g;
   for (const match of matches) {
     const nodeId = match[1];
     const id = match[2];
@@ -573,8 +571,8 @@ export function replaceEditorVariable({
     }
 
     const formatVal = valToStr(variableVal);
-    const escapedNodeId = nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedNodeId = nodeId.replace(variableRegex, '\\$&');
+    const escapedId = id.replace(variableRegex, '\\$&');
 
     replacements.push({
       pattern: `\\{\\{\\$(${escapedNodeId}\\.${escapedId})\\$\\}\\}`,

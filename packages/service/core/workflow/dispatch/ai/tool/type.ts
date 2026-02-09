@@ -34,17 +34,6 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
 };
 
-export type RunToolResponse = {
-  requestIds: string[];
-  error: string;
-  toolDispatchFlowResponses: DispatchFlowResponse[];
-  toolCallInputTokens: number;
-  toolCallOutputTokens: number;
-  completeMessages: ChatCompletionMessageParam[];
-  assistantResponses: AIChatItemValueItemType[];
-  finish_reason: CompletionFinishReason;
-  toolWorkflowInteractiveResponse?: ToolCallChildrenInteractive;
-};
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
   jsonSchema?: JSONSchemaInputType;
