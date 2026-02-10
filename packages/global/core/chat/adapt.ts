@@ -224,10 +224,12 @@ Answer: ${value.interactive.params.inputForm.map((item) => `- ${item.label}: ${i
 export const GPTMessages2Chats = ({
   messages,
   reserveTool = true,
+  reserveReason = true,
   getToolInfo
 }: {
   messages: ChatCompletionMessageParam[];
   reserveTool?: boolean;
+  reserveReason?: boolean;
   getToolInfo?: (name: string) => { name: string; avatar: string };
 }): ChatItemType[] => {
   const chatMessages = messages
@@ -314,7 +316,7 @@ export const GPTMessages2Chats = ({
       ) {
         const value: AIChatItemValueItemType[] = [];
 
-        if (typeof item.reasoning_content === 'string' && item.reasoning_content) {
+        if (typeof item.reasoning_content === 'string' && item.reasoning_content && reserveReason) {
           value.push({
             reasoning: {
               content: item.reasoning_content

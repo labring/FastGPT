@@ -37,6 +37,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -163,18 +164,6 @@ export function agentForm2AppWorkflow(
               value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
-              key: NodeInputKeyEnum.aiChatTemperature,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
-              key: NodeInputKeyEnum.aiChatTopP,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
               key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
@@ -262,6 +251,25 @@ export function agentForm2AppWorkflow(
     chatConfig: data.chatConfig
   };
 }
+
+export const getEmptyAgentConfig = (t: any) => {
+  return agentForm2AppWorkflow(
+    {
+      aiSettings: {
+        model: '',
+        maxHistories: 6,
+        isResponseAnswerText: true
+      },
+      dataset: {
+        datasets: [],
+        searchMode: DatasetSearchModeEnum.embedding
+      },
+      selectedTools: [],
+      chatConfig: {}
+    },
+    t
+  );
+};
 
 export const loadGeneratedTools = async ({
   newToolIds,

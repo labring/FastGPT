@@ -60,6 +60,7 @@ export type AIChatSettingsModalProps = {
   showTopP?: boolean;
   showStopSign?: boolean;
   showResponseFormat?: boolean;
+  showReasoning?: boolean;
 };
 
 const AIChatSettingsModal = ({
@@ -71,7 +72,8 @@ const AIChatSettingsModal = ({
   showTemperature = true,
   showTopP = true,
   showStopSign = true,
-  showResponseFormat = true
+  showResponseFormat = true,
+  showReasoning = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -423,7 +425,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportReasoning && (
+        {llmSupportReasoning && showReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>

@@ -21,7 +21,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useRouter } from 'next/router';
-import { emptyTemplates } from '@/web/core/app/templates';
+import { getEmptyAppsTemplate } from '@/web/core/app/templates';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -164,12 +164,14 @@ const CreateAppsPage = () => {
           templateId: templateDetail.templateId
         });
       }
+
+      const emptyTemplate = getEmptyAppsTemplate(t);
       return postCreateApp({
         ...baseParams,
         type: appType,
-        modules: emptyTemplates[appType].nodes,
-        edges: emptyTemplates[appType].edges,
-        chatConfig: emptyTemplates[appType].chatConfig
+        modules: emptyTemplate[appType].nodes,
+        edges: emptyTemplate[appType].edges,
+        chatConfig: emptyTemplate[appType].chatConfig
       });
     },
     {
