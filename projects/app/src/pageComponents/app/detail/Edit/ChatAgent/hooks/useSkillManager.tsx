@@ -97,6 +97,17 @@ export const useSkillManager = ({
         });
       }
 
+      const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
+      if (datasetSearchInfo) {
+        apiTools.unshift({
+          id: SubAppIds.datasetSearch,
+          label: t(datasetSearchInfo.name),
+          icon: datasetSearchInfo.avatar,
+          description: datasetSearchInfo.toolDescription,
+          canClick: true
+        });
+      }
+
       return apiTools;
     },
     {
@@ -296,10 +307,8 @@ export const useSkillManager = ({
       });
     }
 
-    // Merge dataset search tool when datasets are selected
-    if (hasSelectedDataset) {
-      const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
-
+    const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
+    if (datasetSearchInfo) {
       tools.push({
         id: SubAppIds.datasetSearch,
         pluginId: SubAppIds.datasetSearch,
@@ -310,7 +319,7 @@ export const useSkillManager = ({
         templateType: FlowNodeTemplateTypeEnum.tools,
         inputs: [],
         outputs: [],
-        configStatus: 'configured'
+        configStatus: hasSelectedDataset ? 'configured' : 'invalid'
       });
     }
 
