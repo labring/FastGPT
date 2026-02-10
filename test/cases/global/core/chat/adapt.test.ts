@@ -625,9 +625,10 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const toolValue = result[0].value[0] as any;
-    expect(toolValue.tool).toBeDefined();
-    expect(toolValue.tool?.functionName).toBe('search_web');
-    expect(toolValue.tool?.response).toBe('{"results": []}');
+    expect(toolValue.tools).toBeDefined();
+    expect(toolValue.tools).toHaveLength(1);
+    expect(toolValue.tools[0].functionName).toBe('search_web');
+    expect(toolValue.tools[0].response).toBe('{"results": []}');
   });
 
   it('should skip tool_calls when reserveTool is false', () => {
@@ -723,8 +724,10 @@ describe('GPTMessages2Chats', () => {
     const result = GPTMessages2Chats({ messages, reserveTool: true, getToolInfo });
 
     const toolValue = result[0].value[0] as any;
-    expect(toolValue.tool?.toolName).toBe('Custom Tool Display Name');
-    expect(toolValue.tool?.toolAvatar).toBe('http://example.com/avatar.png');
+    expect(toolValue.tools).toBeDefined();
+    expect(toolValue.tools).toHaveLength(1);
+    expect(toolValue.tools[0].toolName).toBe('Custom Tool Display Name');
+    expect(toolValue.tools[0].toolAvatar).toBe('http://example.com/avatar.png');
   });
 
   it('should handle function_call in assistant message with reserveTool true', () => {
@@ -832,8 +835,11 @@ describe('GPTMessages2Chats', () => {
 
     const result = GPTMessages2Chats({ messages, reserveTool: true });
 
-    // plan_agent should be skipped, so result should be empty or have no tool
-    expect(result).toHaveLength(0);
+    // plan_agent should be skipped, resulting in empty tools array
+    expect(result).toHaveLength(1);
+    const toolValue = result[0].value[0] as any;
+    expect(toolValue.tools).toBeDefined();
+    expect(toolValue.tools).toHaveLength(0);
   });
 });
 
