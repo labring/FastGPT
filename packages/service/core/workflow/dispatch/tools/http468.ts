@@ -493,7 +493,7 @@ async function fetchData({
   params: Record<string, any>;
   timeout: number;
 }) {
-  if (isInternalAddress(url)) {
+  if (await isInternalAddress(url)) {
     return Promise.reject('Url is invalid');
   }
 

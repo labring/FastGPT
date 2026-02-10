@@ -184,7 +184,7 @@ export const getFileContentFromLinks = async ({
         }
 
         try {
-          if (isInternalAddress(url)) {
+          if (await isInternalAddress(url)) {
             return Promise.reject('Url is invalid');
           }
 
