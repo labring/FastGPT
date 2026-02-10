@@ -1,4 +1,7 @@
 import { getWorkerController, WorkerNameEnum } from './utils';
+import { getLogger, LogCategories } from '../common/logger';
+
+const logger = getLogger(LogCategories.APP);
 
 export const preLoadWorker = async () => {
   const start = Date.now();
@@ -34,8 +37,16 @@ export const preLoadWorker = async () => {
 
     // Wait for current batch to complete
     await Promise.all(promises);
-    console.log('Preload worker', workerController.workerQueue.length);
+    logger.debug('Worker preload batch completed', {
+      queuedWorkers: workerController.workerQueue.length,
+      batchSize: currentBatchSize,
+      max
+    });
   }
 
-  console.log('Preload worker success', workerController.workerQueue.length, Date.now() - start);
+  logger.info('Worker preload completed', {
+    queuedWorkers: workerController.workerQueue.length,
+    durationMs: Date.now() - start,
+    max
+  });
 };

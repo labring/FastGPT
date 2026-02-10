@@ -18,6 +18,9 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { getS3AvatarSource } from '../../../common/s3/sources/avatar';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.TEAM);
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
@@ -139,10 +142,10 @@ export async function createDefaultTeam({
       { session }
     );
     await createRootOrg({ teamId: tmb.teamId, session });
-    console.log('create default team, group and root org', userId);
+    logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
     return tmb;
   } else {
-    console.log('default team exist', userId);
+    logger.info('Default team exists', { userId });
   }
 }
 

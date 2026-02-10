@@ -2,7 +2,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
@@ -21,6 +21,8 @@ import { delay } from '@fastgpt/service/common/bullmq';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
+const logger = getLogger(LogCategories.MODULE.DATASET);
+
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
 
@@ -34,7 +36,7 @@ type PopulateType = {
 
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
-  addLog.debug(`[QA Queue] Queue size: ${global.qaQueueLen}`);
+  logger.debug('QA queue size check', { queueSize: global.qaQueueLen, max });
 
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
@@ -94,13 +96,17 @@ export async function generateQA(): Promise<any> {
         break;
       }
       if (error) {
-        addLog.error(`[QA Queue] Error`, error);
+        logger.error('QA queue fetch task failed', { error });
         await delay(500);
         continue;
       }
 
       if (!data.dataset || !data.collection) {
-        addLog.info(`[QA Queue] Dataset or collection not found`, data);
+        logger.info('QA queue task skipped: dataset or collection missing', {
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          trainingId: data._id
+        });
         // Delete data
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
@@ -110,7 +116,13 @@ export async function generateQA(): Promise<any> {
         continue;
       }
 
-      addLog.info(`[QA Queue] Start`);
+      logger.info('QA queue task started', {
+        trainingId: data._id,
+        datasetId: data.datasetId,
+        collectionId: data.collectionId,
+        teamId: data.teamId,
+        tmbId: data.tmbId
+      });
 
       try {
         const modelData = getLLMModel(data.dataset.agentModel);
@@ -169,13 +181,21 @@ export async function generateQA(): Promise<any> {
           type: UsageItemTypeEnum.training_qa
         });
 
-        addLog.info(`[QA Queue] Finish`, {
-          time: Date.now() - startTime,
-          splitLength: qaArr.length,
-          usage: { inputTokens, outputTokens }
+        logger.info('QA queue task finished', {
+          durationMs: Date.now() - startTime,
+          qaCount: qaArr.length,
+          usage: { inputTokens, outputTokens },
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId
         });
       } catch (err: any) {
-        addLog.error(`[QA Queue] Error`, err);
+        logger.error('QA queue task failed', {
+          error: err,
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId
+        });
         await MongoDatasetTraining.updateOne(
           {
             _id: data._id
@@ -189,13 +209,13 @@ export async function generateQA(): Promise<any> {
       }
     }
   } catch (error) {
-    addLog.error(`[QA Queue] Error`, error);
+    logger.error('QA queue loop failed', { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[QA Queue] Done`);
+    logger.info('QA queue drained', { queueSize: global.qaQueueLen });
   }
-  addLog.debug(`[QA Queue] break loop, current queue size: ${global.qaQueueLen}`);
+  logger.debug('QA queue loop exit', { queueSize: global.qaQueueLen });
 }
 
 // Format qa answer

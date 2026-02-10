@@ -15,7 +15,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
@@ -24,8 +24,11 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 
+const logger = getLogger();
+
 export const getScheduleTriggerApp = async () => {
-  addLog.info('Schedule trigger app');
+  const startAt = new Date();
+  logger.info('Schedule trigger scan started', { startAt });
 
   // 1. Find all the app
   const apps = await retryFn(() => {
@@ -44,6 +47,7 @@ export const getScheduleTriggerApp = async () => {
       }
     ).lean();
   });
+  logger.info('Schedule trigger scan completed', { dueCount: apps.length, startAt });
 
   // 2. Run apps
   await batchRun(
@@ -159,7 +163,15 @@ export const getScheduleTriggerApp = async () => {
           customFeedbacks
         });
       } catch (error) {
-        addLog.error('[Schedule app] run error', error);
+        logger.error('Schedule trigger workflow run failed', {
+          error,
+          appId: app._id,
+          appName: app.name,
+          teamId: app.teamId,
+          tmbId: app.tmbId,
+          chatId,
+          usageId
+        });
 
         await onSave({
           error
@@ -170,7 +182,12 @@ export const getScheduleTriggerApp = async () => {
         await retryFn(() =>
           MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
         ).catch((err) => {
-          addLog.error(`[Schedule app] error update next time`, err);
+          logger.error('Schedule trigger update next time failed', {
+            error: err,
+            appId: app._id,
+            appName: app.name,
+            nextTime
+          });
         });
       }
     },

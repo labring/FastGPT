@@ -22,6 +22,9 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.APP);
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -96,9 +99,9 @@ export async function getInitConfig() {
 
         global.systemVersion = packageJson?.version;
       }
-      console.log(`System Version: ${global.systemVersion}`);
+      logger.info('System version resolved', { systemVersion: global.systemVersion });
     } catch (error) {
-      console.log(error);
+      logger.error('System version resolve failed', { error });
 
       global.systemVersion = '0.0.0';
     }
@@ -164,7 +167,7 @@ export async function initSystemConfig() {
   // set config
   initFastGPTConfig(config);
 
-  console.log({
+  logger.info('System config loaded', {
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
     subPlans: global.subPlans,
