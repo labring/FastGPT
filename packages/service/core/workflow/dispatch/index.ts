@@ -298,17 +298,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     };
   }
 
-  /**
-   * Filter out orphan edges to prevent runtime errors
-   *
-   * Orphan edges can occur in edge cases such as:
-   * - Data migration where node references become stale
-   * - Manual database edits that remove nodes but not edges
-   * - Frontend glitches that create invalid edge references
-   *
-   * Without this filter, the workflow dispatch would fail with undefined errors
-   * when trying to access non-existent nodes during execution.
-   */
   runtimeEdges = filterOrphanEdges({
     edges: runtimeEdges,
     nodes: runtimeNodes,
