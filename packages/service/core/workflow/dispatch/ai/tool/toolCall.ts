@@ -321,6 +321,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   const assistantResponses = GPTMessages2Chats({
     messages: assistantMessages,
     reserveTool: true,
+    reserveReason: aiChatReasoning,
     getToolInfo
   })
     .map((item) => item.value as AIChatItemValueItemType[])

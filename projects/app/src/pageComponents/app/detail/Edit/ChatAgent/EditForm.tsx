@@ -154,6 +154,7 @@ const EditForm = ({
                 showTopP={false}
                 showStopSign={false}
                 showResponseFormat={false}
+                showReasoning={false}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
