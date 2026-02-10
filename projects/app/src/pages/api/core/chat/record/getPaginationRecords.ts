@@ -115,9 +115,7 @@ export async function handler(
       })();
       return {
         ...v,
-        type: type,
-        // @ts-ignore
-        tools: 'tool' in v ? [v.tool] : v.tools
+        type
       };
     });
   });

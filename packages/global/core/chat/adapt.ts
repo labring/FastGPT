@@ -4,6 +4,7 @@ import type {
   ChatItemValueItemType,
   RuntimeUserPromptType,
   SystemChatItemValueItemType,
+  ToolModuleResponseItemType,
   UserChatItemFileItemType,
   UserChatItemType,
   UserChatItemValueItemType
@@ -323,10 +324,11 @@ export const GPTMessages2Chats = ({
         if (item.tool_calls && reserveTool) {
           // save tool calls
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
-          toolCalls.forEach((tool) => {
+
+          const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
             // Skil plan tool
             if (tool.function.name === 'plan_agent') {
-              return;
+              return [];
             }
             let toolResponse =
               messages.find(
@@ -339,8 +341,8 @@ export const GPTMessages2Chats = ({
 
             const toolInfo = getToolInfo?.(tool.function.name);
 
-            value.push({
-              tool: {
+            return [
+              {
                 id: tool.id,
                 toolName: toolInfo?.name || '',
                 toolAvatar: toolInfo?.avatar || '',
@@ -348,7 +350,10 @@ export const GPTMessages2Chats = ({
                 params: tool.function.arguments,
                 response: toolResponse as string
               }
-            });
+            ];
+          });
+          value.push({
+            tools
           });
         }
         if (item.function_call && reserveTool) {
