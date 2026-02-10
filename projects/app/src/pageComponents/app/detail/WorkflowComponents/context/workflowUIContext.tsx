@@ -150,6 +150,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
   const nodeAmountRef = useRef(nodeAmount);
   nodeAmountRef.current = nodeAmount;
 
+  // 埋点初始化：等 appId 和节点数据都就绪后，初始化一次埋点会话（只执行一次）
   const trackInited = useRef(false);
   useEffect(() => {
     if (nodeAmount > 0 && appId && !trackInited.current) {
@@ -158,6 +159,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     }
   }, [nodeAmount, appId]);
 
+  // isFirstRender 用于跳过首次渲染（presentationMode 初始值 false 不应触发"关闭"事件）
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -168,6 +170,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     workflowDemoTrack.onDemoChange(presentationMode, nodeAmountRef.current);
   }, [presentationMode]);
 
+  // 组件卸载时，上报本次会话的所有埋点数据
   useEffect(() => {
     return () => {
       if (trackInited.current) {
