@@ -466,7 +466,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             message: {
               role: 'assistant',
               ...(Array.isArray(formattdResponse)
-                ? { content: formattdResponse }
+                ? {
+                    content: formattdResponse.map((item) => {
+                      // Add value type(适配旧版)
+                      enum ChatItemValueTypeEnum {
+                        text = 'text',
+                        file = 'file',
+                        tool = 'tool',
+                        interactive = 'interactive',
+                        reasoning = 'reasoning'
+                      }
+                      const type = (() => {
+                        if (item.text) return ChatItemValueTypeEnum.text;
+                        if ('file' in item) return ChatItemValueTypeEnum.file;
+                        if ('tool' in item || 'tools' in item) return ChatItemValueTypeEnum.tool;
+                        if ('interactive' in item) return ChatItemValueTypeEnum.interactive;
+                        if ('reasoning' in item) return ChatItemValueTypeEnum.reasoning;
+                        return ChatItemValueTypeEnum.text;
+                      })();
+                      return {
+                        ...item,
+                        type
+                      };
+                    })
+                  }
                 : {
                     content: formattdResponse.content,
                     ...(formattdResponse.reasoning && {
