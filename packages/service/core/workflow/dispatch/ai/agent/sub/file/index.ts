@@ -55,7 +55,7 @@ export const dispatchFileRead = async ({
         }
 
         try {
-          if (isInternalAddress(url)) {
+          if (await isInternalAddress(url)) {
             return {
               index,
               name: '',

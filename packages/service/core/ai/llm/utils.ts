@@ -166,7 +166,7 @@ export const loadRequestMessages = async ({
               if (
                 imgUrl.startsWith('/') ||
                 process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
-                isInternalAddress(imgUrl)
+                (await isInternalAddress(imgUrl))
               ) {
                 try {
                   const url = await (async () => {

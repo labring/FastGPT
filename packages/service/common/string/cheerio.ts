@@ -76,7 +76,7 @@ export const urlsFetch = async ({
 
   const response = await Promise.all(
     urlList.map(async (url) => {
-      const isInternal = isInternalAddress(url);
+      const isInternal = await isInternalAddress(url);
       if (isInternal) {
         return {
           url,
