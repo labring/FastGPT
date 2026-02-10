@@ -63,6 +63,18 @@ export class S3BaseBucket {
     return this.client.bucketName;
   }
 
+  async checkBucketHealth() {
+    await this.createPresignedPutUrl({
+      rawKey: 'health-check.txt',
+      filename: 'health-check.txt',
+      metadata: {
+        contentDisposition: 'attachment; filename="health-check.txt"',
+        originFilename: 'health-check.txt',
+        uploadTime: new Date().toISOString()
+      }
+    });
+  }
+
   // TODO: 加到 MQ 里保障幂等
   async move({ from, to }: { from: string; to: string }): Promise<void> {
     await this.copy({ from, to, options: { temporary: false } });
