@@ -9,6 +9,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import $RefParser from '@apidevtools/json-schema-ref-parser';
 
 export class MCPClient {
   private client: Client;
@@ -90,19 +91,43 @@ export class MCPClient {
         return Promise.reject(new UserError('[MCP Client] Get tools response is not an array'));
       }
 
-      const tools = response.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description || '',
-        inputSchema: tool.inputSchema
-          ? {
-              ...tool.inputSchema,
-              properties: tool.inputSchema.properties || {}
+      const tools = await Promise.all(
+        response.tools.map(async (tool) => {
+          let processedSchema;
+
+          if (tool.inputSchema) {
+            try {
+              // Deep clone to avoid dereference() mutating the original object
+              const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
+              processedSchema = await $RefParser.dereference(schemaClone, {
+                resolve: {
+                  // Disable file and HTTP $ref resolution to prevent SSRF
+                  file: false,
+                  http: false
+                }
+              });
+            } catch (error) {
+              addLog.error(`Failed to dereference schema for tool "${tool.name}":`, error);
+              processedSchema = tool.inputSchema;
             }
-          : {
-              type: 'object',
-              properties: {}
-            }
-      }));
+          }
+
+          return {
+            name: tool.name,
+            description: tool.description || '',
+            inputSchema: processedSchema
+              ? {
+                  type: 'object',
+                  ...processedSchema,
+                  properties: processedSchema.properties || {}
+                }
+              : {
+                  type: 'object',
+                  properties: {}
+                }
+          };
+        })
+      );
 
       // @ts-ignore
       return tools;
