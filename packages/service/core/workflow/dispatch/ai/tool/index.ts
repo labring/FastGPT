@@ -208,8 +208,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     } = await (async () => {
       const adaptMessages = chats2GPTMessages({
         messages,
-        reserveId: false
-        // reserveTool: !!toolModel.toolChoice
+        reserveId: false,
+        reserveTool: true
       });
 
       return runToolCall({

@@ -140,13 +140,13 @@ export const AIChatItemValueSchema = z.object({
       content: z.string()
     })
     .nullish(),
-  tool: ToolModuleResponseItemSchema.nullish(),
+  tools: z.array(ToolModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
   plan: AgentPlanSchema.nullish(),
   stepTitle: StepTitleItemSchema.nullish(),
 
   // @deprecated
-  tools: z.array(ToolModuleResponseItemSchema).nullish()
+  tool: ToolModuleResponseItemSchema.nullish()
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

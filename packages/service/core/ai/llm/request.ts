@@ -438,7 +438,7 @@ export const createStreamResponse = async ({
                 // New tool, add to list.
                 if (tools.find((item) => item.function.name === callingTool!.name)) {
                   const call: ChatCompletionMessageToolCall = {
-                    id: getNanoid(),
+                    id: toolCall.id || getNanoid(6),
                     type: 'function',
                     function: callingTool!
                   };

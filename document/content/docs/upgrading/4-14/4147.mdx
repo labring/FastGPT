@@ -42,6 +42,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 
 1. 会将对话日志中，含错误的记录添加到统计表里。
 
+### 4. 接口更新
+
+在新版本的对话记录中，value 值的 type 已被移除，`/api/core/chat/getPaginationRecords`暂时做了适配，请使用该 API 的用户尽快调整 value 解析方案，直接判断 `text`,`tools`等字段是否存在即可。
+
 ## 🚀 新增内容
 
 1. 基于上下文工程的 Agent 模式，适合长任务拆解的场景。(测试版)

@@ -448,6 +448,7 @@ const AIResponseBox = ({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+  const tools = value.tool ? [value.tool] : value.tools;
 
   if ('text' in value && value.text) {
     return (
@@ -468,8 +469,12 @@ const AIResponseBox = ({
       />
     );
   }
-  if ('tool' in value && value.tool && showRunningStatus) {
-    return <RenderTool showAnimation={isChatting} tool={value.tool} />;
+  if (tools && showRunningStatus) {
+    return tools.map((tool) => (
+      <Box key={tool.id} _notLast={{ mb: 2 }}>
+        <RenderTool showAnimation={isChatting} tool={tool} />
+      </Box>
+    ));
   }
   if ('interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);
@@ -502,14 +507,6 @@ const AIResponseBox = ({
     return <RenderStepTitle chatItemDataId={chatItemDataId} step={value.stepTitle} />;
   }
 
-  // Abandon
-  if ('tools' in value && value.tools) {
-    return value.tools.map((tool) => (
-      <Box key={tool.id} _notLast={{ mb: 2 }}>
-        <RenderTool showAnimation={isChatting} tool={tool} />
-      </Box>
-    ));
-  }
   return null;
 };
 export default React.memo(AIResponseBox);
