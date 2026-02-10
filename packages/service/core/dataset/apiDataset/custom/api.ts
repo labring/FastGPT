@@ -6,12 +6,12 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
-import { addLog } from '../../../../common/system/log';
 import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 type ResponseDataType = {
   success: boolean;
@@ -30,6 +30,7 @@ type APIFileListResponse = {
 };
 
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
+  const logger = getLogger(LogCategories.MODULE.DATASET);
   const instance = createProxyAxios({
     baseURL: apiServer.baseUrl,
     timeout: 60000, // 超时时间
@@ -44,7 +45,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
    */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
-      addLog.info('Api dataset data is empty');
+      logger.warn('API dataset response data is empty');
       return Promise.reject('服务器异常');
     } else if (!data.success) {
       return Promise.reject(data);
@@ -52,7 +53,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return data.data;
   };
   const responseError = (err: any) => {
-    console.log('error->', '请求错误', err);
+    logger.error('API dataset request failed', { error: err });
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });

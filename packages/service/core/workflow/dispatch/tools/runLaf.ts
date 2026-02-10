@@ -4,9 +4,9 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { axios } from '../../../../common/api/axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { addLog } from '../../../../common/system/log';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 type LafRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpReqUrl]: string;
@@ -23,6 +23,7 @@ type LafResponse = DispatchNodeResultType<
 >;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
+const logger = getLogger(LogCategories.MODULE.WORKFLOW);
 
 export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafResponse> => {
   let {
@@ -96,7 +97,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
       [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse
     };
   } catch (error) {
-    addLog.warn('Http request error', formatHttpError(error));
+    logger.warn('Laf tool request failed', { error });
     return {
       error: {
         [NodeOutputKeyEnum.errorText]: getErrText(error)

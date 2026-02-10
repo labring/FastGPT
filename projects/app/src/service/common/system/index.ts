@@ -198,7 +198,7 @@ export async function initSystemPluginTags() {
       await MongoPluginToolTag.bulkWrite(bulkOps);
     }
   } catch (error) {
-    console.error('Error initializing system plugin tags:', error);
+    logger.error('Error initializing system plugin tags:', { error });
   }
 }
 
@@ -222,6 +222,6 @@ export async function initAppTemplateTypes() {
       })
     );
   } catch (error) {
-    console.error('Error initializing system templates:', error);
+    logger.error('Error initializing system templates:', { error });
   }
 }

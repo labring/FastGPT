@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import './init';
+import { init } from './init';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -96,10 +96,17 @@ app.post('/:key/messages', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app
-  .listen(PORT, () => {
-    addLog.info(`Server is running on port ${PORT}`);
-  })
-  .on('error', (err) => {
-    addLog.error(`Server error`, err);
-  });
+
+async function bootstrap() {
+  await init();
+
+  app
+    .listen(PORT, () => {
+      addLog.info(`Server is running on port ${PORT}`);
+    })
+    .on('error', (err) => {
+      addLog.error(`Server error`, err);
+    });
+}
+
+void bootstrap();

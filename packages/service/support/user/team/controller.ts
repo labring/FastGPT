@@ -160,7 +160,6 @@ export async function updateTeam({
 }: UpdateTeamProps & { teamId: string }) {
   // auth openai key
   if (openaiAccount?.key) {
-    console.log('auth user openai key', openaiAccount?.key);
     const baseUrl = openaiAccount?.baseUrl || 'https://api.openai.com/v1';
     openaiAccount.baseUrl = baseUrl;
 

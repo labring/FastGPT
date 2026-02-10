@@ -1,4 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { getLogger, LogCategories } from '../../common/logger';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
@@ -215,7 +216,8 @@ try {
   ChatSchema.index({ updateTime: -1, teamId: 1 });
   ChatSchema.index({ teamId: 1, updateTime: -1 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build chat indexes', { error });
 }
 
 export const MongoChat = getMongoModel<ChatSchemaType>(chatCollectionName, ChatSchema);

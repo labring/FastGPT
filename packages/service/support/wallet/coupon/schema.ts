@@ -4,6 +4,7 @@ const { Schema } = connectionMongo;
 import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { CouponTypeEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const couponCollectionName = 'team_sub_coupons';
 
@@ -39,7 +40,8 @@ const CouponSchema = new Schema({
 try {
   CouponSchema.index({ key: 1 }, { unique: true });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build coupon indexes', { error });
 }
 
 export const MongoTeamCoupon = getMongoModel<TeamCouponSchema>(couponCollectionName, CouponSchema);

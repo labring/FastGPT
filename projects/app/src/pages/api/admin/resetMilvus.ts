@@ -11,6 +11,8 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.APP);
 
 export type resetMilvusQuery = {};
 
@@ -111,12 +113,12 @@ async function handler(
               break;
             }
           } catch (error) {
-            console.log(error, '=');
+            logger.error('Failed to reset vector record', { error });
           }
         }
       });
     } catch (error) {
-      console.log(error);
+      logger.error('Reset Milvus migration failed', { error });
       await delay(500);
       if (retry > 0) {
         return rebuild(dataset, retry - 1);
@@ -130,7 +132,7 @@ async function handler(
       await rebuild(dataset);
     }
     startTrainingQueue();
-    console.log('Total reset length:', dataLength);
+    logger.info('Milvus reset completed', { totalResetLength: dataLength });
   })();
 
   return {};

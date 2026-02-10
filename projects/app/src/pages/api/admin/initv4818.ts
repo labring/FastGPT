@@ -8,6 +8,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.APP);
 
 /* 
   简单版迁移：直接升级到最新镜像，会去除 MongoDatasetData 里的索引。直接执行这个脚本。
@@ -28,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const start = Date.now();
   await initData(batchSize);
   // await restore();
-  console.log('Init data time:', Date.now() - start);
+  logger.info('Migration init data loaded', { durationMs: Date.now() - start });
 
   success = 0;
 
@@ -48,11 +50,11 @@ const restore = async () => {
     await data.save();
 
     success++;
-    console.log('Success:', success);
+    logger.info('Migration progress', { success });
 
     await restore();
   } catch (error) {
-    console.log(error);
+    logger.error('Failed to initialize migration data', { error });
     await delay(500);
     await restore();
   }
@@ -86,7 +88,7 @@ const initData = async (batchSize: number) => {
         );
       } catch (error: any) {
         if (error.code === 11000) {
-          console.log('Duplicate key error');
+          logger.info('Duplicate key error');
         } else {
           throw error;
         }
@@ -101,11 +103,11 @@ const initData = async (batchSize: number) => {
       );
 
       success += dataList.length;
-      console.log('Success:', success);
+      logger.info('Migration progress', { success });
 
       // await initData(batchSize);
     } catch (error: any) {
-      console.log(error, '===');
+      logger.error('Failed to migrate tags data', { error });
       await delay(500);
       // await initData(batchSize);
     }
@@ -132,6 +134,6 @@ const initData = async (batchSize: number) => {
 //   );
 
 //   success += documents.length;
-//   console.log('Delete success:', success);
+//   logger.info('Delete success:', success);
 //   await batchUpdateFields(batchSize);
 // };

@@ -3,12 +3,13 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
+const logger = getLogger(LogCategories.APP);
 
 const updateData = async () => {
   let success = 0;
@@ -23,7 +24,7 @@ const updateData = async () => {
         .limit(1000)
         .lean();
       if (data.length === 0) {
-        console.log('更新分词完成');
+        logger.info('更新分词完成');
         break;
       }
 
@@ -43,7 +44,7 @@ const updateData = async () => {
           });
           datasetDataIds.push(item._id);
         } catch (error) {
-          console.log(`分词处理错误: ${item._id}`, error);
+          logger.error(`分词处理错误: ${item._id}`, { error });
         }
       }
 
@@ -63,9 +64,9 @@ const updateData = async () => {
       });
 
       success += dataTextOps.length;
-      console.log(`成功 ${success}`);
+      logger.info(`成功 ${success}`);
     } catch (error) {
-      addLog.error('更新所有旧的 jieba 分词失败', error);
+      logger.error('更新所有旧的 jieba 分词失败', { error });
       await delay(1000);
     }
   }
@@ -74,7 +75,7 @@ const updateData = async () => {
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
 
-  console.log('更新所有旧的 jieba 分词');
+  logger.info('更新所有旧的 jieba 分词');
   updateData();
   return { success: true };
 }

@@ -1,5 +1,8 @@
 import { type AuthFrequencyLimitProps } from '@fastgpt/global/common/frequenctLimit/type';
 import { MongoFrequencyLimit } from './schema';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.APP);
 
 export const authFrequencyLimit = async ({
   eventId,
@@ -29,6 +32,6 @@ export const authFrequencyLimit = async ({
       return Promise.reject(result);
     }
   } catch (error) {
-    console.log(error);
+    logger.error('Failed to update auth frequency limit', { eventId, error });
   }
 };

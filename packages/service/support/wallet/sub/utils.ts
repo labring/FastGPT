@@ -21,6 +21,9 @@ import {
   CacheKeyEnumTime,
   incrValueToCache
 } from '../../../common/redis/cache';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WALLET);
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -200,7 +203,7 @@ export const getTeamPlanStatus = async ({
       dayjs(standardPlan.expiredTime).isBefore(new Date())) ||
     teamStandardPlans.length === 0
   ) {
-    console.log('Init free stand plan', { teamId });
+    logger.info('Initializing free standard plan', { teamId });
     await initTeamFreePlan({ teamId });
     return getTeamPlanStatus({ teamId });
   }

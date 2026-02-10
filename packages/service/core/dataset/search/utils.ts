@@ -1,7 +1,9 @@
 import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
   const validLists = lists.filter((list): list is string[] => list !== undefined);
@@ -77,7 +79,7 @@ export const datasetSearchQueryExtension = async ({
       if (result.extensionQueries?.length === 0) return;
       return result;
     } catch (error) {
-      addLog.error('Failed to generate extension queries', error);
+      logger.error('Failed to generate extension queries', { error });
     }
   })();
 

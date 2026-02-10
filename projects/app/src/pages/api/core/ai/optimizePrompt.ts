@@ -9,8 +9,9 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+const logger = getLogger(LogCategories.MODULE.AI);
 
 type OptimizePromptBody = {
   originalPrompt: string;
@@ -152,7 +153,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       ]
     });
   } catch (error: any) {
-    addLog.error('Optimize prompt error', error);
+    logger.error('Optimize prompt error', { error });
     sseErrRes(res, error);
   }
   res.end();

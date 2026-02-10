@@ -3,9 +3,11 @@ import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
-import { addLog } from '../../../common/system/log';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI);
 
 export async function createQuestionGuide({
   messages,
@@ -45,7 +47,7 @@ export async function createQuestionGuide({
   const end = answer.lastIndexOf(']');
 
   if (start === -1 || end === -1) {
-    addLog.warn('Create question guide error', { answer });
+    logger.warn('Question guide response missing JSON array', { answer });
     return {
       result: [],
       inputTokens,
@@ -65,7 +67,7 @@ export async function createQuestionGuide({
       outputTokens
     };
   } catch (error) {
-    console.log(error);
+    logger.warn('Failed to parse question guide JSON', { error, raw: jsonStr });
 
     return {
       result: [],

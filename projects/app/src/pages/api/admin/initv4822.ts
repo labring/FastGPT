@@ -3,6 +3,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.APP);
 
 /*
  * 复制 Team 表中的 notificationAccount 到 User 表的 contact 中
@@ -12,7 +14,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   const users = await MongoUser.find();
   const teams = await MongoTeam.find();
 
-  console.log('Total users:', users.length);
+  logger.info('Start bill migration', { totalUsers: users.length });
   let success = 0;
   for await (const user of users) {
     try {
@@ -21,9 +23,9 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
         user.contact = team.notificationAccount;
       }
       await user.save();
-      console.log('Success:', ++success);
+      logger.info('Bill migration progress', { success: ++success });
     } catch (error) {
-      console.error(error);
+      logger.error('Failed to migrate user bill records', { error });
     }
   }
 

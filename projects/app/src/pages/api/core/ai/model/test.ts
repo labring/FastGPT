@@ -10,13 +10,14 @@ import {
   type TTSModelType
 } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+const logger = getLogger(LogCategories.MODULE.AI);
 
 export type testQuery = { model: string; channelId?: number };
 
@@ -45,7 +46,7 @@ async function handler(
         'Aiproxy-Channel': String(channelId)
       }
     : {};
-  addLog.debug(`Test model`, modelData);
+  logger.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
     return testLLMModel(modelData, headers);
@@ -127,7 +128,7 @@ const testSTTModel = async (model: STTModelType, headers: Record<string, string>
     fileStream: fs.createReadStream(path),
     headers
   });
-  addLog.info(`STT result: ${text}`);
+  logger.info(`STT result: ${text}`);
 };
 
 const testReRankModel = async (model: RerankModelItemType, headers: Record<string, string>) => {

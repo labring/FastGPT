@@ -7,9 +7,11 @@ import type {
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { addLog } from '../../../../common/system/log';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -53,7 +55,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     try {
       return JSON.parse(text);
     } catch (error) {
-      addLog.warn('formInput error', { error });
+      logger.warn('Failed to parse form input JSON', { error });
       return {};
     }
   })();

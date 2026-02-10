@@ -36,6 +36,9 @@ import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays, addHours } from 'date-fns';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -550,13 +553,19 @@ export async function searchDatasetData(
           .map((item, index) => {
             const collection = collectionMaps.get(String(item.collectionId));
             if (!collection) {
-              console.log('Collection is not found', item);
+              logger.warn('Dataset collection not found during recall', {
+                collectionId: item.collectionId,
+                dataId: item.id
+              });
               return;
             }
 
             const data = dataMaps.get(String(item.id));
             if (!data) {
-              console.log('Data is not found', item);
+              logger.warn('Dataset data not found during recall', {
+                dataId: item.id,
+                collectionId: item.collectionId
+              });
               return;
             }
 
@@ -718,13 +727,19 @@ export async function searchDatasetData(
         .map((item, index) => {
           const collection = collectionMaps.get(String(item.collectionId));
           if (!collection) {
-            console.log('Collection is not found', item);
+            logger.warn('Dataset collection not found during full-text recall', {
+              collectionId: item.collectionId,
+              dataId: item.dataId
+            });
             return;
           }
 
           const data = dataMaps.get(String(item.dataId));
           if (!data) {
-            console.log('Data is not found', item);
+            logger.warn('Dataset data not found during full-text recall', {
+              dataId: item.dataId,
+              collectionId: item.collectionId
+            });
             return;
           }
 

@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { pickCollaboratorIdFields } from './utils';
+import { getLogger, LogCategories } from '../../common/logger';
 
 export type SyncChildrenPermissionResourceType = {
   _id: string;
@@ -213,6 +214,7 @@ export async function resumeInheritPermission({
   resourceModel: typeof Model;
   session?: ClientSession;
 }) {
+  const logger = getLogger(LogCategories.MODULE.PERMISSION);
   const isFolder = folderTypeList.includes(resource.type);
   // Folder resource, need to sync children
   const [parentClbs, oldMyClbs] = await Promise.all([
@@ -239,7 +241,11 @@ export async function resumeInheritPermission({
   );
   if (parentManage) parentManage.permission = ManageRoleVal;
 
-  console.log(collaborators);
+  logger.debug('Resuming inherited permissions', {
+    resourceId: resource._id,
+    resourceType,
+    collaboratorCount: collaborators.length
+  });
 
   const fn = async (session: ClientSession) => {
     if (isFolder) {

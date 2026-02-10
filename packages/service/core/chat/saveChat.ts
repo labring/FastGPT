@@ -7,7 +7,6 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import { addLog } from '../../common/system/log';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
@@ -24,6 +23,9 @@ import {
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT);
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';
@@ -399,14 +401,14 @@ export const pushChatRecords = async (props: Props) => {
         }
       );
     } catch (error) {
-      addLog.error('Push chat log error', error);
+      logger.error('Failed to push chat log', { chatId, error });
     }
   } catch (error) {
-    addLog.error(`Save chat history error`, error);
+    logger.error('Failed to update chat history', { chatId, error });
   }
 };
 
-/* 
+/*
   更新交互节点，包含两种情况：
   1. 更新当前的 items，并把 value 追加到当前 items
   2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
@@ -473,7 +475,7 @@ export const updateInteractiveChat = async ({
     errorMsg
   });
 
-  /* 
+  /*
     在原来 chat_items 上更新。
     1. 更新交互响应结果
     2. 合并 chat_item 数据
@@ -581,7 +583,7 @@ export const updateInteractiveChat = async ({
 
     // Create chat item respones
     if (nodeResponses) {
-      /* 
+      /*
         Merge with last response data
         如果是从嵌套的 node 里触发的交互，这里需要进行一个合并，否则会导致出现两次相同的 node（child response 无法合并起来）
       */
@@ -649,6 +651,6 @@ export const updateInteractiveChat = async ({
       }
     );
   } catch (error) {
-    addLog.error('update interactive chat log error', error);
+    logger.error('Failed to update interactive chat log', { chatId, error });
   }
 };

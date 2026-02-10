@@ -3,6 +3,9 @@ import * as cheerio from 'cheerio';
 import { axios } from '../api/axios';
 import { htmlToMarkdown } from './utils';
 import { isInternalAddress } from '../system/utils';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.ERROR);
 
 export const cheerioToHtml = ({
   fetchUrl,
@@ -107,7 +110,7 @@ export const urlsFetch = async ({
           selector: usedSelector
         };
       } catch (error) {
-        console.log(error, 'fetch error');
+        logger.warn('Failed to fetch url content', { url, error });
 
         return {
           url,

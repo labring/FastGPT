@@ -23,7 +23,10 @@ export const LogCategories = {
     QUEUE: ['infra', 'queue'] as const,
     S3: ['infra', 's3'] as const,
     GEO: ['infra', 'geo'] as const,
-    OTEL: ['infra', 'otel'] as const
+    OTEL: ['infra', 'otel'] as const,
+    NETWORK: ['infra', 'network'] as const,
+    FILE: ['infra', 'file'] as const,
+    WORKER: ['infra', 'worker'] as const
   },
 
   // HTTP 层
@@ -36,12 +39,16 @@ export const LogCategories = {
   // 业务模块层
   MODULE: {
     WORKFLOW: ['mod', 'workflow'] as const,
+    APP: ['mod', 'app'] as const,
+    MCP: ['mod', 'app', 'mcp'] as const,
     DATASET: ['mod', 'dataset'] as const,
     AI: ['mod', 'ai'] as const,
     USER: ['mod', 'user'] as const,
     WALLET: ['mod', 'wallet'] as const,
     TEAM: ['mod', 'team'] as const,
-    OUTLINK: ['mod', 'outlink'] as const
+    OUTLINK: ['mod', 'outlink'] as const,
+    CHAT: ['mod', 'chat'] as const,
+    PERMISSION: ['mod', 'permission'] as const
   },
 
   // 错误层
@@ -51,7 +58,8 @@ export const LogCategories = {
   EVENT: {
     OUTLINK: ['event', 'outlink'] as const,
     FEISHU: ['event', 'feishu'] as const,
-    WECHAT: ['event', 'wechat'] as const
+    WECHAT: ['event', 'wechat'] as const,
+    TRACK: ['event', 'track'] as const
   }
 } as const;
 

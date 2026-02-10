@@ -9,6 +9,8 @@ import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.MODULE.WORKFLOW);
 
 type OptimizeCodeBody = {
   optimizerInput: string;
@@ -163,7 +165,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       ]
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Failed to optimize workflow code', { error });
   }
   res.end();
 }

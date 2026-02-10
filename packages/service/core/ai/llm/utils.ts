@@ -11,11 +11,13 @@ import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';
-import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI);
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -203,14 +205,14 @@ export const loadRequestMessages = async ({
                 timeout: 10000
               });
               if (response.status < 200 || response.status >= 400) {
-                addLog.info(`Filter invalid image: ${imgUrl}`);
+                logger.info('Filtered invalid image URL', { url: imgUrl });
                 return;
               }
             } catch (error: any) {
               if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
-              addLog.warn(`Filter invalid image: ${imgUrl}`, { error });
+              logger.warn('Failed to validate image URL', { url: imgUrl, error });
               return;
             }
           }
