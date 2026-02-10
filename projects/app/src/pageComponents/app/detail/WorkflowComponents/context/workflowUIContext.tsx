@@ -5,7 +5,7 @@ import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState
 import { createContext, useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from './workflowInitContext';
-import { workflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
+import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
 
 // 创建 Context
 type WorkflowUIContextValue = {
@@ -147,37 +147,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
   // ---- 演示模式埋点 ----
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const nodeAmount = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeAmount);
-  const nodeAmountRef = useRef(nodeAmount);
-  nodeAmountRef.current = nodeAmount;
-
-  // 埋点初始化：等 appId 和节点数据都就绪后，初始化一次埋点会话（只执行一次）
-  const trackInited = useRef(false);
-  useEffect(() => {
-    if (nodeAmount > 0 && appId && !trackInited.current) {
-      trackInited.current = true;
-      workflowDemoTrack.init(appId, nodeAmount);
-    }
-  }, [nodeAmount, appId]);
-
-  // isFirstRender 用于跳过首次渲染（presentationMode 初始值 false 不应触发"关闭"事件）
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (!trackInited.current) return;
-    workflowDemoTrack.onDemoChange(presentationMode, nodeAmountRef.current);
-  }, [presentationMode]);
-
-  // 组件卸载时，上报本次会话的所有埋点数据
-  useEffect(() => {
-    return () => {
-      if (trackInited.current) {
-        workflowDemoTrack.report();
-      }
-    };
-  }, []);
+  useWorkflowDemoTrack(appId, nodeAmount, presentationMode);
 
   // 右键菜单
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { useEffect, useRef } from 'react';
 import { webPushTrack } from './utils';
 
 export type WorkflowDemoTrackData = {
@@ -75,3 +76,37 @@ function report() {
 }
 
 export const workflowDemoTrack = { init, onDemoChange, report };
+
+export function useWorkflowDemoTrack(appId: string, nodeAmount: number, presentationMode: boolean) {
+  const nodeAmountRef = useRef(nodeAmount);
+  nodeAmountRef.current = nodeAmount;
+
+  // 埋点初始化：等 appId 和节点数据都就绪后，初始化一次埋点会话
+  const trackInited = useRef(false);
+  useEffect(() => {
+    if (nodeAmount > 0 && appId && !trackInited.current) {
+      trackInited.current = true;
+      workflowDemoTrack.init(appId, nodeAmount);
+    }
+  }, [nodeAmount, appId]);
+
+  // presentationMode 变化时记录事件，跳过首次渲染
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (!trackInited.current) return;
+    workflowDemoTrack.onDemoChange(presentationMode, nodeAmountRef.current);
+  }, [presentationMode]);
+
+  // 组件卸载时上报
+  useEffect(() => {
+    return () => {
+      if (trackInited.current) {
+        workflowDemoTrack.report();
+      }
+    };
+  }, []);
+}
