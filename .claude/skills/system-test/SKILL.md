@@ -84,7 +84,7 @@ mock 对应的 API 请求进行测试。
 # 运行所有测试
 pnpm test
 
-# 运行指定测试文件
+# 运行指定测试文件(file-path 填完整文件路径)
 pnpm test <file-path>
 
 # 运行指定测试文件的指定测试
