@@ -2,7 +2,7 @@ import { type AuthFrequencyLimitProps } from '@fastgpt/global/common/frequenctLi
 import { MongoFrequencyLimit } from './schema';
 import { getLogger, LogCategories } from '../../logger';
 
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export const authFrequencyLimit = async ({
   eventId,

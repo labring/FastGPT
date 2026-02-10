@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/support/permission/user/constant';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });

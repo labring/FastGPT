@@ -10,7 +10,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 const { Schema } = connectionMongo;
 

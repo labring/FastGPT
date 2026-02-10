@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

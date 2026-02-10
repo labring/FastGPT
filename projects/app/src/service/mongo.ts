@@ -5,7 +5,7 @@ import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export async function initRootUser(retry = 3): Promise<any> {
   try {

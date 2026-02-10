@@ -30,7 +30,11 @@ export async function configureLogger() {
 
   const contextLocalStorage = new AsyncLocalStorage<Record<string, unknown>>();
 
-  await configure({ sinks, loggers, contextLocalStorage });
+  await configure({
+    contextLocalStorage,
+    loggers,
+    sinks
+  });
 
   configured = true;
 }
@@ -42,7 +46,7 @@ export async function desposeLogger() {
   configured = false;
 }
 
-export function getLogger(category: readonly string[] = ['app']) {
+export function getLogger(category: readonly string[] = ['system']) {
   const logger = getLogtapeLogger(category);
 
   return new Proxy(logger, {

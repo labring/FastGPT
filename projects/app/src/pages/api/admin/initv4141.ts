@@ -13,7 +13,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 async function appSplitMigration(teamId: string) {
   const allApps = await MongoApp.find(

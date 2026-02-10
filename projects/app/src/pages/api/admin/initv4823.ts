@@ -13,7 +13,7 @@ import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/t
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 // 删了库，没删集合
 const checkInvalidCollection = async () => {

@@ -8,7 +8,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { surrenderProcess } from '@fastgpt/service/common/system/tools';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export type SyncAppChatLogQuery = {};
 
@@ -18,7 +18,7 @@ export type SyncAppChatLogBody = {
 
 export type SyncAppChatLogResponse = {};
 
-/* 
+/*
     将 chats 表全部扫一遍，来获取统计数据
 */
 async function handler(

@@ -4,7 +4,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 /*
  * 复制 Team 表中的 notificationAccount 到 User 表的 contact 中

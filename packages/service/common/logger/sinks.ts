@@ -1,5 +1,5 @@
 import type { Config } from '@logtape/logtape';
-import { getConsoleSink } from '@logtape/logtape';
+import { getConsoleSink, withFilter } from '@logtape/logtape';
 import { getPrettyFormatter } from '@logtape/pretty';
 import { getOpenTelemetrySink } from './otel';
 import dayjs from 'dayjs';
@@ -64,12 +64,15 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
       throw new Error('LOG_OTEL_URL is required when LOG_ENABLE_OTEL is true');
     }
 
-    sinks.otel = getOpenTelemetrySink({
-      serviceName: otelServiceName,
-      otlpExporterConfig: {
-        url: otelUrl
-      }
-    });
+    sinks.otel = withFilter(
+      getOpenTelemetrySink({
+        serviceName: otelServiceName,
+        otlpExporterConfig: {
+          url: otelUrl
+        }
+      }),
+      (record) => record.level !== 'debug'
+    );
 
     composedSinks.push('otel');
     console.log(`✓ Logtape OpenTelemetry URL: ${otelUrl}`);

@@ -8,7 +8,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 // 所有 trainingType=auto 的 collection，都改成 trainingType=chunk
 const updateCollections = async () => {

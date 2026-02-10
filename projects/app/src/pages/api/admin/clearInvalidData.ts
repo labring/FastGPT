@@ -10,7 +10,7 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 let deleteImageAmount = 0;
 async function checkInvalidImg(start: Date, end: Date) {

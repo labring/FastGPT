@@ -21,7 +21,7 @@ import {
   truncateFilename
 } from '@fastgpt/service/common/s3/utils';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 // 将 GridFS 的流转换为 Buffer
 async function gridFSStreamToBuffer(

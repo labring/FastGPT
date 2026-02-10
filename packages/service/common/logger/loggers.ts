@@ -1,4 +1,5 @@
-import type { Config } from '@logtape/logtape';
+import type { Config, LogLevel } from '@logtape/logtape';
+import { moduleCategories } from './categories';
 
 type SinkId = 'console' | 'jsonl' | 'otel';
 type FilterId = string;
@@ -13,6 +14,8 @@ type CreateLoggersOptions = {
 export function createLoggers(options: CreateLoggersOptions) {
   const { composedSinks, enableDebugLevel } = options;
 
+  const level: LogLevel = enableDebugLevel ? 'debug' : 'info';
+
   const loggers: LoggerConfig = [
     // logtape 内部日志
     {
@@ -22,8 +25,8 @@ export function createLoggers(options: CreateLoggersOptions) {
     },
     // 应用层日志
     {
-      category: ['app'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'info',
+      category: ['system'],
+      lowestLevel: level,
       sinks: composedSinks
     },
     // 错误层日志
@@ -35,25 +38,25 @@ export function createLoggers(options: CreateLoggersOptions) {
     // HTTP 层日志
     {
       category: ['http'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'info',
+      lowestLevel: level,
       sinks: composedSinks
     },
     // 基础设施层日志
     {
       category: ['infra'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'info',
+      lowestLevel: level,
       sinks: composedSinks
     },
     // 业务模块层日志
-    {
-      category: ['mod'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'info',
+    ...moduleCategories.map((category) => ({
+      category: [category],
+      lowestLevel: level,
       sinks: composedSinks
-    },
+    })),
     // 事件层日志
     {
       category: ['event'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'info',
+      lowestLevel: level,
       sinks: composedSinks
     }
   ];

@@ -5,7 +5,7 @@ import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSch
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export type ResponseType = {
   message: string;

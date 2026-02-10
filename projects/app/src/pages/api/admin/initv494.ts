@@ -11,7 +11,7 @@ import { type Processor } from '@fastgpt/service/common/bullmq';
 import { getQueue, getWorker, QueueNames } from '@fastgpt/service/common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 const initWebsiteSyncData = async () => {
   // find out all website dataset

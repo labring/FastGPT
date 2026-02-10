@@ -9,7 +9,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 const updateData = async () => {
   let success = 0;

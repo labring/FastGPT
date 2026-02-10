@@ -4,7 +4,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 /**
  * Initialize feedback flags for chat records

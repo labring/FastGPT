@@ -12,7 +12,7 @@ import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 /*
   简单版迁移：直接升级到最新镜像，会去除 MongoDatasetData 里的索引。直接执行这个脚本。

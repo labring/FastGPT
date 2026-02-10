@@ -105,7 +105,7 @@ export async function register() {
       trackTimerProcess();
 
       const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
-      const logger = getLogger(LogCategories.APP);
+      const logger = getLogger(LogCategories.SYSTEM);
       logger.info('System initialized successfully');
     }
   } catch (error) {

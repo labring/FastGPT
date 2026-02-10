@@ -4,7 +4,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export type ResponseType = {
   message: string;

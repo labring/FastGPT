@@ -11,7 +11,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.MCP);
+const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
 export class MCPClient {
   private client: Client;

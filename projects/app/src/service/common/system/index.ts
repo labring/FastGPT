@@ -24,7 +24,7 @@ import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -168,10 +168,12 @@ export async function initSystemConfig() {
   initFastGPTConfig(config);
 
   logger.info('System config loaded', {
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData
+    fastgpt: {
+      feConfigs: global.feConfigs,
+      systemEnv: global.systemEnv,
+      subPlans: global.subPlans,
+      licenseData: global.licenseData
+    }
   });
 }
 

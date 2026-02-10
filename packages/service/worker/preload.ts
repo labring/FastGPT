@@ -1,7 +1,7 @@
 import { getWorkerController, WorkerNameEnum } from './utils';
 import { getLogger, LogCategories } from '../common/logger';
 
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export const preLoadWorker = async () => {
   const start = Date.now();

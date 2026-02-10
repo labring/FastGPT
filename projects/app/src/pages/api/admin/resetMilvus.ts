@@ -12,7 +12,7 @@ import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 export type resetMilvusQuery = {};
 

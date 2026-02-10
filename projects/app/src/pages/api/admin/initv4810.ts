@@ -5,7 +5,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.APP);
+const logger = getLogger(LogCategories.SYSTEM);
 
 /* 初始化发布的版本 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
