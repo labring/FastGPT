@@ -5,6 +5,7 @@ import { cleanupIntervalMs, dbPath, privateOrOtherLocationName } from './constan
 import type { LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
+export type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
 import { addLog } from '../system/log';
 import type { localeType } from '@fastgpt/global/common/i18n/type';

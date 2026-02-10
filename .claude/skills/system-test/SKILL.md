@@ -34,7 +34,15 @@ projects 里的测试，写在 FastGPT/projects/app/test 目录下，子路径�
 
 1. 每个文件，对应一个测试文件。每个函数对应不同的 describe 块。
 2. 需覆盖 100% 行数和分支。
-3. 测试文件尽可能不要引入第三方依赖库，使用较为原生的方式进行检查。如果需要引入第三方依赖库，则从对应文件里 export 依赖库给 test 使用。
+3. 测试文件尽可能不要引入第三方依赖库，使用较为原生的方式进行检查。如果需要引入第三方依赖库，则从对应文件里 export 依赖库给 test 使用。例如：
+
+```ts
+// FastGPT/packages/service/common/geo/index.ts
+import type { NextApiRequest } from 'next';
+// 同时导出一个依赖给 FastGPT/test/cases/service/common/geo/index.test.ts 使用
+export type { NextApiRequest } from 'next';
+```
+
 4. 尽量减少函数 mock，如果是系统上原生可运行的函数，则无需 mock，只需要 mock 那些无法本地直接运行的依赖（比如需要远程服务，API 密钥之类的）
 5. 对于 type.ts, constants.ts, schema.ts, *.schema.ts 文件，以及静态数据，直接跳过忽略。
 6. 根据 [vitest.config.mts](../../../vitest.config.mts) 文件配置，跳过不需要测试的文件。
