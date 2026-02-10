@@ -25,7 +25,7 @@ import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.CHAT);
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';

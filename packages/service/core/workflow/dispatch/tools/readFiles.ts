@@ -23,7 +23,7 @@ import { S3Sources } from '../../../../common/s3/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];

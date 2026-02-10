@@ -4,7 +4,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const WORKFLOW_STATUS_PREFIX = 'agent_runtime_stopping';
 const TTL = 60; // 1分钟
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.STATUS);
 
 export const StopStatus = 'STOPPING';
 

@@ -10,7 +10,7 @@ import {
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 export type mcpQuery = { key: string };
 

@@ -5,7 +5,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import Papa from 'papaparse';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.APP.EVALUATION);
 
 export const parseEvaluationCSV = (rawText: string) => {
   const parseResult = Papa.parse(rawText.trim(), {

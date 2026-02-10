@@ -31,7 +31,7 @@ type FeishuFileListResponse = {
 };
 
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
   const instance = createProxyAxios({

@@ -23,7 +23,7 @@ type LafResponse = DispatchNodeResultType<
 >;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafResponse> => {
   let {

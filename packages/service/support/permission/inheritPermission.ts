@@ -214,7 +214,7 @@ export async function resumeInheritPermission({
   resourceModel: typeof Model;
   session?: ClientSession;
 }) {
-  const logger = getLogger(LogCategories.MODULE.PERMISSION);
+  const logger = getLogger(LogCategories.MODULE.PERMISSION.INHERIT);
   const isFolder = folderTypeList.includes(resource.type);
   // Folder resource, need to sync children
   const [parentClbs, oldMyClbs] = await Promise.all([

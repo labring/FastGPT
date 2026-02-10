@@ -4,7 +4,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.MODULE.TEAM);
+const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export type checkUsageQuery = { key: string };
 

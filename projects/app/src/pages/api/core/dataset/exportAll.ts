@@ -14,7 +14,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type DataItemType = {
   _id: string;

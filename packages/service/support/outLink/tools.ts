@@ -4,7 +4,7 @@ import { FastGPTProUrl } from '../../common/system/constants';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.OUTLINK);
+const logger = getLogger(LogCategories.MODULE.OUTLINK.TOOLS);
 
 export const addOutLinkUsage = ({
   shareId,

@@ -10,7 +10,7 @@ import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/uti
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {

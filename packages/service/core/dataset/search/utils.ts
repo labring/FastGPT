@@ -3,7 +3,7 @@ import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
   const validLists = lists.filter((list): list is string[] => list !== undefined);

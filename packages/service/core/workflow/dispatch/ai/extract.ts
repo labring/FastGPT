@@ -19,7 +19,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 import {
   type ChatCompletionMessageParam,
   type ChatCompletionTool

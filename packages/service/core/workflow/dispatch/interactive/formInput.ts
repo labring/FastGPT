@@ -11,7 +11,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;

@@ -13,7 +13,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 export type templateImportQuery = {};
 

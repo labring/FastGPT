@@ -7,7 +7,7 @@ import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
 export async function createQuestionGuide({
   messages,

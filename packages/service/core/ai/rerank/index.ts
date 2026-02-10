@@ -5,7 +5,7 @@ import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
 type PostReRankResponse = {
   id: string;

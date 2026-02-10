@@ -18,7 +18,7 @@ import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dat
 import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 export const readFileRawTextByUrl = async ({
   teamId,

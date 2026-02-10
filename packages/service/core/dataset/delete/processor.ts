@@ -9,7 +9,7 @@ import { removeImageByPath } from '../../../common/file/image/controller';
 import { MongoDatasetTraining } from '../training/schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 export const deleteDatasetsImmediate = async ({
   teamId,

@@ -30,7 +30,7 @@ import { isInternalAddress } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios } from '../../../../common/api/axios';
 
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 type PropsArrType = {
   key: string;

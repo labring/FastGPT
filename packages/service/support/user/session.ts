@@ -4,7 +4,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.USER);
+const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 
 const redisPrefix = 'session:';
 const getSessionKey = (key: string) => `${redisPrefix}${key}`;

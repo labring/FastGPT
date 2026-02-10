@@ -10,7 +10,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.CHAT);
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 export async function getChatItems({
   includeDeleted = false,

@@ -16,7 +16,7 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];

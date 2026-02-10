@@ -11,7 +11,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.OPTIMIZE_PROMPT);
 
 type OptimizePromptBody = {
   originalPrompt: string;

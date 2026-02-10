@@ -36,7 +36,7 @@ const getRequestId = () => {
   return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
 };
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export type ResponseEvents = {
   onStreaming?: (e: { text: string }) => void;

@@ -13,7 +13,7 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WALLET);
+const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
 export async function createUsage(data: CreateUsageProps) {
   try {

@@ -15,7 +15,7 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const parseBody = ExportCollectionBodySchema.parse(req.body);

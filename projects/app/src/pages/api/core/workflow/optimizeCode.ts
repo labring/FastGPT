@@ -10,7 +10,7 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 
 type OptimizeCodeBody = {
   optimizerInput: string;

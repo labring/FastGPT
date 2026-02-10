@@ -1,7 +1,7 @@
 import { MongoOpenApi } from './schema';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.USER);
+const logger = getLogger(LogCategories.MODULE.OPENAPI.TOOLS);
 
 export function updateApiKeyUsedTime(id: string) {
   MongoOpenApi.findByIdAndUpdate(id, {

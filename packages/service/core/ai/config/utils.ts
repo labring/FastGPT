@@ -29,7 +29,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   try {
     await preloadModelProviders();
   } catch (error) {
-    const logger = getLogger(LogCategories.MODULE.AI);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
     logger.error('System model provider preload failed', { error });
     return Promise.reject(error);
   }
@@ -233,7 +233,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       })) as SystemModelItemType[];
     }
 
-    const logger = getLogger(LogCategories.MODULE.AI);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
     logger.info('System models loaded', {
       total: _systemModelList.length,
       active: _systemActiveModelList.length
@@ -246,7 +246,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       }))
     });
   } catch (error) {
-    const logger = getLogger(LogCategories.MODULE.AI);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
     logger.error('System models load failed', { error });
 
     return Promise.reject(error);

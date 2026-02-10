@@ -8,7 +8,7 @@ import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
 /*
   Query Extension - Semantic Search Enhancement

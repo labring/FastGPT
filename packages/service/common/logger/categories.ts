@@ -38,8 +38,17 @@ export const LogCategories = {
 
   // 业务模块层（参考 pages/api）
   MODULE: {
-    WORKFLOW: ['workflow'] as const,
+    WORKFLOW: Object.assign(['workflow'] as const, {
+      AI: ['workflow', 'ai'] as const,
+      DATASET: ['workflow', 'dataset'] as const,
+      DISPATCH: ['workflow', 'dispatch'] as const,
+      INTERACTIVE: ['workflow', 'interactive'] as const,
+      OPTIMIZE_CODE: ['workflow', 'optimize-code'] as const,
+      STATUS: ['workflow', 'status'] as const,
+      TOOLS: ['workflow', 'tools'] as const
+    }),
     APP: Object.assign(['app'] as const, {
+      EVALUATION: ['app', 'evaluation'] as const,
       FOLDER: ['app', 'folder'] as const,
       HTTP_TOOLS: ['app', 'http-tools'] as const,
       LOGS: ['app', 'logs'] as const,
@@ -54,17 +63,25 @@ export const LogCategories = {
       DATA: ['dataset', 'data'] as const,
       FILE: ['dataset', 'file'] as const,
       FOLDER: ['dataset', 'folder'] as const,
+      QUEUES: ['dataset', 'queues'] as const,
       TRAINING: ['dataset', 'training'] as const
     }),
     AI: Object.assign(['ai'] as const, {
       AGENT: ['ai', 'agent'] as const,
-      MODEL: ['ai', 'model'] as const
+      CONFIG: ['ai', 'config'] as const,
+      EMBEDDING: ['ai', 'embedding'] as const,
+      FUNCTIONS: ['ai', 'functions'] as const,
+      LLM: ['ai', 'llm'] as const,
+      MODEL: ['ai', 'model'] as const,
+      OPTIMIZE_PROMPT: ['ai', 'optimize-prompt'] as const,
+      RERANK: ['ai', 'rerank'] as const
     }),
     USER: Object.assign(['user'] as const, {
       ACCOUNT: ['user', 'account'] as const,
       TEAM: ['user', 'team'] as const
     }),
     WALLET: Object.assign(['wallet'] as const, {
+      SUB: ['wallet', 'sub'] as const,
       USAGE: ['wallet', 'usage'] as const
     }),
     TEAM: ['team'] as const,
@@ -73,6 +90,7 @@ export const LogCategories = {
       FEISHU: ['outlink', 'feishu'] as const,
       OFFIACCOUNT: ['outlink', 'offiaccount'] as const,
       PLAYGROUND: ['outlink', 'playground'] as const,
+      TOOLS: ['outlink', 'tools'] as const,
       WECOM: ['outlink', 'wecom'] as const
     }),
     CHAT: Object.assign(['chat'] as const, {
@@ -86,7 +104,9 @@ export const LogCategories = {
       RECORD: ['chat', 'record'] as const,
       TEAM: ['chat', 'team'] as const
     }),
-    PERMISSION: ['permission'] as const,
+    PERMISSION: Object.assign(['permission'] as const, {
+      INHERIT: ['permission', 'inherit'] as const
+    }),
     PLUGIN: Object.assign(['plugin'] as const, {
       ADMIN: ['plugin', 'admin'] as const,
       ADMIN_MARKETPLACE: ['plugin', 'admin', 'marketplace'] as const,
@@ -100,7 +120,9 @@ export const LogCategories = {
       CLIENT: ['mcp', 'client'] as const,
       SERVER: ['mcp', 'server'] as const
     }),
-    OPENAPI: ['openapi'] as const,
+    OPENAPI: Object.assign(['openapi'] as const, {
+      TOOLS: ['openapi', 'tools'] as const
+    }),
     MARKETING: ['marketing'] as const
   },
 

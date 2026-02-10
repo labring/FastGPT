@@ -20,7 +20,7 @@ import { createRootOrg } from '../../permission/org/controllers';
 import { getS3AvatarSource } from '../../../common/s3/sources/avatar';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.TEAM);
+const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();

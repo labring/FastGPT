@@ -4,7 +4,7 @@ import { axios } from '../../common/api/axios';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.CHAT);
+const logger = getLogger(LogCategories.MODULE.CHAT.RECORD);
 
 export type Metadata = {
   [key: string]: {

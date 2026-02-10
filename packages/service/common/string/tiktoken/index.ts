@@ -10,7 +10,7 @@ import { WorkerNameEnum, getWorkerController } from '../../../worker/utils';
 import type { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export const countGptMessagesTokens = async (
   messages: ChatCompletionMessageParam[],

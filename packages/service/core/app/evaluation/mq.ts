@@ -2,7 +2,7 @@ import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.APP.EVALUATION);
 
 export type EvaluationJobData = {
   evalId: string;

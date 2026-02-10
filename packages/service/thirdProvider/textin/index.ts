@@ -4,7 +4,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
 export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
-  const logger = getLogger(LogCategories.MODULE.DATASET);
+  const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = axios.create({
     baseURL: 'https://api.textin.com/ai/service/v1',

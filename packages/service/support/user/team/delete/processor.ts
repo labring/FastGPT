@@ -23,7 +23,7 @@ import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.TEAM);
+const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
   const { teamId } = job.data;

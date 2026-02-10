@@ -30,7 +30,7 @@ type APIFileListResponse = {
 };
 
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
-  const logger = getLogger(LogCategories.MODULE.DATASET);
+  const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
     baseURL: apiServer.baseUrl,
     timeout: 60000, // 超时时间

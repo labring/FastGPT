@@ -44,7 +44,7 @@ import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
-const logger = getLogger(LogCategories.MODULE.CHAT);
+const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 

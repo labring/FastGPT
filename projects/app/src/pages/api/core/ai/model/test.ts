@@ -17,7 +17,7 @@ import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions'
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 export type testQuery = { model: string; channelId?: number };
 

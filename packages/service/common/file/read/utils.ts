@@ -12,7 +12,7 @@ import { uploadImage2S3Bucket } from '../../s3/utils';
 import { Mimes } from '../../s3/constants';
 import { getLogger, LogCategories } from '../../logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 export type readRawTextByLocalFileParams = {
   teamId: string;

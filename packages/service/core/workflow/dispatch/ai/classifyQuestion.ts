@@ -16,7 +16,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WORKFLOW);
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;

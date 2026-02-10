@@ -13,7 +13,7 @@ import { parseJsonArgs } from '../../utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 /**
  * 压缩 对话历史

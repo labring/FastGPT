@@ -1,7 +1,7 @@
 import { MongoAppRecord } from './schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 export const recordAppUsage = async ({
   appId,

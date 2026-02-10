@@ -23,7 +23,7 @@ import {
 } from '../../../common/redis/cache';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.WALLET);
+const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;

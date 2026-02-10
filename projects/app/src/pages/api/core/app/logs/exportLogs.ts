@@ -28,7 +28,7 @@ import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';

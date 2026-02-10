@@ -43,7 +43,7 @@ type YuqueTocListResponse = {
 const yuqueBaseUrl = process.env.YUQUE_DATASET_BASE_URL || 'https://www.yuque.com';
 
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServer }) => {
-  const logger = getLogger(LogCategories.MODULE.DATASET);
+  const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
     baseURL: yuqueBaseUrl,
     timeout: 60000, // 超时时间

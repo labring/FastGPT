@@ -4,7 +4,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getContentTypeFromHeader } from '../utils';
 import { getLogger, LogCategories } from '../../logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 // 图片格式魔数映射表
 const IMAGE_SIGNATURES: { type: string; magic: number[]; check?: (buffer: Buffer) => boolean }[] = [

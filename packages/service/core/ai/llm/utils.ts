@@ -17,7 +17,7 @@ import { isInternalAddress } from '../../../common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.AI);
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],

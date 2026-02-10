@@ -4,7 +4,7 @@ import { sendOneInform } from '../../../support/user/inform/api';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 export const checkTeamAiPointsAndLock = async (teamId: string) => {
   try {

@@ -38,7 +38,7 @@ import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays, addHours } from 'date-fns';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.DATASET);
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];

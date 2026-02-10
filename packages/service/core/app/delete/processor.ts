@@ -6,7 +6,7 @@ import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
 import { getLogger, LogCategories } from '../../../common/logger';
 
-const logger = getLogger(LogCategories.MODULE.APP);
+const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
 const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchemaType[] }) => {
   const results = await batchRun(

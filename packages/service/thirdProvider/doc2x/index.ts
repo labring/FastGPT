@@ -15,7 +15,7 @@ type ApiResponseDataType<T = any> = {
 };
 
 export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
-  const logger = getLogger(LogCategories.MODULE.DATASET);
+  const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = createProxyAxios({
     baseURL: 'https://v2.doc2x.noedgeai.com/api',
