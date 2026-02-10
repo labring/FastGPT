@@ -1,10 +1,3 @@
----
-name: workflow-agent
-description: 当用户需要开发工作流代码时候，可调用此 Agent。
-model: inherit
-color: green
----
-
 # FastGPT 工作流系统架构文档
 
 ## 概述

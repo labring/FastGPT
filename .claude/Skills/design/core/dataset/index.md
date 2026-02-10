@@ -1,10 +1,3 @@
----
-name: dataset-agent
-description: 知识库开发 Agent,负责 FastGPT 知识库模块代码开发。
-model: inherit
-color: blue
----
-
 # FastGPT 知识库(Dataset)模块架构说明
 
 ## 概述

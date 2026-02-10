@@ -1,10 +1,4 @@
----
-name: workflow-stop-design
-description: 工作流暂停逻辑设计方案
----
-
-## Skill 激活测试
-如果激活了这个 skill，你需要告诉我。
+## 对话暂停设计方案
 
 ## 1. Redis 状态管理方案
 
