@@ -26,7 +26,9 @@ export async function register() {
         { trackTimerProcess },
         { initBullMQWorkers },
         { initS3Buckets },
-        { initGeo }
+        { initGeo },
+        { instrumentationCheck, ErrorEnum },
+        { getErrText }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -44,46 +46,57 @@ export async function register() {
         import('@fastgpt/service/common/middle/tracks/processor'),
         import('@/service/common/bullmq'),
         import('@fastgpt/service/common/s3'),
-        import('@fastgpt/service/common/geo')
+        import('@fastgpt/service/common/geo'),
+        import('@/service/common/system/health'),
+        import('@fastgpt/global/common/error/utils')
       ]);
-
-      // connect to signoz
-      connectSignoz();
 
       // 执行初始化流程
       systemStartCb();
       initGlobalVariables();
 
-      // init s3 buckets
-      initS3Buckets();
-
-      // init geo
-      initGeo();
-
-      // Connect to MongoDB
+      // Init infra
       await Promise.all([
+        initS3Buckets(),
         connectMongo({
           db: connectionMongo,
           url: MONGO_URL,
           connectedCb: () => startMongoWatch()
+        }).catch((err) => {
+          return Promise.reject(`[${ErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
         }),
-        initBullMQWorkers()
+        connectMongo({
+          db: connectionLogMongo,
+          url: MONGO_LOG_URL
+        }).catch((err) => {
+          return Promise.reject(`[${ErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+        }),
+        initBullMQWorkers().catch((err) => {
+          return Promise.reject(`[${ErrorEnum.REDIS_ERROR}]: ${getErrText(err)}`);
+        }),
+        initVectorStore().catch((err) => {
+          return Promise.reject(`[${ErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
+        }),
+        connectSignoz()
       ]);
-      connectMongo({
-        db: connectionLogMongo,
-        url: MONGO_LOG_URL
-      });
 
-      //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
+      // Init system config
+      await getInitConfig();
 
+      // Check infrastructure
+      await instrumentationCheck();
+
+      // Load init data
       await Promise.all([
-        preLoadWorker().catch(),
+        initRootUser(),
+        loadSystemModels(),
         getSystemTools(),
         initSystemPluginTags(),
-        initAppTemplateTypes()
+        initAppTemplateTypes(),
+        preLoadWorker().catch()
       ]);
 
+      initGeo(); // init geo
       startCron();
       startTrainingQueue(true);
       trackTimerProcess();
