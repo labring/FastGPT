@@ -301,8 +301,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   runtimeEdges = filterOrphanEdges({
     edges: runtimeEdges,
     nodes: runtimeNodes,
-    workflowId: data.runningAppInfo.id,
-    mode: data.mode
+    workflowId: data.runningAppInfo.id
   });
 
   const startTime = Date.now();
