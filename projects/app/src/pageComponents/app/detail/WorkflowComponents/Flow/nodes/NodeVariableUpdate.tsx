@@ -1,25 +1,22 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import NodeCard from './render/NodeCard';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
+import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import {
-  FlowNodeInputMap,
-  FlowNodeInputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../components/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   type ReferenceItemValueType,
   type ReferenceValueType
@@ -39,6 +36,26 @@ import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useMemoizedFn } from 'ahooks';
+import {
+  BooleanSelectValueEnum,
+  VariableUpdateOperatorEnum
+} from '@fastgpt/global/core/workflow/template/system/variableUpdate/constants';
+import type { TOperationValue } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import ValueTypeLabel from './render/ValueTypeLabel';
+
+const getInputInitialValue = (
+  valueType?: WorkflowIOValueTypeEnum
+): TUpdateListItem['value'] | undefined => {
+  if (valueType === WorkflowIOValueTypeEnum.number) {
+    return ['', { operator: VariableUpdateOperatorEnum.set, value: '' }];
+  }
+  if (valueType === WorkflowIOValueTypeEnum.boolean) {
+    return ['', { operator: VariableUpdateOperatorEnum.set, value: true }];
+  }
+  return undefined;
+};
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -50,19 +67,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     (v) => v
   );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-
-  const menuList = useRef([
-    {
-      renderType: FlowNodeInputTypeEnum.input,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.input].icon,
-      label: t('common:core.workflow.inputType.Manual input')
-    },
-    {
-      renderType: FlowNodeInputTypeEnum.reference,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.reference].icon,
-      label: t('common:core.workflow.inputType.Reference')
-    }
-  ]);
 
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
@@ -90,6 +94,41 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       (inputs.find((input) => input.key === NodeInputKeyEnum.updateList)
         ?.value as TUpdateListItem[]) || [],
     [inputs]
+  );
+
+  const numberOperatorList = useMemo(
+    () => [
+      {
+        label: t('workflow:variable_update_operator_set'),
+        value: VariableUpdateOperatorEnum.set
+      },
+      {
+        label: t('workflow:variable_update_operator_add'),
+        value: VariableUpdateOperatorEnum.add
+      },
+      {
+        label: t('workflow:variable_update_operator_sub'),
+        value: VariableUpdateOperatorEnum.sub
+      },
+      {
+        label: t('workflow:variable_update_operator_mul'),
+        value: VariableUpdateOperatorEnum.mul
+      },
+      {
+        label: t('workflow:variable_update_operator_div'),
+        value: VariableUpdateOperatorEnum.div
+      }
+    ],
+    [t]
+  );
+
+  const booleanOperatorList = useMemo(
+    () => [
+      { label: 'True', value: BooleanSelectValueEnum.setTrue },
+      { label: 'False', value: BooleanSelectValueEnum.setFalse },
+      { label: t('workflow:variable_update_boolean_negate'), value: BooleanSelectValueEnum.negate }
+    ],
+    [t]
   );
 
   const onUpdateList = useCallback(
@@ -173,52 +212,26 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         systemConfigNode,
         chatConfig: appDetail.chatConfig
       });
-      const renderTypeData = menuList.current.find(
-        (item) => item.renderType === updateItem.renderType
-      );
-
       const onUpdateNewValue = (value: any) => {
-        if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
-          onUpdateList(
-            updateList.map((update, i) => (i === index ? { ...update, value: value } : update))
-          );
-        } else {
-          onUpdateList(
-            updateList.map((update, i) =>
-              i === index ? { ...update, value: ['', value] } : update
-            )
-          );
-        }
+        onUpdateList(
+          updateList.map((item, i) =>
+            i === index
+              ? {
+                  ...item,
+                  value:
+                    updateItem.renderType === FlowNodeInputTypeEnum.reference ? value : ['', value]
+                }
+              : item
+          )
+        );
       };
 
       return (
         <Container key={index} w={'full'} mx={0}>
           <Flex alignItems={'center'}>
-            <Flex w={'80px'}>{t('common:core.workflow.variable')}</Flex>
-            <VariableSelector
-              nodeId={nodeId}
-              variable={updateItem.variable}
-              onSelect={(value) => {
-                onUpdateList(
-                  updateList.map((update, i) => {
-                    if (i === index) {
-                      return {
-                        ...update,
-                        value: ['', ''],
-                        valueType: getRefData({
-                          variable: value as ReferenceItemValueType,
-                          getNodeById,
-                          systemConfigNode,
-                          chatConfig: appDetail.chatConfig
-                        }).valueType,
-                        variable: value as ReferenceItemValueType
-                      };
-                    }
-                    return update;
-                  })
-                );
-              }}
-            />
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {t('common:core.workflow.variable')}
+            </Box>
             <Box flex={1} />
             {updateList.length > 1 && (
               <MyIcon
@@ -237,71 +250,156 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               />
             )}
           </Flex>
-          <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
-            <Flex w={'80px'}>
-              <Box>{t('common:value')}</Box>
-              <MyTooltip
-                label={
-                  menuList.current.find((item) => item.renderType === updateItem.renderType)?.label
-                }
-              >
-                <Button
-                  size={'xs'}
-                  bg={'white'}
-                  borderRadius={'xs'}
-                  mx={2}
-                  color={'primary.600'}
-                  onClick={() => {
-                    onUpdateList(
-                      updateList.map((update, i) => {
-                        if (i === index) {
-                          return {
-                            ...update,
-                            value: undefined,
-                            renderType:
-                              updateItem.renderType === FlowNodeInputTypeEnum.input
-                                ? FlowNodeInputTypeEnum.reference
-                                : FlowNodeInputTypeEnum.input
-                          };
-                        }
-                        return update;
-                      })
-                    );
-                  }}
-                >
-                  <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
-                </Button>
-              </MyTooltip>
-            </Flex>
 
-            {/* Render input components */}
+          <Box mt={1}>
+            <VariableSelector
+              nodeId={nodeId}
+              variable={updateItem.variable}
+              onSelect={(value) => {
+                const newValueType = getRefData({
+                  variable: value as ReferenceItemValueType,
+                  getNodeById,
+                  systemConfigNode,
+                  chatConfig: appDetail.chatConfig
+                }).valueType;
+
+                onUpdateList(
+                  updateList.map((item, i) =>
+                    i === index
+                      ? {
+                          ...item,
+                          value: getInputInitialValue(newValueType) ?? ['', ''],
+                          valueType: newValueType,
+                          variable: value as ReferenceItemValueType
+                        }
+                      : item
+                  )
+                );
+              }}
+              labelSuffix={valueType ? <ValueTypeLabel valueType={valueType} /> : undefined}
+            />
+          </Box>
+
+          <Flex mt={2} alignItems={'center'}>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {t('common:value')}
+            </Box>
+            <Box ml={2}>
+              <NodeInputSelect
+                renderTypeList={[FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]}
+                renderTypeIndex={updateItem.renderType === FlowNodeInputTypeEnum.reference ? 1 : 0}
+                onChange={(e) => {
+                  const isReference = e === FlowNodeInputTypeEnum.reference;
+                  onUpdateList(
+                    updateList.map((item, i) =>
+                      i === index
+                        ? {
+                            ...item,
+                            value: isReference ? undefined : getInputInitialValue(valueType),
+                            renderType: isReference
+                              ? FlowNodeInputTypeEnum.reference
+                              : FlowNodeInputTypeEnum.input
+                          }
+                        : item
+                    )
+                  );
+                }}
+              />
+            </Box>
+          </Flex>
+
+          <Box mt={1} className="nodrag">
             {(() => {
               if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
                 return (
                   <VariableSelector
                     nodeId={nodeId}
-                    variable={updateItem.value}
+                    variable={updateItem.value as ReferenceValueType}
                     valueType={valueType}
                     onSelect={onUpdateNewValue}
                   />
                 );
               }
 
-              return (
-                <Box minW={'250px'} maxW={'400px'} borderRadius={'sm'}>
-                  <InputRender
-                    inputType={inputType}
-                    {...formParams}
-                    isRichText={false}
-                    variables={[...variables, ...externalProviderWorkflowVariables]}
-                    variableLabels={variables}
-                    value={updateItem.value?.[1]}
-                    onChange={onUpdateNewValue}
+              if (valueType === WorkflowIOValueTypeEnum.number) {
+                const raw = updateItem.value?.[1];
+                const opValue: TOperationValue =
+                  typeof raw === 'object' && raw !== null && 'operator' in raw
+                    ? (raw as TOperationValue)
+                    : { operator: VariableUpdateOperatorEnum.set, value: raw ?? '' };
+
+                return (
+                  <Flex gap={2} alignItems="center">
+                    <MySelect
+                      w="100px"
+                      h={9}
+                      list={numberOperatorList}
+                      value={opValue.operator}
+                      onChange={(op: string) => onUpdateNewValue({ ...opValue, operator: op })}
+                    />
+                    <MyNumberInput
+                      flex={1}
+                      h={9}
+                      inputFieldProps={{ bg: 'white' }}
+                      placeholder={t('workflow:variable_update_number_placeholder')}
+                      value={opValue.value as number | string}
+                      onChange={(val: number | string | undefined) =>
+                        onUpdateNewValue({ ...opValue, value: val })
+                      }
+                    />
+                  </Flex>
+                );
+              }
+
+              if (valueType === WorkflowIOValueTypeEnum.boolean) {
+                const raw = updateItem.value?.[1];
+                const opValue: TOperationValue =
+                  typeof raw === 'object' && raw !== null && 'operator' in raw
+                    ? (raw as TOperationValue)
+                    : { operator: VariableUpdateOperatorEnum.set, value: !!raw };
+
+                const selectValue =
+                  opValue.operator === VariableUpdateOperatorEnum.negate
+                    ? BooleanSelectValueEnum.negate
+                    : opValue.value === false
+                      ? BooleanSelectValueEnum.setFalse
+                      : BooleanSelectValueEnum.setTrue;
+
+                return (
+                  <MySelect
+                    w="100%"
+                    list={booleanOperatorList}
+                    value={selectValue}
+                    onChange={(val: string) => {
+                      if (val === BooleanSelectValueEnum.negate) {
+                        onUpdateNewValue({
+                          operator: VariableUpdateOperatorEnum.negate
+                        });
+                      } else {
+                        onUpdateNewValue({
+                          operator: VariableUpdateOperatorEnum.set,
+                          value: val === BooleanSelectValueEnum.setTrue
+                        });
+                      }
+                    }}
                   />
-                </Box>
+                );
+              }
+
+              return (
+                <InputRender
+                  inputType={inputType}
+                  {...formParams}
+                  isRichText={false}
+                  variables={[...variables, ...externalProviderWorkflowVariables]}
+                  variableLabels={variables}
+                  value={updateItem.value?.[1]}
+                  onChange={onUpdateNewValue}
+                  minH={80}
+                />
               );
             })()}
-          </Flex>
+          </Box>
         </Container>
       );
     }
@@ -309,7 +407,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} maxW={'1000px'} {...data}>
+      <NodeCard selected={selected} minW={'400px'} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
           <Flex flexDirection={'column'} gap={4}>
             {updateList.map((updateItem, index) => (
@@ -356,12 +454,14 @@ const VariableSelector = ({
   nodeId,
   variable,
   valueType,
-  onSelect
+  onSelect,
+  labelSuffix
 }: {
   nodeId: string;
   variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
   onSelect: (e?: ReferenceValueType) => void;
+  labelSuffix?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
 
@@ -377,6 +477,7 @@ const VariableSelector = ({
       value={variable}
       onSelect={onSelect}
       isArray={valueType?.includes('array')}
+      labelSuffix={labelSuffix}
     />
   );
 };

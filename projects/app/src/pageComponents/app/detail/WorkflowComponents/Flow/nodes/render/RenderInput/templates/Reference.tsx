@@ -52,6 +52,7 @@ type CommonSelectProps = {
   }[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
+  labelSuffix?: React.ReactNode;
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -175,7 +176,8 @@ const SingleReferenceSelector = ({
   list = [],
   onSelect,
   popDirection,
-  ButtonProps
+  ButtonProps,
+  labelSuffix
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -221,6 +223,7 @@ const SingleReferenceSelector = ({
               {nodeName}
               <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
               {outputName}
+              {labelSuffix}
             </Flex>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>
@@ -235,7 +238,7 @@ const SingleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [ButtonProps, getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, getSelectValue, labelSuffix, list, onSelect, placeholder, popDirection, value]);
 
   return ItemSelector;
 };
