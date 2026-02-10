@@ -42,7 +42,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
+import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType, filterOrphanEdges } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
@@ -297,6 +297,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       durationSeconds: 0
     };
   }
+
+  runtimeEdges = filterOrphanEdges({
+    edges: runtimeEdges,
+    nodes: runtimeNodes,
+    workflowId: data.runningAppInfo.id
+  });
 
   const startTime = Date.now();
 

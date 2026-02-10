@@ -30,6 +30,8 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
 
+import { addLog } from '../../../common/system/log';
+
 export const getWorkflowResponseWrite = ({
   res,
   detail,
@@ -87,6 +89,58 @@ export const getWorkflowChildResponseWrite = ({
   return (e: Parameters<WorkflowResponseType>[0]) => {
     return fn({ ...e, id, stepId });
   };
+};
+
+/* 
+  Filter orphan edges from workflow.
+  Orphan edges are edges that have a source or target that is not in the nodes array.
+  This is used to prevent errors when the workflow is edited and the nodes are not updated.
+*/
+export const filterOrphanEdges = ({
+  edges,
+  nodes,
+  workflowId
+}: {
+  edges: RuntimeEdgeItemType[];
+  nodes: RuntimeNodeItemType[];
+  workflowId: string;
+}) => {
+  const filterStartTime = Date.now();
+  const validNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const originalEdgeCount = edges.length;
+  const orphanEdges: RuntimeEdgeItemType[] = [];
+
+  const filteredEdges = edges.filter((edge) => {
+    const sourceExists = validNodeIds.has(edge.source);
+    const targetExists = validNodeIds.has(edge.target);
+
+    // Log orphan edges for debugging
+    if (!sourceExists || !targetExists) {
+      orphanEdges.push(edge);
+    }
+
+    return sourceExists && targetExists;
+  });
+
+  const filteredCount = originalEdgeCount - filteredEdges.length;
+  if (filteredCount > 0) {
+    addLog.info(`Filtered ${filteredCount} orphan edge(s) from workflow`, {
+      workflowId,
+      originalCount: originalEdgeCount,
+      finalCount: filteredEdges.length
+    });
+
+    if (orphanEdges.length > 0) {
+      addLog.warn(`Orphan edges details: ${orphanEdges.length}`);
+    }
+  }
+
+  const filterDuration = Date.now() - filterStartTime;
+  if (filterDuration > 100) {
+    addLog.warn('Orphan edge filtering took significant time');
+  }
+
+  return filteredEdges;
 };
 
 export const filterToolNodeIdByEdges = ({
