@@ -336,7 +336,7 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
   };
 };
 
-export const formatEditorVariablePickerIcon = (
+export const formatEditorVariable = (
   variables: {
     key: string;
     label: string;

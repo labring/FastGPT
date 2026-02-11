@@ -13,10 +13,7 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { workflowSystemVariables } from '@/web/core/app/utils';
-import {
-  formatEditorVariablePickerIcon,
-  getAppChatConfig
-} from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariable, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
@@ -27,7 +24,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
 
   const customGlobalVariables = useMemoEnhance(() => {
-    const globalVariables = formatEditorVariablePickerIcon(
+    const globalVariables = formatEditorVariable(
       getAppChatConfig({
         chatConfig: appDetail.chatConfig,
         systemConfigNode,

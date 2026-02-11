@@ -19,17 +19,13 @@ import { VariableUpdateOperatorEnum } from '@fastgpt/global/core/workflow/templa
 import { normalizeUpdateItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-const numOp = (fn: (cur: number, operand: number) => number) => (cur: any, operand: any) => {
-  const n = Number(operand);
-  return isNaN(n) ? cur : fn(Number(cur) || 0, n);
-};
-
 const operatorHandlerMap: Record<string, (cur: any, operand: any) => any> = {
   [VariableUpdateOperatorEnum.set]: (_cur, operand) => operand,
-  [VariableUpdateOperatorEnum.add]: numOp((cur, n) => cur + n),
-  [VariableUpdateOperatorEnum.sub]: numOp((cur, n) => cur - n),
-  [VariableUpdateOperatorEnum.mul]: numOp((cur, n) => cur * n),
-  [VariableUpdateOperatorEnum.div]: numOp((cur, n) => (n !== 0 ? cur / n : cur)),
+  [VariableUpdateOperatorEnum.add]: (cur, operand) => Number(cur) + Number(operand),
+  [VariableUpdateOperatorEnum.sub]: (cur, operand) => Number(cur) - Number(operand),
+  [VariableUpdateOperatorEnum.mul]: (cur, operand) => Number(cur) * Number(operand),
+  [VariableUpdateOperatorEnum.div]: (cur, operand) =>
+    Number(operand) !== 0 ? Number(cur) / Number(operand) : cur,
   [VariableUpdateOperatorEnum.negate]: (cur) => !cur,
   [VariableUpdateOperatorEnum.push]: (cur, operand) => [
     ...(Array.isArray(cur) ? cur : []),
@@ -55,7 +51,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   } = props;
 
   const { updateList } = params;
-  console.log(updateList);
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
 
   const result = updateList.map((rawItem) => {
@@ -96,7 +91,6 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
         variables,
         nodes: runtimeNodes
       });
-      console.log(currentValue, item.valueType);
       const typedCurrentValue = valueTypeFormat(currentValue, item.valueType) ?? currentValue;
 
       const processedOperand =
