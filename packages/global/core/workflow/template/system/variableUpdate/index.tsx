@@ -30,7 +30,8 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
       value: [
         {
           variable: ['', ''],
-          value: ['', ''],
+          updateType: 'set',
+          inputValue: '',
           valueType: WorkflowIOValueTypeEnum.string,
           renderType: FlowNodeInputTypeEnum.input
         }

@@ -235,6 +235,8 @@
   "variable_update_operator_div": "Divide",
   "variable_update_number_placeholder": "Enter value",
   "variable_update_boolean_negate": "Negate",
+  "variable_update_operator_push": "Push",
+  "variable_update_operator_clear": "Clear",
   "workflow.My edit": "My Edit",
   "workflow.Switch_success": "Switch Successful",
   "workflow.Team cloud": "Team Cloud",

@@ -235,6 +235,8 @@
   "variable_update_operator_div": "除",
   "variable_update_number_placeholder": "输入值",
   "variable_update_boolean_negate": "取反",
+  "variable_update_operator_push": "追加",
+  "variable_update_operator_clear": "清空",
   "workflow.My edit": "我的编辑",
   "workflow.Switch_success": "切换成功",
   "workflow.Team cloud": "团队云端",

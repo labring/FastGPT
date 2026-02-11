@@ -4,11 +4,7 @@ export enum VariableUpdateOperatorEnum {
   sub = 'sub',
   mul = 'mul',
   div = 'div',
-  negate = 'negate'
+  negate = 'negate',
+  push = 'push',
+  clear = 'clear'
 }
-
-export const BooleanSelectValueEnum = {
-  setTrue: `${VariableUpdateOperatorEnum.set}:true`,
-  setFalse: `${VariableUpdateOperatorEnum.set}:false`,
-  negate: VariableUpdateOperatorEnum.negate
-};

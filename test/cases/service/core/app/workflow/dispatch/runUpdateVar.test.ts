@@ -43,9 +43,8 @@ const createMockProps = ({
       teamId: 'test-team',
       tmbId: 'test-tmb',
       name: 'Test App',
-      isChildApp: true // 跳过 SSE 推送
+      isChildApp: true
     },
-    // 其他必需字段
     checkIsStopping: () => false,
     mode: 'test' as const,
     timezone: 'Asia/Shanghai',
@@ -69,30 +68,30 @@ const createMockProps = ({
   } as any;
 };
 
-/** 构造全局变量更新项 */
+/** 构造全局变量更新项（新扁平格式） */
 const createGlobalVarItem = (
   varKey: string,
-  value: any,
+  fields: Pick<TUpdateListItem, 'updateType' | 'inputValue' | 'referenceValue'>,
   valueType: WorkflowIOValueTypeEnum,
   renderType = FlowNodeInputTypeEnum.input
 ): TUpdateListItem => ({
   variable: [VARIABLE_NODE_ID, varKey],
-  value: ['', value],
   valueType,
-  renderType
+  renderType,
+  ...fields
 });
 
 /** 构造节点输出变量更新项 */
 const createNodeOutputItem = (
   nodeId: string,
   outputId: string,
-  value: any,
+  fields: Pick<TUpdateListItem, 'updateType' | 'inputValue' | 'referenceValue'>,
   valueType: WorkflowIOValueTypeEnum
 ): TUpdateListItem => ({
   variable: [nodeId, outputId],
-  value: ['', value],
   valueType,
-  renderType: FlowNodeInputTypeEnum.input
+  renderType: FlowNodeInputTypeEnum.input,
+  ...fields
 });
 
 describe('dispatchUpdateVariable - 运算操作符', () => {
@@ -104,7 +103,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.set, value: 42 },
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: 42 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -115,13 +114,13 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
       expect(variables.score).toBe(42);
     });
 
-    it('set: 空输入返回 null，不更新变量', async () => {
+    it('set: 空输入返回 null', async () => {
       const variables = { score: 10 };
       const props = createMockProps({
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.set, value: '' },
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: '' },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -138,7 +137,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.add, value: 5 },
+            { updateType: VariableUpdateOperatorEnum.add, inputValue: 5 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -155,7 +154,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.sub, value: 3 },
+            { updateType: VariableUpdateOperatorEnum.sub, inputValue: 3 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -172,7 +171,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.mul, value: 2 },
+            { updateType: VariableUpdateOperatorEnum.mul, inputValue: 2 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -189,7 +188,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.div, value: 4 },
+            { updateType: VariableUpdateOperatorEnum.div, inputValue: 4 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -206,7 +205,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.div, value: 0 },
+            { updateType: VariableUpdateOperatorEnum.div, inputValue: 0 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -223,7 +222,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.add, value: undefined },
+            { updateType: VariableUpdateOperatorEnum.add, inputValue: undefined },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -240,12 +239,12 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.add, value: 5 },
+            { updateType: VariableUpdateOperatorEnum.add, inputValue: 5 },
             WorkflowIOValueTypeEnum.number
           ),
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.mul, value: 2 },
+            { updateType: VariableUpdateOperatorEnum.mul, inputValue: 2 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -262,7 +261,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.add, value: 5 },
+            { updateType: VariableUpdateOperatorEnum.add, inputValue: 5 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -282,7 +281,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.set, value: true },
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: true },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -299,7 +298,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.set, value: false },
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: false },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -316,7 +315,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -333,7 +332,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -344,13 +343,47 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
       expect(variables.flag).toBe(true);
     });
 
+    it('negate: 原值为字符串 "false" → true（字符串自动转换）', async () => {
+      const variables = { flag: 'false' };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'flag',
+            { updateType: VariableUpdateOperatorEnum.negate },
+            WorkflowIOValueTypeEnum.boolean
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.flag).toBe(true);
+    });
+
+    it('negate: 原值为字符串 "true" → false（字符串自动转换）', async () => {
+      const variables = { flag: 'true' };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'flag',
+            { updateType: VariableUpdateOperatorEnum.negate },
+            WorkflowIOValueTypeEnum.boolean
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.flag).toBe(false);
+    });
+
     it('negate: 原值 undefined → true（!falsy = true）', async () => {
       const variables: Record<string, any> = {};
       const props = createMockProps({
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -367,12 +400,12 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           ),
           createGlobalVarItem(
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -384,12 +417,107 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
     });
   });
 
-  // ============ 旧数据兼容性 ============
+  // ============ 数组运算 ============
+  describe('数组运算', () => {
+    it('set: 直接赋值数组', async () => {
+      const variables = { list: ['a', 'b'] };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: ['x', 'y'] },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual(['x', 'y']);
+    });
+
+    it('push: 追加元素到末尾', async () => {
+      const variables = { list: ['a', 'b'] };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.push, inputValue: 'x' },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual(['a', 'b', 'x']);
+    });
+
+    it('clear: 清空数组', async () => {
+      const variables = { list: ['a', 'b'] };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.clear },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual([]);
+    });
+
+    it('push: 原值 undefined → [newItem]', async () => {
+      const variables: Record<string, any> = {};
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.push, inputValue: 'x' },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual(['x']);
+    });
+
+    it('clear: 原值 undefined → []', async () => {
+      const variables: Record<string, any> = {};
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.clear },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual([]);
+    });
+  });
+
+  // ============ 旧数据兼容性（生产环境格式） ============
   describe('旧数据兼容性', () => {
     it('旧格式数字 ["", 10] → 直接赋值 10', async () => {
       const variables = { score: 0 };
       const props = createMockProps({
-        updateList: [createGlobalVarItem('score', 10, WorkflowIOValueTypeEnum.number)],
+        updateList: [
+          {
+            variable: [VARIABLE_NODE_ID, 'score'],
+            value: ['', 10],
+            valueType: WorkflowIOValueTypeEnum.number,
+            renderType: FlowNodeInputTypeEnum.input
+          } as any
+        ],
         variables
       });
 
@@ -400,7 +528,14 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
     it('旧格式布尔 ["", true] → 赋值 true', async () => {
       const variables = { flag: false };
       const props = createMockProps({
-        updateList: [createGlobalVarItem('flag', true, WorkflowIOValueTypeEnum.boolean)],
+        updateList: [
+          {
+            variable: [VARIABLE_NODE_ID, 'flag'],
+            value: ['', true],
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            renderType: FlowNodeInputTypeEnum.input
+          } as any
+        ],
         variables
       });
 
@@ -411,7 +546,14 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
     it('旧格式布尔 ["", false] → 赋值 false', async () => {
       const variables = { flag: true };
       const props = createMockProps({
-        updateList: [createGlobalVarItem('flag', false, WorkflowIOValueTypeEnum.boolean)],
+        updateList: [
+          {
+            variable: [VARIABLE_NODE_ID, 'flag'],
+            value: ['', false],
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            renderType: FlowNodeInputTypeEnum.input
+          } as any
+        ],
         variables
       });
 
@@ -422,7 +564,14 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
     it('旧格式字符串 ["", "hello"] → 赋值 "hello"', async () => {
       const variables = { text: '' };
       const props = createMockProps({
-        updateList: [createGlobalVarItem('text', 'hello', WorkflowIOValueTypeEnum.string)],
+        updateList: [
+          {
+            variable: [VARIABLE_NODE_ID, 'text'],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          } as any
+        ],
         variables
       });
 
@@ -456,7 +605,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
           createNodeOutputItem(
             'node1',
             'output1',
-            { operator: VariableUpdateOperatorEnum.add, value: 5 },
+            { updateType: VariableUpdateOperatorEnum.add, inputValue: 5 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -491,7 +640,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
           createNodeOutputItem(
             'node1',
             'flag',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.negate },
             WorkflowIOValueTypeEnum.boolean
           )
         ],
@@ -512,7 +661,7 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: 'unknown_op' as any, value: 99 },
+            { updateType: 'unknown_op' as any, inputValue: 99 },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -523,13 +672,13 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
       expect(variables.score).toBe(99);
     });
 
-    it('negate + number → 对当前值取反', async () => {
+    it('set + undefined（数字类型）→ 返回 undefined', async () => {
       const variables = { score: 10 };
       const props = createMockProps({
         updateList: [
           createGlobalVarItem(
             'score',
-            { operator: VariableUpdateOperatorEnum.negate },
+            { updateType: VariableUpdateOperatorEnum.set, inputValue: undefined },
             WorkflowIOValueTypeEnum.number
           )
         ],
@@ -537,25 +686,41 @@ describe('dispatchUpdateVariable - 运算操作符', () => {
       });
 
       await dispatchUpdateVariable(props);
-      // negate 对 number 类型直接取反：!10 → false
-      expect(variables.score).toBe(false);
+      expect(variables.score).toBeUndefined();
     });
 
-    it('set + undefined（数字类型）→ 返回 null', async () => {
-      const variables = { score: 10 };
+    it('push arrayObject：JSON 字符串 operand 自动解析为对象', async () => {
+      const variables = { items: [{ id: 1 }] };
       const props = createMockProps({
         updateList: [
           createGlobalVarItem(
-            'score',
-            { operator: VariableUpdateOperatorEnum.set, value: undefined },
-            WorkflowIOValueTypeEnum.number
+            'items',
+            { updateType: VariableUpdateOperatorEnum.push, inputValue: '{"id":2}' },
+            WorkflowIOValueTypeEnum.arrayObject
           )
         ],
         variables
       });
 
       await dispatchUpdateVariable(props);
-      expect(variables.score).toBeNull();
+      expect(variables.items).toEqual([{ id: 1 }, { id: 2 }]);
+    });
+
+    it('push arrayString：字符串 operand 保持原样（不做 JSON 解析）', async () => {
+      const variables = { list: ['a'] };
+      const props = createMockProps({
+        updateList: [
+          createGlobalVarItem(
+            'list',
+            { updateType: VariableUpdateOperatorEnum.push, inputValue: '{"not":"parsed"}' },
+            WorkflowIOValueTypeEnum.arrayString
+          )
+        ],
+        variables
+      });
+
+      await dispatchUpdateVariable(props);
+      expect(variables.list).toEqual(['a', '{"not":"parsed"}']);
     });
   });
 });

@@ -337,14 +337,26 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
 };
 
 export const formatEditorVariablePickerIcon = (
-  variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
+  variables: {
+    key: string;
+    label: string;
+    type?: `${VariableInputEnum}`;
+    required?: boolean;
+    valueType?: WorkflowIOValueTypeEnum;
+  }[]
 ): EditorVariablePickerType[] => {
   return variables.map((item) => {
     const config = item.type ? variableMap[item.type] : variableMap['input'];
+
     return {
       ...item,
       icon: config?.icon,
-      valueType: config?.defaultValueType
+      valueType:
+        ([VariableInputEnum.custom, VariableInputEnum.internal].includes(
+          item.type as VariableInputEnum
+        ) &&
+          item.valueType) ||
+        config?.defaultValueType
     };
   });
 };
