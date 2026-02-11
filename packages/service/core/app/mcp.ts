@@ -109,7 +109,7 @@ export class MCPClient {
                 }
               });
             } catch (error) {
-              addLog.error(`Failed to dereference schema for tool "${tool.name}":`, error);
+              logger.error(`Failed to dereference schema for tool "${tool.name}":`, { error });
               processedSchema = tool.inputSchema;
             }
           }
