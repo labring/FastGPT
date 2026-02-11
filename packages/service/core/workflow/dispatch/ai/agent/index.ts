@@ -21,7 +21,8 @@ import {
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { filterMemoryMessages } from '../utils';
-import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
 
@@ -164,18 +165,27 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile
       }
     );
+
     const getSubAppInfo = (id: string) => {
-      const formatId = id.slice(1);
-      const toolNode =
-        agentSubAppsMap.get(id) ||
-        agentSubAppsMap.get(formatId) ||
-        systemSubInfo[id] ||
-        systemSubInfo[formatId];
+      // diff user tool id and system tool id by prefix 't'
+      const formatId = id.startsWith('t') ? id.slice(1) : id;
+
+      const userToolNode = agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
+      if (userToolNode) {
+        return {
+          name: userToolNode.name || '',
+          avatar: userToolNode.avatar || '',
+          toolDescription: userToolNode.toolDescription || userToolNode.name || ''
+        };
+      }
+
+      const systemToolNode = systemSubInfo[id] || systemSubInfo[formatId];
+      const systemDisplayName = parseI18nString(systemToolNode?.name, lang);
 
       return {
-        name: toolNode?.name || '',
-        avatar: toolNode?.avatar || '',
-        toolDescription: toolNode?.toolDescription || toolNode?.name || ''
+        name: systemDisplayName || '',
+        avatar: systemToolNode?.avatar || '',
+        toolDescription: systemToolNode?.toolDescription || systemDisplayName || ''
       };
     };
     const getSubApp = (id: string) => {

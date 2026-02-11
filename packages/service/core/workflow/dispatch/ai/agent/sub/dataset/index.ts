@@ -48,13 +48,16 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
     return '未找到相关信息。';
   }
 
-  return searchResults
+  const chunks = searchResults
     .map((item, index) => {
-      const sourceInfo = item.sourceName ? `[${item.sourceName}]` : `[来源${index + 1}]`;
+      const sourceName = item.sourceName || `来源${index + 1}`;
       const content = `${item.q}\n${item.a || ''}`.trim();
-      return `${sourceInfo} ${content}`;
+
+      return `【知识片段${index + 1}】\nid: ${item.id}\nsource: ${sourceName}\ncontent: ${content}`;
     })
     .join('\n\n');
+
+  return chunks;
 };
 
 /**
@@ -216,7 +219,7 @@ export const dispatchAgentDatasetSearch = async ({
     const usages: ChatNodeUsageType[] = [];
     let searchResults = searchRes;
 
-    // LLM Pick Chunks
+    // LLM Pick Chunks (compress search results if too long)
     const pickResults = await selectRelevantChunksByLLM({
       query,
       chunks: searchRes,
