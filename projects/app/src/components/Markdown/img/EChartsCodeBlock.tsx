@@ -36,12 +36,18 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   useLayoutEffect(() => {
     const option = (() => {
       try {
+        const userOption = json5.parse(code.trim());
+        const userToolbox = userOption.toolbox || {};
+        const userFeature = userToolbox.feature || {};
+
         const parse = {
-          ...json5.parse(code.trim()),
+          ...userOption,
           toolbox: {
+            ...userToolbox,
             // show: true,
             feature: {
-              saveAsImage: {}
+              saveAsImage: {},
+              ...userFeature
             }
           }
         };
