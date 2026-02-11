@@ -1,5 +1,4 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { addLog } from '../../common/system/log';
 import { getLogger, LogCategories } from '../logger';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
@@ -78,10 +77,8 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
         if (duration > 2000) {
           logger.warn('MongoDB slow query (>2s)', getLogData());
-          addLog.warn(`[Mongo Slow] Level2`, getLogData());
         } else if (duration > 500) {
           logger.warn('MongoDB slow query (>500ms)', getLogData());
-          addLog.warn(`[Mongo Slow] Level1`, getLogData());
         }
       }
       next();

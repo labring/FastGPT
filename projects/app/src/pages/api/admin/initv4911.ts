@@ -4,8 +4,8 @@ import { type NextApiRequest, type NextApiResponse } from 'next';
 
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4911']);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });

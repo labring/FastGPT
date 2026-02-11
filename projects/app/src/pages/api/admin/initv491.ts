@@ -3,13 +3,13 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
-const logger = getLogger(LogCategories.SYSTEM);
+const logger = getLogger(['initv491']);
 
 const updateData = async () => {
   let success = 0;

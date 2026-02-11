@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoToolGroups } from '@fastgpt/service/core/plugin/tool/pluginGroupSchema';
 import { connectionMongo } from '@fastgpt/service/common/mongo/index';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
@@ -10,7 +10,8 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import { refreshVersionKey } from '@fastgpt/service/common/cache';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
-const logger = getLogger(LogCategories.SYSTEM);
+
+const logger = getLogger(['initv4140']);
 
 const { Schema } = connectionMongo;
 

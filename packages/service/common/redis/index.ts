@@ -4,10 +4,6 @@ import Redis from 'ioredis';
 const logger = getLogger(LogCategories.INFRA.REDIS);
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
-const redactRedisUrl = (rawUrl: string) => {
-  if (!rawUrl) return rawUrl;
-  return rawUrl.replace(/\/\/([^@/]+)@/g, '//***:***@');
-};
 
 // Base Redis options for connection reliability
 const REDIS_BASE_OPTION = {
@@ -74,7 +70,7 @@ export const getGlobalRedisConnection = () => {
   });
 
   global.redisClient.on('connect', () => {
-    logger.info('Global Redis connected', { url: redactRedisUrl(REDIS_URL) });
+    logger.info('Global Redis connected');
   });
   global.redisClient.on('error', (error) => {
     logger.error('Global Redis connection error', { error });

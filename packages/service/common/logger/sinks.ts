@@ -1,8 +1,9 @@
-import type { Config } from '@logtape/logtape';
+import type { Config, LogLevel, LogRecord } from '@logtape/logtape';
 import { getConsoleSink, withFilter } from '@logtape/logtape';
 import { getPrettyFormatter } from '@logtape/pretty';
 import { getOpenTelemetrySink } from './otel';
 import dayjs from 'dayjs';
+import { mapLevelToSeverityNumber, sensitiveProperties } from './helpers';
 
 type SinkId = 'console' | 'jsonl' | 'otel';
 type FilterId = string;
@@ -14,6 +15,8 @@ type CreateSinksOptions = {
   enableOtel: boolean;
   otelServiceName: string;
   otelUrl?: string;
+  consoleLevel?: LogLevel;
+  otelLevel?: LogLevel;
 };
 
 type CreateSinksResult = {
@@ -22,7 +25,14 @@ type CreateSinksResult = {
 };
 
 export async function createSinks(options: CreateSinksOptions): Promise<CreateSinksResult> {
-  const { enableConsole, enableOtel, otelServiceName, otelUrl } = options;
+  const {
+    enableConsole,
+    enableOtel,
+    otelServiceName,
+    otelUrl,
+    consoleLevel = 'trace',
+    otelLevel = 'info'
+  } = options;
 
   const sinkConfig = {
     bufferSize: 8192,
@@ -34,27 +44,34 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
   const sinks: SinkConfig = {};
   const composedSinks: SinkId[] = [];
 
+  const levelFilter = (record: LogRecord, level: LogLevel) => {
+    return mapLevelToSeverityNumber(record.level) >= mapLevelToSeverityNumber(level);
+  };
+
   if (enableConsole) {
-    sinks.console = getConsoleSink({
-      ...sinkConfig,
-      formatter: getPrettyFormatter({
-        icons: false,
-        level: 'ABBR',
-        wordWrap: false,
+    sinks.console = withFilter(
+      getConsoleSink({
+        ...sinkConfig,
+        formatter: getPrettyFormatter({
+          icons: false,
+          level: 'ABBR',
+          wordWrap: false,
 
-        messageColor: null,
-        categoryColor: null,
-        timestampColor: null,
+          messageColor: null,
+          categoryColor: null,
+          timestampColor: null,
 
-        levelStyle: 'reset',
-        messageStyle: 'reset',
-        categoryStyle: 'reset',
-        timestampStyle: 'reset',
+          levelStyle: 'reset',
+          messageStyle: 'reset',
+          categoryStyle: 'reset',
+          timestampStyle: 'reset',
 
-        categorySeparator: ':',
-        timestamp: () => dayjs().format('YYYY-MM-DD HH:mm:ss')
-      })
-    });
+          categorySeparator: ':',
+          timestamp: () => dayjs().format('YYYY-MM-DD HH:mm:ss')
+        })
+      }),
+      (record) => levelFilter(record, consoleLevel)
+    );
     composedSinks.push('console');
     console.log('✓ Logtape console sink enabled');
   }
@@ -71,7 +88,12 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
           url: otelUrl
         }
       }),
-      (record) => record.level !== 'debug'
+      (record) => {
+        const lvlCd = levelFilter(record, otelLevel);
+        const spCd = sensitiveProperties.some((sp) => sp in record.properties);
+
+        return lvlCd && !spCd;
+      }
     );
 
     composedSinks.push('otel');

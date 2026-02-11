@@ -10,8 +10,8 @@ import { type NextApiRequest, type NextApiResponse } from 'next';
 import { type Processor } from '@fastgpt/service/common/bullmq';
 import { getQueue, getWorker, QueueNames } from '@fastgpt/service/common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv494']);
 
 const initWebsiteSyncData = async () => {
   // find out all website dataset

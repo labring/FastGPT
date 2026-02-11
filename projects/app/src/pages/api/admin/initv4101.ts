@@ -11,8 +11,8 @@ import {
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4101']);
 
 const clearAllWebsiteSyncJobs = async () => {
   logger.info('start clear all websiteSync jobs');

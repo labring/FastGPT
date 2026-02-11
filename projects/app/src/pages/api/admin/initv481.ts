@@ -3,8 +3,8 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv481']);
 
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
 async function handler(req: NextApiRequest, res: NextApiResponse) {

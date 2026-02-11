@@ -11,13 +11,6 @@ export const connectPg = async (): Promise<Pool> => {
     return global.pgClient;
   }
 
-  const redactPgUrl = (rawUrl: string) => {
-    if (!rawUrl) return rawUrl;
-    return rawUrl.replace(/\/\/([^@/]+)@/g, '//***:***@');
-  };
-
-  const address = redactPgUrl(PG_ADDRESS);
-
   const pool = new Pool({
     connectionString: PG_ADDRESS,
     // 连接池配置
@@ -42,7 +35,7 @@ export const connectPg = async (): Promise<Pool> => {
     logger.error('Postgres pool error', { error: err });
   });
   global.pgClient.on('connect', async () => {
-    logger.info('Postgres pool connected', { address });
+    logger.info('Postgres pool connected');
   });
   global.pgClient.on('remove', async (client) => {
     logger.warn('Postgres connection removed from pool');
@@ -52,13 +45,13 @@ export const connectPg = async (): Promise<Pool> => {
     await global.pgClient.connect();
     return global.pgClient;
   } catch (error) {
-    logger.error('Postgres connection failed', { address, error });
+    logger.error('Postgres connection failed', { error });
     global.pgClient?.removeAllListeners();
     global.pgClient?.end();
     global.pgClient = null;
 
     await delay(1000);
-    logger.warn('Postgres reconnecting after failure', { address });
+    logger.warn('Postgres reconnecting after failure');
 
     return connectPg();
   }

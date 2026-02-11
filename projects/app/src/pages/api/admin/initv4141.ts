@@ -7,13 +7,13 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-const logger = getLogger(LogCategories.SYSTEM);
+const logger = getLogger(['initv4141']);
 
 async function appSplitMigration(teamId: string) {
   const allApps = await MongoApp.find(

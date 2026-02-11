@@ -9,8 +9,8 @@ import {
   TeamDatasetCreatePermissionVal
 } from '@fastgpt/global/support/permission/user/constant';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv495']);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });

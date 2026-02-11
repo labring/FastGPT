@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/service/common/s3/utils';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 import { migrateFeedbackFlags } from './initFeedbackFlags';
-const logger = getLogger(LogCategories.SYSTEM);
+const logger = getLogger(['initv4144']);
 
 // 将 GridFS 的流转换为 Buffer
 async function gridFSStreamToBuffer(

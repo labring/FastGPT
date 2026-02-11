@@ -64,9 +64,9 @@ export async function clearExpiredMinioFiles() {
   }
 }
 
-export async function clearExpiredS3FilesCron() {
+export function clearExpiredS3FilesCron() {
   // 启动服务时执行一次
-  await clearExpiredMinioFiles();
+  setTimeout(clearExpiredMinioFiles, 3000);
 
   // 每小时执行一次
   setCron('0 */1 * * *', async () => {

@@ -5,10 +5,10 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { surrenderProcess } from '@fastgpt/service/common/system/tools';
-const logger = getLogger(LogCategories.SYSTEM);
+const logger = getLogger(['initv4121']);
 
 export type SyncAppChatLogQuery = {};
 

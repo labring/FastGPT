@@ -4,8 +4,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-const logger = getLogger(LogCategories.SYSTEM);
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv41451']);
 
 export type ResponseType = {
   message: string;

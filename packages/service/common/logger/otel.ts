@@ -13,7 +13,7 @@ import type { Resource } from '@opentelemetry/resources';
 import { defaultResource, resourceFromAttributes } from '@opentelemetry/resources';
 import { LoggerProvider, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { inspect as nodeInspect } from 'node:util';
+import { inspect as nodeInspect } from 'util';
 
 /**
  * Gets an environment variable value in Node.js.

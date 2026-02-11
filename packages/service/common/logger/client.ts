@@ -1,4 +1,4 @@
-import { configure, dispose } from '@logtape/logtape';
+import { configure, dispose, Logger } from '@logtape/logtape';
 import { env } from '../../env';
 import { createSinks } from './sinks';
 import { createLoggers } from './loggers';
@@ -10,23 +10,23 @@ export async function configureLogger() {
 
   const {
     LOG_ENABLE_CONSOLE,
-    LOG_ENABLE_DEBUG_LEVEL,
     LOG_ENABLE_OTEL,
     LOG_OTEL_SERVICE_NAME,
-    LOG_OTEL_URL
+    LOG_OTEL_URL,
+    LOG_CONSOLE_LEVEL,
+    LOG_OTEL_LEVEL
   } = env;
 
   const { sinks, composedSinks } = await createSinks({
     enableConsole: LOG_ENABLE_CONSOLE,
     enableOtel: LOG_ENABLE_OTEL,
     otelServiceName: LOG_OTEL_SERVICE_NAME,
-    otelUrl: LOG_OTEL_URL
+    otelUrl: LOG_OTEL_URL,
+    consoleLevel: LOG_CONSOLE_LEVEL,
+    otelLevel: LOG_OTEL_LEVEL
   });
 
-  const loggers = createLoggers({
-    composedSinks,
-    enableDebugLevel: LOG_ENABLE_DEBUG_LEVEL
-  });
+  const loggers = createLoggers({ composedSinks });
 
   const contextLocalStorage = new AsyncLocalStorage<Record<string, unknown>>();
 
@@ -39,7 +39,7 @@ export async function configureLogger() {
   configured = true;
 }
 
-export async function desposeLogger() {
+export async function disposeLogger() {
   if (!configured) return;
 
   await dispose();

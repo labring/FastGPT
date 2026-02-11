@@ -8,55 +8,67 @@ type LoggerConfig = LogTapeConfig['loggers'];
 
 type CreateLoggersOptions = {
   composedSinks: SinkId[];
-  enableDebugLevel: boolean;
 };
 
 export function createLoggers(options: CreateLoggersOptions) {
-  const { composedSinks, enableDebugLevel } = options;
-
-  const level: LogLevel = enableDebugLevel ? 'debug' : 'info';
+  const { composedSinks } = options;
 
   const loggers: LoggerConfig = [
+    {
+      category: [],
+      lowestLevel: 'trace',
+      sinks: ['console']
+    },
     // logtape 内部日志
     {
       category: ['logtape', 'meta'],
-      lowestLevel: 'error',
-      sinks: enableDebugLevel ? ['console'] : []
+      lowestLevel: 'fatal',
+      parentSinks: 'override',
+      sinks: ['console']
     },
     // 应用层日志
     {
       category: ['system'],
-      lowestLevel: level,
+      lowestLevel: 'trace',
+      parentSinks: 'override',
       sinks: composedSinks
     },
     // 错误层日志
     {
       category: ['error'],
-      lowestLevel: enableDebugLevel ? 'debug' : 'error',
+      lowestLevel: 'error',
+      parentSinks: 'override',
       sinks: composedSinks
     },
     // HTTP 层日志
     {
       category: ['http'],
-      lowestLevel: level,
+      lowestLevel: 'trace',
+      parentSinks: 'override',
       sinks: composedSinks
     },
     // 基础设施层日志
     {
       category: ['infra'],
-      lowestLevel: level,
+      lowestLevel: 'trace',
+      parentSinks: 'override',
       sinks: composedSinks
     },
     // 业务模块层日志
-    ...moduleCategories.map((category) => ({
-      category: [category],
-      lowestLevel: level,
-      sinks: composedSinks
-    })),
+    ...moduleCategories.map(
+      (category) =>
+        ({
+          category: [category],
+          lowestLevel: 'trace' as const,
+          parentSinks: 'override',
+          sinks: composedSinks
+        }) satisfies LoggerConfig[number]
+    ),
     // 事件层日志
     {
       category: ['event'],
-      lowestLevel: level,
+      lowestLevel: 'trace',
+      parentSinks: 'override',
       sinks: composedSinks
     }
   ];

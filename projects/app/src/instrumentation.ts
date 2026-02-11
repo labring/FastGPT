@@ -8,9 +8,6 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       await import('@fastgpt/service/common/proxy');
 
-      const { configureLogger } = await import('@fastgpt/service/common/logger');
-      await configureLogger();
-
       // 基础系统初始化
       const [
         { connectMongo },
@@ -31,7 +28,8 @@ export async function register() {
         { initS3Buckets },
         { initGeo },
         { instrumentationCheck, ErrorEnum },
-        { getErrText }
+        { getErrText },
+        { configureLogger, getLogger, LogCategories }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -51,8 +49,14 @@ export async function register() {
         import('@fastgpt/service/common/s3'),
         import('@fastgpt/service/common/geo'),
         import('@/service/common/system/health'),
-        import('@fastgpt/global/common/error/utils')
+        import('@fastgpt/global/common/error/utils'),
+        import('@fastgpt/service/common/logger')
       ]);
+
+      await configureLogger();
+      const logger = getLogger(LogCategories.SYSTEM);
+
+      getLogger(['test']).debug('test.........................');
 
       // 执行初始化流程
       systemStartCb();
@@ -104,8 +108,6 @@ export async function register() {
       startTrainingQueue(true);
       trackTimerProcess();
 
-      const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
-      const logger = getLogger(LogCategories.SYSTEM);
       logger.info('System initialized successfully');
     }
   } catch (error) {

@@ -18,7 +18,7 @@
     "@opentelemetry/sdk-logs": "^0.203.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
     "@opentelemetry/winston-transport": "^0.14.0",
-    "@t3-oss/env-core": "^0.13.10",
+    "@t3-oss/env-core": "0.13.10",
     "@vercel/otel": "^1.13.0",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.10",
