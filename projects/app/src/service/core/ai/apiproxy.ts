@@ -1,7 +1,7 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { type Method } from 'axios';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
-const logger = getLogger(LogCategories.INFRA.NETWORK);
+const logger = getLogger(LogCategories.NETWORK);
 
 const url = process.env.API_PROXY_URL;
 const token = process.env.API_PROXY_TOKEN;

@@ -55,8 +55,7 @@ export async function register() {
 
       await configureLogger();
       const logger = getLogger(LogCategories.SYSTEM);
-
-      getLogger(['test']).debug('test.........................');
+      logger.info('Starting system initialization...');
 
       // 执行初始化流程
       systemStartCb();

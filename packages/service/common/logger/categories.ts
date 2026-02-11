@@ -13,6 +13,7 @@
 export const LogCategories = {
   // 应用层日志
   SYSTEM: ['system'] as const,
+  NETWORK: ['system', 'network'] as const,
 
   // 基础设施层
   INFRA: {
@@ -22,9 +23,7 @@ export const LogCategories = {
     VECTOR: ['infra', 'vector'] as const,
     QUEUE: ['infra', 'queue'] as const,
     S3: ['infra', 's3'] as const,
-    GEO: ['infra', 'geo'] as const,
     OTEL: ['infra', 'otel'] as const,
-    NETWORK: ['infra', 'network'] as const,
     FILE: ['infra', 'file'] as const,
     WORKER: ['infra', 'worker'] as const
   },

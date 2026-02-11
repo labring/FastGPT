@@ -7,11 +7,11 @@ import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
 export type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
-import { getLogger, LogCategories } from '../logger';
+import { getLogger } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
 
-const logger = getLogger(LogCategories.INFRA.GEO);
+const logger = getLogger(['GEO']);
 
 let reader: ReaderModel | null = null;
 
