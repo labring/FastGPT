@@ -525,13 +525,10 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const nodeIsTool = useContextSelector(WorkflowUtilsContext, (ctx) =>
+    ctx.splitToolInputs([], nodeId)
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const NodeIsTool = useMemo(() => {
-    const { isTool } = splitToolInputs([], nodeId);
-    return isTool;
-  }, [nodeId, splitToolInputs]);
 
   // edit intro
   const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
@@ -547,7 +544,7 @@ const NodeIntro = React.memo(function NodeIntro({
           <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
             {t(intro as any) || t('app:node_not_intro')}
           </Box>
-          {NodeIsTool && (
+          {nodeIsTool && (
             <Flex
               p={'7px'}
               rounded={'sm'}
@@ -577,7 +574,7 @@ const NodeIntro = React.memo(function NodeIntro({
         <EditIntroModal maxLength={500} />
       </>
     );
-  }, [EditIntroModal, intro, NodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
+  }, [EditIntroModal, intro, nodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
 
   return Render;
 });
