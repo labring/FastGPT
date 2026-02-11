@@ -92,7 +92,6 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
 
-  mcpClientMemory: Record<string, MCPClient>; // key: url
   usagePush: (usages: ChatNodeUsageType[]) => void;
 };
 

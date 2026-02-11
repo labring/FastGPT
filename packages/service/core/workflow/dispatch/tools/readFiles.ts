@@ -6,10 +6,11 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { axios } from '../../../../common/api/axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../utils/context';
 import { readFileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { addLog } from '../../../../common/system/log';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';

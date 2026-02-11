@@ -53,11 +53,11 @@ import { createChatUsageRecord, pushChatItemUsage } from '../../../support/walle
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/utils';
-import type { MCPClient } from '../../app/mcp';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+import { runWithContext } from '../utils/context';
 
 type Props = Omit<
   ChatDispatchProps,
@@ -189,8 +189,7 @@ export async function dispatchWorkFlow({
       timezone
     }))
   };
-  // MCP
-  let mcpClientMemory = {} as Record<string, MCPClient>;
+
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
   const checkIsStopping = (): boolean => {
@@ -214,43 +213,54 @@ export async function dispatchWorkFlow({
       : undefined;
 
   // Init some props
-  return runWorkflow({
-    ...data,
-    checkIsStopping,
-    query,
-    histories,
-    timezone,
-    externalProvider,
-    variables: defaultVariables,
-    workflowDispatchDeep: 0,
-    usageId: newUsageId,
-    concatUsage,
-    mcpClientMemory
-  }).finally(async () => {
-    if (streamCheckTimer) {
-      clearInterval(streamCheckTimer);
-    }
-    if (checkStoppingTimer) {
-      clearInterval(checkStoppingTimer);
-    }
+  return new Promise((resolve, reject) => {
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      (ctx) => {
+        runWorkflow({
+          ...data,
+          checkIsStopping,
+          query,
+          histories,
+          timezone,
+          externalProvider,
+          variables: defaultVariables,
+          workflowDispatchDeep: 0,
+          usageId: newUsageId,
+          concatUsage
+        })
+          .then(resolve)
+          .catch(reject)
+          .finally(async () => {
+            if (streamCheckTimer) {
+              clearInterval(streamCheckTimer);
+            }
+            if (checkStoppingTimer) {
+              clearInterval(checkStoppingTimer);
+            }
 
-    // Close mcpClient connections
-    Object.values(mcpClientMemory).forEach((client) => {
-      client.closeConnection();
-    });
+            // Close mcpClient connections
+            Object.values(ctx.mcpClientMemory).forEach((client) => {
+              client.closeConnection();
+            });
 
-    // 工作流完成后删除 Redis 记录
-    await delAgentRuntimeStopSign({
-      appId: runningAppInfo.id,
-      chatId
-    });
+            // 工作流完成后删除 Redis 记录
+            await delAgentRuntimeStopSign({
+              appId: runningAppInfo.id,
+              chatId
+            });
+          });
+      }
+    );
   });
 }
 
 export type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
-  mcpClientMemory: Record<string, MCPClient>;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
 };
@@ -268,8 +278,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     responseAllData = true,
     usageId,
     concatUsage,
-    runningUserInfo: { teamId },
-    mcpClientMemory
+    runningUserInfo: { teamId }
   } = data;
 
   // Over max depth
@@ -551,7 +560,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
-        mcpClientMemory,
         usagePush: this.usagePush.bind(this),
         lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
