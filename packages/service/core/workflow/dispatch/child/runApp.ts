@@ -19,7 +19,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 

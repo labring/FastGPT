@@ -68,6 +68,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 6. 适配 kimi2.5 思考模式下工具调用。
 7. 内网域名检查方式。
 8. 工作流运行前，去除孤立的边。
+9. 通过 API 调用工作流，传入文件链接时，不再采用根据链接推测类型的方式，直接保存输入的 type，确保文件类型 100% 正确。
 
 ## 🐛 修复
 
@@ -77,7 +78,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 4. 工具集 ToolName 避免数字开头导致工具调用失败。
 5. 简易应用转工作流，未复制一份头像。
 6. 导入工作流时，引用类型的模型字段被误判为无效模型而清空。
-7. Iphone safari 浏览器下，分享链接首次进入有概率触发 uid 为空的请求
+7. Iphone safari 浏览器下，分享链接首次进入有概率触发 uid 为空的请求。
 8. MCP 暴露 Agent 时，无法传入文件链接。
 9. 创建 http 工具时，body 包含变量会报错 JSON 解析错误。
 10. 工作流切换 Tab 后画布自动定位失效。

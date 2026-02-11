@@ -12,7 +12,7 @@ import { countPromptTokens } from '../../../../../../common/string/tiktoken/inde
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { addLog } from '../../../../../../common/system/log';
 import { calculateCompressionThresholds } from '../../../../../ai/llm/compress/constants';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../../../utils/context';
 
 export const getStepDependon = async ({
   checkIsStopping,

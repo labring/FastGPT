@@ -23,6 +23,7 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getS3ChatSource } from '../../../../common/s3/sources/chat';
+import { getWorkflowContext } from '../../utils/context';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -216,16 +217,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
 
+      const context = getWorkflowContext();
       // Buffer mcpClient in this workflow
       const mcpClient =
-        props.mcpClientMemory?.[url] ??
+        context.mcpClientMemory?.[url] ??
         new MCPClient({
           url,
           headers: getSecretValue({
             storeSecret: headerSecret
           })
         });
-      props.mcpClientMemory[url] = mcpClient;
+      context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });

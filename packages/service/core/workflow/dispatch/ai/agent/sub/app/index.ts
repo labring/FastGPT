@@ -91,7 +91,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     uid: variables.userId,
     chatId: variables.chatId,
     responseChatItemId: variables.responseChatItemId,
-    mcpClientMemory: {},
     runningAppInfo: {
       id: String(appData._id),
       name: appData.name,
@@ -213,7 +212,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     uid: variables.userId,
     chatId: variables.chatId,
     responseChatItemId: variables.responseChatItemId,
-    mcpClientMemory: {},
     runningAppInfo: {
       id: String(appData._id),
       // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
