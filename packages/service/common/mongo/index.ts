@@ -156,11 +156,7 @@ const syncMongoIndex = async (model: Model<any>) => {
   try {
     await model.syncIndexes({ background: true });
   } catch (error) {
-    logger.error('Failed to sync MongoDB indexes', {
-      modelName: model.modelName,
-      error
-    });
-    addLog.error('Create index error', error);
+    logger.error('Failed to sync MongoDB indexes', { modelName: model.modelName, error });
   }
 };
 
