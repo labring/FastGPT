@@ -22,19 +22,13 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
     } catch (error) {
       if (!session.transaction.isCommitted) {
         await session.abortTransaction();
-        logger.warn('MongoDB session transaction aborted', {
-          error
-        });
+        logger.warn('MongoDB session transaction aborted', { error });
       } else {
-        logger.warn('Unexpected MongoDB session error after commit', {
-          error
-        });
-        const result = await fn(session);
-
-        await session.commitTransaction();
-
-        return result as T;
+        logger.warn('Unexpected MongoDB session error after commit', { error });
       }
+      return Promise.reject(error);
+    } finally {
+      await session.endSession();
     }
   });
 };
