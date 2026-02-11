@@ -1,4 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getSystemToolsWithInstalled, getMyTools } from '../../../../app/tool/controller';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -110,7 +111,7 @@ ${dataset}
 
   const allTools = [...systemTools, ...myTools];
   const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
-  const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${fileReadInfo.name} - ${fileReadInfo.toolDescription}`;
+  const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${parseI18nString(fileReadInfo.name, lang)} - ${fileReadInfo.toolDescription}`;
   allTools.push(fileReadTool);
 
   return {

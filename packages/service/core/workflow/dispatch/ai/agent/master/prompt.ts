@@ -176,6 +176,7 @@ ${
 3. 引用 id 必须来自本轮 @dataset_search 的返回结果，禁止编造或引用未返回的 id。
 4. 不能只在回答末尾给统一引用列表代替正文内联角标，必须在正文段落中标注。
 5. 如果本轮没有调用 @dataset_search，或调用后没有可引用 id，则不要输出任何 CITE 角标。
+6. 格式必须为 [id](CITE)，其中 id 是 @dataset_search 返回结果中的 id 字段值， CITE 为固定的字符串，不准修改
 </CITERule>
 
 <output_guidelines>

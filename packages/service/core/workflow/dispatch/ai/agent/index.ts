@@ -21,6 +21,7 @@ import {
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { filterMemoryMessages } from '../utils';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
@@ -30,7 +31,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
 import { addLog } from '../../../../../common/system/log';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import { getSubapps, getSystemSubAppDisplayName } from './utils';
+import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
@@ -179,13 +180,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       const systemToolNode = systemSubInfo[id] || systemSubInfo[formatId];
-      const systemDisplayName =
-        getSystemSubAppDisplayName({ subAppId: formatId, lang }) || systemToolNode?.name || '';
+      const systemDisplayName = parseI18nString(systemToolNode?.name, lang);
 
       return {
-        name: systemDisplayName,
+        name: systemDisplayName || '',
         avatar: systemToolNode?.avatar || '',
-        toolDescription: systemToolNode?.toolDescription || systemDisplayName
+        toolDescription: systemToolNode?.toolDescription || systemDisplayName || ''
       };
     };
     const getSubApp = (id: string) => {

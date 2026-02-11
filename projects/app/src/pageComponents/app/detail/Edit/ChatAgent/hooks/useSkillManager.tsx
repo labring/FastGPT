@@ -30,6 +30,7 @@ import {
 } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -56,7 +57,7 @@ export const useSkillManager = ({
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
   /* ===== System tool ===== */
@@ -90,7 +91,7 @@ export const useSkillManager = ({
       if (fileReadInfo) {
         apiTools.unshift({
           id: SubAppIds.fileRead,
-          label: t(fileReadInfo.name),
+          label: parseI18nString(fileReadInfo.name, i18n.language),
           icon: fileReadInfo.avatar,
           description: fileReadInfo.toolDescription,
           canClick: true
@@ -101,7 +102,7 @@ export const useSkillManager = ({
       if (datasetSearchInfo) {
         apiTools.unshift({
           id: SubAppIds.datasetSearch,
-          label: t(datasetSearchInfo.name),
+          label: parseI18nString(datasetSearchInfo.name, i18n.language),
           icon: datasetSearchInfo.avatar,
           description: datasetSearchInfo.toolDescription,
           canClick: true
@@ -296,7 +297,7 @@ export const useSkillManager = ({
       tools.push({
         id: SubAppIds.fileRead,
         pluginId: SubAppIds.fileRead,
-        name: t(fileReadInfo.name),
+        name: parseI18nString(fileReadInfo.name, i18n.language),
         avatar: fileReadInfo.avatar,
         intro: fileReadInfo.toolDescription,
         flowNodeType: FlowNodeTypeEnum.tool,
@@ -312,7 +313,7 @@ export const useSkillManager = ({
       tools.push({
         id: SubAppIds.datasetSearch,
         pluginId: SubAppIds.datasetSearch,
-        name: t(datasetSearchInfo.name),
+        name: parseI18nString(datasetSearchInfo.name, i18n.language),
         avatar: datasetSearchInfo.avatar,
         intro: datasetSearchInfo.toolDescription,
         flowNodeType: FlowNodeTypeEnum.tool,
@@ -324,7 +325,7 @@ export const useSkillManager = ({
     }
 
     return tools;
-  }, [selectedTools, canUploadFile, hasSelectedDataset, t]);
+  }, [selectedTools, canUploadFile, hasSelectedDataset, i18n.language]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(
