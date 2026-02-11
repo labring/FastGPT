@@ -26,7 +26,8 @@ const operatorHandlerMap: Record<string, (cur: any, operand: any) => any> = {
   [VariableUpdateOperatorEnum.mul]: (cur, operand) => Number(cur) * Number(operand),
   [VariableUpdateOperatorEnum.div]: (cur, operand) =>
     Number(operand) !== 0 ? Number(cur) / Number(operand) : cur,
-  [VariableUpdateOperatorEnum.negate]: (cur) => !cur,
+  [VariableUpdateOperatorEnum.negate]: (cur) =>
+    !(typeof cur === 'string' ? cur.toLowerCase() === 'true' : cur),
   [VariableUpdateOperatorEnum.push]: (cur, operand) => [
     ...(Array.isArray(cur) ? cur : []),
     operand
