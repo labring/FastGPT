@@ -5,7 +5,7 @@ description: 'FastGPT V4.14.7 更新说明'
 
 ## 更新指南
 
-### 1. 更新镜像：
+### 1. 更新镜像
 
 - 更新 FastGPT 镜像 tag: v4.14.7
 - 更新 FastGPT 商业版镜像 tag: v4.14.7
@@ -15,7 +15,26 @@ description: 'FastGPT V4.14.7 更新说明'
 - 更新 AIProxy 镜像 tag: 0.3.15
 - mongo 无需更新
 
-### 2. 更新系统插件
+### 2. 更新系统环境变量
+
+更新了日志系统，包括但不限于日志打印、日志采集和日志分析等
+
+```dotenv
+# 移除以下 3 个变量
+SIGNOZ_BASE_URL=
+SIGNOZ_SERVICE_NAME=
+SIGNOZ_STORE_LEVEL=
+
+# 新增以下 6 个变量
+LOG_ENABLE_CONSOLE=true # 是否开启控制台打印
+LOG_CONSOLE_LEVEL=debug # 控制台打印最低日志等级
+LOG_ENABLE_OTEL=true # 是否开启 OTEL 日志收集
+LOG_OTEL_LEVEL=info # OTEL 日志收集的最低日志等级
+LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
+LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
+```
+
+### 3. 更新系统插件
 
 前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）。可以直接下载[zip 包](https://github.com/labring/fastgpt-plugin/raw/refs/heads/main/.github/assets/upgrade_pkg.zip)直接安装。
 
@@ -30,7 +49,7 @@ description: 'FastGPT V4.14.7 更新说明'
 * openrouterMultiModal: openrouter 多模态
 * stability: stability 图片生成
 
-### 3. 执行升级脚本
+### 4. 执行升级脚本
 
 从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
 
@@ -42,7 +61,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 
 1. 会将对话日志中，含错误的记录添加到统计表里。
 
-### 4. 接口更新
+### 5. 接口更新
 
 在新版本的对话记录中，value 值的 type 已被移除，`/api/core/chat/getPaginationRecords`暂时做了适配，请使用该 API 的用户尽快调整 value 解析方案，直接判断 `text`,`tools`等字段是否存在即可。
 
@@ -57,6 +76,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 7. 对话日志列表，精准的过滤使用者。
 8. 依赖预检查，启动项目时进行infra/子服务有效性检测，便于准确定位不可用的服务。
 9. MCP 服务解析时，支持解析 schema 中的 $ref 语法。
+10. 使用 [LogTape](https://logtape.org/) 重构了日志系统，包括但不限于日志打印、日志采集和日志分析等
 
 ## ⚙️ 优化
 
