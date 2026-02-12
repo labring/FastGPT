@@ -157,8 +157,19 @@ services:
       AIPROXY_API_TOKEN: *x-aiproxy-token
 
       # 日志等级: debug, info, warn, error
-      LOG_LEVEL: info
-      STORE_LOG_LEVEL: warn
+      # 是否开启控制台打印
+      LOG_ENABLE_CONSOLE: true
+      # 控制台打印最低日志等级
+      LOG_CONSOLE_LEVEL: debug 
+      # 是否开启 OTEL 日志收集
+      LOG_ENABLE_OTEL: false
+      # OTEL 日志收集的最低日志等级
+      LOG_OTEL_LEVEL: info
+      # 传递给 OTLP 收集器的服务名称
+      LOG_OTEL_SERVICE_NAME: fastgpt-client
+      # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
+      LOG_OTEL_URL: http://localhost:4318/v1/logs
+
       # 工作流最大运行次数
       WORKFLOW_MAX_RUN_TIMES: 1000
       # 批量执行节点，最大输入长度
@@ -200,6 +211,17 @@ services:
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小
       MAX_API_SIZE: 10
+      # Log 配置
+      # 日志等级: debug, info, warn, error
+      LOG_LEVEL: info
+      # 是否开启控制台打印
+      LOG_ENABLE_CONSOLE: true
+      # 是否开启 OTEL 日志收集
+      LOG_ENABLE_OTEL: false
+      # OTEL 日志收集的最低日志等级
+      LOG_OTEL_LEVEL: info
+      LOG_OTEL_SERVICE_NAME: fastgpt-plugin
+      LOG_OTEL_URL: http://localhost:4318/v1/logs
     depends_on:
       fastgpt-minio:
         condition: service_healthy

@@ -5,11 +5,11 @@
   "pages": [
     "quick-start",
     "sealos",
-    "intro",
     "docker",
+    "faq",
+    "intro",
     "configuration",
     "object-storage",
-    "faq",
     "signoz",
     "modelConfig",
     "custom-models",
