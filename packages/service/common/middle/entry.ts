@@ -86,12 +86,6 @@ export const NextEntry = ({
         } catch (error) {
           // Handle Zod validation errors
           if (error instanceof ZodError) {
-            errorLogger.warn('Request validation failed', {
-              requestId,
-              method,
-              url,
-              error
-            });
             return jsonRes(res, {
               code: 400,
               message: 'Data validation error',
@@ -99,13 +93,6 @@ export const NextEntry = ({
               url: req.url
             });
           }
-
-          errorLogger.error('Request handler error', {
-            requestId,
-            method,
-            url,
-            error
-          });
 
           return jsonRes(res, {
             code: 500,
