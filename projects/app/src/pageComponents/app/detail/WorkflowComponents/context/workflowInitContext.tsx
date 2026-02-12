@@ -200,7 +200,7 @@ const WorkflowInitContextProvider = ({
         allNodeFolded = false;
       }
 
-      if (flowNodeType === FlowNodeTypeEnum.agent || flowNodeType === FlowNodeTypeEnum.tool) {
+      if (flowNodeType === FlowNodeTypeEnum.agent || flowNodeType === FlowNodeTypeEnum.toolCall) {
         hasToolNode = true;
       }
     });
