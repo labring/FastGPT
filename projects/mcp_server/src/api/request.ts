@@ -1,4 +1,6 @@
-import { addLog } from '../utils/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.MCP.SERVER);
 
 type ConfigType = {
   headers?: Record<string, string>;
@@ -28,7 +30,7 @@ function checkRes(data: ResponseDataType) {
  * 响应错误处理
  */
 function responseError(err: any) {
-  addLog.error(`Fetch request error`, err);
+  logger.error('Fetch request error', { error: err });
   const data = err?.response?.data || err;
 
   if (!err) {
