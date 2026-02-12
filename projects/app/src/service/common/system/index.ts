@@ -114,7 +114,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/openapi/intro',
+  openAPIDocUrl: 'https://doc.fastgpt.io/docs/openapi/intro',
   submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
