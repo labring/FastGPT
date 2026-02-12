@@ -234,16 +234,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     }
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
-    logger.info('System models loaded', {
+    logger.debug('System models loaded', {
       total: _systemModelList.length,
       active: _systemActiveModelList.length
-    });
-    logger.debug('System active models', {
-      models: _systemActiveModelList.map((item) => ({
-        provider: item.provider,
-        model: item.model,
-        name: item.name
-      }))
     });
   } catch (error) {
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
