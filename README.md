@@ -44,7 +44,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 💡 RoadMap
+## 💡 核心功能
 
 `1` 应用编排能力
    - [x] 规划 Agent 模式。
@@ -107,7 +107,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [系统配置文件说明](https://doc.fastgpt.io/docs/introduction/development/configuration/)
 * [多模型配置方案](https://doc.fastgpt.io/docs/introduction/development/modelConfig/one-api/)
 * [版本更新/升级介绍](https://doc.fastgpt.io/docs/upgrading)
-* [OpenAPI API 文档](https://doc.fastgpt.io/docs/introduction/development/openapi/)
+* [OpenAPI API 文档](https://doc.fastgpt.io/docs/introduction/openapi/)
 * [知识库结构详解](https://doc.fastgpt.io/docs/introduction/guide/knowledge_base/RAG/)
 
 <a href="#readme">
@@ -126,10 +126,11 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 </a>
 
 ## 🌿 第三方生态
-- [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
+
 - [AI Proxy：国内模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-
+- [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
+  
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
@@ -151,10 +152,12 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 - [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <div align="center">
+      <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" width="50">
+    </div>
 </a>
 
-## 🤝 参与贡献
+## 🤝 贡献者
 
 我们非常欢迎各种形式的贡献。如果你对贡献代码感兴趣，可以查看我们的 GitHub [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)，大展身手，向我们展示你的奇思妙想。
 
