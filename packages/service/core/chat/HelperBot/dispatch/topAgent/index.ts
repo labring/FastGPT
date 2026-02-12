@@ -22,7 +22,7 @@ import { parseJsonArgs } from '../../../../ai/utils';
 import { MongoDataset } from '../../../../dataset/schema';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import { getLogger, LogCategories } from 'common/logger';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>

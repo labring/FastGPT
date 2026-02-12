@@ -325,7 +325,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           agentPlan = undefined;
         }
       } catch (error) {
-        getLogger(LogCategories.MODULE.AI.AGENT).error(`Continue planning failed`, error);
+        getLogger(LogCategories.MODULE.AI.AGENT).error(`Continue planning failed`, { error });
         // 规划失败时，清空 agentPlan，让任务正常结束
         agentPlan = undefined;
         return undefined;

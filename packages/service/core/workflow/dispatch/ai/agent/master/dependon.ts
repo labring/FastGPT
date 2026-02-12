@@ -131,7 +131,7 @@ export const getStepDependon = async ({
       nodeResponse
     };
   } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).error('[GetStepDependon] failed', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error('[GetStepDependon] failed', { error });
     return {
       depends: allDepends
     };
@@ -304,7 +304,7 @@ ${stepPrompt}
         }
       };
     } catch (error) {
-      getLogger(LogCategories.MODULE.AI.AGENT).error('[Compression stepPrompt] failed', error);
+      getLogger(LogCategories.MODULE.AI.AGENT).error('[Compression stepPrompt] failed', { error });
       // 压缩失败时返回原始内容
       return { stepPrompt };
     }
