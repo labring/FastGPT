@@ -44,7 +44,7 @@ docker compose up -d
 
 完全启动后，可通过`http://localhost:3000`访问 FastGPT，默认账号为`root`，密码为`1234`。
 
-如果你需要问题，可以[查看完整 Docker 部署教程](https://doc.fastgpt.io/docs/introduction/development/docker)
+如果你遇到问题，可以[查看完整 Docker 部署教程](https://doc.fastgpt.io/docs/introduction/development/docker)
 
 ## 🛸 使用方式
 
