@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -17,6 +17,7 @@ import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartC
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import DataTableComponent from './DataTableComponent';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export type ModelDashboardData = {
   x: string;
@@ -109,6 +110,20 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: systemModelList = [] } = useRequest(getSystemModelList, {
     manual: false
   });
+  const llmModelSet = useMemo(
+    () =>
+      new Set(
+        systemModelList.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
+      ),
+    [systemModelList?.length]
+  );
+  const isLLMModel = useCallback(
+    (model: string) => {
+      return llmModelSet.has(model);
+    },
+    [llmModelSet]
+  );
+
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
@@ -128,7 +143,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       },
       ...res
     ];
-  }, [systemModelList, t]);
+  }, [getModelProvider, i18n.language, systemModelList, t]);
   // Model price map
   const modelPriceMap = useMemo(() => {
     const map = new Map<
@@ -339,6 +354,17 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         return acc;
       }, 0);
 
+      // Cache hit
+      const llmRequestCount = summary.reduce((acc, item) => {
+        // Check is llm
+        if (isLLMModel(item.model)) {
+          return acc + (item.request_count || 0);
+        }
+        return acc;
+      }, 0);
+
+      const cacheHitCount = summary.reduce((acc, item) => acc + (item.cache_hit_count || 0), 0);
+
       return {
         x: date,
         xLabel: xLabel,
@@ -352,10 +378,12 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,
-        maxTpm
+        maxTpm,
+        cacheHitCount,
+        cacheHitRate: llmRequestCount === 0 ? 0 : +`${(cacheHitCount / llmRequestCount).toFixed(4)}`
       };
     });
-  }, [dashboardData, filterProps.model, filterProps.timespan, modelPriceMap]);
+  }, [dashboardData, filterProps.model, filterProps.timespan, isLLMModel, modelPriceMap]);
 
   const [tokensUsageType, setTokensUsageType] = useState<
     'inputTokens' | 'outputTokens' | 'totalTokens'
@@ -670,6 +698,36 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
                   </Box>
                 </Grid>
               )}
+
+              {/* Cache hit */}
+              {(!filterProps?.model || isLLMModel(filterProps.model)) && (
+                <Box mt={5} {...ChartsBoxStyles}>
+                  <AreaChartComponent
+                    data={chartData}
+                    title={t('account_model:cache_hit_analysis')}
+                    enableCumulative={true}
+                    lines={[
+                      {
+                        dataKey: 'cacheHitRate',
+                        name: t('account_model:cache_hit_rate'),
+                        color: '#8774EE'
+                      }
+                    ]}
+                    tooltipItems={[
+                      {
+                        label: t('account_model:cache_hit_rate'),
+                        dataKey: 'cacheHitRate',
+                        color: '#8774EE'
+                      },
+                      {
+                        label: t('account_model:cache_hit_count'),
+                        dataKey: 'cacheHitCount',
+                        color: theme.colors.green['600']
+                      }
+                    ]}
+                  />
+                </Box>
+              )}
             </>
           )
         ) : (
@@ -679,6 +737,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             channelList={channelList}
             modelPriceMap={modelPriceMap}
             onViewDetail={handleViewDetail}
+            isLLMModel={isLLMModel}
           />
         )}
       </MyBox>

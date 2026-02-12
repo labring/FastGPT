@@ -1,7 +1,6 @@
 import { type PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
-import { addLog } from '../../system/log';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -9,10 +8,13 @@ import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { getRedisCache, setRedisCache } from '../../redis/cache';
 import { differenceInDays } from 'date-fns';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.EVENT.TRACK);
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.debug('Push tracks', {
+  logger.debug('Enqueue track event', {
     event,
     ...data
   });
@@ -39,7 +41,7 @@ const pushCountTrack = ({
   data: Record<string, any>;
 }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.debug('Push tracks', {
+  logger.debug('Enqueue track counter event', {
     event,
     key
   });
@@ -90,7 +92,7 @@ export const pushTrack = {
         data
       });
     } catch (error) {
-      addLog.error('Failed to track daily user active:', error);
+      logger.error('Failed to record daily active user', { error });
     }
   },
   createApp: (

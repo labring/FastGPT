@@ -1,6 +1,9 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../mongo';
 import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type.d';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const ImageSchema = new Schema({
   teamId: {
@@ -30,7 +33,7 @@ try {
     { partialFilterExpression: { 'metadata.relatedId': { $exists: true } } }
   );
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build image indexes', { error });
 }
 
 export const MongoImage = getMongoModel<MongoImageSchemaType>('image', ImageSchema);

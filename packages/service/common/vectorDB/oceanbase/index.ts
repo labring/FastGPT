@@ -4,7 +4,9 @@ import { ObClass } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 export class ObVectorCtrl implements VectorControllerType {
   private obClient: ObClass;
@@ -35,9 +37,14 @@ export class ObVectorCtrl implements VectorControllerType {
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
 
-      addLog.info(`[${this.controllerType}] init successful`);
+      logger.info('Vector DB initialization completed', {
+        provider: this.controllerType
+      });
     } catch (error) {
-      addLog.error(`[${this.controllerType}] init error`, error);
+      logger.error('Vector DB initialization failed', {
+        provider: this.controllerType,
+        error
+      });
     }
   };
 

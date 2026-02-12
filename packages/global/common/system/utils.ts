@@ -8,7 +8,7 @@ export const delay = (ms: number) =>
 export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
   while (true) {
     try {
-      return fn();
+      return await fn();
     } catch (error) {
       if (attempts <= 0) {
         return Promise.reject(error);
@@ -19,23 +19,19 @@ export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T>
   }
 };
 
-export const batchRun = async <T>(arr: T[], fn: (arr: T) => any, batchSize = 10) => {
-  const batchArr = new Array(batchSize).fill(null);
-  const result: any[] = [];
-
+export const batchRun = async <T, R>(
+  arr: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  batchSize = 10
+): Promise<R[]> => {
+  const result: R[] = new Array(arr.length);
+  let nextIndex = 0;
   const batchFn = async () => {
-    const data = arr.shift();
-    if (data) {
-      result.push(await fn(data));
-      return batchFn();
+    while (nextIndex < arr.length) {
+      const currentIndex = nextIndex++;
+      result[currentIndex] = await fn(arr[currentIndex], currentIndex);
     }
   };
-
-  await Promise.all(
-    batchArr.map(async () => {
-      await batchFn();
-    })
-  );
-
+  await Promise.all(Array.from({ length: Math.min(batchSize, arr.length) }, () => batchFn()));
   return result;
 };

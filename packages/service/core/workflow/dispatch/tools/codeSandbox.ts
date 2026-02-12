@@ -22,13 +22,43 @@ type RunCodeResponse = DispatchNodeResultType<
   }
 >;
 
-function getURL(codeType: string): string {
-  if (codeType == SandboxCodeTypeEnum.py) {
-    return `${process.env.SANDBOX_URL}/sandbox/python`;
-  } else {
-    return `${process.env.SANDBOX_URL}/sandbox/js`;
+export const runCode = async ({
+  codeType,
+  code,
+  variables
+}: {
+  codeType: string;
+  code: string;
+  variables: Record<string, any>;
+}): Promise<{
+  codeReturn: Record<string, any>;
+  log: string;
+}> => {
+  const url = (() => {
+    if (codeType == SandboxCodeTypeEnum.py) {
+      return `${process.env.SANDBOX_URL}/sandbox/python`;
+    } else {
+      return `${process.env.SANDBOX_URL}/sandbox/js`;
+    }
+  })();
+
+  const { data: runResult } = await axios.post<{
+    success: boolean;
+    data: {
+      codeReturn: Record<string, any>;
+      log: string;
+    };
+  }>(url, {
+    code,
+    variables
+  });
+
+  if (!runResult.success) {
+    return Promise.reject('Run code failed');
   }
-}
+
+  return runResult.data;
+};
 
 export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
@@ -48,35 +78,21 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
     };
   }
 
-  const sandBoxRequestUrl = getURL(codeType);
   try {
-    const { data: runResult } = await axios.post<{
-      success: boolean;
-      data: {
-        codeReturn: Record<string, any>;
-        log: string;
-      };
-    }>(sandBoxRequestUrl, {
-      code,
-      variables: customVariables
-    });
+    const { codeReturn, log } = await runCode({ codeType, code, variables: customVariables });
 
-    if (runResult.success) {
-      return {
-        data: {
-          [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
-          ...runResult.data.codeReturn
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          customInputs: customVariables,
-          customOutputs: runResult.data.codeReturn,
-          codeLog: runResult.data.log
-        },
-        [DispatchNodeResponseKeyEnum.toolResponses]: runResult.data.codeReturn
-      };
-    } else {
-      throw new Error('Run code failed');
-    }
+    return {
+      data: {
+        [NodeOutputKeyEnum.rawResponse]: codeReturn,
+        ...codeReturn
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        customInputs: customVariables,
+        customOutputs: codeReturn,
+        codeLog: log
+      },
+      [DispatchNodeResponseKeyEnum.toolResponses]: codeReturn
+    };
   } catch (error) {
     const text = getErrText(error);
 

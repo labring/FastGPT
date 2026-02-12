@@ -10,7 +10,7 @@ import { clone } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';

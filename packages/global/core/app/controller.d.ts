@@ -1,5 +1,5 @@
 import type { ParentIdType } from 'common/parentFolder/type';
-import type { AppSchema } from './type';
+import type { AppSchemaType } from './type';
 import type { AppTypeEnum } from './constants';
 
 export type CreateAppProps = {
@@ -8,16 +8,16 @@ export type CreateAppProps = {
   avatar?: string;
   intro?: string;
   type?: AppTypeEnum;
-  modules: AppSchema['modules'];
-  edges?: AppSchema['edges'];
+  modules: AppSchemaType['modules'];
+  edges?: AppSchemaType['edges'];
 };
 export type CreateHttpPluginChildrenPros = Omit<CreateAppProps, 'type'> & {
   parentId: ParentIdType;
   name: string;
   intro: string;
   avatar: string;
-  modules: AppSchema['modules'];
-  edges: AppSchema['edges'];
+  modules: AppSchemaType['modules'];
+  edges: AppSchemaType['edges'];
   pluginData: {
     pluginUniId: string;
   };

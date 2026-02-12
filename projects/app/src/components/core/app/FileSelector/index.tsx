@@ -14,7 +14,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';

@@ -1,21 +1,117 @@
 ---
-title: 'V4.14.7(进行中)'
+title: 'V4.14.7(包含升级脚本)'
 description: 'FastGPT V4.14.7 更新说明'
 ---
 
+## 更新指南
+
+### 1. 更新镜像
+
+- 更新 FastGPT 镜像 tag: v4.14.7
+- 更新 FastGPT 商业版镜像 tag: v4.14.7
+- 更新 fastgpt-plugin 镜像 tag: v0.5.3
+- mcp_server 无需更新
+- sandbox 无需更新
+- 更新 AIProxy 镜像 tag: 0.3.15
+- mongo 无需更新
+
+### 2. 更新系统环境变量
+
+更新了日志系统，包括但不限于日志打印、日志采集和日志分析等
+
+```dotenv
+# 移除环境变量
+LOG_LEVEL=
+STORE_LOG_LEVEL=
+SIGNOZ_BASE_URL=
+SIGNOZ_SERVICE_NAME=
+SIGNOZ_STORE_LEVEL=
+
+# 新增以下 6 个变量
+LOG_ENABLE_CONSOLE=true # 是否开启控制台打印
+LOG_CONSOLE_LEVEL=debug # 控制台打印最低日志等级
+LOG_ENABLE_OTEL=true # 是否开启 OTEL 日志收集
+LOG_OTEL_LEVEL=info # OTEL 日志收集的最低日志等级
+LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
+LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
+```
+
+### 3. 更新系统插件
+
+前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）。可以直接下载[zip 包](https://github.com/labring/fastgpt-plugin/raw/refs/heads/main/.github/assets/upgrade_pkg.zip)直接安装。
+
+* base64Decode：base64 解码转化
+* dallle3: dall-e 3 图片生成
+* docDiff: 文档差异对比
+* drawing: BI图表
+* gptImage: gpt 图片生成
+* markdownTransform: markdown 转换文件
+* mineru: Mineru pdf解析
+* minimax: minimax 对话
+* openrouterMultiModal: openrouter 多模态
+* stability: stability 图片生成
+
+### 4. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 会将对话日志中，含错误的记录添加到统计表里。
+
+### 5. 接口更新
+
+在新版本的对话记录中，value 值的 type 已被移除，`/api/core/chat/getPaginationRecords`暂时做了适配，请使用该 API 的用户尽快调整 value 解析方案，直接判断 `text`,`tools`等字段是否存在即可。
 
 ## 🚀 新增内容
 
-1. 知识库搜索，支持指定 collectionIds 来进行筛选。
+1. 基于上下文工程的 Agent 模式，适合长任务拆解的场景。(测试版)
+2. 临时增加 LLM 请求追踪，方便调试。会保留所有 LLM 的请求体和响应（默认保留 6 小时，通过 `LLM_REQUEST_TRACKING_RETENTION_HOURS` 变量调整）
+3. 知识库搜索，支持指定 collectionIds 来进行筛选。
+4. 模型监控增加缓存命中率。
+5. 分享链接，自定义鉴权模式下，finish 事件会传输 chatId。
+6. 对话日志列表，增加仅看错误日志过滤选项。
+7. 对话日志列表，精准的过滤使用者。
+8. 依赖预检查，启动项目时进行infra/子服务有效性检测，便于准确定位不可用的服务。
+9. MCP 服务解析时，支持解析 schema 中的 $ref 语法。
+10. 使用 [LogTape](https://logtape.org/) 重构了日志系统，包括但不限于日志打印、日志采集和日志分析等。同时移除了 mongo 的日志存储，可使用 OTEL 收集器进行收集。
 
 ## ⚙️ 优化
 
+1. Chat Agent 中工具选择和知识库选择 UX。
+2. MCP 保存时，自动过滤掉多余的字段，避免 mongo4.x 不兼容。
+3. 后端自动过滤掉未配置的工具，避免模型调用未配置的工具导致报错。采用相同的过滤函数，保证前后端逻辑一致性。
+4. 增加对话日志模式，工作流 AI 模型的记忆选择。
+5. 工具调用时，自动补充空的 arguments 成 "{}"，避免部分模型服务商不支持空字符串导致报错。
+6. 适配 kimi2.5 思考模式下工具调用。
+7. 内网域名检查方式。
+8. 工作流运行前，去除孤立的边。
+9. 通过 API 调用工作流，传入文件链接时，不再采用根据链接推测类型的方式，直接保存输入的 type，确保文件类型 100% 正确。
 
 ## 🐛 修复
 
+1. 工作流全局变量中，部分类型赋值错误的 defaultValueType。
+2. 工作流 AI 节点，思考输出值未正常渲染。
+3. 精确获取 MCP 单个子工具的权限，避免越权调用。
+4. 工具集 ToolName 避免数字开头导致工具调用失败。
+5. 简易应用转工作流，未复制一份头像。
+6. 导入工作流时，引用类型的模型字段被误判为无效模型而清空。
+7. Iphone safari 浏览器下，分享链接首次进入有概率触发 uid 为空的请求。
+8. MCP 暴露 Agent 时，无法传入文件链接。
+9. 创建 http 工具时，body 包含变量会报错 JSON 解析错误。
+10. 工作流切换 Tab 后画布自动定位失效。
+11. 工作流节点出现系统未捕获的错误时，未正确走报错捕获分支。
 
 ## 插件
+
+1. 新增获取用户信息工具。
+2. 增加 kimi2.5 模型预设。
 
 ## 代码质量
 
 1. 增加向量数据库集成测试。
+2. 完善 packages/global 单元测试，提高覆盖到 90+。

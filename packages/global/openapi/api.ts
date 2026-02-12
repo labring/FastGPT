@@ -12,6 +12,7 @@ export const PaginationResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) 
     total: z.number().optional().default(0),
     list: z.array(itemSchema).optional().default([])
   });
-export type PaginationResponseType<T extends z.ZodTypeAny> = z.infer<
-  ReturnType<typeof PaginationResponseSchema<T>>
->;
+export type PaginationResponseType<T = any> = {
+  total: number;
+  list: T[];
+};

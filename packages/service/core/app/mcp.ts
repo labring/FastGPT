@@ -1,14 +1,17 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import $RefParser from '@apidevtools/json-schema-ref-parser';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
 export class MCPClient {
   private client: Client;
@@ -71,9 +74,9 @@ export class MCPClient {
   async closeConnection() {
     try {
       await retryFn(() => this.client.close(), 3);
-      addLog.debug(`[MCP Client] Closed connection：${this.url}`);
+      logger.debug('MCP client connection closed', { url: this.url });
     } catch (error) {
-      addLog.error('[MCP Client] Failed to close connection:', error);
+      logger.error('MCP client failed to close connection', { url: this.url, error });
     }
   }
 
@@ -90,24 +93,48 @@ export class MCPClient {
         return Promise.reject(new UserError('[MCP Client] Get tools response is not an array'));
       }
 
-      const tools = response.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description || '',
-        inputSchema: tool.inputSchema
-          ? {
-              ...tool.inputSchema,
-              properties: tool.inputSchema.properties || {}
+      const tools = await Promise.all(
+        response.tools.map(async (tool) => {
+          let processedSchema;
+
+          if (tool.inputSchema) {
+            try {
+              // Deep clone to avoid dereference() mutating the original object
+              const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
+              processedSchema = await $RefParser.dereference(schemaClone, {
+                resolve: {
+                  // Disable file and HTTP $ref resolution to prevent SSRF
+                  file: false,
+                  http: false
+                }
+              });
+            } catch (error) {
+              logger.error(`Failed to dereference schema for tool "${tool.name}":`, { error });
+              processedSchema = tool.inputSchema;
             }
-          : {
-              type: 'object',
-              properties: {}
-            }
-      }));
+          }
+
+          return {
+            name: tool.name,
+            description: tool.description || '',
+            inputSchema: processedSchema
+              ? {
+                  type: 'object',
+                  ...processedSchema,
+                  properties: processedSchema.properties || {}
+                }
+              : {
+                  type: 'object',
+                  properties: {}
+                }
+          };
+        })
+      );
 
       // @ts-ignore
       return tools;
     } catch (error) {
-      addLog.error('[MCP Client] Failed to get tools:', error);
+      logger.error('MCP client failed to get tools', { url: this.url, error });
       return Promise.reject(error);
     } finally {
       await this.closeConnection();
@@ -131,7 +158,7 @@ export class MCPClient {
   }): Promise<any> {
     try {
       const client = await this.getConnection();
-      addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
+      logger.debug('MCP client calling tool', { url: this.url, toolName, params });
 
       return await client.callTool(
         {
@@ -144,7 +171,7 @@ export class MCPClient {
         }
       );
     } catch (error) {
-      addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
+      logger.error('MCP client tool call failed', { url: this.url, toolName, error });
       return Promise.reject(error);
     } finally {
       if (closeConnection) {
@@ -154,7 +181,7 @@ export class MCPClient {
   }
 }
 
-export const getMCPChildren = async (app: AppSchema) => {
+export const getMCPChildren = async (app: AppSchemaType) => {
   const isNewMcp = !!app.modules[0].toolConfig?.mcpToolSet;
   const id = String(app._id);
 

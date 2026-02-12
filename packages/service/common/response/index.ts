@@ -1,11 +1,14 @@
 import type { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { addLog } from '../system/log';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
+import type Stream from 'node:stream';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.ERROR);
 
 export interface ResponseType<T = any> {
   code: number;
@@ -42,7 +45,13 @@ export function processError(params: {
     const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
 
     // 记录业务侧错误日志
-    addLog.info(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
+    logger.info('API response error', {
+      url,
+      code: ERROR_RESPONSE[errResponseKey].code,
+      message: ERROR_RESPONSE[errResponseKey].message,
+      statusText: ERROR_RESPONSE[errResponseKey].statusText,
+      data: ERROR_RESPONSE[errResponseKey].data
+    });
 
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
@@ -67,19 +76,17 @@ export function processError(params: {
 
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
-    addLog.info(`Request error: ${url}, ${msg}`);
+    logger.info('Request error', { url, message: msg });
   } else if (error instanceof ZodError) {
     zodError = (() => {
       try {
         return JSON.parse(error.message);
       } catch (error) {}
     })();
-    addLog.error(`[Zod] Error in ${url}`, {
-      data: zodError
-    });
+    logger.error('Zod validation error', { url, data: zodError, error });
     msg = error.message;
   } else {
-    addLog.error(`System unexpected error: ${url}, ${msg}`, error);
+    logger.error('System unexpected error', { url, message: msg, error });
   }
 
   // 4. 返回处理后的错误信息
@@ -161,7 +168,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = `${error?.error?.code} ${error?.error?.message}`;
   }
 
-  addLog.error(`sse error: ${msg}`, error);
+  logger.error('SSE error', { message: msg, error });
 
   responseWrite({
     res,
@@ -175,7 +182,7 @@ export function responseWriteController({
   readStream
 }: {
   res: NextApiResponse;
-  readStream: any;
+  readStream: Stream.Readable;
 }) {
   res.on('drain', () => {
     readStream?.resume?.();
@@ -191,16 +198,14 @@ export function responseWriteController({
 
 export function responseWrite({
   res,
-  write,
   event,
   data
 }: {
   res?: NextApiResponse;
-  write?: (text: string) => void;
   event?: string;
   data: string;
 }) {
-  const Write = write || res?.write;
+  const Write = res?.write;
 
   if (!Write) return;
 

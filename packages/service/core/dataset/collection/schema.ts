@@ -1,4 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -127,7 +128,8 @@ try {
     'metadata.relatedImgId': 1
   });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset collection indexes', { error });
 }
 
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(

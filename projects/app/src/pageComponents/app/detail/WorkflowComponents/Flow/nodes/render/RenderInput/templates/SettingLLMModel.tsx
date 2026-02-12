@@ -1,17 +1,31 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import type { RenderInputProps } from '../type';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useLocalStorageState } from 'ahooks';
+import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
+  const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
+    'workflow_default_llm_model',
+    {
+      defaultValue: getWebDefaultLLMModel()?.model || ''
+    }
+  );
+
   const onChangeModel = useCallback(
     (e: SettingAIDataType) => {
       for (const key in e) {
+        if (key === NodeInputKeyEnum.aiModel) {
+          setDefaultModel(e[key]);
+        }
+
         const input = inputs.find((input) => input.key === key);
         if (input) {
           onChangeNode({
@@ -27,10 +41,10 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
         }
       }
     },
-    [inputs, nodeId, onChangeNode]
+    [inputs, nodeId, onChangeNode, setDefaultModel]
   );
 
-  const llmModelData: SettingAIDataType = useMemo(
+  const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
       model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? '',
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
@@ -53,17 +67,14 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
     [inputs]
   );
 
-  const Render = useMemo(() => {
-    return (
-      <SettingLLMModel
-        llmModelType={item.llmModelType}
-        defaultData={llmModelData}
-        onChange={onChangeModel}
-      />
-    );
-  }, [item.llmModelType, llmModelData, onChangeModel]);
-
-  return Render;
+  return (
+    <SettingLLMModel
+      defaultModel={defaultModel}
+      llmModelType={item.llmModelType}
+      defaultData={llmModelData}
+      onChange={onChangeModel}
+    />
+  );
 };
 
 export default React.memo(SelectAiModelRender);

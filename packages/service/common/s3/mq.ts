@@ -1,7 +1,9 @@
 import { getQueue, getWorker, QueueNames } from '../bullmq';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import path from 'path';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(LogCategories.INFRA.S3);
 
 export type S3MQJobData = {
   key?: string;
@@ -48,7 +50,7 @@ export const startS3DelWorker = async () => {
       const bucket = global.s3BucketMap[bucketName];
 
       if (!bucket) {
-        addLog.error(`Bucket not found: ${bucketName}`);
+        logger.error('S3 bucket not found for delete job', { bucketName });
         return;
       }
 
@@ -56,7 +58,7 @@ export const startS3DelWorker = async () => {
         keys = [key];
       }
       if (keys) {
-        addLog.debug(`[S3 delete] delete keys: ${keys.length}`);
+        logger.debug('S3 delete by keys', { bucketName, count: keys.length });
         await bucket.client.deleteObjectsByMultiKeys({ keys });
 
         await batchRun(keys, async (key) => {
@@ -66,9 +68,9 @@ export const startS3DelWorker = async () => {
         });
       }
       if (prefix) {
-        addLog.info(`[S3 delete] delete prefix: ${prefix}`);
+        logger.info('S3 delete by prefix started', { bucketName, prefix });
         bucket.client.deleteObjectsByPrefix({ prefix });
-        addLog.info(`[S3 delete] delete prefix: ${prefix} success`);
+        logger.info('S3 delete by prefix completed', { bucketName, prefix });
       }
     },
     {

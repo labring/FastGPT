@@ -3,6 +3,7 @@ const { Schema } = connectionMongo;
 import { type TeamSchema as TeamType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const TeamSchema = new Schema({
   name: {
@@ -71,7 +72,8 @@ try {
   TeamSchema.index({ ownerId: 1 });
   TeamSchema.index({ 'meta.wecom.corpId': 1 }, { sparse: true, unique: true });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build team indexes', { error });
 }
 
 export const MongoTeam = getMongoModel<TeamType>(TeamCollectionName, TeamSchema);

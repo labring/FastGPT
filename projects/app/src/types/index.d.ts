@@ -6,7 +6,7 @@ import {
   RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import type { TrackEventName } from '@/web/common/system/constants';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 

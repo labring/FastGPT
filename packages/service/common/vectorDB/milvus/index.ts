@@ -7,8 +7,10 @@ import {
 } from '../constants';
 import type { VectorControllerType } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
+
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 export class MilvusCtrl implements VectorControllerType {
   constructor() {}
@@ -24,7 +26,7 @@ export class MilvusCtrl implements VectorControllerType {
     });
     await global.milvusClient.connectPromise;
 
-    addLog.info(`Milvus connected`);
+    logger.info('Milvus connected', { address: MILVUS_ADDRESS });
 
     return global.milvusClient;
   };
@@ -44,7 +46,9 @@ export class MilvusCtrl implements VectorControllerType {
       await client.useDatabase({
         db_name: DatasetVectorDbName
       });
-    } catch (error) {}
+    } catch (error) {
+      logger.warn('Milvus database initialization skipped or failed', { error });
+    }
 
     // init collection and index
     const { value: hasCollection } = await client.hasCollection({
@@ -102,7 +106,10 @@ export class MilvusCtrl implements VectorControllerType {
         ]
       });
 
-      addLog.info(`Create milvus collection: `, result);
+      logger.info('Milvus collection created', {
+        collection: DatasetVectorTableName,
+        result
+      });
     }
 
     const { state: colLoadState } = await client.getLoadState({
@@ -116,7 +123,7 @@ export class MilvusCtrl implements VectorControllerType {
       await client.loadCollectionSync({
         collection_name: DatasetVectorTableName
       });
-      addLog.info(`Milvus collection load success`);
+      logger.info('Milvus collection loaded', { collection: DatasetVectorTableName });
     }
   };
 

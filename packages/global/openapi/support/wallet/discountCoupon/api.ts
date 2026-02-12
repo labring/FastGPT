@@ -28,6 +28,8 @@ export const DiscountCouponItemSchema = DiscountCouponSchema.extend({
     description: '关联的订单 ID, 被使用后该值存在'
   })
 });
-export const DiscountCouponListResponseSchema = z.array(DiscountCouponItemSchema);
+export const DiscountCouponListResponseSchema = z
+  .array(DiscountCouponItemSchema)
+  .meta({ description: '优惠券列表' });
 
 export type DiscountCouponListResponseType = z.infer<typeof DiscountCouponListResponseSchema>;

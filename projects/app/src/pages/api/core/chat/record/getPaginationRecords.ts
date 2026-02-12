@@ -8,7 +8,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
   removeAIResponseCite
@@ -75,9 +75,9 @@ export async function handler(
   // Presign file urls
   await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
-  // Remove important information
-  if (isOutLink && app.type !== AppTypeEnum.workflowTool) {
-    histories.forEach((item) => {
+  histories.forEach((item) => {
+    // Remove important information
+    if (isOutLink && app.type !== AppTypeEnum.workflowTool) {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
@@ -85,18 +85,40 @@ export async function handler(
         });
 
         if (showRunningStatus === false) {
-          item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
+          item.value = item.value.filter((v) => !('tool' in v));
         }
       }
-    });
-  }
-  if (!showCite) {
-    histories.forEach((item) => {
+    }
+
+    if (!showCite) {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
       }
+    }
+
+    // Add value type(适配旧版)
+    item.value = item.value.map((v) => {
+      enum ChatItemValueTypeEnum {
+        text = 'text',
+        file = 'file',
+        tool = 'tool',
+        interactive = 'interactive',
+        reasoning = 'reasoning'
+      }
+      const type = (() => {
+        if (v.text) return ChatItemValueTypeEnum.text;
+        if ('file' in v) return ChatItemValueTypeEnum.file;
+        if ('tool' in v || 'tools' in v) return ChatItemValueTypeEnum.tool;
+        if ('interactive' in v) return ChatItemValueTypeEnum.interactive;
+        if ('reasoning' in v) return ChatItemValueTypeEnum.reasoning;
+        return ChatItemValueTypeEnum.text;
+      })();
+      return {
+        ...v,
+        type
+      };
     });
-  }
+  });
 
   return {
     list: isPlugin ? histories : transformPreviewHistories(histories, showCite),

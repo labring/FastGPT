@@ -64,7 +64,7 @@ export class S3ChatSource extends S3PrivateBucket {
     return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
       {
-        expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 24,
+        expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 1,
         maxFileSize
       }
     );

@@ -2,13 +2,13 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
-  type AppFileSelectConfigType,
   type AppQGConfigType,
   type AppTTSConfigType,
   type AppWhisperConfigType,
   type ChatInputGuideConfigType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,
