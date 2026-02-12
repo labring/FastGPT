@@ -78,7 +78,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
 7. 对话日志列表，精准的过滤使用者。
 8. 依赖预检查，启动项目时进行infra/子服务有效性检测，便于准确定位不可用的服务。
 9. MCP 服务解析时，支持解析 schema 中的 $ref 语法。
-10. 使用 [LogTape](https://logtape.org/) 重构了日志系统，包括但不限于日志打印、日志采集和日志分析等
+10. 使用 [LogTape](https://logtape.org/) 重构了日志系统，包括但不限于日志打印、日志采集和日志分析等。同时移除了 mongo 的日志存储，可使用 OTEL 收集器进行收集。
 
 ## ⚙️ 优化
 
