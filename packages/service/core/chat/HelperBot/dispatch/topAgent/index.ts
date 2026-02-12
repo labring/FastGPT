@@ -12,7 +12,6 @@ import {
   buildDisplayText
 } from './utils';
 import { TopAgentAnswerSchema, TopAgentFormDataSchema } from './type';
-import { addLog } from '../../../../../common/system/log';
 import { formatAIResponse } from '../utils';
 import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -23,6 +22,7 @@ import { parseJsonArgs } from '../../../../ai/utils';
 import { MongoDataset } from '../../../../dataset/schema';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { getLogger, LogCategories } from 'common/logger';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>
@@ -97,7 +97,10 @@ export const dispatchTopAgent = async (
     //   maxArrayLength: null
     // });
     if (!result.success) {
-      addLog.warn('[Top agent] JSON parse failed, try repair', { text: answerText });
+      getLogger(LogCategories.MODULE.AI.HELPERBOT).warn(
+        '[Top agent] JSON parse failed, try repair',
+        { text: answerText }
+      );
 
       const repairPrompt = `当前查询的用户问题：${query} \n辅助助手上一次的输出:\n${answerText}，\nJSON 解析的报错信息：\n${result.error} \n
          查看JSON 的报错信息来修正 JSON 格式错误，并仅返回正确的 JSON，确保 JSON 格式正确无误且可以被解析。不要包含任何多余的信息。`;
@@ -127,7 +130,9 @@ export const dispatchTopAgent = async (
         }
       );
       if (!result.success) {
-        addLog.warn('[Top agent] JSON repair failed', { text: repairResponse.answerText });
+        getLogger(LogCategories.MODULE.AI.HELPERBOT).warn('[Top agent] JSON repair failed', {
+          text: repairResponse.answerText
+        });
         return {
           aiResponse: formatAIResponse({
             text: answerText,
@@ -141,7 +146,9 @@ export const dispatchTopAgent = async (
     const responseJson = result.data;
 
     if (responseJson.phase === 'generation') {
-      addLog.debug('🔄 TopAgent: Configuration generation phase');
+      getLogger(LogCategories.MODULE.AI.HELPERBOT).debug(
+        '🔄 TopAgent: Configuration generation phase'
+      );
 
       const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
       const filterDatasets = await filterValidDatasets({
@@ -181,7 +188,9 @@ export const dispatchTopAgent = async (
         usage
       };
     } else {
-      addLog.debug('📝 TopAgent: Information collection phase');
+      getLogger(LogCategories.MODULE.AI.HELPERBOT).debug(
+        '📝 TopAgent: Information collection phase'
+      );
 
       const formDeata = responseJson.form;
       if (formDeata) {
@@ -237,7 +246,9 @@ export const dispatchTopAgent = async (
       };
     }
   } catch (e) {
-    addLog.warn(`[Top agent] Failed to parse JSON response`, { text: answerText });
+    getLogger(LogCategories.MODULE.AI.HELPERBOT).warn(`[Top agent] Failed to parse JSON response`, {
+      text: answerText
+    });
     return {
       aiResponse: formatAIResponse({
         text: answerText,

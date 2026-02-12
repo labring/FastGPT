@@ -1,7 +1,7 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseUrlToFileType } from '../../../../../utils/context';
-import { addLog } from '../../../../../../../common/system/log';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { getHistoryFileLinks } from '../../../../tools/readFiles';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -82,7 +82,7 @@ export const formatFileInput = ({
 
           return url;
         } catch (error) {
-          addLog.warn(`Parse url error`, { error });
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(`Parse url error`, { error });
           return '';
         }
       })

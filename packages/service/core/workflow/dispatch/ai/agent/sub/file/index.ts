@@ -9,12 +9,12 @@ import { readFileContentByBuffer } from '../../../../../../../common/file/read/u
 import { getLLMModel } from '../../../../../../ai/model';
 import { compressLargeContent } from '../../../../../../ai/llm/compress';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
-import { addLog } from '../../../../../../../common/system/log';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -153,7 +153,7 @@ export const dispatchFileRead = async ({
       usages.push(result.usage);
     }
 
-    addLog.info('[File Read] Compression complete', {
+    getLogger(LogCategories.MODULE.AI.AGENT).info('[File Read] Compression complete', {
       originalLength: JSON.stringify(readFilesResult).length,
       compressedLength: responseText.length,
       compressionRatio: (responseText.length / JSON.stringify(readFilesResult).length).toFixed(2)
@@ -179,7 +179,10 @@ export const dispatchFileRead = async ({
       }
     };
   } catch (error) {
-    addLog.error('[File Read] Compression failed, using original content', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error(
+      '[File Read] Compression failed, using original content',
+      { error }
+    );
     return {
       response: `Failed to read file: ${getErrText(error)}`,
       usages: []

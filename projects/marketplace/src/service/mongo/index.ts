@@ -1,6 +1,7 @@
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
@@ -18,7 +19,7 @@ export const connectionMongo = (() => {
 
 export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
   if (connectionMongo.models[name]) return connectionMongo.model<T>(name);
-  addLog.info(`Load model: ${name}`);
+  getLogger(LogCategories.INFRA.MONGO).info(`Load model: ${name}`);
 
   const model = connectionMongo.model(name, schema);
 

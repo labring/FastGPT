@@ -1,5 +1,4 @@
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
-import { addLog } from '../../../../../../common/system/log';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { getLLMModel } from '../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -7,7 +6,7 @@ import { i18nT } from '../../../../../../../web/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../../../../common/logger';
 
 export const getOneStepResponseSummary = async ({
   response,
@@ -24,7 +23,7 @@ export const getOneStepResponseSummary = async ({
   error?: string;
 }> => {
   const startTime = Date.now();
-  addLog.debug('[GetOneStepResponseSummary] start');
+  getLogger(LogCategories.MODULE.AI.AGENT).debug('[GetOneStepResponseSummary] start');
 
   const modelData = getLLMModel(model);
   try {
@@ -82,7 +81,7 @@ export const getOneStepResponseSummary = async ({
       }
     };
   } catch (error) {
-    addLog.error('[GetOneStepResponseSummary] failed', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error('[GetOneStepResponseSummary] failed', { error });
     return {
       answerText: response
     };

@@ -67,6 +67,7 @@ export const LogCategories = {
     }),
     AI: Object.assign(['ai'], {
       AGENT: ['ai', 'agent'],
+      HELPERBOT: ['ai', 'helperbot'],
       CONFIG: ['ai', 'config'],
       EMBEDDING: ['ai', 'embedding'],
       FUNCTIONS: ['ai', 'functions'],

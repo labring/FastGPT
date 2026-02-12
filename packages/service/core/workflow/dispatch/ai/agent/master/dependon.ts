@@ -13,6 +13,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { addLog } from '../../../../../../common/system/log';
 import { calculateCompressionThresholds } from '../../../../../ai/llm/compress/constants';
 import { parseUrlToFileType } from '../../../../utils/context';
+import { getLogger, LogCategories } from '../../../../../../common/logger';
 
 export const getStepDependon = async ({
   checkIsStopping,
@@ -31,7 +32,6 @@ export const getStepDependon = async ({
 }> => {
   const startTime = Date.now();
   const modelData = getLLMModel(model);
-  // addLog.debug('GetStepResponse start', { model, step });
   const historySummary = steps
     .filter((item) => item.summary)
     .map((item) => `- ${item.id}: ${item.summary}`)
@@ -131,7 +131,7 @@ export const getStepDependon = async ({
       nodeResponse
     };
   } catch (error) {
-    addLog.error('[GetStepDependon] failed', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error('[GetStepDependon] failed', error);
     return {
       depends: allDepends
     };
@@ -304,7 +304,7 @@ ${stepPrompt}
         }
       };
     } catch (error) {
-      addLog.error('[Compression stepPrompt] failed', error);
+      getLogger(LogCategories.MODULE.AI.AGENT).error('[Compression stepPrompt] failed', error);
       // 压缩失败时返回原始内容
       return { stepPrompt };
     }
@@ -318,7 +318,9 @@ ${stepPrompt}
       response: item.response
     }));
   let preStepPrompt = filterSteps.length > 0 ? JSON.stringify(filterSteps) : '';
-  addLog.debug(`Step call depends_on (LLM): ${step.id}, dependOn: ${step.depends_on}`);
+  getLogger(LogCategories.MODULE.AI.AGENT).debug(
+    `Step call depends_on (LLM): ${step.id}, dependOn: ${step.depends_on}`
+  );
   // 压缩依赖的上下文
   const compressResult = await compressStepPrompt(
     preStepPrompt,

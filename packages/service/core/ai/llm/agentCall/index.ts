@@ -13,12 +13,10 @@ import type { CreateLLMResponseProps, ResponseEvents } from '../request';
 import { createLLMResponse } from '../request';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { compressRequestMessages, compressToolResponse } from '../compress';
-import { computedMaxToken } from '../../utils';
 import { filterGPTMessageByMaxContext } from '../utils';
 import { getLLMModel } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
-import { addLog } from '../../../../common/system/log';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 

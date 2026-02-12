@@ -29,13 +29,13 @@ import { dispatchPlanAgent } from './sub/plan';
 import { formatFileInput } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
-import { addLog } from '../../../../../common/system/log';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -238,7 +238,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const planCallFn = async () => {
       // Plan: 2,4 场景
       if (!lastInteractive || !planHistoryMessages || !planBuffer) {
-        addLog.error('Plan 结构逻辑错误');
+        getLogger(LogCategories.MODULE.AI.AGENT).error('Plan 结构逻辑错误');
         return Promise.reject('逻辑错误');
       }
       const result = await dispatchPlanAgent({
@@ -277,7 +277,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // plan: 5 场景
       if (!agentPlan) return;
 
-      addLog.debug(`All steps completed, check if need continue planning`);
+      getLogger(LogCategories.MODULE.AI.AGENT).debug(
+        `All steps completed, check if need continue planning`
+      );
       const stepsResponse = agentPlan.steps.map((step) => {
         const stepResponse = assistantResponses
           .filter((item) => item.stepId === step.id)
@@ -312,16 +314,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         const { plan: continuePlan } = parsePlanCallResult(result);
 
         if (continuePlan && continuePlan.steps.length > 0) {
-          addLog.debug(
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
             `Continue planning: adding ${continuePlan.steps.length} new steps， ${continuePlan.steps.map((item) => item.title)}`
           );
           agentPlan.steps.push(...continuePlan.steps);
         } else {
-          addLog.debug(`Continue planning: no new steps, planning complete`);
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            `Continue planning: no new steps, planning complete`
+          );
           agentPlan = undefined;
         }
       } catch (error) {
-        addLog.error(`Continue planning failed`, error);
+        getLogger(LogCategories.MODULE.AI.AGENT).error(`Continue planning failed`, error);
         // 规划失败时，清空 agentPlan，让任务正常结束
         agentPlan = undefined;
         return undefined;
@@ -347,7 +351,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               break;
             }
             if (step.response) continue;
-            addLog.debug(`Step call: ${step.id}`, step);
+            getLogger(LogCategories.MODULE.AI.AGENT).debug(`Step call: ${step.id}`, step);
             assistantResponses.push({
               stepTitle: {
                 stepId: step.id,
@@ -421,7 +425,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         planIterationCount++;
 
         if (planIterationCount >= MAX_PLAN_ITERATIONS) {
-          addLog.warn(`Max plan iteration reached: ${MAX_PLAN_ITERATIONS}, stopping`);
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(
+            `Max plan iteration reached: ${MAX_PLAN_ITERATIONS}, stopping`
+          );
           agentPlan = undefined; // 强制结束规划
         } else {
           const continueResult = await continuePlanCallFn();
@@ -433,11 +439,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         // 如果 agentPlan 被清空（返回空步骤数组），说明规划完成，跳出 agentPlan 分支
         // 如果 agentPlan 有新步骤，继续循环执行
         if (!agentPlan) {
-          addLog.debug(`Planning complete, hand over to master agent`);
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            `Planning complete, hand over to master agent`
+          );
           continue;
         }
       } else {
-        addLog.debug(`Start master agent`);
+        getLogger(LogCategories.MODULE.AI.AGENT).debug(`Start master agent`);
 
         const result = await masterCall({
           ...props,

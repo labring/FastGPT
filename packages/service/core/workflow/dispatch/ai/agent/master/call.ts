@@ -30,7 +30,7 @@ import { getMasterSystemPrompt } from './prompt';
 import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
 import { dispatchApp, dispatchPlugin } from '../sub/app';
-import { addLog } from '../../../../../../common/system/log';
+import { getLogger, LogCategories } from '../../../../../../common/logger';
 
 type Response = {
   stepResponse?: {
@@ -277,7 +277,6 @@ export const masterCall = async ({
       });
     },
     handleToolResponse: async ({ call, messages }) => {
-      // addLog.debug('handleToolResponse', { toolName: call.function.name });
       const toolId = call.function.name;
       const callId = call.id;
 
@@ -398,7 +397,7 @@ export const masterCall = async ({
                 stop: true
               };
             } catch (error) {
-              addLog.error('dispatchPlanAgent error', { error });
+              getLogger(LogCategories.MODULE.AI.AGENT).error('dispatchPlanAgent error', { error });
               return {
                 response: `Plan error: ${getErrText(error)}`,
                 stop: false

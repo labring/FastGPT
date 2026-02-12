@@ -18,6 +18,7 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
 type DatasetSearchParams = {
   teamId: string;
@@ -149,7 +150,9 @@ ${chunkSummaries}
 
     return { ids, usage };
   } catch (error) {
-    addLog.error('[Agent Dataset Search] AI selection failed', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] AI selection failed', {
+      error
+    });
     return;
   }
 };
@@ -166,7 +169,7 @@ export const dispatchAgentDatasetSearch = async ({
   nodeResponse?: ChatHistoryItemResType;
 }> => {
   const startTime = Date.now();
-  addLog.debug('[Agent Dataset Search] Starting', {
+  getLogger(LogCategories.MODULE.AI.AGENT).debug('[Agent Dataset Search] Starting', {
     query,
     config
   });
@@ -338,7 +341,7 @@ export const dispatchAgentDatasetSearch = async ({
       nodeResponse
     };
   } catch (error) {
-    addLog.error('[Agent Dataset Search] Failed', error);
+    getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] Failed', { error });
     return {
       response: `Failed to search dataset: ${getErrText(error)}`,
       usages: []

@@ -1,6 +1,6 @@
 import { MongoLLMRequestRecord } from './schema';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 /**
  * 保存 LLM 请求追踪记录（异步，不阻塞主流程）
@@ -19,7 +19,7 @@ export const saveLLMRequestRecord = async (params: {
     });
   } catch (error) {
     // 记录错误但不影响主流程
-    addLog.error('Failed to save LLM request record', {
+    getLogger(LogCategories.MODULE.AI).error('Failed to save LLM request record', {
       requestId: params.requestId,
       error
     });

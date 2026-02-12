@@ -4,7 +4,6 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getChildAppPreviewNode } from '../../../../../../app/tool/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
-import { addLog } from '../../../../../../../common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../../../../../workflow/utils';
@@ -24,6 +23,7 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
 export const agentSkillToToolRuntime = async ({
   tools,
@@ -141,7 +141,7 @@ export const agentSkillToToolRuntime = async ({
           tool: toolNode
         });
         if (configStatus.status === 'waitingForConfig') {
-          addLog.warn(`[Agent] tool config incomplete`, {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool config incomplete`, {
             toolId: tool.id,
             toolName: toolNode.name
           });
@@ -290,7 +290,7 @@ export const agentSkillToToolRuntime = async ({
           ];
         }
       } catch (error) {
-        addLog.warn(`[Agent] tool load error`, {
+        getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool load error`, {
           toolId: tool.id,
           error: getErrText(error)
         });

@@ -15,13 +15,8 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import { AIAskAnswerSchema, AIAskTool } from './ask/constants';
-import {
-  AgentPlanSchema,
-  AgentStepItemSchema,
-  type AgentPlanType
-} from '@fastgpt/global/core/ai/agent/type';
+import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
-import { addLog } from '../../../../../../../common/system/log';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   FlowNodeInputTypeEnum,
@@ -32,6 +27,7 @@ import { i18nT } from '../../../../../../../../web/i18n/utils';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { PlanAgentParamsType } from './constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
 type PlanAgentConfig = {
   systemPrompt?: string;
@@ -97,7 +93,7 @@ const parsePlan = async ({
     background
   });
   if (!params.success) {
-    addLog.warn(`[Plan Agent] Not plan`, { text });
+    getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Plan Agent] Not plan`, { text });
     return;
   }
 
@@ -145,7 +141,9 @@ const parseAskInteractive = async (
       }
     };
   } else {
-    addLog.warn(`[Plan Agent] Ask tool params is not valid`, { tooCall });
+    getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Plan Agent] Ask tool params is not valid`, {
+      tooCall
+    });
     return;
   }
 };
@@ -204,7 +202,9 @@ export const dispatchPlanAgent = async ({
         content: props.queryInput
       });
     } else {
-      addLog.error('Plan interactive mode error', { planMessages: props.planMessages });
+      getLogger(LogCategories.MODULE.AI.AGENT).error('Plan interactive mode error', {
+        planMessages: props.planMessages
+      });
       return Promise.reject('Plan interactive mode error');
     }
   } else if (props.mode === 'initial') {

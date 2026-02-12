@@ -29,8 +29,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
-
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -124,20 +123,23 @@ export const filterOrphanEdges = ({
 
   const filteredCount = originalEdgeCount - filteredEdges.length;
   if (filteredCount > 0) {
-    addLog.info(`Filtered ${filteredCount} orphan edge(s) from workflow`, {
-      workflowId,
-      originalCount: originalEdgeCount,
-      finalCount: filteredEdges.length
-    });
+    getLogger(LogCategories.MODULE.WORKFLOW).info(
+      `Filtered ${filteredCount} orphan edge(s) from workflow`,
+      {
+        workflowId,
+        originalCount: originalEdgeCount,
+        finalCount: filteredEdges.length
+      }
+    );
 
     if (orphanEdges.length > 0) {
-      addLog.warn(`Orphan edges details: ${orphanEdges.length}`);
+      getLogger(LogCategories.MODULE.WORKFLOW).warn(`Orphan edges details: ${orphanEdges.length}`);
     }
   }
 
   const filterDuration = Date.now() - filterStartTime;
   if (filterDuration > 100) {
-    addLog.warn('Orphan edge filtering took significant time');
+    getLogger(LogCategories.MODULE.WORKFLOW).warn('Orphan edge filtering took significant time');
   }
 
   return filteredEdges;
