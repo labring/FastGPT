@@ -181,7 +181,7 @@ importers:
         specifier: ^0.14.0
         version: 0.14.0
       '@t3-oss/env-core':
-        specifier: ^0.13.10
+        specifier: 0.13.10
         version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
       '@vercel/otel':
         specifier: ^1.13.0
