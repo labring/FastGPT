@@ -110,12 +110,7 @@ export async function register() {
       logger.info('System initialized successfully');
     }
   } catch (error) {
-    const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
-    const logger = getLogger(LogCategories.ERROR);
-    logger.error('System initialization failed', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    console.error('System initialization failed', error);
     exit(1);
   }
 }
