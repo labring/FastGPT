@@ -33,7 +33,6 @@ version: '3.3'
 services:
   # Vector DB
 
-
   mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo

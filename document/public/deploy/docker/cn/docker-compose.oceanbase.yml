@@ -68,8 +68,6 @@ services:
       timeout: 10s
       retries: 1000
       start_period: 10s
-
-
   mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo

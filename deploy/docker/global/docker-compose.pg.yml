@@ -49,8 +49,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-
   mongo:
     image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
