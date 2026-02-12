@@ -82,7 +82,7 @@ export type ChatDispatchProps = {
   responseAllData?: boolean;
   responseDetail?: boolean;
 
-  // TOOD: 移除
+  // TODO: 移除
   usageId?: string;
 };
 

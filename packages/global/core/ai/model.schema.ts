@@ -75,19 +75,7 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   dbConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for storage
   queryConfig: z.record(z.string(), z.any()).optional() // Custom parameters for query
 });
-export type EmbeddingModelItemType = PriceType &
-  BaseModelItemType & {
-    type: ModelTypeEnum.embedding;
-    defaultToken: number; // split text default token
-    maxToken: number; // model max token
-    weight: number; // training weight
-    hidden?: boolean; // Disallow creation
-    normalization?: boolean; // normalization processing
-    batchSize?: number;
-    defaultConfig?: Record<string, any>; // post request config
-    dbConfig?: Record<string, any>; // Custom parameters for storage
-    queryConfig?: Record<string, any>; // Custom parameters for query
-  };
+export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
 export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.rerank)
