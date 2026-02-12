@@ -30,7 +30,7 @@
     "@scalar/api-reference-react": "^0.8.1",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.9.5",
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",

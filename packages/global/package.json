@@ -5,7 +5,7 @@
     "@fastgpt-sdk/plugin": "0.3.8",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "cron-parser": "^4.9.0",
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
