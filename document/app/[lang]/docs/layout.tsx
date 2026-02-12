@@ -27,6 +27,10 @@ export default async function Layout({
       url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction'
     },
     {
+      title: t('common:api_reference', lang),
+      url: lang === 'zh-CN' ? '/docs/openapi' : '/en/docs/openapi'
+    },
+    {
       title: t('common:use-cases', lang),
       url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
     },
