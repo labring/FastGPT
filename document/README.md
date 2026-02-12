@@ -72,3 +72,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 ### 增加顶层导航栏
 
 1. 在 `FastGPT/document/app/[lang]/docs/layout.tsx` 文件中新增导航。
+
+### 重定向
+
+在`FastGPT/document/components/docs/not-found.tsx`文件中新增重定向规则。
