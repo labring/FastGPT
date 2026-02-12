@@ -114,7 +114,6 @@ docker compose up -d
 
 - [快速开始本地开发](https://doc.fastgpt.io/docs/introduction/development/intro/)
 - [OpenAPI 文档](https://doc.fastgpt.io/docs/openapi/intro)
-
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: 模型聚合负载均衡服务](https://github.com/labring/aiproxy)
 - [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
