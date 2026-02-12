@@ -1,9 +1,10 @@
-import { addLog } from '../../common/system/log';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import axios from 'axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../common/logger';
 
 export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
+  const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
   const instance = axios.create({
     baseURL: 'https://api.textin.com/ai/service/v1',
@@ -31,12 +32,12 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       return Promise.reject({ message: `[Textin] ${err.message}` });
     }
 
-    addLog.error('[Textin] Unknown error', err);
+    logger.error('Textin request failed with unknown error', { error: err });
     return Promise.reject({ message: `[Textin] ${getErrText(err)}` });
   };
 
   const parsePDF = async (fileBuffer: Buffer) => {
-    addLog.debug('[Textin] PDF parse start');
+    logger.debug('Textin PDF parse started');
     const startTime = Date.now();
 
     try {
@@ -71,15 +72,15 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       if (!rawMarkdown) {
         return Promise.reject('[Textin] No markdown content in response');
       }
-      // console.log('rawMarkdown', rawMarkdown);
+      logger.debug('Textin markdown content received', { length: rawMarkdown.length });
       // Process tables and images (reuse existing utility functions)
       const { text, imageList } = matchMdImg(rawMarkdown);
 
       // Get page count
       const pages = data.result?.pages?.length || data.result?.total_page_number || 1;
 
-      addLog.debug(`[Textin] PDF parse finished`, {
-        time: `${Math.round((Date.now() - startTime) / 1000)}s`,
+      logger.debug('Textin PDF parse finished', {
+        durationMs: Date.now() - startTime,
         pages
       });
 

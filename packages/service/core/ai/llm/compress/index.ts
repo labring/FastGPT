@@ -1,6 +1,5 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
-import { addLog } from '../../../../common/system/log';
 import { calculateCompressionThresholds } from './constants';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
@@ -12,6 +11,9 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { i18nT } from '../../../../../web/i18n/utils';
 import { parseJsonArgs } from '../../utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 /**
  * 压缩 对话历史
@@ -57,7 +59,7 @@ export const compressRequestMessages = async ({
     };
   }
 
-  addLog.info('[Compression messages] Start', {
+  logger.info('Message compression started', {
     tokens: messageTokens
   });
 
@@ -90,7 +92,7 @@ export const compressRequestMessages = async ({
     });
 
     if (!answerText) {
-      addLog.warn('[Compression messages] failed: empty response, return original messages');
+      logger.warn('Message compression failed: empty response');
       return { messages };
     }
 
@@ -109,7 +111,7 @@ export const compressRequestMessages = async ({
     };
 
     if (finish_reason === 'close') {
-      addLog.info('[Compression messages] aborted: return original messages');
+      logger.info('Compression messages aborted: return original messages');
       return { messages, usage: compressedUsage };
     }
 
@@ -123,14 +125,14 @@ export const compressRequestMessages = async ({
       !Array.isArray(compressResult.compressed_messages) ||
       compressResult.compressed_messages.length === 0
     ) {
-      addLog.warn('[Compression messages] failed: cannot parse JSON, return original messages', {
+      logger.warn('Message compression failed: invalid JSON', {
         messages: compressResult?.compressed_messages
       });
       return { messages, usage: compressedUsage };
     }
 
     const compressedTokens = usage.outputTokens;
-    addLog.debug('[Compression messages] successfully', {
+    logger.info('Message compression succeeded', {
       originalTokens: messageTokens,
       compressedTokens,
       actualRatio: (compressedTokens / messageTokens).toFixed(2),
@@ -145,7 +147,7 @@ export const compressRequestMessages = async ({
       usage: compressedUsage
     };
   } catch (error) {
-    addLog.error('[Compression messages] failed', error);
+    logger.error('Message compression failed', { error });
     return { messages };
   }
 };
@@ -214,7 +216,7 @@ export const compressLargeContent = async ({
             \`\`\`
             请直接输出压缩后的文本内容，不要包含任何解释或代码块标记。`;
 
-      addLog.debug(
+      logger.debug(
         `[Chunk compression] ${chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}` : 'Single chunk'}`,
         {
           chunkLength: chunk.length,
@@ -258,7 +260,7 @@ export const compressLargeContent = async ({
     const chunkCount = chunks.length;
     const targetPerChunk = Math.floor(maxTokens / chunkCount);
 
-    addLog.debug('[LLM chunk compression] Starting', {
+    logger.debug('LLM chunk compression Starting', {
       chunkCount,
       chunkPerThresholds,
       targetPerChunk,
@@ -286,7 +288,7 @@ export const compressLargeContent = async ({
 
     const finalTokens = await countGptMessagesTokens([{ role: 'user', content: merged }]);
 
-    addLog.info('[LLM chunk compression] Completed', {
+    logger.info('LLM chunk compression Completed', {
       originalTokens: await countGptMessagesTokens([{ role: 'user', content: content }]),
       finalTokens,
       maxTokens,
@@ -294,7 +296,7 @@ export const compressLargeContent = async ({
     });
 
     if (finalTokens > maxTokens) {
-      addLog.warn('[LLM chunk compression] Exceeded limit, truncating to half', {
+      logger.warn('LLM chunk compression Exceeded limit, truncating to half', {
         finalTokens,
         maxTokens,
         exceedRatio: (finalTokens / maxTokens).toFixed(2)
@@ -367,7 +369,7 @@ export const compressLargeContent = async ({
     };
   }
 
-  addLog.debug('[Compress large content] Starting', {
+  logger.debug('Compress large content Starting', {
     currentTokens,
     maxTokens,
     contentLength: content.length
@@ -399,7 +401,7 @@ export const compressLargeContent = async ({
       }
     };
   } catch (error) {
-    addLog.error('[Chunk compression] failed, fallback to binary truncate', error);
+    logger.error('Chunk compression failed, fallback to binary truncate', { error });
     return {
       compressed: content.trim()
     };
@@ -440,7 +442,7 @@ export const compressToolResponse = async ({
   // 取静态阈值和动态可用空间的较小值
   const maxTokens = Math.min(staticMaxTokens, availableSpace);
 
-  addLog.info('[Tool Response Compression]', {
+  logger.info('Tool Response Compression', {
     responseTokens: await countGptMessagesTokens([{ role: 'user', content: response }]),
     currentMessagesTokens,
     maxContext: model.maxContext,

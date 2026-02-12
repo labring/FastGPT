@@ -11,12 +11,14 @@ import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
-import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
 import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -50,7 +52,7 @@ export const readFileRawTextByUrl = async ({
       );
     }
   } catch (error) {
-    addLog.warn('Check file HEAD request failed');
+    logger.warn('File HEAD request failed, skip size precheck', { url, error });
   }
 
   // Use stream response type, avoid double memory usage

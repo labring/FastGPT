@@ -25,16 +25,18 @@ import { getLLMModel } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
-import { addLog } from '../../../common/system/log';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { saveLLMRequestRecord } from '../record/controller';
 
 const getRequestId = () => {
   return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
 };
+
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export type ResponseEvents = {
   onStreaming?: (e: { text: string }) => void;
@@ -226,7 +228,7 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
           }
         ];
 
-        addLog.debug(`Continue LLM response due to length limit`, {
+        logger.debug(`Continue LLM response due to length limit`, {
           continuationCount,
           completionTokens: usage?.completion_tokens
         });
@@ -288,14 +290,14 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
     const getEmptyResponseTip = () => {
       if (userKey?.baseUrl) {
-        addLog.warn(`User LLM response empty`, {
+        logger.warn(`User LLM response empty`, {
           baseUrl: userKey?.baseUrl,
           requestBody,
           finish_reason
         });
         return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
       } else {
-        addLog.error(`LLM response empty`, {
+        logger.error(`LLM response empty`, {
           message: '',
           data: requestBody,
           finish_reason
@@ -824,9 +826,7 @@ const createChatCompletion = async ({
       timeout: formatTimeout
     });
 
-    addLog.debug(`Start create chat completion`, {
-      model: body.model
-    });
+    logger.debug('Start create chat completion', { model: body.model });
 
     const response = await ai.chat.completions.create(body, {
       ...options,
@@ -855,17 +855,14 @@ const createChatCompletion = async ({
     };
   } catch (error) {
     if (userKey?.baseUrl) {
-      addLog.warn(`User ai api error`, {
-        message: getErrText(error),
+      logger.warn('User AI API error', {
         baseUrl: userKey?.baseUrl,
-        data: body
+        request: body,
+        error
       });
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     } else {
-      addLog.error(`LLM response error`, {
-        message: getErrText(error),
-        data: body
-      });
+      logger.error('LLM response error', { request: body, error });
     }
     return Promise.reject(error);
   }

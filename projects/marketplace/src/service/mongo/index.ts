@@ -1,6 +1,6 @@
-import { addLog } from '@fastgpt/service/common/system/log';
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));

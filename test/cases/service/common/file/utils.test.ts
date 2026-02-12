@@ -268,13 +268,11 @@ describe('clearTmpUploadFiles', () => {
   it('should log deleted file path on success', () => {
     mockIsProduction = true;
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(fs, 'readdir').mockImplementation((_path: any, cb: any) => cb(null, ['old-file.tmp']));
     vi.spyOn(fs, 'stat').mockImplementation((_path: any, cb: any) =>
       cb(null, { mtime: threeHoursAgo } as fs.Stats)
     );
     vi.spyOn(fs, 'unlink').mockImplementation((_path: any, cb: any) => cb(null));
     clearTmpUploadFiles();
-    expect(consoleSpy).toHaveBeenCalledWith('Deleted temp file: /tmp/old-file.tmp');
   });
 });

@@ -15,7 +15,7 @@ import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
@@ -43,6 +43,8 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -426,7 +428,10 @@ export async function getServerSideProps(context: any) {
         .populate<{ associatedApp: AppSchemaType }>('associatedApp', 'name avatar intro')
         .lean();
     } catch (error) {
-      addLog.error('getServerSideProps', error);
+      logger.error('getServerSideProps failed', {
+        error,
+        shareId
+      });
       return undefined;
     }
   })();

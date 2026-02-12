@@ -6,6 +6,8 @@ import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.MODULE.APP.TEMPLATE);
 
 export type ListParams = {
   isQuickTemplate?: boolean;
@@ -36,7 +38,7 @@ async function handler(
     try {
       return JSON.parse(excludeIds);
     } catch (error) {
-      console.error('Failed to parse excludeIds:', error);
+      logger.error('Failed to parse excludeIds:', { error });
       return [];
     }
   })();

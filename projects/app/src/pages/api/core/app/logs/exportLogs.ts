@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import dayjs from 'dayjs';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -28,6 +28,7 @@ import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
+const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -480,7 +481,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
 
   cursor.on('error', (err) => {
-    addLog.error(`export chat logs error`, err);
+    logger.error(`export chat logs error`, { error: err });
     res.status(500);
     res.end();
   });

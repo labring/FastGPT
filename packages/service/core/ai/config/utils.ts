@@ -21,6 +21,7 @@ import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -28,7 +29,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   try {
     await preloadModelProviders();
   } catch (error) {
-    console.log('Load systen model error, please check fastgpt-plugin', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System model provider preload failed', { error });
     return Promise.reject(error);
   }
 
@@ -231,11 +233,21 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       })) as SystemModelItemType[];
     }
 
-    console.log(
-      `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
-    );
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.info('System models loaded', {
+      total: _systemModelList.length,
+      active: _systemActiveModelList.length
+    });
+    logger.debug('System active models', {
+      models: _systemActiveModelList.map((item) => ({
+        provider: item.provider,
+        model: item.model,
+        name: item.name
+      }))
+    });
   } catch (error) {
-    console.error('Load models error', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System models load failed', { error });
 
     return Promise.reject(error);
   }

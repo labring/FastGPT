@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
@@ -14,6 +14,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type DataItemType = {
   _id: string;
@@ -90,7 +91,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   cursor.on('error', (err) => {
-    addLog.error(`export dataset error`, err);
+    logger.error(`export dataset error`, { error: err });
     res.status(500);
     res.end();
   });

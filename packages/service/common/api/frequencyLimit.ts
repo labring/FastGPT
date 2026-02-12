@@ -4,7 +4,9 @@ import { jsonRes } from '../../common/response';
 import type { NextApiResponse } from 'next';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.RESPONSE);
 
 export enum LimitTypeEnum {
   chat = 'chat'
@@ -64,7 +66,12 @@ export const teamFrequencyLimit = async ({
 
   if (currentCount > limit) {
     const remainingTime = await redis.ttl(key);
-    addLog.info(`[Completion Limit] Over qpm limit`, { teamId, currentCount, limit });
+    logger.info('Completion QPM limit exceeded', {
+      teamId,
+      currentCount,
+      limit,
+      ttlSeconds: remainingTime
+    });
     jsonRes(res, {
       code: 429,
       error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`

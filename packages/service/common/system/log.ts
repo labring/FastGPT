@@ -4,7 +4,6 @@ import { LogLevelEnum } from './log/constant';
 import { connectionMongo } from '../mongo/index';
 import { getMongoLog } from './log/schema';
 import { getLogger } from '../otel/log';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export enum EventTypeEnum {
   outLinkBot = '[Outlink bot]',
@@ -150,23 +149,27 @@ export const addLog = {
     this.log(LogLevelEnum.warn, msg, obj);
   },
   error(msg: string, error?: any) {
-    this.log(LogLevelEnum.error, msg, {
-      ...(error?.data && { data: error?.data }),
-      message: getErrText(error),
-      stack: error?.stack,
-      ...(error?.config && {
-        config: {
-          headers: error.config.headers,
-          url: error.config.url,
-          data: error.config.data
-        }
-      }),
-      ...(error?.response && {
-        response: {
-          status: error.response.status,
-          statusText: error.response.statusText
-        }
-      })
-    });
+    const payload: Record<string, any> = {
+      error
+    };
+
+    if (error?.data) {
+      payload.data = error.data;
+    }
+    if (error?.config) {
+      payload.config = {
+        headers: error.config.headers,
+        url: error.config.url,
+        data: error.config.data
+      };
+    }
+    if (error?.response) {
+      payload.response = {
+        status: error.response.status,
+        statusText: error.response.statusText
+      };
+    }
+
+    this.log(LogLevelEnum.error, msg, payload);
   }
 };

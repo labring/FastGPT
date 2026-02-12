@@ -10,12 +10,14 @@ import { type NextApiRequest, type NextApiResponse } from 'next';
 import { type Processor } from '@fastgpt/service/common/bullmq';
 import { getQueue, getWorker, QueueNames } from '@fastgpt/service/common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv494']);
 
 const initWebsiteSyncData = async () => {
   // find out all website dataset
   const datasets = await MongoDataset.find({ type: DatasetTypeEnum.websiteDataset }).lean();
 
-  console.log('更新站点同步的定时器');
+  logger.info('更新站点同步的定时器');
   // Add scheduler for all website dataset
   await Promise.all(
     datasets.map((dataset) => {
@@ -29,7 +31,7 @@ const initWebsiteSyncData = async () => {
     })
   );
 
-  console.log('移除站点同步集合的定时器');
+  logger.info('移除站点同步集合的定时器');
   // Remove all nextSyncTime
   await retryFn(() =>
     MongoDatasetCollection.updateMany(

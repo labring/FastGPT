@@ -1,10 +1,12 @@
 import type { Processor } from 'bullmq';
 import type { AppDeleteJobData } from './index';
 import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
-import { addLog } from '../../../common/system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
 const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchemaType[] }) => {
   const results = await batchRun(
@@ -22,7 +24,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
   const { teamId, appId } = job.data;
   const startTime = Date.now();
 
-  addLog.info(`[App Delete] Start deleting app: ${appId} for team: ${teamId}`);
+  logger.info('App delete started', { teamId, appId });
 
   try {
     // 1. 查找应用及其所有子应用
@@ -32,7 +34,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
     });
 
     if (!apps || apps.length === 0) {
-      addLog.warn(`[App Delete] App not found: ${appId}`);
+      logger.warn('App not found for deletion', { teamId, appId });
       return;
     }
 
@@ -47,13 +49,12 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
     ).lean();
 
     if (markedForDelete.length !== apps.length) {
-      addLog.warn(
-        `[App Delete] Safety check: ${markedForDelete.length}/${apps.length} apps marked for deletion`,
-        {
-          markedAppIds: markedForDelete.map((app) => app._id),
-          totalAppIds: apps.map((app) => app._id)
-        }
-      );
+      logger.warn('App delete safety check mismatch', {
+        markedCount: markedForDelete.length,
+        totalCount: apps.length,
+        markedAppIds: markedForDelete.map((app) => app._id),
+        totalAppIds: apps.map((app) => app._id)
+      });
     }
 
     const childrenLen = apps.length - 1;
@@ -65,13 +66,16 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
       apps
     });
 
-    addLog.info(`[App Delete] Successfully deleted app: ${appId} and ${childrenLen} children`, {
-      duration: Date.now() - startTime,
+    logger.info('App delete completed', {
+      teamId,
+      appId,
+      childCount: childrenLen,
+      durationMs: Date.now() - startTime,
       totalApps: appIds.length,
       appIds
     });
   } catch (error: any) {
-    addLog.error(`[App Delete] Failed to delete app: ${appId}`, error);
+    logger.error('App delete failed', { teamId, appId, error });
     throw error;
   }
 };

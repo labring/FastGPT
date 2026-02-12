@@ -8,6 +8,7 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -70,7 +71,8 @@ try {
   TeamMemberSchema.index({ teamId: 1 }, { background: true });
   TeamMemberSchema.index({ userId: 1 }, { background: true });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build team member indexes', { error });
 }
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

@@ -23,12 +23,14 @@ import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { addLog } from '../../../../common/system/log';
+import { getLogger, LogCategories } from '../../../../common/logger';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios } from '../../../../common/api/axios';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 type PropsArrType = {
   key: string;
@@ -264,7 +266,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    addLog.warn('Http request error', formatHttpError(error));
+    logger.warn('HTTP tool request failed', { error });
 
     // @adapt
     if (node.catchError === undefined) {

@@ -1,6 +1,5 @@
 import type { Processor } from 'bullmq';
 import { type TeamDeleteJobData } from './index';
-import { addLog } from '../../../../common/system/log';
 import { MongoImage } from '../../../../common/file/image/schema';
 import { MongoOpenApi } from '../../../openapi/schema';
 import { MongoGroupMemberModel } from '../../../permission/memberGroup/groupMemberSchema';
@@ -22,18 +21,21 @@ import { onDelAllApp } from './utils';
 import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
 import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
   const { teamId } = job.data;
   const startTime = Date.now();
 
-  addLog.info(`[Team Delete] Start deleting team: ${teamId}`);
+  logger.info('Team delete started', { teamId });
 
   try {
     // 1. 检查团队是否存在
     const team = await MongoTeam.findById(teamId);
     if (!team) {
-      addLog.warn(`[Team Delete] Team not found: ${teamId}`);
+      logger.warn('Team not found for deletion', { teamId });
       return;
     }
 
@@ -136,11 +138,12 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     team.meta = undefined;
     await team.save();
 
-    addLog.info(`[Team Delete] Successfully deleted team: ${teamId}`, {
-      duration: Date.now() - startTime
+    logger.info('Team delete completed', {
+      teamId,
+      durationMs: Date.now() - startTime
     });
   } catch (error: any) {
-    addLog.error(`[Team Delete] Failed to delete team: ${teamId}`, error);
+    logger.error('Team delete failed', { teamId, error });
     throw error;
   }
 };

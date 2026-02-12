@@ -9,6 +9,7 @@ import {
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
 import { AppCollectionName } from '../../../core/app/schema';
 import { DatasetCollectionName } from '../../../core/dataset/schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const UsageSchema = new Schema(
   {
@@ -75,7 +76,8 @@ try {
 
   UsageSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build usage indexes', { error });
 }
 
 export const MongoUsage = getMongoModel<UsageSchemaType>(UsageCollectionName, UsageSchema);

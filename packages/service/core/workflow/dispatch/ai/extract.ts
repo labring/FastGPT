@@ -17,6 +17,9 @@ import { getNodeErrResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 import {
   type ChatCompletionMessageParam,
   type ChatCompletionTool
@@ -262,9 +265,12 @@ const toolChoice = async (props: ActionProps) => {
     try {
       return json5.parse(toolCalls?.[0]?.function?.arguments || text || '');
     } catch (error) {
-      console.log('body', body);
-      console.log('AI response', text, toolCalls?.[0]?.function);
-      console.log('Your model may not support tool_call', error);
+      logger.warn('Failed to parse tool call arguments', {
+        body,
+        responseText: text,
+        toolCall: toolCalls?.[0]?.function,
+        error
+      });
       return {};
     }
   })();
@@ -353,8 +359,7 @@ const completions = async (props: ActionProps) => {
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
-    console.log('Extract error, ai answer:', answer);
-    console.log(error);
+    logger.warn('Failed to parse extract result', { answer, error });
     return {
       rawResponse: answer,
       inputTokens,

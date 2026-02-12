@@ -28,7 +28,8 @@ export async function register() {
         { initS3Buckets },
         { initGeo },
         { instrumentationCheck, ErrorEnum },
-        { getErrText }
+        { getErrText },
+        { configureLogger, getLogger, LogCategories }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -48,8 +49,13 @@ export async function register() {
         import('@fastgpt/service/common/s3'),
         import('@fastgpt/service/common/geo'),
         import('@/service/common/system/health'),
-        import('@fastgpt/global/common/error/utils')
+        import('@fastgpt/global/common/error/utils'),
+        import('@fastgpt/service/common/logger')
       ]);
+
+      await configureLogger();
+      const logger = getLogger(LogCategories.SYSTEM);
+      logger.info('Starting system initialization...');
 
       // 执行初始化流程
       systemStartCb();
@@ -101,10 +107,15 @@ export async function register() {
       startTrainingQueue(true);
       trackTimerProcess();
 
-      console.log('Init system success');
+      logger.info('System initialized successfully');
     }
   } catch (error) {
-    console.log('Init system error', error);
+    const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
+    const logger = getLogger(LogCategories.ERROR);
+    logger.error('System initialization failed', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     exit(1);
   }
 }

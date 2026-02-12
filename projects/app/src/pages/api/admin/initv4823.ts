@@ -12,6 +12,8 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4823']);
 
 // 删了库，没删集合
 const checkInvalidCollection = async () => {
@@ -54,7 +56,7 @@ const checkInvalidCollection = async () => {
           await retryFn(async () => {
             const datasetExists = await MongoDataset.findById(datasetId, '_id').lean();
             if (!datasetExists) {
-              console.log('清理无效的知识库集合, datasetId', datasetId);
+              logger.info('清理无效的知识库集合', { datasetId });
               await mongoSessionRun(async (session) => {
                 return await delCollection({
                   collections: val,
@@ -66,15 +68,15 @@ const checkInvalidCollection = async () => {
             }
           });
         } catch (error) {
-          console.log(error);
+          logger.error('Failed to clean invalid dataset records', { error });
         }
       }
 
       success += batchSize;
       skip += batchSize;
-      console.log(`检测集合完成：${success}`);
+      logger.info(`检测集合完成：${success}`);
     } catch (error) {
-      console.log(error);
+      logger.error('Failed to clean invalid dataset records', { error });
       await delay(1000);
     }
   }
@@ -98,10 +100,10 @@ const checkInvalidData = async () => {
       datasetId: string;
       collectionId: string;
     }[];
-    console.log('Total data collections length', datas.length);
+    logger.info('Total data collections length', { total: datas.length });
     // 批量获取集合
     const collections = await MongoDatasetCollection.find({}, '_id').lean();
-    console.log('Total collection length', collections.length);
+    logger.info('Total collection length', { total: collections.length });
     const collectionMap: Record<string, DatasetCollectionSchemaType> = {};
     for await (const collection of collections) {
       collectionMap[collection._id] = collection;
@@ -111,7 +113,7 @@ const checkInvalidData = async () => {
       try {
         const col = collectionMap[data.collectionId];
         if (!col) {
-          console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
+          logger.info('清理无效的知识库集合内容', { collectionId: data.collectionId });
           await retryFn(async () => {
             await MongoDatasetTraining.deleteMany({
               teamId: data.teamId,
@@ -136,13 +138,13 @@ const checkInvalidData = async () => {
           });
         }
       } catch (error) {
-        console.log(error);
+        logger.error('Failed to clean invalid dataset records', { error });
       }
     }
 
-    console.log(`检测集合完成`);
+    logger.info(`检测集合完成`);
   } catch (error) {
-    console.log('checkInvalidData error', error);
+    logger.error('checkInvalidData error', { error: error });
   }
 };
 
@@ -152,21 +154,21 @@ const checkInvalidDataText = async () => {
     // 获取所有索引层的 dataId
     const dataTexts = await MongoDatasetDataText.find({}, 'dataId').lean();
     const dataIds = dataTexts.map((item) => String(item.dataId));
-    console.log('Total data_text dataIds:', dataIds.length);
+    logger.info('Total data_text dataIds', { total: dataIds.length });
 
     // 获取数据层的 dataId
     const datas = await MongoDatasetData.find({}, '_id').lean();
     const datasSet = new Set(datas.map((item) => String(item._id)));
-    console.log('Total data length:', datas.length);
+    logger.info('Total data length', { total: datas.length });
 
     // 存在索引层，不存在数据层的 dataId，说明数据已经被删了
     const unExistsSet = dataIds.filter((id) => !datasSet.has(id));
-    console.log('Total unExists dataIds:', unExistsSet.length);
+    logger.info('Total unExists dataIds', { total: unExistsSet.length });
     await MongoDatasetDataText.deleteMany({
       dataId: { $in: unExistsSet }
     });
   } catch (error) {
-    console.log('checkInvalidDataText error', error);
+    logger.error('checkInvalidDataText error', { error: error });
   }
 };
 
@@ -181,14 +183,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 360天 ~ 2小时前
         const endTime = addHours(new Date(), start);
         const startTime = addHours(new Date(), end);
-        console.log('清理无效的集合');
+        logger.info('清理无效的集合');
         await checkInvalidCollection();
-        console.log('清理无效的数据');
+        logger.info('清理无效的数据');
         await checkInvalidData();
-        console.log('清理无效的data_text');
+        logger.info('清理无效的data_text');
         await checkInvalidDataText();
       } catch (error) {
-        console.log('执行脏数据清理任务出错了');
+        logger.info('执行脏数据清理任务出错了');
       }
     })();
 
@@ -196,7 +198,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: 'success'
     });
   } catch (error) {
-    console.log(error);
+    logger.error('Failed to clean invalid dataset records', { error });
 
     jsonRes(res, {
       code: 500,

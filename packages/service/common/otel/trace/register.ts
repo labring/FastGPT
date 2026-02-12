@@ -1,12 +1,17 @@
 import { registerOTel, OTLPHttpJsonTraceExporter } from '@vercel/otel';
 import { SignozBaseURL, SignozServiceName } from '../const';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.INFRA.OTEL);
 
 export function connectSignoz() {
   if (!SignozBaseURL) {
     return;
   }
-  addLog.info(`Connecting signoz, ${SignozBaseURL}, ${SignozServiceName}`);
+  logger.info('Connecting to SigNoz', {
+    url: SignozBaseURL,
+    serviceName: SignozServiceName
+  });
   return registerOTel({
     serviceName: SignozServiceName,
     traceExporter: new OTLPHttpJsonTraceExporter({

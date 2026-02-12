@@ -96,10 +96,17 @@ app.post('/:key/messages', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app
-  .listen(PORT, () => {
-    addLog.info(`Server is running on port ${PORT}`);
-  })
-  .on('error', (err) => {
-    addLog.error(`Server error`, err);
-  });
+
+async function bootstrap() {
+  await init();
+
+  app
+    .listen(PORT, () => {
+      addLog.info(`Server is running on port ${PORT}`);
+    })
+    .on('error', (err) => {
+      addLog.error(`Server error`, err);
+    });
+}
+
+void bootstrap();

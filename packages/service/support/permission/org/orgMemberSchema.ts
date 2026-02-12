@@ -5,6 +5,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { type OrgMemberSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 
 export const OrgMemberCollectionName = 'team_org_members';
@@ -40,6 +41,8 @@ OrgMemberSchema.virtual('org', {
   justOne: true
 });
 
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
 try {
   OrgMemberSchema.index(
     {
@@ -56,7 +59,7 @@ try {
     tmbId: 1
   });
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build org member indexes', { error });
 }
 
 export const MongoOrgMemberModel = getMongoModel<OrgMemberSchemaType>(
