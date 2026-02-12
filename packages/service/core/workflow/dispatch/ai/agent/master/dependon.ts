@@ -10,7 +10,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { countPromptTokens } from '../../../../../../common/string/tiktoken/index';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { addLog } from '../../../../../../common/system/log';
 import { calculateCompressionThresholds } from '../../../../../ai/llm/compress/constants';
 import { parseUrlToFileType } from '../../../../utils/context';
 import { getLogger, LogCategories } from '../../../../../../common/logger';

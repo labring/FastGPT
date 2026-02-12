@@ -101,7 +101,7 @@ type WorkflowStatusParams = {
 **位置**: `packages/service/core/workflow/dispatch/workflowStatus.ts`
 
 ```typescript
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { getGlobalRedisConnection } from '../../../common/redis/index';
 import { delay } from '@fastgpt/global/common/system/utils';
 
@@ -132,7 +132,7 @@ export const delAgentRuntimeStopSign = async (params: WorkflowStatusParams): Pro
   const redis = getGlobalRedisConnection();
   const key = getRuntimeStatusKey(params);
   await redis.del(key).catch((err) => {
-    addLog.error(`[Agent Runtime Stop] Delete stop sign error`, err);
+    getLogger(LogCategories.MODULE.CHAT).error(`[Agent Runtime Stop] Delete stop sign error`, { err });
   });
 };
 
@@ -361,7 +361,7 @@ private async checkNodeCanRun(
 
   // Check queue status
   if (data.maxRunTimes <= 0) {
-    addLog.error('Max run times is 0', {
+    getLogger(LogCategories.MODULE.CHAT).error('Max run times is 0', {
       appId: data.runningAppInfo.id
     });
     return;
@@ -369,7 +369,7 @@ private async checkNodeCanRun(
   
   // 停止检测
   if (checkIsStopping()) {
-    addLog.warn('Workflow stopped', {
+    getLogger(LogCategories.MODULE.CHAT).warn('Workflow stopped', {
       appId: data.runningAppInfo.id,
       nodeId: node.nodeId,
       nodeName: node.name

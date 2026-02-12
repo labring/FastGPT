@@ -1,6 +1,5 @@
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { addLog } from '../../../../../../../common/system/log';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEmbeddingModel, getLLMModel, getRerankModel } from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
