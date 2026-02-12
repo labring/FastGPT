@@ -3,7 +3,6 @@
   "description": "FastGPT 社区版",
   "icon": "🔧",
   "pages": [
-    "quick-start",
     "sealos",
     "docker",
     "faq",

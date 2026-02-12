@@ -32,7 +32,6 @@ version: '3.3'
 services:
   # Vector DB
 ${{vec.db}}
-
   mongo:
     image: ${{mongo.image}}:${{mongo.tag}} # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo

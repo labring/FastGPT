@@ -91,8 +91,6 @@ services:
     depends_on:
       - 'milvus-etcd'
       - 'milvus-minio'
-
-
   mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
@@ -180,7 +178,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.6.1 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.7 # git
     ports:
       - 3000:3000
     networks:
@@ -243,13 +241,13 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.6
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.6
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.7
     networks:
       - fastgpt
     ports:
@@ -258,7 +256,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.3
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -286,7 +284,7 @@ services:
         condition: service_healthy
   # AI Proxy
   aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.2
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.5
     container_name: aiproxy
     restart: unless-stopped
     depends_on:

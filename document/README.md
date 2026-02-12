@@ -33,7 +33,7 @@ import { Alert } from '@/components/docs/Alert'; #高亮块组件
 <Alert icon="🤖" context="success">
 快速开始体验
 - 海外版：[https://fastgpt.io](https://fastgpt.io)
-- 国内版：[https://fastgpt.cn](https://fastgpt.cn)
+- 中国大陆：[https://fastgpt.cn](https://fastgpt.cn)
 </Alert>
 
 import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你希望用户点击这个文件跳转到别的文件的话，详情参考 `FAQ`的`Docker 部署问题`文档。
