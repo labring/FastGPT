@@ -19,7 +19,7 @@ import {
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariable } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -77,7 +77,7 @@ const VariableEdit = ({
   const [editingVariable, setEditingVariable] = useState<VariableItemType | null>(null);
 
   const formatVariables = useMemo(() => {
-    const results = formatEditorVariablePickerIcon(variables);
+    const results = formatEditorVariable(variables);
     return results.map<VariableItemType & { icon?: string }>((item) => {
       const variable = variables.find((variable) => variable.key === item.key)!;
       return {

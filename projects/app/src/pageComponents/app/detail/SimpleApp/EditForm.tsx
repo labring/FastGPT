@@ -19,7 +19,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariable } from '@fastgpt/global/core/workflow/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
@@ -86,7 +86,7 @@ const EditForm = ({
 
   const formatVariables = useMemo(
     () =>
-      formatEditorVariablePickerIcon([
+      formatEditorVariable([
         ...workflowSystemVariables.filter(
           (variable) =>
             !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)

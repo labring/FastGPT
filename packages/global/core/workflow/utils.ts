@@ -336,13 +336,29 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
   };
 };
 
-export const formatEditorVariablePickerIcon = (
-  variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
+export const formatEditorVariable = (
+  variables: {
+    key: string;
+    label: string;
+    type?: `${VariableInputEnum}`;
+    required?: boolean;
+    valueType?: WorkflowIOValueTypeEnum;
+  }[]
 ): EditorVariablePickerType[] => {
-  return variables.map((item) => ({
-    ...item,
-    icon: item.type ? variableMap[item.type]?.icon : variableMap['input'].icon
-  }));
+  return variables.map((item) => {
+    const config = item.type ? variableMap[item.type] : variableMap['input'];
+
+    return {
+      ...item,
+      icon: config?.icon,
+      valueType:
+        ([VariableInputEnum.custom, VariableInputEnum.internal].includes(
+          item.type as VariableInputEnum
+        ) &&
+          item.valueType) ||
+        config?.defaultValueType
+    };
+  });
 };
 
 // Check the value is a valid reference value format: [variableId, outputId]

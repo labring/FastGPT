@@ -20,7 +20,7 @@ import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import {
-  formatEditorVariablePickerIcon,
+  formatEditorVariable,
   getAppChatConfig,
   getHandleId
 } from '@fastgpt/global/core/workflow/utils';
@@ -655,7 +655,7 @@ export const getWorkflowGlobalVariables = ({
   systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
-  const globalVariables = formatEditorVariablePickerIcon(
+  const globalVariables = formatEditorVariable(
     getAppChatConfig({
       chatConfig,
       systemConfigNode,

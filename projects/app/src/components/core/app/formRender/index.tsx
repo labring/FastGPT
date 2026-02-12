@@ -69,7 +69,7 @@ const InputRender = (props: InputRenderProps) => {
         variableLabels={props.variableLabels}
         title={props.title}
         maxLength={props.maxLength}
-        minH={40}
+        minH={Number(props.minH) || 40}
         maxH={120}
         isRichText={props.isRichText}
       />
@@ -85,7 +85,7 @@ const InputRender = (props: InputRenderProps) => {
         variableLabels={props.variableLabels}
         title={props.title}
         maxLength={props.maxLength}
-        minH={100}
+        minH={Number(props.minH) || 100}
         maxH={300}
         ExtensionPopover={props.ExtensionPopover}
       />
