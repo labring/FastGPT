@@ -21,7 +21,6 @@ export async function register() {
         { startTrainingQueue },
         { preLoadWorker },
         { loadSystemModels },
-        { connectSignoz },
         { getSystemTools },
         { trackTimerProcess },
         { initBullMQWorkers },
@@ -42,7 +41,6 @@ export async function register() {
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
-        import('@fastgpt/service/common/otel/trace/register'),
         import('@fastgpt/service/core/app/tool/controller'),
         import('@fastgpt/service/common/middle/tracks/processor'),
         import('@/service/common/bullmq'),
@@ -82,8 +80,7 @@ export async function register() {
         }),
         initVectorStore().catch((err) => {
           return Promise.reject(`[${ErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
-        }),
-        connectSignoz()
+        })
       ]);
 
       // Init system config

@@ -868,6 +868,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
+      '@fastgpt/service':
+        specifier: workspace:*
+        version: link:../../packages/service
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@4.1.12)
@@ -18705,7 +18708,7 @@ snapshots:
 
   axios@1.13.5:
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.0)
       form-data: 4.0.5
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -21076,7 +21079,7 @@ snapshots:
     dependencies:
       tabbable: 6.2.0
 
-  follow-redirects@1.15.11(debug@4.4.3):
+  follow-redirects@1.15.11(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0
 
@@ -23687,7 +23690,7 @@ snapshots:
       camelcase: 6.3.0
       debug: 4.4.0
       find-cache-dir: 3.3.2
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.0)
       https-proxy-agent: 7.0.6
       mongodb: 6.14.2(socks@2.8.4)
       new-find-package-json: 2.0.0
