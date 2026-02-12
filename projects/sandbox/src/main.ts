@@ -31,11 +31,11 @@ async function bootstrap(port: number) {
     await app.listen(port, '0.0.0.0');
     console.log(`Application is running on: ${await app.getUrl()}`);
   } catch (error) {
-    if (error.code === 'EADDRINUSE') {
+    if ((error as any).code === 'EADDRINUSE') {
       console.warn(`Port ${port} is already in use, trying next port...`);
       await bootstrap(port + 1);
     } else {
-      console.error(`Failed to start application: ${error.message}`);
+      console.error(`Failed to start application: ${(error as Error).message}`);
       process.exit(1);
     }
   }

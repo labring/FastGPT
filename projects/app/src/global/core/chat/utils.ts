@@ -1,11 +1,16 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  ChatHistoryItemResType,
+  ChatItemType,
+  ToolCiteLinksType,
+  ErrorTextItemType
+} from '@fastgpt/global/core/chat/type';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type ToolCiteLinksType } from '@fastgpt/global/core/chat/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 export function transformPreviewHistories(
   histories: ChatItemType[],
@@ -19,19 +24,6 @@ export function transformPreviewHistories(
     };
   });
 }
-
-export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
-  return res
-    .map((item) => {
-      return [
-        item,
-        ...getFlatAppResponses(item.pluginDetail || []),
-        ...getFlatAppResponses(item.toolDetail || []),
-        ...getFlatAppResponses(item.loopDetail || [])
-      ];
-    })
-    .flat();
-};
 
 const extractCitationIdsFromText = (text: string): string[] => {
   if (!text) return [];
@@ -63,8 +55,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
-  // get llm module account and history preview length and total quote list and external link list
-  const { llmModuleAccount, historyPreviewLength, totalQuoteList, toolCiteLinks } =
+  // get llm module account and history preview length and total quote list and external link list and error text
+  const { llmModuleAccount, historyPreviewLength, totalQuoteList, toolCiteLinks, errorText } =
     flatResData.reduce(
       (acc, item) => {
         // LLM
@@ -95,6 +87,13 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
           }
         }
 
+        if (item.errorText && !acc.errorText) {
+          acc.errorText = {
+            moduleName: item.moduleName,
+            errorText: item.errorText
+          };
+        }
+
         return acc;
       },
       {
@@ -102,7 +101,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
         historyPreviewLength: undefined as number | undefined,
         totalQuoteList: [] as SearchDataResponseItemType[],
         toolCiteLinks: [] as ToolCiteLinksType[],
-        linkDedupe: new Set<string>()
+        linkDedupe: new Set<string>(),
+        errorText: undefined as ErrorTextItemType | undefined
       }
     );
 
@@ -116,6 +116,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
     llmModuleAccount,
     totalQuoteList: filteredQuoteList,
     historyPreviewLength,
-    ...(toolCiteLinks.length ? { toolCiteLinks } : {})
+    ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
+    ...(errorText ? { errorText } : {})
   };
 }

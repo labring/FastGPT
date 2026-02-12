@@ -1,7 +1,6 @@
 import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import { addLog } from '../../common/system/log';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
@@ -9,6 +8,9 @@ import type { ClientSession } from '../../common/mongo';
 import { Types } from '../../common/mongo';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 export async function getChatItems({
   includeDeleted = false,
@@ -334,7 +336,7 @@ export async function updateChatFeedbackCount({
       }
     );
 
-    addLog.debug('updateChatFeedbackCount success', {
+    logger.debug('Chat feedback count updated', {
       appId,
       chatId,
       stats: feedbackStats,
@@ -344,7 +346,7 @@ export async function updateChatFeedbackCount({
       hasUnreadBadFeedback
     });
   } catch (error) {
-    addLog.error('updateChatFeedbackCount error', error);
+    logger.error('Failed to update chat feedback count', { appId, chatId, error });
     throw error;
   }
 }

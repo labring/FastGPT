@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
@@ -60,7 +60,20 @@ const NodeSimple = ({
         {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
       </NodeCard>
     );
-  }, [isTool, inputs, nodeId, outputs, minW, maxW, selected, data, t, catchError]);
+  }, [
+    minW,
+    maxW,
+    selected,
+    data,
+    isTool,
+    nodeId,
+    inputs,
+    commonInputs,
+    t,
+    successOutputs,
+    errorOutputs,
+    catchError
+  ]);
 
   return Render;
 };

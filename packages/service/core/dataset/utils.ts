@@ -4,6 +4,9 @@ import { S3Sources } from '../../common/s3/type';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { jwtSignS3ObjectKey, isS3ObjectKey } from '../../common/s3/utils';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 // TODO: 需要优化成批量获取权限
 export const filterDatasetsByTmbId = async ({
@@ -23,7 +26,7 @@ export const filterDatasetsByTmbId = async ({
         });
         return true;
       } catch (error) {
-        console.log(`Dataset ${datasetId} access denied:`, error);
+        logger.warn('Dataset access denied for member', { datasetId, error });
         return false;
       }
     })

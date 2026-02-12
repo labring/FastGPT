@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   CallToolRequestSchema,
   type CallToolResult,
@@ -10,6 +10,7 @@ import {
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 export type mcpQuery = { key: string };
 
@@ -32,7 +33,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     sessionIdGenerator: undefined
   });
   res.on('close', () => {
-    addLog.debug('[MCP server] Close connection');
+    logger.debug('[MCP server] Close connection');
     transport.close();
     server.close();
   });
@@ -50,7 +51,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
       args: Record<string, any>
     ): Promise<CallToolResult> => {
       try {
-        addLog.debug(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
+        logger.debug(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
         const result = await callMcpServerTool({ key, toolName: name, inputs: args });
 
         return {
@@ -78,7 +79,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
-    addLog.error('[MCP server] Error handling MCP request:', error);
+    logger.error('[MCP server] Error handling MCP request:', { error });
     if (!res.writableFinished) {
       res.status(500).json({
         jsonrpc: '2.0',

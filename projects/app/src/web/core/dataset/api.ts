@@ -83,10 +83,11 @@ import type {
   DatasetCreateWithFilesBody,
   DatasetCreateWithFilesResponse
 } from '@/pages/api/core/dataset/createWithFiles';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
-  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
+  POST<DatasetListItemType[]>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
@@ -179,7 +180,7 @@ export const postSearchText = (data: SearchTestProps) =>
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
   POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/listV2`, data);
-export const getDatasetCollectionPathById = (parentId: string) =>
+export const getDatasetCollectionPathById = (parentId: ParentIdType) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });

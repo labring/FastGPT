@@ -9,7 +9,7 @@ export type GetPathProps = {
 };
 
 export type ParentTreePathItemType = {
-  parentId: string;
+  parentId: ParentIdType;
   parentName: string;
 };
 

@@ -7,11 +7,11 @@ import type {
   RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import {

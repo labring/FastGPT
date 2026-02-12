@@ -303,7 +303,11 @@ const List = () => {
                               />
                             }
                             menuList={[
-                              ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                              ...([
+                                AppTypeEnum.simple,
+                                AppTypeEnum.workflow,
+                                AppTypeEnum.chatAgent
+                              ].includes(app.type)
                                 ? [
                                     {
                                       children: [

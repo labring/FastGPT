@@ -4,9 +4,11 @@ import mysql, {
   type RowDataPacket,
   type ResultSetHeader
 } from 'mysql2/promise';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 type WhereProps = (string | [string, string | number])[];
 type GetProps = {
@@ -59,16 +61,26 @@ export class ObClass {
     try {
       // Test the connection with a simple query instead of calling connect()
       await global.obClient.query('SELECT 1');
-      addLog.info(`[${this.controllerType}] connect`);
+      logger.info('Vector DB connected', {
+        provider: this.controllerType,
+        address
+      });
       return global.obClient;
     } catch (error) {
-      addLog.error(`[${this.controllerType}] connect error`, error);
+      logger.error('Vector DB connection failed', {
+        provider: this.controllerType,
+        address,
+        error
+      });
 
       global.obClient?.end();
       global.obClient = null;
 
       await delay(1000);
-      addLog.info(`[${this.controllerType}] retry connect`);
+      logger.info('Vector DB reconnecting', {
+        provider: this.controllerType,
+        address
+      });
 
       return this.getClient();
     }
@@ -220,7 +232,10 @@ export class ObClass {
         insertIds: []
       };
     } catch (error) {
-      addLog.error('[${this.controllerType}] batch insert error', error);
+      logger.error('Vector DB batch insert failed', {
+        provider: this.controllerType,
+        error
+      });
       throw error;
     } finally {
       connection.release(); // 释放连接回连接池
@@ -233,7 +248,11 @@ export class ObClass {
       const time = Date.now() - start;
 
       if (time > 300) {
-        addLog.warn(`[${this.controllerType}] query time: ${time}ms, sql: ${sql}`);
+        logger.warn('Vector DB slow query detected', {
+          provider: this.controllerType,
+          durationMs: time,
+          sql
+        });
       }
 
       return res;

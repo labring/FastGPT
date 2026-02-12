@@ -5,6 +5,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const OpenApiSchema = new Schema(
   {
@@ -61,7 +62,8 @@ try {
   OpenApiSchema.index({ teamId: 1 });
   OpenApiSchema.index({ apiKey: 1 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build OpenAPI indexes', { error });
 }
 
 export const MongoOpenApi = getMongoModel<OpenApiSchema>('openapi', OpenApiSchema);

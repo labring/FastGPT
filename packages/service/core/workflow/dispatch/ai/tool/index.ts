@@ -9,8 +9,12 @@ import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  UserChatItemFileItemType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -24,13 +28,14 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt } from './constants';
 import { filterToolResponseToPreview } from './utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../../utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -81,7 +86,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
         return tool;
       })
-      .filter(Boolean)
+      .filter((tool) => {
+        if (!tool) return false;
+        // Check is valid and filter
+        const configStatus = getToolConfigStatus({
+          tool
+        });
+        if (configStatus.status === 'invalid' || configStatus.status === 'waitingForConfig') {
+          return false;
+        }
+        return true;
+      })
       .map<ToolNodeItemType>((tool) => {
         const toolParams: FlowNodeInputItemType[] = [];
         // Raw json schema(MCP tool)
@@ -188,12 +203,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       completeMessages = [], // The actual message sent to AI(just save text)
       assistantResponses = [], // FastGPT system store assistant.value response
       finish_reason,
-      error
+      error,
+      requestIds
     } = await (async () => {
       const adaptMessages = chats2GPTMessages({
         messages,
-        reserveId: false
-        // reserveTool: !!toolModel.toolChoice
+        reserveId: false,
+        reserveTool: true
       });
 
       return runToolCall({
@@ -242,7 +258,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           ),
           toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
           mergeSignId: nodeId,
-          finishReason: finish_reason
+          finishReason: finish_reason,
+          llmRequestIds: requestIds
         },
         [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
           (sum, item) => sum + item.runTimes,
@@ -294,7 +311,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ),
         toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
         mergeSignId: nodeId,
-        finishReason: finish_reason
+        finishReason: finish_reason,
+        llmRequestIds: requestIds
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
         // 模型本身的积分消耗
@@ -335,7 +353,7 @@ const getMultiInput = async ({
   requestOrigin?: string;
   maxFiles: number;
   customPdfParse?: boolean;
-  inputFiles: UserChatItemValueItemType['file'][];
+  inputFiles: UserChatItemFileItemType[];
   hasReadFilesTool: boolean;
   usageId?: string;
   appId: string;
@@ -374,7 +392,9 @@ const getMultiInput = async ({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
+    userFiles: fileLinks
+      .map((url) => parseUrlToFileType(url))
+      .filter(Boolean) as UserChatItemFileItemType[]
   };
 };
 
@@ -391,15 +411,15 @@ const toolCallMessagesAdapt = ({
 }): UserChatItemValueItemType[] => {
   if (skip) return userInput;
 
-  const files = userInput.filter((item) => item.type === 'file');
+  const files = userInput.filter((item) => 'file' in item);
 
   if (files.length > 0) {
     const filesCount = files.filter((file) => file.file?.type === 'file').length;
     const imgCount = files.filter((file) => file.file?.type === 'image').length;
 
-    if (userInput.some((item) => item.type === 'text')) {
+    if (userInput.some((item) => 'text' in item)) {
       return userInput.map((item) => {
-        if (item.type === 'text') {
+        if ('text' in item) {
           const text = item.text?.content || '';
 
           return {
@@ -416,7 +436,6 @@ const toolCallMessagesAdapt = ({
     // Every input is a file
     return [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
         }

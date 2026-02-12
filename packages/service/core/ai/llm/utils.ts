@@ -6,15 +6,18 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import { axios } from '../../../common/api/axios';
+
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';
-import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -27,15 +30,15 @@ export const filterGPTMessageByMaxContext = async ({
     return [];
   }
 
-  // If the text length is less than half of the maximum token, no calculation is required
-  if (messages.length < 4) {
-    return messages;
-  }
-
   // filter startWith system prompt
   const chatStartIndex = messages.findIndex(
     (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
   );
+
+  if (chatStartIndex === -1) {
+    return messages;
+  }
+
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
@@ -165,7 +168,7 @@ export const loadRequestMessages = async ({
               if (
                 imgUrl.startsWith('/') ||
                 process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
-                isInternalAddress(imgUrl)
+                (await isInternalAddress(imgUrl))
               ) {
                 try {
                   const url = await (async () => {
@@ -202,14 +205,14 @@ export const loadRequestMessages = async ({
                 timeout: 10000
               });
               if (response.status < 200 || response.status >= 400) {
-                addLog.info(`Filter invalid image: ${imgUrl}`);
+                logger.info('Filtered invalid image URL', { url: imgUrl });
                 return;
               }
             } catch (error: any) {
               if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
-              addLog.warn(`Filter invalid image: ${imgUrl}`, { error });
+              logger.warn('Failed to validate image URL', { url: imgUrl, error });
               return;
             }
           }
@@ -259,14 +262,19 @@ export const loadRequestMessages = async ({
     return loadImageContent;
   };
 
-  const formatAssistantItem = (item: ChatCompletionAssistantMessageParam) => {
+  const formatAssistantItem = (
+    item: ChatCompletionAssistantMessageParam & {
+      reasoning_content?: string;
+    }
+  ) => {
     return {
       role: item.role,
-      content: item.content,
-      function_call: item.function_call,
-      name: item.name,
-      refusal: item.refusal,
-      tool_calls: item.tool_calls
+      content: item.content || undefined,
+      reasoning_content: item.reasoning_content || undefined,
+      function_call: item.function_call || undefined,
+      name: item.name || undefined,
+      refusal: item.refusal || undefined,
+      tool_calls: item.tool_calls || undefined
     };
   };
   const parseAssistantContent = (
@@ -403,7 +411,7 @@ export const loadRequestMessages = async ({
                 : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.tool_calls || item.function_call) {
+          if (item.tool_calls || item.function_call || item.reasoning_content) {
             return formatAssistantItem(item);
           }
 

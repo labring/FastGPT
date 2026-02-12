@@ -1,13 +1,14 @@
 {
   "name": "app",
-  "version": "4.14.6",
+  "version": "4.14.7",
   "private": false,
   "scripts": {
     "dev": "npm run build:workers && next dev",
-    "build": "npm run build:workers && next build",
+    "build": "npm run build:workers && npm run lint && npm run typecheck && next build --debug",
     "start": "next start",
     "lint": "next lint",
     "build:workers": "npx tsx scripts/build-workers.ts",
+    "typecheck": "tsc --noEmit --pretty",
     "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
   },
   "dependencies": {

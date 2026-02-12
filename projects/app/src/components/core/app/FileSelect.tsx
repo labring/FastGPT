@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -73,9 +73,7 @@ const FileSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'} {...labelStyle}>
-        {t('app:file_upload')}
-      </FormLabel>
+      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_file_upload')}>

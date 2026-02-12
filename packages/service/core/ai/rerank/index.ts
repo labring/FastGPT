@@ -1,9 +1,11 @@
-import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
-import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
 type PostReRankResponse = {
   id: string;
@@ -64,10 +66,10 @@ export function reRankRecall({
     }
   )
     .then(async (data) => {
-      addLog.info('ReRank finish:', { time: Date.now() - start });
+      logger.info('Rerank completed', { durationMs: Date.now() - start });
 
       if (!data?.results || data?.results?.length === 0) {
-        addLog.error('[Rerank Error]', { message: 'Empty result', data });
+        logger.error('Rerank returned empty results', { data });
       }
 
       return {
@@ -81,7 +83,7 @@ export function reRankRecall({
       };
     })
     .catch((err) => {
-      addLog.error('[Rerank Error]', err);
+      logger.error('Rerank request failed', { error: err });
 
       return Promise.reject(err);
     });

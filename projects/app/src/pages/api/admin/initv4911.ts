@@ -4,11 +4,13 @@ import { type NextApiRequest, type NextApiResponse } from 'next';
 
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4911']);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
 
-  console.log('更新所有 API 知识库');
+  logger.info('更新所有 API 知识库');
 
   const datasets = await MongoDataset.find({
     type: {
@@ -17,7 +19,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   }).lean();
 
   for (const dataset of datasets) {
-    console.log(dataset._id);
+    logger.info('Migrating API dataset', { datasetId: dataset._id });
     await MongoDataset.updateOne(
       { _id: dataset._id },
       {

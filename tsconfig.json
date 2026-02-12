@@ -17,7 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@fastgpt/*": ["packages/*"],
-      "@test": ["test/*"]
+      "@test/*": ["test/*"]
     }
   },
   "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]

@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppCollectionName, chatConfigType } from '../schema';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 

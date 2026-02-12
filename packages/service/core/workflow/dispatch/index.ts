@@ -3,9 +3,9 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  NodeOutputItemType,
   ToolRunResponseItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -22,9 +22,8 @@ import type {
   ModuleDispatchProps,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -40,10 +39,10 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType } from './utils';
+import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType, filterOrphanEdges } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
@@ -54,11 +53,13 @@ import { createChatUsageRecord, pushChatItemUsage } from '../../../support/walle
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/utils';
-import type { MCPClient } from '../../app/mcp';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+import { runWithContext } from '../utils/context';
 
 type Props = Omit<
   ChatDispatchProps,
@@ -101,14 +102,14 @@ export async function dispatchWorkFlow({
 
   // Check url valid
   const invalidInput = query.some((item) => {
-    if (item.type === ChatItemValueTypeEnum.file && item.file?.url) {
+    if ('file' in item && item.file?.url) {
       if (!validateFileUrlDomain(item.file.url)) {
         return true;
       }
     }
   });
   if (invalidInput) {
-    addLog.info('[Workflow run] Invalid file url');
+    logger.info('Workflow run blocked due to invalid file url');
     return Promise.reject(new UserError('Invalid file url'));
   }
 
@@ -137,7 +138,7 @@ export async function dispatchWorkFlow({
     await addPreviewUrlToChatItems(histories, 'chatFlow'),
     // Add preview url to query
     ...query.map(async (item) => {
-      if (item.type !== ChatItemValueTypeEnum.file || !item.file?.key) return;
+      if (!item.file?.key) return;
       const { url } = await getS3ChatSource().createGetChatFileURL({
         key: item.file.key,
         external: true
@@ -159,7 +160,7 @@ export async function dispatchWorkFlow({
     if (stream) {
       res.on('close', () => res.end());
       res.on('error', () => {
-        addLog.error('Request error');
+        logger.error('Workflow stream response error');
         res.end();
       });
 
@@ -190,8 +191,7 @@ export async function dispatchWorkFlow({
       timezone
     }))
   };
-  // MCP
-  let mcpClientMemory = {} as Record<string, MCPClient>;
+
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
   const checkIsStopping = (): boolean => {
@@ -215,43 +215,54 @@ export async function dispatchWorkFlow({
       : undefined;
 
   // Init some props
-  return runWorkflow({
-    ...data,
-    checkIsStopping,
-    query,
-    histories,
-    timezone,
-    externalProvider,
-    variables: defaultVariables,
-    workflowDispatchDeep: 0,
-    usageId: newUsageId,
-    concatUsage,
-    mcpClientMemory
-  }).finally(async () => {
-    if (streamCheckTimer) {
-      clearInterval(streamCheckTimer);
-    }
-    if (checkStoppingTimer) {
-      clearInterval(checkStoppingTimer);
-    }
+  return new Promise((resolve, reject) => {
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      (ctx) => {
+        runWorkflow({
+          ...data,
+          checkIsStopping,
+          query,
+          histories,
+          timezone,
+          externalProvider,
+          variables: defaultVariables,
+          workflowDispatchDeep: 0,
+          usageId: newUsageId,
+          concatUsage
+        })
+          .then(resolve)
+          .catch(reject)
+          .finally(async () => {
+            if (streamCheckTimer) {
+              clearInterval(streamCheckTimer);
+            }
+            if (checkStoppingTimer) {
+              clearInterval(checkStoppingTimer);
+            }
 
-    // Close mcpClient connections
-    Object.values(mcpClientMemory).forEach((client) => {
-      client.closeConnection();
-    });
+            // Close mcpClient connections
+            Object.values(ctx.mcpClientMemory).forEach((client) => {
+              client.closeConnection();
+            });
 
-    // 工作流完成后删除 Redis 记录
-    await delAgentRuntimeStopSign({
-      appId: runningAppInfo.id,
-      chatId
-    });
+            // 工作流完成后删除 Redis 记录
+            await delAgentRuntimeStopSign({
+              appId: runningAppInfo.id,
+              chatId
+            });
+          });
+      }
+    );
   });
 }
 
-type RunWorkflowProps = ChatDispatchProps & {
+export type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
-  mcpClientMemory: Record<string, MCPClient>;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
 };
@@ -269,8 +280,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     responseAllData = true,
     usageId,
     concatUsage,
-    runningUserInfo: { teamId },
-    mcpClientMemory
+    runningUserInfo: { teamId }
   } = data;
 
   // Over max depth
@@ -298,6 +308,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       durationSeconds: 0
     };
   }
+
+  runtimeEdges = filterOrphanEdges({
+    edges: runtimeEdges,
+    nodes: runtimeNodes,
+    workflowId: data.runningAppInfo.id
+  });
 
   const startTime = Date.now();
 
@@ -451,6 +467,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
     }
 
+    private usagePush(usages: ChatNodeUsageType[]) {
+      if (usageId) {
+        pushChatItemUsage({
+          teamId,
+          usageId,
+          nodeUsages: usages
+        });
+      }
+      if (concatUsage) {
+        concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
+
+      this.chatNodeUsages = this.chatNodeUsages.concat(usages);
+    }
+
     async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
       node: RuntimeNodeItemType;
       runStatus: 'run';
@@ -531,7 +562,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
-        mcpClientMemory,
+        usagePush: this.usagePush.bind(this),
         lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? data.lastInteractive
           : undefined,
@@ -549,10 +580,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
-            const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
             if (result.error) {
               // Run error and not catch error, skip all edges
@@ -597,43 +628,53 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             };
           } catch (error) {
             // Skip all edges and return error
+            let skipHandleId = targetEdges.map((item) => item.sourceHandle);
+            if (node.catchError) {
+              skipHandleId = skipHandleId.filter((item) => item !== errorHandleId);
+            }
+
             return {
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: getErrText(error)
               },
-              [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
-                (item) => item.sourceHandle
-              )
+              [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
             };
           }
         }
         return {};
       })();
 
+      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       // format response data. Add modulename and module type
       const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
-        return {
+        const val = {
+          moduleName: node.name,
+          moduleType: node.flowNodeType,
+          moduleLogo: node.avatar,
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
           id: getNanoid(),
           nodeId: node.nodeId,
-          moduleName: node.name,
-          moduleType: node.flowNodeType,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
+        nodeResponses.push(val);
+        return val;
       })();
 
       // Response node response
-      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
-        data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeResponse,
-          data: responseAllData
-            ? formatResponseData
-            : filterPublicNodeResponseData({
-                nodeRespones: [formatResponseData],
-                responseDetail
-              })[0]
+      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && nodeResponses.length > 0) {
+        const filteredResponses = responseAllData
+          ? nodeResponses
+          : filterPublicNodeResponseData({
+              nodeRespones: nodeResponses,
+              responseDetail
+            });
+        filteredResponses.forEach((item) => {
+          data.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeResponse,
+            data: item
+          });
         });
       }
 
@@ -656,7 +697,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       // Error
       if (dispatchRes?.responseData?.error) {
-        addLog.warn('workflow error', { error: dispatchRes.responseData.error });
+        logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
       }
 
       return {
@@ -711,6 +752,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         answerText,
         reasoningText,
         responseData,
+        nodeResponses,
         nodeDispatchUsages,
         toolResponses,
         assistantResponses,
@@ -733,6 +775,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         if (responseData) {
           this.chatResponses.push(responseData);
         }
+        if (nodeResponses) {
+          this.chatResponses.push(...nodeResponses);
+        }
 
         // Collect custom feedbacks
         if (customFeedbacks && Array.isArray(customFeedbacks)) {
@@ -741,18 +786,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         // Push usage in real time. Avoid a workflow usage a large number of points
         if (nodeDispatchUsages) {
-          if (usageId) {
-            pushChatItemUsage({
-              teamId,
-              usageId,
-              nodeUsages: nodeDispatchUsages
-            });
-          }
-          if (concatUsage) {
-            concatUsage(nodeDispatchUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
-          }
-
-          this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
+          this.usagePush(nodeDispatchUsages);
         }
 
         if (
@@ -771,7 +805,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         } else {
           if (reasoningText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.reasoning,
               reasoning: {
                 content: reasoningText
               }
@@ -779,7 +812,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
           if (answerText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: answerText
               }
@@ -854,13 +886,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       // Check queue status
       if (data.maxRunTimes <= 0) {
-        addLog.error('Max run times is 0', {
+        logger.error('Workflow max run times reached', {
           appId: data.runningAppInfo.id
         });
         return;
       }
       if (checkIsStopping()) {
-        addLog.warn('Workflow stopped', {
+        logger.warn('Workflow stopped', {
           appId: data.runningAppInfo.id,
           nodeId: node.nodeId,
           nodeName: node.name
@@ -868,7 +900,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
-      addLog.debug(`Run node`, { maxRunTimes: data.maxRunTimes, appId: data.runningAppInfo.id });
+      logger.debug('Run workflow node', {
+        maxRunTimes: data.maxRunTimes,
+        appId: data.runningAppInfo.id
+      });
 
       // Get node run status by edges
       const status = checkNodeRunStatus({
@@ -895,7 +930,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             };
           }
 
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
+          logger.debug('dispatchWorkFlow node run with active', { nodeName: node.name });
           return this.nodeRunWithActive(node);
         }
         if (status === 'skip' && !skippedNodeIdList.has(node.nodeId)) {
@@ -908,7 +943,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
           data.maxRunTimes -= 0.1;
           skippedNodeIdList.add(node.nodeId);
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
+          logger.debug('dispatchWorkFlow node run with skip', { nodeName: node.name });
           return this.nodeRunWithSkip(node);
         }
       })();
@@ -1039,7 +1074,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
 
       return {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: interactiveResult
       };
     }
@@ -1070,7 +1104,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     if (
       item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
       item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-      item.flowNodeType !== FlowNodeTypeEnum.agent
+      item.flowNodeType !== FlowNodeTypeEnum.toolCall
     ) {
       item.isEntry = false;
     }
@@ -1198,10 +1232,10 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
-    if (item.type === ChatItemValueTypeEnum.text) {
+    if (item.text) {
       let text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
         lastItem.text.content += text;
         continue;
       }
@@ -1212,7 +1246,6 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // If result is empty, auto add a text message
   if (result.length === 0) {
     result.push({
-      type: ChatItemValueTypeEnum.text,
       text: { content: '' }
     });
   }

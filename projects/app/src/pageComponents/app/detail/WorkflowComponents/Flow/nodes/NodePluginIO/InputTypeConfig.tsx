@@ -42,7 +42,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -185,8 +185,6 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.customVariable,
       FlowNodeInputTypeEnum.hidden,
       FlowNodeInputTypeEnum.switch,
-      VariableInputEnum.timePointSelect,
-      VariableInputEnum.timeRangeSelect,
       VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal
@@ -1016,8 +1014,7 @@ const InputTypeConfig = ({
                 defaultSelectedDatasets={datasetOptions.map((item: SelectedDatasetType) => ({
                   datasetId: item.datasetId,
                   name: item.name,
-                  avatar: item.avatar,
-                  vectorModel: {} as EmbeddingModelItemType
+                  avatar: item.avatar
                 }))}
                 onChange={(selectedDatasets) => {
                   const newDatasetList = selectedDatasets.map((item: SelectedDatasetType) => ({

@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';

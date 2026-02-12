@@ -11,7 +11,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
-  ChatItemValueTypeEnum,
+  ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -33,7 +33,7 @@ import {
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
@@ -170,7 +170,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
 
 // Call tool
 export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps) => {
-  const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
+  const dispatchApp = async (app: AppSchemaType, variables: Record<string, any>) => {
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Get app latest version
@@ -183,12 +183,17 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
           variables
         });
       }
-
       return {
         obj: ChatRoleEnum.Human,
         value: [
+          ...(variables.fileUrlList || []).map((url: string) => ({
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: url,
+              url: url
+            }
+          })),
           {
-            type: ChatItemValueTypeEnum.text,
             text: {
               content: variables.question
             }
@@ -205,7 +210,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       variables = {};
     } else {
       delete variables.question;
-      variables.system_fileUrlList = variables.fileUrlList;
       delete variables.fileUrlList;
     }
 
@@ -248,7 +252,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       memories: system_memories
     };
     const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
-    await saveChat({
+    await pushChatRecords({
       chatId,
       appId: app._id,
       versionId,

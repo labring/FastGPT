@@ -34,7 +34,6 @@ vi.mock('axios', () => ({
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
 
 // @ts-ignore
 import axios from 'axios';

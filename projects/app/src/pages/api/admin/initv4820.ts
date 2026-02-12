@@ -10,9 +10,11 @@ import json5 from 'json5';
 import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4820']);
 
-/* 
+/*
   简单版迁移：直接升级到最新镜像，会去除 MongoDatasetData 里的索引。直接执行这个脚本。
   无缝迁移：
     1. 移动 User 表中的 avatar 字段到 TeamMember 表中。
@@ -64,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         { upsert: true }
       );
     } catch (error) {
-      console.log(error);
+      logger.error('Failed to migrate account points data', { error });
     }
   }
 

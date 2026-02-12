@@ -4,6 +4,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv41451']);
 
 export type ResponseType = {
   message: string;
@@ -75,7 +77,7 @@ const migrateSystemSecret = async () => {
   // 4. 执行批量更新
   if (ops.length > 0) {
     await MongoSystemTool.bulkWrite(ops);
-    console.log(`Updated ${ops.length} child tools with system secrets`);
+    logger.info(`Updated ${ops.length} child tools with system secrets`);
   }
 
   return ops.length;

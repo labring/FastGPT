@@ -1,4 +1,4 @@
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import React, { type ReactNode, useState } from 'react';

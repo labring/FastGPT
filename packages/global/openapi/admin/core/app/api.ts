@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationSchema, PaginationResponseSchema } from '../../../api';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 
 // App type schema
 export const AppItemSchema = z.object({
