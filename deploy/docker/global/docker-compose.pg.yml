@@ -205,7 +205,7 @@ services:
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.7
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.6
     networks:
       - fastgpt
     ports:
