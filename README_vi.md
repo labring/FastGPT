@@ -19,16 +19,16 @@ FastGPT là nền tảng xây dựng AI Agent cung cấp khả năng sẵn sàng
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/Sử_dụng_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/Tài_liệu-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/Phát_triển_Địa_phương-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img height="21" src="https://img.shields.io/badge/Dự_án_Liên_quan-7d09f1?style=flat-square" alt="project">
+  <a href="/#-相关项目">
+    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Bắt Đầu Nhanh
 
-Bạn có thể khởi động FastGPT nhanh chóng bằng Docker. Chạy lệnh sau trong terminal và làm theo hướng dẫn để tải cấu hình:
+Bạn có thể khởi động FastGPT nhanh chóng bằng Docker. Chạy lệnh sau trong terminal và làm theo hướng dẫn để tải cấu hình.
 
 ```bash
 # Chạy lệnh để tải file cấu hình
@@ -80,7 +80,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
    - [x] Nhật ký chuỗi gọi đầy đủ
    - [x] Đánh giá ứng dụng
    - [ ] Chế độ debug DeBug điều phối nâng cao
-   - [x] Nhật ký node ứng dụng
+   - [ ] Nhật ký node ứng dụng
 
 `3` Khả Năng Cơ Sở Kiến Thức
    - [x] Tái sử dụng và kết hợp nhiều cơ sở dữ liệu
@@ -110,72 +110,12 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
    - [x] Chợ template
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
-## 💡 Lộ Trình Phát Triển
-
-`1` Khả Năng Điều Phối Ứng Dụng
-   - [x] Workflow hội thoại, workflow plugin, bao gồm các node RPA cơ bản.
-   - [x] Tương tác người dùng
-   - [x] MCP hai chiều
-   - [ ] Chế độ Agent
-   - [ ] AI tạo workflow
-
-`2` Khả Năng Gỡ Lỗi Ứng Dụng
-   - [x] Kiểm tra tìm kiếm điểm đơn trong cơ sở kiến thức
-   - [x] Phản hồi tham chiếu trong hội thoại với khả năng chỉnh sửa và xóa
-   - [x] Nhật ký chuỗi gọi đầy đủ
-   - [ ] Đánh giá ứng dụng
-   - [ ] Chế độ debug DeBug điều phối nâng cao
-   - [x] Nhật ký node ứng dụng
-
-`3` Khả Năng Cơ Sở Kiến Thức
-   - [x] Tái sử dụng và kết hợp nhiều cơ sở dữ liệu
-   - [x] Sửa đổi và xóa bản ghi chunk
-   - [x] Hỗ trợ nhập liệu thủ công, phân đoạn trực tiếp, nhập QA tách
-   - [x] Hỗ trợ txt, md, html, pdf, docx, pptx, csv, xlsx, hỗ trợ đọc URL và nhập hàng loạt CSV
-   - [x] Hybrid retrieval & reranking
-   - [x] Cơ sở kiến thức API
-   - [ ] Hot-swapping module RAG
-
-`4` Giao Diện OpenAPI
-   - [x] Giao diện completions
-   - [x] CRUD cơ sở kiến thức
-   - [x] CRUD hội thoại
-   - [ ] Giao diện OpenAPI tự động
-
-`5` Khả Năng Vận Hành
-   - [x] Chia sẻ không cần đăng nhập
-   - [x] Nhúng Iframe một cú nhấp chuột
-   - [x] Xem lại nhật ký hội thoại tập trung với chú thích dữ liệu
-   - [x] Nhật ký vận hành ứng dụng
-
-`6` Khác
-   - [x] Cấu hình mô hình trực quan.
-   - [x] Hỗ trợ nhập liệu và xuất giọng nói
-   - [x] Gợi ý nhập liệu mờ
-   - [x] Chợ template
-
-
-
-## 🏘️ Tham Gia Cùng Chúng Tôi
-
-Chúng tôi đang tìm kiếm những người cùng chí hướng để đẩy nhanh sự phát triển của FastGPT. Bạn có thể xem thông tin tuyển dụng FastGPT tại [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg).
-
-
-
-## 👀 Khác
-
-- [Hướng dẫn FastGPT bằng tiếng Trung](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
-- [Tích hợp Feishu](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
-- [Tích hợp WeCom](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
-
-
-
 
 ## 💪 Dự Án & Liên Kết Của Chúng Tôi
 
-- [Bắt Đầu Phát Triển Địa Phương](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [Bắt Đầu - Phát Triển Địa Phương](https://doc.fastgpt.io/docs/introduction/development/intro/)
 - [Tài Liệu OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Dịch Vụ Cân Bằng Tải Tổng Hợp Mô Hình](https://github.com/labring/aiproxy)
@@ -183,7 +123,7 @@ Chúng tôi đang tìm kiếm những người cùng chí hướng để đẩy 
 - [Sealos: Triển Khai Nhanh Ứng Dụng Cụm](https://github.com/labring/sealos)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 Hệ Sinh Thái Bên Thứ Ba
@@ -193,7 +133,7 @@ Chúng tôi đang tìm kiếm những người cùng chí hướng để đẩy 
 - [PPIO: Gọi API Mô Hình Nguồn Mở Tiết Kiệm và GPU Container](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ Cộng Đồng
@@ -203,7 +143,7 @@ Tham gia nhóm Feishu của chúng tôi:
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🤝 Đóng Góp
@@ -216,6 +156,28 @@ Chúng tôi rất hoan nghênh đóng góp dưới mọi hình thức. Nếu b�
       <th colspan="2">
         <br><img src="https://contrib.rocks/image?repo=labring/FastGPT"><br><br>
       </th>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
+      <td rowspan="2">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=dark">
+            <img alt="New trends of labring" src="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=light">
+        </picture>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="New participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
     </tr>
   </table>
 </a>
@@ -231,12 +193,12 @@ Chúng tôi rất hoan nghênh đóng góp dưới mọi hình thức. Nếu b�
 </a>
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## Giấy Phép
 
-Kho này tuân thủ [FastGPT Open Source License](./LICENSE).
+Kho này tuân thủ [FastGPT Open Source License](./LICENSE) giấy phép mã nguồn mở.
 
 1. Cho phép sử dụng thương mại như dịch vụ backend, nhưng không cho phép cung cấp dịch vụ SaaS.
 2. Bất kỳ dịch vụ thương mại nào không có giấy phép thương mại phải giữ lại thông tin bản quyền liên quan.

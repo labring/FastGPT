@@ -19,16 +19,16 @@ FastGPT เป็นแพลตฟอร์มสำหรับสร้าง
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/ใช้งานออนไลน์-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/เอกสาร-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/พัฒนาท้องถิ่น-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img height="21" src="https://img.shields.io/badge/โปรเจกต์ที่เกี่ยวข้อง-7d09f1?style=flat-square" alt="project">
+  <a href="/#-相关项目">
+    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -80,13 +80,13 @@ docker compose up -d
    - [x] บันทึกห่วงโซ่การเรียกใช้แบบสมบูรณ์
    - [x] การประเมินแอปพลิเคชัน
    - [ ] โหมด debug DeBug การจัดระเบียบขั้นสูง
-   - [x] บันทึกโหมดแอปพลิเคชัน
+   - [ ] บันทึกโหมดแอปพลิเคชัน
 
 `3` ความสามารถของฐานความรู้
    - [x] การใช้ฐานข้อมูลหลายฐานซ้ำและผสม
    - [x] การแก้ไขและลบบันทึก chunk
    - [x] รองรับการป้อนข้อมูลด้วยตนเอง การแบ่งส่วนโดยตรง การนำเข้า QA แบบแยก
-   - [x] รองรับ txt, md, html, pdf, docx, pptx, csv, xlsx (เพิ่มเติมได้โดย PR) รองรับการอ่าน URL และการนำเข้า CSV จำนวนมาก
+   - [x] รองรับ txt, md, html, pdf, docx, pptx, csv, xlsx (เพิ่มเติมได้โดย PR), รองรับการอ่าน URL และการนำเข้า CSV จำนวนมาก
    - [x] Hybrid retrieval & reranking
    - [x] ฐานความรู้ API
    - [ ] การสลับโมดูล RAG แบบร้อน
@@ -110,72 +110,12 @@ docker compose up -d
    - [x] ตลาดแม่แบบ
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
-## 💡 RoadMap
-
-`1` ความสามารถในการจัดระเบียบแอปพลิเคชัน
-   - [x] การทำงานแบบสนทนา การทำงานแบบปลั๊กอิน รวมถึงโหมด RPA พื้นฐาน
-   - [x] การโต้ตอบกับผู้ใช้
-   - [x] MCP สองทิศทาง
-   - [ ] โหมด Agent
-   - [ ] AI สร้าง workflow
-
-`2` ความสามารถในการแก้ไขข้อบกพร่องแอปพลิเคชัน
-   - [x] การทดสอบการค้นหาฐานความรู้แบบจุดเดียว
-   - [x] ข้อมูลอ้างอิงระหว่างการสนทนาพร้อมความสามารถในการแก้ไขและลบ
-   - [x] บันทึกห่วงโซ่การเรียกใช้แบบสมบูรณ์
-   - [ ] การประเมินแอปพลิเคชัน
-   - [ ] โหมด debug DeBug การจัดระเบียบขั้นสูง
-   - [x] บันทึกโหมดแอปพลิเคชัน
-
-`3` ความสามารถของฐานความรู้
-   - [x] การใช้ฐานข้อมูลหลายฐานซ้ำและผสม
-   - [x] การแก้ไขและลบบันทึก chunk
-   - [x] รองรับการป้อนข้อมูลด้วยตนเอง การแบ่งส่วนโดยตรง การนำเข้า QA แบบแยก
-   - [x] รองรับ txt, md, html, pdf, docx, pptx, csv, xlsx, รองรับการอ่าน URL และการนำเข้า CSV จำนวนมาก
-   - [x] Hybrid retrieval & reranking
-   - [x] ฐานความรู้ API
-   - [ ] การสลับโมดูล RAG แบบร้อน
-
-`4` อินเทอร์เฟซ OpenAPI
-   - [x] อินเทอร์เฟซ completions
-   - [x] CRUD ฐานความรู้
-   - [x] CRUD การสนทนา
-   - [ ] อินเทอร์เฟซ OpenAPI อัตโนมัติ
-
-`5` ความสามารถในการดำเนินงาน
-   - [x] หน้าต่างแชร์โดยไม่ต้องเข้าสู่ระบบ
-   - [x] การฝัง Iframe คลิกเดียว
-   - [x] การตรวจสอบบันทึกการสนทนาแบบรวมพร้อมการใส่อักษรข้อมูล
-   - [x] บันทึกการดำเนินงานแอปพลิเคชัน
-
-`6` อื่นๆ
-   - [x] การกำหนดค่าโมเดลภาพ
-   - [x] รองรับการป้อนเสียงและเอาต์พุต
-   - [x] เคล็ดลับการป้อนข้อมูลแบบเลือนลาง
-   - [x] ตลาดแม่แบบ
-
-
-
-## 🏘️ เข้าร่วมกับเรา
-
-เรากำลังมองหาพันธมิตรที่มีความคิดเห็นเดียวกันเพื่อเร่งการพัฒนา FastGPT คุณสามารถดูข้อมูลการรับสมัครงานได้ที่ [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg)
-
-
-
-## 👀 อื่นๆ
-
-- [บทแนะนำ FastGPT ภาษาจีน](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
-- [การเชื่อมต่อ Feishu](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
-- [การเชื่อมต่อ WeCom](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
-
-
-
 
 ## 💪 โปรเจกต์และลิงก์ของเรา
 
-- [เริ่มต้นการพัฒนาท้องถิ่น](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [เริ่มต้น - การพัฒนาท้องถิ่น](https://doc.fastgpt.io/docs/introduction/development/intro/)
 - [เอกสาร OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: บริการ Load Balancing การรวมโมเดล](https://github.com/labring/aiproxy)
@@ -183,7 +123,7 @@ docker compose up -d
 - [Sealos: การติดตั้งแอปพลิเคชันคลัสเตอร์อย่างรวดเร็ว](https://github.com/labring/sealos)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 ระบบนิเวศของบุคคลที่สาม
@@ -193,7 +133,7 @@ docker compose up -d
 - [PPIO: เรียกใช้ API โมเดล Open Source และ GPU Container คุ้มค่า](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ ชุมชน
@@ -203,7 +143,7 @@ docker compose up -d
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🤝 ผู้มีส่วนร่วม
@@ -216,6 +156,28 @@ docker compose up -d
       <th colspan="2">
         <br><img src="https://contrib.rocks/image?repo=labring/FastGPT"><br><br>
       </th>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
+      <td rowspan="2">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=dark">
+            <img alt="New trends of labring" src="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=light">
+        </picture>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="New participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
     </tr>
   </table>
 </a>
@@ -231,12 +193,12 @@ docker compose up -d
 </a>
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## ใบอนุญาต
 
-ที่เก็บนี้ปฏิบัติตาม [FastGPT Open Source License](./LICENSE)
+ที่เก็บนี้ปฏิบัติตาม [FastGPT Open Source License](./LICENSE) ใบอนุญาต open source
 
 1. อนุญาตให้ใช้เชิงพาณิชย์เป็นบริการแบ็กเอนด์ แต่ไม่อนุญาตให้ให้บริการ SaaS
 2. บริการเชิงพาณิชย์ใดๆ ที่ไม่มีการอนุญาตเชิงพาณิชย์ต้องเก็บข้อมูลลิขสิทธิ์ที่เกี่ยวข้องไว้

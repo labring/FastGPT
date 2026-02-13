@@ -13,22 +13,22 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pakai untuk pemrosesan data dan pemanggilan model. Selain itu, Anda dapat mengorkestrasi alur kerja melalui visualisasi Flow untuk mencapai skenario aplikasi yang kompleks!
+FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pakai untuk pemrosesan data dan pemanggilan model. Selain itu, Anda dapat mengorkestrasikan workflow melalui visualisasi Flow untuk mencapai skenario aplikasi yang kompleks!
 
 </div>
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/Gunakan_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/Dokumentasi-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/Pengembangan_Lokal-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img height="21" src="https://img.shields.io/badge/Proyek_Terkait-7d09f1?style=flat-square" alt="project">
+  <a href="/#-相关项目">
+    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Mulai Cepat
 
-Anda dapat memulai FastGPT dengan cepat menggunakan Docker. Jalankan perintah berikut di terminal dan ikuti panduan untuk menarik konfigurasi:
+Anda dapat memulai FastGPT dengan cepat menggunakan Docker. Jalankan perintah berikut di terminal dan ikuti panduan untuk menarik konfigurasi.
 
 ```bash
 # Jalankan perintah untuk menarik file konfigurasi
@@ -55,10 +55,10 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
   Jika Anda tidak memerlukan penyebaran privat, Anda dapat menggunakan versi layanan cloud kami di: [fastgpt.io](https://fastgpt.io/)
 
 - **Versi Self-Hosted Komunitas**  
-  Anda dapat penyebaran dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) untuk penerapan satu klik FastGPT.
+  Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) untuk menyebarkan FastGPT dengan satu klik.
 
 - **Versi Komersial**  
-  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat提交[konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Fitur Inti
 
@@ -68,7 +68,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` Kemampuan Orkestrasi Aplikasi
-   - [ ] Mode Agent Perencanaan.
+   - [x] Mode Agent Perencanaan.
    - [x] Alur kerja percakapan, alur kerja plugin, termasuk node RPA dasar.
    - [x] Interaksi pengguna
    - [x] MCP dua arah
@@ -110,72 +110,12 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
    - [x] Pasar template
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
-## 💡 RoadMap
-
-`1` Kemampuan Orkestrasi Aplikasi
-   - [x] Alur kerja percakapan, alur kerja plugin, termasuk node RPA dasar.
-   - [x] Interaksi pengguna
-   - [x] MCP dua arah
-   - [ ] Mode Agent
-   - [ ] AI menghasilkan workflow
-
-`2` Kemampuan Debugging Aplikasi
-   - [x] Pengujian pencarian satu titik basis pengetahuan
-   - [x] Umpan balik referensi selama percakapan dengan kemampuan edit dan hapus
-   - [x] Log rantai panggilan lengkap
-   - [ ] Evaluasi aplikasi
-   - [ ] Mode debug DeBug orkestrasi lanjutan
-   - [ ] Log node aplikasi
-
-`3` Kemampuan Basis Pengetahuan
-   - [x] Penggunaan ulang dan pencampuran multi-database
-   - [x] Modifikasi dan penghapusan rekaman chunk
-   - [x] Dukungan input manual, segmentasi langsung, impor QA split
-   - [x] Dukungan txt, md, html, pdf, docx, pptx, csv, xlsx, dukungan pembacaan URL dan impor batch CSV
-   - [x] Hybrid retrieval & reranking
-   - [x] Basis pengetahuan API
-   - [ ] Hot-swapping modul RAG
-
-`4` Antarmuka OpenAPI
-   - [x] Antarmuka completions
-   - [x] CRUD basis pengetahuan
-   - [x] CRUD percakapan
-   - [ ] Antarmuka OpenAPI otomatis
-
-`5` Kemampuan Operasi
-   - [x] Jendela berbagi tanpa login
-   - [x] Embedding Iframe satu klik
-   - [x] Tinjauan catatan percakapan terpadu dengan anotasi data
-   - [x] Log operasi aplikasi
-
-`6` Lainnya
-   - [x] Konfigurasi model visual.
-   - [x] Dukungan input dan output suara
-   - [x] Hint input fuzzy
-   - [x] Pasar template
-
-
-
-## 🏘️ Bergabung dengan Kami
-
-Kami sedang mencari rekan yang berpikiran sama untuk mempercepat pengembangan FastGPT. Anda dapat melihat informasi lowongan pekerjaan FastGPT melalui [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg).
-
-
-
-## 👀 Lainnya
-
-- [Tutorial FastGPT Bahasa Mandarin](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
-- [Integrasi Feishu](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
-- [Integrasi WeCom](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
-
-
-
 
 ## 💪 Proyek & Tautan Kami
 
-- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [Mulai Cepat - Pengembangan Lokal](https://doc.fastgpt.io/docs/introduction/development/intro/)
 - [Dokumentasi OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)
@@ -183,7 +123,7 @@ Kami sedang mencari rekan yang berpikiran sama untuk mempercepat pengembangan Fa
 - [Sealos: Penerapan Cepat Aplikasi Klaster](https://github.com/labring/sealos)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 Ekosistem Pihak Ketiga
@@ -193,7 +133,7 @@ Kami sedang mencari rekan yang berpikiran sama untuk mempercepat pengembangan Fa
 - [PPIO: Panggilan Satu Klik ke API Model Open Source Hemat GPU](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ Komunitas
@@ -203,7 +143,7 @@ Bergabung dengan grup Feishu kami:
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🤝 Kontributor
@@ -216,6 +156,28 @@ Kami sangat menyambut kontribusi dalam berbagai bentuk. Jika Anda tertarik berko
       <th colspan="2">
         <br><img src="https://contrib.rocks/image?repo=labring/FastGPT"><br><br>
       </th>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+          <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
+      <td rowspan="2">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=dark">
+            <img alt="New trends of labring" src="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=light">
+        </picture>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="New participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
     </tr>
   </table>
 </a>
@@ -231,12 +193,12 @@ Kami sangat menyambut kontribusi dalam berbagai bentuk. Jika Anda tertarik berko
 </a>
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## Lisensi
 
-Repositori ini mengikuti [FastGPT Open Source License](./LICENSE).
+Repositori ini mengikuti [FastGPT Open Source License](./LICENSE) lisensi open source.
 
 1. Penggunaan komersial sebagai layanan backend diperbolehkan, tetapi layanan SaaS tidak diperbolehkan.
 2. Setiap layanan komersial tanpa otorisasi komersial harus mempertahankan informasi hak cipta yang relevan.
