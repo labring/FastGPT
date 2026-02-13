@@ -12,7 +12,7 @@
   <a href="./README_ja.md">日语</a>
 </p>
 
-FastGPT is a knowledge-based platform built on the LLMs, offers a comprehensive suite of out-of-the-box capabilities such as data processing, RAG retrieval, and visual AI workflow orchestration, letting you easily develop and deploy complex question-answering systems without the need for extensive setup or configuration. 
+FastGPT is an AI Agent building platform that provides out-of-the-box capabilities for data processing and model invocation. It also enables workflow orchestration through Flow visualization, allowing you to achieve complex application scenarios!
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/labring/FastGPT?style=flat-square&labelColor=d4eaf7&color=7d09f1)](https://github.com/labring/FastGPT/stargazers)
 [![GitHub pull request](https://img.shields.io/badge/PRs-welcome-fffff?style=flat-square&labelColor=d4eaf7&color=7d09f1)](https://github.com/labring/FastGPT/pulls)
@@ -31,105 +31,121 @@ FastGPT is a knowledge-based platform built on the LLMs, offers a comprehensive 
 
 https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
 
-## 🛸 Online Use
+## Quick Start
 
-Website: [fastgpt.io](https://fastgpt.io/)
+You can quickly start FastGPT using Docker. Run the following command in your terminal and follow the prompts to pull the configuration:
 
-| | |
+```bash
+# Run the command to pull the configuration file
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+# Start the services
+docker compose up -d
+```
+
+Once fully started, you can access FastGPT at `http://localhost:3000`. The default account is `root` and the password is `1234`.
+
+If you encounter any issues, you can [view the complete Docker deployment tutorial](https://doc.fastgpt.io/docs/introduction/development/docker)
+
+## 🛸 Usage
+
+- **Cloud Version**  
+  If you don't need private deployment, you can directly use our cloud service at: [fastgpt.io](https://fastgpt.io/)
+
+- **Community Self-Hosted Version**  
+  You can quickly deploy using [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) or use [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) for one-click deployment of FastGPT.
+
+- **Commercial Version**  
+  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/docs/introduction/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+
+## 💡 Core Features
+
+|                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
-|       Conversational AI Setup      |        Workflow Automation         |                             
-| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
-|       Knowledge Base Setup         |        Integration Process         |                             
+| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.jpg) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
-<a href="#FastGPT">
+`1` Application Orchestration
+   - [x] Planning Agent mode
+   - [x] Dialogue workflow and plugin workflow, including basic RPA nodes
+   - [x] User interaction
+   - [x] Bidirectional MCP
+   - [ ] Assisted workflow generation
+
+`2` Application Debugging
+   - [x] Knowledge base single-point search testing
+   - [x] Feedback references during dialogue with edit and delete capabilities
+   - [x] Complete call chain logs
+   - [x] Application evaluation
+   - [ ] Advanced orchestration DeBug debugging mode
+   - [ ] Application node logs
+
+`3` Knowledge Base Features
+   - [x] Multi-database reuse and mixing
+   - [x] Chunk record modification and deletion
+   - [x] Support manual input, direct segmentation, QA split import
+   - [x] Support txt, md, html, pdf, docx, pptx, csv, xlsx (more can be PR'd), support URL reading and CSV batch import
+   - [x] Hybrid retrieval & reranking
+   - [x] API knowledge base
+   - [ ] RAG module hot-swapping
+  
+`4` OpenAPI Interface
+   - [x] Completions interface (aligned with GPT chat mode)
+   - [x] Knowledge base CRUD
+   - [x] Dialogue CRUD
+   - [x] Automated OpenAPI interface
+  
+`5` Operations Features
+   - [x] Login-free sharing window
+   - [x] One-click Iframe embedding
+   - [x] Unified dialogue record review with data annotation
+   - [x] Application operation logs
+   
+`6` Others
+   - [x] Visual model configuration
+   - [x] Voice input and output support (configurable)
+   - [x] Fuzzy input hints
+   - [x] Template marketplace
+
+<a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 💡 Features
+## 💪 Our Projects & Links
 
-| **Features**                               | **Details**                                       |
-|--------------------------------------------|---------------------------------------------------|
-| **Application Orchestration Features**   | ✅ Offers a straightforward mode, eliminating the need for complex orchestration <br> ✅ Provides clear next-step instructions in dialogues <br> ✅ Facilitates workflow orchestration <br> ✅ Tracks references in source files <br> ✅ Encapsulates modules for enhanced reuse at multiple levels <br> ✅ Combines search and reordering functions <br> 🔜 Includes a tool module <br> 🔜 Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation <br> 🔜 Plugin encapsulation capabilities |
-| **Knowledge Base Features**              | ✅ Allows for the mixed use of multiple databases <br> ✅ Keeps track of modifications and deletions in data chunks <br> ✅ Enables specific vector models for each knowledge base <br> ✅ Stores original source files <br> ✅ Supports direct input and segment-based QA import <br> ✅ Compatible with a variety of file formats: pdf, docx, txt, html, md, csv <br> ✅ Facilitates URL reading and bulk CSV importing <br> 🔜 Supports PPT and Excel file import <br> 🔜 Features a file reader <br> 🔜 Offers diverse data preprocessing options |
-| **Application Debugging Features**        | ✅ Enables targeted search testing within the knowledge base <br> ✅ Allows feedback, editing, and deletion during conversations <br> ✅ Presents the full context of interactions <br> ✅ Displays all intermediate values within modules <br> 🔜 Advanced Debug mode for orchestration |
-| **OpenAPI Interface**                    | ✅ The completions interface (aligned with GPT's chat mode interface) <br> ✅ CRUD operations for the knowledge base <br> 🔜 CRUD operations for conversation |
-| **Operational Features**                   | ✅ Share without requiring login <br> ✅ Easy embedding with Iframe <br> ✅ Customizable chat window embedding with features like default open, drag-and-drop <br> ✅ Centralizes conversation records for review and annotation |
+- [Local Development Quick Start](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [OpenAPI Documentation](https://doc.fastgpt.io/docs/openapi/intro)
+- [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+- [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)
+- [Laf: 3-minute Quick Access to Third-party Applications](https://github.com/labring/laf)
+- [Sealos: Rapid Deployment of Cluster Applications](https://github.com/labring/sealos)
 
-
-<a href="#FastGPT">
+<a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 👨‍💻 Development
+## 🌿 Third-party Ecosystem
 
-Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plug-in)/Milvus
-
-- **⚡ Fast Deployment**
-
-  > When using [Sealos](https://sealos.io) services, there is no need to purchase servers or domain names. It supports high concurrency and dynamic scaling, and the database application uses the kubeblocks database, which far exceeds the simple Docker container deployment in terms of IO performance.
-  <div align="center">
-  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP)
-  </div>
-
-  Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a too slow since we're using the basic settings.
-
-  [sealos one click deployment tutorial](https://doc.fastgpt.io/docs/introduction/development/sealos/)
-
-- [Getting Started with Local Development](https://doc.fastgpt.io/docs/introduction/development/intro)
-- [Deploying FastGPT](https://doc.fastgpt.io/docs/introduction/development/docker)
-- [Guide on System Configs](https://doc.fastgpt.io/docs/introduction/development/configuration)
-- [Configuring Multiple Models](https://doc.fastgpt.io/docs//introduction/development/modelConfig/intro)
-- [Version Updates & Upgrades](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
-
-<a href="#FastGPT">
+- [AI Proxy: Large Model Aggregation Service](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [SiliconCloud - Open Source Model Online Experience Platform](https://cloud.siliconflow.cn/i/TR9Ym0c4)
+- [PPIO: One-click Call to Cost-effective Open Source Model API and GPU Containers](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
+  
+<a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 💪 Related Projects
+## 🏘️ Community
 
-- [Laf: 3-minute quick access to third-party applications](https://github.com/labring/laf)
-- [Sealos: Rapid deployment of cluster applications](https://github.com/labring/sealos)
-- [One API: Multi-model management, supports Azure, Wenxin Yiyuan, etc.](https://github.com/songquanpeng/one-api)
-- [TuShan: Build a backend management system in 5 minutes](https://github.com/msgbyte/tushan)
+Join our Feishu community group:
 
-<a href="#FastGPT">
+![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
+
+<a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 🤝 Third-party Ecosystem
+## 🤝 Contributors
 
-- [luolinAI: Enterprise WeChat bot, ready to use](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
-
-<a href="#FastGPT">
-    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
-</a>
-
-
-## 🏘️ Community & Support
-
-+ 🌐 Visit the [FastGPT website](https://fastgpt.io/) for full documentation and useful links.
-+ 💬 Join our [Discord server](https://discord.gg/mp68xkZn2Q) is to chat with FastGPT developers and other FastGPT users. This is a good place to learn about FastGPT, ask questions, and share your experiences.
-+ 🐞 Create [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose) for bug reports and feature requests.
-
-<a href="#FastGPT">
-    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
-</a>
-
-## 👀 Others
-
-- [FastGPT FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [Docker Deployment Tutorial Video](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [Official Account Integration Video Tutorial](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGPT Knowledge Base Demo](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
-
-<a href="#FastGPT">
-    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
-</a>
-
-## 🌱 Contributors
-
-We welcome all forms of contributions. If you are interested in contributing code, you can check out our GitHub [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) to show us your ideas.
+We warmly welcome contributions in various forms. If you're interested in contributing code, check out our GitHub [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) and show us your brilliant ideas!
 
 <a href="https://github.com/labring/FastGPT/graphs/contributors" target="_blank">
   <table>
@@ -143,7 +159,7 @@ We welcome all forms of contributions. If you are interested in contributing cod
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
           <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
-        </picture>
+        </picture>****
       </td>
       <td rowspan="2">
         <picture>
@@ -163,7 +179,6 @@ We welcome all forms of contributions. If you are interested in contributing cod
   </table>
 </a>
 
-
 ## 🌟 Star History
 
 <a href="https://github.com/labring/FastGPT/stargazers" target="_blank" style="display: block" align="center">
@@ -174,19 +189,15 @@ We welcome all forms of contributions. If you are interested in contributing cod
   </picture>
 </a>
 
-<a href="#FastGPT">
+<a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 📄 Usage Agreement
+## License
 
-This repository complies with the [FastGPT Open Source License](./LICENSE) open source agreement.
+This repository follows the [FastGPT Open Source License](./LICENSE).
 
-1. Direct commercial use as a backend service is allowed, but provision of SaaS services is not allowed.
-2. Without commercial authorization, any form of commercial service must retain relevant copyright information.
-3. For full details, please see [FastGPT Open Source License](./LICENSE)
-4. Contact: Dennis@sealos.io , [click to view commercial version pricing strategy](https://doc.fastgpt.io/docs/introduction/commercial/)
-
-<a href="#FastGPT">
-    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
-</a>
+1. Commercial use as backend services is allowed, but SaaS services are not permitted.
+2. Any commercial services without commercial authorization must retain the relevant copyright information.
+3. Please see [FastGPT Open Source License](./LICENSE) for the complete terms.
+4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/docs/introduction/commercial/)
