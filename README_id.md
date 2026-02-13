@@ -68,7 +68,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` Kemampuan Orkestrasi Aplikasi
-   - [x] Mode Agent Perencanaan.
+   - [ ] Mode Agent Perencanaan.
    - [x] Alur kerja percakapan, alur kerja plugin, termasuk node RPA dasar.
    - [x] Interaksi pengguna
    - [x] MCP dua arah
