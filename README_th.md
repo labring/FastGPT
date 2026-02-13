@@ -28,7 +28,7 @@ FastGPT เป็นแพลตฟอร์มสำหรับสร้าง
     <img height="21" src="https://img.shields.io/badge/พัฒนาท้องถิ่น-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img name="21" src="https://img.shields.io/badge/โปรเจกต์ที่เกี่ยวข้อง-7d09f1?style=flat-square" alt="project">
+    <img height="21" src="https://img.shields.io/badge/โปรเจกต์ที่เกี่ยวข้อง-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -133,7 +133,7 @@ docker compose up -d
 - [PPIO: เรียกใช้ API โมเดล Open Source และ GPU Container คุ้มค่า](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
-    <img src="https="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-กลับไปด้านบน-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ ชุมชน
