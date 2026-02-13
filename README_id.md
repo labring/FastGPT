@@ -19,16 +19,16 @@ FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pak
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/Penggunaan_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/Dokumentasi-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/Pengembangan_Lokal-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-相关项目">
-    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
+  <a href="#-proyek--tautan-kami">
+    <img height="21" src="https://img.shields.io/badge/Proyek_Terkait-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -52,13 +52,13 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 ## 🛸 Cara Penggunaan
 
 - **Versi Cloud**  
-  Jika Anda tidak memerlukan penyebaran privat, Anda dapat menggunakan versi layanan cloud kami di: [fastgpt.io](https://fastgpt.io/)
+  Jika Anda tidak memerlukan penyebaran privat, Anda dapat langsung menggunakan layanan cloud kami di: [fastgpt.io](https://fastgpt.io/)
 
 - **Versi Self-Hosted Komunitas**  
   Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) untuk menyebarkan FastGPT dengan satu klik.
 
 - **Versi Komersial**  
-  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat提交[konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Fitur Inti
 
@@ -69,10 +69,10 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 
 `1` Kemampuan Orkestrasi Aplikasi
    - [x] Mode Agent Perencanaan.
-   - [x] Alur kerja percakapan, alur kerja plugin, termasuk node RPA dasar.
+   - [x] Workflow percakapan, workflow plugin, termasuk node RPA dasar.
    - [x] Interaksi pengguna
    - [x] MCP dua arah
-   - [ ] Assisted workflow generation
+   - [ ] Pembuatan workflow otomatis
 
 `2` Kemampuan Debugging Aplikasi
    - [x] Pengujian pencarian satu titik basis pengetahuan
@@ -87,7 +87,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
    - [x] Modifikasi dan penghapusan rekaman chunk
    - [x] Dukungan input manual, segmentasi langsung, impor QA split
    - [x] Dukungan txt, md, html, pdf, docx, pptx, csv, xlsx (lebih banyak dapat di-PR), dukungan pembacaan URL dan impor batch CSV
-   - [x] Hybrid retrieval & reranking
+   - [x] Pencarian hibrida & reranking
    - [x] Basis pengetahuan API
    - [ ] Hot-swapping modul RAG
 
@@ -106,16 +106,16 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 `6` Lainnya
    - [x] Konfigurasi model visual.
    - [x] Dukungan input dan output suara (dapat dikonfigurasi)
-   - [x] Hint input fuzzy
+   - [x] Petunjuk input fuzzy
    - [x] Pasar template
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 💪 Proyek & Tautan Kami
 
-- [Mulai Cepat - Pengembangan Lokal](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/docs/introduction/development/intro/)
 - [Dokumentasi OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)
@@ -123,17 +123,17 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 - [Sealos: Penerapan Cepat Aplikasi Klaster](https://github.com/labring/sealos)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 Ekosistem Pihak Ketiga
 
 - [AI Proxy: Layanan Agregasi Model Besar](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Platform Pengalaman Online Model Open Source](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: Panggilan Satu Klik ke API Model Open Source Hemat GPU](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
+- [PPIO: Panggilan Satu Klik ke API Model Open Source Hemat Biaya dan GPU Container](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ Komunitas
@@ -143,7 +143,7 @@ Bergabung dengan grup Feishu kami:
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🤝 Kontributor
@@ -193,14 +193,14 @@ Kami sangat menyambut kontribusi dalam berbagai bentuk. Jika Anda tertarik berko
 </a>
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## Lisensi
 
-Repositori ini mengikuti [FastGPT Open Source License](./LICENSE) lisensi open source.
+Repositori ini mengikuti [FastGPT Open Source License](./LICENSE).
 
 1. Penggunaan komersial sebagai layanan backend diperbolehkan, tetapi layanan SaaS tidak diperbolehkan.
 2. Setiap layanan komersial tanpa otorisasi komersial harus mempertahankan informasi hak cipta yang relevan.
-3. Silakan lihat [FastGPT Open Source License](./LICENSE) untuk lengkapnya.
+3. Silakan lihat [FastGPT Open Source License](./LICENSE) untuk detail lengkap.
 4. Kontak: Dennis@sealos.io, [Lihat Harga Komersial](https://doc.fastgpt.io/docs/introduction/commercial/)

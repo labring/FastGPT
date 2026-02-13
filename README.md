@@ -71,7 +71,7 @@ docker compose up -d
    - [x] 规划 Agent 模式。
    - [x] 对话工作流、插件工作流，包含基础的 RPA 节点。
    - [x] 用户交互
-   - [x] 双向 MCP 
+   - [x] 双向 MCP
    - [ ] 辅助生成工作流
 
 `2` 应用调试能力
@@ -90,19 +90,19 @@ docker compose up -d
    - [x] 混合检索 & 重排
    - [x] API 知识库
    - [ ] RAG 模块热插拔
-  
+
 `4` OpenAPI 接口
    - [x] completions 接口 (chat 模式对齐 GPT 接口)
    - [x] 知识库 CRUD
    - [x] 对话 CRUD
    - [x] 自动化 OpenAPI 接口
-  
+
 `5` 运营能力
    - [x] 免登录分享窗口
    - [x] Iframe 一键嵌入
    - [x] 统一查阅对话记录，并对数据进行标注
    - [x] 应用运营日志
-   
+
 `6` 其他
    - [x] 可视化模型配置。
    - [x] 支持语音输入和输出 (可配置语音输入语音回答)
@@ -131,7 +131,7 @@ docker compose up -d
 - [AI Proxy：大模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 - [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
-  
+
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
