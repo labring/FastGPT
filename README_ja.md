@@ -7,130 +7,200 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_ja.md">日语</a>
+  <a href="./README_id.md">Bahasa Indonesia</a> |
+  <a href="./README_th.md">ไทย</a> |
+  <a href="./README_vi.md">Tiếng Việt</a> |
+  <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT は、LLM 上 に 構築 された 知識 ベースの Q&A システムで、すぐに 使 えるデータ 処理 とモデル 呼 び 出 し 機能 を 提供 し、Flow の 可視化 を 通 じてワークフローのオーケストレーションを 可能 にします！
+FastGPT は AI Agent 構築プラットフォームであり、すぐに使えるデータ処理やモデル呼び出し機能を提供します。また、Flow の可視化によるワークフローオーケストレーションにより、複雑なアプリケーションシナリオを実現できます！
 
 </div>
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/オンライン利用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/ドキュメント-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/ローカル開発-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
-  </a>
-  <a href="https://github.com/labring/FastGPT/blob/main/LICENSE">
-    <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=d4eaf7&color=7d09f1" alt="license">
+  <a href="#-プロジェクトとリンク">
+    <img height="21" src="https://img.shields.io/badge/関連プロジェクト-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
 https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
 
-## 🛸 クラウドサービスの 利用
+## クイックスタート
 
-[fastgpt.io](https://fastgpt.io/)
+Docker を使って FastGPT をすぐに起動できます。ターミナルで以下のコマンドを実行し、ガイドに従って設定を取得してください。
 
-| | |
+```bash
+# コマンドを実行して設定ファイルを取得
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+# サービスを起動
+docker compose up -d
+```
+
+完全に起動した後、`http://localhost:3000` で FastGPT にアクセスできます。デフォルトのアカウントは `root`、パスワードは `1234` です。
+
+問題が発生した場合は、[Docker デプロイの完全チュートリアル](https://doc.fastgpt.io/docs/introduction/development/docker)をご覧ください。
+
+## 🛸 利用方法
+
+- **クラウド版**  
+  プライベートデプロイが不要な場合は、クラウドサービスを直接ご利用いただけます：[fastgpt.io](https://fastgpt.io/)
+
+- **コミュニティセルフホスト版**  
+  [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) で素早くデプロイするか、[Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) でワンクリックデプロイが可能です。
+
+- **商用版**  
+  より完全な機能や深いサービスサポートが必要な場合は、[商用版](https://doc.fastgpt.io/docs/introduction/commercial)をお選びいただけます。完全なソフトウェアの提供に加え、シナリオに応じた導入ガイダンスも提供しています。[商用相談](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)からお問い合わせください。
+
+## 💡 コア機能
+
+|                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
-| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
+| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.jpg) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
-## 💡 機能
+`1` アプリケーションオーケストレーション
+   - [x] プランニング Agent モード
+   - [x] 対話ワークフロー、プラグインワークフロー、基本的な RPA ノードを含む
+   - [x] ユーザーインタラクション
+   - [x] 双方向 MCP
+   - [ ] ワークフロー自動生成
 
-1. パワフルなビジュアルワークフロー：AI アプリケーションを 簡単 に 作成
+`2` アプリケーションデバッグ
+   - [x] ナレッジベース単点検索テスト
+   - [x] 対話中の参照フィードバック（編集・削除可能）
+   - [x] 完全なコールチェーンログ
+   - [x] アプリケーション評価
+   - [ ] 高度なオーケストレーション DeBug モード
+   - [ ] アプリケーションノードログ
 
-   - [x] デッキのシンプルモード - マニュアルアレンジ 不要
-   - [x] ユーザ 対話事前 ガイダンス
-   - [x] グローバル 変数
-   - [x] ナレッジベース 検索
-   - [x] 複数 の LLM モデルによる 対話
-   - [x] テキストマジック - 構造化 データへの 変換
-   - [x] HTTP による 拡張
-   - [ ] on-the-fly HTTP モジュールのための 埋 め 込 みLaf
-   - [x] 次 の 対話 ステップへの 指示
-   - [x] ソースファイル 参照 の 追跡
-   - [ ] カスタムファイルリーダー
-   - [ ] モジュールをプラグインにパッケージして 再利用 する
+`3` ナレッジベース
+   - [x] マルチデータベースの再利用と混合
+   - [x] チャンクレコードの修正と削除
+   - [x] 手動入力、直接分割、QA 分割インポートに対応
+   - [x] txt, md, html, pdf, docx, pptx, csv, xlsx に対応（PR で追加可能）、URL 読み取りと CSV 一括インポートに対応
+   - [x] ハイブリッド検索 & リランキング
+   - [x] API ナレッジベース
+   - [ ] RAG モジュールのホットスワップ
 
-2. 広範 なナレッジベースの 前処理
+`4` OpenAPI インターフェース
+   - [x] completions インターフェース（GPT チャットモードに準拠）
+   - [x] ナレッジベース CRUD
+   - [x] 対話 CRUD
+   - [x] 自動化 OpenAPI インターフェース
 
-   - [x] 複数 のナレッジベースの 再利用 と 混合
-   - [x] チャンクの 変更 と 削除 を 追跡
-   - [x] 手動入力、直接分割、QA 分割 インポートをサポート
-   - [x] URL フェッチとバッチ CSV インポートをサポート
-   - [x] ナレッジベースにユニークなベクトルモデルを 設定可能
-   - [x] オリジナルファイルの 保存
-   - [ ] ファイル 学習 エージェント
+`5` 運用機能
+   - [x] ログイン不要の共有ウィンドウ
+   - [x] Iframe ワンクリック埋め込み
+   - [x] 統一された対話記録の閲覧とデータアノテーション
+   - [x] アプリケーション運用ログ
 
-3. 複数 の 効果測定 チャンネル
+`6` その他
+   - [x] ビジュアルモデル設定
+   - [x] 音声入出力対応（設定可能）
+   - [x] あいまい入力ヒント
+   - [x] テンプレートマーケット
 
-   - [x] シングルポイントナレッジベース 検索 テスト
-   - [x] 対話中 のフィードバック 参照 と 修正 ・ 削除機能
-   - [x] 完全 なコンテキストの 提示
-   - [ ] 完全 なモジュール 中間値提示
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
+</a>
 
-4. OpenAPI
+## 💪 プロジェクトとリンク
 
-   - [x] 補完 インターフェイス (GPT インターフェイスに 合 わせる)
-   - [ ] ナレッジベース CRUD
+- [クイックスタート ローカル開発](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [OpenAPI ドキュメント](https://doc.fastgpt.io/docs/openapi/intro)
+- [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+- [AI Proxy: モデル集約ロードバランシングサービス](https://github.com/labring/aiproxy)
+- [Laf: 3分でサードパーティアプリケーションに接続](https://github.com/labring/laf)
+- [Sealos: クラスタアプリケーションの迅速なデプロイ](https://github.com/labring/sealos)
 
-5. オペレーション 機能
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
+</a>
 
-   - [x] ログイン 不要 の 共有 ウィンドウ
-   - [x] Iframe によるワンクリック 埋 め 込 み
-   - [ ] 対話記録 への 統一 されたアクセス
+## 🌿 サードパーティエコシステム
 
-## 👨‍💻 開発
+- [AI Proxy: 大規模モデル集約サービス](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [SiliconCloud - オープンソースモデルオンライン体験プラットフォーム](https://cloud.siliconflow.cn/i/TR9Ym0c4)
+- [PPIO: コスパの高いオープンソースモデル API と GPU コンテナをワンクリックで利用](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
-プロジェクトの 技術 スタック：NextJs + TS + ChakraUI + Mongo + Postgres (Vector プラグイン)
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
+</a>
 
-- **⚡ デプロイ**
+## 🏘️ コミュニティ
 
-  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP)
+Feishu グループに参加：
 
-  デプロイ 後、データベースをセットアップするので、2～4分待 ってください。基本設定 を 使 っているので、最初 は 少 し 遅 いかもしれません。
+![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
-- [ローカル 開発入門](https://doc.fastgpt.io/docs/introduction/development/intro)
-- [FastGPT のデプロイ](https://doc.fastgpt.io/docs/introduction/development/docker)
-- [システム 設定 ガイド](https://doc.fastgpt.io/docs/introduction/development/configuration)
-- [複数 モデルの 設定](https://doc.fastgpt.io/docs/introduction/development/modelConfig/ai-proxy)
-- [バージョン 更新 とアップグレード](https://doc.fastgpt.io/docs/introduction/development/upgrading/index)
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
+</a>
 
-<!-- ## :point_right: ロードマップ
-- [FastGPT ロードマップ](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
+## 🤝 コントリビューター
 
-<!-- ## 🏘️ コミュニティ
+さまざまな形での貢献を歓迎します。コードの貢献に興味がある方は、GitHub の [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) をご覧いただき、あなたの素晴らしいアイデアをお聞かせください！
 
-| コミュニティグループ                                 | アシスタント                                     |
-| ------------------------------------------------- | ---------------------------------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) | -->
-
-## 👀 その 他
-
-- [FastGPT FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [Docker 導入 チュートリアル 動画](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [公式 アカウント 統合 ビデオチュートリアル](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGPT ナレッジベースデモ](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
-
-## 💪 関連 プロジェクト
-
-- [Laf：サードパーティ 製 アプリケーションに 3 分 でクイックアクセス](https://github.com/labring/laf)
-- [Sealos：クラスタアプリケーションの 迅速 な 展開](https://github.com/labring/sealos)
-- [One API：マルチモデル 管理、Azure、Wenxin Yiyuan などをサポートします。](https://github.com/songquanpeng/one-api)
-- [TuShan：5 分 でバックエンド 管理 システムを 構築](https://github.com/msgbyte/tushan)
-
-## 🤝 サードパーティエコシステム
-
-- [luolinAI：すぐに 使 える 企業向 け WeChat ボット](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
+<a href="https://github.com/labring/FastGPT/graphs/contributors" target="_blank">
+  <table>
+    <tr>
+      <th colspan="2">
+        <br><img src="https://contrib.rocks/image?repo=labring/FastGPT"><br><br>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+          <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
+      <td rowspan="2">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=dark">
+            <img alt="New trends of labring" src="https://next.ossinsight.io/widgets/official/compose-org-participants-growth/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=4x7&color_scheme=light">
+        </picture>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
+            <img alt="New participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=new&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
+        </picture>
+      </td>
+    </tr>
+  </table>
+</a>
 
 ## 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=labring/FastGPT&type=Date)](https://star-history.com/#labring/FastGPT&Date)
+<a href="https://github.com/labring/FastGPT/stargazers" target="_blank" style="display: block" align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date" />
+  </picture>
+</a>
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
+</a>
+
+## ライセンス
+
+本リポジトリは [FastGPT Open Source License](./LICENSE) に準拠しています。
+
+1. バックエンドサービスとしての商用利用は許可されていますが、SaaS サービスの提供は許可されていません。
+2. 商用ライセンスなしの商用サービスは、関連する著作権情報を保持する必要があります。
+3. 詳細は [FastGPT Open Source License](./LICENSE) をご覧ください。
+4. お問い合わせ：Dennis@sealos.io、[商用版の価格を見る](https://doc.fastgpt.io/docs/introduction/commercial/)
