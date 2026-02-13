@@ -3,19 +3,10 @@ import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/syst
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { S3Buckets } from '@fastgpt/service/common/s3/constants';
+import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
 import { runCode } from '@fastgpt/service/core/workflow/dispatch/tools/codeSandbox';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
 
-export const ErrorEnum = {
-  S3_ERROR: 's3_error',
-  MONGO_ERROR: 'mongo_error',
-  REDIS_ERROR: 'redis_error',
-  VECTORDB_ERROR: 'vectordb_error',
-  PLUGIN_ERROR: 'plugin_error',
-  PRO_ERROR: 'pro_error',
-  SANDBOX_ERROR: 'code_sandbox_error',
-  MCP_SERVER_ERROR: 'mcp_server_error'
-};
 export const instrumentationCheck = async () => {
   const logger = getLogger(LogCategories.SYSTEM);
   logger.info('instrumentation check start');
@@ -27,12 +18,12 @@ export const instrumentationCheck = async () => {
   try {
     await global.s3BucketMap[S3Buckets.public].checkBucketHealth();
   } catch (error) {
-    return Promise.reject(`[${ErrorEnum.S3_ERROR}] public bucket: ${getErrText(error)}`);
+    return Promise.reject(`[${InitialErrorEnum.S3_ERROR}] public bucket: ${getErrText(error)}`);
   }
   try {
     await global.s3BucketMap[S3Buckets.private].checkBucketHealth();
   } catch (error) {
-    return Promise.reject(`[${ErrorEnum.S3_ERROR}] private bucket: ${getErrText(error)}`);
+    return Promise.reject(`[${InitialErrorEnum.S3_ERROR}] private bucket: ${getErrText(error)}`);
   }
 
   /* server */
@@ -40,7 +31,7 @@ export const instrumentationCheck = async () => {
   try {
     await loadModelProviders();
   } catch (error) {
-    const message = `[${ErrorEnum.PLUGIN_ERROR}]: ${getErrText(error)}`;
+    const message = `[${InitialErrorEnum.PLUGIN_ERROR}]: ${getErrText(error)}`;
     console.error(message);
     return Promise.reject(message);
   }
@@ -52,7 +43,7 @@ export const instrumentationCheck = async () => {
         throw new Error('Root key is invalid');
       }
     } catch (error) {
-      const message = `[${ErrorEnum.PRO_ERROR}]: ${getErrText(error)}`;
+      const message = `[${InitialErrorEnum.PRO_ERROR}]: ${getErrText(error)}`;
       console.error(message, { error });
       return Promise.reject(message);
     }
@@ -69,7 +60,7 @@ export const instrumentationCheck = async () => {
       variables: {}
     });
   } catch (error) {
-    console.warn(`${ErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
+    console.warn(`${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
   }
   logger.info('instrumentation check finish');
 };
