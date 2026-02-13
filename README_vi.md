@@ -112,6 +112,66 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Trở_lên_Đầu-7d09f1.svg" alt="#" align="right">
 </a>
+## 💡 Lộ Trình Phát Triển
+
+`1` Khả Năng Điều Phối Ứng Dụng
+   - [x] Workflow hội thoại, workflow plugin, bao gồm các node RPA cơ bản.
+   - [x] Tương tác người dùng
+   - [x] MCP hai chiều
+   - [ ] Chế độ Agent
+   - [ ] AI tạo workflow
+
+`2` Khả Năng Gỡ Lỗi Ứng Dụng
+   - [x] Kiểm tra tìm kiếm điểm đơn trong cơ sở kiến thức
+   - [x] Phản hồi tham chiếu trong hội thoại với khả năng chỉnh sửa và xóa
+   - [x] Nhật ký chuỗi gọi đầy đủ
+   - [ ] Đánh giá ứng dụng
+   - [ ] Chế độ debug DeBug điều phối nâng cao
+   - [x] Nhật ký node ứng dụng
+
+`3` Khả Năng Cơ Sở Kiến Thức
+   - [x] Tái sử dụng và kết hợp nhiều cơ sở dữ liệu
+   - [x] Sửa đổi và xóa bản ghi chunk
+   - [x] Hỗ trợ nhập liệu thủ công, phân đoạn trực tiếp, nhập QA tách
+   - [x] Hỗ trợ txt, md, html, pdf, docx, pptx, csv, xlsx, hỗ trợ đọc URL và nhập hàng loạt CSV
+   - [x] Hybrid retrieval & reranking
+   - [x] Cơ sở kiến thức API
+   - [ ] Hot-swapping module RAG
+
+`4` Giao Diện OpenAPI
+   - [x] Giao diện completions
+   - [x] CRUD cơ sở kiến thức
+   - [x] CRUD hội thoại
+   - [ ] Giao diện OpenAPI tự động
+
+`5` Khả Năng Vận Hành
+   - [x] Chia sẻ không cần đăng nhập
+   - [x] Nhúng Iframe một cú nhấp chuột
+   - [x] Xem lại nhật ký hội thoại tập trung với chú thích dữ liệu
+   - [x] Nhật ký vận hành ứng dụng
+
+`6` Khác
+   - [x] Cấu hình mô hình trực quan.
+   - [x] Hỗ trợ nhập liệu và xuất giọng nói
+   - [x] Gợi ý nhập liệu mờ
+   - [x] Chợ template
+
+
+
+## 🏘️ Tham Gia Cùng Chúng Tôi
+
+Chúng tôi đang tìm kiếm những người cùng chí hướng để đẩy nhanh sự phát triển của FastGPT. Bạn có thể xem thông tin tuyển dụng FastGPT tại [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg).
+
+
+
+## 👀 Khác
+
+- [Hướng dẫn FastGPT bằng tiếng Trung](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
+- [Tích hợp Feishu](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
+- [Tích hợp WeCom](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
+
+
+
 
 ## 💪 Dự Án & Liên Kết Của Chúng Tôi
 

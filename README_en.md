@@ -112,6 +112,66 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
+## 💡 Roadmap
+
+`1` Application Orchestration
+   - [x] Dialogue workflow, plugin workflow, including basic RPA nodes.
+   - [x] User interaction
+   - [x] Bidirectional MCP
+   - [ ] Agent mode
+   - [ ] AI generated workflow
+
+`2` Application Debugging
+   - [x] Knowledge base single-point search testing
+   - [x] Feedback references during dialogue with edit and delete capabilities
+   - [x] Complete call chain logs
+   - [ ] Application evaluation
+   - [ ] Advanced orchestration DeBug debugging mode
+   - [ ] Application node logs
+
+`3` Knowledge Base Features
+   - [x] Multi-database reuse and mixing
+   - [x] Chunk record modification and deletion
+   - [x] Support manual input, direct segmentation, QA split import
+   - [x] Support txt, md, html, pdf, docx, pptx, csv, xlsx (more can be PR'd), support URL reading and CSV batch import
+   - [x] Hybrid retrieval & reranking
+   - [x] API knowledge base
+   - [ ] RAG module hot-swapping
+
+`4` OpenAPI Interface
+   - [x] Completions interface
+   - [x] Knowledge base CRUD
+   - [x] Dialogue CRUD
+   - [ ] Automated OpenAPI interface
+
+`5` Operations Features
+   - [x] Login-free sharing window
+   - [x] One-click Iframe embedding
+   - [x] Unified dialogue record review with data annotation
+   - [x] Application operation logs
+
+`6` Others
+   - [x] Visual model configuration.
+   - [x] Voice input and output support
+   - [x] Fuzzy input hints
+   - [x] Template marketplace
+
+
+
+## 🏘️ Join Us
+
+We are looking for like-minded partners to accelerate the development of FastGPT. You can view FastGPT job postings through [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg).
+
+
+
+## 👀 Others
+
+- [Comprehensive FastGPT Tutorial](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
+- [Feishu Integration](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
+- [WeCom Integration](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
+
+
+
 
 ## 💪 Our Projects & Links
 

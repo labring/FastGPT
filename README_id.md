@@ -112,6 +112,66 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
 </a>
+## 💡 RoadMap
+
+`1` Kemampuan Orkestrasi Aplikasi
+   - [x] Alur kerja percakapan, alur kerja plugin, termasuk node RPA dasar.
+   - [x] Interaksi pengguna
+   - [x] MCP dua arah
+   - [ ] Mode Agent
+   - [ ] AI menghasilkan workflow
+
+`2` Kemampuan Debugging Aplikasi
+   - [x] Pengujian pencarian satu titik basis pengetahuan
+   - [x] Umpan balik referensi selama percakapan dengan kemampuan edit dan hapus
+   - [x] Log rantai panggilan lengkap
+   - [ ] Evaluasi aplikasi
+   - [ ] Mode debug DeBug orkestrasi lanjutan
+   - [ ] Log node aplikasi
+
+`3` Kemampuan Basis Pengetahuan
+   - [x] Penggunaan ulang dan pencampuran multi-database
+   - [x] Modifikasi dan penghapusan rekaman chunk
+   - [x] Dukungan input manual, segmentasi langsung, impor QA split
+   - [x] Dukungan txt, md, html, pdf, docx, pptx, csv, xlsx, dukungan pembacaan URL dan impor batch CSV
+   - [x] Hybrid retrieval & reranking
+   - [x] Basis pengetahuan API
+   - [ ] Hot-swapping modul RAG
+
+`4` Antarmuka OpenAPI
+   - [x] Antarmuka completions
+   - [x] CRUD basis pengetahuan
+   - [x] CRUD percakapan
+   - [ ] Antarmuka OpenAPI otomatis
+
+`5` Kemampuan Operasi
+   - [x] Jendela berbagi tanpa login
+   - [x] Embedding Iframe satu klik
+   - [x] Tinjauan catatan percakapan terpadu dengan anotasi data
+   - [x] Log operasi aplikasi
+
+`6` Lainnya
+   - [x] Konfigurasi model visual.
+   - [x] Dukungan input dan output suara
+   - [x] Hint input fuzzy
+   - [x] Pasar template
+
+
+
+## 🏘️ Bergabung dengan Kami
+
+Kami sedang mencari rekan yang berpikiran sama untuk mempercepat pengembangan FastGPT. Anda dapat melihat informasi lowongan pekerjaan FastGPT melalui [FastGPT 2025 Recruitment](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg).
+
+
+
+## 👀 Lainnya
+
+- [Tutorial FastGPT Bahasa Mandarin](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
+- [Integrasi Feishu](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
+- [Integrasi WeCom](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
+
+
+
 
 ## 💪 Proyek & Tautan Kami
 
