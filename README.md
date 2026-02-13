@@ -7,7 +7,10 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_ja.md">日语</a>
+  <a href="./README_id.md">Bahasa Indonesia</a> |
+  <a href="./README_th.md">ไทย</a> |
+  <a href="./README_vi.md">Tiếng Việt</a> |
+  <a href="./README_ja.md">日本語</a>
 </p>
 
 FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、模型调用等能力，同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的应用场景！

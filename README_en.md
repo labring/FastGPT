@@ -9,7 +9,10 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_ja.md">日语</a>
+  <a href="./README_id.md">Bahasa Indonesia</a> |
+  <a href="./README_th.md">ไทย</a> |
+  <a href="./README_vi.md">Tiếng Việt</a> |
+  <a href="./README_ja.md">日本語</a>
 </p>
 
 FastGPT is an AI Agent building platform that provides out-of-the-box capabilities for data processing and model invocation. It also enables workflow orchestration through Flow visualization, allowing you to achieve complex application scenarios!
