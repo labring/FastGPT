@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { configure, dispose, Logger } from '@logtape/logtape';
 import { env } from '../../env';
 import { createSinks } from './sinks';
