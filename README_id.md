@@ -58,7 +58,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
   Anda dapat penyebaran dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) untuk penerapan satu klik FastGPT.
 
 - **Versi Komersial**  
-  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga提供 panduan implementasi untuk skenario tertentu. Anda dapat提交[konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Fitur Inti
 
