@@ -3,7 +3,7 @@
     "fastgpt": "v4.14.7",
     "fastgpt-sandbox": "v4.14.7",
     "fastgpt-mcp_server": "v4.14.6",
-    "fastgpt-plugin": "v0.5.3",
+    "fastgpt-plugin": "v0.5.4",
     "aiproxy": "v0.3.5",
     "aiproxy-pg": "0.8.0-pg15",
     "mongo": "5.0.32",

@@ -26,9 +26,10 @@ export async function register() {
         { initBullMQWorkers },
         { initS3Buckets },
         { initGeo },
-        { instrumentationCheck, ErrorEnum },
+        { instrumentationCheck },
         { getErrText },
-        { configureLogger, getLogger, LogCategories }
+        { configureLogger, getLogger, LogCategories },
+        { InitialErrorEnum }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -48,7 +49,8 @@ export async function register() {
         import('@fastgpt/service/common/geo'),
         import('@/service/common/system/health'),
         import('@fastgpt/global/common/error/utils'),
-        import('@fastgpt/service/common/logger')
+        import('@fastgpt/service/common/logger'),
+        import('@fastgpt/service/common/system/constants')
       ]);
 
       await configureLogger();
@@ -67,19 +69,19 @@ export async function register() {
           url: MONGO_URL,
           connectedCb: () => startMongoWatch()
         }).catch((err) => {
-          return Promise.reject(`[${ErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
         }),
         connectMongo({
           db: connectionLogMongo,
           url: MONGO_LOG_URL
         }).catch((err) => {
-          return Promise.reject(`[${ErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
         }),
         initBullMQWorkers().catch((err) => {
-          return Promise.reject(`[${ErrorEnum.REDIS_ERROR}]: ${getErrText(err)}`);
+          return Promise.reject(`[${InitialErrorEnum.REDIS_ERROR}]: ${getErrText(err)}`);
         }),
         initVectorStore().catch((err) => {
-          return Promise.reject(`[${ErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
+          return Promise.reject(`[${InitialErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
         })
       ]);
 
