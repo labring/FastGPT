@@ -7,28 +7,25 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_id.md">Bahasa Indonesia</a> |
-  <a href="./README_th.md">ไทย</a> |
-  <a href="./README_vi.md">Tiếng Việt</a> |
-  <a href="./README_ja.md">日本語</a>
+  <a href="./README_ja.md">日语</a>
 </p>
 
-FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、模型调用等能力，同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的应用场景！
+FastGPT is an AI Agent building platform that provides out-of-the-box capabilities for data processing and model invocation. It also enables workflow orchestration through Flow visualization, allowing you to achieve complex application scenarios!
 
 </div>
 
 <p align="center">
   <a href="https://fastgpt.io/">
-    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/Online_Usage-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction">
-    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/Documentation-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
-    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/Local_Development-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
-  <a href="/#-相关项目">
-    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
+  <a href="/#-Related_Projects">
+    <img height="21" src="https://img.shields.io/badge/Related_Projects-7d09f1?style=flat-square" alt="project">
   </a>
 </p>
 
@@ -71,7 +68,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
    - [x] Planning Agent mode.
    - [x] Dialogue workflow, plugin workflow, including basic RPA nodes.
    - [x] User interaction
-   - [x] Bidirectional MCP 
+   - [x] Bidirectional MCP
    - [ ] Assisted workflow generation
 
 `2` Application Debugging
@@ -90,19 +87,19 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
    - [x] Hybrid retrieval & reranking
    - [x] API knowledge base
    - [ ] RAG module hot-swapping
-  
+
 `4` OpenAPI Interface
    - [x] Completions interface (aligned with GPT chat mode)
    - [x] Knowledge base CRUD
    - [x] Dialogue CRUD
    - [x] Automated OpenAPI interface
-  
+
 `5` Operations Features
    - [x] Login-free sharing window
    - [x] One-click Iframe embedding
    - [x] Unified dialogue record review with data annotation
    - [x] Application operation logs
-   
+
 `6` Others
    - [x] Visual model configuration.
    - [x] Voice input and output support (configurable)
@@ -110,7 +107,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
    - [x] Template marketplace
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 💪 Our Projects & Links
@@ -123,7 +120,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 - [Sealos: Rapid Deployment of Cluster Applications](https://github.com/labring/sealos)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 Third-party Ecosystem
@@ -131,9 +128,9 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 - [AI Proxy: Large Model Aggregation Service](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Open Source Model Online Experience Platform](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 - [PPIO: One-click Call to Cost-effective Open Source Model API and GPU Containers](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
-  
+
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🏘️ Community
@@ -143,7 +140,7 @@ Join our Feishu community group:
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🤝 Contributors
@@ -193,7 +190,7 @@ We warmly welcome contributions in various forms. If you're interested in contri
 </a>
 
 <a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## License
