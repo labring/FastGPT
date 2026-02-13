@@ -257,8 +257,11 @@ fi
 
 # ========== 完成 ==========
 echo ""
-echo "安装完成! 后续操作:"
-echo "  1. 编辑配置:   vim docker-compose.yml"
-echo "  2. 启动服务:   docker compose up -d"
+echo "配置下载成功! 后续操作:"
+echo "  1. 启动服务:   docker compose up -d"
+echo "  2. 开放端口:   3000, 9000, 3005"
+echo "  3. 访问服务:   http://localhost:3000"
+echo "  4. 登录服务:   默认账号为 'root', 密码为: '1234'"
+echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 echo ""
 echo "详细文档: https://doc.fastgpt.cn/docs/introduction/development/docker"
