@@ -29,7 +29,7 @@ x-log-config: &x-log-config
   LOG_CONSOLE_LEVEL: debug
   LOG_ENABLE_OTEL: false
   LOG_OTEL_LEVEL: info
-  LOG_OTEL_URL: xxx/v1/logs
+  LOG_OTEL_URL: http://localhost:4318/v1/logs
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
