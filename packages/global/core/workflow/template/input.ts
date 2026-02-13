@@ -23,7 +23,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('workflow:user_question'),
-  toolDescription: i18nT('workflow:user_question_tool_desc'),
+  toolDescription: 'user question',
   required: true
 };
 
@@ -52,7 +52,8 @@ export const Input_Template_SettingAiModel: FlowNodeInputItemType = {
 export const Input_Template_System_Prompt: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.aiSystemPrompt,
   renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-  max: 3000,
+  maxLength: 100000,
+  isRichText: true,
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('common:core.ai.Prompt'),
   description: systemPromptTip,

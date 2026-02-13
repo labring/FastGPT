@@ -1,16 +1,21 @@
-import { S3Service } from './controller';
+import { S3PublicBucket } from './buckets/public';
+import { S3PrivateBucket } from './buckets/private';
+import { getLogger, LogCategories } from '../logger';
+import { startS3DelWorker } from './mq';
 
-export const PluginS3Service = (() => {
-  if (!global.pluginS3Service) {
-    global.pluginS3Service = new S3Service({
-      bucket: process.env.S3_PLUGIN_BUCKET || 'fastgpt-plugin',
-      maxFileSize: 50 * 1024 * 1024 // 50MB
-    });
-  }
+const logger = getLogger(LogCategories.INFRA.S3);
 
-  return global.pluginS3Service;
-})();
+export function initS3Buckets() {
+  const publicBucket = new S3PublicBucket();
+  const privateBucket = new S3PrivateBucket();
 
-declare global {
-  var pluginS3Service: S3Service;
+  global.s3BucketMap = {
+    [publicBucket.bucketName]: publicBucket,
+    [privateBucket.bucketName]: privateBucket
+  };
 }
+
+export const initS3MQWorker = async () => {
+  logger.info('Starting S3 delete worker');
+  await startS3DelWorker();
+};

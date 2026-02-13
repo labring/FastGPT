@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import { getQuoteData } from '@/web/core/dataset/api';
@@ -21,9 +21,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { Types } from 'mongoose';
+import { isObjectId } from '@fastgpt/global/common/string/utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { useCreation } from 'ahooks';
 
 export type AProps = {
   chatAuthData?: {
@@ -67,7 +66,7 @@ const CiteLink = React.memo(function CiteLink({
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  if (!Types.ObjectId.isValid(id)) {
+  if (!isObjectId(id)) {
     return <></>;
   }
 
@@ -75,7 +74,7 @@ const CiteLink = React.memo(function CiteLink({
     data: datasetCiteData,
     loading,
     runAsync: getQuoteDataById
-  } = useRequest2((id: string) => getQuoteData({ id, ...chatAuthData }), {
+  } = useRequest((id: string) => getQuoteData({ id, ...chatAuthData }), {
     manual: true
   });
   const sourceData = useMemo(
@@ -203,7 +202,7 @@ const A = ({
     );
   }
 
-  return <Link {...props}>{content || props?.href}</Link>;
+  return <Link {...props}>{children || props?.href}</Link>;
 };
 
 export default React.memo(A);

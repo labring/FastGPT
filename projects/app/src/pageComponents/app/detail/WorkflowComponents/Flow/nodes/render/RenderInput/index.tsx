@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
@@ -22,7 +22,7 @@ const RenderList: Record<
     Component: dynamic(() => import('./templates/Reference'))
   },
   [FlowNodeInputTypeEnum.fileSelect]: {
-    Component: dynamic(() => import('./templates/Reference'))
+    Component: dynamic(() => import('./templates/FileSelect'))
   },
   [FlowNodeInputTypeEnum.selectApp]: {
     Component: dynamic(() => import('./templates/SelectApp'))

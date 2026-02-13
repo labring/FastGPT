@@ -7,11 +7,11 @@ import {
 import { MongoTeamSub } from './schema';
 import {
   type TeamPlanStatusType,
-  type TeamSubSchema
-} from '@fastgpt/global/support/wallet/sub/type.d';
+  type TeamSubSchemaType
+} from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
-import { addMonths } from 'date-fns';
+import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
   setRedisCache,
@@ -21,6 +21,9 @@ import {
   CacheKeyEnumTime,
   incrValueToCache
 } from '../../../common/redis/cache';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -29,7 +32,7 @@ export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
   return global.subPlans?.standard?.[level];
 };
 
-export const sortStandPlans = (plans: TeamSubSchema[]) => {
+export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
   return plans.sort(
     (a, b) =>
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
@@ -52,8 +55,12 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const standard = plans[0];
 
   const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]
+    standard.currentSubLevel && standardPlans
+      ? standardPlans[
+          standard.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standard.currentSubLevel
+        ]
       : undefined;
 
   return {
@@ -61,9 +68,21 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
     standardConstants: standardConstants
       ? {
           ...standardConstants,
-          maxTeamMember: standard?.maxTeamMember || standardConstants.maxTeamMember,
-          maxAppAmount: standard?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standard?.maxDataset || standardConstants.maxDatasetAmount
+          maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
+          maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
+          maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
+          requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+          chatHistoryStoreDuration:
+            standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+          websiteSyncPerDataset:
+            standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
+          appRegistrationCount:
+            standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+          auditLogStoreDuration:
+            standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+          customDomain: standard?.customDomain ?? standardConstants.customDomain
         }
       : undefined
   };
@@ -71,18 +90,43 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
 export const initTeamFreePlan = async ({
   teamId,
+  isWecomTeam = false,
   session
 }: {
   teamId: string;
+  isWecomTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
+  const freePoints = isWecomTeam
+    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
     type: SubTypeEnum.standard,
     currentSubLevel: StandardSubLevelEnum.free
   });
+
+  // Get basic plan config for wecom mode
+  const specialConfig: Record<string, any> | null = (() => {
+    const config = global?.subPlans?.standard?.[StandardSubLevelEnum.basic];
+    if (isWecomTeam && config) {
+      return {
+        maxTeamMember: config.maxTeamMember,
+        maxApp: config.maxAppAmount,
+        maxDataset: config.maxDatasetAmount,
+        requestsPerMinute: config.requestsPerMinute,
+        chatHistoryStoreDuration: config.chatHistoryStoreDuration,
+        maxDatasetSize: config.maxDatasetSize,
+        websiteSyncPerDataset: config.websiteSyncPerDataset,
+        appRegistrationCount: config.appRegistrationCount,
+        auditLogStoreDuration: config.auditLogStoreDuration,
+        ticketResponseTime: config.ticketResponseTime,
+        customDomain: config.customDomain
+      } as TeamSubSchemaType;
+    }
+    return null;
+  })();
 
   // Reset one month free plan
   if (freePlan) {
@@ -99,6 +143,14 @@ export const initTeamFreePlan = async ({
       freePlan.surplusPoints && freePlan.surplusPoints < 0
         ? freePlan.surplusPoints + freePoints
         : freePoints;
+
+    // Apply basic plan config for wecom, but with limited points and dataset size
+    if (specialConfig) {
+      for (const key in specialConfig) {
+        (freePlan as any)[key] = specialConfig[key];
+      }
+    }
+
     return freePlan.save({ session });
   }
 
@@ -110,13 +162,14 @@ export const initTeamFreePlan = async ({
         currentMode: SubModeEnum.month,
         nextMode: SubModeEnum.month,
         startTime: new Date(),
-        expiredTime: addMonths(new Date(), 1),
+        expiredTime: isWecomTeam ? addDays(new Date(), 15) : addMonths(new Date(), 1),
 
         currentSubLevel: StandardSubLevelEnum.free,
         nextSubLevel: StandardSubLevelEnum.free,
 
         totalPoints: freePoints,
-        surplusPoints: freePoints
+        surplusPoints: freePoints,
+        ...(specialConfig && specialConfig)
       }
     ],
     { session, ordered: true }
@@ -150,7 +203,7 @@ export const getTeamPlanStatus = async ({
       dayjs(standardPlan.expiredTime).isBefore(new Date())) ||
     teamStandardPlans.length === 0
   ) {
-    console.log('Init free stand plan', { teamId });
+    logger.info('Initializing free standard plan', { teamId });
     await initTeamFreePlan({ teamId });
     return getTeamPlanStatus({ teamId });
   }
@@ -165,7 +218,13 @@ export const getTeamPlanStatus = async ({
 
   const standardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]?.maxDatasetSize || Infinity
+      ? standardPlan?.maxDatasetSize ||
+        standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]?.maxDatasetSize ||
+        Infinity
       : Infinity;
   const totalDatasetSize =
     standardMaxDatasetSize +
@@ -173,19 +232,65 @@ export const getTeamPlanStatus = async ({
 
   const standardConstants =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[standardPlan.currentSubLevel]
+      ? standardPlans[
+          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standardPlan.currentSubLevel
+        ]
       : undefined;
 
-  updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
+  teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
   return {
-    [SubTypeEnum.standard]: standardPlan,
+    [SubTypeEnum.standard]:
+      standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
+        ? {
+            ...standardPlan,
+            maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
+            maxApp: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
+            maxDataset: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
+            requestsPerMinute:
+              standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+            chatHistoryStoreDuration:
+              standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+            maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+            websiteSyncPerDataset:
+              standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+            appRegistrationCount:
+              standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+            auditLogStoreDuration:
+              standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+            ticketResponseTime:
+              standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+            customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+            maxUploadFileSize:
+              standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+            maxUploadFileCount:
+              standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+          }
+        : standardPlan,
     standardConstants: standardConstants
       ? {
           ...standardConstants,
-          maxTeamMember: standardPlan?.maxTeamMember || standardConstants.maxTeamMember,
-          maxAppAmount: standardPlan?.maxApp || standardConstants.maxAppAmount,
-          maxDatasetAmount: standardPlan?.maxDataset || standardConstants.maxDatasetAmount
+          maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
+          maxAppAmount: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
+          maxDatasetAmount: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
+          requestsPerMinute: standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+          chatHistoryStoreDuration:
+            standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+          maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+          websiteSyncPerDataset:
+            standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+          appRegistrationCount:
+            standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+          auditLogStoreDuration:
+            standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+          ticketResponseTime:
+            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
+          maxUploadFileSize: standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+          maxUploadFileCount:
+            standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
         }
       : undefined,
 
@@ -196,58 +301,99 @@ export const getTeamPlanStatus = async ({
   };
 };
 
-export const clearTeamPointsCache = async (teamId: string) => {
-  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+export const teamPoint = {
+  getTeamPoints: async ({ teamId }: { teamId: string }) => {
+    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
 
-  await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
-};
+    const [surplusCacheStr, totalCacheStr] = await Promise.all([
+      getRedisCache(surplusCacheKey),
+      getRedisCache(totalCacheKey)
+    ]);
 
-export const incrTeamPointsCache = async ({ teamId, value }: { teamId: string; value: number }) => {
-  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-  await incrValueToCache(surplusCacheKey, value);
-};
-export const updateTeamPointsCache = async ({
-  teamId,
-  totalPoints,
-  surplusPoints
-}: {
-  teamId: string;
-  totalPoints: number;
-  surplusPoints: number;
-}) => {
-  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+    if (surplusCacheStr && totalCacheStr) {
+      const totalPoints = Number(totalCacheStr);
+      const surplusPoints = Number(surplusCacheStr);
+      return {
+        totalPoints,
+        surplusPoints,
+        usedPoints: totalPoints - surplusPoints
+      };
+    }
 
-  await Promise.all([
-    setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
-    setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
-  ]);
-};
-
-export const getTeamPoints = async ({ teamId }: { teamId: string }) => {
-  const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-  const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-  const [surplusCacheStr, totalCacheStr] = await Promise.all([
-    getRedisCache(surplusCacheKey),
-    getRedisCache(totalCacheKey)
-  ]);
-
-  if (surplusCacheStr && totalCacheStr) {
-    const totalPoints = Number(totalCacheStr);
-    const surplusPoints = Number(surplusCacheStr);
+    const planStatus = await getTeamPlanStatus({ teamId });
     return {
-      totalPoints,
-      surplusPoints,
-      usedPoints: totalPoints - surplusPoints
+      totalPoints: planStatus.totalPoints,
+      surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
+      usedPoints: planStatus.usedPoints
     };
-  }
+  },
+  incrTeamPointsCache: async ({ teamId, value }: { teamId: string; value: number }) => {
+    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+    await incrValueToCache(surplusCacheKey, value);
+  },
+  updateTeamPointsCache: async ({
+    teamId,
+    totalPoints,
+    surplusPoints
+  }: {
+    teamId: string;
+    totalPoints: number;
+    surplusPoints: number;
+  }) => {
+    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
 
-  const planStatus = await getTeamPlanStatus({ teamId });
-  return {
-    totalPoints: planStatus.totalPoints,
-    surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
-    usedPoints: planStatus.usedPoints
-  };
+    await Promise.all([
+      setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
+      setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
+    ]);
+  },
+  clearTeamPointsCache: async (teamId: string) => {
+    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
+    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+
+    await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
+  }
+};
+export const teamQPM = {
+  getTeamQPMLimit: async (teamId: string): Promise<number | null> => {
+    // 1. 尝试从缓存中获取
+    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+    const cached = await getRedisCache(cacheKey);
+
+    if (cached) {
+      return Number(cached);
+    }
+
+    // 2. Computed
+    const teamPlanStatus = await getTeamPlanStatus({ teamId });
+    const limit =
+      teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
+      teamPlanStatus.standardConstants?.requestsPerMinute;
+
+    if (!limit) {
+      if (process.env.CHAT_MAX_QPM) return Number(process.env.CHAT_MAX_QPM);
+      return null;
+    }
+
+    // 3. Set cache
+    await teamQPM.setCachedTeamQPMLimit(teamId, limit);
+
+    return limit;
+  },
+  setCachedTeamQPMLimit: async (teamId: string, limit: number): Promise<void> => {
+    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+    await setRedisCache(cacheKey, limit.toString(), CacheKeyEnumTime.team_qpm_limit);
+  },
+  clearTeamQPMLimitCache: async (teamId: string): Promise<void> => {
+    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
+    await delRedisCache(cacheKey);
+  }
+};
+
+// controler
+export const clearTeamPlanCache = async (teamId: string) => {
+  await teamPoint.clearTeamPointsCache(teamId);
+  await teamQPM.clearTeamQPMLimitCache(teamId);
 };

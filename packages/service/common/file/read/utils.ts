@@ -1,14 +1,18 @@
-import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
-import axios from 'axios';
-import { addLog } from '../../system/log';
+import { axios } from '../../api/axios';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
+import { useTextinServer } from '../../../thirdProvider/textin';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { uploadImage2S3Bucket } from '../../s3/utils';
+import { Mimes } from '../../s3/constants';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -17,6 +21,7 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
+  fileParsedPrefix?: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -26,7 +31,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const buffer = await fs.promises.readFile(path);
 
-  return readRawContentByFileBuffer({
+  return readFileContentByBuffer({
     extension,
     customPdfParse: params.customPdfParse,
     getFormatText: params.getFormatText,
@@ -34,21 +39,25 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata
+    imageKeyOptions: params.fileParsedPrefix
+      ? {
+          prefix: params.fileParsedPrefix
+        }
+      : undefined
   });
 };
 
-export const readRawContentByFileBuffer = async ({
+export const readFileContentByBuffer = async ({
   teamId,
   tmbId,
 
   extension,
   buffer,
   encoding,
-  metadata,
   customPdfParse = false,
   usageId,
-  getFormatText = true
+  getFormatText = true,
+  imageKeyOptions
 }: {
   teamId: string;
   tmbId: string;
@@ -56,11 +65,14 @@ export const readRawContentByFileBuffer = async ({
   extension: string;
   buffer: Buffer;
   encoding: string;
-  metadata?: Record<string, any>;
 
   customPdfParse?: boolean;
   usageId?: string;
   getFormatText?: boolean;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
 }): Promise<{
   rawText: string;
 }> => {
@@ -76,7 +88,7 @@ export const readRawContentByFileBuffer = async ({
     if (!url) return systemParse();
 
     const start = Date.now();
-    addLog.info('Parsing files from an external service');
+    logger.info('Start parsing file via external service', { extension });
 
     const data = new FormData();
     data.append('file', buffer, {
@@ -98,7 +110,10 @@ export const readRawContentByFileBuffer = async ({
       return Promise.reject(response.error);
     }
 
-    addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
+    logger.info('External file parsing completed', {
+      extension,
+      durationMs: Date.now() - start
+    });
 
     const rawText = response.markdown;
     const { text, imageList } = matchMdImg(rawText);
@@ -107,6 +122,30 @@ export const readRawContentByFileBuffer = async ({
       teamId,
       tmbId,
       pages: response.pages,
+      usageId
+    });
+
+    return {
+      rawText: text,
+      formatText: text,
+      imageList
+    };
+  };
+  // Textin api
+  const parsePdfFromTextin = async (): Promise<ReadFileResponse> => {
+    const appId = global.systemEnv.customPdfParse?.textinAppId;
+    const secretCode = global.systemEnv.customPdfParse?.textinSecretCode;
+    if (!appId || !secretCode) return systemParse();
+
+    const { pages, text, imageList } = await useTextinServer({
+      appId,
+      secretCode
+    }).parsePDF(buffer);
+
+    createPdfParseUsage({
+      teamId,
+      tmbId,
+      pages,
       usageId
     });
 
@@ -140,13 +179,14 @@ export const readRawContentByFileBuffer = async ({
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
 
     return systemParse();
   };
 
   const start = Date.now();
-  addLog.debug(`Start parse file`, { extension });
+  logger.debug('Start parsing file', { extension });
 
   let { rawText, formatText, imageList } = await (async () => {
     if (extension === 'pdf') {
@@ -155,34 +195,47 @@ export const readRawContentByFileBuffer = async ({
     return await systemParse();
   })();
 
-  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
+  logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
   // markdown data format
-  if (imageList) {
+  if (imageList && imageList.length > 0) {
+    logger.debug('Processing parsed document images', {
+      extension,
+      imageCount: imageList.length
+    });
+
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
+        if (!imageKeyOptions) return '';
         try {
-          return await uploadMongoImg({
+          const { prefix, expiredTime } = imageKeyOptions;
+          const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+
+          return await uploadImage2S3Bucket('private', {
             base64Img: `data:${item.mime};base64,${item.base64}`,
-            teamId,
-            metadata: {
-              ...metadata,
-              mime: item.mime
-            }
+            uploadKey: `${prefix}/${item.uuid}${ext}`,
+            mimetype: Mimes[ext as keyof typeof Mimes],
+            filename: `${item.uuid}${ext}`,
+            expiredTime
           });
         } catch (error) {
-          addLog.warn('Upload file image error', { error });
-          return 'Upload load image error';
+          logger.warn('Failed to upload parsed image to S3', {
+            extension,
+            imageUuid: item.uuid,
+            error
+          });
+          return `[Image Upload Failed: ${item.uuid}]`;
         }
       })();
       rawText = rawText.replace(item.uuid, src);
+      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
       }
     });
   }
 
-  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
-
-  return { rawText: getFormatText ? formatText || rawText : rawText };
+  return {
+    rawText: getFormatText ? formatText || rawText : rawText
+  };
 };

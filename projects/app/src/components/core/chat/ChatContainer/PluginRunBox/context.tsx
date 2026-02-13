@@ -9,20 +9,20 @@ import { type FieldValues } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import { cloneDeep } from 'lodash';
+import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -31,16 +31,15 @@ type PluginRunContextType = PluginRunBoxProps & {
   fileSelectConfig: AppFileSelectConfigType;
 };
 
-export const PluginRunContext = createContext<PluginRunContextType>({
+export const PluginRunContext = createContext<
+  Omit<PluginRunContextType, 'appId' | 'chatId' | 'outLinkAuthData'>
+>({
   isChatting: false,
   onSubmit: function (e: FieldValues): Promise<any> {
     throw new Error('Function not implemented.');
   },
   instruction: '',
-  fileSelectConfig: defaultAppSelectFileConfig,
-  appId: '',
-  chatId: '',
-  outLinkAuthData: {}
+  fileSelectConfig: defaultAppSelectFileConfig
 });
 
 const PluginRunContextProvider = ({
@@ -99,7 +98,6 @@ const PluginRunContextProvider = ({
           ) {
             if (!lastValue || !lastValue.text) {
               const newValue: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.text,
                 text: {
                   content: text
                 }
@@ -117,19 +115,13 @@ const PluginRunContextProvider = ({
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.tool,
               tools: [tool]
             };
             return {
               ...item,
               value: item.value.concat(val)
             };
-          } else if (
-            event === SseResponseEventEnum.toolParams &&
-            tool &&
-            lastValue.type === ChatItemValueTypeEnum.tool &&
-            lastValue?.tools
-          ) {
+          } else if (event === SseResponseEventEnum.toolParams && tool && lastValue?.tools) {
             lastValue.tools = lastValue.tools.map((item) => {
               if (item.id === tool.id) {
                 item.params += tool.params;
@@ -145,7 +137,7 @@ const PluginRunContextProvider = ({
             return {
               ...item,
               value: item.value.map((val) => {
-                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
+                if (val.tools) {
                   const tools = val.tools.map((item) =>
                     item.id === tool.id ? { ...item, response: tool.response } : item
                   );
@@ -190,22 +182,26 @@ const PluginRunContextProvider = ({
       abortRequest();
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
+      const humanChatItemId = getNanoid(24);
+      const responseChatItemId = getNanoid(24);
 
       setChatRecords([
         {
-          ...getPluginRunUserQuery({
+          ...clientGetWorkflowToolRunUserQuery({
             pluginInputs,
             variables,
             files: files as RuntimeUserPromptType['files']
           }),
+          id: humanChatItemId,
+          dataId: humanChatItemId,
           status: 'finish'
         },
         {
-          dataId: getNanoid(24),
+          id: responseChatItemId,
+          dataId: responseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: ''
               }
@@ -229,25 +225,14 @@ const PluginRunContextProvider = ({
       });
 
       try {
-        // Remove files icon
-        const formatVariables = cloneDeep(variables);
-        for (const key in formatVariables) {
-          if (Array.isArray(formatVariables[key])) {
-            formatVariables[key].forEach((item) => {
-              if (item.url && item.icon) {
-                delete item.icon;
-              }
-            });
-          }
-        }
-
         await onStartChat({
           messages,
+          responseChatItemId,
           controller: chatController.current,
           generatingMessage,
           variables: {
             files,
-            ...formatVariables
+            ...variables
           }
         });
 
@@ -304,7 +289,15 @@ const PluginRunContextProvider = ({
     instruction,
     fileSelectConfig
   };
-  return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
+  return (
+    <WorkflowRuntimeContextProvider
+      appId={props.appId}
+      chatId={props.chatId}
+      outLinkAuthData={props.outLinkAuthData || {}}
+    >
+      <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>
+    </WorkflowRuntimeContextProvider>
+  );
 };
 
 export default PluginRunContextProvider;

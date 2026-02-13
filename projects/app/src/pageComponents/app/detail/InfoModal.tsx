@@ -1,7 +1,6 @@
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { AppContext } from './context';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { resumeInheritPer } from '@/web/core/app/api';
 import {
   deleteAppCollaborators,
@@ -19,33 +18,30 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import type { AppSchema } from '@fastgpt/global/core/app/type.d';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
-import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess: (avatar) => setValue('avatar', avatar)
+    });
 
   const {
     register,
@@ -59,8 +55,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const avatar = watch('avatar');
 
   // submit config
-  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
-    async (data: AppSchema) => {
+  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest(
+    async (data: AppSchemaType) => {
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
@@ -109,7 +105,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       ...props
     });
 
-  const { runAsync: resumeInheritPermission } = useRequest2(() => resumeInheritPer(appDetail._id), {
+  const { runAsync: resumeInheritPermission } = useRequest(() => resumeInheritPer(appDetail._id), {
     errorToast: t('common:resume_failed'),
     onSuccess: () => {
       reloadApp();
@@ -134,7 +130,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             borderRadius={'md'}
             mr={4}
             title={t('common:set_avatar')}
-            onClick={() => onOpenSelectFile()}
+            onClick={handleAvatarSelectorOpen}
           />
           <FormControl>
             <Input
@@ -220,15 +216,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </ModalFooter>
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };

@@ -13,7 +13,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { Trans } from 'next-i18next';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -60,7 +60,7 @@ const EvaluationCreating = () => {
   const appId = watch('appId');
   const evaluationFiles = watch('evaluationFiles');
 
-  const { runAsync: getAppDetail, loading: isLoadingAppDetail } = useRequest2(() => {
+  const { runAsync: getAppDetail, loading: isLoadingAppDetail } = useRequest(() => {
     if (appId) return getAppDetailById(appId);
     return Promise.resolve(null);
   });
@@ -77,7 +77,7 @@ const EvaluationCreating = () => {
     });
   };
 
-  const { runAsync: createEvaluation, loading: isCreating } = useRequest2(
+  const { runAsync: createEvaluation, loading: isCreating } = useRequest(
     async (data: EvaluationFormType) => {
       await postCreateEvaluation({
         file: data.evaluationFiles[0].file,
@@ -249,9 +249,6 @@ const EvaluationCreating = () => {
                   <FileSelector
                     w={'full'}
                     maxCount={1}
-                    maxSize={t('dashboard_evaluation:evaluation_file_max_size', {
-                      count: feConfigs?.evalFileMaxLines || 1000
-                    })}
                     fileType=".csv"
                     selectFiles={evaluationFiles}
                     setSelectFiles={(e) => {
@@ -260,7 +257,7 @@ const EvaluationCreating = () => {
                     FileTypeNode={
                       <Box fontSize={'xs'}>
                         <Trans
-                          i18nKey={'dashboard_evaluation:template_csv_file_select_tip'}
+                          i18nKey="dashboard_evaluation:template_csv_file_select_tip"
                           values={{
                             fileType: '.csv'
                           }}

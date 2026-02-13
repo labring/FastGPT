@@ -1,4 +1,4 @@
-import axios, {
+import {
   type Method,
   type InternalAxiosRequestConfig,
   type AxiosResponse,
@@ -6,6 +6,10 @@ import axios, {
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { createProxyAxios } from './axios';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.ERROR);
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -39,7 +43,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log('error->', data, 'data is empty');
+    logger.error('Plus request response is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data?.code && (data.code < 200 || data.code >= 400)) {
     return Promise.reject(data);
@@ -65,8 +69,8 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = axios.create({
-  timeout: 60000, // 超时时间
+const instance = createProxyAxios({
+  timeout: 60000,
   headers: {
     'content-type': 'application/json',
     'Cache-Control': 'no-cache',
@@ -81,7 +85,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
   if (!FastGPTProUrl) {
-    console.log('未部署商业版接口', url);
+    logger.warn('FastGPT Pro API is not configured', { url });
     return Promise.reject(new UserError('The request was denied...'));
   }
 

@@ -2,19 +2,18 @@ import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
   useMemoizedFn,
   useScroll,
   useVirtualList,
-  useRequest,
   useThrottleEffect
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from './useRequest';
+import { useRequest } from './useRequest';
+import type { PaginationType, PaginationResponseType } from '@fastgpt/global/openapi/api';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -31,8 +30,8 @@ export type ScrollListType = ({
 } & BoxProps) => React.JSX.Element;
 
 export function useVirtualScrollPagination<
-  TParams extends PaginationProps,
-  TData extends PaginationResponse
+  TParams extends PaginationType,
+  TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -179,8 +178,8 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationProps,
-  TData extends PaginationResponse
+  TParams extends PaginationType,
+  TData extends PaginationResponseType
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -197,11 +196,11 @@ export function useScrollPagination<
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
-    params?: Omit<TParams, 'offset' | 'pageSize'>;
+    params?: Omit<TParams, 'pageNum' | 'offset' | 'pageSize'>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
-  } & Parameters<typeof useRequest2>[1]
+  } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -269,7 +268,7 @@ export function useScrollPagination<
       } catch (error: any) {
         if (showErrorToast) {
           toast({
-            title: getErrText(error, t('common:core.chat.error.data_error')),
+            title: t(getErrText(error, t('common:core.chat.error.data_error'))),
             status: 'error'
           });
         }
@@ -355,7 +354,7 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest2(
+  useRequest(
     async () => {
       if (disabled) return;
       loadData({ init: true });

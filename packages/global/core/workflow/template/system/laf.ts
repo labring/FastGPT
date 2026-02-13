@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { type FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -26,6 +26,7 @@ export const LafModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.lafModule,
   showSourceHandle: true,
   showTargetHandle: true,
+  colorSchema: 'lafTeal',
   avatar: 'core/workflow/template/lafDispatch',
   name: i18nT('workflow:laf_function_call_test'),
   intro: i18nT('workflow:intro_laf_function_call'),

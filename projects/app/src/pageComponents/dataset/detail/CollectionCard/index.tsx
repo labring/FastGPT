@@ -23,7 +23,7 @@ import {
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -124,7 +124,7 @@ const CollectionCard = () => {
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:Rename')
   });
-  const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
     {
       onSuccess() {
@@ -138,7 +138,7 @@ const CollectionCard = () => {
     content: t('common:dataset.Confirm to delete the file'),
     type: 'delete'
   });
-  const { runAsync: onDelCollection } = useRequest2(
+  const { runAsync: onDelCollection } = useRequest(
     (collectionIds: string[]) => {
       return delDatasetCollectionById({
         collectionIds
@@ -156,7 +156,7 @@ const CollectionCard = () => {
   const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('dataset:collection_sync_confirm_tip')
   });
-  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest2(postLinkCollectionSync, {
+  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
       toast({
@@ -172,7 +172,7 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
-  useRequest2(
+  useRequest(
     async () => {
       if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
@@ -372,8 +372,10 @@ const CollectionCard = () => {
                                         </Flex>
                                       ),
                                       onClick: () =>
-                                        openSyncConfirm(() => {
-                                          onclickStartSync(collection._id);
+                                        openSyncConfirm({
+                                          onConfirm: () => {
+                                            onclickStartSync(collection._id);
+                                          }
                                         })()
                                     }
                                   ]
@@ -423,13 +425,15 @@ const CollectionCard = () => {
                                 ),
                                 type: 'danger',
                                 onClick: () =>
-                                  openDeleteConfirm(
-                                    () => onDelCollection([collection._id]),
-                                    undefined,
-                                    collection.type === DatasetCollectionTypeEnum.folder
-                                      ? t('common:dataset.collections.Confirm to delete the folder')
-                                      : t('common:dataset.Confirm to delete the file')
-                                  )()
+                                  openDeleteConfirm({
+                                    onConfirm: () => onDelCollection([collection._id]),
+                                    customContent:
+                                      collection.type === DatasetCollectionTypeEnum.folder
+                                        ? t(
+                                            'common:dataset.collections.Confirm to delete the folder'
+                                          )
+                                        : t('common:dataset.Confirm to delete the file')
+                                  })()
                               }
                             ]
                           }
@@ -446,21 +450,21 @@ const CollectionCard = () => {
         </TableContainer>
 
         <FloatingActionBar
+          pt={4}
           Controler={
             <HStack>
               <Button
                 variant={'whiteBase'}
                 onClick={() =>
-                  openDeleteConfirm(
-                    () =>
+                  openDeleteConfirm({
+                    onConfirm: () =>
                       onDelCollection(selectedItems.map((e) => e._id)).then(() =>
                         setSelectedItems([])
                       ),
-                    undefined,
-                    t('dataset:confirm_delete_collection', {
+                    customContent: t('dataset:confirm_delete_collection', {
                       num: selectedItems.length
                     })
-                  )()
+                  })()
                 }
               >
                 {t('dataset:batch_delete')}

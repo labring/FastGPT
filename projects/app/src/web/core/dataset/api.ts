@@ -2,7 +2,7 @@ import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
   ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type.d';
+} from '@fastgpt/global/common/parentFolder/type';
 import type {
   DatasetItemType,
   DatasetListItemType,
@@ -79,10 +79,15 @@ import type {
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
+import type {
+  DatasetCreateWithFilesBody,
+  DatasetCreateWithFilesResponse
+} from '@/pages/api/core/dataset/createWithFiles';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
-  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
+  POST<DatasetListItemType[]>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
@@ -99,6 +104,9 @@ export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/datase
 
 export const postCreateDataset = (data: CreateDatasetParams) =>
   POST<string>(`/core/dataset/create`, data);
+
+export const postCreateDatasetWithFiles = (data: DatasetCreateWithFilesBody) =>
+  POST<DatasetCreateWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
 export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
 
@@ -138,9 +146,6 @@ export const postBackupDatasetCollection = ({
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
 };
@@ -164,9 +169,6 @@ export const postTemplateDatasetCollection = ({
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
 };
@@ -178,7 +180,7 @@ export const postSearchText = (data: SearchTestProps) =>
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
   POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/listV2`, data);
-export const getDatasetCollectionPathById = (parentId: string) =>
+export const getDatasetCollectionPathById = (parentId: ParentIdType) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });

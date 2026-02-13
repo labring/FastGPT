@@ -1,11 +1,12 @@
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../common/system/log';
 import { htmlTable2Md } from '@fastgpt/global/common/string/markdown';
-import axios, { type Method } from 'axios';
+import { type Method } from 'axios';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type ImageType } from '../../worker/readFile/type';
 import { getImageBase64 } from '../../common/file/image/utils';
+import { createProxyAxios, axios } from '../../common/api/axios';
+import { getLogger, LogCategories } from '../../common/logger';
 
 type ApiResponseDataType<T = any> = {
   code: string;
@@ -14,8 +15,9 @@ type ApiResponseDataType<T = any> = {
 };
 
 export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
+  const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
-  const instance = axios.create({
+  const instance = createProxyAxios({
     baseURL: 'https://v2.doc2x.noedgeai.com/api',
     timeout: 60000,
     headers: {
@@ -25,7 +27,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   // Response check
   const checkRes = (data: ApiResponseDataType) => {
     if (data === undefined) {
-      addLog.info('[Doc2x] Server data is empty');
+      logger.warn('Doc2x response data is empty');
       return Promise.reject('服务器异常');
     }
     return data;
@@ -47,7 +49,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       return Promise.reject({ message: `[Doc2x] ${err.message}` });
     }
 
-    addLog.error('[Doc2x] Unknown error', err);
+    logger.error('Doc2x request failed with unknown error', { error: err });
     return Promise.reject({ message: `[Doc2x] ${getErrText(err)}` });
   };
   const request = <T>(url: string, data: any, method: Method): Promise<ApiResponseDataType<T>> => {
@@ -70,7 +72,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   };
 
   const parsePDF = async (fileBuffer: Buffer) => {
-    addLog.debug('[Doc2x] PDF parse start');
+    logger.debug('Doc2x PDF parse started');
     const startTime = Date.now();
 
     // 1. Get pre-upload URL first
@@ -102,7 +104,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
         `[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`
       );
     }
-    addLog.debug(`[Doc2x] Uploaded file success, uid: ${uid}`);
+    logger.debug('Doc2x file uploaded', { uid });
 
     await delay(5000);
 
@@ -134,7 +136,11 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
           // Process
           if (['ready', 'processing'].includes(result_data.status)) {
-            addLog.debug(`[Doc2x] Waiting for the result, uid: ${uid}`);
+            logger.debug('Doc2x parse in progress', {
+              uid,
+              status: result_data.status,
+              progress: result_data.progress
+            });
             await delay(5000);
           }
 
@@ -154,7 +160,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
               .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
             const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
             if (remainingTags) {
-              addLog.warn(`[Doc2x] Remaining dirty tags after cleaning:`, {
+              logger.warn('Doc2x cleaned markdown still contains tags', {
                 count: remainingTags.length,
                 tags: remainingTags.slice(0, 3)
               });
@@ -166,7 +172,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
           }
         } catch (error) {
           // Just network error
-          addLog.warn(`[Doc2x] Get result error`, { error });
+          logger.warn('Doc2x result polling failed', { error });
           await delay(500);
         }
 
@@ -204,7 +210,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
             });
           } catch (error) {
             processedText = processedText.replace(item.id, item.url);
-            addLog.warn(`[Doc2x] Failed to get image from ${item.url}: ${getErrText(error)}`);
+            logger.warn('Doc2x image fetch failed', { url: item.url, error });
           }
         },
         5
@@ -217,8 +223,8 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
     };
     const { text: formatText, imageList } = await parseTextImage(htmlTable2Md(text));
 
-    addLog.debug(`[Doc2x] PDF parse finished`, {
-      time: `${Math.round((Date.now() - startTime) / 1000)}s`,
+    logger.debug('Doc2x PDF parse finished', {
+      durationMs: Date.now() - startTime,
       pages
     });
 

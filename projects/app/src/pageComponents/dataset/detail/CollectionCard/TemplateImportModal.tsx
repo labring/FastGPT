@@ -6,7 +6,7 @@ import FileSelector, { type SelectFileItemType } from '@/components/Select/FileS
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { postTemplateDatasetCollection } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
 import { getDocPath } from '@/web/common/system/doc';
@@ -25,7 +25,7 @@ const TemplateImportModal = ({
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [percent, setPercent] = useState(0);
 
-  const { runAsync: onImport, loading: isImporting } = useRequest2(
+  const { runAsync: onImport, loading: isImporting } = useRequest(
     async () => {
       await postTemplateDatasetCollection({
         datasetId,
@@ -98,14 +98,13 @@ const TemplateImportModal = ({
 
           <FileSelector
             maxCount={1}
-            maxSize="100MB"
             fileType=".csv"
             selectFiles={selectFiles}
             setSelectFiles={setSelectFiles}
             FileTypeNode={
               <Box fontSize={'xs'}>
                 <Trans
-                  i18nKey={'file:template_csv_file_select_tip'}
+                  i18nKey="file:template_csv_file_select_tip"
                   values={{
                     fileType: '.csv'
                   }}

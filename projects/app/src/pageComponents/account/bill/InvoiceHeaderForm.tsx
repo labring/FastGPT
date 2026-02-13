@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { type UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -142,10 +142,10 @@ export const InvoiceHeaderSingleForm = ({
           >
             <HStack h={'2rem'}>
               <Radio value="true" pr={'1rem'}>
-                <Box fontSize={'14px'}>{t('account_bill:yes')}</Box>
+                <Box fontSize={'14px'}>{t('account:yes')}</Box>
               </Radio>
               <Radio value="false">
-                <Box fontSize={'14px'}>{t('account_bill:no')}</Box>
+                <Box fontSize={'14px'}>{t('account:no')}</Box>
               </Radio>
             </HStack>
           </RadioGroup>
@@ -209,7 +209,7 @@ const InvoiceHeaderForm = () => {
     }
   });
 
-  const { loading: isLoading } = useRequest2(() => getTeamInvoiceHeader(), {
+  const { loading: isLoading } = useRequest(() => getTeamInvoiceHeader(), {
     manual: false,
     onSuccess: (data) => {
       console.log(data, '--');
@@ -219,7 +219,7 @@ const InvoiceHeaderForm = () => {
 
   const { t } = useTranslation();
 
-  const { loading: isSubmitting, runAsync: onUpdateHeader } = useRequest2(
+  const { loading: isSubmitting, runAsync: onUpdateHeader } = useRequest(
     (data: TeamInvoiceHeaderType) => updateTeamInvoiceHeader(data),
     {
       manual: true,

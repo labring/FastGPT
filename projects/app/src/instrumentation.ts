@@ -6,12 +6,14 @@ import { exit } from 'process';
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+      await import('@fastgpt/service/common/proxy');
+
       // 基础系统初始化
       const [
         { connectMongo },
         { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
         { systemStartCb },
-        { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
+        { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
         { startMongoWatch },
@@ -19,9 +21,15 @@ export async function register() {
         { startTrainingQueue },
         { preLoadWorker },
         { loadSystemModels },
-        { connectSignoz },
         { getSystemTools },
-        { trackTimerProcess }
+        { trackTimerProcess },
+        { initBullMQWorkers },
+        { initS3Buckets },
+        { initGeo },
+        { instrumentationCheck },
+        { getErrText },
+        { configureLogger, getLogger, LogCategories },
+        { InitialErrorEnum }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -34,41 +42,74 @@ export async function register() {
         import('@/service/core/dataset/training/utils'),
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
-        import('@fastgpt/service/common/otel/trace/register'),
-        import('@fastgpt/service/core/app/plugin/controller'),
-        import('@fastgpt/service/common/middle/tracks/processor')
+        import('@fastgpt/service/core/app/tool/controller'),
+        import('@fastgpt/service/common/middle/tracks/processor'),
+        import('@/service/common/bullmq'),
+        import('@fastgpt/service/common/s3'),
+        import('@fastgpt/service/common/geo'),
+        import('@/service/common/system/health'),
+        import('@fastgpt/global/common/error/utils'),
+        import('@fastgpt/service/common/logger'),
+        import('@fastgpt/service/common/system/constants')
       ]);
 
-      // connect to signoz
-      connectSignoz();
+      await configureLogger();
+      const logger = getLogger(LogCategories.SYSTEM);
+      logger.info('Starting system initialization...');
 
       // 执行初始化流程
       systemStartCb();
       initGlobalVariables();
 
-      // Connect to MongoDB
-      await connectMongo(connectionMongo, MONGO_URL);
-      connectMongo(connectionLogMongo, MONGO_LOG_URL);
-
-      //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
-
+      // Init infra
       await Promise.all([
-        preLoadWorker().catch(),
-        getSystemTools(),
-        initSystemPluginGroups(),
-        initAppTemplateTypes()
+        initS3Buckets(),
+        connectMongo({
+          db: connectionMongo,
+          url: MONGO_URL,
+          connectedCb: () => startMongoWatch()
+        }).catch((err) => {
+          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+        }),
+        connectMongo({
+          db: connectionLogMongo,
+          url: MONGO_LOG_URL
+        }).catch((err) => {
+          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+        }),
+        initBullMQWorkers().catch((err) => {
+          return Promise.reject(`[${InitialErrorEnum.REDIS_ERROR}]: ${getErrText(err)}`);
+        }),
+        initVectorStore().catch((err) => {
+          return Promise.reject(`[${InitialErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
+        })
       ]);
 
-      startMongoWatch();
+      // Init system config
+      await getInitConfig();
+
+      // Check infrastructure
+      await instrumentationCheck();
+
+      // Load init data
+      await Promise.all([
+        initRootUser(),
+        loadSystemModels(),
+        getSystemTools(),
+        initSystemPluginTags(),
+        initAppTemplateTypes(),
+        preLoadWorker().catch()
+      ]);
+
+      initGeo(); // init geo
       startCron();
       startTrainingQueue(true);
       trackTimerProcess();
 
-      console.log('Init system success');
+      logger.info('System initialized successfully');
     }
   } catch (error) {
-    console.log('Init system error', error);
+    console.error('System initialization failed', error);
     exit(1);
   }
 }

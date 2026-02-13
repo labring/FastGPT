@@ -4,6 +4,44 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
+
+export const pushHelperBotUsage = ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens,
+  outputTokens
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}) => {
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model,
+    inputTokens,
+    outputTokens
+  });
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:helper_bot'),
+    totalPoints,
+    source: UsageSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: i18nT('account_usage:helper_bot'),
+        amount: totalPoints,
+        model: modelName,
+        inputTokens,
+        outputTokens
+      }
+    ]
+  });
+};
 
 export const pushGenerateVectorUsage = ({
   usageId,
@@ -260,24 +298,40 @@ export const pushDatasetTestUsage = ({
     model: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
+    embeddingModel: string;
   };
 }) => {
   const list: UsageItemType[] = [];
   let points = 0;
 
   if (extensionUsage) {
-    const { totalPoints, modelName } = formatModelChars2Points({
+    const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
       model: extensionUsage.model,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
     });
-    points += totalPoints;
+    points += llmPoints;
     list.push({
       moduleName: i18nT('common:core.module.template.Query extension'),
-      amount: totalPoints,
-      model: modelName,
+      amount: llmPoints,
+      model: llmModelName,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
+    });
+
+    const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points(
+      {
+        model: extensionUsage.embeddingModel,
+        inputTokens: extensionUsage.embeddingTokens
+      }
+    );
+    points += embeddingPoints;
+    list.push({
+      moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+      amount: embeddingPoints,
+      model: embeddingModelName,
+      inputTokens: extensionUsage.embeddingTokens
     });
   }
   if (embUsage) {

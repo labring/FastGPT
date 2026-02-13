@@ -21,7 +21,8 @@ export const getTimezoneOffset = (timeZone: string): number => {
   const localString = now.toLocaleString('en-US');
   const diff = (Date.parse(localString) - Date.parse(tzString)) / 3600000;
   const offset = diff + now.getTimezoneOffset() / 60;
-  return -offset;
+  // Ensure we return +0 instead of -0 for UTC
+  return offset === 0 ? 0 : -offset;
 };
 
 /**
@@ -73,20 +74,19 @@ export const getTimeZoneList = () => {
 };
 export const timeZoneList = getTimeZoneList();
 
-export const getMongoTimezoneCode = (timeString: string) => {
-  if (!timeString.includes(':')) {
+export const getTimezoneCodeFromStr = (timeString: string | Date) => {
+  if (typeof timeString !== 'string' || !timeString.includes(':')) {
     return '+00:00';
   }
 
-  if (timeString.includes('+')) {
-    const timezoneMatch = timeString.split('+');
-    return `+${timezoneMatch[1]}`;
-  } else if (timeString.includes('-')) {
-    const timezoneMatch = timeString.split('-');
-    return `-${timezoneMatch[1]}`;
-  } else {
-    return '+00:00';
+  // Match timezone offset pattern at the end of string: +HH:MM or -HH:MM
+  const timezoneMatch = timeString.match(/([+-]\d{2}:\d{2})$/);
+
+  if (timezoneMatch) {
+    return timezoneMatch[1];
   }
+
+  return '+00:00';
 };
 
 export const getSystemTime = (timeZone: string) => {

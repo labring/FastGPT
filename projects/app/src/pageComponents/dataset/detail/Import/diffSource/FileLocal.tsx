@@ -8,13 +8,13 @@ import dynamic from 'next/dynamic';
 import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -61,45 +61,54 @@ const SelectFile = React.memo(function SelectFile() {
     goToNext();
   }, [goToNext]);
 
-  const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
+  const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
       {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
             try {
-              const { fileId: uploadFileId } = await uploadFile2DB({
+              const { url, key, headers, maxSize } = await getUploadDatasetFilePresignedUrl({
+                filename: file.name,
+                datasetId
+              });
+
+              // Upload File to S3
+              await putFileToS3({
+                url,
                 file,
-                bucketName: BucketNameEnum.dataset,
-                data: {
-                  datasetId
-                },
-                percentListen: (e) => {
+                headers,
+                onUploadProgress: (e) => {
+                  if (!e.total) return;
+                  const percent = Math.round((e.loaded / e.total) * 100);
                   setSelectFiles((state) =>
                     state.map((item) =>
                       item.id === fileId
                         ? {
                             ...item,
                             uploadedFileRate: item.uploadedFileRate
-                              ? Math.max(e, item.uploadedFileRate)
-                              : e
+                              ? Math.max(percent, item.uploadedFileRate)
+                              : percent
+                          }
+                        : item
+                    )
+                  );
+                },
+                t,
+                onSuccess: () => {
+                  setSelectFiles((state) =>
+                    state.map((item) =>
+                      item.id === fileId
+                        ? {
+                            ...item,
+                            dbFileId: key,
+                            isUploading: false,
+                            uploadedFileRate: 100
                           }
                         : item
                     )
                   );
                 }
               });
-              setSelectFiles((state) =>
-                state.map((item) =>
-                  item.id === fileId
-                    ? {
-                        ...item,
-                        dbFileId: uploadFileId,
-                        isUploading: false,
-                        uploadedFileRate: 100
-                      }
-                    : item
-                )
-              );
             } catch (error) {
               setSelectFiles((state) =>
                 state.map((item) =>

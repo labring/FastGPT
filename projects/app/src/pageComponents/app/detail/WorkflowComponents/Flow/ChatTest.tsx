@@ -1,4 +1,4 @@
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo } from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
@@ -36,7 +36,7 @@ type Props = {
 const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const isPlugin = appDetail.type === AppTypeEnum.plugin;
+  const isPlugin = appDetail.type === AppTypeEnum.workflowTool;
   const { copyData } = useCopyData();
 
   const { restartChat, ChatContainer } = useChatTest({
@@ -206,10 +206,11 @@ const Render = (Props: Props) => {
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
-      // isShowFullText={true}
-      showNodeStatus
+      canDownloadSource={true}
+      isShowCite={true}
+      isShowFullText={true}
+      showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest {...Props} chatId={chatId} />

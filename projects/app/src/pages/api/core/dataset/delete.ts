@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { deleteDatasets } from '@fastgpt/service/core/dataset/controller';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -8,6 +8,9 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -27,16 +30,41 @@ async function handler(req: NextApiRequest) {
     per: OwnerPermissionVal
   });
 
-  const datasets = await findDatasetAndAllChildren({
+  const deleteDatasets = await findDatasetAndAllChildren({
     teamId,
-    datasetId
+    datasetId,
+    fields: '_id'
+  });
+  const datasetIds = deleteDatasets.map((d) => d._id);
+
+  await mongoSessionRun(async (session) => {
+    // 1. Mark as deleted
+    await MongoDataset.updateMany(
+      {
+        _id: datasetIds,
+        teamId
+      },
+      {
+        deleteTime: new Date()
+      },
+      {
+        session
+      }
+    );
+
+    await deleteDatasetsImmediate({
+      teamId,
+      datasetIds
+    });
+
+    // 2. Add to delete queue
+    await addDatasetDeleteJob({
+      teamId,
+      datasetId
+    });
   });
 
-  await deleteDatasets({
-    teamId,
-    datasets
-  });
-
+  // 3. Add audit log
   (async () => {
     addAuditLog({
       tmbId,

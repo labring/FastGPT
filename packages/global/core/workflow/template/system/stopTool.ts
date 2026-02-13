@@ -10,6 +10,8 @@ export const StopToolNode: FlowNodeTemplateType = {
   showSourceHandle: false,
   showTargetHandle: true,
   avatar: 'core/workflow/template/stopTool',
+  avatarLinear: 'core/workflow/template/stopToolLinear',
+  colorSchema: 'violet',
   name: i18nT('workflow:tool_call_termination'),
   intro: i18nT('workflow:intro_tool_call_termination'),
   inputs: [],

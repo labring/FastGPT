@@ -8,6 +8,7 @@ import {
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const DatasetDataCollectionName = 'dataset_datas';
 
@@ -105,13 +106,11 @@ try {
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
 
-  // 为查询 initJieba 字段不存在的数据添加索引
-  DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });
-
   // Cron clear invalid data
   DatasetDataSchema.index({ updateTime: 1 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset data indexes', { error });
 }
 
 export const MongoDatasetData = getMongoModel<DatasetDataSchemaType>(

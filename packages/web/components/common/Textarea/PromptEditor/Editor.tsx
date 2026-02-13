@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -38,11 +38,16 @@ import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 import ListExitPlugin from './plugins/ListExitPlugin';
 import KeyDownPlugin from './plugins/KeyDownPlugin';
+import EditablePlugin from './plugins/EditablePlugin';
+import SkillPickerPlugin from './plugins/SkillPickerPlugin';
+import type { SkillLabelItemType } from './plugins/SkillLabelPlugin';
+import SkillLabelPlugin from './plugins/SkillLabelPlugin';
+import { SkillNode } from './plugins/SkillLabelPlugin/node';
+import type { SkillOptionItemType } from './plugins/SkillPickerPlugin';
 
 const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box
@@ -72,7 +77,17 @@ export type EditorProps = {
   isRichText?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
-  value?: string;
+  onAddToolFromEditor?: (toolKey: string) => Promise<string>;
+  onRemoveToolFromEditor?: (toolId: string) => void;
+  onConfigureTool?: (toolId: string) => void;
+
+  value: string;
+
+  skillOption?: SkillOptionItemType;
+  onRemoveSkill?: (id: string) => void;
+  onClickSkill?: (id: string) => void;
+  selectedSkills?: SkillLabelItemType[];
+
   showOpenModal?: boolean;
   minH?: number;
   maxH?: number;
@@ -80,6 +95,7 @@ export type EditorProps = {
   placeholder?: string;
   placeholderPadding?: string;
   isInvalid?: boolean;
+  isDisabled?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   ExtensionPopover?: ((e: {
     onChangeText: (text: string) => void;
@@ -95,23 +111,33 @@ export default function Editor({
   maxLength,
   showOpenModal = true,
   onOpenModal,
+
+  // {{}} 类型，已弃用
   variables = [],
+  // /选择变量
   variableLabels = [],
+  // @选择技能
+  skillOption,
+  selectedSkills,
+  onClickSkill,
+  onRemoveSkill,
+
   onChange,
   onChangeText,
   onBlur,
-  value,
+  value = '',
   placeholder = '',
   placeholderPadding = '12px 14px',
   bg = 'white',
   isInvalid,
+  isDisabled = false,
   onKeyDown,
   ExtensionPopover,
   boxStyle
 }: EditorProps &
   FormPropsType & {
     onOpenModal?: () => void;
-    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+    onChange: (editor: LexicalEditor) => void;
     onChangeText?: ((text: string) => void) | undefined;
     onBlur?: (editor: LexicalEditor) => void;
   }) {
@@ -125,23 +151,22 @@ export default function Editor({
     nodes: [
       VariableNode,
       VariableLabelNode,
-      HeadingNode,
-      ListNode,
-      ListItemNode,
-      QuoteNode,
-      CodeNode,
-      CodeHighlightNode
+      SkillNode,
+      // Only register rich text nodes when in rich text mode
+      ...(isRichText
+        ? [HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode]
+        : [])
     ],
     editorState: textToEditorState(value, isRichText),
     onError: (error: Error) => {
-      throw error;
+      console.error('Lexical errror', error);
     }
   };
 
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [value, variables, variableLabels, skillOption, selectedSkills]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -181,14 +206,18 @@ export default function Editor({
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className={`${isInvalid ? styles.contentEditable_invalid : styles.contentEditable} ${styles.richText}`}
+                className={`${
+                  isDisabled
+                    ? styles.contentEditable_disabled
+                    : isInvalid
+                      ? styles.contentEditable_invalid
+                      : styles.contentEditable
+                } ${styles.richText}`}
                 style={{
                   minHeight: `${minH}px`,
                   maxHeight: `${maxH}px`,
                   ...boxStyle
                 }}
-                onFocus={() => setFocus(true)}
-                onBlur={() => setFocus(false)}
               />
             }
             placeholder={<Placeholder padding={placeholderPadding}>{placeholder}</Placeholder>}
@@ -198,7 +227,13 @@ export default function Editor({
           <PlainTextPlugin
             contentEditable={
               <ContentEditable
-                className={isInvalid ? styles.contentEditable_invalid : styles.contentEditable}
+                className={
+                  isDisabled
+                    ? styles.contentEditable_disabled
+                    : isInvalid
+                      ? styles.contentEditable_invalid
+                      : styles.contentEditable
+                }
                 style={{
                   minHeight: `${minH}px`,
                   maxHeight: `${maxH}px`,
@@ -211,31 +246,51 @@ export default function Editor({
           />
         )}
 
-        {/* Basic Plugin */}
         <>
-          <HistoryPlugin />
-          <MaxLengthPlugin maxLength={maxLength || 999999} />
-          <FocusPlugin focus={focus} setFocus={setFocus} />
-          <KeyDownPlugin onKeyDown={onKeyDown} />
+          {/* Basic Plugin */}
+          <>
+            <HistoryPlugin />
+            <MaxLengthPlugin maxLength={maxLength || 999999} />
+            <FocusPlugin focus={focus} setFocus={setFocus} />
+            <KeyDownPlugin onKeyDown={onKeyDown} />
+            <OnBlurPlugin onBlur={onBlur} />
+            <OnChangePlugin
+              onChange={(editorState, editor) => {
+                const rootElement = editor.getRootElement();
+                setScrollHeight(rootElement?.scrollHeight || 0);
+                startSts(() => {
+                  onChange?.(editor);
+                });
+              }}
+            />
+            <EditablePlugin isDisabled={isDisabled || !onChangeText} />
+          </>
 
-          <VariablePlugin variables={variables} />
+          {/* 定制交互插件 */}
+          {variables.length > 0 && (
+            <>
+              <VariablePlugin variables={variables} />
+              {/* <VariablePickerPlugin variables={variables} /> */}
+            </>
+          )}
+
           {variableLabels.length > 0 && (
             <>
               <VariableLabelPlugin variables={variableLabels} />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}
-          {variableLabels.length > 0 && <VariablePickerPlugin variables={variables} />}
-          <OnBlurPlugin onBlur={onBlur} />
-          <OnChangePlugin
-            onChange={(editorState, editor) => {
-              const rootElement = editor.getRootElement();
-              setScrollHeight(rootElement?.scrollHeight || 0);
-              startSts(() => {
-                onChange?.(editorState, editor);
-              });
-            }}
-          />
+
+          {skillOption && onClickSkill && onRemoveSkill && selectedSkills && (
+            <>
+              <SkillLabelPlugin
+                selectedSkills={selectedSkills}
+                onClickSkill={onClickSkill}
+                onRemoveSkill={onRemoveSkill}
+              />
+              <SkillPickerPlugin skillOption={skillOption} isFocus={focus} />
+            </>
+          )}
 
           {isRichText && (
             <>

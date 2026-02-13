@@ -4,9 +4,9 @@ import { Box, useTheme } from '@chakra-ui/react';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../Provider';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
@@ -20,19 +20,19 @@ const QuoteList = React.memo(function QuoteList({
   const theme = useTheme();
   const { appId, outLinkAuthData } = useChatStore();
 
-  const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
+  const RawSourceBoxProps = useContextSelector(WorkflowRuntimeContext, (v) => ({
     chatItemDataId,
     appId: v.appId,
     chatId: v.chatId,
     ...(v.outLinkAuthData || {})
   }));
-  const showRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
   const showRouteToDatasetDetail = useContextSelector(
     ChatItemContext,
     (v) => v.showRouteToDatasetDetail
   );
 
-  const { data: quoteList } = useRequest2(
+  const { data: quoteList } = useRequest(
     async () =>
       !!chatItemDataId
         ? await getQuoteDataList({
@@ -87,7 +87,7 @@ const QuoteList = React.memo(function QuoteList({
         >
           <QuoteItem
             quoteItem={item}
-            canViewSource={showRawSource}
+            canDownloadSource={canDownloadSource}
             canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}

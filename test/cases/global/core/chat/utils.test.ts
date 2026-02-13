@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import {
@@ -19,7 +19,7 @@ describe('transformPreviewHistories', () => {
     const histories: ChatItemType[] = [
       {
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+        value: [{ text: { content: 'test response' } }],
         responseData: [
           {
             ...mockResponseData,
@@ -33,7 +33,7 @@ describe('transformPreviewHistories', () => {
 
     expect(result[0]).toEqual({
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: 'test response' } }],
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: [],
@@ -45,7 +45,7 @@ describe('transformPreviewHistories', () => {
     const histories: ChatItemType[] = [
       {
         obj: ChatRoleEnum.AI,
-        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+        value: [{ text: { content: 'test response' } }],
         responseData: [
           {
             ...mockResponseData,
@@ -59,7 +59,7 @@ describe('transformPreviewHistories', () => {
 
     expect(result[0]).toEqual({
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: 'test response' } }],
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: undefined,
@@ -72,7 +72,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if obj is not AI', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.Human,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
+      value: [{ text: { content: 'test response' } }]
     };
 
     expect(addStatisticalDataToHistoryItem(item)).toBe(item);
@@ -81,7 +81,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if totalQuoteList is already defined', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: 'test response' } }],
       totalQuoteList: []
     };
 
@@ -91,16 +91,17 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if responseData is undefined', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
+      value: [{ text: { content: 'test response' } }]
     };
 
     expect(addStatisticalDataToHistoryItem(item)).toBe(item);
   });
 
   it('should calculate statistics correctly', () => {
+    const quoteId = '507f1f77bcf86cd799439011'; // Valid 24-bit hex ID
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: `test response with citation [${quoteId}](CITE)` } }],
       responseData: [
         {
           ...mockResponseData,
@@ -111,15 +112,30 @@ describe('addStatisticalDataToHistoryItem', () => {
         {
           ...mockResponseData,
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          quoteList: [{ id: '1', q: 'test', a: 'answer' }],
+          quoteList: [
+            {
+              id: quoteId,
+              q: 'test',
+              a: 'answer',
+              datasetId: 'ds1',
+              collectionId: 'col1',
+              sourceName: 'source1',
+              chunkIndex: 0,
+              updateTime: new Date(),
+              score: []
+            }
+          ],
           runningTime: 0.5
         },
         {
           ...mockResponseData,
-          moduleType: FlowNodeTypeEnum.agent,
+          moduleType: FlowNodeTypeEnum.toolCall,
           runningTime: 1,
           toolDetail: [
             {
+              id: 'detail1',
+              nodeId: 'detailNode1',
+              moduleName: 'Detail Chat',
               moduleType: FlowNodeTypeEnum.chatNode,
               runningTime: 0.5
             }
@@ -133,7 +149,19 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(result).toEqual({
       ...item,
       llmModuleAccount: 3,
-      totalQuoteList: [{ id: '1', q: 'test', a: 'answer' }],
+      totalQuoteList: [
+        {
+          id: quoteId,
+          q: 'test',
+          a: 'answer',
+          datasetId: 'ds1',
+          collectionId: 'col1',
+          sourceName: 'source1',
+          chunkIndex: 0,
+          updateTime: expect.any(Date),
+          score: []
+        }
+      ],
       historyPreviewLength: 1
     });
   });
@@ -141,7 +169,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should handle empty arrays and undefined values', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: 'test response' } }],
       responseData: [
         {
           ...mockResponseData,
@@ -163,20 +191,26 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should handle nested plugin and loop details', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
+      value: [{ text: { content: 'test response' } }],
       responseData: [
         {
           ...mockResponseData,
           runningTime: 1,
           pluginDetail: [
             {
+              id: 'plugin1',
+              nodeId: 'pluginNode1',
+              moduleName: 'Plugin Chat',
               moduleType: FlowNodeTypeEnum.chatNode,
               runningTime: 0.5
             }
           ],
           loopDetail: [
             {
-              moduleType: FlowNodeTypeEnum.agent,
+              id: 'loop1',
+              nodeId: 'loopNode1',
+              moduleName: 'Loop Tool',
+              moduleType: FlowNodeTypeEnum.toolCall,
               runningTime: 0.3
             }
           ]

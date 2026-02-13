@@ -46,7 +46,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -140,7 +140,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                       }`
                     : ''}
                 </Td>
-                <Td>{item.responseDetail ? '✔' : '✖'}</Td>
+                <Td>{item.showCite ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -182,10 +182,10 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                               setEditLinkData({
                                 _id: item._id,
                                 name: item.name,
-                                responseDetail: item.responseDetail ?? false,
-                                showRawSource: item.showRawSource ?? false,
-                                // showFullText: item.showFullText ?? false,
-                                showNodeStatus: item.showNodeStatus ?? false,
+                                showCite: item.showCite,
+                                canDownloadSource: item.canDownloadSource,
+                                showFullText: item.showFullText,
+                                showRunningStatus: item.showRunningStatus,
                                 limit: item.limit
                               })
                           },
@@ -194,15 +194,17 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                             icon: 'delete',
                             type: 'danger',
                             onClick: () =>
-                              openConfirm(async () => {
-                                setIsLoading(true);
-                                try {
-                                  await delShareChatById(item._id);
-                                  refetchShareChatList();
-                                } catch (error) {
-                                  console.log(error);
+                              openConfirm({
+                                onConfirm: async () => {
+                                  setIsLoading(true);
+                                  try {
+                                    await delShareChatById(item._id);
+                                    refetchShareChatList();
+                                  } catch (error) {
+                                    console.log(error);
+                                  }
+                                  setIsLoading(false);
                                 }
-                                setIsLoading(false);
                               })()
                           }
                         ]
@@ -279,13 +281,13 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
-  const responseDetail = watch('responseDetail');
-  // const showFullText = watch('showFullText');
-  const showRawSource = watch('showRawSource');
+  const showCite = watch('showCite');
+  const showFullText = watch('showFullText');
+  const canDownloadSource = watch('canDownloadSource');
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (e: OutLinkEditType) =>
       createShareChat({
         ...e,
@@ -297,7 +299,7 @@ function EditLinkModal({
       onSuccess: onCreate
     }
   );
-  const { runAsync: onclickUpdate, loading: updating } = useRequest2(putShareChat, {
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(putShareChat, {
     errorToast: t('common:update_failed'),
     onSuccess: onEdit
   });
@@ -395,7 +397,7 @@ function EditLinkModal({
                 />
               </Flex>
               <Link
-                href={getDocPath('/docs/introduction/development/openapi/share')}
+                href={getDocPath('/docs/openapi/share')}
                 target={'_blank'}
                 fontSize={'xs'}
                 color={'myGray.500'}
@@ -411,7 +413,7 @@ function EditLinkModal({
           </Box>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <FormLabel>{t('publish:show_node')}</FormLabel>
-            <Switch {...register('showNodeStatus')} />
+            <Switch {...register('showRunningStatus')} />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
@@ -422,56 +424,56 @@ function EditLinkModal({
               ></QuestionTip>
             </Flex>
             <Switch
-              {...register('responseDetail', {
+              {...register('showCite', {
                 onChange(e) {
                   if (!e.target.checked) {
-                    // setValue('showFullText', false);
-                    setValue('showRawSource', false);
+                    setValue('showFullText', false);
+                    setValue('canDownloadSource', false);
                   }
                 }
               })}
-              isChecked={responseDetail}
+              isChecked={showCite}
             />
           </Flex>
-          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
-              <FormLabel>{t('common:support.outlink.share.Chat_quote_reader')}</FormLabel>
+              <FormLabel>{t('common:core.app.share.Show full text')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.Full_text tips')}
+                label={t('common:support.outlink.share.Show full text tips')}
               ></QuestionTip>
             </Flex>
             <Switch
               {...register('showFullText', {
                 onChange(e) {
-                  if (e.target.checked) {
-                    setValue('responseDetail', true);
+                  if (!e.target.checked) {
+                    setValue('canDownloadSource', false);
                   } else {
-                    setValue('showRawSource', false);
+                    setValue('showCite', true);
                   }
                 }
               })}
               isChecked={showFullText}
             />
-          </Flex> */}
+          </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
-              <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
+              <FormLabel>{t('common:core.app.share.Download source')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.show_complete_quote_tips')}
+                label={t('common:support.outlink.share.Download source tips')}
               ></QuestionTip>
             </Flex>
             <Switch
-              {...register('showRawSource', {
+              {...register('canDownloadSource', {
                 onChange(e) {
                   if (e.target.checked) {
-                    setValue('responseDetail', true);
-                    // setValue('showFullText', true);
+                    setValue('showFullText', true);
+                    setValue('showCite', true);
                   }
                 }
               })}
-              isChecked={showRawSource}
+              isChecked={canDownloadSource}
             />
           </Flex>
         </Box>

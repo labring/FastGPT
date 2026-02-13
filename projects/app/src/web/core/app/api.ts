@@ -1,10 +1,13 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { AppDetailType, AppListItemType, AppSchema } from '@fastgpt/global/core/app/type.d';
+import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
 import type { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
-import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 
 import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
+import type {
+  CreateAppBodyType,
+  GetAppPermissionResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 /**
  * 获取应用列表
@@ -14,15 +17,10 @@ export const getMyApps = (data?: ListAppBody) =>
     maxQuantity: 1
   });
 
-export const getRecentlyUsedApps = (data?: ListAppBody) =>
-  POST<AppListItemType[]>('/core/app/list?t=0', data, {
-    maxQuantity: 1
-  });
-
 /**
  * 创建一个应用
  */
-export const postCreateApp = (data: CreateAppBody) => POST<string>('/core/app/create', data);
+export const postCreateApp = (data: CreateAppBodyType) => POST<string>('/core/app/create', data);
 
 export const getMyAppsByTags = (data: {}) => POST(`/proApi/core/chat/team/getApps`, data);
 /**
@@ -40,6 +38,9 @@ export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/de
  */
 export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);
+
+export const getAppPermission = (appId: string) =>
+  GET<GetAppPermissionResponseType>(`/core/app/getPermission?appId=${appId}`);
 
 /**
  * Get app basic info by ids

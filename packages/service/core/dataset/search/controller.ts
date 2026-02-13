@@ -25,14 +25,20 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
+import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
+import { addDays, addHours } from 'date-fns';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -53,7 +59,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
-  /* 
+  /*
     {
       tags: {
         $and: ["str1","str2"],
@@ -79,9 +85,11 @@ export type SearchDatasetDataResponse = {
   usingSimilarityFilter: boolean;
 
   queryExtensionResult?: {
-    model: string;
+    llmModel: string;
+    embeddingModel: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
@@ -230,7 +238,7 @@ export async function searchDatasetData(
     };
   };
 
-  /* 
+  /*
     Collection metadata filter
     标签过滤：
     1. and 先生效
@@ -298,6 +306,7 @@ export async function searchDatasetData(
 
     let tagCollectionIdList: string[] | undefined = undefined;
     let createTimeCollectionIdList: string[] | undefined = undefined;
+    let inputCollectionIdList: string[] | undefined = undefined;
 
     try {
       const jsonMatch =
@@ -424,16 +433,23 @@ export async function searchDatasetData(
         createTimeCollectionIdList = collections.map((item) => String(item._id));
       }
 
-      // Concat tag and time
-      const collectionIds = (() => {
-        if (tagCollectionIdList && createTimeCollectionIdList) {
-          return tagCollectionIdList.filter((id) =>
-            (createTimeCollectionIdList as string[]).includes(id)
-          );
+      // collectionIds
+      const inputCollectionIds = jsonMatch?.collectionIds as string[] | undefined;
+      if (Array.isArray(inputCollectionIds) && inputCollectionIds.length > 0) {
+        inputCollectionIdList = await getAllCollectionIds({
+          parentCollectionIds: inputCollectionIds
+        });
+        if (inputCollectionIdList && inputCollectionIdList.length === 0) {
+          return [];
         }
+      }
 
-        return tagCollectionIdList || createTimeCollectionIdList;
-      })();
+      // Concat tag, time and collectionIds
+      const collectionIds = computeFilterIntersection([
+        tagCollectionIdList,
+        createTimeCollectionIdList,
+        inputCollectionIdList
+      ]);
 
       return await getAllCollectionIds({
         parentCollectionIds: collectionIds
@@ -537,13 +553,19 @@ export async function searchDatasetData(
           .map((item, index) => {
             const collection = collectionMaps.get(String(item.collectionId));
             if (!collection) {
-              console.log('Collection is not found', item);
+              logger.warn('Dataset collection not found during recall', {
+                collectionId: item.collectionId,
+                dataId: item.id
+              });
               return;
             }
 
             const data = dataMaps.get(String(item.id));
             if (!data) {
-              console.log('Data is not found', item);
+              logger.warn('Dataset data not found during recall', {
+                dataId: item.id,
+                collectionId: item.collectionId
+              });
               return;
             }
 
@@ -551,8 +573,6 @@ export async function searchDatasetData(
               id: String(data._id),
               updateTime: data.updateTime,
               ...formatDatasetDataValue({
-                teamId,
-                datasetId: data.datasetId,
                 q: data.q,
                 a: data.a,
                 imageId: data.imageId,
@@ -707,13 +727,19 @@ export async function searchDatasetData(
         .map((item, index) => {
           const collection = collectionMaps.get(String(item.collectionId));
           if (!collection) {
-            console.log('Collection is not found', item);
+            logger.warn('Dataset collection not found during full-text recall', {
+              collectionId: item.collectionId,
+              dataId: item.dataId
+            });
             return;
           }
 
           const data = dataMaps.get(String(item.dataId));
           if (!data) {
-            console.log('Data is not found', item);
+            logger.warn('Dataset data not found during full-text recall', {
+              dataId: item.dataId,
+              collectionId: item.collectionId
+            });
             return;
           }
 
@@ -723,8 +749,6 @@ export async function searchDatasetData(
             collectionId: String(data.collectionId),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,
@@ -903,10 +927,15 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  const finalResult = filterMaxTokensResult.map((item) => {
+    item.q = replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
+    return item;
+  });
+
   pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
-    searchRes: filterMaxTokensResult,
+    searchRes: finalResult,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
@@ -931,32 +960,32 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-  const extensionModel = datasetSearchUsingExtensionQuery
-    ? getLLMModel(datasetSearchExtensionModel)
-    : undefined;
-
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
-    await datasetSearchQueryExtension({
-      query,
-      extensionModel,
-      extensionBg: datasetSearchExtensionBg,
-      histories
-    });
+  const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query,
+    llmModel: datasetSearchUsingExtensionQuery
+      ? getLLMModel(datasetSearchExtensionModel).model
+      : undefined,
+    embeddingModel: props.model,
+    extensionBg: datasetSearchExtensionBg,
+    histories
+  });
 
   const result = await searchDatasetData({
     ...props,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries
+    reRankQuery: reRankQuery,
+    queries: searchQueries
   });
 
   return {
     ...result,
     queryExtensionResult: aiExtensionResult
       ? {
-          model: aiExtensionResult.model,
+          llmModel: aiExtensionResult.llmModel,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: extensionQueries.join('\n')
+          embeddingModel: aiExtensionResult.embeddingModel,
+          embeddingTokens: aiExtensionResult.embeddingTokens,
+          query: searchQueries.join('\n')
         }
       : undefined
   };

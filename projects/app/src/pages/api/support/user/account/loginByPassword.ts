@@ -15,9 +15,10 @@ import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { username, password, code } = req.body as PostLoginProps;
+  const { username, password, code, language = 'zh-CN' } = req.body as PostLoginProps;
 
   if (!username || !password || !code) {
     return Promise.reject(CommonErrEnum.invalidParams);
@@ -30,21 +31,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     type: UserAuthTypeEnum.login
   });
 
-  // 检测用户是否存在
-  const authCert = await MongoUser.findOne(
-    {
-      username
-    },
-    'status'
-  );
-  if (!authCert) {
-    return Promise.reject(UserErrEnum.account_psw_error);
-  }
-
-  if (authCert.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
-
   const user = await MongoUser.findOne({
     username,
     password
@@ -53,15 +39,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!user) {
     return Promise.reject(UserErrEnum.account_psw_error);
   }
+  if (user.status === UserStatusEnum.forbidden) {
+    return Promise.reject('Invalid account!');
+  }
+
+  if (user) {
+    if (user.username.startsWith('wecom-')) {
+      return Promise.reject(new UserError('Wecom user can not login with password'));
+    }
+  }
 
   const userDetail = await getUserDetail({
     tmbId: user?.lastLoginTmbId,
     userId: user._id
   });
 
-  MongoUser.findByIdAndUpdate(user._id, {
-    lastLoginTmbId: userDetail.team.tmbId
-  });
+  user.lastLoginTmbId = userDetail.team.tmbId;
+  user.language = language;
+  await user.save();
 
   const token = await createUserSession({
     userId: user._id,

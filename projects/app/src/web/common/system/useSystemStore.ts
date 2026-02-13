@@ -7,11 +7,11 @@ import type {
   RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import {
@@ -20,7 +20,7 @@ import {
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
-import { getMyModels } from './api';
+import { getMyModels, getOperationalAd } from './api';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -29,7 +29,8 @@ export type NotSufficientModalType =
   | TeamErrEnum.aiPointsNotEnough
   | TeamErrEnum.datasetAmountNotEnough
   | TeamErrEnum.teamMemberOverSize
-  | TeamErrEnum.appAmountNotEnough;
+  | TeamErrEnum.appAmountNotEnough
+  | TeamErrEnum.ticketNotAvailable;
 
 type State = {
   initd: boolean;
@@ -70,6 +71,8 @@ type State = {
     modelSet: Set<string>;
     versionKey: string;
   };
+  operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
+  loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
@@ -97,7 +100,7 @@ export const useSystemStore = create<State>()(
             state.initd = true;
           });
         },
-        lastRoute: '/dashboard/apps',
+        lastRoute: '/dashboard/agent',
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;
@@ -123,7 +126,7 @@ export const useSystemStore = create<State>()(
           return null;
         },
 
-        gitStar: 25000,
+        gitStar: 26500,
         async loadGitStar() {
           if (!get().feConfigs?.show_git) return;
           try {
@@ -143,7 +146,10 @@ export const useSystemStore = create<State>()(
         },
 
         initDataBufferId: undefined,
-        feConfigs: {},
+        feConfigs: {
+          uploadFileMaxSize: 1000,
+          uploadFileMaxAmount: 1000
+        },
         subPlans: undefined,
         systemVersion: '0.0.0',
 
@@ -168,6 +174,17 @@ export const useSystemStore = create<State>()(
         myModelList: {
           modelSet: new Set(),
           versionKey: ''
+        },
+        operationalAd: undefined,
+        loadOperationalAd: async () => {
+          try {
+            const res = await getOperationalAd();
+            set((state) => {
+              state.operationalAd = res;
+            });
+          } catch (error) {
+            console.log('Get operational ad error', error);
+          }
         },
         getMyModelList: async () => {
           try {
@@ -242,6 +259,8 @@ export const useSystemStore = create<State>()(
       {
         name: 'globalStore',
         partialize: (state) => ({
+          gitStar: state.gitStar,
+
           loginStore: state.loginStore,
           initDataBufferId: state.initDataBufferId,
           feConfigs: state.feConfigs,

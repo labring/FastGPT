@@ -19,11 +19,11 @@ import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { DataSetDefaultRoleVal } from '@fastgpt/global/support/permission/dataset/constant';
-import { getDatasetImagePreviewUrl } from '../../../core/dataset/image/utils';
 import { i18nT } from '../../../../web/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -172,55 +172,6 @@ export async function authDatasetCollection({
   };
 }
 
-// export async function authDatasetFile({
-//   fileId,
-//   per,
-//   ...props
-// }: AuthModeType & {
-//   fileId: string;
-// }): Promise<
-//   AuthResponseType<DatasetPermission> & {
-//     file: DatasetFileSchema;
-//   }
-// > {
-//   const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
-
-//   const [file, collection] = await Promise.all([
-//     getFileById({ bucketName: BucketNameEnum.dataset, fileId }),
-//     MongoDatasetCollection.findOne({
-//       teamId,
-//       fileId
-//     })
-//   ]);
-
-//   if (!file) {
-//     return Promise.reject(CommonErrEnum.fileNotFound);
-//   }
-
-//   if (!collection) {
-//     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-//   }
-
-//   try {
-//     const { permission } = await authDatasetCollection({
-//       ...props,
-//       collectionId: collection._id,
-//       per,
-//       isRoot
-//     });
-
-//     return {
-//       teamId,
-//       tmbId,
-//       file,
-//       permission,
-//       isRoot
-//     };
-//   } catch (error) {
-//     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-//   }
-// }
-
 /*
   DatasetData permission is inherited from collection.
 */
@@ -249,14 +200,16 @@ export async function authDatasetData({
     q: datasetData.q,
     a: datasetData.a,
     imageId: datasetData.imageId,
-    imagePreivewUrl: datasetData.imageId
-      ? getDatasetImagePreviewUrl({
-          imageId: datasetData.imageId,
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
-          expiredMinutes: 30
-        })
-      : undefined,
+    imagePreivewUrl:
+      datasetData.imageId && isS3ObjectKey(datasetData.imageId, 'dataset')
+        ? (
+            await getS3DatasetSource().createGetDatasetFileURL({
+              key: datasetData.imageId,
+              expiredHours: 1,
+              external: true
+            })
+          ).url
+        : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
     datasetId: String(datasetData.datasetId),

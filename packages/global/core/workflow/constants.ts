@@ -168,6 +168,11 @@ export enum NodeInputKeyEnum {
   aiChatResponseFormat = 'aiChatResponseFormat',
   aiChatJsonSchema = 'aiChatJsonSchema',
 
+  // agent
+  selectedTools = 'agent_selectedTools',
+  datasetParams = 'agent_datasetParams',
+  skills = 'skills',
+
   // dataset
   datasetSelectList = 'datasets',
   datasetSimilarity = 'similarity',
@@ -319,7 +324,6 @@ export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
   numberInput = 'numberInput',
-  JSONEditor = 'JSONEditor',
   select = 'select',
   multipleSelect = 'multipleSelect',
   timePointSelect = 'timePointSelect',
@@ -328,7 +332,7 @@ export enum VariableInputEnum {
   password = 'password',
   file = 'file',
 
-  modelSelect = 'modelSelect',
+  llmSelect = 'llmSelect',
   datasetSelect = 'datasetSelect',
 
   custom = 'custom',
@@ -363,12 +367,6 @@ export const variableConfigs: VariableConfigType[][] = [
       value: VariableInputEnum.numberInput,
       defaultValueType: WorkflowIOValueTypeEnum.number
     },
-    // {
-    //   icon: 'core/workflow/inputType/jsonEditor',
-    //   label: i18nT('common:core.workflow.inputType.jsonEditor'),
-    //   value: VariableInputEnum.JSONEditor,
-    //   defaultValueType: WorkflowIOValueTypeEnum.object
-    // },
     {
       icon: 'core/workflow/inputType/option',
       label: i18nT('common:core.workflow.inputType.select'),
@@ -386,40 +384,34 @@ export const variableConfigs: VariableConfigType[][] = [
       label: i18nT('common:core.workflow.inputType.switch'),
       value: VariableInputEnum.switch,
       defaultValueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
+      icon: 'core/workflow/inputType/timePointSelect',
+      label: i18nT('common:core.workflow.inputType.timePointSelect'),
+      value: VariableInputEnum.timePointSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/timeRangeSelect',
+      label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
+      value: VariableInputEnum.timeRangeSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
     }
-    // {
-    //   icon: 'core/workflow/inputType/timePointSelect',
-    //   label: i18nT('common:core.workflow.inputType.timePointSelect'),
-    //   value: VariableInputEnum.timePointSelect,
-    //   defaultValueType: WorkflowIOValueTypeEnum.string
-    // },
-    // {
-    //   icon: 'core/workflow/inputType/timeRangeSelect',
-    //   label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
-    //   value: VariableInputEnum.timeRangeSelect,
-    //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    // }
-    // {
-    //   icon: 'core/workflow/inputType/file',
-    //   label: i18nT('common:core.workflow.inputType.file'),
-    //   value: VariableInputEnum.file,
-    //   defaultValueType: WorkflowIOValueTypeEnum.arrayString
-    // }
   ],
-  // [
-  //   {
-  //     icon: 'core/workflow/inputType/model',
-  //     label: i18nT('common:core.workflow.inputType.modelSelect'),
-  //     value: VariableInputEnum.modelSelect,
-  //     defaultValueType: WorkflowIOValueTypeEnum.string
-  //   },
-  //   {
-  //     icon: 'core/workflow/inputType/dataset',
-  //     label: i18nT('common:core.workflow.inputType.datasetSelect'),
-  //     value: VariableInputEnum.datasetSelect,
-  //     defaultValueType: WorkflowIOValueTypeEnum.arrayString
-  //   }
-  // ],
+  [
+    {
+      icon: 'core/workflow/inputType/model',
+      label: i18nT('common:core.workflow.inputType.modelSelect'),
+      value: VariableInputEnum.llmSelect,
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/file',
+      label: i18nT('common:core.workflow.inputType.file'),
+      value: VariableInputEnum.file,
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ],
   [
     {
       icon: 'core/workflow/inputType/external',
@@ -457,13 +449,6 @@ export const variableMap: Record<VariableInputEnum, VariableConfigType> = {
 // Keep backward compatibility
 export const variableMapGroups = variableConfigs;
 
-/* run time */
-export enum RuntimeEdgeStatusEnum {
-  'waiting' = 'waiting',
-  'active' = 'active',
-  'skipped' = 'skipped'
-}
-
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';
 export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';
 
@@ -476,6 +461,19 @@ export enum ContentTypes {
   xml = 'xml',
   raw = 'raw-text'
 }
+
+export const contentTypeMap = {
+  [ContentTypes.none]: '',
+  [ContentTypes.formData]: '',
+  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
+  [ContentTypes.json]: 'application/json',
+  [ContentTypes.xml]: 'application/xml',
+  [ContentTypes.raw]: 'text/plain'
+};
+
+// http request methods
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum> = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,

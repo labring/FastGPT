@@ -6,11 +6,9 @@ import {
 } from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { customAlphabet } from 'nanoid';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { type SearchTestResponse } from '@/global/core/dataset/api';
@@ -37,7 +35,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 type FormType = {
   inputText: string;
   searchParams: {
-    searchMode: `${DatasetSearchModeEnum}`;
+    searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
 
     usingReRank?: boolean;
@@ -94,7 +92,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     onClose: onCloseSelectMode
   } = useDisclosure();
 
-  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest2(
+  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
     {
@@ -433,7 +431,7 @@ const TestResults = React.memo(function TestResults({
               similarity={datasetTestItem.similarity}
               limit={datasetTestItem.limit}
               usingReRank={datasetTestItem.usingReRank}
-              datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
+              usingExtensionQuery={!!datasetTestItem.queryExtensionModel}
               queryExtensionModel={datasetTestItem.queryExtensionModel}
             />
           </Box>
@@ -449,7 +447,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource canEditData />
+                <QuoteItem quoteItem={item} canDownloadSource canEditData />
               </Box>
             ))}
           </Box>

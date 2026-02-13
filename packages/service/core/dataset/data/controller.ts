@@ -1,17 +1,15 @@
+import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
-import { getDatasetImagePreviewUrl } from '../image/utils';
-import type { DatasetCiteItemType, DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { addDays } from 'date-fns';
+import { isS3ObjectKey, jwtSignS3ObjectKey } from '../../../common/s3/utils';
 
 export const formatDatasetDataValue = ({
-  teamId,
-  datasetId,
   q,
   a,
   imageId,
   imageDescMap
 }: {
-  teamId: string;
-  datasetId: string;
   q: string;
   a?: string;
   imageId?: string;
@@ -51,31 +49,26 @@ export const formatDatasetDataValue = ({
 
   if (!imageId) {
     return {
-      q,
-      a
+      q: replaceS3KeyToPreviewUrl(q, addDays(new Date(), 90)),
+      a: a ? replaceS3KeyToPreviewUrl(a, addDays(new Date(), 90)) : undefined
     };
   }
 
-  const previewUrl = getDatasetImagePreviewUrl({
-    imageId,
-    teamId,
-    datasetId,
-    expiredMinutes: 60 * 24 * 7 // 7 days
-  });
+  const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
+    ? jwtSignS3ObjectKey(imageId, addDays(new Date(), 90))
+    : imageId;
 
   return {
-    q: `![${q.replaceAll('\n', '')}](${previewUrl})`,
+    q: `![${q.replaceAll('\n', '')}](${imagePreivewUrl})`,
     a,
-    imagePreivewUrl: previewUrl
+    imagePreivewUrl
   };
 };
 
 export const getFormatDatasetCiteList = (list: DatasetDataSchemaType[]) => {
-  return list.map<DatasetCiteItemType>((item) => ({
+  return list.map((item) => ({
     _id: item._id,
     ...formatDatasetDataValue({
-      teamId: item.teamId,
-      datasetId: item.datasetId,
       q: item.q,
       a: item.a,
       imageId: item.imageId

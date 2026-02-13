@@ -1,7 +1,9 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../logger';
 import type { Model } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export default mongoose;
 export * from 'mongoose';
@@ -49,17 +51,34 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     schema.post(op, function (this: any, result: any, next) {
       if (this._startTime) {
         const duration = Date.now() - this._startTime;
-        const warnLogData = {
-          collectionName: this.collection?.name,
-          op: this.op,
-          ...(this._query && { query: this._query }),
-          ...(this._update && { update: this._update }),
-          ...(this._delete && { delete: this._delete }),
-          duration
+
+        const getLogData = () => {
+          const collectionName = this.model?.collection?.name || this._model?.collection?.name;
+          const op = (() => {
+            if (this.op) return this.op;
+            if (this._pipeline) {
+              return 'aggregate';
+            }
+            if (this.constructor?.name === 'model') {
+              return 'save/create';
+            }
+            return this.constructor?.name || 'unknown';
+          })();
+          return {
+            duration,
+            collectionName,
+            op,
+            ...(this._query && { query: this._query }),
+            ...(this._pipeline && { pipeline: this._pipeline }),
+            ...(this._update && { update: this._update }),
+            ...(this._delete && { delete: this._delete })
+          };
         };
 
-        if (duration > 1000) {
-          addLog.warn(`Slow operation ${duration}ms`, warnLogData);
+        if (duration > 2000) {
+          logger.warn('MongoDB slow query (>2s)', getLogData());
+        } else if (duration > 500) {
+          logger.warn('MongoDB slow query (>500ms)', getLogData());
         }
       }
       next();
@@ -98,7 +117,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
 export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionMongo.models[name]) return connectionMongo.models[name] as Model<T>;
-  if (!isTestEnv) console.log('Load model======', name);
+  if (!isTestEnv) logger.debug('Loading MongoDB model', { modelName: name });
   addCommonMiddleware(schema);
 
   const model = connectionMongo.model<T>(name, schema);
@@ -111,8 +130,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 
 export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionLogMongo.models[name]) return connectionLogMongo.models[name] as Model<T>;
-  console.log('Load model======', name);
-  addCommonMiddleware(schema);
+  logger.debug('Loading MongoDB log model', { modelName: name });
 
   const model = connectionLogMongo.model<T>(name, schema);
 
@@ -123,12 +141,19 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
-    try {
-      model.syncIndexes({ background: true });
-    } catch (error) {
-      addLog.error('Create index error', error);
-    }
+  if (
+    process.env.NODE_ENV === 'test' ||
+    process.env.SYNC_INDEX === '0' ||
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    !MONGO_URL
+  ) {
+    return;
+  }
+
+  try {
+    await model.syncIndexes({ background: true });
+  } catch (error) {
+    logger.error('Failed to sync MongoDB indexes', { modelName: model.modelName, error });
   }
 };
 

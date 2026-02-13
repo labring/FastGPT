@@ -1,10 +1,5 @@
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  delFileByFileIdList,
-  getGFSCollection
-} from '@fastgpt/service/common/file/gridfs/controller';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   deleteDatasetDataVector,
   getVectorDataByTime
@@ -13,88 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { addDays } from 'date-fns';
-
-/*
-  check dataset.files data. If there is no match in dataset.collections, delete it
-  可能异常情况:
-  1. 上传了文件，未成功创建集合
-*/
-export async function checkInvalidDatasetFiles(start: Date, end: Date) {
-  let deleteFileAmount = 0;
-  const collection = getGFSCollection(BucketNameEnum.dataset);
-  const where = {
-    uploadDate: { $gte: start, $lte: end }
-  };
-
-  // 1. get all file _id
-  const files = await collection
-    .find(where, {
-      projection: {
-        metadata: 1,
-        _id: 1
-      }
-    })
-    .toArray();
-  addLog.info(`Clear invalid dataset files, total files: ${files.length}`);
-
-  let index = 0;
-  for await (const file of files) {
-    try {
-      // 2. find fileId in dataset.collections
-      const hasCollection = await MongoDatasetCollection.countDocuments({
-        teamId: file.metadata.teamId,
-        fileId: file._id
-      });
-
-      // 3. if not found, delete file
-      if (hasCollection === 0) {
-        await delFileByFileIdList({
-          bucketName: BucketNameEnum.dataset,
-          fileIdList: [String(file._id)]
-        });
-        console.log('delete file', file._id);
-        deleteFileAmount++;
-      }
-      index++;
-      index % 100 === 0 && console.log(index);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  addLog.info(`Clear invalid dataset files finish, remove ${deleteFileAmount} files`);
-}
-
-/*
-  Remove 7 days ago chat files
-*/
-export const removeExpiredChatFiles = async () => {
-  let deleteFileAmount = 0;
-  const collection = getGFSCollection(BucketNameEnum.chat);
-
-  const expireTime = Number(process.env.CHAT_FILE_EXPIRE_TIME || 7);
-  const where = {
-    uploadDate: { $lte: addDays(new Date(), -expireTime) }
-  };
-
-  // get all file _id
-  const files = await collection.find(where, { projection: { _id: 1 } }).toArray();
-
-  // Delete file one by one
-  for await (const file of files) {
-    try {
-      await delFileByFileIdList({
-        bucketName: BucketNameEnum.chat,
-        fileIdList: [String(file._id)]
-      });
-      deleteFileAmount++;
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  addLog.info(`Remove expired chat files finish, remove ${deleteFileAmount} files`);
-};
+const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 /*
   检测无效的 Mongo 数据
@@ -126,7 +40,11 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
     }
   }
   const list = Array.from(map.values());
-  addLog.info(`Clear invalid dataset data, total collections: ${list.length}`);
+  logger.info('Start cleaning invalid dataset data records', {
+    totalCollections: list.length,
+    start,
+    end
+  });
   let index = 0;
 
   for await (const item of list) {
@@ -137,7 +55,7 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
         '_id'
       ).lean();
       if (!collection) {
-        console.log('collection is not found', item);
+        logger.warn('Dataset collection not found, cleaning related records', { ...item });
 
         await retryFn(async () => {
           await MongoDatasetTraining.deleteMany({
@@ -166,9 +84,14 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
           });
         });
       }
-    } catch (error) {}
+    } catch (error) {
+      logger.error('Failed to clean invalid dataset data records', { ...item, error });
+    }
     if (++index % 100 === 0) {
-      console.log(index);
+      logger.debug('Invalid dataset data cleaning progress', {
+        processedCollections: index,
+        totalCollections: list.length
+      });
     }
   }
 }
@@ -177,13 +100,13 @@ export async function checkInvalidVector(start: Date, end: Date) {
   let deletedVectorAmount = 0;
   // 1. get all vector data
   const rows = await getVectorDataByTime(start, end);
-  addLog.info(`Clear invalid vector, total vector data: ${rows.length}`);
+  logger.info('Start cleaning invalid vector records', { totalVectors: rows.length, start, end });
 
   let index = 0;
 
   for await (const item of rows) {
     if (!item.teamId || !item.datasetId || !item.id) {
-      addLog.error('error data', item);
+      logger.error('Invalid vector record encountered', { ...item });
       continue;
     }
     try {
@@ -200,16 +123,29 @@ export async function checkInvalidVector(start: Date, end: Date) {
           teamId: item.teamId,
           id: item.id
         });
-        console.log('delete vector data', item.id);
+        logger.info('Deleted orphan vector record', {
+          vectorId: item.id,
+          teamId: item.teamId,
+          datasetId: item.datasetId
+        });
         deletedVectorAmount++;
       }
 
       index++;
-      index % 100 === 0 && console.log(index);
+      if (index % 100 === 0) {
+        logger.debug('Invalid vector cleaning progress', {
+          processedVectors: index,
+          totalVectors: rows.length,
+          deletedVectorAmount
+        });
+      }
     } catch (error) {
-      console.log(error);
+      logger.error('Failed to clean invalid vector record', { ...item, error });
     }
   }
 
-  addLog.info(`Clear invalid vector finish, remove ${deletedVectorAmount} data`);
+  logger.info('Finished cleaning invalid vector records', {
+    deletedVectorAmount,
+    totalVectors: rows.length
+  });
 }

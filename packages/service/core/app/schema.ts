@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { Schema, getMongoModel } from '../../common/mongo';
-import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
+import type { AppSchemaType as AppType } from '@fastgpt/global/core/app/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -60,18 +60,14 @@ const AppSchema = new Schema(
       type: String,
       default: ''
     },
+    templateId: String,
 
     updateTime: {
       type: Date,
       default: () => new Date()
     },
 
-    // role and auth
-    teamTags: {
-      type: [String]
-    },
-
-    // save app(Not publish)
+    // Workflow data
     modules: {
       type: Array,
       default: []
@@ -83,7 +79,8 @@ const AppSchema = new Schema(
     chatConfig: {
       type: chatConfigType
     },
-    // plugin config
+
+    // Tool config
     pluginData: {
       type: {
         nodeVersion: String,
@@ -108,28 +105,37 @@ const AppSchema = new Schema(
       type: Date
     },
 
-    inited: {
-      type: Boolean
-    },
     inheritPermission: {
       type: Boolean,
       default: true
     },
 
+    // Chat setting
     favourite: Boolean,
     quick: Boolean,
 
-    // abandoned
-    defaultPermission: Number
+    /** @deprecated */
+    defaultPermission: Number,
+    inited: Boolean,
+    teamTags: {
+      type: [String]
+    },
+
+    // 软删除标记字段
+    deleteTime: {
+      type: Date,
+      default: null // null表示未删除，有值表示删除时间
+    }
   },
   {
     minimize: false
   }
 );
 
-AppSchema.index({ type: 1 });
 AppSchema.index({ teamId: 1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
+
+// Schedule
 AppSchema.index(
   { scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 },
   {
@@ -138,5 +144,11 @@ AppSchema.index(
     }
   }
 );
+
+// Admin count
+AppSchema.index({ type: 1 });
+AppSchema.index({ deleteTime: 1 });
+// Admin search
+AppSchema.index({ name: 1 });
 
 export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

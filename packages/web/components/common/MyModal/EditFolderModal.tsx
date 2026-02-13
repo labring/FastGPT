@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ModalFooter, ModalBody, Input, Button, Box, Textarea } from '@chakra-ui/react';
 import MyModal from './index';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '../../../hooks/useRequest';
+import { useRequest } from '../../../hooks/useRequest';
 import FormLabel from '../MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
 
@@ -49,7 +49,7 @@ const EditFolderModal = ({
     [isEdit, t]
   );
 
-  const { run: onSave, loading } = useRequest2(
+  const { run: onSave, loading } = useRequest(
     ({ name = '', intro }: EditFolderFormType) => {
       if (!name) return;
 

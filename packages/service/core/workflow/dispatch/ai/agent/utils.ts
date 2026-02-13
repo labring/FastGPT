@@ -1,70 +1,68 @@
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { SubAppRuntimeType } from './type';
+import { agentSkillToToolRuntime } from './sub/tool/utils';
+import { readFileTool } from './sub/file/utils';
+import { PlanAgentTool } from './sub/plan/constants';
+import { datasetSearchTool } from './sub/dataset/utils';
 
-export const updateToolInputValue = ({
-  params,
-  inputs
+export const getSubapps = async ({
+  tmbId,
+  tools,
+  lang,
+  getPlanTool,
+  hasDataset,
+  hasFiles
 }: {
-  params: Record<string, any>;
-  inputs: FlowNodeInputItemType[];
-}) => {
-  return inputs.map((input) => ({
-    ...input,
-    value: params[input.key] ?? input.value
-  }));
-};
+  tmbId: string;
+  tools: SkillToolType[];
+  lang?: localeType;
+  getPlanTool?: Boolean;
+  hasDataset?: boolean;
+  hasFiles: boolean;
+}): Promise<{
+  completionTools: ChatCompletionTool[];
+  subAppsMap: Map<string, SubAppRuntimeType>;
+}> => {
+  const subAppsMap = new Map<string, SubAppRuntimeType>();
+  const completionTools: ChatCompletionTool[] = [];
 
-export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
-  return response.map((item) => {
-    if (item.type === ChatItemValueTypeEnum.tool) {
-      const formatTools = item.tools?.map((tool) => {
-        return {
-          ...tool,
-          response: sliceStrStartEnd(tool.response, 500, 500)
-        };
-      });
-      return {
-        ...item,
-        tools: formatTools
-      };
-    }
-
-    return item;
-  });
-};
-
-export const formatToolResponse = (toolResponses: any) => {
-  if (typeof toolResponses === 'object') {
-    return JSON.stringify(toolResponses, null, 2);
+  /* Plan */
+  if (getPlanTool) {
+    completionTools.push(PlanAgentTool);
+  }
+  /* File */
+  if (hasFiles) {
+    completionTools.push(readFileTool);
   }
 
-  return toolResponses ? String(toolResponses) : 'none';
-};
+  /* Dataset Search */
+  if (hasDataset) {
+    completionTools.push(datasetSearchTool);
+  }
 
-// 在原参上改变值，不修改原对象，tool workflow 中，使用的还是原对象
-export const initToolCallEdges = (edges: RuntimeEdgeItemType[], entryNodeIds: string[]) => {
-  edges.forEach((edge) => {
-    if (entryNodeIds.includes(edge.target)) {
-      edge.status = 'active';
-    }
+  /* System tool */
+  const formatTools = await agentSkillToToolRuntime({
+    tools,
+    tmbId,
+    lang
   });
-};
+  formatTools.forEach((tool) => {
+    completionTools.push(tool.requestSchema);
+    subAppsMap.set(tool.id, {
+      type: tool.type,
+      id: tool.id,
+      name: tool.name,
+      avatar: tool.avatar,
+      version: tool.version,
+      toolConfig: tool.toolConfig,
+      params: tool.params
+    });
+  });
 
-export const initToolNodes = (
-  nodes: RuntimeNodeItemType[],
-  entryNodeIds: string[],
-  startParams?: Record<string, any>
-) => {
-  nodes.forEach((node) => {
-    if (entryNodeIds.includes(node.nodeId)) {
-      node.isEntry = true;
-      if (startParams) {
-        node.inputs = updateToolInputValue({ params: startParams, inputs: node.inputs });
-      }
-    }
-  });
+  return {
+    completionTools,
+    subAppsMap
+  };
 };

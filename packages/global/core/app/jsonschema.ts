@@ -4,28 +4,44 @@ import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../workflow/
 import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
-import type { OpenApiJsonSchema } from './httpTools/type';
+import type { OpenApiJsonSchema } from './tool/httpTool/type';
+import { i18nT } from '../../../web/i18n/utils';
+import z from 'zod';
 
-type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
-export type JsonSchemaPropertiesItemType = {
-  description?: string;
-  'x-tool-description'?: string;
-  type: SchemaInputValueType;
-  enum?: string[];
-  minimum?: number;
-  maximum?: number;
-  items?: { type: SchemaInputValueType };
-};
-export type JSONSchemaInputType = {
-  type: SchemaInputValueType;
-  properties?: Record<string, JsonSchemaPropertiesItemType>;
-  required?: string[];
-};
-export type JSONSchemaOutputType = {
-  type: SchemaInputValueType;
-  properties?: Record<string, JsonSchemaPropertiesItemType>;
-  required?: string[];
-};
+const SchemaInputValueTypeSchema = z.enum([
+  'string',
+  'number',
+  'integer',
+  'boolean',
+  'array',
+  'object'
+]);
+type SchemaInputValueType = z.infer<typeof SchemaInputValueTypeSchema>;
+
+export const JsonSchemaPropertiesItemSchema = z.object({
+  description: z.string().optional(),
+  'x-tool-description': z.string().optional(),
+  type: SchemaInputValueTypeSchema,
+  enum: z.array(z.string()).optional(),
+  minimum: z.number().optional(),
+  maximum: z.number().optional(),
+  items: z.object({ type: SchemaInputValueTypeSchema }).optional()
+});
+export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
+
+export const JSONSchemaInputTypeSchema = z.object({
+  type: SchemaInputValueTypeSchema,
+  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+  required: z.array(z.string()).optional()
+});
+export type JSONSchemaInputType = z.infer<typeof JSONSchemaInputTypeSchema>;
+
+export const JSONSchemaOutputTypeSchema = z.object({
+  type: SchemaInputValueTypeSchema,
+  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+  required: z.array(z.string()).optional()
+});
+export type JSONSchemaOutputType = z.infer<typeof JSONSchemaOutputTypeSchema>;
 
 export const getNodeInputTypeFromSchemaInputType = ({
   type,
@@ -83,13 +99,19 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
 };
-export const jsonSchema2NodeInput = (jsonSchema: JSONSchemaInputType): FlowNodeInputItemType[] => {
+export const jsonSchema2NodeInput = ({
+  jsonSchema,
+  schemaType
+}: {
+  jsonSchema: JSONSchemaInputType;
+  schemaType: 'mcp' | 'http';
+}): FlowNodeInputItemType[] => {
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
     label: key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: value['x-tool-description'] ?? value.description ?? key,
+    toolDescription: schemaType === 'http' ? value['x-tool-description'] : value.description || key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));
@@ -104,8 +126,7 @@ export const jsonSchema2NodeOutput = (
     required: jsonSchema?.required?.includes(key),
     type: FlowNodeOutputTypeEnum.static,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
-    description: value.description,
-    toolDescription: value['x-tool-description'] ?? value.description ?? key
+    description: value.description
   }));
 };
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
@@ -180,7 +201,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
       .filter(Boolean) as OpenApiJsonSchema['pathData'];
     return { pathData, serverPath };
   } catch (err) {
-    throw new Error('Invalid Schema');
+    return Promise.reject(i18nT('common:plugin.Invalid Schema'));
   }
 };
 export const getSchemaValueType = (schema: { type: string; items?: { type: string } }) => {

@@ -19,6 +19,8 @@ export const IfElseNode: FlowNodeTemplateType = {
   showSourceHandle: false,
   showTargetHandle: true,
   avatar: 'core/workflow/template/ifelse',
+  avatarLinear: 'core/workflow/template/ifelseLinear',
+  colorSchema: 'greenLight',
   name: i18nT('workflow:condition_checker'),
   intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
   showStatus: true,

@@ -1,15 +1,15 @@
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
-import { type ClientSession } from '../../common/mongo';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
-import { deleteChatFiles } from '../chat/controller';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -21,9 +21,17 @@ import { MongoChatSetting } from '../chat/setting/schema';
 import { MongoResourcePermission } from '../../support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
+import { getS3ChatSource } from '../../common/s3/sources/chat';
+import { MongoAppChatLog } from './logs/chatLogsSchema';
+import { MongoAppRegistration } from '../../support/appRegistration/schema';
+import { MongoMcpKey } from '../../support/mcp/schema';
+import { MongoAppRecord } from './record/schema';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -34,11 +42,14 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
       if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
         input.value = storeSecretValue(input.value);
       }
+      if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+        input.value = encryptSecretValue(input.value);
+      }
       if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
         input.inputList?.forEach((inputItem) => {
           if (
             inputItem.inputType === 'secret' &&
-            input.value?.type === SystemToolInputTypeEnum.manual &&
+            input.value?.type === SystemToolSecretInputTypeEnum.manual &&
             input.value?.value
           ) {
             input.value.value[inputItem.key] = encryptSecretValue(input.value.value[inputItem.key]);
@@ -86,7 +97,7 @@ export async function findAppAndAllChildren({
   teamId: string;
   appId: string;
   fields?: string;
-}): Promise<AppSchema[]> {
+}): Promise<AppSchemaType[]> {
   const find = async (id: string) => {
     const children = await MongoApp.find(
       {
@@ -130,108 +141,96 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
-export const onDelOneApp = async ({
+export const deleteAppDataProcessor = async ({
+  app,
+  teamId
+}: {
+  app: AppSchemaType;
+  teamId: string;
+}) => {
+  const appId = String(app._id);
+
+  // 1. 删除应用头像
+  await removeImageByPath(app.avatar);
+  // 2. 删除聊天记录和S3文件
+  await getS3ChatSource().deleteChatFilesByPrefix({ appId });
+  await MongoAppChatLog.deleteMany({ teamId, appId });
+  await MongoChatItemResponse.deleteMany({ appId });
+  await MongoChatItem.deleteMany({ appId });
+  await MongoChat.deleteMany({ appId });
+
+  // 3. 删除应用相关数据（使用事务）
+  {
+    // 删除分享链接
+    await MongoOutLink.deleteMany({ appId });
+    // 删除 OpenAPI 配置
+    await MongoOpenApi.deleteMany({ appId });
+    // 删除应用版本
+    await MongoAppVersion.deleteMany({ appId });
+    // 删除聊天输入引导
+    await MongoChatInputGuide.deleteMany({ appId });
+    // 删除精选应用记录
+    await MongoChatFavouriteApp.deleteMany({ teamId, appId });
+    // 从快捷应用中移除对应应用
+    await MongoChatSetting.updateMany({ teamId }, { $pull: { quickAppIds: { $in: [appId] } } });
+    // 删除权限记录
+    await MongoResourcePermission.deleteMany({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceId: appId
+    });
+    // 删除日志密钥
+    await MongoAppLogKeys.deleteMany({ appId });
+
+    // 删除应用注册记录
+    await MongoAppRegistration.deleteMany({ appId });
+    // 删除应用从MCP key apps数组中移除
+    await MongoMcpKey.updateMany({ teamId, 'apps.appId': appId }, { $pull: { apps: { appId } } });
+
+    // 删除应用本身
+    await MongoApp.deleteOne({ _id: appId });
+  }
+};
+
+export const deleteAppsImmediate = async ({
   teamId,
-  appId,
-  session
+  appIds
 }: {
   teamId: string;
-  appId: string;
-  session?: ClientSession;
+  appIds: string[];
 }) => {
-  const apps = await findAppAndAllChildren({
-    teamId,
-    appId,
-    fields: '_id avatar'
-  });
-
-  const deletedAppIds = apps
-    .filter((app) => app.type !== AppTypeEnum.folder)
-    .map((app) => String(app._id));
-
   // Remove eval job
   const evalJobs = await MongoEvaluation.find(
     {
-      appId: { $in: apps.map((app) => app._id) }
+      teamId,
+      appId: { $in: appIds }
     },
     '_id'
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 
-  // Delete chats
-  await deleteChatFiles({ appId });
-  await MongoChatItemResponse.deleteMany({
-    appId
-  });
-  await MongoChatItem.deleteMany({
-    appId
-  });
-  await MongoChat.deleteMany({
-    appId
-  });
+  // Remove app record
+  await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
+};
 
-  const del = async (session: ClientSession) => {
-    for await (const app of apps) {
-      const appId = app._id;
+export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {
+  mongoSessionRun(async (session) => {
+    const existsId = new Set<string>();
+    while (true) {
+      if (!parentId || existsId.has(parentId)) return;
 
-      // 删除分享链接
-      await MongoOutLink.deleteMany({
-        appId
-      }).session(session);
-      // Openapi
-      await MongoOpenApi.deleteMany({
-        appId
-      }).session(session);
+      existsId.add(parentId);
 
-      // delete version
-      await MongoAppVersion.deleteMany({
-        appId
-      }).session(session);
+      const parentApp = await MongoApp.findById(parentId, 'parentId updateTime');
+      if (!parentApp) return;
 
-      await MongoChatInputGuide.deleteMany({
-        appId
-      }).session(session);
+      parentApp.updateTime = new Date();
+      await parentApp.save({ session });
 
-      // 删除精选应用记录
-      await MongoChatFavouriteApp.deleteMany({
-        teamId,
-        appId
-      }).session(session);
-
-      // 从快捷应用中移除对应应用
-      await MongoChatSetting.updateMany(
-        { teamId },
-        { $pull: { quickAppIds: { id: String(appId) } } }
-      ).session(session);
-
-      // Del permission
-      await MongoResourcePermission.deleteMany({
-        resourceType: PerResourceTypeEnum.app,
-        teamId,
-        resourceId: appId
-      }).session(session);
-
-      await MongoAppLogKeys.deleteMany({
-        appId
-      }).session(session);
-
-      // delete app
-      await MongoApp.deleteOne(
-        {
-          _id: appId
-        },
-        { session }
-      );
-
-      await removeImageByPath(app.avatar, session);
+      // 递归更新上层
+      parentId = parentApp.parentId;
     }
-  };
-
-  if (session) {
-    await del(session);
-    return deletedAppIds;
-  }
-
-  await mongoSessionRun(del);
-  return deletedAppIds;
+  }).catch((err) => {
+    logger.error('Failed to update parent folder updateTime', { error: err });
+  });
 };

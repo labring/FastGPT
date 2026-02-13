@@ -1,0 +1,65 @@
+---
+title: 'V4.14.6'
+description: 'FastGPT V4.14.6 更新说明'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像 tag: v4.14.6.1
+- 更新 FastGPT 商业版镜像 tag: v4.14.6
+- 更新 fastgpt-plugin 镜像 tag: v0.5.2
+- mcp_server 无需更新
+- sandbox 无需更新
+- AIProxy 无需更新
+- mongo 无需更新
+
+### 2. 更新系统插件
+
+前往插件市场更新以下几个系统工具（如果 4.14.6 升级了，这里可以跳过）
+
+* base64Decode：base64 解码转化
+* dallle3: dall-e 3 图片生成
+* docDiff: 文档差异对比
+* drawing: BI图表
+* gptImage: gpt 图片生成
+* markdownTransform: markdown 转换文件
+* mineru: Mineru pdf解析
+* minimax: minimax 对话
+* openrouterMultiModal: openrouter 多模态
+* stability: stability 图片生成
+
+## 🚀 新增内容
+
+1. 系统工具可配置自定义的分类属性。
+2. 订阅套餐支持配置最大文件上传数量和大小。
+3. 插件市场支持批量更新插件。
+4. 云服务支持企微特定版接入。
+5. Seekdb 向量库预设配置。
+
+## ⚙️ 优化
+
+### 功能优化
+1. 工作流触摸板移动时，遇到输入框后会被强制阻拦。
+2. 工作流粘贴节点，精确按鼠标位置粘贴。
+3. 精确移除请求 LLM 时多余的系统字段，避免部分模型接口报错。
+
+### 代码质量
+
+1. useRequest2 替代 useRequest。减少无用代码。
+
+## 🐛 修复
+
+1. 系统工具工具集设置系统密钥后，子工具无法读取到设置的系统密钥
+2. 日期选择器溢出问题，增加了动态位置适配。
+3. 工作流编排页面系统工具“探索更多”跳转地址错误
+4. 模型头像缺省值 /imgs/model/huggingface.svg 路径错误
+5. 设置工具标签时过滤多余的空值
+
+## 插件
+
+1. 添加飞书多维表格的引导教程文档
+2. 企微相关的插件：获取企微企业 access_token; 企微智能表工具集
+3. 新增模型 qwen-flash
+4. 调整 qwen3-max 和 qwen-plus 的预设参数

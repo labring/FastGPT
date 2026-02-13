@@ -49,6 +49,8 @@ export const AiChatModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/aiChat',
+  avatarLinear: 'core/workflow/template/aiChatLinear',
+  colorSchema: 'blueDark',
   name: i18nT('workflow:template.ai_chat'),
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
@@ -151,13 +153,13 @@ export const AiChatModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.reasoningText,
       key: NodeOutputKeyEnum.reasoningText,
       required: false,
-      label: i18nT('workflow:reasoning_text'),
+      label: i18nT('workflow:reasoning_content'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static,
       invalid: true,
-      invalidCondition: ({ inputs, llmModelList }) => {
+      invalidCondition: ({ inputs, llmModelMap }) => {
         const model = inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
-        const modelItem = llmModelList.find((item) => item.model === model);
+        const modelItem = llmModelMap[model];
         return modelItem?.reasoning !== true;
       }
     },

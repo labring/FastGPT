@@ -1,21 +1,23 @@
 /* oceanbase vector crud */
-import { DatasetVectorTableName } from '../constants';
-import { ObClient } from './controller';
+import { DatasetVectorTableName, OceanBaseIndexConfig } from '../constants';
+import { ObClass } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
-import {
-  type DelDatasetVectorCtrlProps,
-  type EmbeddingRecallCtrlProps,
-  type EmbeddingRecallResponse,
-  type InsertVectorControllerProps
-} from '../controller.d';
+import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 
-export class ObVectorCtrl {
-  constructor() {}
-  init = async () => {
+const logger = getLogger(LogCategories.INFRA.VECTOR);
+
+export class ObVectorCtrl implements VectorControllerType {
+  private obClient: ObClass;
+  private controllerType: 'oceanbase' | 'seekdb';
+  constructor({ type }: { type: 'oceanbase' | 'seekdb' }) {
+    this.obClient = new ObClass({ type });
+    this.controllerType = type;
+  }
+  init: VectorControllerType['init'] = async () => {
     try {
-      await ObClient.query(`
+      await this.obClient.query(`
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             vector VECTOR(1536) NOT NULL,
@@ -25,23 +27,28 @@ export class ObVectorCtrl {
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      await ObClient.query(
-        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=inner_product, type=hnsw, m=32, ef_construction=128);`
+      await this.obClient.query(
+        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=${OceanBaseIndexConfig.distance}, type=${OceanBaseIndexConfig.type}, m=16, ef_construction=200);`
       );
-      await ObClient.query(
+      await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName}(team_id, dataset_id, collection_id);`
       );
-      await ObClient.query(
+      await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
 
-      addLog.info('init oceanbase successful');
+      logger.info('Vector DB initialization completed', {
+        provider: this.controllerType
+      });
     } catch (error) {
-      addLog.error('init oceanbase error', error);
+      logger.error('Vector DB initialization failed', {
+        provider: this.controllerType,
+        error
+      });
     }
   };
 
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+  insert: VectorControllerType['insert'] = async (props) => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
     const values = vectors.map((vector) => [
@@ -51,7 +58,7 @@ export class ObVectorCtrl {
       { key: 'collection_id', value: String(collectionId) }
     ]);
 
-    const { rowCount, insertIds } = await ObClient.insert(DatasetVectorTableName, {
+    const { rowCount, insertIds } = await this.obClient.insert(DatasetVectorTableName, {
       values
     });
 
@@ -63,7 +70,7 @@ export class ObVectorCtrl {
       insertIds
     };
   };
-  delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
+  delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
@@ -94,11 +101,11 @@ export class ObVectorCtrl {
 
     if (!where) return;
 
-    await ObClient.delete(DatasetVectorTableName, {
+    await this.obClient.delete(DatasetVectorTableName, {
       where: [where]
     });
   };
-  embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
+  embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
 
@@ -131,48 +138,52 @@ export class ObVectorCtrl {
       return { results: [] };
     }
 
-    const rows = await ObClient.query<
-      ({
-        id: string;
-        collection_id: string;
-        score: number;
-      } & RowDataPacket)[][]
-    >(
-      `BEGIN;
+    const rows = await this.obClient
+      .query<
+        ({
+          id: string;
+          collection_id: string;
+          score: number;
+        } & RowDataPacket)[][]
+      >(
+        `BEGIN;
           SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
-          SELECT id, collection_id, inner_product(vector, [${vector}]) AS score
+          SELECT id, collection_id, ${OceanBaseIndexConfig.distanceFunc}(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'
               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
               ${forbidCollectionSql}
-            ORDER BY score desc APPROXIMATE LIMIT ${limit};
+            ORDER BY score ${OceanBaseIndexConfig.orderDirection} APPROXIMATE LIMIT ${limit};
         COMMIT;`
-    ).then(([rows]) => rows[2]);
+      )
+      .then(([rows]) => rows[2]);
 
     return {
       results: rows.map((item) => ({
         id: String(item.id),
         collectionId: item.collection_id,
-        score: item.score
+        score: OceanBaseIndexConfig.scoreTransform(item.score)
       }))
     };
   };
-  getVectorDataByTime = async (start: Date, end: Date) => {
-    const rows = await ObClient.query<
-      ({
-        id: string;
-        team_id: string;
-        dataset_id: string;
-      } & RowDataPacket)[]
-    >(
-      `SELECT id, team_id, dataset_id
+  getVectorDataByTime: VectorControllerType['getVectorDataByTime'] = async (start, end) => {
+    const rows = await this.obClient
+      .query<
+        ({
+          id: string;
+          team_id: string;
+          dataset_id: string;
+        } & RowDataPacket)[]
+      >(
+        `SELECT id, team_id, dataset_id
     FROM ${DatasetVectorTableName}
     WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}' AND '${dayjs(
       end
     ).format('YYYY-MM-DD HH:mm:ss')}';
     `
-    ).then(([rows]) => rows);
+      )
+      .then(([rows]) => rows);
 
     return rows.map((item) => ({
       id: String(item.id),
@@ -180,33 +191,30 @@ export class ObVectorCtrl {
       datasetId: item.dataset_id
     }));
   };
-  getVectorCountByTeamId = async (teamId: string) => {
-    const total = await ObClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)]]
-    });
 
-    return total;
-  };
-  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const total = await ObClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
-    });
+  getVectorCount: VectorControllerType['getVectorCount'] = async (props) => {
+    const { teamId, datasetId, collectionId } = props;
 
-    return total;
-  };
-  getVectorCountByCollectionId = async (
-    teamId: string,
-    datasetId: string,
-    collectionId: string
-  ) => {
-    const total = await ObClient.count(DatasetVectorTableName, {
-      where: [
-        ['team_id', String(teamId)],
-        'and',
-        ['dataset_id', String(datasetId)],
-        'and',
-        ['collection_id', String(collectionId)]
-      ]
+    // Build where conditions dynamically
+    const whereConditions: any[] = [];
+
+    if (teamId) {
+      whereConditions.push(['team_id', String(teamId)]);
+    }
+
+    if (datasetId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['dataset_id', String(datasetId)]);
+    }
+
+    if (collectionId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['collection_id', String(collectionId)]);
+    }
+
+    // If no conditions provided, count all
+    const total = await this.obClient.count(DatasetVectorTableName, {
+      where: whereConditions.length > 0 ? whereConditions : undefined
     });
 
     return total;

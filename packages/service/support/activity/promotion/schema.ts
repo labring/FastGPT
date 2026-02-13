@@ -29,6 +29,8 @@ const PromotionRecordSchema = new Schema({
   }
 });
 
+PromotionRecordSchema.index({ userId: 1 });
+
 export const MongoPromotionRecord = getMongoModel<PromotionRecordType>(
   'promotionRecord',
   PromotionRecordSchema

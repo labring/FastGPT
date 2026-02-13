@@ -18,8 +18,8 @@
       - OB_SERVER_IP=127.0.0.1
       # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
     volumes:
-      - ../ob/data:/root/ob
-      - ../ob/config:/root/.obd/cluster
+      - ./ob/data:/root/ob
+      - ./ob/config:/root/.obd/cluster
     configs:
       - source: init_sql
         target: /root/boot/init.d/init.sql

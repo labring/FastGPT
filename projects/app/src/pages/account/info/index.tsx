@@ -8,7 +8,6 @@ import {
   useTheme,
   Input,
   Link,
-  Progress,
   Grid,
   type BoxProps
 } from '@chakra-ui/react';
@@ -16,9 +15,8 @@ import { useForm } from 'react-hook-form';
 import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import dynamic from 'next/dynamic';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -33,7 +31,6 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
-
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -43,13 +40,20 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
 });
+const DiscountCouponsModal = dynamic(
+  () => import('@/pageComponents/account/info/DiscountCouponsModal'),
+  { ssr: false }
+);
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
@@ -140,16 +144,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdateContact,
     onOpen: onOpenUpdateContact
   } = useDisclosure();
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
 
-  const onclickSave = useCallback(
+  const onClickSave = useCallback(
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
@@ -162,6 +158,20 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       });
     },
     [reset, t, toast, updateUserInfo]
+  );
+
+  const afterUploadAvatar = useCallback(
+    (avatar: string) => {
+      if (!userInfo) return;
+      onClickSave({ ...userInfo, avatar });
+    },
+    [onClickSave, userInfo]
+  );
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
+    getUploadAvatarPresignedUrl,
+    {
+      onSuccess: afterUploadAvatar
+    }
   );
 
   const labelStyles: BoxProps = {
@@ -241,6 +251,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Flex>
         )}
 
+        <AvatarUploader />
         {isPc ? (
           <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
             <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
@@ -253,7 +264,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 border={theme.borders.base}
                 overflow={'hidden'}
                 boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                onClick={onOpenSelectFile}
+                onClick={handleFileSelectorOpen}
               >
                 <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
               </Box>
@@ -264,7 +275,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             flexDirection={'column'}
             alignItems={'center'}
             cursor={'pointer'}
-            onClick={onOpenSelectFile}
+            onClick={handleFileSelectorOpen}
           >
             <MyTooltip label={t('account_info:choose_avatar')}>
               <Box
@@ -287,6 +298,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Flex>
         )}
+
         {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
@@ -334,21 +346,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxW: 300,
-            maxH: 300,
-            callback: (src) => {
-              if (!userInfo) return;
-              onclickSave({
-                ...userInfo,
-                avatar: src
-              });
-            }
-          })
-        }
-      />
     </Box>
   );
 };
@@ -358,6 +355,9 @@ const PlanUsage = () => {
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
+
+  // Check if it's a wecom team
+  const isWecomTeam = !!userInfo?.team?.isWecomTeam;
   const {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
@@ -370,10 +370,22 @@ const PlanUsage = () => {
     onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
+  const {
+    isOpen: isOpenDiscountCouponsModal,
+    onClose: onCloseDiscountCouponsModal,
+    onOpen: onOpenDiscountCouponsModal
+  } = useDisclosure();
+
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
-    return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
-  }, [teamPlanStatus?.standard?.currentSubLevel]);
+    if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
+      return 'common:support.wallet.subscription.standardSubLevel.trial';
+
+    return (
+      subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||
+      standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label
+    );
+  }, [teamPlanStatus?.standard?.currentSubLevel, isWecomTeam, subPlans]);
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
@@ -392,41 +404,39 @@ const PlanUsage = () => {
     return false;
   }, [teamPlanStatus]);
 
-  const valueColorSchema = useCallback((val: number) => {
-    if (val < 50) return 'green';
-    if (val < 80) return 'yellow';
-    return 'red';
-  }, []);
-
   const datasetIndexUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
-    const rate = teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize;
+
+    const rate = teamPlanStatus.datasetMaxSize
+      ? (teamPlanStatus.usedDatasetIndexSize / teamPlanStatus.datasetMaxSize) * 100
+      : 0;
 
     return {
-      value: teamPlanStatus.usedDatasetIndexSize,
-      rate: rate * 100,
-      max: teamPlanStatus.datasetMaxSize || 1
+      total: teamPlanStatus.datasetMaxSize ?? t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
+
   const aiPointsUsageMap = useMemo(() => {
     if (!teamPlanStatus) {
       return {
-        value: 0,
-        max: t('account_info:unlimited'),
+        total: t('account_info:unlimited'),
         rate: 0
       };
     }
 
+    const rate = teamPlanStatus.totalPoints
+      ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      : 0;
+
     return {
-      value: Math.round(teamPlanStatus.usedPoints),
-      max: teamPlanStatus.totalPoints,
-      rate: (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+      total: teamPlanStatus.totalPoints ?? t('account_info:unlimited'),
+      rate
     };
   }, [t, teamPlanStatus]);
 
@@ -435,11 +445,11 @@ const PlanUsage = () => {
       return [];
     }
 
-    return [
+    const data = [
       {
         label: t('account_info:member_amount'),
         value: teamPlanStatus.usedMember,
-        max: teamPlanStatus?.standardConstants?.maxTeamMember || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxTeamMember ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedMember / (teamPlanStatus?.standardConstants?.maxTeamMember || 1)) *
           100
@@ -447,7 +457,7 @@ const PlanUsage = () => {
       {
         label: t('account_info:app_amount'),
         value: teamPlanStatus.usedAppAmount,
-        max: teamPlanStatus?.standardConstants?.maxAppAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxAppAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standardConstants?.maxAppAmount || 1)) *
           100
@@ -455,13 +465,27 @@ const PlanUsage = () => {
       {
         label: t('account_info:dataset_amount'),
         value: teamPlanStatus.usedDatasetSize,
-        max: teamPlanStatus?.standardConstants?.maxDatasetAmount || t('account_info:unlimited'),
+        max: teamPlanStatus?.standardConstants?.maxDatasetAmount ?? t('account_info:unlimited'),
         rate:
           (teamPlanStatus.usedDatasetSize /
             (teamPlanStatus?.standardConstants?.maxDatasetAmount || 1)) *
           100
       }
     ];
+
+    if (teamPlanStatus?.standardConstants?.appRegistrationCount) {
+      data.push({
+        label: t('account_info:app_registration_count'),
+        value: teamPlanStatus.usedRegistrationCount || 0,
+        max: teamPlanStatus.standardConstants.appRegistrationCount,
+        rate:
+          ((teamPlanStatus.usedRegistrationCount || 0) /
+            teamPlanStatus.standardConstants.appRegistrationCount) *
+          100
+      });
+    }
+
+    return data;
   }, [t, teamPlanStatus]);
 
   return standardPlan ? (
@@ -493,6 +517,11 @@ const PlanUsage = () => {
         {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
           <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
             {t('account_info:redeem_coupon')}
+          </Button>
+        )}
+        {userInfo?.permission.isOwner && feConfigs?.show_discount_coupon && (
+          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenDiscountCouponsModal}>
+            {t('account_info:discount_coupon')}
           </Button>
         )}
       </Flex>
@@ -530,7 +559,7 @@ const PlanUsage = () => {
               {t('account_info:account_knowledge_base_cleanup_warning')}
             </Box>
           )}
-          {standardPlan.currentSubLevel !== StandardSubLevelEnum.free && (
+          {(standardPlan.currentSubLevel !== StandardSubLevelEnum.free || isWecomTeam) && (
             <Flex mt="2" color={'#485264'} fontSize="xs">
               <Box>{t('account_info:package_expiry_time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
@@ -542,7 +571,7 @@ const PlanUsage = () => {
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
               level={standardPlan?.currentSubLevel}
-              mode={standardPlan.currentMode}
+              mode={'month'}
               standplan={standardPlan}
             />
           </Box>
@@ -581,87 +610,89 @@ const PlanUsage = () => {
           </Link>
         </Flex>
         <Box width={'100%'} mt={5} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:knowledge_base_capacity')}
-              </Box>
-              <Box color={'myGray.600'} ml={2}>
-                {datasetIndexUsageMap.value}/{datasetIndexUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'} mr={1}>
+              {t('common:support.wallet.subscription.AI points usage')}
+            </Box>
+            <QuestionTip label={t('account_info:ai_points_usage_tip')} />
+            <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {Math.round(teamPlanStatus?.usedPoints || 0)} / {aiPointsUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={datasetIndexUsageMap.rate}
-              colorScheme={valueColorSchema(datasetIndexUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${aiPointsUsageMap.rate}%`}
+              bg={`${aiPointsUsageMap.rate < 50 ? 'primary' : aiPointsUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
+
         <Box mt="6" width={'100%'} fontSize={'sm'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'} color={'myGray.900'}>
-                {t('account_info:ai_points_usage')}
-              </Box>
-              <QuestionTip ml={1} label={t('account_info:ai_points_usage_tip')}></QuestionTip>
-              <Box color={'myGray.600'} ml={2}>
-                {aiPointsUsageMap.value}/{aiPointsUsageMap.max}
-              </Box>
-            </Flex>
+          <Flex gap={4} alignItems={'center'} mb={2}>
+            <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('common:support.user.team.Dataset usage')}
+            </Box>
+            <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
+              {Math.round(teamPlanStatus?.usedDatasetIndexSize || 0)} / {datasetIndexUsageMap.total}
+            </Box>
           </Flex>
-          <Box mt={1}>
-            <Progress
-              size={'sm'}
-              value={aiPointsUsageMap.rate}
-              colorScheme={valueColorSchema(aiPointsUsageMap.rate)}
-              borderRadius={'md'}
-              isAnimated
-              hasStripe
-              borderWidth={'1px'}
-              borderColor={'borderColor.low'}
+          <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+            <Box
+              borderRadius={'sm'}
+              transition="width 0.3s"
+              w={`${datasetIndexUsageMap.rate}%`}
+              bg={`${datasetIndexUsageMap.rate < 50 ? 'primary' : datasetIndexUsageMap.rate < 80 ? 'yellow' : 'red'}.500`}
             />
-          </Box>
+          </Flex>
         </Box>
 
         <MyDivider />
 
         {limitData.map((item) => {
+          const isAppRegistration = item.label === t('account_info:app_registration_count');
+
           return (
             <Box
               key={item.label}
               _notFirst={{
-                mt: 4
+                mt: 6
               }}
               width={'100%'}
               fontSize={'sm'}
             >
-              <Flex alignItems={'center'}>
-                <Box fontWeight={'bold'} color={'myGray.900'}>
+              <Flex gap={4} alignItems={'center'} mb={2}>
+                <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.900'}>
                   {item.label}
                 </Box>
-                <Box color={'myGray.600'} ml={2}>
+                <Box fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
                   {item.value}/{item.max}
                 </Box>
+                {isAppRegistration && subPlans?.appRegistrationUrl && (
+                  <Link
+                    href={subPlans?.appRegistrationUrl}
+                    target="_blank"
+                    ml={'auto'}
+                    display={'flex'}
+                    alignItems={'center'}
+                    color={'primary.600'}
+                    cursor={'pointer'}
+                    fontSize={'sm'}
+                  >
+                    {t('account_info:apply_app_registration')}
+                    <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
+                  </Link>
+                )}
               </Flex>
-              <Box mt={1}>
-                <Progress
-                  size={'sm'}
-                  value={item.rate}
-                  colorScheme={valueColorSchema(item.rate)}
-                  borderRadius={'md'}
-                  isAnimated
-                  hasStripe
-                  borderWidth={'1px'}
-                  borderColor={'borderColor.low'}
+              <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>
+                <Box
+                  borderRadius={'sm'}
+                  transition="width 0.3s"
+                  w={`${item.rate}%`}
+                  bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
-              </Box>
+              </Flex>
             </Box>
           );
         })}
@@ -673,6 +704,7 @@ const PlanUsage = () => {
           onSuccess={() => initTeamPlanStatus()}
         />
       )}
+      {isOpenDiscountCouponsModal && <DiscountCouponsModal onClose={onCloseDiscountCouponsModal} />}
     </Box>
   ) : null;
 };
@@ -691,19 +723,34 @@ const ButtonStyles = {
   fontSize: 'sm'
 };
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const { runAsync: onFeedback } = useRequest2(getWorkorderURL, {
-    manual: true,
-    onSuccess(data) {
+  const { runAsync: onFeedback } = useRequest(
+    async () => {
+      const plan = teamPlanStatus?.standard?.currentSubLevel
+        ? subPlans?.standard?.[teamPlanStatus?.standard?.currentSubLevel]
+        : undefined;
+
+      const ticketResponseTime =
+        teamPlanStatus?.standard?.ticketResponseTime ?? plan?.ticketResponseTime;
+      const hasTicketAccess = !!ticketResponseTime;
+      if (!hasTicketAccess) {
+        setNotSufficientModalType(TeamErrEnum.ticketNotAvailable);
+        return;
+      }
+
+      const data = await getWorkorderURL();
       if (data) {
         window.open(data.redirectUrl);
       }
+    },
+    {
+      manual: true
     }
-  });
+  );
 
   return (
     <Box>
@@ -741,16 +788,14 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Box>
           </Flex>
         )}
-        {feConfigs?.show_workorder &&
-          teamPlanStatus &&
-          teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free && (
-            <Flex onClick={onFeedback} {...ButtonStyles}>
-              <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
-              <Box ml={2} flex={1}>
-                {t('common:question_feedback')}
-              </Box>
-            </Flex>
-          )}
+        {feConfigs?.show_workorder && (
+          <Flex onClick={onFeedback} {...ButtonStyles}>
+            <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
+            <Box ml={2} flex={1}>
+              {t('common:question_feedback')}
+            </Box>
+          </Flex>
+        )}
       </Grid>
     </Box>
   );

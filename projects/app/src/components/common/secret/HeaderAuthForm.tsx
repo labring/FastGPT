@@ -27,14 +27,16 @@ const AuthValueDisplay = ({
   showInput,
   index = 0,
   onEdit,
-  value,
-  onChange
+  value = '',
+  onChange,
+  bg
 }: {
   showInput: boolean;
   index?: number;
   onEdit: (index?: number) => void;
-  value: string;
+  value?: string;
   onChange: (value: string) => void;
+  bg: string;
 }) => {
   const { t } = useTranslation();
 
@@ -43,9 +45,9 @@ const AuthValueDisplay = ({
       {showInput ? (
         <Input
           placeholder={'Value'}
-          bg={'myGray.50'}
+          bg={bg}
           h={8}
-          maxLength={200}
+          maxLength={50000}
           onFocus={() => onEdit(index)}
           onBlur={() => onEdit(undefined)}
           value={value}
@@ -98,11 +100,13 @@ export const getSecretType = (config: HeaderSecretConfigType): HeaderSecretTypeE
 const HeaderAuthForm = ({
   headerSecretValue,
   onChange,
-  fontWeight = 'medium'
+  fontWeight = 'medium',
+  bg = 'myGray.50'
 }: {
   headerSecretValue: HeaderSecretConfigType;
   onChange: (secret: HeaderSecretConfigType) => void;
   fontWeight?: string;
+  bg?: string;
 }) => {
   const { t } = useTranslation();
   const headerSecretList = [
@@ -138,7 +142,7 @@ const HeaderAuthForm = ({
         {t('common:auth_type')}
       </Box>
       <MySelect
-        bg={'myGray.50'}
+        bg={bg}
         value={currentAuthType}
         onChange={(val) => {
           if (val === HeaderSecretTypeEnum.None) {
@@ -192,6 +196,7 @@ const HeaderAuthForm = ({
                   });
                 }
               }}
+              bg={bg}
             />
           ) : (
             <Box>
@@ -201,7 +206,7 @@ const HeaderAuthForm = ({
                     <Input
                       w={1 / 3}
                       h={8}
-                      bg="myGray.50"
+                      bg={bg}
                       placeholder="key"
                       maxLength={64}
                       value={item.key}
@@ -230,6 +235,7 @@ const HeaderAuthForm = ({
                         }}
                         index={index}
                         onEdit={setEditingIndex}
+                        bg={bg}
                       />
                     </Box>
                     {customHeaders.length > 1 && (

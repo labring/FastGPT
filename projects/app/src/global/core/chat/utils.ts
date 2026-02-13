@@ -1,11 +1,16 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  ChatHistoryItemResType,
+  ChatItemType,
+  ToolCiteLinksType,
+  ErrorTextItemType
+} from '@fastgpt/global/core/chat/type';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type ToolCiteLinksType } from '@fastgpt/global/core/chat/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 export function transformPreviewHistories(
   histories: ChatItemType[],
@@ -20,18 +25,27 @@ export function transformPreviewHistories(
   });
 }
 
-export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
-  return res
-    .map((item) => {
-      return [
-        item,
-        ...getFlatAppResponses(item.pluginDetail || []),
-        ...getFlatAppResponses(item.toolDetail || []),
-        ...getFlatAppResponses(item.loopDetail || [])
-      ];
+const extractCitationIdsFromText = (text: string): string[] => {
+  if (!text) return [];
+
+  // Match [24-bit hexadecimal ID](CITE) format
+  const citeRegex = /\[([a-f0-9]{24})\]\(CITE\)/gi;
+  const matches = text.match(citeRegex);
+
+  if (!matches) return [];
+
+  // Extract ID part (24-bit hexadecimal in brackets)
+  const ids = matches
+    .map((match) => {
+      const idMatch = match.match(/\[([a-f0-9]{24})\]/);
+      return idMatch ? idMatch[1] : null;
     })
-    .flat();
+    .filter((id): id is string => id !== null);
+
+  // Deduplicate
+  return Array.from(new Set(ids));
 };
+
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
@@ -41,8 +55,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
-  // get llm module account and history preview length and total quote list and external link list
-  const { llmModuleAccount, historyPreviewLength, totalQuoteList, toolCiteLinks } =
+  // get llm module account and history preview length and total quote list and external link list and error text
+  const { llmModuleAccount, historyPreviewLength, totalQuoteList, toolCiteLinks, errorText } =
     flatResData.reduce(
       (acc, item) => {
         // LLM
@@ -73,6 +87,13 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
           }
         }
 
+        if (item.errorText && !acc.errorText) {
+          acc.errorText = {
+            moduleName: item.moduleName,
+            errorText: item.errorText
+          };
+        }
+
         return acc;
       },
       {
@@ -80,15 +101,22 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
         historyPreviewLength: undefined as number | undefined,
         totalQuoteList: [] as SearchDataResponseItemType[],
         toolCiteLinks: [] as ToolCiteLinksType[],
-        linkDedupe: new Set<string>()
+        linkDedupe: new Set<string>(),
+        errorText: undefined as ErrorTextItemType | undefined
       }
     );
+
+  // Filter quote list to only include citations actually referenced in the response text
+  const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
+  const citedIds = extractCitationIdsFromText(responseText);
+  const filteredQuoteList = totalQuoteList.filter((quote) => citedIds.includes(quote.id));
 
   return {
     ...historyItem,
     llmModuleAccount,
-    totalQuoteList,
+    totalQuoteList: filteredQuoteList,
     historyPreviewLength,
-    ...(toolCiteLinks.length ? { toolCiteLinks } : {})
+    ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
+    ...(errorText ? { errorText } : {})
   };
 }

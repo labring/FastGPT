@@ -25,6 +25,8 @@ export const LoopNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/loop',
+  avatarLinear: 'core/workflow/template/loopLinear',
+  colorSchema: 'violetDeep',
   name: i18nT('workflow:loop'),
   intro: i18nT('workflow:intro_loop'),
   showStatus: true,

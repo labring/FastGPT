@@ -13,7 +13,9 @@ export enum AppLogKeysEnum {
   ANNOTATED_COUNT = 'annotatedCount',
   POINTS = 'points',
   RESPONSE_TIME = 'responseTime',
-  ERROR_COUNT = 'errorCount'
+  ERROR_COUNT = 'errorCount',
+  REGION = 'region',
+  VERSION_NAME = 'versionName'
 }
 
 export const AppLogKeysEnumMap = {
@@ -29,11 +31,13 @@ export const AppLogKeysEnumMap = {
   [AppLogKeysEnum.ANNOTATED_COUNT]: i18nT('app:logs_keys_annotatedCount'),
   [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
   [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
-  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
+  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount'),
+  [AppLogKeysEnum.REGION]: i18nT('app:logs_keys_region'),
+  [AppLogKeysEnum.VERSION_NAME]: i18nT('app:logs_keys_versionName')
 };
 
 export const DefaultAppLogKeys = [
-  { key: AppLogKeysEnum.SOURCE, enable: true },
+  { key: AppLogKeysEnum.SOURCE, enable: false },
   { key: AppLogKeysEnum.USER, enable: true },
   { key: AppLogKeysEnum.TITLE, enable: true },
   { key: AppLogKeysEnum.SESSION_ID, enable: false },
@@ -45,7 +49,9 @@ export const DefaultAppLogKeys = [
   { key: AppLogKeysEnum.ANNOTATED_COUNT, enable: false },
   { key: AppLogKeysEnum.POINTS, enable: false },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
-  { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
+  { key: AppLogKeysEnum.ERROR_COUNT, enable: false },
+  { key: AppLogKeysEnum.REGION, enable: true },
+  { key: AppLogKeysEnum.VERSION_NAME, enable: false }
 ];
 
 export enum AppLogTimespanEnum {

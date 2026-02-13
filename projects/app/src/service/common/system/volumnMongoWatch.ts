@@ -6,18 +6,24 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+let changeStreams: any[] = [];
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export const startMongoWatch = async () => {
-  reloadConfigWatch();
-  createDatasetTrainingMongoWatch();
-  refetchAppTemplates();
-  watchSystemModelUpdate();
+  cleanupMongoWatch();
+  logger.info('Mongo change stream watch started');
+  changeStreams.push(reloadConfigWatch());
+  changeStreams.push(createDatasetTrainingMongoWatch());
+  changeStreams.push(refetchAppTemplates());
+  changeStreams.push(watchSystemModelUpdate());
 };
 
 const reloadConfigWatch = () => {
   const changeStream = MongoSystemConfigs.watch();
 
-  changeStream.on('change', async (change) => {
+  return changeStream.on('change', async (change) => {
     try {
       if (
         change.operationType === 'update' ||
@@ -27,7 +33,7 @@ const reloadConfigWatch = () => {
           ))
       ) {
         await initSystemConfig();
-        console.log('refresh system config');
+        logger.info('System config refreshed via Mongo change stream');
       }
     } catch (error) {}
   });
@@ -36,7 +42,7 @@ const reloadConfigWatch = () => {
 const refetchAppTemplates = () => {
   const changeStream = MongoAppTemplate.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async (change) => {
       setTimeout(() => {
@@ -46,4 +52,12 @@ const refetchAppTemplates = () => {
       }, 5000);
     }, 500)
   );
+};
+
+const cleanupMongoWatch = () => {
+  logger.debug('Mongo change stream watch cleanup');
+  changeStreams.forEach((changeStream) => {
+    changeStream?.close();
+  });
+  changeStreams = [];
 };

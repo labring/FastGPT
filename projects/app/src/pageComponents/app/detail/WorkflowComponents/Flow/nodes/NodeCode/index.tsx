@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import RenderToolInput from '../render/RenderToolInput';
 import RenderOutput from '../render/RenderOutput';
@@ -28,11 +27,14 @@ import CatchError from '../render/RenderOutput/CatchError';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
+  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitOutput(outputs),
     [splitOutput, outputs]
@@ -42,8 +44,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     (item) => item.key === NodeInputKeyEnum.codeType
   ) as FlowNodeInputItemType;
 
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
+  const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
@@ -64,23 +66,25 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ]}
                 value={codeType?.value}
                 onChange={(newLang) => {
-                  openSwitchLangConfirm(() => {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: NodeInputKeyEnum.codeType,
-                      value: { ...codeType, value: newLang }
-                    });
+                  openSwitchLangConfirm({
+                    onConfirm: () => {
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: NodeInputKeyEnum.codeType,
+                        value: { ...codeType, value: newLang }
+                      });
 
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: SANDBOX_CODE_TEMPLATE[newLang]
-                      }
-                    });
+                      onChangeNode({
+                        nodeId,
+                        type: 'updateInput',
+                        key: item.key,
+                        value: {
+                          ...item,
+                          value: SANDBOX_CODE_TEMPLATE[newLang]
+                        }
+                      });
+                    }
                   })();
                 }}
               />
@@ -109,25 +113,29 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 }
               />
             </Flex>
-            <CodeEditor
-              bg={'white'}
-              borderRadius={'sm'}
-              value={item.value}
-              onChange={(e) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: item.key,
-                  value: { ...item, value: e }
-                });
-              }}
-              language={codeType.value}
-            />
+            {presentationMode ? (
+              <Box h={'200px'} />
+            ) : (
+              <CodeEditor
+                bg={'white'}
+                borderRadius={'sm'}
+                value={item.value}
+                onChange={(e) => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: item.key,
+                    value: { ...item, value: e }
+                  });
+                }}
+                language={codeType.value}
+              />
+            )}
           </Box>
         );
       }
     };
-  }, [codeType, nodeId, t]);
+  }, [codeType, nodeId, t, presentationMode, onChangeNode]);
 
   const { isTool, commonInputs } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),
@@ -139,6 +147,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCopilot
         key="copilot"
         nodeId={nodeId}
+        inputs={inputs}
+        outputs={outputs}
         trigger={
           <Button
             variant={'grayGhost'}
@@ -151,7 +161,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       />
     ];
-  }, [t]);
+  }, [t, nodeId, inputs, outputs]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>

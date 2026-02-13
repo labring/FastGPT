@@ -3,7 +3,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   PerResourceTypeEnum,
   WritePermissionVal
@@ -17,23 +17,31 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
   intro?: string;
+  type: AppTypeEnum.folder | AppTypeEnum.toolFolder;
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId } = req.body;
+  const { name, intro, parentId, type } = req.body;
 
-  if (!name) {
-    Promise.reject(CommonErrEnum.missingParams);
+  if (!name || !type) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  if (type !== AppTypeEnum.folder && type !== AppTypeEnum.toolFolder) {
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // 凭证校验
   const { teamId, tmbId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  await checkTeamAppTypeLimit({ teamId, appCheckType: 'folder' });
 
   // Create app
   await mongoSessionRun(async (session) => {
@@ -44,7 +52,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       intro,
       teamId,
       tmbId,
-      type: AppTypeEnum.folder
+      type
     });
 
     await createResourceDefaultCollaborators({

@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
-import { useRequest2 } from '../../../hooks/useRequest';
+import { useRequest } from '../../../hooks/useRequest';
 import {
   Popover,
   PopoverTrigger,
@@ -11,9 +11,9 @@ import {
   HStack,
   Box,
   Button,
-  PopoverArrow,
-  Portal
+  PopoverArrow
 } from '@chakra-ui/react';
+import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 
 const PopoverConfirm = ({
   content,
@@ -32,13 +32,13 @@ const PopoverConfirm = ({
   Trigger: React.ReactNode;
   placement?: PlacementWithLogical;
   offset?: [number, number];
-  onConfirm: () => any;
+  onConfirm: () => Promise<any> | any;
   confirmText?: string;
   cancelText?: string;
 }) => {
   const { t } = useTranslation();
 
-  const map = useMemo(() => {
+  const map = useMemoEnhance(() => {
     const map = {
       info: {
         variant: 'primary',
@@ -56,7 +56,7 @@ const PopoverConfirm = ({
   const firstFieldRef = React.useRef(null);
   const { onOpen, onClose, isOpen } = useDisclosure();
 
-  const { runAsync: onclickConfirm, loading } = useRequest2(onConfirm, {
+  const { runAsync: onclickConfirm, loading } = useRequest(async () => onConfirm(), {
     onSuccess: onClose
   });
 
@@ -90,7 +90,14 @@ const PopoverConfirm = ({
         </HStack>
         <HStack mt={2} justifyContent={'flex-end'}>
           {showCancel && (
-            <Button variant={'whiteBase'} size="sm" onClick={onClose}>
+            <Button
+              variant={'whiteBase'}
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+            >
               {cancelText || t('common:Cancel')}
             </Button>
           )}

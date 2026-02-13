@@ -4,47 +4,11 @@ import mysql, {
   type RowDataPacket,
   type ResultSetHeader
 } from 'mysql2/promise';
-import { addLog } from '../../system/log';
-import { OCEANBASE_ADDRESS } from '../constants';
+import { getLogger, LogCategories } from '../../logger';
+import { OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 
-export const getClient = async (): Promise<Pool> => {
-  if (!OCEANBASE_ADDRESS) {
-    return Promise.reject('OCEANBASE_ADDRESS is not set');
-  }
-
-  if (global.obClient) {
-    return global.obClient;
-  }
-
-  global.obClient = mysql.createPool({
-    uri: OCEANBASE_ADDRESS,
-    waitForConnections: true,
-    connectionLimit: Number(process.env.DB_MAX_LINK || 20),
-    connectTimeout: 20000,
-    idleTimeout: 60000,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0
-  });
-
-  try {
-    // Test the connection with a simple query instead of calling connect()
-    await global.obClient.query('SELECT 1');
-    addLog.info(`oceanbase connected`);
-    return global.obClient;
-  } catch (error) {
-    addLog.error(`oceanbase connect error`, error);
-
-    global.obClient?.end();
-    global.obClient = null;
-
-    await delay(1000);
-    addLog.info(`Retry connect oceanbase`);
-
-    return getClient();
-  }
-};
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 type WhereProps = (string | [string, string | number])[];
 type GetProps = {
@@ -68,7 +32,59 @@ type InsertProps = {
   values: ValuesProps[];
 };
 
-class ObClass {
+export class ObClass {
+  controllerType: 'oceanbase' | 'seekdb';
+  constructor({ type }: { type: 'oceanbase' | 'seekdb' }) {
+    this.controllerType = type;
+  }
+  private async getClient(): Promise<Pool> {
+    const address = this.controllerType === 'oceanbase' ? OCEANBASE_ADDRESS : SEEKDB_ADDRESS;
+    if (!address) {
+      return Promise.reject('OCEANBASE_ADDRESS || SEEKDB_ADDRESS is not set');
+    }
+
+    if (global.obClient) {
+      return global.obClient;
+    }
+
+    global.obClient = mysql.createPool({
+      uri: address,
+      waitForConnections: true,
+      connectionLimit: Number(process.env.DB_MAX_LINK || 20),
+      connectTimeout: 20000,
+      idleTimeout: 60000,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0
+    });
+
+    try {
+      // Test the connection with a simple query instead of calling connect()
+      await global.obClient.query('SELECT 1');
+      logger.info('Vector DB connected', {
+        provider: this.controllerType,
+        address
+      });
+      return global.obClient;
+    } catch (error) {
+      logger.error('Vector DB connection failed', {
+        provider: this.controllerType,
+        address,
+        error
+      });
+
+      global.obClient?.end();
+      global.obClient = null;
+
+      await delay(1000);
+      logger.info('Vector DB reconnecting', {
+        provider: this.controllerType,
+        address
+      });
+
+      return this.getClient();
+    }
+  }
   private getWhereStr(where?: WhereProps) {
     return where
       ? `WHERE ${where
@@ -122,7 +138,7 @@ class ObClass {
       LIMIT ${props.limit || 10} OFFSET ${props.offset || 0}
     `;
 
-    const client = await getClient();
+    const client = await this.getClient();
     return client.query<T>(sql);
   }
   async count(table: string, props: GetProps) {
@@ -131,14 +147,14 @@ class ObClass {
       ${this.getWhereStr(props.where)}
     `;
 
-    const client = await getClient();
+    const client = await this.getClient();
     return client.query<({ count: number } & RowDataPacket)[]>(sql).then(([res]) => {
       return res[0]?.['COUNT(*)'] || 0;
     });
   }
   async delete(table: string, props: DeleteProps) {
     const sql = `DELETE FROM ${table} ${this.getWhereStr(props.where)}`;
-    const client = await getClient();
+    const client = await this.getClient();
     return client.query(sql);
   }
   async update(table: string, props: UpdateProps) {
@@ -151,7 +167,7 @@ class ObClass {
     const sql = `UPDATE ${table} SET ${this.getUpdateValStr(props.values)} ${this.getWhereStr(
       props.where
     )}`;
-    const client = await getClient();
+    const client = await this.getClient();
     return client.query(sql);
   }
   /**
@@ -175,7 +191,7 @@ class ObClass {
     const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(props.values)}`;
 
     // 获取专用连接而不是从连接池获取
-    const connection = await (await getClient()).getConnection();
+    const connection = await (await this.getClient()).getConnection();
 
     try {
       const result = await connection.query<ResultSetHeader>(sql);
@@ -216,26 +232,30 @@ class ObClass {
         insertIds: []
       };
     } catch (error) {
-      addLog.error(`OceanBase batch insert error: ${error}`);
+      logger.error('Vector DB batch insert failed', {
+        provider: this.controllerType,
+        error
+      });
       throw error;
     } finally {
       connection.release(); // 释放连接回连接池
     }
   }
   async query<T extends QueryResult = any>(sql: string) {
-    const client = await getClient();
+    const client = await this.getClient();
     const start = Date.now();
     return client.query<T>(sql).then((res) => {
       const time = Date.now() - start;
 
       if (time > 300) {
-        addLog.warn(`oceanbase query time: ${time}ms, sql: ${sql}`);
+        logger.warn('Vector DB slow query detected', {
+          provider: this.controllerType,
+          durationMs: time,
+          sql
+        });
       }
 
       return res;
     });
   }
 }
-
-export const ObClient = new ObClass();
-export const Oceanbase = global.obClient;

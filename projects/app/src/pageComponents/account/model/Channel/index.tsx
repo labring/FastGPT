@@ -5,7 +5,7 @@ import {
   putChannel,
   putChannelStatus
 } from '@/web/core/ai/channel';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useState } from 'react';
 import {
   Table,
@@ -52,23 +52,23 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     data: channelList = [],
     runAsync: refreshChannelList,
     loading: loadingChannelList
-  } = useRequest2(getChannelList, {
+  } = useRequest(getChannelList, {
     manual: false
   });
 
-  const { data: channelProviders = {} } = useRequest2(getChannelProviders, {
+  const { data: channelProviders = {} } = useRequest(getChannelProviders, {
     manual: false
   });
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
 
-  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest2(putChannel, {
+  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest(putChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
     }
   });
-  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest2(
+  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest(
     putChannelStatus,
     {
       onSuccess: () => {
@@ -80,7 +80,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
-  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest2(deleteChannel, {
+  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest(deleteChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
@@ -215,13 +215,12 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                 icon: 'delete',
                                 label: t('common:Delete'),
                                 onClick: () =>
-                                  openConfirm(
-                                    () => onDeleteChannel(item.id),
-                                    undefined,
-                                    t('account_model:confirm_delete_channel', {
+                                  openConfirm({
+                                    onConfirm: () => onDeleteChannel(item.id),
+                                    customContent: t('account_model:confirm_delete_channel', {
                                       name: item.name
                                     })
-                                  )()
+                                  })()
                               }
                             ]
                           }

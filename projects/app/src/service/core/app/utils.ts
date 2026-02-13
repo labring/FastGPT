@@ -1,13 +1,13 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
-import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  AIChatItemValueItemType,
+  UserChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -15,42 +15,55 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { getUserChatInfo } from '@fastgpt/service/support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 
+const logger = getLogger();
+
 export const getScheduleTriggerApp = async () => {
-  addLog.info('Schedule trigger app');
+  const startAt = new Date();
+  logger.info('Schedule trigger scan started', { startAt });
 
   // 1. Find all the app
   const apps = await retryFn(() => {
-    return MongoApp.find({
-      scheduledTriggerConfig: { $exists: true },
-      scheduledTriggerNextTime: { $lte: new Date() }
-    });
+    return MongoApp.find(
+      {
+        scheduledTriggerConfig: { $exists: true },
+        scheduledTriggerNextTime: { $lte: new Date() }
+      },
+      {
+        _id: 1,
+        scheduledTriggerConfig: 1,
+        scheduledTriggerNextTime: 1,
+        name: 1,
+        teamId: 1,
+        tmbId: 1
+      }
+    ).lean();
   });
+  logger.info('Schedule trigger scan completed', { dueCount: apps.length, startAt });
 
   // 2. Run apps
-  await Promise.allSettled(
-    apps.map(async (app) => {
+  await batchRun(
+    apps,
+    async (app) => {
       if (!app.scheduledTriggerConfig) return;
       const chatId = getNanoid();
-      // random delay 0 ~ 60s
-      await delay(Math.floor(Math.random() * 60 * 1000));
 
       // Get app latest version
-      const { nodes, edges, chatConfig } = await retryFn(() => getAppLatestVersion(app._id, app));
+      const { versionId, nodes, edges, chatConfig } = await retryFn(() =>
+        getAppLatestVersion(app._id, app)
+      );
       const userQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
-            content: app.scheduledTriggerConfig?.defaultPrompt
+            content: app.scheduledTriggerConfig.defaultPrompt || ''
           }
         }
       ];
@@ -65,44 +78,30 @@ export const getScheduleTriggerApp = async () => {
         })
       );
 
-      try {
-        const { flowUsages, assistantResponses, flowResponses, durationSeconds, system_memories } =
-          await retryFn(async () => {
-            return dispatchWorkFlow({
-              chatId,
-              mode: 'chat',
-              usageId,
-              runningAppInfo: {
-                id: String(app._id),
-                name: app.name,
-                teamId: String(app.teamId),
-                tmbId: String(app.tmbId)
-              },
-              runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-              uid: String(app.tmbId),
-              runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-              runtimeEdges: storeEdges2RuntimeEdges(edges),
-              variables: {},
-              query: userQuery,
-              chatConfig,
-              histories: [],
-              stream: false,
-              maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-            });
-          });
-
-        const error = flowResponses[flowResponses.length - 1]?.error;
-
-        // Save chat
-        await saveChat({
+      const onSave = async ({
+        error,
+        durationSeconds = 0,
+        assistantResponses = [],
+        flowResponses = [],
+        system_memories,
+        customFeedbacks
+      }: {
+        error?: any;
+        durationSeconds?: number;
+        assistantResponses?: AIChatItemValueItemType[];
+        flowResponses?: ChatHistoryItemResType[];
+        system_memories?: Record<string, any>;
+        customFeedbacks?: string[];
+      }) => {
+        return pushChatRecords({
           chatId,
           appId: app._id,
+          versionId,
           teamId: String(app.teamId),
           tmbId: String(app.tmbId),
           nodes,
           appChatConfig: chatConfig,
           variables: {},
-          isUpdateUseTime: false, // owner update use time
           newTitle: 'Cron Job',
           source: ChatSourceEnum.cronJob,
           userContent: {
@@ -113,42 +112,85 @@ export const getScheduleTriggerApp = async () => {
             obj: ChatRoleEnum.AI,
             value: assistantResponses,
             [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
-            memories: system_memories
+            memories: system_memories,
+            customFeedbacks
           },
           durationSeconds,
           errorMsg: getErrText(error)
         });
-      } catch (error) {
-        addLog.error('Schedule trigger error', error);
+      };
 
-        await saveChat({
-          chatId,
+      try {
+        const {
+          assistantResponses,
+          flowResponses,
+          durationSeconds,
+          system_memories,
+          customFeedbacks
+        } = await retryFn(async () => {
+          return dispatchWorkFlow({
+            chatId,
+            mode: 'chat',
+            usageId,
+            runningAppInfo: {
+              id: String(app._id),
+              name: app.name,
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
+            runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
+            uid: String(app.tmbId),
+            runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+            runtimeEdges: storeEdges2RuntimeEdges(edges),
+            variables: {},
+            query: userQuery,
+            chatConfig,
+            histories: [],
+            stream: false,
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+          });
+        });
+
+        const error = flowResponses[flowResponses.length - 1]?.error;
+
+        // Save chat
+        await onSave({
+          error,
+          durationSeconds,
+          assistantResponses,
+          flowResponses,
+          system_memories,
+          customFeedbacks
+        });
+      } catch (error) {
+        logger.error('Schedule trigger workflow run failed', {
+          error,
           appId: app._id,
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId),
-          nodes,
-          appChatConfig: chatConfig,
-          variables: {},
-          isUpdateUseTime: false, // owner update use time
-          newTitle: 'Cron Job',
-          source: ChatSourceEnum.cronJob,
-          userContent: {
-            obj: ChatRoleEnum.Human,
-            value: userQuery
-          },
-          aiContent: {
-            obj: ChatRoleEnum.AI,
-            value: [],
-            [DispatchNodeResponseKeyEnum.nodeResponse]: []
-          },
-          durationSeconds: 0,
-          errorMsg: getErrText(error)
+          appName: app.name,
+          teamId: app.teamId,
+          tmbId: app.tmbId,
+          chatId,
+          usageId
+        });
+
+        await onSave({
+          error
+        }).catch();
+      } finally {
+        // update next time
+        const nextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
+        await retryFn(() =>
+          MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
+        ).catch((err) => {
+          logger.error('Schedule trigger update next time failed', {
+            error: err,
+            appId: app._id,
+            appName: app.name,
+            nextTime
+          });
         });
       }
-
-      // update next time
-      app.scheduledTriggerNextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
-      await app.save().catch();
-    })
+    },
+    50
   );
 };

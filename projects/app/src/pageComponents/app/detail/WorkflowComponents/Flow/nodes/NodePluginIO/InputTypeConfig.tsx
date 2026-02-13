@@ -1,13 +1,16 @@
 import {
   Box,
   Button,
+  Checkbox,
   Flex,
   FormControl,
+  Grid,
   HStack,
   Input,
   Stack,
   Switch,
-  Textarea
+  Textarea,
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   VariableInputEnum,
@@ -23,20 +26,29 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
 
-import ChatFunctionTip from '@/components/core/app/Tip';
 import MySlider from '@/components/Slider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
+import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 
 const InputTypeConfig = ({
   form,
@@ -64,22 +76,32 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, llmModelList } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
-  const typeLabels = {
-    name: {
-      formInput: t('common:core.module.input_name'),
-      plugin: t('common:core.module.Field Name'),
-      variable: t('workflow:Variable_name')
-    },
-    description: {
-      formInput: t('common:core.module.input_description'),
-      plugin: t('workflow:field_description'),
-      variable: t('workflow:variable_description')
-    }
-  };
+  const availableModels = useMemoEnhance(() => {
+    return llmModelList.map((model) => ({
+      value: model.model,
+      label: model.name
+    }));
+  }, [llmModelList]);
 
-  const { register, setValue, handleSubmit, control, watch } = form;
+  const typeLabels = useMemo(() => {
+    return {
+      name: {
+        formInput: t('common:core.module.input_name'),
+        plugin: t('common:core.module.Field Name'),
+        variable: t('workflow:Variable_name')
+      },
+      description: {
+        formInput: t('common:core.module.input_description'),
+        plugin: t('workflow:field_description'),
+        variable: t('workflow:variable_description')
+      }
+    };
+  }, [t]);
+
+  const { register, setValue, handleSubmit, control, watch, getValues } = form;
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
@@ -88,12 +110,38 @@ const InputTypeConfig = ({
   const valueType = watch('valueType');
 
   const timeGranularity = watch('timeGranularity');
-  const timeType = watch('timeType');
   const timeRangeStart = watch('timeRangeStart');
   const timeRangeEnd = watch('timeRangeEnd');
+  const timeRangeStartDefault =
+    inputType === VariableInputEnum.timeRangeSelect && Array.isArray(defaultValue)
+      ? defaultValue?.[0]
+      : undefined;
+  const timeRangeEndDefault =
+    inputType === VariableInputEnum.timeRangeSelect && Array.isArray(defaultValue)
+      ? defaultValue?.[1]
+      : undefined;
 
-  const maxFiles = watch('maxFiles');
-  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+  const maxFiles = watch('maxFiles') ?? 5;
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles = Math.min(
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    50
+  );
+  const canSelectFile = watch('canSelectFile') ?? true;
+  const canSelectImg = watch('canSelectImg');
+  const canSelectVideo = watch('canSelectVideo');
+  const canSelectAudio = watch('canSelectAudio');
+  const canSelectCustomFileExtension = watch('canSelectCustomFileExtension');
+  const customFileExtensionList = watch('customFileExtensionList');
+  const canLocalUpload = watch('canLocalUpload') ?? true;
+  const canUrlUpload = watch('canUrlUpload');
+
+  const {
+    isOpen: isOpenDatasetSelect,
+    onOpen: onOpenDatasetSelect,
+    onClose: onCloseDatasetSelect
+  } = useDisclosure();
+  const datasetOptions = watch('datasetOptions');
 
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
@@ -127,6 +175,7 @@ const InputTypeConfig = ({
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
     inputType === FlowNodeInputTypeEnum.customVariable ||
+    inputType === FlowNodeInputTypeEnum.hidden ||
     inputType === VariableInputEnum.custom ||
     inputType === VariableInputEnum.internal;
 
@@ -134,8 +183,9 @@ const InputTypeConfig = ({
     const list = [
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
-      VariableInputEnum.timePointSelect,
-      VariableInputEnum.timeRangeSelect,
+      FlowNodeInputTypeEnum.hidden,
+      FlowNodeInputTypeEnum.switch,
+      VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal
     ];
@@ -153,18 +203,25 @@ const InputTypeConfig = ({
   }, [inputType]);
 
   const showDefaultValue = useMemo(() => {
-    const list = [
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.JSONEditor,
-      FlowNodeInputTypeEnum.numberInput,
-      FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.multipleSelect,
-      VariableInputEnum.custom,
-      VariableInputEnum.internal
-    ];
+    const map = {
+      [FlowNodeInputTypeEnum.input]: true,
+      [FlowNodeInputTypeEnum.JSONEditor]: true,
+      [FlowNodeInputTypeEnum.numberInput]: true,
+      [FlowNodeInputTypeEnum.switch]: true,
+      [FlowNodeInputTypeEnum.select]: true,
+      [FlowNodeInputTypeEnum.multipleSelect]: true,
+      [FlowNodeInputTypeEnum.selectLLMModel]: true,
+      [FlowNodeInputTypeEnum.customVariable]: true,
+      [FlowNodeInputTypeEnum.hidden]: true,
+      [VariableInputEnum.custom]: true,
+      [VariableInputEnum.internal]: true,
+      [VariableInputEnum.timePointSelect]: true,
+      [VariableInputEnum.timeRangeSelect]: true,
+      [VariableInputEnum.llmSelect]: true,
+      [VariableInputEnum.datasetSelect]: true
+    };
 
-    return list.includes(inputType as FlowNodeInputTypeEnum);
+    return map[inputType as keyof typeof map];
   }, [inputType]);
 
   const showIsToolInput = useMemo(() => {
@@ -180,9 +237,101 @@ const InputTypeConfig = ({
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
 
+  const filterValidField = useCallback(
+    (data: Record<string, any>) => {
+      const commonData: Record<string, any> = {
+        renderTypeList: data.renderTypeList,
+        type: data.type,
+
+        key: data.key,
+        label: data.label,
+        valueType: data.valueType,
+        valueDesc: data.valueDesc,
+        description: data.description,
+        toolDescription: data.toolDescription,
+        required: data.required,
+        defaultValue: data.defaultValue
+      };
+
+      switch (inputType) {
+        case FlowNodeInputTypeEnum.input:
+        case FlowNodeInputTypeEnum.textarea:
+          commonData.maxLength = data.maxLength;
+          break;
+        case FlowNodeInputTypeEnum.numberInput:
+          commonData.max = data.max;
+          commonData.min = data.min;
+          break;
+        case FlowNodeInputTypeEnum.select:
+        case FlowNodeInputTypeEnum.multipleSelect:
+          commonData.list = data.list;
+          break;
+        case FlowNodeInputTypeEnum.addInputParam:
+          commonData.customInputConfig = data.customInputConfig;
+          break;
+        case FlowNodeInputTypeEnum.fileSelect:
+          commonData.canLocalUpload = data.canLocalUpload ?? true;
+          commonData.canUrlUpload = data.canUrlUpload;
+          commonData.canSelectFile = data.canSelectFile ?? true;
+          commonData.canSelectImg = data.canSelectImg;
+          commonData.canSelectVideo = data.canSelectVideo;
+          commonData.canSelectAudio = data.canSelectAudio;
+          commonData.canSelectCustomFileExtension = data.canSelectCustomFileExtension;
+          commonData.customFileExtensionList = data.customFileExtensionList;
+          commonData.maxFiles = data.maxFiles ?? 5;
+          break;
+        case FlowNodeInputTypeEnum.timePointSelect:
+        case FlowNodeInputTypeEnum.timeRangeSelect:
+          commonData.timeGranularity = data.timeGranularity;
+          commonData.timeRangeStart = data.timeRangeStart;
+          commonData.timeRangeEnd = data.timeRangeEnd;
+          break;
+        case FlowNodeInputTypeEnum.password:
+          commonData.minLength = data.minLength;
+          break;
+      }
+
+      if (inputType === VariableInputEnum.datasetSelect) {
+        commonData.datasetOptions = data.datasetOptions;
+      }
+
+      if (inputType === VariableInputEnum.file) {
+        commonData.canSelectFile = data.canSelectFile;
+        commonData.canSelectImg = data.canSelectImg;
+        commonData.canSelectVideo = data.canSelectVideo;
+        commonData.canSelectAudio = data.canSelectAudio;
+        commonData.canSelectCustomFileExtension = data.canSelectCustomFileExtension;
+        commonData.customFileExtensionList = data.customFileExtensionList;
+        commonData.canLocalUpload = data.canLocalUpload;
+        commonData.canUrlUpload = data.canUrlUpload;
+        commonData.maxFiles = data.maxFiles;
+      }
+
+      if (commonData.timeRangeStart) {
+        commonData.timeRangeStart = formatTime2YMDHMS(new Date(commonData.timeRangeStart));
+      }
+      if (commonData.timeRangeEnd) {
+        commonData.timeRangeEnd = formatTime2YMDHMS(new Date(commonData.timeRangeEnd));
+      }
+      if (inputType === FlowNodeInputTypeEnum.timePointSelect && commonData.defaultValue) {
+        commonData.defaultValue = formatTime2YMDHMS(new Date(commonData.defaultValue));
+      } else if (
+        inputType === FlowNodeInputTypeEnum.timeRangeSelect &&
+        Array.isArray(commonData.defaultValue)
+      ) {
+        commonData.defaultValue = commonData.defaultValue.map((item) =>
+          item ? formatTime2YMDHMS(new Date(item)) : ''
+        );
+      }
+
+      return commonData;
+    },
+    [inputType]
+  );
+
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
-      <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
+      <Flex flexDirection={'column'} p={8} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
             {typeLabels.name[type] || typeLabels.name.formInput}
@@ -204,6 +353,7 @@ const InputTypeConfig = ({
             bg={'myGray.50'}
             placeholder={t('workflow:field_description_placeholder')}
             rows={3}
+            minH={10}
             {...register('description', {
               required: showIsToolInput && isToolInput ? true : false
             })}
@@ -339,7 +489,7 @@ const InputTypeConfig = ({
                       setValue('timeRangeStart', date);
                     }}
                     popPosition="top"
-                    timeGranularity={timeGranularity}
+                    timeGranularity={timeGranularity || 'day'}
                     maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
                   />
                 </Box>
@@ -353,7 +503,7 @@ const InputTypeConfig = ({
                       setValue('timeRangeEnd', date);
                     }}
                     popPosition="top"
-                    timeGranularity={timeGranularity}
+                    timeGranularity={timeGranularity || 'day'}
                     minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
                   />
                 </Box>
@@ -370,7 +520,9 @@ const InputTypeConfig = ({
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
@@ -384,19 +536,25 @@ const InputTypeConfig = ({
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
-                  {...register('defaultValue')}
+                  value={defaultValue}
+                  onChange={(e) => setValue('defaultValue', e.target.value)}
                   bg={'myGray.50'}
                   autoHeight
+                  title={t('common:core.module.Default Value')}
                   minH={40}
                   maxH={100}
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
@@ -409,12 +567,14 @@ const InputTypeConfig = ({
                   onChange={(e) => {
                     setValue('defaultValue', e);
                   }}
-                  defaultValue={defaultValue}
+                  value={defaultValue}
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
                 ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal) &&
+                  inputType === VariableInputEnum.internal ||
+                  inputType === FlowNodeInputTypeEnum.customVariable ||
+                  inputType === FlowNodeInputTypeEnum.hidden) &&
                   valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Flex h={10} alignItems={'center'}>
                   <Switch {...register('defaultValue')} />
@@ -460,10 +620,126 @@ const InputTypeConfig = ({
                   }
                 />
               )}
+              {inputType === VariableInputEnum.timePointSelect && (
+                <TimeInput
+                  value={defaultValue ? new Date(defaultValue) : undefined}
+                  onDateTimeChange={(date) => {
+                    setValue('defaultValue', date);
+                  }}
+                  popPosition="top"
+                  timeGranularity={timeGranularity || 'day'}
+                  minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                  maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                />
+              )}
+              {inputType === VariableInputEnum.timeRangeSelect && (
+                <Flex flexDirection={'column'} gap={3}>
+                  <Box>
+                    <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                      {t('app:time_range_start')}
+                    </Box>
+                    <TimeInput
+                      value={timeRangeStartDefault}
+                      onDateTimeChange={(date) => {
+                        setValue('defaultValue', [date, timeRangeEndDefault]);
+                      }}
+                      popPosition="top"
+                      timeGranularity={timeGranularity || 'day'}
+                      minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+                      maxDate={
+                        timeRangeEndDefault && timeRangeEnd
+                          ? new Date(
+                              Math.min(
+                                new Date(timeRangeEndDefault).getTime(),
+                                new Date(timeRangeEnd).getTime()
+                              )
+                            )
+                          : timeRangeEndDefault
+                            ? new Date(timeRangeEndDefault)
+                            : timeRangeEnd
+                              ? new Date(timeRangeEnd)
+                              : undefined
+                      }
+                    />
+                  </Box>
+                  <Box>
+                    <Box color={'myGray.500'} fontSize="12px" mb={1}>
+                      {t('app:time_range_end')}
+                    </Box>
+                    <TimeInput
+                      value={timeRangeEndDefault}
+                      onDateTimeChange={(date) => {
+                        setValue('defaultValue', [timeRangeStartDefault, date]);
+                      }}
+                      popPosition="top"
+                      timeGranularity={timeGranularity || 'day'}
+                      minDate={
+                        timeRangeStartDefault && timeRangeStart
+                          ? new Date(
+                              Math.max(
+                                new Date(timeRangeStartDefault).getTime(),
+                                new Date(timeRangeStart).getTime()
+                              )
+                            )
+                          : timeRangeStartDefault
+                            ? new Date(timeRangeStartDefault)
+                            : timeRangeStart
+                              ? new Date(timeRangeStart)
+                              : undefined
+                      }
+                      maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+                    />
+                  </Box>
+                </Flex>
+              )}
+              {(inputType === VariableInputEnum.llmSelect ||
+                inputType === FlowNodeInputTypeEnum.selectLLMModel) && (
+                <Box flex={'1'}>
+                  <AIModelSelector
+                    value={defaultValue}
+                    list={availableModels}
+                    onChange={(model) => {
+                      setValue('defaultValue', model);
+                    }}
+                  />
+                </Box>
+              )}
+              {inputType === VariableInputEnum.datasetSelect && (
+                <MultipleSelect<string>
+                  bg={'myGray.50'}
+                  h={9}
+                  w={369}
+                  list={
+                    datasetOptions?.map((item: SelectedDatasetType) => ({
+                      label: item.name,
+                      value: item.datasetId,
+                      icon: item.avatar
+                    })) || []
+                  }
+                  placeholder={t('workflow:select_default_option')}
+                  value={
+                    defaultValue
+                      ? defaultValue.map((item: SelectedDatasetType) => item.datasetId)
+                      : []
+                  }
+                  onSelect={(selectedIds) => {
+                    const selectedDatasets = selectedIds
+                      .map((id) =>
+                        datasetOptions?.find((item: SelectedDatasetType) => item.datasetId === id)
+                      )
+                      .filter(Boolean);
+                    setValue('defaultValue', selectedDatasets);
+                  }}
+                  isSelectAll={
+                    defaultValue &&
+                    defaultValue.length === datasetOptions?.length &&
+                    datasetOptions?.length > 0
+                  }
+                />
+              )}
             </Flex>
           </Flex>
         )}
-
         {inputType === FlowNodeInputTypeEnum.addInputParam && (
           <>
             <Box>
@@ -612,51 +888,145 @@ const InputTypeConfig = ({
             </Button>
           </>
         )}
-
         {(inputType === FlowNodeInputTypeEnum.fileSelect ||
           inputType === VariableInputEnum.file) && (
           <>
-            <Flex alignItems={'center'} minH={'40px'}>
+            <Flex alignItems={'center'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('app:document_upload')}
+                {t('app:upload_method')}
               </FormLabel>
-              <Switch {...register('canSelectFile')} />
+              <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'} flex={1}>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canLocalUpload}
+                  onChange={(e) => setValue('canLocalUpload', e.target.checked)}
+                >
+                  <Box fontSize={'sm'}>{t('app:local_upload')}</Box>
+                </Checkbox>
+                <Checkbox
+                  p={'3'}
+                  h={'32px'}
+                  alignItems={'center'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  borderRadius={'md'}
+                  isChecked={canUrlUpload ?? false}
+                  onChange={(e) => setValue('canUrlUpload', e.target.checked)}
+                >
+                  <Box fontSize={'sm'}>{t('app:url_upload')}</Box>
+                </Checkbox>
+              </Grid>
             </Flex>
-            <Box w={'full'} minH={'40px'}>
-              <Flex alignItems={'center'}>
-                <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                  {t('app:image_upload')}
-                </FormLabel>
-                <Switch {...register('canSelectImg')} />
-              </Flex>
-              <Flex color={'myGray.500'}>
-                <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>
-                <ChatFunctionTip type="visionModel" />
-              </Flex>
-            </Box>
-            <Box>
-              <HStack>
+            <Flex alignItems={'center'}>
+              <HStack flex={'0 0 132px'} gap={1}>
                 <FormLabel fontWeight={'medium'}>{t('app:upload_file_max_amount')}</FormLabel>
                 <QuestionTip label={t('app:upload_file_max_amount_tip')} />
               </HStack>
 
-              <Box mt={5}>
-                <MySlider
-                  markList={[
-                    { label: '1', value: 1 },
-                    { label: `${maxSelectFiles}`, value: maxSelectFiles }
-                  ]}
-                  width={'100%'}
+              <Box flex={'1 0 0'}>
+                <InputSlider
                   min={1}
                   max={maxSelectFiles}
                   step={1}
-                  value={maxFiles ?? 5}
-                  onChange={(e) => {
-                    setValue('maxFiles', e);
+                  value={maxFiles}
+                  onChange={(val) => {
+                    setValue('maxFiles', val);
                   }}
                 />
               </Box>
+            </Flex>
+            <Box alignItems={'flex-start'}>
+              <FormLabel fontWeight={'medium'}>{t('app:upload_file_extension_types')}</FormLabel>
+              <Stack
+                w="full"
+                spacing={3}
+                alignItems={'flex-start'}
+                border="1px solid"
+                borderColor="myGray.200"
+                borderRadius="md"
+                p={4}
+                mt={2}
+              >
+                <FileTypeSelectorPanel
+                  value={{
+                    canSelectFile: canSelectFile,
+                    canSelectImg: canSelectImg,
+                    canSelectVideo: canSelectVideo,
+                    canSelectAudio: canSelectAudio,
+                    canSelectCustomFileExtension: canSelectCustomFileExtension,
+                    customFileExtensionList: customFileExtensionList
+                  }}
+                  onChange={(newValue) => {
+                    Object.entries(newValue).forEach(([key, val]) => {
+                      setValue(key as any, val);
+                    });
+                  }}
+                />
+              </Stack>
             </Box>
+          </>
+        )}
+
+        {inputType === VariableInputEnum.datasetSelect && (
+          <>
+            <Flex w={'full'} alignItems={'center'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:dataset_select')}
+              </FormLabel>
+              <Button
+                variant={'primaryOutline'}
+                size={'md'}
+                flex={1}
+                onClick={onOpenDatasetSelect}
+                leftIcon={<MyIcon name={'core/dataset/datasetLightSmall'} w={4} />}
+              >
+                {t('chat:select')}
+              </Button>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 132px'} />
+              <Flex flex={1} gap={2} flexDirection={'column'} alignItems={'stretch'}>
+                <Grid gridTemplateColumns={'1fr 1fr'} gap={'12px'}>
+                  {datasetOptions.map((item: SelectedDatasetType) => (
+                    <Flex
+                      key={item.datasetId}
+                      alignItems={'center'}
+                      gap={2}
+                      p={2}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                      borderRadius={'md'}
+                    >
+                      <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" />
+                      <Box fontSize={'sm'}>{item.name}</Box>
+                    </Flex>
+                  ))}
+                </Grid>
+              </Flex>
+            </Flex>
+            {isOpenDatasetSelect && (
+              <DatasetSelectModal
+                defaultSelectedDatasets={datasetOptions.map((item: SelectedDatasetType) => ({
+                  datasetId: item.datasetId,
+                  name: item.name,
+                  avatar: item.avatar
+                }))}
+                onChange={(selectedDatasets) => {
+                  const newDatasetList = selectedDatasets.map((item: SelectedDatasetType) => ({
+                    name: item.name,
+                    datasetId: item.datasetId,
+                    avatar: item.avatar
+                  }));
+                  setValue('datasetOptions', newDatasetList);
+                }}
+                onClose={onCloseDatasetSelect}
+              />
+            )}
           </>
         )}
 
@@ -677,14 +1047,17 @@ const InputTypeConfig = ({
         )}
       </Flex>
 
-      <Flex justify={'flex-end'} gap={3} pb={8} pr={8}>
+      <Flex justify={'flex-end'} mt={4} gap={3} pb={6} pr={8}>
         <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
           {t('common:Close')}
         </Button>
         <Button
           variant={'primaryOutline'}
           fontWeight={'medium'}
-          onClick={handleSubmit((data) => onSubmitSuccess(data, 'confirm'), onSubmitError)}
+          onClick={handleSubmit(
+            (data) => onSubmitSuccess(filterValidField(data), 'confirm'),
+            onSubmitError
+          )}
           w={20}
         >
           {t('common:Confirm')}
@@ -692,7 +1065,10 @@ const InputTypeConfig = ({
         {!isEdit && (
           <Button
             fontWeight={'medium'}
-            onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
+            onClick={handleSubmit(
+              (data) => onSubmitSuccess(filterValidField(data), 'continue'),
+              onSubmitError
+            )}
             w={20}
           >
             {t('common:Continue_Adding')}

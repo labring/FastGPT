@@ -7,7 +7,11 @@ import type {
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { addLog } from '../../../../common/system/log';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -47,14 +51,40 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   node.isEntry = false;
 
   const { text } = chatValue2RuntimePrompt(query);
-  const userInputVal = (() => {
+  const rawUserInputVal: Record<string, any> = (() => {
     try {
       return JSON.parse(text);
     } catch (error) {
-      addLog.warn('formInput error', { error });
+      logger.warn('Failed to parse form input JSON', { error });
       return {};
     }
   })();
+
+  const userInputVal = Object.entries(rawUserInputVal).reduce(
+    (acc, [key, value]) => {
+      const inputConfig = userInputForms.find((form) => form.key === key);
+
+      if (inputConfig?.type === FlowNodeInputTypeEnum.password) {
+        acc[key] = anyValueDecrypt(value);
+      } else if (inputConfig?.type === FlowNodeInputTypeEnum.fileSelect) {
+        if (Array.isArray(value)) {
+          acc[key] = value.map((file: any) => {
+            if (typeof file === 'object' && file.url) {
+              return file.url;
+            }
+            return file;
+          });
+        } else {
+          acc[key] = value;
+        }
+      } else {
+        acc[key] = value;
+      }
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
 
   return {
     data: {

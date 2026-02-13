@@ -3,41 +3,41 @@ import { NextAPI } from '@/service/middleware/entry';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { type CreateAppBody, onCreateApp } from '../create';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { onCreateApp } from '../create';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
+import {
+  CreateMcpToolsBodySchema,
+  CreateMcpToolsResponseSchema,
+  type CreateMcpToolsBodyType,
+  type CreateMcpToolsResponseType
+} from '@fastgpt/global/openapi/core/app/mcpTools/api';
 
 export type createMCPToolsQuery = {};
 
-export type createMCPToolsBody = Omit<
-  CreateAppBody,
-  'type' | 'modules' | 'edges' | 'chatConfig'
-> & {
-  url: string;
-  headerSecret?: StoreSecretValueType;
-  toolList: McpToolConfigType[];
-};
-
-export type createMCPToolsResponse = {};
-
 async function handler(
-  req: ApiRequestProps<createMCPToolsBody, createMCPToolsQuery>,
-  res: ApiResponseType<createMCPToolsResponse>
-): Promise<createMCPToolsResponse> {
-  const { name, avatar, toolList, url, headerSecret = {}, parentId } = req.body;
+  req: ApiRequestProps<CreateMcpToolsBodyType>,
+  res: ApiResponseType
+): Promise<CreateMcpToolsResponseType> {
+  const {
+    name,
+    avatar,
+    toolList,
+    url,
+    headerSecret = {},
+    parentId
+  } = CreateMcpToolsBodySchema.parse(req.body);
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await checkTeamAppLimit(teamId);
+  await checkTeamAppTypeLimit({ teamId, appCheckType: 'tool' });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
@@ -48,7 +48,7 @@ async function handler(
       parentId,
       teamId,
       tmbId,
-      type: AppTypeEnum.toolSet,
+      type: AppTypeEnum.mcpToolSet,
       modules: [
         getMCPToolSetRuntimeNode({
           url,
@@ -66,14 +66,14 @@ async function handler(
   });
 
   pushTrack.createApp({
-    type: AppTypeEnum.toolSet,
+    type: AppTypeEnum.mcpToolSet,
     appId: mcpToolsId,
     uid: userId,
     teamId,
     tmbId
   });
 
-  return {};
+  return CreateMcpToolsResponseSchema.parse(mcpToolsId);
 }
 
 export default NextAPI(handler);

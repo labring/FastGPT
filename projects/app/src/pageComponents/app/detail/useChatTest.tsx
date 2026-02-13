@@ -15,7 +15,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -107,7 +107,7 @@ export const useChatTest = ({
   ]);
 
   // init chat data
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });
@@ -129,39 +129,39 @@ export const useChatTest = ({
 
   // 新增变量时候，自动加入默认值
   useEffect(() => {
-    const values = variablesForm.getValues();
-    if (values.variables && variableList) {
+    if (variableList) {
       variableList.forEach((item) => {
         const val = variablesForm.getValues(`variables.${item.key}`);
         if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-          values.variables[item.key] = item.defaultValue;
+          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
         }
       });
-
-      variablesForm.reset(values);
     }
-  }, [variableList, variablesForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variableList]);
 
-  const CustomChatContainer = useMemoizedFn(() =>
-    appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5} pb={16}>
-        <PluginRunBox
+  const CustomChatContainer = useCallback(
+    () =>
+      appDetail.type === AppTypeEnum.workflowTool ? (
+        <Box p={5} pb={16}>
+          <PluginRunBox
+            appId={appId}
+            chatId={chatId}
+            onNewChat={restartChat}
+            onStartChat={startChat}
+          />
+        </Box>
+      ) : (
+        <ChatBox
+          isReady={isReady}
           appId={appId}
           chatId={chatId}
-          onNewChat={restartChat}
+          showMarkIcon
+          chatType={ChatTypeEnum.test}
           onStartChat={startChat}
         />
-      </Box>
-    ) : (
-      <ChatBox
-        isReady={isReady}
-        appId={appId}
-        chatId={chatId}
-        showMarkIcon
-        chatType={ChatTypeEnum.test}
-        onStartChat={startChat}
-      />
-    )
+      ),
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
   );
 
   return {

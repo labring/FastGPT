@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -15,9 +15,10 @@ const ChatSliderFooter = () => {
   const { feConfigs } = useSystemStore();
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
 
+  const isAdmin = !!userInfo?.team.permission.hasManagePer;
   const isSettingPane = pane === ChatSidebarPaneEnum.SETTING;
 
   return (
@@ -26,12 +27,12 @@ const ChatSliderFooter = () => {
         <Flex alignItems="center" gap={2} borderRadius="50%" p={2}>
           <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />
           <Box className="textEllipsis" flexGrow={1} fontSize={'sm'} fontWeight={500} minW={0}>
-            {userInfo?.username}
+            {userInfo?.team?.memberName}
           </Box>
         </Flex>
       </UserAvatarPopover>
 
-      {feConfigs.isPlus && (
+      {feConfigs.isPlus && isAdmin && (
         <Flex
           _hover={{ bg: 'myGray.200' }}
           bg={isSettingPane ? 'myGray.200' : 'transparent'}

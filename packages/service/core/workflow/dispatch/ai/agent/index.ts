@@ -1,374 +1,521 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type {
-  ChatDispatchProps,
-  DispatchNodeResultType,
-  RuntimeNodeItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
-import { getLLMModel } from '../../../../ai/model';
-import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
-import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  GPTMessages2Chats,
-  chatValue2RuntimePrompt,
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  DispatchNodeResultType,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
+import { getNodeErrResponse, getHistories } from '../../utils';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ChatItemType
+} from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
   chats2GPTMessages,
-  getSystemPrompt_ChatItemType,
-  runtimePrompt2ChatsValue
+  chatValue2RuntimePrompt,
+  GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
-import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
-import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getMultiplePrompt } from './constants';
-import { filterToolResponseToPreview } from './utils';
-import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
-import { postTextCensor } from '../../../../chat/postTextCensor';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
+import { filterMemoryMessages } from '../utils';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import type { DispatchPlanAgentResponse } from './sub/plan';
+import { dispatchPlanAgent } from './sub/plan';
+
+import { formatFileInput } from './sub/file/utils';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { masterCall } from './master/call';
+import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import { getSubapps } from './utils';
+import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
+import type { PlanAgentParamsType } from './sub/plan/constants';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getLogger, LogCategories } from '../../../../../common/logger';
+
+export type DispatchAgentModuleProps = ModuleDispatchProps<{
+  [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.userChatInput]: string;
+
+  [NodeInputKeyEnum.fileUrlList]?: string[];
+  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiSystemPrompt]: string;
+
+  [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+
+  // Knowledge base search configuration
+  [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
+/* Agent 调度流程
+  内置工具：文件解析、Plan 模式
+  1. 主动工具 + 内置工具，如果触发 plan，则进行阶段调度模式。不触发，则相当于纯 toolcall 模式。
+  2. 阶段调用模式：逐步完成任务，可以二次继续拆解任务。
+*/
+
+export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
+  const MAX_PLAN_ITERATIONS = 10; // 最大规划轮次
+
   let {
-    node: { nodeId, name, isEntry, version, inputs },
-    runtimeNodes,
-    runtimeEdges,
+    checkIsStopping,
+    node: { nodeId, inputs },
+    lang,
     histories,
-    query,
+    query, // 最新一轮对话输入的值
     requestOrigin,
     chatConfig,
     lastInteractive,
-    runningUserInfo,
-    externalProvider,
-    usageId,
+    runningAppInfo,
+    stream,
+    workflowStreamResponse,
+    usagePush,
     params: {
       model,
       systemPrompt,
-      userChatInput,
+      userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
-      aiChatVision,
-      aiChatReasoning
+      agent_selectedTools: selectedTools = [],
+      // Dataset search configuration
+      agent_datasetParams: datasetParams
     }
   } = props;
+  const chatHistories = getHistories(history, histories);
+  const historiesMessages = chats2GPTMessages({
+    messages: chatHistories,
+    reserveId: false,
+    reserveTool: true
+  });
+
+  let planIterationCount = 0; // 规划迭代计数器
+
+  const masterMessagesKey = `masterMessages-${nodeId}`;
+  const planMessagesKey = `planMessages-${nodeId}`;
+  const agentPlanKey = `agentPlan-${nodeId}`;
+  const planBufferKey = `planBuffer-${nodeId}`;
+
+  // Get history messages
+
+  const assistantResponses: AIChatItemValueItemType[] = [];
+  const nodeResponses: ChatHistoryItemResType[] = [];
 
   try {
-    const toolModel = getLLMModel(model);
-    const useVision = aiChatVision && toolModel.vision;
-    const chatHistories = getHistories(history, histories);
-
-    props.params.aiChatVision = aiChatVision && toolModel.vision;
-    props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    // Get files
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
+    const { filesMap, prompt: fileInputPrompt } = formatFileInput({
+      fileUrls: fileLinks,
+      requestOrigin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      histories: chatHistories
+    });
 
-    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
+    // 交互模式进来的话，这个值才是交互输入的值
+    const queryInput = chatValue2RuntimePrompt(query).text;
+    const formatUserChatInput = fileInputPrompt
+      ? `${fileInputPrompt}\n\n${userChatInput}`
+      : userChatInput;
 
-    // Gets the module to which the tool is connected
-    const toolNodes = toolNodeIds
-      .map((nodeId) => {
-        const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
-        return tool;
-      })
-      .filter(Boolean)
-      .map<ToolNodeItemType>((tool) => {
-        const toolParams: FlowNodeInputItemType[] = [];
-        // Raw json schema(MCP tool)
-        let jsonSchema: JSONSchemaInputType | undefined = undefined;
-        tool?.inputs.forEach((input) => {
-          if (input.toolDescription) {
-            toolParams.push(input);
-          }
-
-          if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
-            const value = input.value as McpToolDataType;
-            jsonSchema = value.inputSchema;
-          }
-        });
-
+    let {
+      masterMessages = historiesMessages.concat({
+        role: 'user',
+        content: formatUserChatInput
+      }),
+      planHistoryMessages,
+      agentPlan,
+      planBuffer
+    } = (() => {
+      const lastHistory = chatHistories[chatHistories.length - 1];
+      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
         return {
-          ...(tool as RuntimeNodeItemType),
-          toolParams,
-          jsonSchema
+          masterMessages: lastHistory.memories?.[masterMessagesKey] as ChatCompletionMessageParam[],
+          planHistoryMessages: lastHistory.memories?.[
+            planMessagesKey
+          ] as ChatCompletionMessageParam[],
+          agentPlan: lastHistory.memories?.[agentPlanKey] as AgentPlanType,
+          planBuffer: lastHistory.memories?.[planBufferKey] as PlanAgentParamsType
+        };
+      }
+      return {
+        masterMessages: undefined,
+        planHistoryMessages: undefined,
+        agentPlan: undefined,
+        planBuffer: undefined
+      };
+    })();
+
+    // Get sub apps
+    const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
+      {
+        tools: selectedTools,
+        tmbId: runningAppInfo.tmbId,
+        lang,
+        getPlanTool: true,
+        hasDataset: datasetParams && datasetParams.datasets.length > 0,
+        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile
+      }
+    );
+
+    const getSubAppInfo = (id: string) => {
+      // diff user tool id and system tool id by prefix 't'
+      const formatId = id.startsWith('t') ? id.slice(1) : id;
+
+      const userToolNode = agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
+      if (userToolNode) {
+        return {
+          name: userToolNode.name || '',
+          avatar: userToolNode.avatar || '',
+          toolDescription: userToolNode.toolDescription || userToolNode.name || ''
+        };
+      }
+
+      const systemToolNode = systemSubInfo[id] || systemSubInfo[formatId];
+      const systemDisplayName = parseI18nString(systemToolNode?.name, lang);
+
+      return {
+        name: systemDisplayName || '',
+        avatar: systemToolNode?.avatar || '',
+        toolDescription: systemToolNode?.toolDescription || systemDisplayName || ''
+      };
+    };
+    const getSubApp = (id: string) => {
+      const formatId = id.slice(1);
+      return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
+    };
+
+    const formatedSystemPrompt = parseUserSystemPrompt({
+      userSystemPrompt: systemPrompt,
+      selectedDataset: datasetParams?.datasets
+    });
+
+    /* ===== AI Start ===== */
+    const parsePlanCallResult = (result: DispatchPlanAgentResponse) => {
+      let { askInteractive, plan, planBuffer, completeMessages, usages, nodeResponse } = result;
+      // 调试代码
+      // if (plan) {
+      //   plan.steps = plan.steps.slice(0, 1);
+      // }
+      nodeResponses.push(nodeResponse);
+      usagePush(usages);
+
+      // SSE response
+      // 只有当 plan 存在且有步骤时才推送
+      if (plan && plan.steps.length > 0) {
+        const formatPlan = {
+          ...plan,
+          steps: plan.steps.map((item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description
+          }))
+        };
+        assistantResponses.push({
+          plan: formatPlan
+        });
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.plan,
+          data: { plan: formatPlan }
+        });
+      }
+
+      return {
+        completeMessages,
+        askInteractive,
+        plan,
+        planBuffer
+      };
+    };
+    const planCallFn = async () => {
+      // Plan: 2,4 场景
+      if (!lastInteractive || !planHistoryMessages || !planBuffer) {
+        getLogger(LogCategories.MODULE.AI.AGENT).error('Plan 结构逻辑错误');
+        return Promise.reject('逻辑错误');
+      }
+      const result = await dispatchPlanAgent({
+        checkIsStopping,
+        completionTools: agentCompletionTools,
+        getSubAppInfo,
+        systemPrompt: formatedSystemPrompt,
+        model,
+        stream,
+
+        mode: 'interactive', // 初始规划模式
+        interactive: lastInteractive,
+        planMessages: planHistoryMessages || [],
+        queryInput,
+        ...planBuffer
+      });
+      const { completeMessages, askInteractive, plan } = parsePlanCallResult(result);
+
+      planHistoryMessages = undefined;
+      agentPlan = plan;
+
+      if (askInteractive) {
+        return {
+          [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+          [DispatchNodeResponseKeyEnum.memories]: {
+            [masterMessagesKey]: masterMessages,
+            [planMessagesKey]: filterMemoryMessages(completeMessages),
+            [agentPlanKey]: agentPlan,
+            [planBufferKey]: planBuffer
+          },
+          [DispatchNodeResponseKeyEnum.interactive]: askInteractive
+        };
+      }
+    };
+    const continuePlanCallFn = async () => {
+      // plan: 5 场景
+      if (!agentPlan) return;
+
+      getLogger(LogCategories.MODULE.AI.AGENT).debug(
+        `All steps completed, check if need continue planning`
+      );
+      const stepsResponse = agentPlan.steps.map((step) => {
+        const stepResponse = assistantResponses
+          .filter((item) => item.stepId === step.id)
+          ?.map((item) => item.text?.content)
+          .join('\n');
+        return {
+          title: step.title,
+          response: stepResponse
         };
       });
 
-    // Check interactive entry
-    props.node.isEntry = false;
-    const hasReadFilesTool = toolNodes.some(
-      (item) => item.flowNodeType === FlowNodeTypeEnum.readFiles
-    );
+      try {
+        const result = await dispatchPlanAgent({
+          checkIsStopping,
+          completionTools: agentCompletionTools,
+          getSubAppInfo,
+          systemPrompt: formatedSystemPrompt,
+          model,
+          stream,
+          mode: 'continue', // 继续规划模式
+          query: getContinuePlanQuery({
+            task: agentPlan.task,
+            description: agentPlan.description,
+            background: agentPlan.background,
+            response: JSON.stringify(stepsResponse)
+          }),
+          task: agentPlan.task,
+          description: agentPlan.description,
+          background: agentPlan.background
+        });
 
-    const globalFiles = chatValue2RuntimePrompt(query).files;
-    const { documentQuoteText, userFiles } = await getMultiInput({
-      runningUserInfo,
-      histories: chatHistories,
-      requestOrigin,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-      fileLinks,
-      inputFiles: globalFiles,
-      hasReadFilesTool,
-      usageId
-    });
+        const { plan: continuePlan } = parsePlanCallResult(result);
 
-    const concatenateSystemPrompt = [
-      toolModel.defaultSystemChatPrompt,
-      systemPrompt,
-      documentQuoteText
-        ? replaceVariable(getDocumentQuotePrompt(version), {
-            quote: documentQuoteText
-          })
-        : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n===---===---===\n\n');
-
-    const messages: ChatItemType[] = (() => {
-      const value: ChatItemType[] = [
-        ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
-        // Add file input prompt to histories
-        ...chatHistories.map((item) => {
-          if (item.obj === ChatRoleEnum.Human) {
-            return {
-              ...item,
-              value: toolCallMessagesAdapt({
-                userInput: item.value,
-                skip: !hasReadFilesTool
-              })
-            };
-          }
-          return item;
-        }),
-        {
-          obj: ChatRoleEnum.Human,
-          value: toolCallMessagesAdapt({
-            skip: !hasReadFilesTool,
-            userInput: runtimePrompt2ChatsValue({
-              text: userChatInput,
-              files: userFiles
-            })
-          })
+        if (continuePlan && continuePlan.steps.length > 0) {
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            `Continue planning: adding ${continuePlan.steps.length} new steps， ${continuePlan.steps.map((item) => item.title)}`
+          );
+          agentPlan.steps.push(...continuePlan.steps);
+        } else {
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            `Continue planning: no new steps, planning complete`
+          );
+          agentPlan = undefined;
         }
-      ];
-      if (lastInteractive && isEntry) {
-        return value.slice(0, -2);
+      } catch (error) {
+        getLogger(LogCategories.MODULE.AI.AGENT).error(`Continue planning failed`, { error });
+        // 规划失败时，清空 agentPlan，让任务正常结束
+        agentPlan = undefined;
+        return undefined;
       }
-      return value;
-    })();
+    };
 
-    // censor model and system key
-    if (toolModel.censor && !externalProvider.openaiAccount?.key) {
-      await postTextCensor({
-        text: `${systemPrompt}
-          ${userChatInput}
-        `
-      });
+    // 执行 Plan
+    if (planHistoryMessages?.length) {
+      const result = await planCallFn();
+      // 有 result 代表 plan 有交互响应（ask）
+      if (result) return result;
     }
 
-    const {
-      toolWorkflowInteractiveResponse,
-      dispatchFlowResponse, // tool flow response
-      toolCallInputTokens,
-      toolCallOutputTokens,
-      completeMessages = [], // The actual message sent to AI(just save text)
-      assistantResponses = [], // FastGPT system store assistant.value response
-      runTimes,
-      finish_reason
-    } = await (async () => {
-      const adaptMessages = chats2GPTMessages({
-        messages,
-        reserveId: false
-        // reserveTool: !!toolModel.toolChoice
-      });
-      const requestParams = {
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        messages: adaptMessages,
-        interactiveEntryToolParams: lastInteractive?.toolParams
-      };
+    while (true) {
+      if (checkIsStopping()) {
+        break;
+      }
 
-      return runToolCall({
-        ...props,
-        ...requestParams,
-        maxRunToolTimes: 100
-      });
-    })();
+      if (agentPlan) {
+        while (!checkIsStopping() && agentPlan.steps.filter((item) => !item.response).length) {
+          for await (const step of agentPlan.steps) {
+            if (checkIsStopping()) {
+              break;
+            }
+            if (step.response) continue;
+            getLogger(LogCategories.MODULE.AI.AGENT).debug(`Step call: ${step.id}`, step);
+            assistantResponses.push({
+              stepTitle: {
+                stepId: step.id,
+                title: step.title
+              }
+            });
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.stepTitle,
+              data: {
+                stepTitle: {
+                  stepId: step.id,
+                  title: step.title
+                }
+              }
+            });
 
-    const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
-      model,
-      inputTokens: toolCallInputTokens,
-      outputTokens: toolCallOutputTokens
-    });
-    const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
+            // Step call
+            const result = await masterCall({
+              ...props,
+              systemPrompt: formatedSystemPrompt,
+              masterMessages: [],
+              planMessages: [],
+              getSubAppInfo,
+              getSubApp,
+              completionTools: agentCompletionTools,
+              steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
+              step,
+              filesMap
+            });
+            nodeResponses.push(result.nodeResponse);
 
-    const toolUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
-    const toolTotalPoints = toolUsages.reduce((sum, item) => sum + item.totalPoints, 0);
+            // Merge response
+            const assistantResponse = GPTMessages2Chats({
+              messages: result.assistantMessages,
+              reserveTool: true,
+              getToolInfo: getSubAppInfo
+            })
+              .map((item) => item.value)
+              .flat()
+              .map((item) => ({
+                ...item,
+                stepId: step.id
+              }));
+            assistantResponses.push(...assistantResponse);
 
-    // concat tool usage
-    const totalPointsUsage = modelUsage + toolTotalPoints;
+            step.response = result.stepResponse?.rawResponse;
+            step.summary = result.stepResponse?.summary;
+          }
+        }
 
-    const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+        if (checkIsStopping()) {
+          break;
+        }
 
+        // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
+        const stepsResponse = agentPlan.steps.map((step) => {
+          const stepResponse = assistantResponses
+            .filter((item) => item.stepId === step.id)
+            ?.map((item) => item.text?.content)
+            .join('\n');
+          return {
+            title: step.title,
+            response: stepResponse
+          };
+        });
+        // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
+        const lastToolIndex = masterMessages.findLastIndex((item) => item.role === 'tool');
+        if (lastToolIndex !== -1) {
+          masterMessages[lastToolIndex].content = JSON.stringify(stepsResponse);
+        }
+        planIterationCount++;
+
+        if (planIterationCount >= MAX_PLAN_ITERATIONS) {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(
+            `Max plan iteration reached: ${MAX_PLAN_ITERATIONS}, stopping`
+          );
+          agentPlan = undefined; // 强制结束规划
+        } else {
+          const continueResult = await continuePlanCallFn();
+
+          // 如果有交互需求（Ask），直接返回
+          if (continueResult) return continueResult;
+        }
+
+        // 如果 agentPlan 被清空（返回空步骤数组），说明规划完成，跳出 agentPlan 分支
+        // 如果 agentPlan 有新步骤，继续循环执行
+        if (!agentPlan) {
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            `Planning complete, hand over to master agent`
+          );
+          continue;
+        }
+      } else {
+        getLogger(LogCategories.MODULE.AI.AGENT).debug(`Start master agent`);
+
+        const result = await masterCall({
+          ...props,
+          masterMessages,
+          planMessages: planHistoryMessages || [],
+          systemPrompt: formatedSystemPrompt,
+          getSubAppInfo,
+          getSubApp,
+          completionTools: agentCompletionTools,
+          filesMap
+        });
+        nodeResponses.push(result.nodeResponse);
+        masterMessages = result.masterMessages;
+
+        // Merge assistant responses
+        const assistantResponse = GPTMessages2Chats({
+          messages: result.assistantMessages,
+          reserveTool: true,
+          getToolInfo: getSubAppInfo
+        })
+          .map((item) => item.value as AIChatItemValueItemType[])
+          .flat();
+        assistantResponses.push(...assistantResponse);
+
+        // 触发了 plan
+        if (result.planResponse) {
+          const { completeMessages, askInteractive, plan, planBuffer } = parsePlanCallResult(
+            result.planResponse
+          );
+
+          // 收集用户信息，结束调用，等待用户反馈
+          if (askInteractive) {
+            return {
+              [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+              [DispatchNodeResponseKeyEnum.memories]: {
+                [masterMessagesKey]: masterMessages,
+                [planMessagesKey]: filterMemoryMessages(completeMessages),
+                [agentPlanKey]: plan,
+                [planBufferKey]: planBuffer
+              },
+              [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
+              [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+            };
+          }
+
+          // 生成了 plan，进入 stepCall 模式
+          if (plan) {
+            agentPlan = plan;
+            continue;
+          }
+          break;
+        }
+
+        // 没有触发 plan，也就是最基本的工具调用。直接结束任务。
+        break;
+      }
+    }
+
+    // 任务结束
     return {
-      data: {
-        [NodeOutputKeyEnum.answerText]: previewAssistantResponses
-          .filter((item) => item.text?.content)
-          .map((item) => item.text?.content || '')
-          .join('')
+      [DispatchNodeResponseKeyEnum.memories]: {
+        [masterMessagesKey]: undefined,
+        [agentPlanKey]: undefined,
+        [planMessagesKey]: undefined,
+        [planBufferKey]: undefined
       },
-      [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
-      [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        // 展示的积分消耗
-        totalPoints: totalPointsUsage,
-        toolCallInputTokens: toolCallInputTokens,
-        toolCallOutputTokens: toolCallOutputTokens,
-        childTotalPoints: toolTotalPoints,
-        model: modelName,
-        query: userChatInput,
-        historyPreview: getHistoryPreview(
-          GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-          10000,
-          useVision
-        ),
-        toolDetail: dispatchFlowResponse.map((item) => item.flowResponses).flat(),
-        mergeSignId: nodeId,
-        finishReason: finish_reason
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        // 模型本身的积分消耗
-        {
-          moduleName: name,
-          model: modelName,
-          totalPoints: modelUsage,
-          inputTokens: toolCallInputTokens,
-          outputTokens: toolCallOutputTokens
-        },
-        // 工具的消耗
-        ...toolUsages
-      ],
-      [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
+      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
     };
   } catch (error) {
     return getNodeErrResponse({ error });
   }
-};
-
-const getMultiInput = async ({
-  runningUserInfo,
-  histories,
-  fileLinks,
-  requestOrigin,
-  maxFiles,
-  customPdfParse,
-  inputFiles,
-  hasReadFilesTool,
-  usageId
-}: {
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  histories: ChatItemType[];
-  fileLinks?: string[];
-  requestOrigin?: string;
-  maxFiles: number;
-  customPdfParse?: boolean;
-  inputFiles: UserChatItemValueItemType['file'][];
-  hasReadFilesTool: boolean;
-  usageId?: string;
-}) => {
-  // Not file quote
-  if (!fileLinks || hasReadFilesTool) {
-    return {
-      documentQuoteText: '',
-      userFiles: inputFiles
-    };
-  }
-
-  const filesFromHistories = getHistoryFileLinks(histories);
-  const urls = [...fileLinks, ...filesFromHistories];
-
-  if (urls.length === 0) {
-    return {
-      documentQuoteText: '',
-      userFiles: []
-    };
-  }
-
-  // Get files from histories
-  const { text } = await getFileContentFromLinks({
-    // Concat fileUrlList and filesFromHistories; remove not supported files
-    urls,
-    requestOrigin,
-    maxFiles,
-    customPdfParse,
-    usageId,
-    teamId: runningUserInfo.teamId,
-    tmbId: runningUserInfo.tmbId
-  });
-
-  return {
-    documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
-  };
-};
-
-/*
-Tool call， auth add file prompt to question。
-Guide the LLM to call tool.
-*/
-const toolCallMessagesAdapt = ({
-  userInput,
-  skip
-}: {
-  userInput: UserChatItemValueItemType[];
-  skip?: boolean;
-}): UserChatItemValueItemType[] => {
-  if (skip) return userInput;
-
-  const files = userInput.filter((item) => item.type === 'file');
-
-  if (files.length > 0) {
-    const filesCount = files.filter((file) => file.file?.type === 'file').length;
-    const imgCount = files.filter((file) => file.file?.type === 'image').length;
-
-    if (userInput.some((item) => item.type === 'text')) {
-      return userInput.map((item) => {
-        if (item.type === 'text') {
-          const text = item.text?.content || '';
-
-          return {
-            ...item,
-            text: {
-              content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
-            }
-          };
-        }
-        return item;
-      });
-    }
-
-    // Every input is a file
-    return [
-      {
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
-        }
-      }
-    ];
-  }
-
-  return userInput;
 };

@@ -1,8 +1,11 @@
 import { type UrlFetchParams, type UrlFetchResponse } from '@fastgpt/global/common/file/api';
 import * as cheerio from 'cheerio';
-import axios from 'axios';
+import { axios } from '../api/axios';
 import { htmlToMarkdown } from './utils';
 import { isInternalAddress } from '../system/utils';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.ERROR);
 
 export const cheerioToHtml = ({
   fetchUrl,
@@ -76,7 +79,7 @@ export const urlsFetch = async ({
 
   const response = await Promise.all(
     urlList.map(async (url) => {
-      const isInternal = isInternalAddress(url);
+      const isInternal = await isInternalAddress(url);
       if (isInternal) {
         return {
           url,
@@ -107,7 +110,7 @@ export const urlsFetch = async ({
           selector: usedSelector
         };
       } catch (error) {
-        console.log(error, 'fetch error');
+        logger.warn('Failed to fetch url content', { url, error });
 
         return {
           url,

@@ -13,12 +13,12 @@ import {
   TabList,
   Tabs
 } from '@chakra-ui/react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { useMemo } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
@@ -41,11 +41,11 @@ const ChatFavouriteApp = () => {
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const wideLogoUrl = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.wideLogoUrl);
-  const homeTabTitle = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.homeTabTitle);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const wideLogoUrl = useContextSelector(ChatPageContext, (v) => v.chatSettings?.wideLogoUrl);
+  const homeTabTitle = useContextSelector(ChatPageContext, (v) => v.chatSettings?.homeTabTitle);
 
-  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
+  const tags = useContextSelector(ChatPageContext, (v) => v.chatSettings?.favouriteTags || []);
   const tagCache = useMemo(() => {
     return tags.reduce(
       (acc, tag) => {
@@ -76,7 +76,7 @@ const ChatFavouriteApp = () => {
   const selectedTag = watch('tag');
 
   // load all favourites for checked state and saving
-  const { loading: isSearching, data: favouriteApps = [] } = useRequest2(
+  const { loading: isSearching, data: favouriteApps = [] } = useRequest(
     async () => {
       return await getFavouriteApps({
         name: searchAppName,

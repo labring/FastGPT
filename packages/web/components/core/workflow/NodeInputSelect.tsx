@@ -51,61 +51,56 @@ const NodeInputSelect = ({
     {
       type: FlowNodeInputTypeEnum.textarea,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.textarea].icon,
-
       title: t('common:core.workflow.inputType.Manual input')
     },
     {
       type: FlowNodeInputTypeEnum.JSONEditor,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.JSONEditor].icon,
-
       title: t('common:core.workflow.inputType.Manual input')
     },
     {
       type: FlowNodeInputTypeEnum.addInputParam,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.addInputParam].icon,
-
       title: t('common:core.workflow.inputType.dynamicTargetInput')
     },
     {
       type: FlowNodeInputTypeEnum.selectLLMModel,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.selectLLMModel].icon,
-
       title: t('common:core.workflow.inputType.Manual select')
     },
     {
       type: FlowNodeInputTypeEnum.settingLLMModel,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.settingLLMModel].icon,
-
       title: t('common:core.workflow.inputType.Manual select')
     },
     {
       type: FlowNodeInputTypeEnum.selectDataset,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.selectDataset].icon,
-
       title: t('common:core.workflow.inputType.Manual select')
     },
     {
       type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.selectDatasetParamsModal].icon,
-
       title: t('common:core.workflow.inputType.Manual select')
     },
     {
       type: FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.settingDatasetQuotePrompt].icon,
-
       title: t('common:core.workflow.inputType.Manual input')
     },
     {
       type: FlowNodeInputTypeEnum.hidden,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.hidden].icon,
-
       title: t('common:core.workflow.inputType.Manual input')
     },
     {
       type: FlowNodeInputTypeEnum.custom,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.custom].icon,
-
+      title: t('common:core.workflow.inputType.Manual input')
+    },
+    {
+      type: FlowNodeInputTypeEnum.fileSelect,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.fileSelect].icon,
       title: t('common:core.workflow.inputType.Manual input')
     }
   ]);
@@ -122,7 +117,7 @@ const NodeInputSelect = ({
           onChange(input.type);
         }
       })),
-    [renderType]
+    [onChange, renderType]
   );
 
   const filterMenuList = useMemo(

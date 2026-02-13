@@ -23,10 +23,10 @@ import {
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -54,13 +54,26 @@ const LabelStyles: BoxProps = {
   mr: 5
 };
 
-export type AIChatSettingsModalProps = {};
+export type AIChatSettingsModalProps = {
+  showMaxToken?: boolean;
+  showTemperature?: boolean;
+  showTopP?: boolean;
+  showStopSign?: boolean;
+  showResponseFormat?: boolean;
+  showReasoning?: boolean;
+};
 
 const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = []
+  llmModels = [],
+  showMaxToken = true,
+  showTemperature = true,
+  showTopP = true,
+  showStopSign = true,
+  showResponseFormat = true,
+  showReasoning = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -90,17 +103,15 @@ const AIChatSettingsModal = ({
   const llmSupportVision = !!selectedModel?.vision;
   const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
   const llmSupportReasoning = !!selectedModel?.reasoning;
-
-  const topP = watch(NodeInputKeyEnum.aiChatTopP);
   const llmSupportTopP = !!selectedModel?.showTopP;
-
-  const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
   const llmSupportStopSign = !!selectedModel?.showStopSign;
-
-  const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
-  const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
   const llmSupportResponseFormat =
     !!selectedModel?.responseFormatList && selectedModel?.responseFormatList.length > 0;
+
+  const topP = watch(NodeInputKeyEnum.aiChatTopP);
+  const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
+  const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
+  const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -250,32 +261,34 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        <Flex {...FlexItemStyles}>
-          <Box {...LabelStyles}>
-            <Box>{t('app:max_tokens')}</Box>
-            <Switch
-              isChecked={maxToken !== undefined}
-              size={'sm'}
-              onChange={(e) => {
-                setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
-              }}
-            />
-          </Box>
-          <Box flex={'1 0 0'}>
-            <InputSlider
-              min={0}
-              max={tokenLimit}
-              step={200}
-              isDisabled={maxToken === undefined}
-              value={maxToken}
-              onChange={(val) => {
-                setValue(NodeInputKeyEnum.aiChatMaxToken, val);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        {llmSupportTemperature && (
+        {showMaxToken && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Box>{t('app:max_tokens')}</Box>
+              <Switch
+                isChecked={maxToken !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <InputSlider
+                min={0}
+                max={tokenLimit}
+                step={200}
+                isDisabled={maxToken === undefined}
+                value={maxToken}
+                onChange={(val) => {
+                  setValue(NodeInputKeyEnum.aiChatMaxToken, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportTemperature && showTemperature && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -305,7 +318,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportTopP && (
+        {llmSupportTopP && showTopP && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -335,7 +348,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportStopSign && (
+        {showStopSign && llmSupportStopSign && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -360,7 +373,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportResponseFormat && selectedModel?.responseFormatList && (
+        {showResponseFormat && llmSupportResponseFormat && selectedModel?.responseFormatList && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
@@ -393,10 +406,13 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {/* Json schema */}
-        {responseFormat === 'json_schema' && (
+        {showResponseFormat && responseFormat === 'json_schema' && (
           <Flex {...FlexItemStyles} h="auto">
             <Box {...LabelStyles}>
-              <Flex alignItems={'center'}>JSON Schema</Flex>
+              <Flex alignItems={'center'}>
+                <Box>JSON Schema</Box>
+                <QuestionTip label={t('app:json_schema_tip')} />
+              </Flex>
             </Box>
             <Box flex={'1 0 0'}>
               <JsonEditor
@@ -409,7 +425,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportReasoning && (
+        {llmSupportReasoning && showReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>

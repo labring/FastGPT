@@ -20,7 +20,8 @@ const prefixMap: Record<string, string> = {
   '/docs/FAQ': '/docs/faq',
   '/docs/guide': '/docs/introduction/guide',
   '/docs/shopping_cart': '/docs/introduction/shopping_cart',
-  '/docs/agreement': '/docs/protocol'
+  '/docs/agreement': '/docs/protocol',
+  '/docs/introduction/development/openapi': '/docs/openapi'
 };
 
 const fallbackRedirect = '/docs/introduction';

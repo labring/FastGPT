@@ -1,7 +1,9 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import json5 from 'json5';
+import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 
 /* 
   Count response max token
@@ -18,7 +20,7 @@ export const computedMaxToken = ({
   if (maxToken === undefined) return;
 
   maxToken = Math.min(maxToken, model.maxResponse);
-  return Math.max(maxToken, min || 0);
+  return Math.max(maxToken, min || 1);
 };
 
 // FastGPT temperature range: [0,10], ai temperature:[0,2],{0,1]……
@@ -71,6 +73,7 @@ export const parseLLMStreamResponse = () => {
   let buffer_usage: CompletionUsage = getLLMDefaultUsage();
   let buffer_reasoningContent = '';
   let buffer_content = '';
+  let error: any = undefined;
 
   /* 
     parseThinkTag - 只控制是否主动解析 <think></think>，如果接口已经解析了，则不再解析。
@@ -82,6 +85,7 @@ export const parseLLMStreamResponse = () => {
     retainDatasetCite = true
   }: {
     part: {
+      error?: any;
       choices: {
         delta: {
           content?: string | null;
@@ -94,6 +98,7 @@ export const parseLLMStreamResponse = () => {
     parseThinkTag?: boolean;
     retainDatasetCite?: boolean;
   }): {
+    error?: any;
     reasoningContent: string;
     content: string; // 原始内容，不去掉 cite
     responseContent: string; // 响应的内容，会去掉 cite
@@ -295,11 +300,14 @@ export const parseLLMStreamResponse = () => {
     buffer_reasoningContent += data.reasoningContent;
     buffer_content += data.content;
 
+    error = part.error || error;
+
     return data;
   };
 
   const getResponseData = () => {
     return {
+      error,
       finish_reason: buffer_finishReason,
       usage: buffer_usage,
       reasoningContent: buffer_reasoningContent,
@@ -310,10 +318,22 @@ export const parseLLMStreamResponse = () => {
   const updateFinishReason = (finishReason: CompletionFinishReason) => {
     buffer_finishReason = finishReason;
   };
+  const updateError = (err: any) => {
+    error = err;
+  };
 
   return {
     parsePart,
     getResponseData,
-    updateFinishReason
+    updateFinishReason,
+    updateError
   };
+};
+
+export const parseJsonArgs = <T = Record<string, any>>(str: string) => {
+  try {
+    return json5.parse(sliceJsonStr(str)) as T;
+  } catch {
+    return;
+  }
 };

@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -19,7 +19,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
@@ -58,7 +58,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const userInputFiles = (() => {
     if (fileUrlList) {
-      return fileUrlList.map((url) => parseUrlToFileType(url)).filter(Boolean);
+      return fileUrlList
+        .map((url) => parseUrlToFileType(url))
+        .filter((file): file is NonNullable<typeof file> => Boolean(file));
     }
     // Adapt version 4.8.13 upgrade
     return files;
@@ -131,7 +133,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       assistantResponses,
       runTimes,
       workflowInteractiveResponse,
-      system_memories
+      system_memories,
+      customFeedbacks
     } = await runWorkflow({
       ...props,
       usageId: undefined,
@@ -205,7 +208,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           totalPoints: usagePoints
         }
       ],
-      [DispatchNodeResponseKeyEnum.toolResponses]: text
+      [DispatchNodeResponseKeyEnum.toolResponses]: text,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {
     return getNodeErrResponse({ error });

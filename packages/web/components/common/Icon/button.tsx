@@ -25,7 +25,7 @@ const MyIconButton = ({
   ...props
 }: Props) => {
   return (
-    <MyTooltip label={tip}>
+    <MyTooltip label={tip} shouldWrapChildren={false}>
       <Flex
         position={'relative'}
         p={1}
@@ -54,3 +54,15 @@ const MyIconButton = ({
 };
 
 export default MyIconButton;
+
+export const MyDeleteIconButton = ({ onClick, ...props }: Omit<Props, 'icon'>) => {
+  return (
+    <MyIconButton
+      hoverBg="red.50"
+      hoverColor="red.600"
+      onClick={onClick}
+      {...props}
+      icon={'delete'}
+    />
+  );
+};

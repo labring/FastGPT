@@ -2,7 +2,7 @@ import React from 'react';
 import { appSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import { WorkflowContext } from '../WorkflowComponents/context';
+
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
@@ -15,6 +15,7 @@ import { useTranslation } from 'next-i18next';
 
 import Flow from '../WorkflowComponents/Flow';
 import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
+import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -31,12 +32,17 @@ const WorkflowEdit = () => {
     content: t('common:info.old_version_attention')
   });
 
-  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
+  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
 
   useMount(() => {
     if (!isV2Workflow) {
-      openConfirm(() => {
-        initData(JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))), true);
+      openConfirm({
+        onConfirm: () => {
+          initData(
+            JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))),
+            true
+          );
+        }
       })();
     } else {
       initData(
@@ -56,7 +62,7 @@ const WorkflowEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Flow />
       ) : (
-        <Flex flexDirection={'column'} h={'100%'} px={4} pb={4}>
+        <Flex flexDirection={'column'} h={'100%'} mt={'72px'} px={4} pb={4} bg={'white'}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Flex>

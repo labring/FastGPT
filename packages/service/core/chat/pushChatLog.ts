@@ -1,9 +1,10 @@
-import { addLog } from '../../common/system/log';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import axios from 'axios';
+import { axios } from '../../common/api/axios';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.RECORD);
 
 export type Metadata = {
   [key: string]: {
@@ -28,7 +29,8 @@ export const pushChatLog = ({
   const interval = Number(process.env.CHAT_LOG_INTERVAL);
   const url = process.env.CHAT_LOG_URL;
   if (!isNaN(interval) && interval > 0 && url) {
-    addLog.debug(`[ChatLogPush] push chat log after ${interval}ms`, {
+    logger.debug('Chat log push scheduled', {
+      intervalMs: interval,
       appId,
       chatItemIdHuman,
       chatItemIdAi
@@ -81,9 +83,6 @@ const pushChatLogInternal = async ({
 
     const chat = await MongoChat.findOne({ chatId }).lean();
 
-    // addLog.warn('ChatLogDebug', chat);
-    // addLog.warn('ChatLogDebug', { chatItemHuman, chatItemAi });
-
     if (!chat) {
       return;
     }
@@ -94,9 +93,9 @@ const pushChatLogInternal = async ({
     // Pop last two items
     const question = chatItemHuman.value
       .map((item) => {
-        if (item.type === ChatItemValueTypeEnum.text) {
+        if (item.text) {
           return item.text?.content;
-        } else if (item.type === ChatItemValueTypeEnum.file) {
+        } else if (item.file) {
           if (item.file?.type === 'image') {
             return `![${item.file?.name}](${item.file?.url})`;
           }
@@ -139,7 +138,8 @@ ${JSON.stringify(item.interactive, null, 2)}
       .join('\n');
 
     if (!question || !answer) {
-      addLog.error('[ChatLogPush] question or answer is empty', {
+      logger.error('Chat log push payload is empty', {
+        chatId,
         question: chatItemHuman.value,
         answer: chatItemAi.value
       });
@@ -178,6 +178,6 @@ ${JSON.stringify(item.interactive, null, 2)}
     };
     await axios.post(`${url}/api/chat/push`, chatLog);
   } catch (e) {
-    addLog.error('[ChatLogPush] error', e);
+    logger.error('Chat log push failed', { chatId, error: e });
   }
 };

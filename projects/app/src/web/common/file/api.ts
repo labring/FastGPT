@@ -1,34 +1,32 @@
-import { DELETE, GET, POST } from '@/web/common/api/request';
-import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
-import type { UploadPresignedURLResponse } from '@fastgpt/service/common/s3/type';
-import { type AxiosProgressEvent } from 'axios';
+import { POST, PUT } from '@/web/common/api/request';
+import type {
+  PresignChatFileGetUrlParams,
+  PresignChatFilePostUrlParams
+} from '@fastgpt/global/openapi/core/chat/controler/api';
+import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 
-export const postUploadImg = (e: UploadImgProps) => POST<string>('/common/file/uploadImage', e);
+export const getUploadAvatarPresignedUrl = (params: {
+  filename: string;
+  autoExpired?: boolean;
+}) => {
+  return POST<CreatePostPresignedUrlResult>('/common/file/presignAvatarPostUrl', params);
+};
 
-export const postUploadFiles = (
-  data: FormData,
-  onUploadProgress: (progressEvent: AxiosProgressEvent) => void
-) =>
-  POST<{
-    fileId: string;
-    previewUrl: string;
-  }>('/common/file/upload', data, {
-    timeout: 600000,
-    onUploadProgress,
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
-    }
-  });
+export const getUploadChatFilePresignedUrl = (params: PresignChatFilePostUrlParams) => {
+  return POST<CreatePostPresignedUrlResult>('/core/chat/file/presignChatFilePostUrl', params);
+};
 
-export const postS3UploadFile = (
-  postURL: string,
-  form: FormData,
-  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
-) =>
-  POST(postURL, form, {
-    timeout: 600000,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    },
-    onUploadProgress
-  });
+export const getPresignedChatFileGetUrl = (params: PresignChatFileGetUrlParams) => {
+  return POST<string>('/core/chat/file/presignChatFileGetUrl', params);
+};
+
+export const getUploadDatasetFilePresignedUrl = (params: {
+  filename: string;
+  datasetId: string;
+}) => {
+  return POST<CreatePostPresignedUrlResult>('/core/dataset/presignDatasetFilePostUrl', params);
+};
+
+export const getUploadTempFilePresignedUrl = (params: { filename: string }) => {
+  return POST<CreatePostPresignedUrlResult>('/common/file/presignTempFilePostUrl', params);
+};

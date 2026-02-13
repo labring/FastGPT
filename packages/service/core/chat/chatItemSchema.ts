@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
-import { type ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemSchemaType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
@@ -64,6 +64,10 @@ const ChatItemSchema = new Schema({
   // Field memory
   memories: Object,
   errorMsg: String,
+  durationSeconds: Number,
+  citeCollectionIds: [String],
+
+  // Feedback
   userGoodFeedback: String,
   userBadFeedback: String,
   customFeedbacks: [String],
@@ -76,25 +80,30 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  durationSeconds: Number,
-  citeCollectionIds: [String],
+  isFeedbackRead: Boolean,
+  deleteTime: {
+    type: Date,
+    default: null
+  },
 
   // @deprecated
   [DispatchNodeResponseKeyEnum.nodeResponse]: Array
 });
 
-/* 
-  delete by app; 
+/*
+  delete by app;
   delete by chat id;
-  get chat list; 
-  get chat logs; 
-  close custom feedback; 
+  close custom feedback;
 */
 ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-// timer, clear history
-ChatItemSchema.index({ teamId: 1, time: -1 });
+// Get histories
+ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
+// get chatitem list,Anchor filter
+ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
+// Query by role (AI/Human), get latest chat item, permission check
+ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
 
-// Admin charts
-ChatItemSchema.index({ obj: 1, time: -1 }, { partialFilterExpression: { obj: 'Human' } });
-
-export const MongoChatItem = getMongoModel<ChatItemType>(ChatItemCollectionName, ChatItemSchema);
+export const MongoChatItem = getMongoModel<ChatItemSchemaType>(
+  ChatItemCollectionName,
+  ChatItemSchema
+);

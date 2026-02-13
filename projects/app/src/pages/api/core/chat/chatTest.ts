@@ -19,11 +19,11 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { chatValue2RuntimePrompt, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
@@ -38,17 +38,18 @@ import {
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
-import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { getIpFromRequest } from '@fastgpt/service/common/geo';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -81,6 +82,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(edges)) {
       throw new Error('Edges is not array');
     }
+
+    const originIp = getIpFromRequest(req);
+
     const chatMessages = GPTMessages2Chats({ messages });
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
@@ -92,13 +96,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       per: ReadPermissionVal
     });
 
-    const isPlugin = app.type === AppTypeEnum.plugin;
+    if (
+      !(await teamFrequencyLimit({
+        teamId,
+        type: LimitTypeEnum.chat,
+        res
+      }))
+    ) {
+      return;
+    }
+
+    pushTrack.teamChatQPM({ teamId });
+
+    const isPlugin = app.type === AppTypeEnum.workflowTool;
     const isTool = app.type === AppTypeEnum.tool;
 
     const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
-        return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+        return serverGetWorkflowToolRunUserQuery({
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
@@ -108,7 +124,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           obj: ChatRoleEnum.Human,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: { content: 'tool test' }
             }
           ]
@@ -117,7 +132,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType;
       if (!latestHumanChat) {
-        return Promise.reject('User question is empty');
+        return Promise.reject(new UserError('User question is empty'));
       }
       return latestHumanChat;
     })();
@@ -143,11 +158,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const newHistories = concatHistories(histories, chatMessages);
-    const interactive = getLastInteractiveValue(newHistories) || undefined;
+    const interactive = getLastInteractiveValue(newHistories);
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
-      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
       variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
@@ -161,39 +176,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const { flowResponses, assistantResponses, system_memories, newVariables, durationSeconds } =
-      await dispatchWorkFlow({
-        res,
-        lang: getLocale(req),
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        usageSource: UsageSourceEnum.fastgpt,
+    const {
+      flowResponses,
+      assistantResponses,
+      system_memories,
+      newVariables,
+      durationSeconds,
+      customFeedbacks
+    } = await dispatchWorkFlow({
+      apiVersion: 'v2',
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      usageSource: UsageSourceEnum.fastgpt,
 
-        uid: tmbId,
+      uid: tmbId,
 
-        runningAppInfo: {
-          id: appId,
-          name: appName,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+      runningAppInfo: {
+        id: appId,
+        name: appName,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig,
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        version: 'v2',
-        responseDetail: true
-      });
+      chatId,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      responseDetail: true
+    });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -209,11 +230,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     // save chat
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
-
     const newTitle = isPlugin
-      ? variables.cTime ?? formatTime2YMDHM()
+      ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
@@ -221,7 +239,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+      customFeedbacks
     };
     const params = {
       chatId,
@@ -231,18 +250,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      isUpdateUseTime: false, // owner update use time
       newTitle,
       source: ChatSourceEnum.test,
       userContent: userQuestion,
       aiContent: aiResponse,
-      durationSeconds
+      durationSeconds,
+      metadata: {
+        originIp
+      }
     };
 
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({
+        interactive,
+        ...params
+      });
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
   } catch (err: any) {
     res.status(500);

@@ -32,7 +32,7 @@ description: FastGPT 系统插件设计方案
 
 1. 使用 ts-rest 作为 RPC 框架进行交互，提供 sdk 供 FastGPT 主项目调用
 2. 使用 zod 进行类型验证
-3. 用 bun 进行编译，每个工具编译为单一的 `.js` 文件，支持热插拔。
+3. 用 bun 进行编译，每个工具编译为单一的 `.pkg` 文件，支持热插拔。
 
 ## 项目结构
 
@@ -48,10 +48,11 @@ description: FastGPT 系统插件设计方案
 	- **model** 模型预设
 - **scripts** 脚本（编译、创建新工具）
 - **sdk**: SDK 定义，供外部调用，发布到了 npm
-- **src**: 运行时，express 服务
+- **runtime**: 运行时，express 服务
+- **lib**: 库文件，提供工具函数和类库
 - **test**: 测试相关
 
-系统工具的结构可以参考 [如何开发系统工具](/docs/introduction/guide/plugins/dev_system_tool)。
+系统工具的结构可以参考 [如何开发系统插件](/docs/introduction/guide/plugins/dev_system_tool)。
 
 ## 技术细节
 
@@ -78,7 +79,7 @@ zod 可以实现在运行时的类型校验，也可以提供更高级的功能�
 
 ### 使用 bun 进行打包
 
-将插件 bundle 为一个单一的 `.js` 文件是一个重要的设计。这样可以将插件发布出来直接通过网络挂载等的形式使用。
+将插件 bundle 为一个单一的 `.pkg` 文件是一个重要的设计。这样可以将插件发布出来直接通过网络挂载等的形式使用。
 
 ## 未来规划
 

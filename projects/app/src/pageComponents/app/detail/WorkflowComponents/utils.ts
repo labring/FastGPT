@@ -9,7 +9,7 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import {
   type FlowNodeItemType,
   type StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -91,18 +91,20 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
 export const getEditorVariables = ({
   nodeId,
-  nodeList,
+  systemConfigNode,
+  getNodeById,
   edges,
   appDetail,
   t
 }: {
   nodeId: string;
-  nodeList: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
   t: TFunction;
 }) => {
-  const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+  const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
 
   const nodeVariables = currentNode.inputs
@@ -119,8 +121,9 @@ export const getEditorVariables = ({
 
   const sourceNodes = getNodeAllSource({
     nodeId,
-    nodes: nodeList,
-    edges: edges,
+    systemConfigNode,
+    getNodeById,
+    edges,
     chatConfig: appDetail.chatConfig,
     t
   });

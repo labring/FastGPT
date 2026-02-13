@@ -6,12 +6,9 @@ import { postRegister } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { postCreateApp } from '@/web/core/app/api';
-import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getBdVId,
   getFastGPTSem,
@@ -52,7 +49,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
 
-  const { runAsync: onclickRegister, loading: requesting } = useRequest2(
+  const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {
       loginSuccess(
         await postRegister({
@@ -72,19 +69,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         status: 'success',
         title: t('user:register.success')
       });
-
-      // auto register template app
-      setTimeout(() => {
-        Object.entries(emptyTemplates).map(([type, emptyTemplate]) => {
-          postCreateApp({
-            avatar: emptyTemplate.avatar,
-            name: t(emptyTemplate.name as any),
-            modules: emptyTemplate.nodes,
-            edges: emptyTemplate.edges,
-            type: type as AppTypeEnum
-          });
-        });
-      }, 100);
     },
     {
       refreshDeps: [loginSuccess, t, toast]

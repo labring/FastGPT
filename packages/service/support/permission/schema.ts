@@ -3,6 +3,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { getLogger, LogCategories } from '../../common/logger';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
@@ -237,8 +238,16 @@ try {
     }
   );
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build permission indexes', { error });
 }
+
+ResourcePermissionSchema.pre('save', function (next) {
+  if (!this.tmbId && !this.groupId && !this.orgId) {
+    return next(new Error('At least one of tmbId, groupId, orgId must be present'));
+  }
+  next();
+});
 
 export const MongoResourcePermission = getMongoModel<ResourcePermissionType>(
   ResourcePermissionCollectionName,

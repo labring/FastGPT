@@ -3,30 +3,31 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import type { updateLogKeysBody } from '@/pages/api/core/app/logs/updateLogKeys';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateLogKeys } from '@/web/core/app/api/log';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
-import type { getLogKeysResponse } from '@/pages/api/core/app/logs/getLogKeys';
+import type {
+  getLogKeysResponseType,
+  updateLogKeysBody
+} from '@fastgpt/global/openapi/core/app/log/api';
 import type { SetState } from 'ahooks/lib/createUseStorageState';
 
 const SyncLogKeysPopover = ({
   logKeys,
   setLogKeys,
   teamLogKeys,
-  fetchLogKeys
+  fetchLogKeys,
+  appId
 }: {
   logKeys: AppLogKeysType[];
   setLogKeys: (value: SetState<AppLogKeysType[]>) => void;
   teamLogKeys: AppLogKeysType[];
-  fetchLogKeys: () => Promise<getLogKeysResponse>;
+  fetchLogKeys: () => Promise<getLogKeysResponseType>;
+  appId: string;
 }) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
 
-  const { runAsync: updateList, loading: updateLoading } = useRequest2(
+  const { runAsync: updateList, loading: updateLoading } = useRequest(
     async (data: updateLogKeysBody) => {
       await updateLogKeys(data);
     },

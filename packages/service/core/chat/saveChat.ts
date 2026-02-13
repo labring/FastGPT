@@ -1,32 +1,50 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { MongoApp } from '../app/schema';
+import type {
+  AIChatItemType,
+  ChatHistoryItemResType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import { addLog } from '../../common/system/log';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
+import {
+  checkInteractiveResponseStatus,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import type { ClientSession } from '../../common/mongo';
+import { removeS3TTL } from '../../common/s3/utils';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
+import type { SecretValueType } from '@fastgpt/global/common/secret/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 
-type Props = {
+export type Props = {
   chatId: string;
   appId: string;
+  versionId?: string;
   teamId: string;
   tmbId: string;
   nodes: StoreNodeItemType[];
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
-  isUpdateUseTime: boolean;
   newTitle: string;
   source: `${ChatSourceEnum}`;
   sourceName?: string;
@@ -37,6 +55,99 @@ type Props = {
   metadata?: Record<string, any>;
   durationSeconds: number; //s
   errorMsg?: string;
+};
+
+const beforProcess = (props: Props) => {
+  // Remove url
+  props.userContent.value.forEach((item) => {
+    if (item.file?.key) {
+      item.file.url = '';
+    }
+  });
+};
+const afterProcess = async ({
+  contents,
+  variables,
+  variableList,
+  session
+}: {
+  contents: (UserChatItemType | AIChatItemType)[];
+  variables?: Record<string, any>;
+  variableList?: VariableItemType[];
+  session: ClientSession;
+}) => {
+  const contentFileKeys = contents
+    .map((item) => {
+      if (item.value && Array.isArray(item.value)) {
+        return item.value.flatMap((valueItem) => {
+          const keys: string[] = [];
+
+          // 1. chat file
+          if ('file' in valueItem && valueItem.file?.key) {
+            keys.push(valueItem.file.key);
+          }
+
+          // 2. plugin input
+          if ('text' in valueItem && valueItem.text?.content) {
+            try {
+              const parsed = JSON.parse(valueItem.text.content);
+              // 2.1 plugin input - 数组格式
+              if (Array.isArray(parsed)) {
+                parsed.forEach((field) => {
+                  if (field.value && Array.isArray(field.value)) {
+                    field.value.forEach((file: { key: string }) => {
+                      if (file.key && typeof file.key === 'string') {
+                        keys.push(file.key);
+                      }
+                    });
+                  }
+                });
+              }
+              // 2.2 form input - 对象格式 { "字段名": [{ key, url, ... }] }
+              else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                Object.values(parsed).forEach((fieldValue) => {
+                  if (Array.isArray(fieldValue)) {
+                    fieldValue.forEach((file: any) => {
+                      if (
+                        file &&
+                        typeof file === 'object' &&
+                        file.key &&
+                        typeof file.key === 'string'
+                      ) {
+                        keys.push(file.key);
+                      }
+                    });
+                  }
+                });
+              }
+            } catch (err) {}
+          }
+
+          return keys;
+        });
+      }
+      return [];
+    })
+    .flat()
+    .filter(Boolean) as string[];
+
+  const variableFileKeys: string[] = [];
+  if (variables && variableList) {
+    variableList.forEach((varItem) => {
+      if (varItem.type === VariableInputEnum.file) {
+        const varValue = variables[varItem.key];
+        if (Array.isArray(varValue)) {
+          variableFileKeys.push(...varValue.map((item) => item.key));
+        }
+      }
+    });
+  }
+
+  const allFileKeys = [...new Set([...contentFileKeys, ...variableFileKeys])];
+
+  if (allFileKeys.length > 0) {
+    await removeS3TTL({ key: allFileKeys, bucketName: 'private', session });
+  }
 };
 
 const formatAiContent = ({
@@ -52,26 +163,26 @@ const formatAiContent = ({
 
   const citeCollectionIds = new Set<string>();
 
-  const nodeResponses = responseData?.map((responseItem) => {
+  const dealResponseData = (responseItem: ChatHistoryItemResType) => {
     if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
-      return {
-        ...responseItem,
-        quoteList: responseItem.quoteList.map((quote) => {
-          citeCollectionIds.add(quote.collectionId);
-          return {
-            id: quote.id,
-            chunkIndex: quote.chunkIndex,
-            datasetId: quote.datasetId,
-            collectionId: quote.collectionId,
-            sourceId: quote.sourceId,
-            sourceName: quote.sourceName,
-            score: quote.score
-          };
-        })
-      };
+      // @ts-ignore
+      responseItem.quoteList = responseItem.quoteList.map((quote) => {
+        citeCollectionIds.add(quote.collectionId);
+        return {
+          id: quote.id,
+          chunkIndex: quote.chunkIndex,
+          datasetId: quote.datasetId,
+          collectionId: quote.collectionId,
+          sourceId: quote.sourceId,
+          sourceName: quote.sourceName,
+          score: quote.score
+        };
+      });
     }
-    return responseItem;
-  });
+  };
+  getFlatAppResponses(responseData || []).forEach(dealResponseData);
+
+  const errorCount = responseData?.filter((item) => item.errorText).length ?? 0;
 
   return {
     aiResponse: {
@@ -80,8 +191,9 @@ const formatAiContent = ({
       errorMsg,
       citeCollectionIds: Array.from(citeCollectionIds)
     },
-    nodeResponses,
-    citeCollectionIds
+    nodeResponses: responseData,
+    citeCollectionIds,
+    errorCount
   };
 };
 
@@ -105,16 +217,18 @@ const getChatDataLog = async ({
   };
 };
 
-export async function saveChat(props: Props) {
+export const pushChatRecords = async (props: Props) => {
+  beforProcess(props);
+
   const {
     chatId,
     appId,
+    versionId,
     teamId,
     tmbId,
     nodes,
     appChatConfig,
     variables,
-    isUpdateUseTime,
     newTitle,
     source,
     sourceName,
@@ -142,6 +256,7 @@ export async function saveChat(props: Props) {
       ...chat?.metadata,
       ...metadata
     };
+
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
       systemConfigNode: getGuideModule(nodes),
@@ -152,7 +267,7 @@ export async function saveChat(props: Props) {
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const { aiResponse, nodeResponses } = formatAiContent({
+    const { aiResponse, nodeResponses, errorCount } = formatAiContent({
       aiContent,
       durationSeconds,
       errorMsg
@@ -195,6 +310,7 @@ export async function saveChat(props: Props) {
             teamId,
             tmbId,
             appId,
+            appVersionId: versionId,
             chatId,
             variableList,
             welcomeText,
@@ -207,7 +323,11 @@ export async function saveChat(props: Props) {
             outLinkUid,
             metadata: metadataUpdate,
             updateTime: new Date()
-          }
+          },
+          $setOnInsert: {
+            createTime: new Date()
+          },
+          ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
         },
         {
           session,
@@ -215,6 +335,13 @@ export async function saveChat(props: Props) {
           ...writePrimary
         }
       );
+
+      await afterProcess({
+        contents: processedContent,
+        variables,
+        variableList,
+        session
+      });
 
       pushChatLog({
         chatId,
@@ -274,36 +401,45 @@ export async function saveChat(props: Props) {
         }
       );
     } catch (error) {
-      addLog.error('Push chat log error', error);
-    }
-
-    if (isUpdateUseTime) {
-      await MongoApp.updateOne(
-        { _id: appId },
-        {
-          updateTime: new Date()
-        },
-        {
-          ...writePrimary
-        }
-      ).catch();
+      logger.error('Failed to push chat log', { chatId, error });
     }
   } catch (error) {
-    addLog.error(`update chat history error`, error);
+    logger.error('Failed to update chat history', { chatId, error });
   }
-}
+};
 
+/*
+  更新交互节点，包含两种情况：
+  1. 更新当前的 items，并把 value 追加到当前 items
+  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
+*/
 export const updateInteractiveChat = async ({
-  teamId,
-  chatId,
-  appId,
-  userContent,
-  aiContent,
-  variables,
-  durationSeconds,
-  errorMsg
-}: Props) => {
+  interactive,
+  ...props
+}: Props & {
+  interactive: WorkflowInteractiveResponseType;
+}) => {
+  beforProcess(props);
+
+  const {
+    teamId,
+    chatId,
+    appId,
+    nodes,
+    appChatConfig,
+    userContent,
+    aiContent,
+    variables,
+    durationSeconds,
+    errorMsg
+  } = props;
   if (!chatId) return;
+
+  const { variables: variableList } = getAppChatConfig({
+    chatConfig: appChatConfig,
+    systemConfigNode: getGuideModule(nodes),
+    isPublicFetch: false
+  });
 
   const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
     _id: -1
@@ -311,69 +447,121 @@ export const updateInteractiveChat = async ({
 
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
-  // Update interactive value
-  const interactiveValue = chatItem.value[chatItem.value.length - 1];
+  // Get interactive value
+  interactive.params = interactive.params || {};
 
-  if (
-    !interactiveValue ||
-    interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
-    !interactiveValue.interactive?.params
-  ) {
-    return;
+  // Get interactive response
+  const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
+
+  // 如果是发送一条新的 user 消息，则直接用推送记录的方式
+  const status = checkInteractiveResponseStatus({
+    interactive,
+    input: userInteractiveVal
+  });
+  if (status === 'query') {
+    return await pushChatRecords(props);
   }
 
   const parsedUserInteractiveVal = (() => {
-    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
     try {
       return JSON.parse(userInteractiveVal);
     } catch (err) {
       return userInteractiveVal;
     }
   })();
-  const { aiResponse, nodeResponses } = formatAiContent({
+  const { aiResponse, nodeResponses, errorCount } = formatAiContent({
     aiContent,
     durationSeconds,
     errorMsg
   });
 
-  let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
+  /*
+    在原来 chat_items 上更新。
+    1. 更新交互响应结果
+    2. 合并 chat_item 数据
+    3. 合并 chat_item_response 数据
+  */
+  // Update interactive value
+  {
+    // 提取嵌套在子流程里的交互节点
+    const finalInteractive = extractDeepestInteractive(interactive);
 
-  if (finalInteractive.type === 'userSelect') {
-    finalInteractive.params.userSelectedVal = parsedUserInteractiveVal;
-  } else if (
-    finalInteractive.type === 'userInput' &&
-    typeof parsedUserInteractiveVal === 'object'
-  ) {
-    finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
-      const itemValue = parsedUserInteractiveVal[item.label];
-      return itemValue !== undefined
-        ? {
+    if (
+      finalInteractive.type === 'userSelect' ||
+      finalInteractive.type === 'agentPlanAskUserSelect'
+    ) {
+      finalInteractive.params.userSelectedVal = userInteractiveVal;
+    } else if (
+      (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
+      typeof parsedUserInteractiveVal === 'object'
+    ) {
+      finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
+        const itemValue = parsedUserInteractiveVal[item.key];
+        if (itemValue === undefined) return item;
+
+        // 如果是密码类型，加密后存储
+        if (item.type === FlowNodeInputTypeEnum.password) {
+          const decryptedVal = anyValueDecrypt(itemValue);
+          if (typeof decryptedVal === 'string') {
+            return {
+              ...item,
+              value: encryptSecretValue({
+                value: decryptedVal,
+                secret: ''
+              } as SecretValueType)
+            };
+          }
+          return {
             ...item,
             value: itemValue
-          }
-        : item;
-    });
-    finalInteractive.params.submitted = true;
+          };
+        }
+
+        return {
+          ...item,
+          value: itemValue
+        };
+      });
+      finalInteractive.params.submitted = true;
+    } else if (finalInteractive.type === 'paymentPause') {
+      chatItem.value.pop();
+    } else if (finalInteractive.type === 'agentPlanCheck') {
+      finalInteractive.params.confirmed = true;
+    }
+
+    // 将最新的 interactive 赋值给最后一条消息（最后一条必然是带交互的消息）
+    chatItem.value[chatItem.value.length - 1].interactive = interactive;
   }
 
-  if (aiResponse.customFeedbacks) {
-    chatItem.customFeedbacks = chatItem.customFeedbacks
-      ? [...chatItem.customFeedbacks, ...aiResponse.customFeedbacks]
-      : aiResponse.customFeedbacks;
-  }
-  if (aiResponse.value) {
-    chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
-  }
-  if (aiResponse.citeCollectionIds) {
-    chatItem.citeCollectionIds = chatItem.citeCollectionIds
-      ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
-      : aiResponse.citeCollectionIds;
+  // Update current items
+  {
+    if (aiContent.customFeedbacks) {
+      chatItem.customFeedbacks = chatItem.customFeedbacks
+        ? [...chatItem.customFeedbacks, ...aiContent.customFeedbacks]
+        : aiContent.customFeedbacks;
+    }
+    if (aiContent.value) {
+      chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
+    }
+    if (aiResponse.citeCollectionIds) {
+      chatItem.citeCollectionIds = chatItem.citeCollectionIds
+        ? [...chatItem.citeCollectionIds, ...aiResponse.citeCollectionIds]
+        : aiResponse.citeCollectionIds;
+    }
+
+    if (aiContent.memories) {
+      chatItem.memories = {
+        ...chatItem.memories,
+        ...aiContent.memories
+      };
+    }
+
+    chatItem.durationSeconds = chatItem.durationSeconds
+      ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
+      : durationSeconds;
   }
 
-  chatItem.durationSeconds = chatItem.durationSeconds
-    ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
-    : durationSeconds;
-
+  chatItem.markModified('value');
   await mongoSessionRun(async (session) => {
     await chatItem.save({ session });
     await MongoChat.updateOne(
@@ -385,7 +573,8 @@ export const updateInteractiveChat = async ({
         $set: {
           variables,
           updateTime: new Date()
-        }
+        },
+        ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
       },
       {
         session
@@ -394,7 +583,10 @@ export const updateInteractiveChat = async ({
 
     // Create chat item respones
     if (nodeResponses) {
-      // Merge
+      /*
+        Merge with last response data
+        如果是从嵌套的 node 里触发的交互，这里需要进行一个合并，否则会导致出现两次相同的 node（child response 无法合并起来）
+      */
       const lastResponse = await MongoChatItemResponse.findOneAndDelete({
         appId,
         chatId,
@@ -407,8 +599,7 @@ export const updateInteractiveChat = async ({
         .session(session);
 
       const newResponses = lastResponse?.data
-        ? // @ts-ignore
-          mergeChatResponseData([lastResponse?.data, ...nodeResponses])
+        ? mergeChatResponseData([lastResponse?.data, ...nodeResponses])
         : nodeResponses;
 
       await MongoChatItemResponse.create(
@@ -422,6 +613,13 @@ export const updateInteractiveChat = async ({
         { session, ordered: true, ...writePrimary }
       );
     }
+
+    await afterProcess({
+      contents: [userContent, aiContent],
+      variables,
+      variableList,
+      session
+    });
   });
 
   // Push chat data logs
@@ -453,6 +651,6 @@ export const updateInteractiveChat = async ({
       }
     );
   } catch (error) {
-    addLog.error('update interactive chat log error', error);
+    logger.error('Failed to update interactive chat log', { chatId, error });
   }
 };

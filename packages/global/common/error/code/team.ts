@@ -11,8 +11,10 @@ export enum TeamErrEnum {
   datasetAmountNotEnough = 'datasetAmountNotEnough',
   appAmountNotEnough = 'appAmountNotEnough',
   pluginAmountNotEnough = 'pluginAmountNotEnough',
+  appFolderAmountNotEnough = 'appFolderAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
+  ticketNotAvailable = 'ticketNotAvailable',
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
@@ -66,12 +68,20 @@ const teamErr = [
     message: i18nT('common:code_error.team_error.plugin_amount_not_enough')
   },
   {
+    statusText: TeamErrEnum.appFolderAmountNotEnough,
+    message: i18nT('common:code_error.team_error.app_folder_amount_not_enough')
+  },
+  {
     statusText: TeamErrEnum.websiteSyncNotEnough,
     message: i18nT('common:code_error.team_error.website_sync_not_enough')
   },
   {
     statusText: TeamErrEnum.reRankNotEnough,
     message: i18nT('common:code_error.team_error.re_rank_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.ticketNotAvailable,
+    message: i18nT('common:code_error.team_error.ticket_not_available')
   },
   {
     statusText: TeamErrEnum.groupNameEmpty,

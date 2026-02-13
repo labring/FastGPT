@@ -18,7 +18,7 @@ import {
 import CollectionPageContextProvider from '@/pageComponents/dataset/detail/CollectionCard/Context';
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const CollectionCard = dynamic(
@@ -53,7 +53,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
 
-  useRequest2(() => loadDatasetDetail(datasetId), {
+  useRequest(() => loadDatasetDetail(datasetId), {
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { type NodeProps, Position } from 'reactflow';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
@@ -10,17 +10,17 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const CustomComponent = useMemo(
     () => ({
@@ -45,21 +45,23 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
                       onClick={() => {
-                        onChangeNode({
-                          nodeId,
-                          type: 'updateInput',
-                          key: agentKey,
-                          value: {
-                            ...props,
+                        onChangeNode([
+                          {
+                            nodeId,
+                            type: 'updateInput',
                             key: agentKey,
-                            value: agents.filter((input) => input.key !== item.key)
+                            value: {
+                              ...props,
+                              key: agentKey,
+                              value: agents.filter((input) => input.key !== item.key)
+                            }
+                          },
+                          {
+                            nodeId,
+                            type: 'delOutput',
+                            key: item.key
                           }
-                        });
-                        onChangeNode({
-                          nodeId,
-                          type: 'delOutput',
-                          key: item.key
-                        });
+                        ]);
                       }}
                     />
                   </MyTooltip>

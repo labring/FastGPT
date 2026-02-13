@@ -1,4 +1,4 @@
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { AddIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -13,17 +13,17 @@ import {
   VStack
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/setting/type';
+import type { ChatFavouriteTagType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFavouriteApps, updateChatSetting, updateFavouriteAppTags } from '@/web/core/chat/api';
 import { useForm } from 'react-hook-form';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { ChatFavouriteApp } from '@fastgpt/global/core/chat/favouriteApp/type';
+import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
@@ -65,8 +65,10 @@ const EditableTagItem = React.memo(function EditableTagItem({
   });
 
   const handleConfirmDelete = useCallback(() => {
-    openConfirm(() => {
-      onConfirmDelete(tag);
+    openConfirm({
+      onConfirm: () => {
+        onConfirmDelete(tag);
+      }
     })();
   }, [openConfirm, onConfirmDelete, tag]);
 
@@ -190,7 +192,7 @@ const SaveTagForAppSubPanel = ({
   });
   const searchAppName = watch('name');
   // search favourite apps for list rendering (only favourites, not all apps)
-  const { data: visibleFavourites = [], loading: isSearching } = useRequest2(
+  const { data: visibleFavourites = [], loading: isSearching } = useRequest(
     async () => {
       return await getFavouriteApps({ name: searchAppName });
     },
@@ -202,7 +204,7 @@ const SaveTagForAppSubPanel = ({
   );
 
   // load all favourites for checked state and saving
-  const { data: favouriteApps = [] } = useRequest2(
+  const { data: favouriteApps = [] } = useRequest(
     async () => {
       return await getFavouriteApps({ name: '' });
     },
@@ -211,7 +213,7 @@ const SaveTagForAppSubPanel = ({
     }
   );
 
-  const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteApp[]>([]);
+  const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteAppType[]>([]);
 
   useEffect(() => {
     setLocalAllFavourites(favouriteApps);
@@ -251,7 +253,7 @@ const SaveTagForAppSubPanel = ({
   );
 
   // save apps (update tags) via updateFavouriteApps
-  const { loading: isSaving, runAsync: saveApps } = useRequest2(
+  const { loading: isSaving, runAsync: saveApps } = useRequest(
     async () => {
       await updateFavouriteAppTags(
         localAllFavourites.map((item) => ({ id: item._id, tags: item.favouriteTags }))
@@ -375,10 +377,10 @@ type Props = {
 const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const { t } = useTranslation();
 
-  const refreshChatSetting = useContextSelector(ChatSettingContext, (v) => v.refreshChatSetting);
+  const refreshChatSetting = useContextSelector(ChatPageContext, (v) => v.refreshChatSetting);
 
   // get tags from db
-  const tags = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.favouriteTags || []);
+  const tags = useContextSelector(ChatPageContext, (v) => v.chatSettings?.favouriteTags || []);
   // local editable tags list
   const [localTags, setLocalTags] = useState<ChatFavouriteTagType[]>(tags);
 
@@ -386,7 +388,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const [isEditing, setIsEditing] = useState<string[]>([]);
 
   // update tags
-  const { loading: isUpdating, runAsync: updateTags } = useRequest2(
+  const { loading: isUpdating, runAsync: updateTags } = useRequest(
     async (nextTags: ChatFavouriteTagType[]) => {
       await updateChatSetting({ favouriteTags: nextTags });
     },
@@ -429,7 +431,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
     setIsEditing((prev) => prev.filter((v) => v !== target.id));
   }, []);
   // delete tag
-  const { loading: isDeleting, runAsync: deleteTag } = useRequest2(
+  const { loading: isDeleting, runAsync: deleteTag } = useRequest(
     async (target: ChatFavouriteTagType) => {
       const next = localTags.filter((c) => c.id !== target.id);
       setLocalTags(next);
@@ -461,7 +463,7 @@ const TagManageModal = ({ onClose, onRefresh }: Props) => {
   const isLoading = isUpdating || isDeleting || isEditing.length > 0;
 
   // counts
-  const { data: allFavourites = [] } = useRequest2(
+  const { data: allFavourites = [] } = useRequest(
     async () => {
       return await getFavouriteApps({ name: '' });
     },

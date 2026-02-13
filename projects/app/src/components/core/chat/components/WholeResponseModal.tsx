@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -13,11 +13,16 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import dynamic from 'next/dynamic';
+
+const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
+  ssr: false
+});
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -34,12 +39,14 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime
+  chatTime,
+  onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   chatTime?: Date;
+  onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -109,7 +116,7 @@ export const WholeResponseContent = ({
           label={label}
           mb={isObject ? 0 : 1}
           {...(isObject
-            ? { py: 2, transform: 'translateY(-3px)' }
+            ? { my: 2, transform: 'translateY(-3px)' }
             : value
               ? { px: 3, py: 2, border: 'base' }
               : {})}
@@ -136,20 +143,37 @@ export const WholeResponseContent = ({
     >
       {/* common info */}
       <>
-        <Row
-          label={t('common:core.chat.response.module name')}
-          value={t(activeModule.moduleName as any)}
-        />
+        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
         {activeModule?.totalPoints !== undefined && (
           <Row
             label={t('common:support.wallet.usage.Total points')}
             value={formatNumber(activeModule.totalPoints)}
           />
         )}
-        {activeModule?.childTotalPoints !== undefined && (
+        {(activeModule?.childrenResponses ||
+          activeModule.toolDetail ||
+          activeModule.pluginDetail) && (
           <Row
             label={t('chat:response.child total points')}
-            value={formatNumber(activeModule.childTotalPoints)}
+            value={formatNumber(
+              [
+                ...(activeModule.childrenResponses || []),
+                ...(activeModule.toolDetail || []),
+                ...(activeModule.pluginDetail || [])
+              ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
+            )}
+          />
+        )}
+        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
+        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
+      </>
+      {/* ai chat */}
+      <>
+        {activeModule?.finishReason && (
+          <Row
+            label={t('chat:completion_finish_reason')}
+            value={t(completionFinishReasonMap[activeModule?.finishReason])}
           />
         )}
         <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
@@ -162,24 +186,86 @@ export const WholeResponseContent = ({
             value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
           />
         )}
+        {activeModule.queryExtensionResult && (
+          <Row
+            label={t('chat:query_extension_IO_tokens')}
+            value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+          />
+        )}
         {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
           <Row
             label={t('common:core.chat.response.Tool call tokens')}
             value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
           />
         )}
+        {activeModule?.compressTextAgent && (
+          <>
+            <Row
+              label={t('chat:compress_llm_usage_point')}
+              value={`${activeModule.compressTextAgent.totalPoints}`}
+            />
+            <Row
+              label={t('chat:compress_llm_usage')}
+              value={`${activeModule.compressTextAgent.inputTokens}/${activeModule.compressTextAgent.outputTokens}`}
+            />
+          </>
+        )}
+        {/* LLM Request IDs */}
+        {activeModule?.llmRequestIds &&
+          activeModule.llmRequestIds.length > 0 &&
+          onOpenRequestIdDetail && (
+            <Row
+              label={t('chat:llm_request_ids')}
+              rawDom={
+                <Grid
+                  templateColumns={'repeat(auto-fill, minmax(250px, 1fr))'}
+                  gap={2}
+                  px={3}
+                  py={2}
+                >
+                  {activeModule.llmRequestIds.map((requestId, index) => (
+                    <Flex
+                      key={index}
+                      alignItems={'center'}
+                      bg={'white'}
+                      border={'base'}
+                      borderRadius={'md'}
+                      px={3}
+                      py={2}
+                      cursor={'pointer'}
+                      _hover={{
+                        borderColor: 'primary.500',
+                        color: 'primary.600',
+                        boxShadow: 'sm'
+                      }}
+                      onClick={() => onOpenRequestIdDetail(requestId)}
+                      title={t('common:Click_to_expand')}
+                    >
+                      <Box
+                        flex={'1 0 0'}
+                        width={0}
+                        fontFamily={'monospace'}
+                        fontSize={'xs'}
+                        textOverflow={'ellipsis'}
+                        overflow={'hidden'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {requestId}
+                      </Box>
+                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                    </Flex>
+                  ))}
+                </Grid>
+              }
+            />
+          )}
+        <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
         <Row
           label={t('common:core.chat.response.context total length')}
           value={activeModule?.contextTotalLen}
         />
-        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
-        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
-      </>
-      {/* ai chat */}
-      <>
         <Row
           label={t('common:core.chat.response.module temperature')}
           value={activeModule?.temperature}
@@ -188,14 +274,8 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.module maxToken')}
           value={activeModule?.maxToken}
         />
-        {activeModule?.finishReason && (
-          <Row
-            label={t('chat:completion_finish_reason')}
-            value={t(completionFinishReasonMap[activeModule?.finishReason])}
-          />
-        )}
 
-        <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
+        <Row label={t('chat:reasoning_content')} value={activeModule?.reasoningText} />
         <Row
           label={t('common:core.chat.response.module historyPreview')}
           rawDom={
@@ -300,7 +380,7 @@ export const WholeResponseContent = ({
         <Row label={t('chat:query_extension_result')} value={`${activeModule?.extensionResult}`} />
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
-            label={t('chat:search_results')}
+            label={t('chat:response_search_results', { len: activeModule.quoteList.length })}
             rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}
@@ -353,10 +433,8 @@ export const WholeResponseContent = ({
       </>
       {/* plugin */}
       <>
-        <Row
-          label={t('common:core.chat.response.plugin output')}
-          value={activeModule?.pluginOutput}
-        />
+        <Row label={t('chat:tool_input')} value={activeModule?.toolInput} />
+        <Row label={t('chat:tool_output')} value={activeModule?.pluginOutput} />
       </>
       {/* text output */}
       <Row label={t('common:core.chat.response.text output')} value={activeModule?.textOutput} />
@@ -616,6 +694,17 @@ export const ResponseBox = React.memo(function ResponseBox({
   const { t } = useSafeTranslation();
   const { isPc } = useSystem();
 
+  // LLM Request Detail Modal state
+  const [selectedRequestId, setSelectedRequestId] = useState<string>();
+
+  const handleOpenRequestIdDetail = useCallback((requestId: string) => {
+    setSelectedRequestId(requestId);
+  }, []);
+
+  const handleCloseRequestIdModal = useCallback(() => {
+    setSelectedRequestId(undefined);
+  }, []);
+
   const flattedResponse = useMemo(() => {
     /* Flat response */
     function flattenArray(arr: ChatHistoryItemResType[]) {
@@ -634,6 +723,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             }
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
+            }
+            if (Array.isArray(item.childrenResponses)) {
+              helper(item.childrenResponses);
             }
           }
         });
@@ -662,10 +754,14 @@ export const ResponseBox = React.memo(function ResponseBox({
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
-        if (!!(item?.toolDetail || item?.pluginDetail || item?.loopDetail)) {
+        if (
+          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
+        ) {
           if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
           if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
           if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+          if (item?.childrenResponses)
+            children.push(...pretreatmentResponse(item?.childrenResponses));
         }
 
         return {
@@ -737,6 +833,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               activeModule={activeModule}
               hideTabs={hideTabs}
               chatTime={chatTime}
+              onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
         </Flex>
@@ -802,11 +899,17 @@ export const ResponseBox = React.memo(function ResponseBox({
                   activeModule={activeModule}
                   hideTabs={hideTabs}
                   chatTime={chatTime}
+                  onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>
             </Flex>
           )}
         </Box>
+      )}
+
+      {/* LLM Request Detail Modal */}
+      {selectedRequestId && (
+        <RequestIdDetailModal onClose={handleCloseRequestIdModal} requestId={selectedRequestId} />
       )}
     </>
   );
@@ -824,7 +927,7 @@ const WholeResponseModal = ({
   const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
-  const { loading: isLoading, data: response } = useRequest2(
+  const { loading: isLoading, data: response } = useRequest(
     () => getHistoryResponseData({ dataId }),
     {
       manual: false

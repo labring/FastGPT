@@ -16,12 +16,12 @@ import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 
 const EditFieldModal = ({
   defaultValue = defaultEditFormData,
@@ -30,45 +30,44 @@ const EditFieldModal = ({
 }: EditFieldModalProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
     defaultValues: defaultValue
   });
   const valueType = watch('valueType');
 
-  const { mutate: onclickSubmit } = useRequest({
-    mutationFn: async (e: FlowNodeInputItemType) => {
-      e.key = e.key.trim();
+  const { runAsync: onclickSubmit } = useRequest(async (e: FlowNodeInputItemType) => {
+    e.key = e.key.trim();
 
-      const inputConfig: FlowNodeInputItemType = {
-        ...e,
-        description: e.toolDescription,
-        label: e.key
-      };
-      if (defaultValue.key) {
-        // edit
-        onChangeNode({
-          nodeId,
-          type: 'replaceInput',
-          key: defaultValue.key,
-          value: inputConfig
-        });
-      } else {
-        // create
-        onChangeNode({
-          nodeId,
-          type: 'addInput',
-          index: 1,
-          value: {
-            ...e,
-            label: e.key
-          }
-        });
-      }
-      onClose();
+    const inputConfig: FlowNodeInputItemType = {
+      ...e,
+      description: e.toolDescription,
+      label: e.key
+    };
+    if (defaultValue.key) {
+      // edit
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: defaultValue.key,
+        value: inputConfig
+      });
+    } else {
+      // create
+      onChangeNode({
+        nodeId,
+        type: 'addInput',
+        index: 1,
+        value: {
+          ...e,
+          label: e.key
+        }
+      });
     }
+    onClose();
   });
+
   const onclickSubmitError = useCallback(
     (e: Object) => {
       for (const item of Object.values(e)) {

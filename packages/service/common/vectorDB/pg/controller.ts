@@ -1,47 +1,57 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
+
+const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
     return global.pgClient;
   }
 
-  global.pgClient = new Pool({
+  const pool = new Pool({
     connectionString: PG_ADDRESS,
-    max: Number(process.env.DB_MAX_LINK || 20),
-    min: 10,
+    // 连接池配置
+    max: Number(process.env.DB_MAX_LINK || 30), // 增加到 30，支持更高并发
+    min: 15, // 调整为 max 的 50%
     keepAlive: true,
-    idleTimeoutMillis: 600000,
-    connectionTimeoutMillis: 20000,
-    query_timeout: 30000,
-    statement_timeout: 40000,
-    idle_in_transaction_session_timeout: 60000
+
+    // 超时配置
+    idleTimeoutMillis: 1800000, // 30分钟，减少频繁重连
+    connectionTimeoutMillis: 30000, // 30秒，给予充足的连接获取时间
+    query_timeout: 60000, // 60秒，向量检索可能需要更长时间
+    statement_timeout: 90000, // 90秒，比 query_timeout 长
+    idle_in_transaction_session_timeout: 60000, // 保持 60秒
+
+    // 额外推荐配置
+    allowExitOnIdle: false, // 防止连接池过早关闭
+    application_name: 'fastgpt-vector-db' // 便于数据库监控识别
   });
+  global.pgClient = pool;
 
   global.pgClient.on('error', async (err) => {
-    addLog.error(`pg error`, err);
-    global.pgClient?.end();
-    global.pgClient = null;
-
-    await delay(1000);
-    addLog.info(`Retry connect pg`);
-    connectPg();
+    logger.error('Postgres pool error', { error: err });
+  });
+  global.pgClient.on('connect', async () => {
+    logger.info('Postgres pool connected');
+  });
+  global.pgClient.on('remove', async (client) => {
+    logger.warn('Postgres connection removed from pool');
   });
 
   try {
     await global.pgClient.connect();
-    console.log('pg connected');
     return global.pgClient;
   } catch (error) {
-    addLog.error(`pg connect error`, error);
+    logger.error('Postgres connection failed', { error });
+    global.pgClient?.removeAllListeners();
     global.pgClient?.end();
     global.pgClient = null;
 
     await delay(1000);
-    addLog.info(`Retry connect pg`);
+    logger.warn('Postgres reconnecting after failure');
 
     return connectPg();
   }
@@ -109,6 +119,33 @@ class PgClass {
       )
       .join(',');
   }
+
+  async query<T extends QueryResultRow = any>(sql: string) {
+    const pg = await connectPg();
+    const start = Date.now();
+    return pg.query<T>(sql).then((res) => {
+      const time = Date.now() - start;
+
+      if (time > 1000) {
+        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        logger.warn('Postgres slow query detected', {
+          level: 'slow-2',
+          durationMs: time,
+          sql: safeSql
+        });
+      } else if (time > 300) {
+        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        logger.warn('Postgres slow query detected', {
+          level: 'slow-1',
+          durationMs: time,
+          sql: safeSql
+        });
+      }
+
+      return res;
+    });
+  }
+
   async select<T extends QueryResultRow = any>(table: string, props: GetProps) {
     const sql = `SELECT ${
       !props.fields || props.fields?.length === 0 ? '*' : props.fields?.join(',')
@@ -123,8 +160,7 @@ class PgClass {
       LIMIT ${props.limit || 10} OFFSET ${props.offset || 0}
     `;
 
-    const pg = await connectPg();
-    return pg.query<T>(sql);
+    return this.query<T>(sql);
   }
   async count(table: string, props: GetProps) {
     const sql = `SELECT COUNT(${props?.fields?.[0] || '*'})
@@ -132,13 +168,11 @@ class PgClass {
       ${this.getWhereStr(props.where)}
     `;
 
-    const pg = await connectPg();
-    return pg.query(sql).then((res) => Number(res.rows[0]?.count || 0));
+    return this.query(sql).then((res) => Number(res.rows[0]?.count || 0));
   }
   async delete(table: string, props: DeleteProps) {
     const sql = `DELETE FROM ${table} ${this.getWhereStr(props.where)}`;
-    const pg = await connectPg();
-    return pg.query(sql);
+    return this.query(sql);
   }
   async update(table: string, props: UpdateProps) {
     if (props.values.length === 0) {
@@ -150,8 +184,7 @@ class PgClass {
     const sql = `UPDATE ${table} SET ${this.getUpdateValStr(props.values)} ${this.getWhereStr(
       props.where
     )}`;
-    const pg = await connectPg();
-    return pg.query(sql);
+    return this.query(sql);
   }
   async insert(table: string, props: InsertProps) {
     if (props.values.length === 0) {
@@ -166,21 +199,7 @@ class PgClass {
       props.values
     )} RETURNING id`;
 
-    const pg = await connectPg();
-    return pg.query<{ id: string }>(sql);
-  }
-  async query<T extends QueryResultRow = any>(sql: string) {
-    const pg = await connectPg();
-    const start = Date.now();
-    return pg.query<T>(sql).then((res) => {
-      const time = Date.now() - start;
-
-      if (time > 300) {
-        addLog.warn(`pg query time: ${time}ms, sql: ${sql}`);
-      }
-
-      return res;
-    });
+    return this.query<{ id: string }>(sql);
   }
 }
 

@@ -8,8 +8,14 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const { t } = useTranslation();
 
   const map = useRef({
+    [AppTypeEnum.chatAgent]: {
+      label: 'Agent',
+      icon: 'core/app/type/simple',
+      bg: '#DBF3FF',
+      color: '#0884DD'
+    },
     [AppTypeEnum.simple]: {
-      label: t('app:type.Simple bot'),
+      label: t('app:type.Chat_Agent'),
       icon: 'core/app/type/simple',
       bg: '#DBF3FF',
       color: '#0884DD'
@@ -20,8 +26,8 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#E4E1FC',
       color: '#6F5DD7'
     },
-    [AppTypeEnum.plugin]: {
-      label: t('app:type.Plugin'),
+    [AppTypeEnum.workflowTool]: {
+      label: t('app:toolType_workflow'),
       icon: 'core/app/type/plugin',
       bg: '#D0F5EE',
       color: '#007E7C'
@@ -33,13 +39,13 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       color: '#E82F72'
     },
     [AppTypeEnum.httpToolSet]: {
-      label: t('app:type.Http tool set'),
+      label: t('app:toolType_http'),
       icon: 'core/app/type/httpPlugin',
       bg: '#FFE4EE',
       color: '#E82F72'
     },
-    [AppTypeEnum.toolSet]: {
-      label: t('app:type.MCP tools'),
+    [AppTypeEnum.mcpToolSet]: {
+      label: t('app:toolType_mcp'),
       icon: 'core/app/type/mcpTools',
       bg: '',
       color: ''
@@ -49,7 +55,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     [AppTypeEnum.hidden]: undefined
   });
 
-  const data = map.current[type];
+  const data = map.current[type as keyof typeof map.current];
 
   return data ? (
     <Flex

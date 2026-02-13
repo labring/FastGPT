@@ -1,7 +1,7 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -12,18 +12,20 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getNodeErrResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 import {
   type ChatCompletionMessageParam,
   type ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
   getExtractJsonToolPrompt
@@ -196,7 +198,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonToolPrompt({
               systemPrompt: description,
@@ -211,7 +212,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -265,9 +265,12 @@ const toolChoice = async (props: ActionProps) => {
     try {
       return json5.parse(toolCalls?.[0]?.function?.arguments || text || '');
     } catch (error) {
-      console.log('body', body);
-      console.log('AI response', text, toolCalls?.[0]?.function);
-      console.log('Your model may not support tool_call', error);
+      logger.warn('Failed to parse tool call arguments', {
+        body,
+        responseText: text,
+        toolCall: toolCalls?.[0]?.function,
+        error
+      });
       return {};
     }
   })();
@@ -300,7 +303,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonPrompt({
               systemPrompt: description,
@@ -316,7 +318,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -358,8 +359,7 @@ const completions = async (props: ActionProps) => {
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
-    console.log('Extract error, ai answer:', answer);
-    console.log(error);
+    logger.warn('Failed to parse extract result', { answer, error });
     return {
       rawResponse: answer,
       inputTokens,

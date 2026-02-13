@@ -20,11 +20,14 @@ import {
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
+import { retryFn } from '@fastgpt/global/common/system/utils';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
 
 let isOauthLogging = false;
 
 const provider = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
@@ -32,13 +35,13 @@ const provider = () => {
   const { toast } = useToast();
 
   const lastRoute = loginStore?.lastRoute
-    ? decodeURIComponent(loginStore.lastRoute)
-    : '/dashboard/apps';
+    ? validateRedirectUrl(loginStore.lastRoute)
+    : '/dashboard/agent';
   const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponse) => {
-      const decodeLastRoute = decodeURIComponent(lastRoute);
+      const decodeLastRoute = validateRedirectUrl(lastRoute);
       setUserInfo(res.user);
 
       const navigateTo = await (async () => {
@@ -46,7 +49,7 @@ const provider = () => {
           if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
             const id = decodeLastRoute.split('invitelinkid=')[1];
             await postAcceptInvitationLink(id);
-            return '/dashboard/apps';
+            return '/dashboard/agent';
           } else {
             toast({
               status: 'warning',
@@ -55,16 +58,12 @@ const provider = () => {
           }
         }
 
-        return decodeLastRoute &&
-          !decodeLastRoute.includes('/login') &&
-          decodeLastRoute.startsWith('/')
-          ? lastRoute
-          : '/dashboard/apps';
+        return decodeLastRoute;
       })();
 
       navigateTo && router.replace(navigateTo);
     },
-    [setUserInfo, router, lastRoute]
+    [setUserInfo, router, lastRoute, t, toast]
   );
 
   const authProps = useCallback(
@@ -78,7 +77,8 @@ const provider = () => {
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain()
+          sourceDomain: getSourceDomain(),
+          language: i18n.language as LangEnum
         });
 
         if (!res) {
@@ -104,7 +104,16 @@ const provider = () => {
       }
       setLoginStore(undefined);
     },
-    [errorRedirectPage, loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
+    [
+      errorRedirectPage,
+      i18n.language,
+      loginStore?.provider,
+      loginSuccess,
+      router,
+      setLoginStore,
+      t,
+      toast
+    ]
   );
 
   useEffect(() => {
@@ -124,8 +133,8 @@ const provider = () => {
     isOauthLogging = true;
 
     (async () => {
-      await clearToken();
-      router.prefetch('/dashboard/apps');
+      await retryFn(async () => clearToken());
+      router.prefetch('/dashboard/agent');
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({

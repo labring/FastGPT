@@ -1,6 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
-  CollaboratorItemType,
   CollaboratorListType,
   DeletePermissionQuery,
   UpdateClbPermissionProps
@@ -18,7 +17,7 @@ import type {
 } from '@fastgpt/global/support/user/team/type.d';
 import type {
   ClientTeamPlanStatusType,
-  TeamSubSchema
+  TeamSubSchemaType
 } from '@fastgpt/global/support/wallet/sub/type';
 import type { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -37,6 +36,8 @@ export const postCreateTeam = (data: CreateTeamProps) =>
 export const putUpdateTeam = (data: UpdateTeamProps) => PUT(`/support/user/team/update`, data);
 export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
+export const putTransferTeamOwnership = (userId: string) =>
+  PUT(`/proApi/support/user/team/changeOwner`, { userId });
 
 /* --------------- team member ---------------- */
 export const getTeamMembers = (
@@ -113,7 +114,7 @@ export const checkTeamDatasetSizeLimit = (size: number) =>
 export const getTeamPlanStatus = () =>
   GET<ClientTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
 export const getTeamPlans = () =>
-  GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
+  GET<TeamSubSchemaType[]>(`/proApi/support/user/team/plan/getTeamPlans`);
 
 export const redeemCoupon = (couponCode: string) =>
   GET(`/proApi/support/wallet/coupon/redeem`, { key: couponCode });

@@ -23,41 +23,36 @@ import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { form2AppWorkflow } from '@/web/core/app/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
-import type {
-  AppFileSelectConfigType,
-  AppListItemType,
-  AppWhisperConfigType
-} from '@fastgpt/global/core/app/type';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
-import type { QuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-
-type Props = {
-  myApps: AppListItemType[];
-};
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
+  canSelectFile: true,
   canSelectImg: false,
-  canSelectFile: true
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false
 };
 
 const defaultWhisperConfig: AppWhisperConfigType = {
@@ -66,7 +61,7 @@ const defaultWhisperConfig: AppWhisperConfigType = {
   autoTTSResponse: false
 };
 
-const HomeChatWindow = ({ myApps }: Props) => {
+const HomeChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -82,11 +77,13 @@ const HomeChatWindow = ({ myApps }: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
-  const pane = useContextSelector(ChatSettingContext, (v) => v.pane);
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
-  const handlePaneChange = useContextSelector(ChatSettingContext, (v) => v.handlePaneChange);
-  const homeAppId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId || '');
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
+  const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -100,7 +97,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
     [llmModelList]
   );
-  const [selectedModel, setSelectedModel] = useLocalStorageState('chat_home_model', {
+  const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
     defaultValue: defaultModels.llm?.model
   });
 
@@ -128,7 +125,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   }, [availableTools, chatSettings?.selectedTools]);
 
   // 初始化聊天数据
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
@@ -214,7 +211,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
             variables,
             responseChatItemId,
             appId,
-            chatId
+            chatId,
+            retainDatasetCite: isShowCite
           },
           abortCtrl: controller,
           onMessage: generatingMessage
@@ -228,6 +226,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
           title: newTitle
         }));
 
+        refreshRecentlyUsed();
+
         return { responseText, isNewChat: forbidLoadChat.current };
       }
 
@@ -238,7 +238,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
 
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
-          const node = await getPreviewPluginNode({ appId: toolId });
+          const node = await getToolPreviewNode({ appId: toolId });
           node.inputs = node.inputs.map((input) => {
             const tool = availableTools.find((tool) => tool.pluginId === toolId);
             const value = tool?.inputs?.[input.key];
@@ -262,6 +262,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           appId,
           appName: t('chat:home.chat_app'),
           chatId,
+          retainDatasetCite: isShowCite,
           ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,
@@ -276,6 +277,8 @@ const HomeChatWindow = ({ myApps }: Props) => {
         title: newTitle
       }));
 
+      refreshRecentlyUsed();
+
       return { responseText, isNewChat: forbidLoadChat.current };
     }
   );
@@ -289,6 +292,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
           {availableModels.length > 0 && (
             <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
               <AIModelSelector
+                cacheModel={false}
                 h={['30px', '36px']}
                 boxShadow={'none'}
                 size="sm"
@@ -384,7 +388,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
       availableModels,
       selectedModel,
       availableTools,
-      selectedTools.length,
+      selectedTools?.length,
       t,
       setSelectedModel,
       selectedToolIds,
@@ -442,7 +446,6 @@ const HomeChatWindow = ({ myApps }: Props) => {
             pane={pane}
             chatSettings={chatSettings}
             showHistory
-            apps={myApps}
             history={chatRecords}
             totalRecordsCount={totalRecordsCount}
           />

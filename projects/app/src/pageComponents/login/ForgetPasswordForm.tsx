@@ -8,7 +8,7 @@ import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 interface Props {
@@ -53,7 +53,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     })
     .join('/');
 
-  const { runAsync: onclickFindPassword, loading: requesting } = useRequest2(
+  const { runAsync: onclickFindPassword, loading: requesting } = useRequest(
     async ({ username, code, password }: RegisterType) => {
       loginSuccess(
         await postFindPassword({

@@ -17,28 +17,8 @@ const VectorEnum = {
   pg: 'pg',
   milvus: 'milvus',
   zilliz: 'zilliz',
-  ob: 'ob'
-};
-
-/**
- * @enum {string} Services
- */
-const Services = {
-  fastgpt: 'fastgpt',
-  fastgptPlugin: 'fastgpt-plugin',
-  fastgptSandbox: 'fastgpt-sandbox',
-  fastgptMcpServer: 'fastgpt-mcp_server',
-  minio: 'minio',
-  mongo: 'mongo',
-  redis: 'redis',
-  aiproxy: 'aiproxy',
-  aiproxyPg: 'aiproxy-pg',
-  // vectors
-  pg: 'pg',
-  milvusMinio: 'milvus-minio',
-  milvusEtcd: 'milvus-etcd',
-  milvusStandalone: 'milvus-standalone',
-  oceanbase: 'oceanbase'
+  ob: 'ob',
+  seekdb: 'seekdb'
 };
 
 // make sure the cwd
@@ -96,7 +76,7 @@ const vector = {
   ob: {
     db: '',
     config: `\
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 `,
     extra: `\
 configs:
@@ -105,7 +85,14 @@ configs:
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
     `
-  }
+  },
+  seekdb: {
+    db: '',
+    config: `\
+  SEEKDB_URL: mysql://root:seekdbpassword@seekdb:2881/mysql
+`,
+    extra: ``
+  },
 };
 
 /**
@@ -148,6 +135,9 @@ const replace = (source, region, vec) => {
 
   const ob = fs.readFileSync(path.join(process.cwd(), 'templates', 'vector', 'ob.txt'));
   vector.ob.db = String(ob);
+
+  const seekdb = fs.readFileSync(path.join(process.cwd(), 'templates', 'vector', 'seekdb.txt'));
+  vector.seekdb.db = String(seekdb);
 }
 
 const generateDevFile = async () => {
@@ -211,6 +201,14 @@ const generateProdFile = async () => {
     fs.promises.writeFile(
       path.join(process.cwd(), 'docker', 'global', 'docker-compose.oceanbase.yml'),
       replace(template, 'global', VectorEnum.ob)
+    ),
+    fs.promises.writeFile(
+      path.join(process.cwd(), 'docker', 'cn', 'docker-compose.seekdb.yml'),
+      replace(template, 'cn', VectorEnum.seekdb)
+    ),
+    fs.promises.writeFile(
+      path.join(process.cwd(), 'docker', 'global', 'docker-compose.seekdb.yml'),
+      replace(template, 'global', VectorEnum.seekdb)
     )
   ]);
 

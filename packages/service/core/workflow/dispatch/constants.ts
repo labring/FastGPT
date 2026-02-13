@@ -2,9 +2,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchAppRequest } from './abandoned/runApp';
 import { dispatchClassifyQuestion } from './ai/classifyQuestion';
 import { dispatchContentExtract } from './ai/extract';
-import { dispatchRunTools } from './ai/agent/index';
-import { dispatchStopToolCall } from './ai/agent/stopTool';
-import { dispatchToolParams } from './ai/agent/toolParams';
+import { dispatchRunTools } from './ai/tool/index';
+import { dispatchStopToolCall } from './ai/tool/stopTool';
+import { dispatchToolParams } from './ai/tool/toolParams';
 import { dispatchChatCompletion } from './ai/chat';
 import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
@@ -30,24 +30,32 @@ import { dispatchIfElse } from './tools/runIfElse';
 import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
+import { dispatchRunAgent } from './ai/agent';
 
 export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
-  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-  [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
-  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-  [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
+
+  // Child
   [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+
+  // AI
+  [FlowNodeTypeEnum.agent]: dispatchRunAgent,
+  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
-  [FlowNodeTypeEnum.agent]: dispatchRunTools,
+  // Tool call
+  [FlowNodeTypeEnum.toolCall]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
+
+  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
+  [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,

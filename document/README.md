@@ -1,6 +1,6 @@
 # FastGPT 文档
 
-这是FastGPT的官方文档，采用fumadoc框架。
+这是FastGPT的官方文档，采用 fumadoc 框架。
 ## 运行项目
 
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
@@ -12,7 +12,7 @@ FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 你可以在FastGPT项目根目录下执行以下命令来运行文档。
 
 ```bash
-npm install #只能npm install，不能pnpm
+npm install # 只能 npm install，不能 pnpm
 npm run dev
 ```
 项目会默认跑在`http:localhost:3000`端口
@@ -33,7 +33,7 @@ import { Alert } from '@/components/docs/Alert'; #高亮块组件
 <Alert icon="🤖" context="success">
 快速开始体验
 - 海外版：[https://fastgpt.io](https://fastgpt.io)
-- 国内版：[https://fastgpt.cn](https://fastgpt.cn)
+- 中国大陆：[https://fastgpt.cn](https://fastgpt.cn)
 </Alert>
 
 import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你希望用户点击这个文件跳转到别的文件的话，详情参考 `FAQ`的`Docker 部署问题`文档。
@@ -72,3 +72,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组
 ### 增加顶层导航栏
 
 1. 在 `FastGPT/document/app/[lang]/docs/layout.tsx` 文件中新增导航。
+
+### 重定向
+
+在`FastGPT/document/components/docs/not-found.tsx`文件中新增重定向规则。

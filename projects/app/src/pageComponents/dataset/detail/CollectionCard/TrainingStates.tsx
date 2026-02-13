@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteTrainingData,
   getDatasetCollectionTrainingDetail,
@@ -316,7 +316,7 @@ const ErrorView = ({
     EmptyTip: <EmptyTip />
   });
 
-  const { runAsync: getData, loading: getDataLoading } = useRequest2(
+  const { runAsync: getData, loading: getDataLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return getTrainingDataDetail(data);
     },
@@ -327,7 +327,7 @@ const ErrorView = ({
       }
     }
   );
-  const { runAsync: deleteData, loading: deleteLoading } = useRequest2(
+  const { runAsync: deleteData, loading: deleteLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return deleteTrainingData(data);
     },
@@ -338,7 +338,7 @@ const ErrorView = ({
       }
     }
   );
-  const { runAsync: updateData, loading: updateLoading } = useRequest2(
+  const { runAsync: updateData, loading: updateLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string; q?: string; a?: string }) => {
       return updateTrainingData(data);
     },
@@ -522,14 +522,14 @@ const TrainingStates = ({
     data: trainingDetail,
     loading,
     runAsync: refreshTrainingDetail
-  } = useRequest2(() => getDatasetCollectionTrainingDetail(collectionId), {
+  } = useRequest(() => getDatasetCollectionTrainingDetail(collectionId), {
     pollingInterval: 5000,
     pollingWhenHidden: false,
     manual: false
   });
 
   // All retry logic
-  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest(
     () => updateTrainingData({ datasetId, collectionId }),
     {
       manual: true,

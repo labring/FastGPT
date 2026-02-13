@@ -1,152 +1,138 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import multer from 'multer';
-import path from 'path';
-import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import m from 'multer';
+import type { NextApiRequest } from 'next';
+import path from 'path';
+import fs from 'node:fs';
 
-export type FileType = {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  filename: string;
-  path: string;
-  size: number;
-};
-
-/* 
-  maxSize: File max size (MB)
-*/
-export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
-  maxSize *= 1024 * 1024;
-
-  class UploadModel {
-    uploaderSingle = multer({
-      limits: {
-        fieldSize: maxSize
-      },
-      preservePath: true,
-      storage: multer.diskStorage({
-        // destination: (_req, _file, cb) => {
-        //   cb(null, tmpFileDirPath);
-        // },
-        filename: (req, file, cb) => {
-          if (!file?.originalname) {
-            cb(new Error('File not found'), '');
-          } else {
-            const { ext } = path.parse(decodeURIComponent(file.originalname));
-            cb(null, `${getNanoid()}${ext}`);
-          }
-        }
-      })
-    }).single('file');
-    async getUploadFile<T = any>(
-      req: NextApiRequest,
-      res: NextApiResponse,
-      originBucketName?: `${BucketNameEnum}`
-    ) {
-      return new Promise<{
-        file: FileType;
-        metadata: Record<string, any>;
-        data: T;
-        bucketName?: `${BucketNameEnum}`;
-      }>((resolve, reject) => {
-        // @ts-ignore
-        this.uploaderSingle(req, res, (error) => {
-          if (error) {
-            return reject(error);
-          }
-
-          // check bucket name
-          const bucketName = (req.body?.bucketName || originBucketName) as `${BucketNameEnum}`;
-          if (bucketName && !bucketNameMap[bucketName]) {
-            return reject(new UserError('BucketName is invalid'));
-          }
-
-          // @ts-ignore
-          const file = req.file as FileType;
-
-          resolve({
-            file: {
-              ...file,
-              originalname: decodeURIComponent(file.originalname)
-            },
-            bucketName,
-            metadata: (() => {
-              if (!req.body?.metadata) return {};
-              try {
-                return JSON.parse(req.body.metadata);
-              } catch (error) {
-                return {};
-              }
-            })(),
-            data: (() => {
-              if (!req.body?.data) return {};
-              try {
-                return JSON.parse(req.body.data);
-              } catch (error) {
-                return {};
-              }
-            })()
-          });
-        });
-      });
+export const multer = {
+  _storage: m.diskStorage({
+    filename: (_, file, cb) => {
+      if (!file?.originalname) {
+        cb(new Error('File not found'), '');
+      } else {
+        const ext = path.extname(decodeURIComponent(file.originalname));
+        cb(null, `${getNanoid()}${ext}`);
+      }
     }
+  }),
 
-    uploaderMultiple = multer({
+  singleStore(maxFileSize: number = 500) {
+    const fileSize = maxFileSize * 1024 * 1024;
+
+    return m({
       limits: {
-        fieldSize: maxSize
+        fileSize
       },
       preservePath: true,
-      storage: multer.diskStorage({
-        // destination: (_req, _file, cb) => {
-        //   cb(null, tmpFileDirPath);
-        // },
-        filename: (req, file, cb) => {
-          if (!file?.originalname) {
-            cb(new Error('File not found'), '');
-          } else {
-            const { ext } = path.parse(decodeURIComponent(file.originalname));
-            cb(null, `${getNanoid()}${ext}`);
-          }
+      storage: this._storage
+    }).single('file');
+  },
+
+  multipleStore(maxFileSize: number = 500) {
+    const fileSize = maxFileSize * 1024 * 1024;
+
+    return m({
+      limits: {
+        fileSize
+      },
+      preservePath: true,
+      storage: this._storage
+    }).array('file', global.feConfigs.uploadFileMaxAmount);
+  },
+
+  resolveFormData<T extends Record<string, any>>({
+    request,
+    maxFileSize
+  }: {
+    request: NextApiRequest;
+    maxFileSize?: number;
+  }) {
+    return new Promise<{
+      data: T;
+      fileMetadata: Express.Multer.File;
+      getBuffer: () => Buffer;
+      getReadStream: () => fs.ReadStream;
+    }>((resolve, reject) => {
+      const handler = this.singleStore(maxFileSize);
+
+      // @ts-expect-error it can accept a NextApiRequest
+      handler(request, null, (error) => {
+        if (error) {
+          return reject(error);
         }
-      })
-    }).array('file', global.feConfigs?.uploadFileMaxSize);
-    async getUploadFiles<T = any>(req: NextApiRequest, res: NextApiResponse) {
-      return new Promise<{
-        files: FileType[];
-        data: T;
-      }>((resolve, reject) => {
-        // @ts-ignore
-        this.uploaderMultiple(req, res, (error) => {
-          if (error) {
-            console.log(error);
-            return reject(error);
+
+        // @ts-expect-error `file` will be injected by multer
+        const file = request.file as Express.Multer.File;
+
+        if (!file) {
+          return reject(new Error('File not found'));
+        }
+
+        const data = (() => {
+          if (!request.body?.data) return {};
+          try {
+            return JSON.parse(request.body.data);
+          } catch {
+            return {};
           }
+        })();
 
-          // @ts-ignore
-          const files = req.files as FileType[];
-
-          resolve({
-            files: files.map((file) => ({
-              ...file,
-              originalname: decodeURIComponent(file.originalname)
-            })),
-            data: (() => {
-              if (!req.body?.data) return {};
-              try {
-                return JSON.parse(req.body.data);
-              } catch (error) {
-                return {};
-              }
-            })()
-          });
+        resolve({
+          data,
+          fileMetadata: file,
+          getBuffer: () => fs.readFileSync(file.path),
+          getReadStream: () => fs.createReadStream(file.path)
         });
       });
+    });
+  },
+
+  resolveMultipleFormData<T extends Record<string, any>>({
+    request,
+    maxFileSize
+  }: {
+    request: NextApiRequest;
+    maxFileSize?: number;
+  }) {
+    return new Promise<{
+      data: T;
+      fileMetadata: Array<Express.Multer.File>;
+    }>((resolve, reject) => {
+      const handler = this.multipleStore(maxFileSize);
+
+      // @ts-expect-error it can accept a NextApiRequest
+      handler(request, null, (error) => {
+        if (error) {
+          return reject(error);
+        }
+
+        // @ts-expect-error `files` will be injected by multer
+        const files = request.files as Array<Express.Multer.File>;
+
+        if (!files || files.length === 0) {
+          return reject(new Error('File not found'));
+        }
+
+        const data = (() => {
+          if (!request.body?.data) return {};
+          try {
+            return JSON.parse(request.body.data);
+          } catch {
+            return {};
+          }
+        })();
+
+        resolve({
+          data,
+          fileMetadata: files
+        });
+      });
+    });
+  },
+
+  clearDiskTempFiles(filepaths: string[]) {
+    for (const filepath of filepaths) {
+      fs.rm(filepath, { force: true }, (_) => {});
     }
   }
-
-  return new UploadModel();
 };

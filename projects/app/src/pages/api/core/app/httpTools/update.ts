@@ -1,8 +1,8 @@
 import type { NextApiResponse } from 'next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -10,13 +10,14 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type UpdateHttpPluginBody = {
   appId: string;
-  baseUrl: string;
-  apiSchemaStr: string;
   toolList: HttpToolConfigType[];
-  headerSecret: StoreSecretValueType;
+  baseUrl?: string;
+  apiSchemaStr?: string;
+  headerSecret?: StoreSecretValueType;
   customHeaders?: string;
 };
 
@@ -27,12 +28,17 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
+  const formattedToolList = toolList.map((tool) => ({
+    ...tool,
+    headerSecret: tool.headerSecret ? storeSecretValue(tool.headerSecret) : undefined
+  }));
+
   const toolSetRuntimeNode = getHTTPToolSetRuntimeNode({
     name: app.name,
     avatar: app.avatar,
     baseUrl,
     apiSchemaStr,
-    toolList,
+    toolList: formattedToolList,
     headerSecret: formatedHeaderAuth,
     customHeaders
   });
@@ -45,6 +51,7 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       },
       { session }
     );
+
     await MongoAppVersion.updateOne(
       { appId },
       {
@@ -54,6 +61,9 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
       },
       { session }
     );
+  });
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
   });
 }
 

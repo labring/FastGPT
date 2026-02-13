@@ -23,3 +23,14 @@ export const updateModelCollaborators = (props: UpdateClbPermissionProps & { mod
 
 export const getMyModels = (props: GetMyModelsQuery) =>
   GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);
+
+/* 活动 banner */
+export const getOperationalAd = () =>
+  GET<{ id: string; operationalAdImage: string; operationalAdLink: string }>(
+    '/proApi/support/user/inform/getOperationalAd'
+  );
+
+export const getActivityAd = () =>
+  GET<{ id: string; activityAdImage: string; activityAdLink: string }>(
+    '/proApi/support/user/inform/getActivityAd'
+  );

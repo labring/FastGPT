@@ -3,7 +3,6 @@ import type { IconProps } from '@chakra-ui/react';
 import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
 import type { IconNameType } from './type.d';
-import { useRefresh } from '../../../hooks/useRefresh';
 
 const iconCache: Record<string, any> = {};
 
@@ -38,7 +37,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
       {...props}
     />
   ) : (
-    <Box w={w} h={'1px'}></Box>
+    <Box w={w} h={'1px'} />
   );
 };
 

@@ -1,4 +1,4 @@
-import type { UserModelSchema } from '../type';
+import type { TeamMetaType, UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
@@ -23,6 +23,8 @@ export type TeamSchema = {
     lastWebsiteSyncTime: Date;
   };
   notificationAccount?: string;
+  meta?: TeamMetaType;
+  deleteTime?: Date;
 } & ThirdPartyAccountType;
 
 export type tagsType = {
@@ -45,7 +47,7 @@ export type TeamMemberSchema = {
   updateTime?: Date;
   name: string;
   role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
+  status: TeamMemberStatusEnum;
   avatar: string;
 };
 
@@ -68,6 +70,7 @@ export type TeamTmbItemType = {
   status: `${TeamMemberStatusEnum}`;
   notificationAccount?: string;
   permission: TeamPermission;
+  isWecomTeam?: boolean;
 } & ThirdPartyAccountType;
 
 export type TeamMemberItemType<

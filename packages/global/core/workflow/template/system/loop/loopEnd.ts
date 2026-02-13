@@ -16,6 +16,8 @@ export const LoopEndNode: FlowNodeTemplateType = {
   unique: true,
   forbidDelete: true,
   avatar: 'core/workflow/template/loopEnd',
+  avatarLinear: 'core/workflow/template/loopEndLinear',
+  colorSchema: 'violetDeep',
   name: i18nT('workflow:loop_end'),
   showStatus: false,
   inputs: [

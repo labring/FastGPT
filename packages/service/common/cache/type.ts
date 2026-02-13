@@ -1,4 +1,4 @@
-import type { SystemPluginTemplateItemType } from '@fastgpt/global/core/app/plugin/type';
+import type { AppToolTemplateItemType } from '@fastgpt/global/core/app/tool/type';
 
 export enum SystemCacheKeyEnum {
   systemTool = 'systemTool',
@@ -6,7 +6,7 @@ export enum SystemCacheKeyEnum {
 }
 
 export type SystemCacheDataType = {
-  [SystemCacheKeyEnum.systemTool]: SystemPluginTemplateItemType[];
+  [SystemCacheKeyEnum.systemTool]: AppToolTemplateItemType[];
   [SystemCacheKeyEnum.modelPermission]: null;
 };
 

@@ -1,19 +1,20 @@
 {
   "tags": {
-    "fastgpt": "v4.13.1",
-    "fastgpt-sandbox": "v4.13.1",
-    "fastgpt-mcp_server": "v4.13.1",
-    "fastgpt-plugin": "v0.2.2",
-    "aiproxy": "v0.3.2",
+    "fastgpt": "v4.14.7",
+    "fastgpt-sandbox": "v4.14.7",
+    "fastgpt-mcp_server": "v4.14.6",
+    "fastgpt-plugin": "v0.5.4",
+    "aiproxy": "v0.3.5",
     "aiproxy-pg": "0.8.0-pg15",
-    "mongo": "5.0.18",
+    "mongo": "5.0.32",
     "redis": "7.2-alpine",
     "minio": "RELEASE.2025-09-07T16-13-09Z",
     "pg": "0.8.0-pg15",
     "milvus-minio": "RELEASE.2023-03-20T20-16-18Z",
     "milvus-etcd": "v3.5.5",
     "milvus-standalone": "v2.4.3",
-    "oceanbase": "4.3.5-lts"
+    "oceanbase": "4.3.5-lts",
+    "seekdb": "1.0.1.0-100000392025122619"
   },
   "images": {
     "cn": {
@@ -30,7 +31,8 @@
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
-      "oceanbase": "oceanbase/oceanbase-ce"
+      "oceanbase": "oceanbase/oceanbase-ce",
+      "seekdb": "oceanbase/seekdb"
     },
     "global": {
       "fastgpt": "ghcr.io/labring/fastgpt",
@@ -46,7 +48,8 @@
       "milvus-minio": "minio/minio",
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
-      "oceanbase": "oceanbase/oceanbase-ce"
+      "oceanbase": "oceanbase/oceanbase-ce",
+      "seekdb": "oceanbase/seekdb"
     }
   }
 }

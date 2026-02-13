@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -14,8 +14,8 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import WorkorderButton from './WorkorderButton';
 import { useCheckCoupon } from './hooks/checkCoupon';
+import HelperBot from './HelperBot';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -40,6 +40,9 @@ const ManualCopyModal = dynamic(
   () => import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal),
   { ssr: false }
 );
+const ActivityAdModal = dynamic(() => import('@/components/support/activity/ActivityAdModal'), {
+  ssr: false
+});
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -70,11 +73,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const { loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
+  const { setLastRoute, loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
+  // Auto redeem coupon
   useCheckCoupon();
 
   const isChatPage = useMemo(
@@ -127,6 +131,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     }
   );
 
+  // Route watch
+  useEffect(() => {
+    setLastRoute(router.pathname);
+  }, [router.pathname]);
+
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
@@ -176,11 +185,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
           <ResetExpiredPswModal />
-          <WorkorderButton />
+          <HelperBot />
         </>
       )}
 
       <ManualCopyModal />
+      <ActivityAdModal />
       <Loading loading={loading} zIndex={999999} />
     </>
   );

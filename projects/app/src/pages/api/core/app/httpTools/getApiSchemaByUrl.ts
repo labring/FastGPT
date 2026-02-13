@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   await authCert({ req, authToken: true });
 
-  const isInternal = isInternalAddress(apiURL);
+  const isInternal = await isInternalAddress(apiURL);
 
   if (isInternal) {
     return Promise.reject('Invalid url');

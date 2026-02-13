@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { type AppUpdateParams, type PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -22,6 +22,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { AppTypeList } from '@fastgpt/global/core/app/constants';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -123,7 +124,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
-  const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
+  const { loading: loadingApp, runAsync: reloadApp } = useRequest(
     () => {
       if (appId) {
         return getAppDetailById(appId);
@@ -135,7 +136,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       refreshDeps: [appId],
       errorToast: t('common:core.app.error.Get app failed'),
       onError(err: any) {
-        router.replace('/dashboard/apps');
+        router.replace('/dashboard/agent');
       },
       onSuccess(res) {
         setAppDetail(res);
@@ -143,7 +144,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
+  const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest(
     () => getAppLatestVersion({ appId }),
     {
       manual: !appDetail?.permission?.hasWritePer,
@@ -151,7 +152,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { runAsync: updateAppDetail } = useRequest2(async (data: AppUpdateParams) => {
+  const { runAsync: updateAppDetail } = useRequest(async (data: AppUpdateParams) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
       ...state,
@@ -160,29 +161,36 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
-    try {
-      if (!appDetail.permission.hasWritePer) return;
-      await postPublishApp(appId, data);
-      setAppDetail((state) => ({
-        ...state,
-        ...data,
-        modules: data.nodes || state.modules
-      }));
-      reloadAppLatestVersion();
-    } catch (error: any) {
-      if (error.statusText == AppErrEnum.unExist) {
-        return;
+  const { runAsync: onSaveApp } = useRequest(
+    async (data: PostPublishAppProps) => {
+      try {
+        if (!appDetail.permission.hasWritePer) return;
+        await postPublishApp(appId, data);
+        setAppDetail((state) => ({
+          ...state,
+          ...data,
+          modules: data.nodes || state.modules
+        }));
+        reloadAppLatestVersion();
+      } catch (error: any) {
+        if (error.statusText == AppErrEnum.unExist) {
+          return;
+        }
+        return Promise.reject(error);
       }
-      return Promise.reject(error);
+    },
+    {
+      manual: true,
+      refreshDeps: [appDetail.permission.hasWritePer, appId]
     }
-  });
+  );
 
+  const isAgent = AppTypeList.includes(appDetail.type);
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app:confirm_del_app_tip', { name: appDetail.name }),
-    type: 'delete'
+    type: 'delete',
+    content: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip')
   });
-  const { runAsync: deleteApp } = useRequest2(
+  const { runAsync: deleteApp } = useRequest(
     async () => {
       if (!appDetail) return Promise.reject('Not load app');
       return delAppById(appDetail._id);
@@ -193,7 +201,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem(`app_log_keys_${appId}`);
         });
 
-        router.replace(`/dashboard/apps`);
+        router.replace(isAgent ? `/dashboard/agent` : `/dashboard/tool`);
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')
@@ -201,12 +209,11 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
   const onDelApp = useCallback(
     () =>
-      openConfirmDel(
-        deleteApp,
-        undefined,
-        t('app:confirm_del_app_tip', { name: appDetail.name })
-      )(),
-    [appDetail.name, deleteApp, openConfirmDel, t]
+      openConfirmDel({
+        onConfirm: deleteApp,
+        inputConfirmText: appDetail.name
+      })(),
+    [deleteApp, openConfirmDel, appDetail.name]
   );
 
   const contextValue: AppContextType = useMemo(

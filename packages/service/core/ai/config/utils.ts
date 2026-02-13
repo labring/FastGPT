@@ -1,5 +1,5 @@
-import { type SystemModelItemType } from '../type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { SystemDefaultModelType, SystemModelItemType } from '../type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoSystemModel } from './schema';
 import {
   type LLMModelItemType,
@@ -7,7 +7,7 @@ import {
   type TTSModelType,
   type STTModelType,
   type RerankModelItemType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
@@ -21,10 +21,42 @@ import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
+  if (!init && global.systemModelList) return;
+
+  try {
+    await preloadModelProviders();
+  } catch (error) {
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System model provider preload failed', { error });
+    return Promise.reject(error);
+  }
+
+  let _systemModelList: SystemModelItemType[] = [];
+  let _systemActiveModelList: SystemModelItemType[] = [];
+  let _llmModelMap = new Map<string, LLMModelItemType>();
+  let _embeddingModelMap = new Map<string, EmbeddingModelItemType>();
+  let _ttsModelMap = new Map<string, TTSModelType>();
+  let _sttModelMap = new Map<string, STTModelType>();
+  let _reRankModelMap = new Map<string, RerankModelItemType>();
+  let _systemDefaultModel: SystemDefaultModelType = {};
+
+  if (!global.systemModelList) {
+    global.systemModelList = [];
+    global.systemActiveModelList = [];
+    global.llmModelMap = new Map<string, LLMModelItemType>();
+    global.embeddingModelMap = new Map<string, EmbeddingModelItemType>();
+    global.ttsModelMap = new Map<string, TTSModelType>();
+    global.sttModelMap = new Map<string, STTModelType>();
+    global.reRankModelMap = new Map<string, RerankModelItemType>();
+    global.systemDefaultModel = {};
+    global.systemActiveDesensitizedModels = [];
+  }
+
   const pushModel = (model: SystemModelItemType) => {
-    global.systemModelList.push(model);
+    _systemModelList.push(model);
 
     // Add default value
     if (model.type === ModelTypeEnum.llm) {
@@ -36,110 +68,100 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     }
 
     if (model.isActive) {
-      global.systemActiveModelList.push(model);
+      _systemActiveModelList.push(model);
 
       if (model.type === ModelTypeEnum.llm) {
-        global.llmModelMap.set(model.model, model);
-        global.llmModelMap.set(model.name, model);
+        _llmModelMap.set(model.model, model);
+        _llmModelMap.set(model.name, model);
         if (model.isDefault) {
-          global.systemDefaultModel.llm = model;
+          _systemDefaultModel.llm = model;
         }
         if (model.isDefaultDatasetTextModel) {
-          global.systemDefaultModel.datasetTextLLM = model;
+          _systemDefaultModel.datasetTextLLM = model;
         }
         if (model.isDefaultDatasetImageModel) {
-          global.systemDefaultModel.datasetImageLLM = model;
+          _systemDefaultModel.datasetImageLLM = model;
+        }
+        if (model.model === process.env.HELPER_BOT_MODEL) {
+          _systemDefaultModel.helperBotLLM = model;
         }
       } else if (model.type === ModelTypeEnum.embedding) {
-        global.embeddingModelMap.set(model.model, model);
-        global.embeddingModelMap.set(model.name, model);
+        _embeddingModelMap.set(model.model, model);
+        _embeddingModelMap.set(model.name, model);
         if (model.isDefault) {
-          global.systemDefaultModel.embedding = model;
+          _systemDefaultModel.embedding = model;
         }
       } else if (model.type === ModelTypeEnum.tts) {
-        global.ttsModelMap.set(model.model, model);
-        global.ttsModelMap.set(model.name, model);
+        _ttsModelMap.set(model.model, model);
+        _ttsModelMap.set(model.name, model);
         if (model.isDefault) {
-          global.systemDefaultModel.tts = model;
+          _systemDefaultModel.tts = model;
         }
       } else if (model.type === ModelTypeEnum.stt) {
-        global.sttModelMap.set(model.model, model);
-        global.sttModelMap.set(model.name, model);
+        _sttModelMap.set(model.model, model);
+        _sttModelMap.set(model.name, model);
         if (model.isDefault) {
-          global.systemDefaultModel.stt = model;
+          _systemDefaultModel.stt = model;
         }
       } else if (model.type === ModelTypeEnum.rerank) {
-        global.reRankModelMap.set(model.model, model);
-        global.reRankModelMap.set(model.name, model);
+        _reRankModelMap.set(model.model, model);
+        _reRankModelMap.set(model.name, model);
         if (model.isDefault) {
-          global.systemDefaultModel.rerank = model;
+          _systemDefaultModel.rerank = model;
         }
       }
     }
   };
 
-  if (!init && global.systemModelList) return;
-
-  await preloadModelProviders();
-
-  global.systemModelList = [];
-  global.systemActiveModelList = [];
-  global.llmModelMap = new Map<string, LLMModelItemType>();
-  global.embeddingModelMap = new Map<string, EmbeddingModelItemType>();
-  global.ttsModelMap = new Map<string, TTSModelType>();
-  global.sttModelMap = new Map<string, STTModelType>();
-  global.reRankModelMap = new Map<string, RerankModelItemType>();
-  // @ts-ignore
-  global.systemDefaultModel = {};
-
   try {
     // Get model from db and plugin
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
-      pluginClient.model.list().then((res) => {
-        if (res.status === 200) return res.body;
-        console.error('Get fastGPT plugin model error');
-        return [];
-      })
+      pluginClient
+        .listModels()
+        .then((res) => res)
+        .catch(() => [])
     ]);
 
     // Load system model from local
-    await Promise.all(
-      systemModels.map(async (model) => {
-        const mergeObject = (obj1: any, obj2: any) => {
-          if (!obj1 && !obj2) return undefined;
-          const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
-          const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
-          return { ...formatObj1, ...formatObj2 };
-        };
+    systemModels.forEach((model) => {
+      const mergeObject = (obj1: any, obj2: any) => {
+        if (!obj1 && !obj2) return undefined;
+        const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
+        const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
+        return { ...formatObj1, ...formatObj2 };
+      };
 
-        const dbModel = dbModels.find((item) => item.model === model.model);
-        const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
+      const dbModel = dbModels.find((item) => item.model === model.model);
+      const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
-        const modelData: any = {
-          ...model,
-          ...dbModel?.metadata,
-          provider: provider.id,
-          avatar: provider.avatar,
-          type: dbModel?.metadata?.type || model.type,
-          isCustom: false,
+      const modelData: any = {
+        ...model,
+        ...dbModel?.metadata,
+        provider: provider.id,
+        avatar: provider.avatar,
+        type: dbModel?.metadata?.type || model.type,
+        isCustom: false,
 
-          ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
-            ? {
-                maxResponse: model.maxTokens ?? dbModel?.metadata?.maxResponse ?? 1000,
-                defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
-                fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
-                maxTokens: undefined
-              }
-            : {})
-        };
-        pushModel(modelData);
-      })
-    );
+        ...(model.type === ModelTypeEnum.llm && {
+          maxResponse: model.maxTokens || 4000
+        }),
+
+        ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
+          ? {
+              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
+              defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
+              fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              maxTokens: undefined
+            }
+          : {})
+      };
+      pushModel(modelData);
+    });
 
     // Custom model(Not in system config)
     dbModels.forEach((dbModel) => {
-      if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
+      if (_systemModelList.find((item) => item.model === dbModel.model)) return;
 
       pushModel({
         ...dbModel.metadata,
@@ -147,67 +169,79 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       });
     });
 
-    // Default model check
-    if (!global.systemDefaultModel.llm) {
-      global.systemDefaultModel.llm = Array.from(global.llmModelMap.values())[0];
-    }
-    if (!global.systemDefaultModel.datasetTextLLM) {
-      global.systemDefaultModel.datasetTextLLM = Array.from(global.llmModelMap.values()).find(
-        (item) => item.datasetProcess
-      );
-    }
-    if (!global.systemDefaultModel.datasetImageLLM) {
-      global.systemDefaultModel.datasetImageLLM = Array.from(global.llmModelMap.values()).find(
-        (item) => item.vision
-      );
-    }
-    if (!global.systemDefaultModel.embedding) {
-      global.systemDefaultModel.embedding = Array.from(global.embeddingModelMap.values())[0];
-    }
-    if (!global.systemDefaultModel.tts) {
-      global.systemDefaultModel.tts = Array.from(global.ttsModelMap.values())[0];
-    }
-    if (!global.systemDefaultModel.stt) {
-      global.systemDefaultModel.stt = Array.from(global.sttModelMap.values())[0];
-    }
-    if (!global.systemDefaultModel.rerank) {
-      global.systemDefaultModel.rerank = Array.from(global.reRankModelMap.values())[0];
-    }
-
     // Sort model list
-    global.systemActiveModelList.sort((a, b) => {
+    _systemActiveModelList.sort((a, b) => {
       const providerA = getModelProvider(a.provider, language);
       const providerB = getModelProvider(b.provider, language);
       return providerA.order - providerB.order;
     });
-    global.systemActiveDesensitizedModels = global.systemActiveModelList.map((model) => ({
-      ...model,
-      defaultSystemChatPrompt: undefined,
-      fieldMap: undefined,
-      defaultConfig: undefined,
-      weight: undefined,
-      dbConfig: undefined,
-      queryConfig: undefined,
-      requestUrl: undefined,
-      requestAuth: undefined
-    })) as SystemModelItemType[];
 
-    console.log(
-      `Load models success, total: ${global.systemModelList.length}, active: ${global.systemActiveModelList.length}`,
-      JSON.stringify(
-        global.systemActiveModelList.map((item) => ({
-          provider: item.provider,
-          model: item.model,
-          name: item.name
-        })),
-        null,
-        2
-      )
-    );
+    // Default model check
+    {
+      if (!_systemDefaultModel.llm) {
+        _systemDefaultModel.llm = Array.from(_llmModelMap.values())[0];
+      }
+      if (!_systemDefaultModel.datasetTextLLM) {
+        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
+          (item) => item.datasetProcess
+        );
+      }
+      if (!_systemDefaultModel.datasetImageLLM) {
+        _systemDefaultModel.datasetImageLLM = Array.from(_llmModelMap.values()).find(
+          (item) => item.vision
+        );
+      }
+      if (!_systemDefaultModel.helperBotLLM) {
+        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
+          (item) => item.type === ModelTypeEnum.llm
+        );
+      }
+      if (!_systemDefaultModel.embedding) {
+        _systemDefaultModel.embedding = Array.from(_embeddingModelMap.values())[0];
+      }
+      if (!_systemDefaultModel.tts) {
+        _systemDefaultModel.tts = Array.from(_ttsModelMap.values())[0];
+      }
+      if (!_systemDefaultModel.stt) {
+        _systemDefaultModel.stt = Array.from(_sttModelMap.values())[0];
+      }
+      if (!_systemDefaultModel.rerank) {
+        _systemDefaultModel.rerank = Array.from(_reRankModelMap.values())[0];
+      }
+    }
+
+    // Set global value
+    {
+      global.systemModelList = _systemModelList;
+      global.systemActiveModelList = _systemActiveModelList;
+      global.llmModelMap = _llmModelMap;
+      global.embeddingModelMap = _embeddingModelMap;
+      global.ttsModelMap = _ttsModelMap;
+      global.sttModelMap = _sttModelMap;
+      global.reRankModelMap = _reRankModelMap;
+      global.systemDefaultModel = _systemDefaultModel;
+      global.systemActiveDesensitizedModels = _systemActiveModelList.map((model) => ({
+        ...model,
+        defaultSystemChatPrompt: undefined,
+        fieldMap: undefined,
+        defaultConfig: undefined,
+        weight: undefined,
+        dbConfig: undefined,
+        queryConfig: undefined,
+        requestUrl: undefined,
+        requestAuth: undefined
+      })) as SystemModelItemType[];
+    }
+
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.debug('System models loaded', {
+      total: _systemModelList.length,
+      active: _systemActiveModelList.length
+    });
   } catch (error) {
-    console.error('Load models error', error);
-    // @ts-ignore
-    global.systemModelList = undefined;
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System models load failed', { error });
+
     return Promise.reject(error);
   }
 };
@@ -218,13 +252,9 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
   if (modelData.isCustom) return Promise.reject('Custom model not data');
 
   // Read file
-  const modelDefaulConfig = await pluginClient.model.list().then((res) => {
-    if (res.status === 200) {
-      return res.body.find((item) => item.model === model) as SystemModelItemType;
-    }
-
-    return Promise.reject('Can not get model config from plugin');
-  });
+  const modelDefaulConfig = await pluginClient
+    .listModels()
+    .then((models) => models.find((item) => item.model === model) as SystemModelItemType);
 
   return {
     ...modelDefaulConfig,
@@ -236,7 +266,7 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async () => {
       try {

@@ -1,4 +1,5 @@
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type EditorVariablePickerType = {
   key: string;
@@ -42,27 +43,9 @@ export type TextEditorNode = BaseEditorNode & {
 export type LineBreakEditorNode = BaseEditorNode & {
   type: 'linebreak';
 };
-
-export type VariableLabelEditorNode = BaseEditorNode & {
-  type: 'variableLabel';
-  variableKey: string;
-};
-
-export type VariableEditorNode = BaseEditorNode & {
-  type: 'Variable';
-  variableKey: string;
-};
-
 export type TabEditorNode = BaseEditorNode & {
   type: 'tab';
 };
-
-export type ChildEditorNode =
-  | TextEditorNode
-  | LineBreakEditorNode
-  | VariableLabelEditorNode
-  | VariableEditorNode
-  | TabEditorNode;
 
 export type ParagraphEditorNode = BaseEditorNode & {
   type: 'paragraph';
@@ -70,15 +53,6 @@ export type ParagraphEditorNode = BaseEditorNode & {
   direction: string;
   format: string;
   indent: number;
-};
-
-export type ListItemEditorNode = BaseEditorNode & {
-  type: 'listitem';
-  children: Array<ChildEditorNode | ListEditorNode>;
-  direction: string | null;
-  format: string;
-  indent: number;
-  value: number;
 };
 
 export type ListEditorNode = BaseEditorNode & {
@@ -92,10 +66,49 @@ export type ListEditorNode = BaseEditorNode & {
   tag: 'ul' | 'ol';
 };
 
+export type ListItemEditorNode = BaseEditorNode & {
+  type: 'listitem';
+  children: ChildEditorNode[];
+  direction: string | null;
+  format: string;
+  indent: number;
+  value: number;
+};
+
+// Custom variable node types
+export type VariableLabelEditorNode = BaseEditorNode & {
+  type: 'variableLabel';
+  variableKey: string;
+};
+export type VariableEditorNode = BaseEditorNode & {
+  type: 'Variable';
+  variableKey: string;
+};
+
+export type SkillEditorNode = BaseEditorNode & {
+  type: 'skill';
+  id: string;
+  name?: string;
+  icon?: string;
+  skillType?: `${FlowNodeTypeEnum}`;
+  format: number;
+};
+
+export type ChildEditorNode =
+  | TextEditorNode
+  | LineBreakEditorNode
+  | TabEditorNode
+  | ParagraphEditorNode
+  | ListEditorNode
+  | ListItemEditorNode
+  | VariableLabelEditorNode
+  | VariableEditorNode
+  | SkillEditorNode;
+
 export type EditorState = {
   root: {
     type: 'root';
-    children: Array<ParagraphEditorNode | ListEditorNode>;
+    children: ChildEditorNode[];
     direction: string;
     format: string;
     indent: number;

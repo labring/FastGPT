@@ -15,6 +15,8 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { addDays } from 'date-fns';
 
 export type PostPreviewFilesChunksProps = ChunkSettingsType & {
   datasetId: string;
@@ -95,7 +97,8 @@ async function handler(
     selector,
     externalFileId,
     customPdfParse,
-    apiDatasetServer: dataset.apiDatasetServer
+    apiDatasetServer: dataset.apiDatasetServer,
+    datasetId
   });
 
   const chunks = await rawText2Chunks({
@@ -110,8 +113,13 @@ async function handler(
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
   });
 
+  const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({
+    q: replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
+    a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
+  }));
+
   return {
-    chunks: chunks.slice(0, 10),
+    chunks: chunksWithJWT,
     total: chunks.length
   };
 }

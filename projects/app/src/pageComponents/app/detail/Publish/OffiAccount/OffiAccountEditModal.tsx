@@ -6,7 +6,7 @@ import type { OffiAccountAppType, OutLinkEditType } from '@fastgpt/global/suppor
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import BasicInfo from '../components/BasicInfo';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -37,7 +37,7 @@ const OffiAccountEditModal = ({
     defaultValues: defaultData
   });
 
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     (e: OutLinkEditType<OffiAccountAppType>) => {
       if (e?.app) {
         e.app.appId = e.app.appId?.trim();
@@ -58,7 +58,7 @@ const OffiAccountEditModal = ({
     }
   );
 
-  const { runAsync: onclickUpdate, loading: updating } = useRequest2(
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(
     (e) => {
       if (e?.app) {
         e.app.appId = e.app.appId?.trim();
@@ -96,10 +96,7 @@ const OffiAccountEditModal = ({
             <Box color="myGray.600">{t('publish:official_account.params')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={
-                  feConfigs.openAPIDocUrl ||
-                  getDocPath('/docs/use-cases/external-integration/official_account/')
-                }
+                href={getDocPath('/docs/use-cases/external-integration/official_account/')}
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}

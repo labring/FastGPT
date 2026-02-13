@@ -1,7 +1,7 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   KEY_TAB_COMMAND,
-  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_HIGH,
   $getSelection,
   $isRangeSelection,
   $isTextNode
@@ -62,19 +62,15 @@ export default function TabToSpacesPlugin(): null {
           // Handle Shift+Tab (outdent)
           if (isShiftTab) {
             if (!selection.isCollapsed()) {
-              // For selected text, remove 4 spaces from the beginning of each line
+              // For selected text, remove 2 spaces from the beginning of each line
               try {
                 const selectedText = selection.getTextContent();
                 const lines = selectedText.split('\n');
 
                 const outdentedText = lines
                   .map((line) => {
-                    // Remove up to 4 spaces from the beginning of the line
-                    if (line.startsWith('    ')) {
-                      return line.slice(4);
-                    } else if (line.startsWith('   ')) {
-                      return line.slice(3);
-                    } else if (line.startsWith('  ')) {
+                    // Remove up to 2 spaces from the beginning of the line
+                    if (line.startsWith('  ')) {
                       return line.slice(2);
                     } else if (line.startsWith(' ')) {
                       return line.slice(1);
@@ -128,7 +124,7 @@ export default function TabToSpacesPlugin(): null {
 
                   // Check if there are spaces before cursor to remove
                   let spacesToRemove = 0;
-                  for (let i = beforeCursor.length - 1; i >= 0 && spacesToRemove < 4; i--) {
+                  for (let i = beforeCursor.length - 1; i >= 0 && spacesToRemove < 2; i--) {
                     if (beforeCursor[i] === ' ') {
                       spacesToRemove++;
                     } else {
@@ -159,7 +155,7 @@ export default function TabToSpacesPlugin(): null {
               try {
                 const selectedText = selection.getTextContent();
                 const lines = selectedText.split('\n');
-                const indentedText = lines.map((line) => '    ' + line).join('\n');
+                const indentedText = lines.map((line) => '  ' + line).join('\n');
 
                 // Insert the indented text and let Lexical handle cursor positioning
                 selection.insertText(indentedText);
@@ -191,13 +187,13 @@ export default function TabToSpacesPlugin(): null {
                 return true;
               } catch (e) {
                 // If selection operation fails, fall back to simple space insertion
-                const textNode = $createTextNode('    ');
+                const textNode = $createTextNode('  ');
                 selection.insertNodes([textNode]);
                 return true;
               }
             } else {
-              // For cursor position (no selection), insert 4 spaces
-              const textNode = $createTextNode('    '); // 4 spaces
+              // For cursor position (no selection), insert 2 spaces
+              const textNode = $createTextNode('  '); // 2 spaces
               selection.insertNodes([textNode]);
               return true;
             }
@@ -208,7 +204,7 @@ export default function TabToSpacesPlugin(): null {
           return false;
         }
       },
-      COMMAND_PRIORITY_EDITOR
+      COMMAND_PRIORITY_HIGH
     );
   }, [editor]);
 

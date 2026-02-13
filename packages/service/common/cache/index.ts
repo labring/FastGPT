@@ -1,5 +1,5 @@
 import './init';
-import { getGlobalRedisConnection } from '../../common/redis';
+import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
 import type { SystemCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
@@ -18,11 +18,14 @@ export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: strin
 
   const val = randomUUID();
   const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
+
   if (id === '*') {
-    const pattern = `${cachePrefix}${key}:*`;
-    const keys = await redis.keys(pattern);
+    const pattern = `${cachePrefix}${key}`;
+    const keys = await getAllKeysByPrefix(pattern);
     if (keys.length > 0) {
-      await redis.del(keys);
+      const pipeline = redis.pipeline();
+      pipeline.del(keys);
+      await pipeline.exec();
     }
   } else {
     await redis.set(versionKey, val);

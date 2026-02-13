@@ -22,9 +22,10 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
   language?: string;
+  options?: any;
 };
 
-const options = {
+const defaultOptions = {
   lineNumbers: 'on',
   guides: {
     indentation: false
@@ -38,7 +39,7 @@ const options = {
     horizontalScrollbarSize: 8,
     alwaysConsumeMouseWheel: false
   },
-  lineNumbersMinChars: 0,
+  lineNumbersMinChars: 4,
   fontSize: 14,
   scrollBeyondLastLine: false,
   folding: true,
@@ -55,10 +56,19 @@ const MyEditor = ({
   defaultHeight = 200,
   onOpenModal,
   language = 'typescript',
+  options,
   ...props
 }: Props) => {
   const [height, setHeight] = useState(defaultHeight);
   const initialY = useRef(0);
+
+  const mergedOptions = React.useMemo(
+    () => ({
+      ...defaultOptions,
+      ...options
+    }),
+    [options]
+  );
 
   const registerPythonCompletion = usePythonCompletion();
 
@@ -86,6 +96,18 @@ const MyEditor = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: Monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Prevent browser autofill from causing getModifierState errors
+    const editorDom = editor.getDomNode();
+    if (editorDom) {
+      const textarea = editorDom.querySelector('textarea');
+      if (textarea) {
+        textarea.setAttribute('autocomplete', 'off');
+        textarea.setAttribute('autocorrect', 'off');
+        textarea.setAttribute('autocapitalize', 'off');
+        textarea.setAttribute('spellcheck', 'false');
+      }
+    }
   }, []);
 
   const beforeMount = useCallback(
@@ -129,13 +151,12 @@ const MyEditor = ({
       py={1}
       height={height}
       position={'relative'}
-      pl={2}
       {...props}
     >
       <Editor
         height={'100%'}
         language={language}
-        options={options as any}
+        options={mergedOptions}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
         defaultValue={defaultValue}

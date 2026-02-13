@@ -7,6 +7,9 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
+import { AppCollectionName } from '../../../core/app/schema';
+import { DatasetCollectionName } from '../../../core/dataset/schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const UsageSchema = new Schema(
   {
@@ -25,29 +28,28 @@ const UsageSchema = new Schema(
       enum: Object.values(UsageSourceEnum),
       required: true
     },
+    // usage name
     appName: {
-      // usage name
       type: String,
       default: ''
     },
+    // total points
     totalPoints: {
-      // total points
       type: Number,
       required: true
-    },
-    appId: {
-      type: Schema.Types.ObjectId,
-      ref: 'apps',
-      required: false
-    },
-    pluginId: {
-      type: Schema.Types.ObjectId,
-      ref: 'plugins',
-      required: false
     },
     time: {
       type: Date,
       default: () => new Date()
+    },
+
+    appId: {
+      type: Schema.Types.ObjectId,
+      ref: AppCollectionName
+    },
+    datasetId: {
+      type: Schema.Types.ObjectId,
+      ref: DatasetCollectionName
     },
 
     // @description It will not be used again in the future.
@@ -74,7 +76,8 @@ try {
 
   UsageSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build usage indexes', { error });
 }
 
 export const MongoUsage = getMongoModel<UsageSchemaType>(UsageCollectionName, UsageSchema);

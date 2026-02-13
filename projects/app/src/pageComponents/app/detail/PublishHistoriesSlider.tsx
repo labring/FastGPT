@@ -6,22 +6,25 @@ import {
 } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import type { WorkflowSnapshotsType } from './WorkflowComponents/context';
+import type { WorkflowSnapshotsType } from './WorkflowComponents/context/workflowSnapshotContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
-import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
+import type {
+  AppVersionSchemaType,
+  VersionListItemType
+} from '@fastgpt/global/core/app/version/type';
+import type { SimpleAppSnapshotType } from './Edit/FormComponent/useSnapshots';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
@@ -36,7 +39,7 @@ const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapsh
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
   positionStyles?: BoxProps;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
 
   return (
@@ -86,7 +89,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   past: T[];
   onSwitchTmpVersion: (params: T, customTitle: string) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   return (
@@ -179,7 +182,7 @@ const TeamCloud = ({
 }: {
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const {
@@ -198,7 +201,7 @@ const TeamCloud = ({
 
   const { toast } = useToast();
 
-  const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
+  const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest(
     async (versionItem: VersionListItemType) => {
       const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
 
@@ -212,7 +215,7 @@ const TeamCloud = ({
     }
   );
 
-  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest2(
+  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest(
     async (item: VersionListItemType, name: string) => {
       await updateAppVersion({
         appId: item.appId,
@@ -303,7 +306,7 @@ const TeamCloud = ({
                 >
                   <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                     <Box as={'span'} color={'myGray.900'}>
-                      {item.versionName || formatTime2YMDHMS(item.time)}
+                      {t(item.versionName) || formatTime2YMDHMS(item.time)}
                     </Box>
                   </Box>
                   {item.isPublish && (

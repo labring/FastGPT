@@ -3,9 +3,9 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  NodeOutputItemType,
   ToolRunResponseItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -22,9 +22,8 @@ import type {
   ModuleDispatchProps,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import {
   checkNodeRunStatus,
@@ -40,10 +39,10 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, removeSystemVariable } from './utils';
+import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType, filterOrphanEdges } from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
@@ -52,8 +51,20 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/utils';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '../../../../web/i18n/utils';
+import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 
-type Props = Omit<ChatDispatchProps, 'workflowDispatchDeep' | 'timezone' | 'externalProvider'> & {
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+import { runWithContext } from '../utils/context';
+
+type Props = Omit<
+  ChatDispatchProps,
+  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider'
+> & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -77,9 +88,35 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const { res, stream, runningUserInfo, runningAppInfo, lastInteractive } = data;
+  const {
+    res,
+    stream,
+    runningUserInfo,
+    runningAppInfo,
+    lastInteractive,
+    histories,
+    query,
+    chatId,
+    apiVersion
+  } = data;
 
+  // Check url valid
+  const invalidInput = query.some((item) => {
+    if ('file' in item && item.file?.url) {
+      if (!validateFileUrlDomain(item.file.url)) {
+        return true;
+      }
+    }
+  });
+  if (invalidInput) {
+    logger.info('Workflow run blocked due to invalid file url');
+    return Promise.reject(new UserError('Invalid file url'));
+  }
+
+  /* Init function */
+  // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
+
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
@@ -96,7 +133,23 @@ export async function dispatchWorkFlow({
         });
       }
       return usageId;
-    })()
+    })(),
+    // Add preview url to chat items
+    await addPreviewUrlToChatItems(histories, 'chatFlow'),
+    // Add preview url to query
+    ...query.map(async (item) => {
+      if (!item.file?.key) return;
+      const { url } = await getS3ChatSource().createGetChatFileURL({
+        key: item.file.key,
+        external: true
+      });
+      item.file.url = url;
+    }),
+    // Remove stopping sign
+    delAgentRuntimeStopSign({
+      appId: runningAppInfo.id,
+      chatId
+    })
   ]);
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
@@ -107,7 +160,7 @@ export async function dispatchWorkFlow({
     if (stream) {
       res.on('close', () => res.end());
       res.on('error', () => {
-        addLog.error('Request error');
+        logger.error('Workflow stream response error');
         res.end();
       });
 
@@ -131,30 +184,83 @@ export async function dispatchWorkFlow({
   // Get default variables
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
-    ...getSystemVariables({
+    ...(await getSystemVariables({
       ...data,
+      query,
+      histories,
       timezone
-    })
+    }))
   };
 
-  // Init some props
-  return runWorkflow({
-    ...data,
-    timezone,
-    externalProvider,
-    defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue,
-    variables: defaultVariables,
-    workflowDispatchDeep: 0,
-    usageId: newUsageId,
-    concatUsage
-  }).finally(() => {
-    if (streamCheckTimer) {
-      clearInterval(streamCheckTimer);
+  // Stop sign(没有 apiVersion，说明不会有暂停)
+  let stopping = false;
+  const checkIsStopping = (): boolean => {
+    if (apiVersion === 'v2') {
+      return stopping;
     }
+    if (apiVersion === 'v1') {
+      if (!res) return false;
+      return res.closed || !!res.errored;
+    }
+    return false;
+  };
+  const checkStoppingTimer =
+    apiVersion === 'v2'
+      ? setInterval(async () => {
+          stopping = await shouldWorkflowStop({
+            appId: runningAppInfo.id,
+            chatId
+          });
+        }, 100)
+      : undefined;
+
+  // Init some props
+  return new Promise((resolve, reject) => {
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      (ctx) => {
+        runWorkflow({
+          ...data,
+          checkIsStopping,
+          query,
+          histories,
+          timezone,
+          externalProvider,
+          variables: defaultVariables,
+          workflowDispatchDeep: 0,
+          usageId: newUsageId,
+          concatUsage
+        })
+          .then(resolve)
+          .catch(reject)
+          .finally(async () => {
+            if (streamCheckTimer) {
+              clearInterval(streamCheckTimer);
+            }
+            if (checkStoppingTimer) {
+              clearInterval(checkStoppingTimer);
+            }
+
+            // Close mcpClient connections
+            Object.values(ctx.mcpClientMemory).forEach((client) => {
+              client.closeConnection();
+            });
+
+            // 工作流完成后删除 Redis 记录
+            await delAgentRuntimeStopSign({
+              appId: runningAppInfo.id,
+              chatId
+            });
+          });
+      }
+    );
   });
 }
 
-type RunWorkflowProps = ChatDispatchProps & {
+export type RunWorkflowProps = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -162,15 +268,14 @@ type RunWorkflowProps = ChatDispatchProps & {
 };
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   let {
-    res,
+    apiVersion,
+    checkIsStopping,
     runtimeNodes = [],
     runtimeEdges = [],
-    defaultSkipNodeQueue,
     histories = [],
     variables = {},
     externalProvider,
     retainDatasetCite = true,
-    version = 'v1',
     responseDetail = true,
     responseAllData = true,
     usageId,
@@ -195,14 +300,20 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(
+      [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
         variables,
-        externalProvider.externalWorkflowVariables,
-        data.chatConfig?.variables
-      ),
+        removeObj: externalProvider.externalWorkflowVariables,
+        userVariablesConfigs: data.chatConfig?.variables
+      }),
       durationSeconds: 0
     };
   }
+
+  runtimeEdges = filterOrphanEdges({
+    edges: runtimeEdges,
+    nodes: runtimeNodes,
+    workflowId: data.runningAppInfo.id
+  });
 
   const startTime = Date.now();
 
@@ -210,7 +321,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
   const isDebugMode = data.mode === 'debug';
 
-  /* 
+  /*
     工作流队列控制
     特点：
       1. 可以控制一个 team 下，并发 run 的节点数量。
@@ -243,6 +354,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
       | undefined;
     system_memories: Record<string, any> = {}; // Workflow node memories
+    customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
     // Debug
     debugNextStepRunNodes: RuntimeNodeItemType[] = []; // 记录 Debug 模式下，下一个阶段需要执行的节点。
@@ -288,7 +400,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.processActiveNode();
     }
     // Process next active node
-    private processActiveNode() {
+    private async processActiveNode() {
       // Finish
       if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
         if (isDebugMode) {
@@ -315,6 +427,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
+      await surrenderProcess();
       const nodeId = this.activeRunQueue.keys().next().value;
       const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
 
@@ -329,10 +442,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.processActiveNode();
         });
       }
-      // 兜底，除非极端情况，否则不可能触发
-      else {
-        this.processActiveNode();
-      }
     }
 
     private addSkipNode(node: RuntimeNodeItemType, skippedNodeIdList: Set<string>) {
@@ -344,8 +453,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       this.skipNodeQueue.set(node.nodeId, { node, skippedNodeIdList: concatSkippedNodeIdList });
     }
-    private processSkipNodes() {
+    private async processSkipNodes() {
       // 取一个 node，并且从队列里删除
+      await surrenderProcess();
       const skipItem = this.skipNodeQueue.values().next().value;
       if (skipItem) {
         this.skipNodeQueue.delete(skipItem.node.nodeId);
@@ -355,6 +465,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       } else {
         this.processActiveNode();
       }
+    }
+
+    private usagePush(usages: ChatNodeUsageType[]) {
+      if (usageId) {
+        pushChatItemUsage({
+          teamId,
+          usageId,
+          nodeUsages: usages
+        });
+      }
+      if (concatUsage) {
+        concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
+
+      this.chatNodeUsages = this.chatNodeUsages.concat(usages);
     }
 
     async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
@@ -437,6 +562,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
+        usagePush: this.usagePush.bind(this),
+        lastInteractive: data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
+          ? data.lastInteractive
+          : undefined,
         variables,
         histories,
         retainDatasetCite,
@@ -451,10 +580,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
-            const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
             if (result.error) {
               // Run error and not catch error, skip all edges
@@ -499,43 +628,53 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             };
           } catch (error) {
             // Skip all edges and return error
+            let skipHandleId = targetEdges.map((item) => item.sourceHandle);
+            if (node.catchError) {
+              skipHandleId = skipHandleId.filter((item) => item !== errorHandleId);
+            }
+
             return {
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: getErrText(error)
               },
-              [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
-                (item) => item.sourceHandle
-              )
+              [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
             };
           }
         }
         return {};
       })();
 
+      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       // format response data. Add modulename and module type
       const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
-        return {
+        const val = {
+          moduleName: node.name,
+          moduleType: node.flowNodeType,
+          moduleLogo: node.avatar,
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
           id: getNanoid(),
           nodeId: node.nodeId,
-          moduleName: node.name,
-          moduleType: node.flowNodeType,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
+        nodeResponses.push(val);
+        return val;
       })();
 
       // Response node response
-      if (version === 'v2' && !data.isToolCall && isRootRuntime && formatResponseData) {
-        data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeResponse,
-          data: responseAllData
-            ? formatResponseData
-            : filterPublicNodeResponseData({
-                nodeRespones: [formatResponseData],
-                responseDetail
-              })[0]
+      if (apiVersion === 'v2' && !data.isToolCall && isRootRuntime && nodeResponses.length > 0) {
+        const filteredResponses = responseAllData
+          ? nodeResponses
+          : filterPublicNodeResponseData({
+              nodeRespones: nodeResponses,
+              responseDetail
+            });
+        filteredResponses.forEach((item) => {
+          data.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeResponse,
+            data: item
+          });
         });
       }
 
@@ -558,7 +697,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       // Error
       if (dispatchRes?.responseData?.error) {
-        addLog.warn('workflow error', { error: dispatchRes.responseData.error });
+        logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
       }
 
       return {
@@ -586,6 +725,23 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         }
       };
     }
+    private async checkTeamBlance(): Promise<NodeResponseCompleteType | undefined> {
+      try {
+        await checkTeamAIPoints(data.runningUserInfo.teamId);
+      } catch (error) {
+        // Next time you enter the system, you will still start from the current node(Current check team blance node).
+        if (error === TeamErrEnum.aiPointsNotEnough) {
+          return {
+            [DispatchNodeResponseKeyEnum.interactive]: {
+              type: 'paymentPause',
+              params: {
+                description: i18nT('chat:balance_not_enough_pause')
+              }
+            }
+          };
+        }
+      }
+    }
     /* Check node run/skip or wait */
     private async checkNodeCanRun(
       node: RuntimeNodeItemType,
@@ -596,12 +752,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         answerText,
         reasoningText,
         responseData,
+        nodeResponses,
         nodeDispatchUsages,
         toolResponses,
         assistantResponses,
         rewriteHistories,
         runTimes = 1,
-        system_memories: newMemories
+        system_memories: newMemories,
+        customFeedbacks
       }: NodeResponseCompleteType) => {
         // Add run times
         this.workflowRunTimes += runTimes;
@@ -617,30 +775,27 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         if (responseData) {
           this.chatResponses.push(responseData);
         }
-
-        if (nodeDispatchUsages) {
-          if (usageId) {
-            pushChatItemUsage({
-              teamId,
-              usageId,
-              nodeUsages: nodeDispatchUsages
-            });
-          }
-          if (concatUsage) {
-            concatUsage(nodeDispatchUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
-          }
-
-          this.chatNodeUsages = this.chatNodeUsages.concat(nodeDispatchUsages);
+        if (nodeResponses) {
+          this.chatResponses.push(...nodeResponses);
         }
 
-        if (toolResponses !== undefined && toolResponses !== null) {
-          if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
-          if (
-            !Array.isArray(toolResponses) &&
+        // Collect custom feedbacks
+        if (customFeedbacks && Array.isArray(customFeedbacks)) {
+          this.customFeedbackList = this.customFeedbackList.concat(customFeedbacks);
+        }
+
+        // Push usage in real time. Avoid a workflow usage a large number of points
+        if (nodeDispatchUsages) {
+          this.usagePush(nodeDispatchUsages);
+        }
+
+        if (
+          (toolResponses !== undefined && toolResponses !== null) ||
+          (Array.isArray(toolResponses) && toolResponses.length > 0) ||
+          (!Array.isArray(toolResponses) &&
             typeof toolResponses === 'object' &&
-            Object.keys(toolResponses).length === 0
-          )
-            return;
+            Object.keys(toolResponses).length > 0)
+        ) {
           this.toolRunResponse = toolResponses;
         }
 
@@ -650,7 +805,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         } else {
           if (reasoningText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.reasoning,
               reasoning: {
                 content: reasoningText
               }
@@ -658,7 +812,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
           if (answerText) {
             this.chatAssistantResponse.push({
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: answerText
               }
@@ -694,6 +847,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
         // Get next source edges and update status
         const skipHandleId = result[DispatchNodeResponseKeyEnum.skipHandleId] || [];
+
         const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
           (item) => item.source === node.nodeId
         );
@@ -730,14 +884,15 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         };
       };
 
+      // Check queue status
       if (data.maxRunTimes <= 0) {
-        addLog.error('Max run times is 0', {
+        logger.error('Workflow max run times reached', {
           appId: data.runningAppInfo.id
         });
         return;
       }
-      if (res?.closed) {
-        addLog.warn('Request is closed', {
+      if (checkIsStopping()) {
+        logger.warn('Workflow stopped', {
           appId: data.runningAppInfo.id,
           nodeId: node.nodeId,
           nodeName: node.name
@@ -745,10 +900,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
-      // Thread avoidance
-      await surrenderProcess();
-
-      addLog.debug(`Run node`, { maxRunTimes: data.maxRunTimes, appId: data.runningAppInfo.id });
+      logger.debug('Run workflow node', {
+        maxRunTimes: data.maxRunTimes,
+        appId: data.runningAppInfo.id
+      });
 
       // Get node run status by edges
       const status = checkNodeRunStatus({
@@ -756,7 +911,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         node,
         runtimeEdges
       });
-      const nodeRunResult = await (() => {
+
+      const nodeRunResult = await (async () => {
         if (status === 'run') {
           // All source edges status to waiting
           runtimeEdges.forEach((item) => {
@@ -765,7 +921,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             }
           });
 
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
+          const blanceCheckResult = await this.checkTeamBlance();
+          if (blanceCheckResult) {
+            return {
+              node,
+              runStatus: 'pause' as const,
+              result: blanceCheckResult
+            };
+          }
+
+          logger.debug('dispatchWorkFlow node run with active', { nodeName: node.name });
           return this.nodeRunWithActive(node);
         }
         if (status === 'skip' && !skippedNodeIdList.has(node.nodeId)) {
@@ -778,7 +943,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
           data.maxRunTimes -= 0.1;
           skippedNodeIdList.add(node.nodeId);
-          addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
+          logger.debug('dispatchWorkFlow node run with skip', { nodeName: node.name });
           return this.nodeRunWithSkip(node);
         }
       })();
@@ -836,10 +1001,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           this.debugNextStepRunNodes = this.debugNextStepRunNodes.concat([nodeRunResult.node]);
         }
 
-        this.nodeInteractiveResponse = {
-          entryNodeIds: [nodeRunResult.node.nodeId],
-          interactiveResponse
-        };
+        // For the pause interactive response, there may be multiple nodes triggered at the same time, so multiple entry nodes need to be recorded.
+        // For other interactive nodes, only one will be triggered at the same time.
+        if (interactiveResponse.type === 'paymentPause') {
+          this.nodeInteractiveResponse = {
+            entryNodeIds: this.nodeInteractiveResponse?.entryNodeIds
+              ? this.nodeInteractiveResponse.entryNodeIds.concat(nodeRunResult.node.nodeId)
+              : [nodeRunResult.node.nodeId],
+            interactiveResponse
+          };
+        } else {
+          this.nodeInteractiveResponse = {
+            entryNodeIds: [nodeRunResult.node.nodeId],
+            interactiveResponse
+          };
+        }
         return;
       } else if (isDebugMode) {
         // Debug 模式下一步时候，会自己增加 activeNode
@@ -882,6 +1058,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         entryNodeIds,
         memoryEdges: runtimeEdges.map((edge) => ({
           ...edge,
+          // 入口前面的边全部激活，保证下次进来一定能执行。
           status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
         })),
         nodeOutputs,
@@ -897,7 +1074,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
 
       return {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: interactiveResult
       };
     }
@@ -928,7 +1104,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     if (
       item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
       item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-      item.flowNodeType !== FlowNodeTypeEnum.agent
+      item.flowNodeType !== FlowNodeTypeEnum.toolCall
     ) {
       item.isEntry = false;
     }
@@ -937,7 +1113,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
     const workflowQueue = new WorkflowQueue({
       resolve,
-      defaultSkipNodeQueue
+      defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue
     });
 
     entryNodes.forEach((node) => {
@@ -968,12 +1144,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     });
   }
 
-  const encryptedNewVariables = removeSystemVariable(
-    variables,
-    externalProvider.externalWorkflowVariables,
-    data.chatConfig?.variables
-  );
-
   return {
     flowResponses: workflowQueue.chatResponses,
     flowUsages: workflowQueue.chatNodeUsages,
@@ -984,17 +1154,23 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       workflowQueue.chatAssistantResponse
     ),
     [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-    [DispatchNodeResponseKeyEnum.newVariables]: encryptedNewVariables,
+    [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
+      variables,
+      removeObj: externalProvider.externalWorkflowVariables,
+      userVariablesConfigs: data.chatConfig?.variables
+    }),
     [DispatchNodeResponseKeyEnum.memories]:
       Object.keys(workflowQueue.system_memories).length > 0
         ? workflowQueue.system_memories
         : undefined,
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      workflowQueue.customFeedbackList.length > 0 ? workflowQueue.customFeedbackList : undefined,
     durationSeconds
   };
 };
 
 /* get system variable */
-const getSystemVariables = ({
+const getSystemVariables = async ({
   timezone,
   runningAppInfo,
   chatId,
@@ -1005,30 +1181,38 @@ const getSystemVariables = ({
   variables
 }: Props & {
   timezone: string;
-}): SystemVariablesType => {
+}): Promise<SystemVariablesType> => {
   // Get global variables(Label -> key; Key -> key)
   const variablesConfig = chatConfig?.variables || [];
 
-  const variablesMap = variablesConfig.reduce<Record<string, any>>((acc, item) => {
+  const variablesMap: Record<string, any> = {};
+  for await (const item of variablesConfig) {
     // For internal variables, ignore external input and use default value
     if (item.type === VariableInputEnum.password) {
       const val = variables[item.label] || variables[item.key] || item.defaultValue;
       const actualValue = anyValueDecrypt(val);
-      acc[item.key] = valueTypeFormat(actualValue, item.valueType);
+      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
     }
+    //  文件类型全局变量，签发成 string[] 格式
+    else if (item.type === VariableInputEnum.file) {
+      const vars = await presignVariablesFileUrls({
+        variables,
+        variableConfig: [item]
+      });
 
+      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
+    }
     // API
     else if (variables[item.label] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
     }
     // Web
     else if (variables[item.key] !== undefined) {
-      acc[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
     } else {
-      acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     }
-    return acc;
-  }, {});
+  }
 
   return {
     ...variablesMap,
@@ -1048,10 +1232,10 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
-    if (item.type === ChatItemValueTypeEnum.text) {
+    if (item.text) {
       let text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
         lastItem.text.content += text;
         continue;
       }
@@ -1062,7 +1246,6 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   // If result is empty, auto add a text message
   if (result.length === 0) {
     result.push({
-      type: ChatItemValueTypeEnum.text,
       text: { content: '' }
     });
   }

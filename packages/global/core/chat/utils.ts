@@ -1,15 +1,17 @@
 import { type DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
+import { ChatRoleEnum, ChatSourceEnum } from './constants';
 import {
   type AIChatItemValueItemType,
   type ChatHistoryItemResType,
   type ChatItemType,
   type UserChatItemValueItemType
-} from './type.d';
+} from './type';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
+import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -24,7 +26,7 @@ export const concatHistories = (histories1: ChatItemType[], histories2: ChatItem
 
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
   // @ts-ignore
-  const textMsg = message?.value.find((item) => item.type === ChatItemValueTypeEnum.text);
+  const textMsg = message?.value.find((item) => 'text' in item && item.text);
 
   if (textMsg?.text?.content) {
     return textMsg.text.content.slice(0, 20);
@@ -59,7 +61,6 @@ export const getHistoryPreview = (
                 return `![Input an image](${item.file.url.slice(0, 100)}...)`;
               return '';
             })
-            .filter(Boolean)
             .join('\n') || ''
         );
       } else if (item.obj === ChatRoleEnum.AI) {
@@ -70,7 +71,8 @@ export const getHistoryPreview = (
                 item.text?.content || item?.tools?.map((item) => item.toolName).join(',') || ''
               );
             })
-            .join('') || ''
+            .join('')
+            .trim() || ''
         );
       }
       return '';
@@ -97,8 +99,8 @@ export const filterPublicNodeResponseData = ({
     [FlowNodeTypeEnum.datasetSearchNode]: true,
     [FlowNodeTypeEnum.agent]: true,
     [FlowNodeTypeEnum.pluginOutput]: true,
-
-    [FlowNodeTypeEnum.runApp]: true
+    [FlowNodeTypeEnum.runApp]: true,
+    [FlowNodeTypeEnum.toolCall]: true
   };
 
   const filedMap: Record<string, boolean> = responseDetail
@@ -168,13 +170,16 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
-      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
-        return false;
+      // 有文本内容，保留
+      if (item.text?.content?.trim()) {
+        return true;
       }
-      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
-        return false;
+      // 有文件且文件有 key 或 url，保留
+      if (item.file && (item.file.key || item.file.url)) {
+        return true;
       }
-      return true;
+      // 其他情况过滤掉
+      return false;
     }) || []
   );
 };
@@ -204,7 +209,50 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
+// 扁平化响应
+export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
+  return res
+    .map((item) => {
+      return [
+        item,
+        ...getFlatAppResponses(item.pluginDetail || []),
+        ...getFlatAppResponses(item.toolDetail || []),
+        ...getFlatAppResponses(item.loopDetail || []),
+        ...getFlatAppResponses(item.childrenResponses || [])
+      ];
+    })
+    .flat();
+};
+
 /* 
+  对于交互模式下，有两种响应：
+  1. 提交交互结果，此时不会新增一条 user 消息
+  2. 发送 user 消息，此时对话会新增一条 user 消息
+*/
+export const checkInteractiveResponseStatus = ({
+  interactive,
+  input
+}: {
+  interactive: { type: WorkflowInteractiveResponseType['type'] };
+  input: string;
+}): 'submit' | 'query' => {
+  if (interactive.type === 'agentPlanAskQuery') {
+    return 'query';
+  }
+  if (interactive.type === 'agentPlanAskUserForm') {
+    try {
+      // 如果是表单提交，会是一个对象，如果解析失败，则认为是非表单提交。
+      JSON.parse(input);
+    } catch {
+      return 'query';
+    }
+  } else if (interactive.type === 'agentPlanCheck' && input !== ConfirmPlanAgentText) {
+    return 'query';
+  }
+  return 'submit';
+};
+
+/*
   Merge chat responseData
   1. Same tool mergeSignId (Interactive tool node)
   2. Recursively merge plugin details with same mergeSignId
@@ -212,21 +260,10 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
-  // Merge children reponse data(Children has interactive response)
-  const responseWithMergedPlugins = responseDataList.map((item) => {
-    if (item.pluginDetail && item.pluginDetail.length > 1) {
-      return {
-        ...item,
-        pluginDetail: mergeChatResponseData(item.pluginDetail)
-      };
-    }
-    return item;
-  });
-
   const result: ChatHistoryItemResType[] = [];
   const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  for (const item of responseWithMergedPlugins) {
+  for (const item of responseDataList) {
     if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
       // Merge with existing item
       const existingIndex = mergeMap.get(item.mergeSignId)!;
@@ -237,9 +274,18 @@ export const mergeChatResponseData = (
         runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
         totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
         childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
-        toolDetail: [...(existing.toolDetail || []), ...(item.toolDetail || [])],
-        loopDetail: [...(existing.loopDetail || []), ...(item.loopDetail || [])],
-        pluginDetail: [...(existing.pluginDetail || []), ...(item.pluginDetail || [])]
+        toolDetail: mergeChatResponseData([
+          ...(existing.toolDetail || []),
+          ...(item.toolDetail || [])
+        ]),
+        loopDetail: mergeChatResponseData([
+          ...(existing.loopDetail || []),
+          ...(item.loopDetail || [])
+        ]),
+        pluginDetail: mergeChatResponseData([
+          ...(existing.pluginDetail || []),
+          ...(item.pluginDetail || [])
+        ])
       };
     } else {
       // Add new item

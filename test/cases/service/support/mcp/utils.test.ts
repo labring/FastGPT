@@ -46,7 +46,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  saveChat: vi.fn()
+  pushChatRecords: vi.fn()
 }));
 
 describe('pluginNodes2InputSchema', () => {
@@ -166,7 +166,7 @@ describe('getMcpServerTools', () => {
         {
           _id: 'test-app',
           name: 'Test App',
-          type: AppTypeEnum.plugin
+          type: AppTypeEnum.workflowTool
         }
       ]
     });

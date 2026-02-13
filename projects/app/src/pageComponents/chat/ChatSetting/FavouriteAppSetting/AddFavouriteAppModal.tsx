@@ -3,7 +3,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getMyApps } from '@/web/core/app/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -15,6 +15,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 type Props = {
   onClose: () => void;
@@ -31,14 +32,19 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
   });
   const searchAppNameValue = watchSearchValue('name');
 
-  const [parentId, setParentId] = useState('');
-  const { data: appData = { apps: [], paths: [] }, loading: isFetching } = useRequest2(
+  const [parentId, setParentId] = useState<ParentIdType>('');
+  const { data: appData = { apps: [], paths: [] }, loading: isFetching } = useRequest(
     async () => {
       const [apps, paths] = await Promise.all([
         getMyApps({
           parentId,
           searchKey: searchAppNameValue,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.workflowTool
+          ]
         }),
         searchAppNameValue.trim()
           ? Promise.resolve([])
@@ -59,11 +65,11 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
     []
   );
 
-  useRequest2(getFavouriteApps, {
+  useRequest(getFavouriteApps, {
     manual: false,
     onSuccess(res) {
       setSelectedApps(
-        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar }))
+        res.map((item) => ({ id: item.appId, name: item.name, avatar: item.avatar || '' }))
       );
     }
   });
@@ -78,10 +84,10 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
     });
   }, []);
 
-  const { run: updateFavourites, loading: isUpdating } = useRequest2(
+  const { run: updateFavourites, loading: isUpdating } = useRequest(
     async () => {
       await updateFavouriteApps(
-        selectedApps.map((app, index) => ({ appId: app.id, order: index + 1 }))
+        selectedApps.map((app, order) => ({ appId: app.id, order: order + 1 }))
       );
     },
     {

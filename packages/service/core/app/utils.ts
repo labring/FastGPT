@@ -3,13 +3,13 @@ import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getChildAppPreviewNode } from './plugin/controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { getChildAppPreviewNode } from './tool/controller';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -46,75 +46,144 @@ export async function rewriteAppWorkflowToDetail({
 }) {
   const datasetIdSet = new Set<string>();
 
+  const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
+    const { authAppId } = splitCombineToolId(id);
+
+    try {
+      const [preview] = await Promise.all([
+        getChildAppPreviewNode({
+          appId: id,
+          versionId,
+          lang
+        }),
+        ...(authAppId
+          ? [
+              authAppByTmbId({
+                tmbId: ownerTmbId,
+                appId: authAppId,
+                per: ReadPermissionVal
+              })
+            ]
+          : [])
+      ]);
+
+      return {
+        success: true,
+        data: preview
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: getErrText(error)
+      };
+    }
+  };
+
   /* Add node(App Type) versionlabel and latest sign ==== */
   await Promise.all(
     nodes.map(async (node) => {
-      if (!node.pluginId) return;
-      const { source, pluginId } = splitCombinePluginId(node.pluginId);
+      // Tool node(简易模式/工作流)
+      if (node.pluginId) {
+        const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
+        if (result.success) {
+          const preview = result.data!;
+          node.isFolder = preview.isFolder;
+          node.pluginData = {
+            name: preview.name,
+            avatar: preview.avatar,
+            status: preview.status,
+            diagram: preview.diagram,
+            userGuide: preview.userGuide,
+            courseUrl: preview.courseUrl
+          };
+          node.versionLabel = preview.versionLabel;
+          node.isLatestVersion = preview.isLatestVersion;
+          node.version = preview.version;
 
-      try {
-        const [preview] = await Promise.all([
-          getChildAppPreviewNode({
-            appId: node.pluginId,
-            versionId: node.version,
-            lang
-          }),
-          ...(source === PluginSourceEnum.personal
-            ? [
-                authAppByTmbId({
-                  tmbId: ownerTmbId,
-                  appId: pluginId,
-                  per: ReadPermissionVal
-                })
-              ]
-            : [])
-        ]);
+          node.currentCost = preview.currentCost;
+          node.systemKeyCost = preview.systemKeyCost;
+          node.hasTokenFee = preview.hasTokenFee;
+          node.hasSystemSecret = preview.hasSystemSecret;
 
-        node.pluginData = {
-          diagram: preview.diagram,
-          userGuide: preview.userGuide,
-          courseUrl: preview.courseUrl,
-          name: preview.name,
-          avatar: preview.avatar
-        };
-        node.versionLabel = preview.versionLabel;
-        node.isLatestVersion = preview.isLatestVersion;
-        node.version = preview.version;
+          node.toolConfig = preview.toolConfig;
+          node.toolDescription = preview.toolDescription;
 
-        node.currentCost = preview.currentCost;
-        node.systemKeyCost = preview.systemKeyCost;
-        node.hasTokenFee = preview.hasTokenFee;
-        node.hasSystemSecret = preview.hasSystemSecret;
-        node.isFolder = preview.isFolder;
+          // Latest version
+          if (!node.version) {
+            const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
+            const outputsMap = new Map(node.outputs.map((item) => [item.key, item]));
 
-        node.toolConfig = preview.toolConfig;
-        node.toolDescription = preview.toolDescription;
-
-        // Latest version
-        if (!node.version) {
-          const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
-          const outputsMap = new Map(node.outputs.map((item) => [item.key, item]));
-
-          node.inputs = preview.inputs.map((item) => {
-            const input = inputsMap.get(item.key);
-            return {
-              ...item,
-              value: input?.value,
-              selectedTypeIndex: input?.selectedTypeIndex
-            };
-          });
-          node.outputs = preview.outputs.map((item) => {
-            const output = outputsMap.get(item.key);
-            return {
-              ...item,
-              value: output?.value
-            };
-          });
+            node.inputs = preview.inputs.map((item) => {
+              const input = inputsMap.get(item.key);
+              return {
+                ...item,
+                value: input?.value,
+                selectedTypeIndex: input?.selectedTypeIndex
+              };
+            });
+            node.outputs = preview.outputs.map((item) => {
+              const output = outputsMap.get(item.key);
+              return {
+                ...item,
+                value: output?.value
+              };
+            });
+          }
+        } else {
+          node.pluginData = {
+            error: result.error
+          };
         }
-      } catch (error) {
-        node.pluginData = {
-          error: getErrText(error)
-        };
+      }
+      // Agent, parse subapp
+      if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+        const tools = (node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools)
+          ?.value || []) as SkillToolType[];
+        const nodes = await Promise.all(
+          tools.map(async (tool) => {
+            const result = await loadToolNode({ id: tool.id });
+            if (result.success) {
+              const data = result.data!;
+              // Merge saved config back into inputs
+              const mergedInputs = data.inputs.map((input) => ({
+                ...input,
+                value:
+                  tool.config && tool.config[input.key] !== undefined
+                    ? tool.config[input.key] // Use saved config value
+                    : input.value // Keep default value
+              }));
+
+              return {
+                ...data,
+                inputs: mergedInputs
+              };
+            } else {
+              return {
+                id: tool.id,
+                templateType: 'personalTool' as const,
+                flowNodeType: FlowNodeTypeEnum.tool,
+                name: 'Invalid',
+                avatar: '',
+                intro: '',
+                showStatus: false,
+                weight: 0,
+                isTool: true,
+                version: 'v1',
+                inputs: [],
+                outputs: [],
+                configStatus: 'invalid' as const,
+                pluginData: {
+                  error: result.error
+                }
+              };
+            }
+          })
+        );
+        node.inputs.forEach((input) => {
+          if (input.key === NodeInputKeyEnum.selectedTools) {
+            input.value = nodes;
+          }
+        });
       }
     })
   );

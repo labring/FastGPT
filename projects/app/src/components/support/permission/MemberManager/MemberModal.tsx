@@ -15,7 +15,7 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -61,7 +61,8 @@ function MemberModal({
     onPathClick,
     orgs,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    debouncedSearchKey
   } = useOrg({ withPermission: false });
 
   const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
@@ -70,24 +71,22 @@ function MemberModal({
       withPermission: true,
       withOrgs: true,
       status: 'active',
-      searchKey
+      searchKey: debouncedSearchKey
     },
-    throttleWait: 500,
-    debounceWait: 200,
-    refreshDeps: [searchKey]
+    refreshDeps: [debouncedSearchKey]
   });
 
-  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
+  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest(
     async () => {
       if (!userInfo?.team?.teamId) return [];
       return getGroupList<false>({
         withMembers: false,
-        searchKey
+        searchKey: debouncedSearchKey
       });
     },
     {
       manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
+      refreshDeps: [userInfo?.team?.teamId, debouncedSearchKey]
     }
   );
 
@@ -105,7 +104,7 @@ function MemberModal({
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
   const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
 
-  const { runAsync: _onConfirm, loading: isUpdating } = useRequest2(
+  const { runAsync: _onConfirm, loading: isUpdating } = useRequest(
     () =>
       onUpdateCollaborators({
         collaborators: editCollaborators.map(
@@ -147,7 +146,7 @@ function MemberModal({
       newChildClbs
     });
     if (isConflict && isInheritPermission) {
-      return openConfirmDisableInheritPer(_onConfirm)();
+      return openConfirmDisableInheritPer({ onConfirm: _onConfirm })();
     } else {
       return _onConfirm();
     }

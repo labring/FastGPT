@@ -3,11 +3,14 @@ import { Box, type ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
 import { useTranslation } from 'next-i18next';
+import type { AProps } from '../A';
 
-const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
+const MdImage = ({
+  src,
+  ...props
+}: { src?: string } & ImageProps & { chatAuthData?: AProps['chatAuthData'] }) => {
   const { t } = useTranslation();
   const [isLoaded, { setTrue }] = useBoolean(false);
-
   const [renderSrc, setRenderSrc] = useState(src);
 
   if (src?.includes('base64') && !src.startsWith('data:image')) {

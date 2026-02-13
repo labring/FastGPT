@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
@@ -9,9 +9,9 @@ import RenderToolInput from './render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 
 const NodeSimple = ({
   data,
@@ -20,9 +20,8 @@ const NodeSimple = ({
   maxW
 }: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const splitOutput = useContextSelector(WorkflowContext, (ctx) => ctx.splitOutput);
   const { nodeId, catchError, inputs, outputs } = data;
+  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
   const { isTool, commonInputs } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),
     [inputs, nodeId, splitToolInputs]
@@ -61,7 +60,20 @@ const NodeSimple = ({
         {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
       </NodeCard>
     );
-  }, [isTool, inputs, nodeId, outputs, minW, maxW, selected, data, t, catchError]);
+  }, [
+    minW,
+    maxW,
+    selected,
+    data,
+    isTool,
+    nodeId,
+    inputs,
+    commonInputs,
+    t,
+    successOutputs,
+    errorOutputs,
+    catchError
+  ]);
 
   return Render;
 };

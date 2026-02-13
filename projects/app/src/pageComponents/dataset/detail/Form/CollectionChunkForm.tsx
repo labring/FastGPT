@@ -349,7 +349,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
               desc: t('dataset:custom_data_process_params_desc'),
               value: ChunkSettingModeEnum.custom,
               children: chunkSettingMode === ChunkSettingModeEnum.custom && (
-                <Box mt={5}>
+                <Box>
                   <Box>
                     <RadioGroup<DataChunkSplitModeEnum>
                       list={[
@@ -377,8 +377,8 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
 
                     {chunkSplitMode === DataChunkSplitModeEnum.paragraph && (
                       <>
-                        <Box mt={3}>
-                          <Box fontSize={'sm'}>{t('dataset:llm_paragraph_mode')}</Box>
+                        <Box mt={3} fontSize={'sm'}>
+                          <Box mb={1}>{t('dataset:llm_paragraph_mode')}</Box>
                           <MySelect<ParagraphChunkAIModeEnum>
                             size={'sm'}
                             bg={'myGray.50'}
@@ -406,7 +406,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                           />
                         </Box>
                         <Box mt={2} fontSize={'sm'}>
-                          <Box>{t('dataset:paragraph_max_deep')}</Box>
+                          <Box mb={1}>{t('dataset:paragraph_max_deep')}</Box>
                           <MyNumberInput
                             size={'sm'}
                             bg={'myGray.50'}
@@ -419,7 +419,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                           />
                         </Box>
                         <Box mt={2} fontSize={'sm'}>
-                          <Box>{t('dataset:max_chunk_size')}</Box>
+                          <Box mb={1}>{t('dataset:max_chunk_size')}</Box>
                           <Box
                             css={{
                               '& > span': {
@@ -478,7 +478,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
 
                     {chunkSplitMode === DataChunkSplitModeEnum.char && (
                       <Box mt={3} fontSize={'sm'}>
-                        <Box>{t('dataset:custom_split_char')}</Box>
+                        <Box mb={1}>{t('dataset:custom_split_char')}</Box>
                         <HStack>
                           <Box flex={'1 0 0'}>
                             <MySelect<string>

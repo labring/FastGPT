@@ -32,7 +32,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -62,7 +62,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
     content: t('common:delete_api')
   });
 
-  const { runAsync: onclickRemove } = useRequest2(delOpenApiById, {
+  const { runAsync: onclickRemove } = useRequest(delOpenApiById, {
     onSuccess() {
       refetch();
     }
@@ -72,7 +72,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
     data: apiKeys = [],
     loading: isGetting,
     run: refetch
-  } = useRequest2(() => getOpenApiKeys({ appId }), {
+  } = useRequest(() => getOpenApiKeys({ appId }), {
     manual: false,
     refreshDeps: [appId]
   });
@@ -97,9 +97,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Box>
             {feConfigs?.docUrl && (
               <Link
-                href={
-                  feConfigs.openAPIDocUrl || getDocPath('/docs/introduction/development/openapi')
-                }
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/openapi/intro')}
                 target={'_blank'}
                 ml={1}
                 color={'primary.500'}
@@ -220,7 +218,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                             label: t('common:Delete'),
                             icon: 'delete',
                             type: 'danger',
-                            onClick: () => openConfirm(() => onclickRemove(_id))()
+                            onClick: () => openConfirm({ onConfirm: () => onclickRemove(_id) })()
                           }
                         ]
                       }
@@ -315,19 +313,24 @@ function EditKeyModal({
     defaultValues: defaultData
   });
 
-  const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (e: EditProps) => createAOpenApiKey(e),
-    errorToast: t('workflow:create_link_error'),
-    onSuccess: onCreate
-  });
-  const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: (e: EditProps) => {
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
+    async (e: EditProps) => createAOpenApiKey(e),
+    {
+      errorToast: t('workflow:create_link_error'),
+      onSuccess: onCreate
+    }
+  );
+
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(
+    (e: EditProps) => {
       //@ts-ignore
       return putOpenApiKey(e);
     },
-    errorToast: t('workflow:update_link_error'),
-    onSuccess: onEdit
-  });
+    {
+      errorToast: t('workflow:update_link_error'),
+      onSuccess: onEdit
+    }
+  );
 
   return (
     <MyModal

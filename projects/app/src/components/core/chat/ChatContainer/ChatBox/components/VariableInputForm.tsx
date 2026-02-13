@@ -13,8 +13,9 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
-const VariableInput = ({
+const VariableInputForm = ({
   chatForm,
   chatStarted,
   chatType
@@ -31,6 +32,7 @@ const VariableInput = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   const showExternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(
     chatType
@@ -71,6 +73,8 @@ const VariableInput = ({
     internalVariableList.length > 0 ||
     externalVariableList.length > 0;
 
+  const isUnChange = chatType === ChatTypeEnum.log;
+
   return hasVariables ? (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
@@ -101,6 +105,7 @@ const VariableInput = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -143,6 +148,7 @@ const VariableInput = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
@@ -158,6 +164,7 @@ const VariableInput = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -183,6 +190,7 @@ const VariableInput = ({
               return (
                 <LabelAndFormRender
                   {...item}
+                  isUnChange={isUnChange}
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
@@ -198,6 +206,7 @@ const VariableInput = ({
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -212,4 +221,4 @@ const VariableInput = ({
   ) : null;
 };
 
-export default VariableInput;
+export default VariableInputForm;

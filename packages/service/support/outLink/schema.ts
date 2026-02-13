@@ -6,6 +6,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../core/app/schema';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -43,19 +44,25 @@ const OutLinkSchema = new Schema({
     type: Date
   },
 
-  responseDetail: {
+  showRunningStatus: {
     type: Boolean,
     default: false
   },
-  showNodeStatus: {
+  showCite: {
+    type: Boolean,
+    default: false
+  },
+  showFullText: {
+    type: Boolean,
+    default: false
+  },
+  canDownloadSource: {
+    type: Boolean,
+    default: false
+  },
+  showWholeResponse: {
     type: Boolean,
     default: true
-  },
-  // showFullText: {
-  //   type: Boolean
-  // },
-  showRawSource: {
-    type: Boolean
   },
   limit: {
     maxUsagePoints: {
@@ -83,7 +90,12 @@ const OutLinkSchema = new Schema({
   },
   defaultResponse: {
     type: String
-  }
+  },
+
+  //@deprecated
+  responseDetail: Boolean,
+  showNodeStatus: Boolean,
+  showRawSource: Boolean
 });
 
 OutLinkSchema.virtual('associatedApp', {
@@ -93,11 +105,13 @@ OutLinkSchema.virtual('associatedApp', {
   justOne: true
 });
 
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
 try {
   OutLinkSchema.index({ shareId: -1 });
   OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build outlink indexes', { error });
 }
 
 export const MongoOutLink = getMongoModel<SchemaType>('outlinks', OutLinkSchema);

@@ -9,12 +9,12 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
-  ChatSiteItemType,
   UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type.d';
+} from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from './type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -22,32 +22,30 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import {
   closeCustomFeedback,
-  delChatRecordById,
   updateChatAdminFeedback,
-  updateChatUserFeedback
-} from '@/web/core/chat/api';
+  updateChatUserFeedback,
+  updateFeedbackReadStatus
+} from '@/web/core/chat/feedback/api';
+import { delChatRecordById } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type.d';
+import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
-import {
-  checkIsInteractiveByHistories,
+  getInteractiveByHistories,
   formatChatValue2InputType,
-  setUserSelectResultToHistories
+  rewriteHistoriesByInteractiveResponse
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
+import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
@@ -63,16 +61,20 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { cloneDeep } from 'lodash';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
-const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
-const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
+const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
+const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -86,14 +88,15 @@ type Props = OutLinkChatAuthProps &
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
-    showEmptyIntro?: boolean;
     active?: boolean; // can use
+    showWorkorder?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
         isNewChat?: boolean;
       }
     >;
+    onTriggerRefresh?: () => void;
   };
 
 const ChatBox = ({
@@ -101,15 +104,16 @@ const ChatBox = ({
   feedbackType = FeedbackTypeEnum.hidden,
   showMarkIcon = false,
   showVoiceIcon = true,
-  showEmptyIntro = false,
   active = true,
+  showWorkorder,
   onStartChat,
-  chatType
+  chatType,
+  onTriggerRefresh
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
+  const { setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -118,12 +122,9 @@ const ChatBox = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
-  const [readFeedbackData, setReadFeedbackData] = useState<{
-    dataId: string;
-    content: string;
-  }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
+  const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -138,10 +139,11 @@ const ChatBox = ({
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
+  const itemRefs = useContextSelector(ChatRecordContext, (v) => v.itemRefs);
 
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
@@ -152,7 +154,10 @@ const ChatBox = ({
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   // Workflow running, there are user input or selection
-  const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
+  const { interactive: lastInteractive, canSendQuery } = useMemo(
+    () => getInteractiveByHistories(chatRecords),
+    [chatRecords]
+  );
 
   const showExternalVariable = useMemo(() => {
     const map: Record<string, boolean> = {
@@ -167,19 +172,32 @@ const ChatBox = ({
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
-      input: '',
+      input: sessionStorage.getItem(`chatInput_${chatId}`) || '',
       files: [],
       chatStarted: false
     }
   });
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
+  const inputValue = watch('input');
+
+  useDebounceEffect(
+    () => {
+      if (inputValue) {
+        sessionStorage.setItem(`chatInput_${chatId}`, inputValue);
+      } else {
+        sessionStorage.removeItem(`chatInput_${chatId}`);
+      }
+    },
+    [inputValue, chatId],
+    { wait: 300 }
+  );
 
   const commonVariableList = variableList.filter(
     (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
   );
 
-  /* 
+  /*
     对话已经开始的标记：
     1. 保证 appId 一致。
     2. 有对话记录/手动点了开始/默认没有需要填写的变量。
@@ -225,6 +243,7 @@ const ChatBox = ({
 
   const generatingMessage = useMemoizedFn(
     ({
+      responseValueId,
       event,
       text = '',
       reasoningText,
@@ -232,21 +251,33 @@ const ChatBox = ({
       name,
       tool,
       interactive,
-      autoTTSResponse,
+      plan,
+      stepId,
+      stepTitle,
       variables,
       nodeResponse,
-      durationSeconds
+      durationSeconds,
+      autoTTSResponse
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
 
-          autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
+          if (autoTTSResponse) {
+            splitText2Audio(formatChatValue2InputType(item.value).text || '');
+          }
 
-          const lastValue: AIChatItemValueItemType = JSON.parse(
-            JSON.stringify(item.value[item.value.length - 1])
-          );
+          const updateIndex = (() => {
+            if (!responseValueId) return item.value.length - 1;
+            const index = item.value.findIndex((item) => item.id === responseValueId);
+            if (index !== -1) return index;
+            return item.value.length - 1;
+          })();
+          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+          if (stepId) {
+            updateValue.stepId = stepId;
+          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -255,100 +286,146 @@ const ChatBox = ({
                 ? [...item.responseData, nodeResponse]
                 : [nodeResponse]
             };
-          } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
+          }
+          if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {
               ...item,
               status,
               moduleName: name
             };
-          } else if (reasoningText) {
-            if (lastValue.type === ChatItemValueTypeEnum.reasoning && lastValue.reasoning) {
-              lastValue.reasoning.content += reasoningText;
-              return {
-                ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
-              };
-            } else {
-              const val: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.reasoning,
-                reasoning: {
-                  content: reasoningText
-                }
-              };
-              return {
-                ...item,
-                value: item.value.concat(val)
-              };
-            }
-          } else if (
-            (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
-            text
-          ) {
-            if (!lastValue || !lastValue.text) {
-              const newValue: AIChatItemValueItemType = {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content: text
-                }
-              };
-              return {
-                ...item,
-                value: item.value.concat(newValue)
-              };
-            } else {
-              lastValue.text.content += text;
-              return {
-                ...item,
-                value: item.value.slice(0, -1).concat(lastValue)
-              };
-            }
-          } else if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.tool,
-              tools: [tool]
-            };
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          } else if (
-            event === SseResponseEventEnum.toolParams &&
-            tool &&
-            lastValue.type === ChatItemValueTypeEnum.tool &&
-            lastValue?.tools
-          ) {
-            lastValue.tools = lastValue.tools.map((item) => {
-              if (item.id === tool.id) {
-                item.params += tool.params;
+          }
+          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+            if (reasoningText) {
+              if (updateValue?.reasoning && updateValue.stepId === stepId) {
+                updateValue.reasoning.content += reasoningText;
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              } else {
+                const val: AIChatItemValueItemType = {
+                  id: responseValueId,
+                  reasoning: {
+                    content: reasoningText
+                  }
+                };
+                return {
+                  ...item,
+                  value: [...item.value, val]
+                };
               }
-              return item;
-            });
-            return {
-              ...item,
-              value: item.value.slice(0, -1).concat(lastValue)
-            };
-          } else if (event === SseResponseEventEnum.toolResponse && tool) {
-            // replace tool response
-            return {
-              ...item,
-              value: item.value.map((val) => {
-                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
-                  const tools = val.tools.map((item) =>
-                    item.id === tool.id ? { ...item, response: tool.response } : item
-                  );
-                  return {
-                    ...val,
-                    tools
-                  };
-                }
-                return val;
-              })
-            };
-          } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
-          } else if (event === SseResponseEventEnum.interactive) {
+            }
+            if (text) {
+              if (updateValue?.text && updateValue.stepId === stepId) {
+                updateValue.text.content += text;
+                return {
+                  ...item,
+                  value: [
+                    ...item.value.slice(0, updateIndex),
+                    updateValue,
+                    ...item.value.slice(updateIndex + 1)
+                  ]
+                };
+              } else {
+                const newValue: AIChatItemValueItemType = {
+                  id: responseValueId,
+                  text: {
+                    content: text
+                  }
+                };
+                return {
+                  ...item,
+                  value: item.value.concat(newValue)
+                };
+              }
+            }
+          }
+
+          // Tool call
+          if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              type: ChatItemValueTypeEnum.interactive,
+              id: responseValueId,
+              tool
+            };
+            return {
+              ...item,
+              value: [...item.value, val]
+            };
+          }
+          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tool) {
+            if (tool.params) {
+              updateValue.tool.params += tool.params;
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
+              };
+            }
+            return item;
+          }
+          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tool) {
+            if (tool.response) {
+              // replace tool response
+              if (typeof updateValue.tool.response !== 'string') {
+                updateValue.tool.response = '';
+              }
+              updateValue.tool.response += tool.response;
+
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, updateIndex),
+                  updateValue,
+                  ...item.value.slice(updateIndex + 1)
+                ]
+              };
+            }
+            return item;
+          }
+
+          // Agent
+          if (event === SseResponseEventEnum.plan && plan) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  plan
+                }
+              ]
+            };
+          }
+          if (event === SseResponseEventEnum.stepTitle && stepTitle) {
+            return {
+              ...item,
+              value: [
+                ...item.value,
+                {
+                  id: responseValueId,
+                  stepId,
+                  stepTitle: {
+                    ...stepTitle,
+                    folded: false
+                  }
+                }
+              ]
+            };
+          }
+
+          if (event === SseResponseEventEnum.updateVariables && variables) {
+            resetVariables({ variables });
+          }
+          if (event === SseResponseEventEnum.interactive && interactive) {
+            const val: AIChatItemValueItemType = {
               interactive
             };
 
@@ -356,7 +433,9 @@ const ChatBox = ({
               ...item,
               value: item.value.concat(val)
             };
-          } else if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+          }
+
+          if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
             return {
               ...item,
               durationSeconds: item.durationSeconds
@@ -379,6 +458,8 @@ const ChatBox = ({
     if (!TextareaDom.current) return;
     setValue('files', files);
     setValue('input', text);
+
+    sessionStorage.removeItem(`chatInput_${chatId}`);
 
     setTimeout(() => {
       /* 回到最小高度 */
@@ -415,10 +496,10 @@ const ChatBox = ({
   }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useMemoizedFn((signal: string = 'stop') => {
-    chatController.current?.abort(signal);
-    questionGuideController.current?.abort(signal);
-    pluginController.current?.abort(signal);
+  const abortRequest = useMemoizedFn((reason: string = 'stop') => {
+    chatController.current?.abort(new Error(reason));
+    questionGuideController.current?.abort(new Error(reason));
+    pluginController.current?.abort(new Error(reason));
   });
 
   /**
@@ -429,8 +510,8 @@ const ChatBox = ({
       text = '',
       files = [],
       history = chatRecords,
+      interactive,
       autoTTSResponse = false,
-      isInteractivePrompt = false,
       hideInUI = false
     }) => {
       variablesForm.handleSubmit(
@@ -446,8 +527,7 @@ const ChatBox = ({
           }
 
           // Abort the previous request
-          abortRequest();
-          questionGuideController.current?.abort('stop');
+          questionGuideController.current?.abort(new Error('stop'));
 
           text = text.trim();
 
@@ -462,15 +542,30 @@ const ChatBox = ({
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           variableList?.forEach((item) => {
-            const val =
+            let val =
               variables[item.key] === '' ||
               variables[item.key] === undefined ||
               variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
+
+            if (item.type === VariableInputEnum.timePointSelect && val) {
+              val = formatTime2YMDHMS(new Date(val));
+            } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
+              val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
+            } else if (item.type === VariableInputEnum.file && Array.isArray(val)) {
+              val = val.map((item) => ({
+                id: item.id,
+                key: item.key,
+                url: item.key ? undefined : item.url,
+                name: item.name,
+                type: item.type
+              }));
+            }
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
+          const humanChatId = getNanoid(24);
           const responseChatId = getNanoid(24);
 
           // set auto audio playing
@@ -482,24 +577,24 @@ const ChatBox = ({
           const newChatList: ChatSiteItemType[] = [
             ...history,
             {
-              dataId: getNanoid(24),
+              id: humanChatId,
+              dataId: humanChatId,
               obj: ChatRoleEnum.Human,
               time: new Date(),
               hideInUI,
               value: [
                 ...files.map((file) => ({
-                  type: ChatItemValueTypeEnum.file,
                   file: {
                     type: file.type,
                     name: file.name,
-                    url: file.url || '',
-                    icon: file.icon || ''
+                    url: file.url,
+                    icon: file.icon || '',
+                    key: file.key || ''
                   }
                 })),
                 ...(text
                   ? [
                       {
-                        type: ChatItemValueTypeEnum.text,
                         text: {
                           content: text
                         }
@@ -510,11 +605,11 @@ const ChatBox = ({
               status: ChatStatusEnum.finish
             },
             {
+              id: responseChatId,
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
               value: [
                 {
-                  type: ChatItemValueTypeEnum.text,
                   text: {
                     content: ''
                   }
@@ -526,9 +621,13 @@ const ChatBox = ({
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
-            isInteractivePrompt
+            interactive
               ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+                rewriteHistoriesByInteractiveResponse({
+                  histories: newChatList,
+                  interactive,
+                  interactiveVal: text
+                })
               : newChatList
           );
 
@@ -542,15 +641,22 @@ const ChatBox = ({
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 这里，无论是否为交互模式，最后都是 Human 的消息。
+            // 这里，无论是否为交互模式，都要确保最后一条消息都是 Human 的消息。
             const messages = chats2GPTMessages({
-              messages: newChatList.slice(0, -1),
+              messages: newChatList.slice(0, -1).map((item) => {
+                if (item.obj === ChatRoleEnum.Human) {
+                  item.files?.forEach((file) => {
+                    file.url = '';
+                  });
+                }
+                return item;
+              }),
               reserveId: true,
               reserveTool: true
             });
 
             const { responseText } = await onStartChat({
-              messages, // 保证最后一条是 Human 的消息
+              messages,
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
@@ -563,16 +669,18 @@ const ChatBox = ({
               newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
 
-                // Check node response error
                 const responseData = mergeChatResponseData(item.responseData || []);
-                const err =
-                  responseData[responseData.length - 1]?.error ||
-                  responseData[responseData.length - 1]?.errorText;
-                if (err) {
-                  toast({
-                    title: t(getErrText(err)),
-                    status: 'warning'
-                  });
+                // Check node response error
+                if (!abortSignal?.signal?.aborted) {
+                  const err =
+                    responseData[responseData.length - 1]?.error ||
+                    responseData[responseData.length - 1]?.errorText;
+                  if (err) {
+                    toast({
+                      title: t(getErrText(err)),
+                      status: 'warning'
+                    });
+                  }
                 }
 
                 return {
@@ -582,11 +690,18 @@ const ChatBox = ({
                   responseData
                 };
               });
+
+              const { interactive: lastInteractive } = getInteractiveByHistories(state);
+              if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
+                setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+              }
+
               return newChatHistories;
             });
 
             setTimeout(() => {
-              if (!checkIsInteractiveByHistories(newChatHistories)) {
+              // If there is no interactive mode, create a question guide
+              if (!getInteractiveByHistories(newChatHistories).interactive) {
                 createQuestionGuide();
               }
 
@@ -635,11 +750,12 @@ const ChatBox = ({
 
   // retry input
   const onDelMessage = useCallback(
-    (contentId: string) => {
+    (contentId: string, delFile = true) => {
       return delChatRecordById({
         appId,
         chatId,
         contentId,
+        delFile,
         ...outLinkAuthData
       });
     },
@@ -656,7 +772,7 @@ const ChatBox = ({
         await Promise.all(
           delHistory.map((item) => {
             if (item.dataId) {
-              return onDelMessage(item.dataId);
+              return onDelMessage(item.dataId, false);
             }
           })
         );
@@ -752,24 +868,6 @@ const ChatBox = ({
       } catch (error) {}
     };
   });
-  const onCloseUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (feedbackType !== FeedbackTypeEnum.admin) return;
-    return () => {
-      if (!chat.dataId || !chatId || !appId) return;
-      setChatRecords((state) =>
-        state.map((chatItem) =>
-          chatItem.dataId === chat.dataId ? { ...chatItem, userGoodFeedback: undefined } : chatItem
-        )
-      );
-      updateChatUserFeedback({
-        appId,
-        chatId,
-        dataId: chat.dataId,
-        userGoodFeedback: undefined,
-        ...outLinkAuthData
-      });
-    };
-  });
   const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
     if (
       feedbackType !== FeedbackTypeEnum.user ||
@@ -799,16 +897,6 @@ const ChatBox = ({
       return () => setFeedbackId(chat.dataId);
     }
   });
-  const onReadUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
-    return () => {
-      if (!chat.dataId) return;
-      setReadFeedbackData({
-        dataId: chat.dataId || '',
-        content: chat.userBadFeedback || ''
-      });
-    };
-  });
   const onCloseCustomFeedback = useMemoizedFn((chat: ChatSiteItemType, i: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.checked && appId && chatId && chat.dataId) {
@@ -832,26 +920,37 @@ const ChatBox = ({
       }
     };
   });
+  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
+    return async () => {
+      if (!appId || !chatId || !chat.dataId) return;
 
-  const showEmpty = useMemo(
-    () =>
-      chatType !== ChatTypeEnum.home &&
-      feConfigs?.show_emptyChat &&
-      showEmptyIntro &&
-      chatRecords.length === 0 &&
-      !commonVariableList?.length &&
-      !showExternalVariable &&
-      !welcomeText,
-    [
-      chatType,
-      feConfigs?.show_emptyChat,
-      showEmptyIntro,
-      chatRecords.length,
-      commonVariableList?.length,
-      showExternalVariable,
-      welcomeText
-    ]
-  );
+      const newReadStatus = !chat.isFeedbackRead;
+
+      try {
+        await updateFeedbackReadStatus({
+          appId,
+          chatId,
+          dataId: chat.dataId,
+          isRead: newReadStatus
+        });
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.dataId === chat.dataId
+              ? {
+                  ...item,
+                  isFeedbackRead: newReadStatus
+                }
+              : item
+          )
+        );
+
+        onTriggerRefresh?.();
+      } catch (error) {}
+    };
+  });
+
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -870,22 +969,26 @@ const ChatBox = ({
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && !isInteractive;
+  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
 
   // Add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
         sendPrompt({
-          text: data.text
+          text: data.text,
+          interactive: lastInteractive
         });
       }
     };
     window.addEventListener('message', windowMessage);
 
-    const fn: SendPromptFnType = (e) => {
-      if (canSendPrompt || e.isInteractivePrompt) {
-        sendPrompt(e);
+    const fn = ({ focus = false, ...e }: ChatBoxInputType & { focus?: boolean }) => {
+      if (canSendPrompt || focus) {
+        sendPrompt({
+          ...e,
+          interactive: lastInteractive
+        });
       }
     };
     eventBus.on(EventNameEnum.sendQuestion, fn);
@@ -899,7 +1002,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt, canSendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
   // Auto send prompt
   useDebounceEffect(
@@ -913,7 +1016,8 @@ const ChatBox = ({
       ) {
         sendPrompt({
           text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
-          hideInUI: true
+          hideInUI: true,
+          interactive: lastInteractive
         });
       }
     },
@@ -972,113 +1076,243 @@ const ChatBox = ({
     }
   }, [ScrollContainerRef, setIsVariableVisible]);
 
+  // Home chat, and no chat records
   const isHomeRender = useMemo(() => {
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
+  const toggleDeletedGroup = useCallback((dataIds: string[]) => {
+    setExpandedDeletedGroups((prev) => {
+      const newSet = new Set(prev);
+      // Check if all dataIds are in the set
+      const allExpanded = dataIds.every((id) => newSet.has(id));
+
+      if (allExpanded) {
+        // Collapse: remove all dataIds
+        dataIds.forEach((id) => newSet.delete(id));
+      } else {
+        // Expand: add all dataIds
+        dataIds.forEach((id) => newSet.add(id));
+      }
+
+      return newSet;
+    });
+  }, []);
+
+  // 预处理聊天记录：Log 模式下扩展 chatRecords，添加折叠信息
+  const processedRecords = useMemoEnhance(() => {
+    // 非 Log 类型：直接返回原始数据
+    if (chatType !== ChatTypeEnum.log) {
+      return chatRecords;
+    }
+
+    // Log 类型：一次遍历完成删除分组信息计算和 chatRecords 扩展
+    const result: ChatSiteItemType[] = [];
+    let currentGroup: {
+      items: ChatSiteItemType[];
+      dataIds: string[];
+    } | null = null;
+
+    chatRecords.forEach((item, index) => {
+      const isDeleted = !!item.deleteTime;
+      const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
+      const nextIsDeleted =
+        index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
+
+      if (isDeleted && !prevIsDeleted) {
+        // 开始新的删除组
+        currentGroup = {
+          items: [],
+          dataIds: []
+        };
+      }
+
+      if (currentGroup && isDeleted) {
+        // 收集当前删除组的 item 和 dataId
+        currentGroup.items.push(item);
+        currentGroup.dataIds.push(item.dataId);
+      }
+
+      if (currentGroup && (!nextIsDeleted || index === chatRecords.length - 1)) {
+        // 删除组结束，处理整组
+        const isExpanded = currentGroup.dataIds.every((id) => expandedDeletedGroups.has(id));
+        const count = currentGroup.dataIds.length;
+
+        currentGroup.items.forEach((groupItem, groupIndex) => {
+          const extendedItem: ChatSiteItemType = { ...groupItem };
+
+          // 第一个 item 添加 collapseTop
+          if (groupIndex === 0) {
+            extendedItem.collapseTop = {
+              count,
+              dataIds: currentGroup!.dataIds,
+              isExpanded
+            };
+          }
+
+          // 最后一个 item 添加 collapseBottom
+          if (groupIndex === currentGroup!.items.length - 1) {
+            extendedItem.collapseBottom = {
+              count,
+              dataIds: currentGroup!.dataIds,
+              isExpanded
+            };
+          }
+
+          result.push(extendedItem);
+        });
+
+        currentGroup = null;
+      } else if (!isDeleted) {
+        // 非删除 item，直接添加
+        result.push(item);
+      }
+    });
+
+    return result;
+  }, [chatType, chatRecords, expandedDeletedGroups]);
+
   //chat history
+  const hasPlanCheck =
+    lastInteractive?.type === 'agentPlanCheck' && !lastInteractive.params.confirmed;
   const RecordsBox = useMemo(() => {
     return (
       <Box id={'history'}>
-        {chatRecords.map((item, index) => (
-          <Box key={item.dataId}>
-            {/* 并且时间和上一条的time相差超过十分钟 */}
-            {index !== 0 &&
-              item.time &&
-              chatRecords[index - 1].time !== undefined &&
-              new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
-                10 * 60 * 1000 && <TimeBox time={item.time} />}
+        {processedRecords.map((item, index) => {
+          // 判断是否应该渲染：非删除 或 dataId 在展开集合中
+          const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
 
-            <Box py={item.hideInUI ? 0 : 6}>
-              {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
-                <ChatItem
-                  type={item.obj}
-                  avatar={userAvatar}
-                  chat={item}
-                  onRetry={retryInput(item.dataId)}
-                  onDelete={delOneMessage(item.dataId)}
-                  isLastChild={index === chatRecords.length - 1}
+          return (
+            <Box key={item.dataId}>
+              {/* 顶部折叠按钮：有 collapseTop 信息时显示 */}
+              {item.collapseTop && (
+                <DeletedItemsCollapse
+                  count={item.collapseTop.count}
+                  isExpanded={item.collapseTop.isExpanded}
+                  onToggle={() => toggleDeletedGroup(item.collapseTop!.dataIds)}
+                  position="top"
                 />
               )}
-              {item.obj === ChatRoleEnum.AI && (
-                <ChatItem
-                  type={item.obj}
-                  avatar={appAvatar}
-                  chat={item}
-                  isLastChild={index === chatRecords.length - 1}
-                  {...{
-                    showVoiceIcon,
-                    statusBoxData,
-                    questionGuides,
-                    onMark: onMark(
-                      item,
-                      formatChatValue2InputType(chatRecords[index - 1]?.value)?.text
-                    ),
-                    onAddUserLike: onAddUserLike(item),
-                    onCloseUserLike: onCloseUserLike(item),
-                    onAddUserDislike: onAddUserDislike(item),
-                    onReadUserDislike: onReadUserDislike(item)
+
+              {/* 渲染消息：根据 shouldRender 判断 */}
+              {shouldRender && (
+                <Box
+                  ref={(e) => {
+                    itemRefs.current.set(item.dataId, e);
                   }}
                 >
-                  {/* custom feedback */}
-                  {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                    <Box>
-                      <ChatBoxDivider
-                        icon={'core/app/customFeedback'}
-                        text={t('common:core.app.feedback.Custom feedback')}
+                  {/* 时间间隔显示逻辑：相邻消息时间差超过10分钟则显示时间 */}
+                  {index !== 0 &&
+                    item.time &&
+                    processedRecords[index - 1].time !== undefined &&
+                    new Date(item.time).getTime() -
+                      new Date(processedRecords[index - 1].time!).getTime() >
+                      10 * 60 * 1000 && <TimeBox time={item.time} />}
+
+                  <Box py={item.hideInUI ? 0 : 6}>
+                    {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
+                      <ChatItem
+                        avatar={userAvatar}
+                        chat={item}
+                        onRetry={retryInput(item.dataId)}
+                        onDelete={delOneMessage(item.dataId)}
+                        isLastChild={index === processedRecords.length - 1}
                       />
-                      {item.customFeedbacks.map((text, i) => (
-                        <Box key={i}>
-                          <MyTooltip label={t('common:core.app.feedback.close custom feedback')}>
-                            <Checkbox
-                              onChange={onCloseCustomFeedback(item, i)}
-                              icon={<MyIcon name={'common/check'} w={'12px'} />}
-                            >
-                              {text}
-                            </Checkbox>
-                          </MyTooltip>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  {/* admin mark content */}
-                  {showMarkIcon && item.adminFeedback && (
-                    <Box fontSize={'sm'}>
-                      <ChatBoxDivider
-                        icon="core/app/markLight"
-                        text={t('common:core.chat.Admin Mark Content')}
-                      />
-                      <Box whiteSpace={'pre-wrap'}>
-                        <Box color={'black'}>{item.adminFeedback.q}</Box>
-                        <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
-                      </Box>
-                    </Box>
-                  )}
-                </ChatItem>
+                    )}
+                    {item.obj === ChatRoleEnum.AI && (
+                      <ChatItem
+                        avatar={appAvatar}
+                        chat={item}
+                        isLastChild={index === processedRecords.length - 1}
+                        {...{
+                          showVoiceIcon,
+                          statusBoxData,
+                          questionGuides,
+                          onMark: onMark(
+                            item,
+                            formatChatValue2InputType(processedRecords[index - 1]?.value)?.text
+                          ),
+                          onAddUserLike: onAddUserLike(item),
+                          onAddUserDislike: onAddUserDislike(item),
+                          onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
+                        }}
+                      >
+                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                          <Box>
+                            <ChatBoxDivider
+                              icon={'core/app/customFeedback'}
+                              text={t('common:core.app.feedback.Custom feedback')}
+                            />
+                            {item.customFeedbacks.map((text, i) => (
+                              <Box key={i}>
+                                <MyTooltip
+                                  label={t('common:core.app.feedback.close custom feedback')}
+                                >
+                                  <Checkbox
+                                    onChange={onCloseCustomFeedback(item, i)}
+                                    icon={<MyIcon name={'common/check'} w={'12px'} />}
+                                  >
+                                    {text}
+                                  </Checkbox>
+                                </MyTooltip>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+                        {showMarkIcon && item.adminFeedback && (
+                          <Box fontSize={'sm'}>
+                            <ChatBoxDivider
+                              icon="core/app/markLight"
+                              text={t('common:core.chat.Admin Mark Content')}
+                            />
+                            <Box whiteSpace={'pre-wrap'}>
+                              <Box color={'black'}>{item.adminFeedback.q}</Box>
+                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                            </Box>
+                          </Box>
+                        )}
+                      </ChatItem>
+                    )}
+                  </Box>
+                </Box>
+              )}
+
+              {/* 底部折叠按钮：有 collapseBottom 信息且展开时显示 */}
+              {item.collapseBottom && item.collapseBottom.isExpanded && (
+                <DeletedItemsCollapse
+                  count={item.collapseBottom.count}
+                  isExpanded={item.collapseBottom.isExpanded}
+                  onToggle={() => toggleDeletedGroup(item.collapseBottom!.dataIds)}
+                  position="bottom"
+                />
               )}
             </Box>
-          </Box>
-        ))}
+          );
+        })}
       </Box>
     );
   }, [
-    chatRecords,
+    processedRecords,
+    expandedDeletedGroups,
+    toggleDeletedGroup,
+    itemRefs,
     userAvatar,
-    retryInput,
-    delOneMessage,
     appAvatar,
     showVoiceIcon,
     statusBoxData,
     questionGuides,
+    showMarkIcon,
+    t,
+    retryInput,
+    delOneMessage,
     onMark,
     onAddUserLike,
-    onCloseUserLike,
     onAddUserDislike,
-    onReadUserDislike,
-    t,
-    showMarkIcon,
+    onToggleFeedbackReadStatus,
     onCloseCustomFeedback
   ]);
+
+  // Child box
   const AppChatRenderBox = useMemo(() => {
     return (
       <ScrollData
@@ -1090,8 +1324,7 @@ const ChatBox = ({
         px={[4, 0]}
         pb={6}
       >
-        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
+        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1103,7 +1336,7 @@ const ChatBox = ({
         </Box>
       </ScrollData>
     );
-  }, [ScrollData, showEmpty, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
+  }, [ScrollData, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>
@@ -1145,7 +1378,7 @@ const ChatBox = ({
             ) : (
               <ChatInput
                 onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
+                onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
@@ -1163,9 +1396,12 @@ const ChatBox = ({
               w={'100%'}
               maxW={['auto', 'min(820px, 100%)']}
             >
+              {showWorkorder && <WorkorderEntrance />}
+
               <ChatInput
                 onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
+                lastInteractive={lastInteractive}
+                onStop={() => abortRequest('stop')}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
@@ -1189,31 +1425,6 @@ const ChatBox = ({
               )
             );
             setFeedbackId(undefined);
-          }}
-        />
-      )}
-      {/* admin read feedback modal */}
-      {!!readFeedbackData && (
-        <ReadFeedbackModal
-          content={readFeedbackData.content}
-          onClose={() => setReadFeedbackData(undefined)}
-          onCloseFeedback={() => {
-            setChatRecords((state) =>
-              state.map((chatItem) =>
-                chatItem.dataId === readFeedbackData.dataId
-                  ? { ...chatItem, userBadFeedback: undefined }
-                  : chatItem
-              )
-            );
-            try {
-              if (!chatId || !appId) return;
-              updateChatUserFeedback({
-                appId,
-                chatId,
-                dataId: readFeedbackData.dataId
-              });
-            } catch (error) {}
-            setReadFeedbackData(undefined);
           }}
         />
       )}
@@ -1243,23 +1454,6 @@ const ChatBox = ({
                   : chatItem
               )
             );
-
-            if (readFeedbackData && chatId && appId) {
-              updateChatUserFeedback({
-                appId,
-                chatId,
-                dataId: readFeedbackData.dataId,
-                userBadFeedback: undefined
-              });
-              setChatRecords((state) =>
-                state.map((chatItem) =>
-                  chatItem.dataId === readFeedbackData.dataId
-                    ? { ...chatItem, userBadFeedback: undefined }
-                    : chatItem
-                )
-              );
-              setReadFeedbackData(undefined);
-            }
           }}
         />
       )}

@@ -1,15 +1,14 @@
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type CreateCollectionResponse } from '@/global/core/dataset/api';
-import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
@@ -24,17 +23,14 @@ async function handler(
     datasetId: body.datasetId
   });
 
-  // 1. read file
-  const file = await getFileById({
-    bucketName: BucketNameEnum.dataset,
-    fileId
-  });
-
-  if (!file) {
-    return Promise.reject(CommonErrEnum.fileNotFound);
+  if (!isS3ObjectKey(fileId, 'dataset')) {
+    return Promise.reject('Invalid dataset file key');
   }
 
-  const filename = file.filename;
+  const metadata = await getS3DatasetSource().getFileMetadata(fileId);
+  if (!metadata) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
@@ -43,17 +39,11 @@ async function handler(
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.file,
-      name: filename,
-      fileId,
-      metadata: {
-        relatedImgId: fileId
-      },
+      name: metadata.filename,
+      fileId, // ObjectId -> ObjectKey
       customPdfParse
     }
   });
-
-  // remove buffer
-  await deleteRawTextBuffer(fileId);
 
   return {
     collectionId,

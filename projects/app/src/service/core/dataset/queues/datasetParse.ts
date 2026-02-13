@@ -11,7 +11,7 @@ import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { addMinutes } from 'date-fns';
 import { checkTeamAiPointsAndLock } from './utils';
@@ -30,8 +30,9 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 const requestLLMPargraph = async ({
   rawText,
@@ -42,7 +43,7 @@ const requestLLMPargraph = async ({
   rawText: string;
   model: string;
   billId: string;
-  paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+  paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
   if (
     !global.feConfigs?.isPlus ||
@@ -98,7 +99,7 @@ const reduceQueue = () => {
 
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
-  addLog.debug(`[Parse Queue] Queue size: ${global.datasetParseQueueLen}`);
+  logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
 
@@ -158,7 +159,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         break;
       }
       if (error) {
-        addLog.error(`[Parse Queue] Error`, error);
+        logger.error('Parse queue fetch task failed', { error });
         await delay(500);
         continue;
       }
@@ -171,12 +172,24 @@ export const datasetParseQueue = async (): Promise<any> => {
       const collection = data.collection;
 
       if (!dataset || !collection) {
-        addLog.warn(`[Parse Queue] data not found`, data);
+        logger.warn('Parse queue task skipped: dataset or collection missing', {
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          trainingId: data._id
+        });
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
-      addLog.info(`[Parse Queue] Start`);
+      logger.info('Parse queue task started', {
+        trainingId: data._id,
+        datasetId: data.datasetId,
+        collectionId: data.collectionId,
+        teamId: data.teamId,
+        tmbId: data.tmbId,
+        collectionType: collection.type,
+        trainingType: collection.trainingType
+      });
 
       try {
         const trainingMode = getTrainingModeByCollection({
@@ -223,19 +236,24 @@ export const datasetParseQueue = async (): Promise<any> => {
         })();
 
         if (!sourceReadType) {
-          addLog.warn(`[Parse Queue] Source read type is null, delete task`);
+          logger.warn('Parse queue task skipped: source read type resolved to null', {
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            collectionType: collection.type
+          });
           await MongoDatasetTraining.deleteOne({
             _id: data._id
           });
           continue;
         }
 
-        // 2. Read source
-        const { title, rawText } = await readDatasetSourceRawText({
+        let { title, rawText } = await readDatasetSourceRawText({
           teamId: data.teamId,
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,
           usageId: data.billId,
+          datasetId: data.datasetId,
           ...sourceReadType
         });
 
@@ -278,7 +296,11 @@ export const datasetParseQueue = async (): Promise<any> => {
             insertLen: predictDataLimitLength(trainingMode, chunks)
           });
         } catch (error) {
-          addLog.info(`[Parse Queue] Check dataset limit failed, lock the task`);
+          logger.info('Parse queue dataset limit exceeded, locking task', {
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId
+          });
           await MongoDatasetTraining.updateOne(
             {
               _id: data._id
@@ -303,6 +325,15 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
 
           // 6. Push to chunk queue
+          const trainingData = chunks.map((item, index) => ({
+            ...item,
+            indexes: item.indexes?.map((text) => ({
+              type: DatasetDataIndexTypeEnum.custom,
+              text
+            })),
+            chunkIndex: index
+          }));
+
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -314,14 +345,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: chunks.map((item, index) => ({
-              ...item,
-              indexes: item.indexes?.map((text) => ({
-                type: DatasetDataIndexTypeEnum.custom,
-                text
-              })),
-              chunkIndex: index
-            })),
+            data: trainingData,
             session
           });
 
@@ -334,33 +358,21 @@ export const datasetParseQueue = async (): Promise<any> => {
               session
             }
           );
-
-          // 8. Remove image ttl
-          const relatedImgId = collection.metadata?.relatedImgId;
-          if (relatedImgId) {
-            await MongoImage.updateMany(
-              {
-                teamId: collection.teamId,
-                'metadata.relatedId': relatedImgId
-              },
-              {
-                // Remove expiredTime to avoid ttl expiration
-                $unset: {
-                  expiredTime: 1
-                }
-              },
-              {
-                session
-              }
-            );
-          }
         });
 
-        addLog.debug(`[Parse Queue] Finish`, {
-          time: Date.now() - startTime
+        logger.debug('Parse queue task finished', {
+          durationMs: Date.now() - startTime,
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId
         });
       } catch (err) {
-        addLog.error(`[Parse Queue] Error`, err);
+        logger.error('Parse queue task failed', {
+          error: err,
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId
+        });
 
         await MongoDatasetTraining.updateOne(
           {
@@ -376,12 +388,12 @@ export const datasetParseQueue = async (): Promise<any> => {
       }
     }
   } catch (error) {
-    addLog.error(`[Parse Queue] Error`, error);
+    logger.error('Parse queue loop failed', { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[Parse Queue] Done`);
+    logger.info('Parse queue drained', { queueSize: global.datasetParseQueueLen });
   }
 
-  addLog.debug(`[Parse Queue] break loop`);
+  logger.debug('Parse queue loop exit', { queueSize: global.datasetParseQueueLen });
 };

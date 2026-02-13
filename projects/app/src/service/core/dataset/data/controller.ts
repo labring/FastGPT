@@ -17,8 +17,10 @@ import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { deleteDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 
 const formatIndexes = async ({
   indexes = [],
@@ -215,7 +217,6 @@ export async function insertData2Dataset({
     dataId: insertIds[index]
   }));
 
-  // 2. Create mongo data
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -247,6 +248,11 @@ export async function insertData2Dataset({
     ],
     { session, ordered: true }
   );
+
+  // 只移除图片数据集的图片的 TTL
+  if (isS3ObjectKey(imageId, 'dataset')) {
+    await removeS3TTL({ key: imageId, bucketName: 'private', session });
+  }
 
   return {
     insertId: _id,
@@ -415,16 +421,19 @@ export async function updateData2Dataset({
 
 export const deleteDatasetData = async (data: DatasetDataItemType) => {
   await mongoSessionRun(async (session) => {
+    if (data.imageId && !isS3ObjectKey(data.imageId, 'dataset')) {
+      return Promise.reject('Invalid dataset image key');
+    }
+
     // 1. Delete MongoDB data
     await MongoDatasetData.deleteOne({ _id: data.id }, { session });
     await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
 
-    // 2. If there are any image files, delete the image records and GridFS file.
     if (data.imageId) {
-      await deleteDatasetImage(data.imageId);
+      await getS3DatasetSource().deleteDatasetFileByKey(data.imageId);
     }
 
-    // 3. Delete vector data
+    // 2. Delete vector data
     await deleteDatasetDataVector({
       teamId: data.teamId,
       idList: data.indexes.map((item) => item.dataId)

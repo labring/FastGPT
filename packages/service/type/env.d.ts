@@ -13,39 +13,42 @@ declare global {
       MULTIPLE_DATA_TO_BASE64: string;
       MONGODB_URI: string;
       MONGODB_LOG_URI?: string;
+
+      // Vector
+      VECTOR_VQ_LEVEL: string;
       PG_URL: string;
       OCEANBASE_URL: string;
+      SEEKDB_URL: string;
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
+
       SANDBOX_URL: string;
       FE_DOMAIN: string;
       FILE_DOMAIN: string;
-      LOG_LEVEL?: string;
-      STORE_LOG_LEVEL?: string;
       USE_IP_LIMIT?: string;
       WORKFLOW_MAX_RUN_TIMES?: string;
       WORKFLOW_MAX_LOOP_TIMES?: string;
       CHECK_INTERNAL_IP?: string;
       ALLOWED_ORIGINS?: string;
       SHOW_COUPON?: string;
+      SHOW_DISCOUNT_COUPON?: string;
       CONFIG_JSON_PATH?: string;
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
       PASSWORD_EXPIRED_MONTH?: string;
       MAX_LOGIN_SESSION?: string;
+      CHAT_MAX_QPM?: string;
 
       // 安全配置
       // 密码登录锁定时间
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
-
-      // Signoz
-      SIGNOZ_BASE_URL?: string;
-      SIGNOZ_SERVICE_NAME?: string;
 
       CHAT_LOG_URL?: string;
       CHAT_LOG_INTERVAL?: string;
       CHAT_LOG_SOURCE_ID_PREFIX?: string;
 
       NEXT_PUBLIC_BASE_URL: string;
+
+      MAX_HTML_TRANSFORM_CHARS: string;
     }
   }
 }

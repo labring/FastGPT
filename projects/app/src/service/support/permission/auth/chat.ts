@@ -8,9 +8,12 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { getFlatAppResponses } from '@/global/core/chat/utils';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
+import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 /* 
   检查chat的权限：
@@ -24,9 +27,10 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
 export const defaultResponseShow = {
-  responseDetail: true,
-  showNodeStatus: true,
-  showRawSource: true
+  showCite: true,
+  showRunningStatus: true,
+  showFullText: true,
+  canDownloadSource: true
 };
 type AuthChatCommonProps = {
   appId: string;
@@ -54,9 +58,10 @@ export async function authChatCrud({
   tmbId: string;
   uid: string;
   chat?: ChatSchemaType;
-  responseDetail: boolean;
-  showNodeStatus: boolean;
-  showRawSource: boolean;
+  showCite: boolean;
+  showRunningStatus: boolean;
+  showFullText: boolean;
+  canDownloadSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
   if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
@@ -109,9 +114,11 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        responseDetail: outLinkConfig.responseDetail,
-        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-        showRawSource: outLinkConfig.showRawSource ?? false,
+
+        showCite: outLinkConfig.showCite ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
+        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -123,9 +130,10 @@ export async function authChatCrud({
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
-        responseDetail: outLinkConfig.responseDetail,
-        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-        showRawSource: outLinkConfig.showRawSource ?? false,
+        showCite: outLinkConfig.showCite ?? false,
+        showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showFullText: outLinkConfig.showFullText ?? false,
+        canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -135,9 +143,10 @@ export async function authChatCrud({
       tmbId: String(outLinkConfig.tmbId),
       chat,
       uid,
-      responseDetail: outLinkConfig.responseDetail,
-      showNodeStatus: outLinkConfig.showNodeStatus ?? true,
-      showRawSource: outLinkConfig.showRawSource ?? false,
+      showCite: outLinkConfig.showCite ?? false,
+      showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+      showFullText: outLinkConfig.showFullText ?? false,
+      canDownloadSource: outLinkConfig.canDownloadSource ?? false,
       authType: AuthUserTypeEnum.outLink
     };
   }
@@ -263,4 +272,19 @@ export const authCollectionInChat = async ({
     }
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+};
+
+export const authHelperBotChatCrud = async ({
+  type,
+  chatId,
+  ...props
+}: AuthModeType & {
+  type: `${HelperBotTypeEnum}`;
+  chatId: string;
+}) => {
+  const { userId, teamId, tmbId } = await authCert(props);
+
+  const chat = await MongoHelperBotChat.findOne({ type, userId, chatId }).lean();
+
+  return { chat, userId, teamId, tmbId };
 };

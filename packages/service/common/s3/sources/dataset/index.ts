@@ -1,0 +1,187 @@
+import { S3Sources } from '../../type';
+import { S3PrivateBucket } from '../../buckets/private';
+import streamConsumer from 'node:stream/consumers';
+import {
+  type CreateGetDatasetFileURLParams,
+  CreateGetDatasetFileURLParamsSchema,
+  type CreateUploadDatasetFileParams,
+  CreateUploadDatasetFileParamsSchema,
+  type DeleteDatasetFilesByPrefixParams,
+  DeleteDatasetFilesByPrefixParamsSchema,
+  type GetDatasetFileContentParams,
+  GetDatasetFileContentParamsSchema,
+  type UploadParams,
+  UploadParamsSchema
+} from './type';
+import { MongoS3TTL } from '../../schema';
+import { addHours } from 'date-fns';
+import { getLogger, LogCategories } from '../../../logger';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import { readFileContentByBuffer } from '../../../file/read/utils';
+import path from 'node:path';
+import { Mimes } from '../../constants';
+import { getFileS3Key, truncateFilename } from '../../utils';
+import type { S3RawTextSource } from '../rawText';
+import { getS3RawTextSource } from '../rawText';
+
+const logger = getLogger(LogCategories.INFRA.S3);
+
+export class S3DatasetSource extends S3PrivateBucket {
+  private rawTextSource: S3RawTextSource;
+
+  constructor() {
+    super();
+    this.rawTextSource = getS3RawTextSource();
+  }
+
+  // 下载链接
+  async createGetDatasetFileURL(params: CreateGetDatasetFileURLParams) {
+    const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
+
+    if (external) {
+      return await this.createExternalUrl({ key, expiredHours });
+    }
+    return await this.createPreviewUrl({ key, expiredHours });
+  }
+
+  // 上传链接
+  async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
+    const { filename, datasetId, maxFileSize } = CreateUploadDatasetFileParamsSchema.parse(params);
+    const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
+    return await this.createPresignedPutUrl(
+      { rawKey: fileKey, filename },
+      { expiredHours: 3, maxFileSize }
+    );
+  }
+
+  // 单个键删除
+  deleteDatasetFileByKey(key?: string) {
+    return this.addDeleteJob({ key });
+  }
+
+  // 多个键删除
+  deleteDatasetFilesByKeys(keys: string[]) {
+    return this.addDeleteJob({ keys });
+  }
+
+  /**
+   * 可以根据 datasetId 或者 prefix 删除文件
+   * 如果存在 rawPrefix 则优先使用 rawPrefix 去删除文件，否则使用 datasetId 拼接前缀去删除文件
+   * 比如根据被解析的文档前缀去删除解析出来的图片
+   **/
+  deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
+    const { datasetId } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
+    const prefix = [S3Sources.dataset, datasetId].filter(Boolean).join('/');
+    return this.addDeleteJob({ prefix });
+  }
+
+  async getDatasetBase64Image(key: string): Promise<string> {
+    const [downloadResponse, fileMetadata] = await Promise.all([
+      this.client.downloadObject({ key }),
+      this.getFileMetadata(key)
+    ]);
+
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
+    const base64 = buffer.toString('base64');
+    return `data:${fileMetadata?.contentType || 'image/jpeg'};base64,${base64}`;
+  }
+
+  async getDatasetFileRawText(params: GetDatasetFileContentParams) {
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
+      GetDatasetFileContentParamsSchema.parse(params);
+
+    const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
+      customPdfParse,
+      sourceId: fileId
+    });
+    if (rawTextBuffer) {
+      return {
+        rawText: rawTextBuffer.text,
+        filename: rawTextBuffer.filename
+      };
+    }
+
+    const [fileMetadata, downloadResponse] = await Promise.all([
+      this.getFileMetadata(fileId),
+      this.client.downloadObject({ key: fileId })
+    ]);
+
+    const filename = fileMetadata?.filename || '';
+    const extension = fileMetadata?.extension || '';
+
+    const start = Date.now();
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
+    logger.debug('S3 dataset file downloaded', {
+      key: fileId,
+      durationMs: Date.now() - start,
+      size: buffer.length
+    });
+
+    const encoding = detectFileEncoding(buffer);
+    const { fileParsedPrefix } = getFileS3Key.s3Key(fileId);
+    const { rawText } = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension,
+      buffer,
+      encoding,
+      customPdfParse,
+      usageId,
+      getFormatText,
+      imageKeyOptions: {
+        prefix: fileParsedPrefix
+      }
+    });
+
+    this.rawTextSource.addRawTextBuffer({
+      sourceId: fileId,
+      sourceName: filename,
+      text: rawText,
+      customPdfParse
+    });
+
+    return {
+      rawText,
+      filename
+    };
+  }
+
+  // 根据文件 Buffer 上传文件
+  async upload(params: UploadParams): Promise<string> {
+    const { datasetId, filename, contentType, ...file } = UploadParamsSchema.parse(params);
+
+    // 截断文件名以避免 S3 key 过长的问题
+    const truncatedFilename = truncateFilename(filename);
+    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
+
+    await MongoS3TTL.create({
+      minioKey: key,
+      bucketName: this.bucketName,
+      expiredTime: addHours(new Date(), 3)
+    });
+
+    await this.client.uploadObject({
+      key,
+      body: 'buffer' in file ? file.buffer : file.stream,
+      contentType: contentType || Mimes[path.extname(truncatedFilename) as keyof typeof Mimes],
+      metadata: {
+        uploadTime: new Date().toISOString(),
+        originFilename: encodeURIComponent(truncatedFilename)
+      }
+    });
+
+    return key;
+  }
+}
+
+export function getS3DatasetSource() {
+  if (global.datasetBucket) {
+    return global.datasetBucket;
+  }
+  global.datasetBucket = new S3DatasetSource();
+  return global.datasetBucket;
+}
+
+declare global {
+  var datasetBucket: S3DatasetSource;
+}

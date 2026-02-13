@@ -2,7 +2,7 @@ import { getCaptchaPic } from '@/web/support/user/api';
 import { Button, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 
@@ -30,7 +30,7 @@ const SendCodeAuthModal = ({
     data,
     loading,
     runAsync: getCaptcha
-  } = useRequest2(() => getCaptchaPic(username), { manual: false });
+  } = useRequest(() => getCaptchaPic(username), { manual: false });
 
   const onSubmit = async ({ code }: { code: string }) => {
     await onSendCode({ username, captcha: code });

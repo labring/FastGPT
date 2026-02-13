@@ -9,36 +9,40 @@ import {
   Td,
   TableContainer,
   Flex,
-  Box,
-  ModalBody
+  Box
 } from '@chakra-ui/react';
-import { getBills, checkBalancePayResult } from '@/web/support/wallet/bill/api';
-import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
+import {
+  getBills,
+  checkBalancePayResult,
+  cancelBill,
+  putUpdatePayment
+} from '@/web/support/wallet/bill/api';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import type { BillPayWayEnum, BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import {
   BillStatusEnum,
-  billPayWayMap,
   billStatusMap,
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import BillDetailModal from './BillDetailModal';
+import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
-  const [billDetail, setBillDetail] = useState<BillSchemaType>();
+  const [billDetailId, setBillDetailId] = useState<string>();
+  const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   const billTypeList = useMemo(
     () =>
@@ -71,13 +75,36 @@ const BillTable = () => {
     refreshDeps: [billType]
   });
 
-  const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest2(
-    async (payId: string) => {
-      const { status, description } = await checkBalancePayResult(payId);
+  const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest(
+    async (bill: BillSchemaType) => {
+      const { status, description } = await checkBalancePayResult(bill._id);
       if (status === BillStatusEnum.SUCCESS) {
         toast({
           title: t('common:pay_success'),
           status: 'success'
+        });
+      } else if (status === BillStatusEnum.NOTPAY) {
+        const payWay = bill.metadata?.payWay as BillPayWayEnum;
+        const paymentData = await putUpdatePayment({
+          billId: bill._id,
+          payWay
+        });
+
+        // 企微支付直接打开 URL
+        if (payWay === 'wecom' && paymentData.payUrl) {
+          toast({
+            title: t('account_bill:wecom_not_pay_tip'),
+            status: 'success'
+          });
+          window.open(paymentData.payUrl, '_blank');
+          return;
+        }
+
+        setQRPayData({
+          billId: bill._id,
+          readPrice: formatStorePrice2Read(bill.price),
+          payment: payWay,
+          ...paymentData
         });
       } else {
         toast({
@@ -87,6 +114,18 @@ const BillTable = () => {
       }
 
       if (status === BillStatusEnum.SUCCESS || status === BillStatusEnum.CLOSED) {
+        getData(1);
+      }
+    }
+  );
+
+  const { runAsync: handleCancelBill, loading: isCancelling } = useRequest(
+    async (billId: string) => {
+      await cancelBill({ billId });
+    },
+    {
+      manual: true,
+      onSuccess: () => {
         getData(1);
       }
     }
@@ -111,8 +150,8 @@ const BillTable = () => {
                 ></MySelect>
               </Th>
               <Th>{t('account_bill:time')}</Th>
-              <Th>{t('account_bill:support_wallet_amount')}</Th>
-              <Th>{t('account_bill:status')}</Th>
+              <Th>{t('account:support_wallet_amount')}</Th>
+              <Th>{t('account:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -124,20 +163,37 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
+                <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
-                <Td>
+                <Td display={'flex'} justifyContent={'end'}>
                   {item.status === 'NOTPAY' && (
-                    <Button
-                      isLoading={isRefreshing}
-                      mr={4}
-                      onClick={() => handleRefreshPayOrder(item._id)}
-                      size={'sm'}
-                    >
-                      {t('account_bill:update')}
-                    </Button>
+                    <>
+                      <Button
+                        isLoading={isRefreshing}
+                        mr={2}
+                        onClick={() => handleRefreshPayOrder(item)}
+                        size={'sm'}
+                        variant={'primary'}
+                      >
+                        {t('common:Update')}
+                      </Button>
+                      <PopoverConfirm
+                        content={t('common:cancel_bill_confirm')}
+                        type={'delete'}
+                        onConfirm={() => handleCancelBill(item._id)}
+                        Trigger={
+                          <Button isLoading={isCancelling} mr={2} size={'sm'} variant={'whiteBase'}>
+                            {t('common:cancel_bill')}
+                          </Button>
+                        }
+                      />
+                    </>
                   )}
-                  <Button variant={'whiteBase'} size={'sm'} onClick={() => setBillDetail(item)}>
+                  <Button
+                    variant={'whiteBase'}
+                    size={'sm'}
+                    onClick={() => setBillDetailId(item._id)}
+                  >
                     {t('account_bill:detail')}
                   </Button>
                 </Td>
@@ -165,96 +221,29 @@ const BillTable = () => {
           <Pagination />
         </Flex>
       )}
-      {!!billDetail && (
-        <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
+      {!!billDetailId && (
+        <BillDetailModal billId={billDetailId} onClose={() => setBillDetailId(undefined)} />
+      )}
+      {!!qrPayData && (
+        <QRCodePayModal
+          onClose={() => {
+            setQRPayData(undefined);
+            getData(1);
+          }}
+          discountCouponName={qrPayData.discountCouponName}
+          {...qrPayData}
+          onSuccess={() => {
+            setQRPayData(undefined);
+            toast({
+              title: t('common:pay_success'),
+              status: 'success'
+            });
+            getData(1);
+          }}
+        />
       )}
     </MyBox>
   );
 };
 
 export default BillTable;
-
-function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
-  const { t } = useTranslation();
-
-  return (
-    <MyModal
-      isOpen={true}
-      onClose={onClose}
-      iconSrc="/imgs/modal/bill.svg"
-      title={t('account_bill:bill_detail')}
-      maxW={['90vw', '700px']}
-    >
-      <ModalBody>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_number')}:</FormLabel>
-          <Box>{bill.orderId}</Box>
-        </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:generation_time')}:</FormLabel>
-          <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
-        </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_type')}:</FormLabel>
-          <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
-        </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:status')}:</FormLabel>
-          <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
-        </Flex>
-        {!!bill.metadata?.payWay && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:payment_method')}:</FormLabel>
-            <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
-          </Flex>
-        )}
-        {!!bill.price && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
-            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
-          </Flex>
-        )}
-        {bill.metadata && !!bill.price && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
-            {bill.metadata.payWay === 'balance' ? (
-              t('user:bill.not_need_invoice')
-            ) : (
-              <Box>{bill.hasInvoice ? t('account_bill:yes') : t('account_bill:no')}</Box>
-            )}
-          </Flex>
-        )}
-        {!!bill.metadata?.subMode && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_period')}:</FormLabel>
-            <Box>{t(subModeMap[bill.metadata.subMode]?.label as any)}</Box>
-          </Flex>
-        )}
-        {!!bill.metadata?.standSubLevel && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_package')}:</FormLabel>
-            <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
-          </Flex>
-        )}
-        {bill.metadata?.month !== undefined && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
-            <Box>{`${bill.metadata?.month} ${t('account_bill:month')}`}</Box>
-          </Flex>
-        )}
-        {bill.metadata?.datasetSize !== undefined && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_dataset_size')}:</FormLabel>
-            <Box>{bill.metadata?.datasetSize}</Box>
-          </Flex>
-        )}
-        {bill.metadata?.extraPoints !== undefined && (
-          <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_ai_points')}:</FormLabel>
-            <Box>{bill.metadata.extraPoints}</Box>
-          </Flex>
-        )}
-      </ModalBody>
-    </MyModal>
-  );
-}

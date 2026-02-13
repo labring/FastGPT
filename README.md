@@ -34,33 +34,51 @@ FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、�
 
 https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
 
-## 🛸 在线使用
+## 快速开始
 
-- 🌍 国际版：[fastgpt.io](https://fastgpt.io/)
+可以通过 Docker 快速启动 FastGPT，在终端输入以下命令，根据引导完成输入即可拉取配置。
+
+```bash
+# 输入命令拉取配置文件
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+# 启动
+docker compose up -d
+```
+
+完全启动后，可通过`http://localhost:3000`访问 FastGPT，默认账号为`root`，密码为`1234`。
+
+如果你遇到问题，可以[查看完整 Docker 部署教程](https://doc.fastgpt.io/docs/introduction/development/docker)
+
+## 🛸 使用方式
+
+- **云服务版本**  
+  如果你不需要私有化部署，可以直接使用我们提供的云服务版本，地址为：[fastgpt.io](https://fastgpt.io/)
+
+- **社区自托管版本**  
+  可以使用[Docker](https://doc.fastgpt.io/docs/introduction/development/docker)快速部署，也可以使用[Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) 来一键部署FastGPT。
+
+- **商业版**  
+  如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.io/docs/introduction/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
+
+## 💡 核心功能
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
-| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
+| ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.jpg) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
-<a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
-</a>
-
-## 💡 RoadMap
-
 `1` 应用编排能力
+   - [x] 规划 Agent 模式。
    - [x] 对话工作流、插件工作流，包含基础的 RPA 节点。
    - [x] 用户交互
    - [x] 双向 MCP 
-   - [ ] Agent 模式
-   - [ ] AI 生成工作流
+   - [ ] 辅助生成工作流
 
 `2` 应用调试能力
    - [x] 知识库单点搜索测试
    - [x] 对话时反馈引用并可修改与删除
    - [x] 完整调用链路日志
-   - [ ] 应用评测
+   - [x] 应用评测
    - [ ] 高级编排 DeBug 调试模式
    - [ ] 应用节点日志
 
@@ -77,7 +95,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] completions 接口 (chat 模式对齐 GPT 接口)
    - [x] 知识库 CRUD
    - [x] 对话 CRUD
-   - [ ] 自动化 OpenAPI 接口
+   - [x] 自动化 OpenAPI 接口
   
 `5` 运营能力
    - [x] 免登录分享窗口
@@ -95,48 +113,25 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 👨‍💻 开发
+## 💪 我们的项目 & 链接
 
-项目技术栈：NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector 插件)/Milvus
-
-- **⚡ 快速部署**
-
-  > 使用 [Sealos](https://sealos.io) 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。
-
-  [点击查看 Sealos 一键部署 FastGPT 教程](https://doc.fastgpt.io/docs/introduction/development/sealos/)
-
-* [快速开始本地开发](https://doc.fastgpt.io/docs/introduction/development/intro/)
-* [部署 FastGPT](https://doc.fastgpt.io/docs/introduction/development/sealos/)
-* [系统配置文件说明](https://doc.fastgpt.io/docs/introduction/development/configuration/)
-* [多模型配置方案](https://doc.fastgpt.io/docs/introduction/development/modelConfig/one-api/)
-* [版本更新/升级介绍](https://doc.fastgpt.io/docs/upgrading)
-* [OpenAPI API 文档](https://doc.fastgpt.io/docs/introduction/development/openapi/)
-* [知识库结构详解](https://doc.fastgpt.io/docs/introduction/guide/knowledge_base/RAG/)
-
-<a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
-</a>
-
-## 🏘️ 加入我们
-
-我们正在寻找志同道合的小伙伴，加速 FastGPT 的发展。你可以通过 [FastGPT 2025 招聘](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg)了解 FastGPT 的招聘信息。
-
-## 💪 相关项目
-
+- [快速开始本地开发](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [OpenAPI 文档](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+- [AI Proxy: 模型聚合负载均衡服务](https://github.com/labring/aiproxy)
 - [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
 - [Sealos：快速部署集群应用](https://github.com/labring/sealos)
-- [One API：多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
 ## 🌿 第三方生态
-- [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
-- [AI Proxy：国内模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
-- [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
+- [AI Proxy：大模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
+- [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
+  
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
@@ -151,17 +146,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 👀 其他
-
-- [保姆级 FastGPT 教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
-- [接入飞书](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
-- [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
-
-<a href="#readme">
-    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
-</a>
-
-## 🤝 参与贡献
+## 🤝 贡献者
 
 我们非常欢迎各种形式的贡献。如果你对贡献代码感兴趣，可以查看我们的 GitHub [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)，大展身手，向我们展示你的奇思妙想。
 

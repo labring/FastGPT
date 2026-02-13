@@ -3,12 +3,7 @@ import React from 'react';
 import { type DefaultEdgeOptions } from 'reactflow';
 
 export const minZoom = 0.1;
-export const maxZoom = 1.5;
-
-export const connectionLineStyle: React.CSSProperties = {
-  strokeWidth: 3,
-  stroke: '#487FFF'
-};
+export const maxZoom = 3;
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
   zIndex: 0

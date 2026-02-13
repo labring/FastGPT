@@ -14,6 +14,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { isMobile } from '@fastgpt/web/common/system/utils';
 
@@ -286,8 +287,8 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
     const isMobileDevice = isMobile();
     const { isPc } = useSystem();
 
-    const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
-    const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+    const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+    const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
     const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 

@@ -24,11 +24,11 @@ import type { TFunction } from 'next-i18next';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 export const getGlobalVariableNode = ({
-  nodes,
+  systemConfigNode,
   chatConfig,
   t
 }: {
-  nodes: FlowNodeItemType[];
+  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
   t: TFunction;
 }) => {
@@ -48,7 +48,7 @@ export const getGlobalVariableNode = ({
     outputs: []
   };
 
-  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig });
+  const globalVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,
@@ -189,7 +189,7 @@ type V1WorkflowType = {
     max?: number; // slider, number input
     min?: number; // slider, number input
 
-    llmModelType?: `${LLMModelTypeEnum}`;
+    llmModelType?: LLMModelTypeEnum;
   }[];
   outputs: {
     type?: OutputTypeEnum;
@@ -264,7 +264,7 @@ export const v1Workflow2V2 = (
       [FlowTypeEnum.pluginInput]: FlowNodeTypeEnum.pluginInput,
       [FlowTypeEnum.pluginOutput]: FlowNodeTypeEnum.pluginOutput,
       [FlowTypeEnum.queryExtension]: FlowNodeTypeEnum.queryExtension,
-      [FlowTypeEnum.tools]: FlowNodeTypeEnum.agent,
+      [FlowTypeEnum.tools]: FlowNodeTypeEnum.toolCall,
       [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool,
       [FlowTypeEnum.lafModule]: FlowNodeTypeEnum.lafModule
     };

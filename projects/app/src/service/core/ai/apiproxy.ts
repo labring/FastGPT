@@ -1,10 +1,12 @@
-import { addLog } from '@fastgpt/service/common/system/log';
-import axios, { type Method } from 'axios';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { type Method } from 'axios';
+import { createProxyAxios } from '@fastgpt/service/common/api/axios';
+const logger = getLogger(LogCategories.NETWORK);
 
 const url = process.env.API_PROXY_URL;
 const token = process.env.API_PROXY_TOKEN;
 
-const instance = axios.create({
+const instance = createProxyAxios({
   baseURL: url,
   timeout: 60000, // 超时时间
   headers: {
@@ -17,13 +19,13 @@ const instance = axios.create({
  */
 const checkRes = (data: any) => {
   if (data === undefined) {
-    addLog.info('api proxy data is empty');
+    logger.info('api proxy data is empty');
     return Promise.reject('服务器异常');
   }
   return data.data;
 };
 const responseError = (err: any) => {
-  console.log('error->', '请求错误', err);
+  logger.error('API proxy request failed', { error: err });
 
   if (!err) {
     return Promise.reject({ message: '未知错误' });

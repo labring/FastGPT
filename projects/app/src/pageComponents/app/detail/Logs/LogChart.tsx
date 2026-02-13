@@ -17,7 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
@@ -152,7 +152,7 @@ const LogChart = ({
 
   const [offset, setOffset] = useState<string>(offsetOptions[0].value);
 
-  const { data: chartData, loading } = useRequest2(
+  const { data: chartData, loading } = useRequest(
     async () => {
       return getAppChartData({
         appId,
@@ -782,7 +782,6 @@ const HeaderControl = ({
     [t]
   );
 
-  console.log(showSourceSelector);
   return (
     <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
       {showSourceSelector && (
@@ -841,7 +840,7 @@ const TotalData = ({ appId }: { appId: string }) => {
       totalChats: 0,
       totalPoints: 0
     }
-  } = useRequest2(
+  } = useRequest(
     async () => {
       if (feConfigs?.isPlus) {
         return await getAppTotalData({ appId });

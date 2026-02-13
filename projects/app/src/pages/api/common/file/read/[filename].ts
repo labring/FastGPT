@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { stream2Encoding } from '@fastgpt/service/common/file/gridfs/utils';
 import { authFileToken } from '@fastgpt/service/support/permission/auth/file';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 const previewableExtensions = [
   'jpg',
@@ -22,32 +23,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const { token, filename } = req.query as { token: string; filename: string };
 
-    const { fileId, bucketName } = await authFileToken(token);
+    const { fileId } = await authFileToken(token);
 
-    if (!fileId) {
-      throw new Error('fileId is empty');
+    if (!fileId || !isS3ObjectKey(fileId, 'dataset')) {
+      throw new Error('Invalid fileId');
     }
 
     const [file, fileStream] = await Promise.all([
-      getFileById({ bucketName, fileId }),
-      getDownloadStream({ bucketName, fileId })
+      getS3DatasetSource().getFileMetadata(fileId),
+      getS3DatasetSource().getFileStream(fileId)
     ]);
 
-    if (!file) {
+    if (!file || !fileStream) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
 
-    const { stream, encoding } = await (async () => {
-      if (file.metadata?.encoding) {
-        return {
-          stream: fileStream,
-          encoding: file.metadata.encoding
-        };
-      }
-      return stream2Encoding(fileStream);
-    })();
+    const { stream, encoding } = await stream2Encoding(fileStream);
 
-    const extension = file.filename.split('.').pop() || '';
+    const extension = file.extension;
     const disposition = previewableExtensions.includes(extension) ? 'inline' : 'attachment';
 
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
@@ -56,7 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       'Content-Disposition',
       `${disposition}; filename="${encodeURIComponent(filename)}"`
     );
-    res.setHeader('Content-Length', file.length);
+    if (file.contentLength) {
+      res.setHeader('Content-Length', file.contentLength);
+    }
 
     stream.pipe(res);
 

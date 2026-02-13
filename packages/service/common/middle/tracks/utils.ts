@@ -1,16 +1,20 @@
 import { type PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
-import { addLog } from '../../system/log';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import { getRedisCache, setRedisCache } from '../../redis/cache';
+import { differenceInDays } from 'date-fns';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.EVENT.TRACK);
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.debug('Push tracks', {
+  logger.debug('Enqueue track event', {
     event,
     ...data
   });
@@ -37,7 +41,7 @@ const pushCountTrack = ({
   data: Record<string, any>;
 }) => {
   if (!global.feConfigs?.isPlus) return;
-  addLog.debug('Push tracks', {
+  logger.debug('Enqueue track counter event', {
     event,
     key
   });
@@ -66,7 +70,30 @@ export const pushTrack = {
     return createTrack({
       event: TrackEnum.login,
       data
+    })?.then(() => {
+      pushTrack.dailyUserActive({
+        uid: data.uid,
+        teamId: data.teamId,
+        tmbId: data.tmbId
+      });
     });
+  },
+  dailyUserActive: async (data: PushTrackCommonType) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dailyUserActive:${data.uid}_${today}`;
+      const cache = await getRedisCache(key);
+      if (cache) return;
+
+      await setRedisCache(key, '1', 24 * 60 * 60);
+
+      return createTrack({
+        event: TrackEnum.dailyUserActive,
+        data
+      });
+    } catch (error) {
+      logger.error('Failed to record daily active user', { error });
+    }
   },
   createApp: (
     data: PushTrackCommonType &
@@ -121,6 +148,64 @@ export const pushTrack = {
           datasetId
         }
       });
+    });
+  },
+  teamChatQPM: (data: { teamId: string }) => {
+    if (!data.teamId) return;
+    pushCountTrack({
+      event: TrackEnum.teamChatQPM,
+      key: `${TrackEnum.teamChatQPM}_${data.teamId}`,
+      data: {
+        teamId: data.teamId
+      }
+    });
+  },
+
+  // Admin cron job tracks
+  subscriptionDeleted: (data: {
+    teamId: string;
+    subscriptionType: string;
+    totalPoints: number;
+    usedPoints: number;
+    startTime: Date;
+    expiredTime: Date;
+  }) => {
+    return createTrack({
+      event: TrackEnum.subscriptionDeleted,
+      data: {
+        teamId: data.teamId,
+        subscriptionType: data.subscriptionType,
+        totalPoints: data.totalPoints,
+        usedPoints: data.usedPoints,
+        activeDays: differenceInDays(data.expiredTime, data.startTime)
+      }
+    });
+  },
+  freeAccountCleanup: (data: { teamId: string; expiredTime: Date }) => {
+    return createTrack({
+      event: TrackEnum.freeAccountCleanup,
+      data: {
+        teamId: data.teamId,
+        expiredTime: data.expiredTime
+      }
+    });
+  },
+  auditLogCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.auditLogCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
+      }
+    });
+  },
+  chatHistoryCleanup: (data: { teamId: string; retentionDays: number }) => {
+    return createTrack({
+      event: TrackEnum.chatHistoryCleanup,
+      data: {
+        teamId: data.teamId,
+        retentionDays: data.retentionDays
+      }
     });
   }
 };

@@ -4,13 +4,14 @@ import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { type ChatBoxInputFormType, type ChatBoxInputType, type SendPromptFnType } from '../type';
 import { textareaMinH } from '../constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
@@ -18,6 +19,9 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { postStopV2Chat } from '@/web/core/chat/api';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -29,12 +33,14 @@ const fileTypeFilter = (file: File) => {
 };
 
 const ChatInput = ({
+  lastInteractive,
   onSendMessage,
   onStop,
   TextareaDom,
   resetInputVal,
   chatForm
 }: {
+  lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
@@ -56,9 +62,9 @@ const ChatInput = ({
 
   const InputLeftComponent = useContextSelector(ChatBoxContext, (v) => v.InputLeftComponent);
 
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
@@ -80,6 +86,9 @@ const ChatInput = ({
     selectFileLabel,
     showSelectFile,
     showSelectImg,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension,
     removeFiles,
     replaceFiles,
     hasFileUploading
@@ -92,9 +101,15 @@ const ChatInput = ({
   });
   const havInput = !!inputValue || fileList.length > 0;
   const canSendMessage = havInput && !hasFileUploading;
+  const canUploadFile =
+    showSelectFile ||
+    showSelectImg ||
+    showSelectVideo ||
+    showSelectAudio ||
+    showSelectCustomFileExtension;
 
   // Upload files
-  useRequest2(uploadFiles, {
+  useRequest(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
     refreshDeps: [fileList, outLinkAuthData, chatId]
@@ -108,12 +123,26 @@ const ChatInput = ({
 
       onSendMessage({
         text: textareaValue.trim(),
-        files: fileList
+        files: fileList,
+        interactive: lastInteractive
       });
       replaceFiles([]);
     },
-    [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [TextareaDom, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
+  const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
+    try {
+      if (isChatting) {
+        await postStopV2Chat({
+          appId,
+          chatId,
+          outLinkAuthData
+        }).catch();
+      }
+    } finally {
+      onStop();
+    }
+  });
 
   const RenderTextarea = useMemo(
     () => (
@@ -201,7 +230,7 @@ const ChatInput = ({
             }}
             onPaste={(e) => {
               const clipboardData = e.clipboardData;
-              if (clipboardData && (showSelectFile || showSelectImg)) {
+              if (clipboardData && canUploadFile) {
                 const items = clipboardData.items;
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
@@ -233,8 +262,7 @@ const ChatInput = ({
       offFocus,
       setValue,
       handleSend,
-      showSelectFile,
-      showSelectImg,
+      canUploadFile,
       onSelectFile
     ]
   );
@@ -266,7 +294,7 @@ const ChatInput = ({
           {/* Attachment and Voice Group */}
           <Flex alignItems={'center'} h={[8, 9]}>
             {/* file selector button */}
-            {(showSelectFile || showSelectImg) && (
+            {canUploadFile && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
@@ -312,7 +340,7 @@ const ChatInput = ({
           </Flex>
 
           {/* Divider Container */}
-          {((whisperConfig?.open && !inputValue) || showSelectFile || showSelectImg) && (
+          {((whisperConfig?.open && !inputValue) || canUploadFile) && (
             <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
               <Box w={'2px'} h={5} bg={'myGray.200'} />
             </Flex>
@@ -320,7 +348,9 @@ const ChatInput = ({
 
           {/* Send Button Container */}
           <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
-            <Flex
+            <MyBox
+              isLoading={isStopping}
+              display={'flex'}
               alignItems={'center'}
               justifyContent={'center'}
               w={[7, 9]}
@@ -334,7 +364,7 @@ const ChatInput = ({
               onClick={(e) => {
                 e.stopPropagation();
                 if (isChatting) {
-                  return onStop();
+                  return handleStop();
                 }
                 return handleSend();
               }}
@@ -346,28 +376,28 @@ const ChatInput = ({
                   <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
                 </MyTooltip>
               )}
-            </Flex>
+            </MyBox>
           </Flex>
         </Flex>
       </Flex>
     );
   }, [
     isPc,
-    showSelectFile,
-    showSelectImg,
+    InputLeftComponent,
+    canUploadFile,
     selectFileLabel,
     selectFileIcon,
     File,
     whisperConfig?.open,
     inputValue,
     t,
+    isStopping,
     isChatting,
     canSendMessage,
     onOpenSelectFile,
     onSelectFile,
     handleSend,
-    onStop,
-    InputLeftComponent
+    handleStop
   ]);
 
   const activeStyles: FlexProps = {
@@ -381,7 +411,7 @@ const ChatInput = ({
       onDrop={(e) => {
         e.preventDefault();
 
-        if (!(showSelectFile || showSelectImg)) return;
+        if (!canUploadFile) return;
         const files = Array.from(e.dataTransfer.files);
 
         const droppedFiles = files.filter((file) => fileTypeFilter(file));

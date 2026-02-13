@@ -1,32 +1,23 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 
-import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import {
+  UpdateMcpToolsBodySchema,
+  type UpdateMcpToolsBodyType
+} from '@fastgpt/global/openapi/core/app/mcpTools/api';
 
 export type updateMCPToolsQuery = {};
 
-export type updateMCPToolsBody = {
-  appId: string;
-  url: string;
-  headerSecret: StoreSecretValueType;
-  toolList: McpToolConfigType[];
-};
-
-export type updateMCPToolsResponse = {};
-
-async function handler(
-  req: ApiRequestProps<updateMCPToolsBody, updateMCPToolsQuery>,
-  res: ApiResponseType<updateMCPToolsResponse>
-): Promise<updateMCPToolsResponse> {
-  const { appId, url, toolList, headerSecret } = req.body;
+async function handler(req: ApiRequestProps<UpdateMcpToolsBodyType>, res: ApiResponseType) {
+  const { appId, url, toolList, headerSecret } = UpdateMcpToolsBodySchema.parse(req.body);
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
@@ -51,6 +42,7 @@ async function handler(
       },
       { session }
     );
+
     await MongoAppVersion.updateOne(
       { appId },
       {
@@ -61,8 +53,9 @@ async function handler(
       { session }
     );
   });
-
-  return {};
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
+  });
 }
 
 export default NextAPI(handler);

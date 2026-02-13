@@ -1,4 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -58,10 +59,8 @@ const DatasetCollectionSchema = new Schema({
 
   // Metadata
   // local file collection
-  fileId: {
-    type: Schema.Types.ObjectId,
-    ref: 'dataset.files'
-  },
+  // Support both GridFS ObjectId (string) and S3 key (string)
+  fileId: String,
   // web link collection
   rawLink: String,
   // Api collection
@@ -72,6 +71,7 @@ const DatasetCollectionSchema = new Schema({
 
   rawTextLength: Number,
   hashRawText: String,
+
   metadata: {
     type: Object,
     default: {}
@@ -128,7 +128,8 @@ try {
     'metadata.relatedImgId': 1
   });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset collection indexes', { error });
 }
 
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(

@@ -10,7 +10,7 @@ import {
 import { useMemoizedFn, useMount } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 
 type FolderItemType = {
@@ -37,7 +37,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
 
-  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+  const { runAsync: requestServer } = useRequest((e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId]);
@@ -147,7 +147,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
     }
   );
 
-  const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
+  const { runAsync: onConfirmSelect, loading: confirming } = useRequest(
     () => {
       if (selectedId) {
         return onConfirm(selectedId === rootId ? null : selectedId);

@@ -13,22 +13,26 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, type WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
-import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
-import { WorkflowStatusContext } from '../WorkflowComponents/context/workflowStatusContext';
 import SaveButton from '../Workflow/components/SaveButton';
+import {
+  WorkflowSnapshotContext,
+  type WorkflowSnapshotsType
+} from '../WorkflowComponents/context/workflowSnapshotContext';
+import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import { WorkflowModalContext } from '../WorkflowComponents/context/workflowModalContext';
+import { WorkflowPersistenceContext } from '../WorkflowComponents/context/workflowPersistenceContext';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -48,29 +52,30 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
-  const flowData2StoreDataAndCheck = useContextSelector(
-    WorkflowContext,
-    (v) => v.flowData2StoreDataAndCheck
-  );
-  const setWorkflowTestData = useContextSelector(WorkflowContext, (v) => v.setWorkflowTestData);
-  const past = useContextSelector(WorkflowContext, (v) => v.past);
-  const setPast = useContextSelector(WorkflowContext, (v) => v.setPast);
-  const onSwitchTmpVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchTmpVersion);
-  const onSwitchCloudVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchCloudVersion);
-
-  const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
-  const setShowHistoryModal = useContextSelector(
-    WorkflowEventContext,
-    (v) => v.setShowHistoryModal
+  const { flowData2StoreData, flowData2StoreDataAndCheck } = useContextSelector(
+    WorkflowUtilsContext,
+    (v) => v
   );
 
-  const isSaved = useContextSelector(WorkflowStatusContext, (v) => v.isSaved);
-  const leaveSaveSign = useContextSelector(WorkflowStatusContext, (v) => v.leaveSaveSign);
+  const setWorkflowTestData = useContextSelector(
+    WorkflowModalContext,
+    (v) => v.setWorkflowTestData
+  );
+  const { past, setPast, onSwitchTmpVersion, onSwitchCloudVersion } = useContextSelector(
+    WorkflowSnapshotContext,
+    (v) => v
+  );
+
+  const { showHistoryModal, setShowHistoryModal } = useContextSelector(
+    WorkflowModalContext,
+    (v) => v
+  );
+
+  const { isSaved, leaveSaveSign } = useContextSelector(WorkflowPersistenceContext, (v) => v);
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { runAsync: onClickSave, loading } = useRequest2(
+  const { runAsync: onClickSave, loading } = useRequest(
     async ({
       isPublish,
       versionName = formatTime2YMDHMS(new Date())
@@ -79,7 +84,6 @@ const Header = () => {
       versionName?: string;
     }) => {
       const data = flowData2StoreData();
-
       if (data) {
         await onSaveApp({
           ...data,
@@ -101,13 +105,17 @@ const Header = () => {
           )
         );
       }
+    },
+    {
+      manual: true,
+      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
     }
   );
 
   const onBack = useCallback(async () => {
     leaveSaveSign.current = false;
     router.push({
-      pathname: '/dashboard/apps',
+      pathname: '/dashboard/agent',
       query: {
         parentId: appDetail.parentId,
         type: lastAppListRouteType
@@ -127,14 +135,19 @@ const Header = () => {
           mt={[2, 0]}
           pl={[2, 4]}
           pr={[2, 6]}
-          borderBottom={'base'}
           alignItems={['flex-start', 'center']}
           userSelect={'none'}
           h={['auto', '67px']}
           flexWrap={'wrap'}
+          position={'fixed'}
+          top={0}
+          left={0}
+          right={0}
+          zIndex={100}
           {...(currentTab === TabEnum.appEdit
             ? {
-                bg: 'myGray.25'
+                bg: 'rgba(255, 255, 255, 0.70)',
+                backdropFilter: 'blur(6px)'
               }
             : {
                 bg: 'transparent',
@@ -178,7 +191,8 @@ const Header = () => {
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
-                  w={'30px'}
+                  w={'34px'}
+                  h={'34px'}
                   variant={'whitePrimary'}
                   onClick={() => {
                     setShowHistoryModal(true);
@@ -186,8 +200,9 @@ const Header = () => {
                 />
               )}
               <Button
-                size={'sm'}
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
+                w={'81px'}
+                h={'34px'}
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={() => {
@@ -201,6 +216,7 @@ const Header = () => {
               </Button>
               {!showHistoryModal && (
                 <SaveButton
+                  colorSchema={'black'}
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => !!flowData2StoreDataAndCheck()}

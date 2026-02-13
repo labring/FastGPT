@@ -3,7 +3,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import type {
   FastLoginProps,
   OauthLoginProps,
@@ -16,12 +16,14 @@ import type {
 } from '@fastgpt/global/support/user/login/api.d';
 import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
 import type { WxLoginProps } from '@fastgpt/global/support/user/api.d';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
   captcha: string;
+  lang: `${LangEnum}`;
 }) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () =>

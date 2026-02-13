@@ -2,17 +2,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
-import {
-  checkInvalidDatasetFiles,
-  checkInvalidDatasetData,
-  checkInvalidVector
-} from '@/service/common/system/cronTask';
+import { checkInvalidDatasetData, checkInvalidVector } from '@/service/common/system/cronTask';
 import dayjs from 'dayjs';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.SYSTEM);
 
 let deleteImageAmount = 0;
 async function checkInvalidImg(start: Date, end: Date) {
@@ -26,7 +24,7 @@ async function checkInvalidImg(start: Date, end: Date) {
     },
     '_id teamId metadata'
   );
-  console.log('total images', images.length);
+  logger.info('Start invalid image cleanup', { totalImages: images.length });
   let index = 0;
 
   for await (const image of images) {
@@ -47,13 +45,19 @@ async function checkInvalidImg(start: Date, end: Date) {
 
       index++;
 
-      index % 100 === 0 && console.log(index);
+      if (index % 100 === 0) {
+        logger.debug('Invalid image cleanup progress', {
+          processed: index,
+          total: images.length,
+          deleted: deleteImageAmount
+        });
+      }
     } catch (error) {
-      console.log(error);
+      logger.error('Invalid data cleanup task failed', { error });
     }
   }
 
-  console.log(`检测完成，共删除 ${deleteImageAmount} 个无效图片`);
+  logger.info(`检测完成，共删除 ${deleteImageAmount} 个无效图片`);
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -64,14 +68,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     (async () => {
       try {
-        console.log('执行脏数据清理任务');
+        logger.info('执行脏数据清理任务');
 
         // Split time range into 6-hour chunks to avoid processing too much data at once
         const totalHours = Math.abs(start - end);
         const chunkHours = 6;
         const chunks = Math.ceil(totalHours / chunkHours);
 
-        console.log(
+        logger.info(
           `Total time range: ${totalHours} hours, split into ${chunks} chunks of ${chunkHours} hours each`
         );
 
@@ -82,23 +86,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           const chunkEndTime = addHours(new Date(), chunkStart);
           const chunkStartTime = addHours(new Date(), chunkEnd);
 
-          console.log(
+          logger.info(
             `Processing chunk ${i + 1}/${chunks}: ${dayjs(chunkStartTime).format(
               'YYYY-MM-DD HH:mm'
             )} to ${dayjs(chunkEndTime).format('YYYY-MM-DD HH:mm')}`
           );
 
-          await retryFn(() => checkInvalidDatasetFiles(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidImg(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidDatasetData(chunkStartTime, chunkEndTime));
           await retryFn(() => checkInvalidVector(chunkStartTime, chunkEndTime));
 
-          console.log(`Chunk ${i + 1}/${chunks} completed`);
+          logger.info(`Chunk ${i + 1}/${chunks} completed`);
         }
 
-        console.log('执行脏数据清理任务完毕');
+        logger.info('执行脏数据清理任务完毕');
       } catch (error) {
-        console.log('执行脏数据清理任务出错了');
+        logger.info('执行脏数据清理任务出错了');
       }
     })();
 
@@ -106,7 +109,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       message: 'success'
     });
   } catch (error) {
-    console.log(error);
+    logger.error('Invalid data cleanup task failed', { error });
 
     jsonRes(res, {
       code: 500,

@@ -4,16 +4,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@test/*": ["../../test/*"]
+      "@test/*": ["../../test/*"],
+      "@t3-oss/env-core": ["../../packages/service/node_modules/@t3-oss/env-core/dist/index.d.ts"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.d.ts",
-    "../../packages/**/*.d.ts",
-    "../../test/list.test.ts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../../packages/**/*.d.ts"],
   "exclude": ["**/*.test.ts"]
 }

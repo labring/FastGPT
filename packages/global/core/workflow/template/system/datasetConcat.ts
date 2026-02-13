@@ -12,7 +12,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { getNanoid } from '../../../../common/string/tools';
-import { type FlowNodeInputItemType } from '../../type/io.d';
+import { type FlowNodeInputItemType } from '../../type/io';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const getOneQuoteInputTemplate = ({
@@ -37,6 +37,8 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/datasetConcat',
+  avatarLinear: 'core/workflow/template/datasetConcatLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:knowledge_base_search_merge'),
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),
 

@@ -8,15 +8,14 @@ import { useRouter } from 'next/router';
 import PermissionIconText from '@/components/support/permission/IconText';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetsContext } from '../../../pages/dataset/list/context';
+import { DatasetsContext } from './context';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
@@ -65,19 +64,20 @@ function List() {
     content: t('dataset:move.hint')
   });
 
-  const { runAsync: updateDataset } = useRequest2(onUpdateDataset);
+  const { runAsync: updateDataset } = useRequest(onUpdateDataset);
 
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm(() =>
-        updateDataset({
-          id: dragId,
-          parentId: targetId
-        })
-      )();
+      openMoveConfirm({
+        onConfirm: () =>
+          updateDataset({
+            id: dragId,
+            parentId: targetId
+          })
+      })();
     }
   });
 
@@ -86,22 +86,27 @@ function List() {
     [editPerDatasetId, myDatasets]
   );
 
-  const { mutate: exportDataset } = useRequest({
-    mutationFn: async (dataset: DatasetItemType) => {
-      setLoading(true);
-      await checkTeamExportDatasetLimit(dataset._id);
+  const { runAsync: exportDataset } = useRequest(
+    async ({ _id, name }: { _id: string; name: string }) => {
+      await checkTeamExportDatasetLimit(_id);
 
       await downloadFetch({
-        url: `/api/core/dataset/exportAll?datasetId=${dataset._id}`,
-        filename: `${dataset.name}.csv`
+        url: `/api/core/dataset/exportAll?datasetId=${_id}`,
+        filename: `${name}.csv`
       });
     },
-    onSettled() {
-      setLoading(false);
-    },
-    successToast: t('common:core.dataset.Start export'),
-    errorToast: t('common:dataset.Export Dataset Limit Error')
-  });
+    {
+      manual: true,
+      onBefore: () => {
+        setLoading(true);
+      },
+      onFinally() {
+        setLoading(false);
+      },
+      successToast: t('common:core.dataset.Start export'),
+      errorToast: t('common:dataset.Export Dataset Limit Error')
+    }
+  );
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('common:dataset.deleteFolderTips'),
@@ -125,18 +130,6 @@ function List() {
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
-
-  const onClickDeleteDataset = (id: string) => {
-    openConfirm(
-      () =>
-        onDelDataset(id).then(() => {
-          refetchPaths();
-          loadMyDatasets();
-        }),
-      undefined,
-      DeleteTipsMap.current[DatasetTypeEnum.dataset]
-    )();
-  };
 
   return (
     <>
@@ -375,7 +368,17 @@ function List() {
                                           icon: 'delete',
                                           label: t('common:Delete'),
                                           type: 'danger' as 'danger',
-                                          onClick: () => onClickDeleteDataset(dataset._id)
+                                          onClick: () =>
+                                            openConfirm({
+                                              onConfirm: () =>
+                                                onDelDataset(dataset._id).then(() => {
+                                                  refetchPaths();
+                                                  loadMyDatasets();
+                                                }),
+                                              customContent:
+                                                DeleteTipsMap.current[DatasetTypeEnum.dataset],
+                                              inputConfirmText: dataset.name
+                                            })()
                                         }
                                       ]
                                     }

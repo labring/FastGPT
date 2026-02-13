@@ -1,0 +1,103 @@
+---
+title: 'V4.14.5(包含升级脚本)'
+description: 'FastGPT V4.14.5 更新说明'
+---
+
+## 更新指南
+
+### 1. 修改存储桶环境变量
+
+该版本除了支持 minio 以外，还增加支持了原生 OSS 和 COS, 所以需要修改相关环境变量修改成新的命名。下面是 Minio 的配置参数，其他厂商配置，可参考[对象存储配置问题](/docs/introduction/development/object-storage)
+
+**新增变量**
+
+```
+STORAGE_VENDOR=minio 
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://192.168.0.2:9000 # 一个服务器和客户端均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)
+STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
+```
+
+**移除旧的变量**
+
+* S3_EXTERNAL_BASE_URL  
+* S3_ENDPOINT  
+* S3_PORT  
+* S3_USE_SSL  
+* S3_ACCESS_KEY  
+* S3_SECRET_KEY  
+* S3_PUBLIC_BUCKET  
+* S3_PRIVATE_BUCKET  
+
+### 2. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.14.5-fix
+- 更新 FastGPT 商业版镜像tag: v4.14.5
+- 更新 fastgpt-plugin 镜像 tag: v0.4.0
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+- mongo 5.x 版本修改成 5.0.32 版本，解决 CVE-2025-14847 漏洞。直接修改镜像 tag 成 `5.0.32`。
+
+### 3. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 重试所有失败的 S3 删除任务
+2. 为所有 share 类型的 OutLink 记录添加 showFullText 字段
+3. 重命名字段：
+  - showNodeStatus -> showRunningStatus
+  - responseDetail -> showCite
+  - showRawSource -> canDownloadSource
+
+
+## 🚀 新增内容
+
+1. 工作流画布增加演示模式，同时优化折叠模式样式，优化工作流线重叠问题。
+2. 工作流增加嵌套应用快速跳转按钮。
+3. 工作流导出支持选择过滤/不过滤敏感信息。
+4. 对话记录使用侧改成软删除，增加从日志管理里删除对话记录。
+5. 更新Agent/工具时，会更新其上层所有目录的更新时间，以便其会排在列表前面。
+6. 门户页支持配置单个应用运行可见度。
+7. 导出单个知识库集合分块接口。
+8. 升级 Mongo5.x 至 5.0.32 解决CVE-2025-14847。
+9. 邮箱配置，支持配置安全模式以及端口号。
+    
+## ⚙️ 优化
+
+1. 优化获取 redis 所有 key 的逻辑，避免大量获取时导致阻塞。
+2. MongoDB, Redis 和 MQ 的重连逻辑优化。
+3. 变量输入框禁用状态可复制。
+4. LLM 请求空响应判断，排除敏感过滤错误被误认为无响应。
+5. 完善 AI 对话和工具调用的错误提示，提供更多原始数据。
+6. 增大文件解析接口的请求大小限制为 10MB。
+7. 对话回复下方的引用列表，仅显示 AI 实际引用的知识库内容。
+8. 更新 MCP SDK 版本。
+9. Chats 表索引，减少冗余，增加条件索引。
+
+## 🐛 修复
+
+1. 重要 - 工作流并行合并后，可能导致重复运行问题。
+2. MCP 工具创建时，使用自定义鉴权头会报错。
+3. 获取对话日志列表时，如果用户头像为空，会抛错。
+4. chatAgent 未开启问题优化时，前端 UI 显示开启。
+5. 加载默认模型时，maxTokens 字段未赋值，导致模型最大响应值配置为空。
+6. S3 文件清理队列因网络稳定问题出现阻塞，导致删除任务不再执行。
+7. 对话日志接口适配 mongo4.x 语法。
+8. 变量更新节点将文件 URL 字符串数组错误转换为对象数组。
+9. 多个表单输入节点共享 sessionStorage 导致默认值不显示。
+10. 代码运行节点切换语言后，AI 仍使用旧语言生成代码。
+11. 多个自定义反馈节点并发写入触发数据库写入冲突。
+12. 交互节点后续的自定义反馈节点写入失败。
+
+## 插件

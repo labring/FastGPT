@@ -6,8 +6,8 @@ import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/co
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
-import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoToolGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -20,8 +20,11 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { getSystemToolTypes } from '@fastgpt/service/core/app/tool/api';
+import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -96,9 +99,9 @@ export async function getInitConfig() {
 
         global.systemVersion = packageJson?.version;
       }
-      console.log(`System Version: ${global.systemVersion}`);
+      logger.info('System version resolved', { systemVersion: global.systemVersion });
     } catch (error) {
-      console.log(error);
+      logger.error('System version resolve failed', { error });
 
       global.systemVersion = '0.0.0';
     }
@@ -111,8 +114,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi',
-  systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
+  openAPIDocUrl: 'https://doc.fastgpt.io/docs/openapi/intro',
+  submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   systemTitle: 'FastGPT',
@@ -124,8 +127,9 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   },
   scripts: [],
   favicon: '/favicon.ico',
-  uploadFileMaxSize: 500,
-  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || ''
+  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
+  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
+  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
 };
 
 export async function initSystemConfig() {
@@ -148,8 +152,10 @@ export async function initSystemConfig() {
       hideChatCopyrightSetting: process.env.HIDE_CHAT_COPYRIGHT_SETTING === 'true',
       show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
       show_coupon: process.env.SHOW_COUPON === 'true',
+      show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
-      show_batch_eval: licenseData?.functions?.batchEval
+      show_batch_eval: licenseData?.functions?.batchEval,
+      payFormUrl: process.env.PAY_FORM_URL || ''
     },
     systemEnv: {
       ...fileRes.systemEnv,
@@ -161,41 +167,40 @@ export async function initSystemConfig() {
   // set config
   initFastGPTConfig(config);
 
-  console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData
+  logger.info('System config loaded', {
+    fastgpt: {
+      feConfigs: global.feConfigs,
+      systemEnv: global.systemEnv,
+      subPlans: global.subPlans,
+      licenseData: global.licenseData
+    }
   });
 }
 
-export async function initSystemPluginGroups() {
+export async function initSystemPluginTags() {
   try {
-    const { groupOrder, ...restDefaultGroup } = defaultGroup;
+    const tags = await getSystemToolTags();
 
-    const toolTypes = await getSystemToolTypes();
-
-    if (toolTypes.length > 0) {
-      await MongoToolGroups.updateOne(
-        {
-          groupId: defaultGroup.groupId
-        },
-        {
-          $set: {
-            ...restDefaultGroup,
-            groupTypes: toolTypes.map((toolType) => ({
-              typeId: toolType.type,
-              typeName: toolType.name
-            }))
-          }
-        },
-        {
+    if (tags.length > 0) {
+      const bulkOps = tags.map((tag, index) => ({
+        updateOne: {
+          filter: { tagId: tag.id },
+          update: {
+            $set: {
+              tagId: tag.id,
+              tagName: tag.name,
+              tagOrder: index,
+              isSystem: true
+            }
+          },
           upsert: true
         }
-      );
+      }));
+
+      await MongoPluginToolTag.bulkWrite(bulkOps);
     }
   } catch (error) {
-    console.error('Error initializing system plugins:', error);
+    logger.error('Error initializing system plugin tags:', { error });
   }
 }
 
@@ -219,6 +224,6 @@ export async function initAppTemplateTypes() {
       })
     );
   } catch (error) {
-    console.error('Error initializing system templates:', error);
+    logger.error('Error initializing system templates:', { error });
   }
 }

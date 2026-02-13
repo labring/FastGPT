@@ -6,8 +6,12 @@ import {
   Worker,
   type WorkerOptions
 } from 'bullmq';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+
+const logger = getLogger(LogCategories.INFRA.QUEUE);
 
 const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   removeOnComplete: {
@@ -21,7 +25,13 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
 export enum QueueNames {
   datasetSync = 'datasetSync',
   evaluation = 'evaluation',
-  // abondoned
+  s3FileDelete = 's3FileDelete',
+
+  // Delete Queue
+  datasetDelete = 'datasetDelete',
+  appDelete = 'appDelete',
+  teamDelete = 'teamDelete',
+  // @deprecated
   websiteSync = 'websiteSync'
 }
 
@@ -54,7 +64,10 @@ export function getQueue<DataType, ReturnType = void>(
 
   // default error handler, to avoid unhandled exceptions
   newQueue.on('error', (error) => {
-    addLog.error(`MQ Queue [${name}]: ${error.message}`, error);
+    logger.error('BullMQ queue error', {
+      name,
+      error
+    });
   });
   queues.set(name, newQueue);
   return newQueue;
@@ -70,18 +83,62 @@ export function getWorker<DataType, ReturnType = void>(
     return worker as Worker<DataType, ReturnType>;
   }
 
-  const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
-    connection: newWorkerRedisConnection(),
-    ...defaultWorkerOpts,
-    ...opts
-  });
-  // default error handler, to avoid unhandled exceptions
-  newWorker.on('error', (error) => {
-    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
-  });
-  newWorker.on('failed', (jobId, error) => {
-    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
-  });
+  const createWorker = () => {
+    const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
+      connection: newWorkerRedisConnection(),
+      ...defaultWorkerOpts,
+      // BullMQ Worker important settings
+      lockDuration: 600000, // 10 minutes for large file operations
+      stalledInterval: 30000, // Check for stalled jobs every 30s
+      maxStalledCount: 3, // Move job to failed after 1 stall (default behavior)
+      ...opts
+    });
+
+    // Worker is ready to process jobs (fired on initial connection and after reconnection)
+    newWorker.on('ready', () => {
+      logger.info('BullMQ worker ready', { name });
+    });
+    // default error handler, to avoid unhandled exceptions
+    newWorker.on('error', async (error) => {
+      logger.error('BullMQ worker error', {
+        name,
+        error
+      });
+    });
+    // Critical: Worker has been closed - remove from pool and restart
+    newWorker.on('closed', async () => {
+      logger.warn('BullMQ worker closed, attempting restart', { name });
+
+      // Clean up: remove all listeners to prevent memory leaks
+      newWorker.removeAllListeners();
+
+      // Retry create new worker with infinite retries
+      while (true) {
+        try {
+          // Call getWorker to create a new worker (now workers.get(name) returns undefined)
+          const worker = createWorker();
+          workers.set(name, worker);
+          logger.info('BullMQ worker restarted successfully', { name });
+          break;
+        } catch (error) {
+          logger.error('BullMQ worker restart failed, will retry', {
+            name,
+            error
+          });
+          await delay(1000);
+        }
+      }
+    });
+    newWorker.on('paused', async () => {
+      logger.warn('BullMQ worker paused', { name });
+      await delay(1000);
+      newWorker.resume();
+    });
+
+    return newWorker;
+  };
+
+  const newWorker = createWorker();
   workers.set(name, newWorker);
   return newWorker;
 }

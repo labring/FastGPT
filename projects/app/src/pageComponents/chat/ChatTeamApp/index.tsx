@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, Flex, Tab, TabIndicator, TabList, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
+import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/agent/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -13,7 +13,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
@@ -29,29 +29,29 @@ const MyApps = () => {
     (v) => v
   );
 
-  const chatSettings = useContextSelector(ChatSettingContext, (v) => v.chatSettings);
+  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const map = useMemo(
-    () =>
-      ({
-        all: t('common:core.module.template.all_team_app'),
-        [AppTypeEnum.simple]: t('app:type.Simple bot'),
-        [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
-        [AppTypeEnum.plugin]: t('app:type.Plugin'),
-        [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
-        [AppTypeEnum.httpToolSet]: t('app:type.Http tool set'),
-        [AppTypeEnum.folder]: t('common:Folder'),
-        [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
-        [AppTypeEnum.tool]: t('app:type.MCP tools'),
-        [AppTypeEnum.hidden]: t('app:type.hidden')
-      }) satisfies Record<AppTypeEnum | 'all', string>,
+    () => ({
+      all: t('common:core.module.template.all_team_app'),
+      [AppTypeEnum.chatAgent]: 'Agent',
+      [AppTypeEnum.simple]: t('app:type.Chat_Agent'),
+      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
+      [AppTypeEnum.workflowTool]: t('app:toolType_workflow'),
+      [AppTypeEnum.httpPlugin]: t('app:toolType_http'),
+      [AppTypeEnum.httpToolSet]: t('app:toolType_http'),
+      [AppTypeEnum.folder]: t('common:Folder'),
+      [AppTypeEnum.mcpToolSet]: t('app:toolType_mcp'),
+      [AppTypeEnum.tool]: t('app:toolType_mcp'),
+      [AppTypeEnum.hidden]: t('app:type.hidden')
+    }),
     [t]
   );
 
   const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin];
+  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool];
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -129,7 +129,7 @@ const MyApps = () => {
                       fontWeight={500}
                       px={0}
                     >
-                      {map[item]}
+                      {map[item as keyof typeof map]}
                     </Tab>
                   ))}
                 </TabList>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -6,25 +6,35 @@ import { useTranslation } from 'next-i18next';
 
 type TimeInputProps = {
   value?: Date;
-  onDateTimeChange: (date: Date) => void;
+  onDateTimeChange: (date: Date | undefined) => void;
   popPosition?: 'top' | 'bottom';
   timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
   minDate?: Date;
   maxDate?: Date;
+  isDisabled?: boolean;
 };
 
 const TimeInput: React.FC<TimeInputProps> = ({
-  value,
+  value: initialValue,
   onDateTimeChange,
   popPosition = 'bottom',
   timeGranularity = 'second',
   minDate,
-  maxDate
+  maxDate,
+  isDisabled
 }) => {
+  const formatValue = useMemo(() => {
+    const val = initialValue ? new Date(initialValue) : undefined;
+    // 判断有效性
+    if (!val) return undefined;
+    if (isNaN(val.getTime())) return undefined;
+    return val;
+  }, [initialValue]);
+
   const { t } = useTranslation();
-  const hour = value ? value.getHours() : 0;
-  const minute = value ? value.getMinutes() : 0;
-  const second = value ? value.getSeconds() : 0;
+  const hour = formatValue ? formatValue.getHours() : 0;
+  const minute = formatValue ? formatValue.getMinutes() : 0;
+  const second = formatValue ? formatValue.getSeconds() : 0;
 
   const validateAndSetDateTime = (newDate: Date) => {
     if (minDate && newDate < minDate) {
@@ -38,26 +48,31 @@ const TimeInput: React.FC<TimeInputProps> = ({
     onDateTimeChange(newDate);
   };
 
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = (date: Date | undefined) => {
+    if (!date) {
+      onDateTimeChange(undefined);
+      return;
+    }
+
     const newDate = new Date(date);
     newDate.setHours(hour, minute, second);
     validateAndSetDateTime(newDate);
   };
 
   const handleHourChange = (newHour?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setHours(newHour || 0);
     validateAndSetDateTime(newDate);
   };
 
   const handleMinuteChange = (newMinute?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setMinutes(newMinute || 0);
     validateAndSetDateTime(newDate);
   };
 
   const handleSecondChange = (newSecond?: number) => {
-    const newDate = value ? new Date(value) : new Date();
+    const newDate = formatValue ? formatValue : new Date();
     newDate.setSeconds(newSecond || 0);
     validateAndSetDateTime(newDate);
   };
@@ -69,13 +84,14 @@ const TimeInput: React.FC<TimeInputProps> = ({
   return (
     <Flex alignItems={'center'} gap={2}>
       <DateTimePicker
-        selectedDateTime={value && !isNaN(value.getTime()) ? value : undefined}
+        selectedDateTime={formatValue}
         onChange={handleDateChange}
         popPosition={popPosition}
         disabled={[
           ...(minDate ? [{ before: minDate }] : []),
           ...(maxDate ? [{ after: maxDate }] : [])
         ]}
+        isDisabled={isDisabled}
         w={'168px'}
         h={8}
         borderColor={'myGray.200'}
@@ -90,12 +106,12 @@ const TimeInput: React.FC<TimeInputProps> = ({
           w={'48px'}
           size={'sm'}
           hideStepper
-          isDisabled={!enableHour}
+          isDisabled={isDisabled || !enableHour}
           inputFieldProps={{
             pr: '20px',
             pl: '8px',
-            bg: enableHour ? 'white' : 'myGray.100',
-            color: enableHour ? 'inherit' : 'myGray.400'
+            bg: isDisabled || !enableHour ? 'myGray.100' : 'white',
+            color: isDisabled || !enableHour ? 'myGray.400' : 'inherit'
           }}
         />
         <Box
@@ -104,7 +120,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           top={'50%'}
           transform={'translateY(-50%)'}
           fontSize={'12px'}
-          color={enableHour ? 'myGray.500' : 'myGray.300'}
+          color={isDisabled || !enableHour ? 'myGray.300' : 'myGray.500'}
           pointerEvents={'none'}
           zIndex={1}
         >
@@ -120,12 +136,12 @@ const TimeInput: React.FC<TimeInputProps> = ({
           w={'48px'}
           size={'sm'}
           hideStepper
-          isDisabled={!enableMinute}
+          isDisabled={isDisabled || !enableMinute}
           inputFieldProps={{
             pr: '20px',
             pl: '8px',
-            bg: enableMinute ? 'white' : 'myGray.100',
-            color: enableMinute ? 'inherit' : 'myGray.400'
+            bg: isDisabled || !enableMinute ? 'myGray.100' : 'white',
+            color: isDisabled || !enableMinute ? 'myGray.400' : 'inherit'
           }}
         />
         <Box
@@ -134,7 +150,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           top={'50%'}
           transform={'translateY(-50%)'}
           fontSize={'12px'}
-          color={enableMinute ? 'myGray.500' : 'myGray.300'}
+          color={isDisabled || !enableMinute ? 'myGray.300' : 'myGray.500'}
           pointerEvents={'none'}
           zIndex={1}
         >
@@ -150,12 +166,12 @@ const TimeInput: React.FC<TimeInputProps> = ({
           w={'48px'}
           size={'sm'}
           hideStepper
-          isDisabled={!enableSecond}
+          isDisabled={isDisabled || !enableSecond}
           inputFieldProps={{
             pr: '20px',
             pl: '8px',
-            bg: enableSecond ? 'white' : 'myGray.100',
-            color: enableSecond ? 'inherit' : 'myGray.400'
+            bg: isDisabled || !enableSecond ? 'myGray.100' : 'white',
+            color: isDisabled || !enableSecond ? 'myGray.400' : 'inherit'
           }}
         />
         <Box
@@ -164,7 +180,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           top={'50%'}
           transform={'translateY(-50%)'}
           fontSize={'12px'}
-          color={enableSecond ? 'myGray.500' : 'myGray.300'}
+          color={isDisabled || !enableSecond ? 'myGray.300' : 'myGray.500'}
           pointerEvents={'none'}
           zIndex={1}
         >

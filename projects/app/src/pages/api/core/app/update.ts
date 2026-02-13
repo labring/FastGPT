@@ -22,11 +22,12 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -111,19 +112,13 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       nodes
     });
 
-    await refreshSourceAvatar(avatar, app.avatar, session);
-
-    if (app.type === AppTypeEnum.toolSet && avatar) {
-      await MongoApp.updateMany(
-        { parentId: appId, teamId: app.teamId },
-        {
-          avatar
-        },
-        { session }
-      );
+    if (app.type === AppTypeEnum.mcpToolSet && avatar) {
+      await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }
 
-    return MongoApp.findByIdAndUpdate(
+    await getS3AvatarSource().refreshAvatar(avatar, app.avatar, session);
+
+    const result = await MongoApp.findByIdAndUpdate(
       appId,
       {
         ...parseParentIdInMongo(parentId),
@@ -139,10 +134,28 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           edges
         }),
         ...(chatConfig && { chatConfig }),
-        ...(isMove && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true }),
+        updateTime: new Date()
       },
       { session }
     );
+
+    if (isMove) {
+      // Update both old and new parent folders
+      updateParentFoldersUpdateTime({
+        parentId: app.parentId
+      });
+      updateParentFoldersUpdateTime({
+        parentId
+      });
+    } else {
+      // Update current parent folder
+      updateParentFoldersUpdateTime({
+        parentId: parentId || app.parentId
+      });
+    }
+
+    return result;
   };
 
   // Move

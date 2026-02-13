@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import {
@@ -21,6 +20,8 @@ import { type CreateTeamProps } from '@fastgpt/global/support/user/team/controll
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import Icon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 
 export type EditTeamFormDataType = CreateTeamProps & {
@@ -50,43 +51,52 @@ function EditModal({
   const avatar = watch('avatar');
   const notificationAccount = watch('notificationAccount');
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: '.jpg,.png,.svg',
-    multiple: false
-  });
-
-  const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (data: CreateTeamProps) => {
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
+    async (data: CreateTeamProps) => {
       return postCreateTeam(data);
     },
-    onSuccess() {
-      onSuccess();
-      onClose();
-    },
-    successToast: t('common:create_success'),
-    errorToast: t('common:create_failed')
-  });
-  const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: async (data: EditTeamFormDataType) => {
+    {
+      onSuccess() {
+        onSuccess();
+        onClose();
+      },
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
+    }
+  );
+
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(
+    async (data: EditTeamFormDataType) => {
       if (!data.id) return Promise.resolve('');
       return putUpdateTeam({
         name: data.name,
         avatar: data.avatar
       });
     },
-    onSuccess() {
-      onSuccess();
-      onClose();
-    },
-    successToast: t('common:update_success'),
-    errorToast: t('common:update_failed')
-  });
+    {
+      onSuccess() {
+        onSuccess();
+        onClose();
+      },
+      successToast: t('common:update_success'),
+      errorToast: t('common:update_failed')
+    }
+  );
 
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
+
+  const afterUploadAvatar = useCallback(
+    (avatar: string) => {
+      setValue('avatar', avatar);
+    },
+    [setValue]
+  );
+  const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
+    getUploadAvatarPresignedUrl,
+    {
+      onSuccess: afterUploadAvatar
+    }
+  );
 
   return (
     <MyModal
@@ -100,6 +110,7 @@ function EditModal({
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('account_team:set_name_avatar')}
         </Box>
+        <AvatarUploader />
         <Flex mt={3} alignItems={'center'}>
           <MyTooltip label={t('common:set_avatar')}>
             <Avatar
@@ -109,7 +120,7 @@ function EditModal({
               h={['28px', '32px']}
               cursor={'pointer'}
               borderRadius={'md'}
-              onClick={onOpenSelectFile}
+              onClick={handleFileSelectorOpen}
             />
           </MyTooltip>
           <Input
@@ -179,15 +190,6 @@ function EditModal({
           </Button>
         )}
       </ModalFooter>
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
       {isOpenContact && (
         <UpdateContact
           onClose={onCloseContact}

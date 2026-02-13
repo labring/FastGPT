@@ -2,14 +2,14 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import { createFileToken } from '@fastgpt/service/support/permission/auth/file';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 export type readCollectionSourceQuery = {};
 
@@ -32,12 +32,7 @@ async function handler(
   const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
     req.body;
 
-  const {
-    collection,
-    teamId: userTeamId,
-    tmbId: uid,
-    authType
-  } = await (async () => {
+  const { collection } = await (async () => {
     if (!appId || !chatId || !chatItemDataId) {
       return authDatasetCollection({
         req,
@@ -68,7 +63,7 @@ async function handler(
       authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
     ]);
 
-    if (!authRes.showRawSource) {
+    if (!authRes.canDownloadSource) {
       return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
     }
 
@@ -79,16 +74,18 @@ async function handler(
   })();
 
   const sourceUrl = await (async () => {
-    if (collection.type === DatasetCollectionTypeEnum.file && collection.fileId) {
-      const token = await createFileToken({
-        bucketName: BucketNameEnum.dataset,
-        teamId: userTeamId,
-        uid,
-        fileId: collection.fileId,
-        customExpireMinutes: authType === 'outLink' ? 5 : undefined
-      });
-
-      return `${ReadFileBaseUrl}/${collection.name}?token=${token}`;
+    if (
+      collection.type === DatasetCollectionTypeEnum.file &&
+      collection.fileId &&
+      isS3ObjectKey(collection.fileId, 'dataset')
+    ) {
+      return (
+        await getS3DatasetSource().createGetDatasetFileURL({
+          key: collection.fileId,
+          expiredHours: 1,
+          external: true
+        })
+      ).url;
     }
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;

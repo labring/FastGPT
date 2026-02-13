@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { type FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -22,6 +22,8 @@ export const HttpNode468: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/httpRequest',
+  avatarLinear: 'core/workflow/template/httpRequestLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,
@@ -37,7 +39,7 @@ export const HttpNode468: FlowNodeTemplateType = {
         showDescription: false,
         showDefaultValue: true
       },
-      deprecated: true
+      deprecated: false
     },
     {
       key: NodeInputKeyEnum.httpMethod,

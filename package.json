@@ -13,11 +13,10 @@
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
-    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
-    "test": "vitest run",
-    "test:workflow": "vitest run workflow"
+    "test": "vitest run --coverage",
+    "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
@@ -28,7 +27,7 @@
     "eslint-config-next": "^14.1.0",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "lint-staged": "^13.3.0",
     "mongodb-memory-server": "^10.1.4",
     "next-i18next": "15.4.2",

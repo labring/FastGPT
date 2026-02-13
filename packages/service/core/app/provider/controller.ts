@@ -25,5 +25,5 @@ export const getModelProvider = (provider?: string, language = 'en') => {
     return defaultProvider;
   }
 
-  return ModelProviderMapCache[language as langType][provider] ?? defaultProvider;
+  return global.ModelProviderMapCache[language as langType][provider] ?? defaultProvider;
 };

@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { uploadFile2DB } from '@/web/common/file/controller';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -11,10 +10,13 @@ import { clone } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import { getUploadFileType } from '@fastgpt/global/core/app/constants';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -30,6 +32,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
   const {
     update: updateFiles,
@@ -42,32 +45,58 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
   const showSelectFile = fileSelectConfig?.canSelectFile;
   const showSelectImg = fileSelectConfig?.canSelectImg;
-  const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
-  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
+  const showSelectVideo = fileSelectConfig?.canSelectVideo;
+  const showSelectAudio = fileSelectConfig?.canSelectAudio;
+  const showSelectCustomFileExtension = fileSelectConfig?.canSelectCustomFileExtension;
+  const canUploadFile =
+    showSelectFile ||
+    showSelectImg ||
+    showSelectVideo ||
+    showSelectAudio ||
+    showSelectCustomFileExtension;
+  // 文件数量限制：配置的maxFiles || 团队套餐 || 系统配置 || 默认值
+  const maxSelectFiles =
+    fileSelectConfig?.maxFiles ||
+    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
+    feConfigs?.uploadFileMaxAmount ||
+    10;
+  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
+  const maxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
+    1024 *
+    1024;
   const canSelectFileAmount = maxSelectFiles - fileList.length;
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
-    if (showSelectFile && showSelectImg) {
-      return {
-        icon: 'core/chat/fileSelect',
-        label: t('chat:select_file_img')
-      };
-    } else if (showSelectFile) {
+    if (canUploadFile) {
       return {
         icon: 'core/chat/fileSelect',
         label: t('chat:select_file')
       };
-    } else if (showSelectImg) {
-      return {
-        icon: 'core/chat/imgSelect',
-        label: t('chat:select_img')
-      };
     }
     return {};
-  }, [showSelectFile, showSelectImg, t]);
+  }, [canUploadFile, t]);
+
+  const fileType = useMemo(() => {
+    return getUploadFileType({
+      canSelectFile: showSelectFile,
+      canSelectImg: showSelectImg,
+      canSelectVideo: showSelectVideo,
+      canSelectAudio: showSelectAudio,
+      canSelectCustomFileExtension: showSelectCustomFileExtension,
+      customFileExtensionList: fileSelectConfig?.customFileExtensionList
+    });
+  }, [
+    fileSelectConfig?.customFileExtensionList,
+    showSelectAudio,
+    showSelectCustomFileExtension,
+    showSelectFile,
+    showSelectImg,
+    showSelectVideo
+  ]);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: `${showSelectImg ? 'image/*,' : ''} ${showSelectFile ? documentFileType : ''}`,
+    fileType,
     multiple: true,
     maxCount: canSelectFileAmount
   });
@@ -156,27 +185,38 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         try {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
-          // Start upload and update process
-          const { previewUrl } = await uploadFile2DB({
-            file: copyFile.rawFile,
-            bucketName: 'chat',
-            data: {
-              appId,
-              ...outLinkAuthData
-            },
-            metadata: {
-              chatId
-            },
-            percentListen(e) {
-              copyFile.process = e;
-              if (!copyFile.url) {
-                updateFiles(fileIndex, copyFile);
-              }
-            }
+          // Get Upload Post Presigned URL
+          const { url, key, headers, maxSize } = await getUploadChatFilePresignedUrl({
+            filename: copyFile.rawFile.name,
+            appId,
+            chatId,
+            outLinkAuthData
           });
 
-          // Update file url
+          // Upload File to S3
+          await putFileToS3({
+            url,
+            file: copyFile.rawFile,
+            headers,
+            onUploadProgress: (e) => {
+              if (!e.total) return;
+              const percent = Math.round((e.loaded / e.total) * 100);
+              copyFile.process = percent;
+              updateFiles(fileIndex, copyFile);
+            },
+            t,
+            maxSize
+          });
+
+          const previewUrl = await getPresignedChatFileGetUrl({
+            key: key,
+            appId,
+            outLinkAuthData
+          });
+
+          // Update file url and key
           copyFile.url = previewUrl;
+          copyFile.key = key;
           updateFiles(fileIndex, copyFile);
         } catch (error) {
           errorFileIndex.push(fileList.findIndex((item) => item.id === file.id)!);
@@ -216,6 +256,9 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     selectFileLabel,
     showSelectFile,
     showSelectImg,
+    showSelectVideo,
+    showSelectAudio,
+    showSelectCustomFileExtension,
     removeFiles,
     replaceFiles,
     hasFileUploading

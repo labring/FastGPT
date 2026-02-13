@@ -4,13 +4,14 @@ import type {
   ApiDatasetDetailResponse,
   APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset/type';
-import axios, { type Method } from 'axios';
-import { addLog } from '../../../../common/system/log';
+import { type Method } from 'axios';
+import { createProxyAxios } from '../../../../common/api/axios';
 import { readFileRawTextByUrl } from '../../read';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { addRawTextBuffer, getRawTextBuffer } from '../../../../common/buffer/rawText/controller';
-import { addMinutes } from 'date-fns';
+import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 type ResponseDataType = {
   success: boolean;
@@ -29,7 +30,8 @@ type APIFileListResponse = {
 };
 
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
-  const instance = axios.create({
+  const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
+  const instance = createProxyAxios({
     baseURL: apiServer.baseUrl,
     timeout: 60000, // 超时时间
     headers: {
@@ -43,7 +45,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
    */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
-      addLog.info('Api dataset data is empty');
+      logger.warn('API dataset response data is empty');
       return Promise.reject('服务器异常');
     } else if (!data.success) {
       return Promise.reject(data);
@@ -51,7 +53,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return data.data;
   };
   const responseError = (err: any) => {
-    console.log('error->', '请求错误', err);
+    logger.error('API dataset request failed', { error: err });
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });
@@ -126,12 +128,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     teamId,
     tmbId,
     apiFileId,
-    customPdfParse
+    customPdfParse,
+    datasetId
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
+    datasetId: string;
   }): Promise<ApiFileReadContentResponse> => {
     const data = await request<
       {
@@ -153,32 +157,38 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     }
     if (previewUrl) {
       // Get from buffer
-      const buffer = await getRawTextBuffer(previewUrl);
-      if (buffer) {
+      const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
+        sourceId: previewUrl,
+        customPdfParse
+      });
+      if (rawTextBuffer) {
         return {
           title,
-          rawText: buffer.text
+          rawText: rawTextBuffer.text
         };
       }
 
-      const rawText = await readFileRawTextByUrl({
+      const { rawText } = await readFileRawTextByUrl({
         teamId,
         tmbId,
         url: previewUrl,
         relatedId: apiFileId,
+        datasetId,
         customPdfParse,
         getFormatText: true
       });
 
-      await addRawTextBuffer({
+      const sourceName = title || getNanoid();
+
+      getS3RawTextSource().addRawTextBuffer({
         sourceId: previewUrl,
-        sourceName: title || '',
+        sourceName,
         text: rawText,
-        expiredTime: addMinutes(new Date(), 30)
+        customPdfParse
       });
 
       return {
-        title,
+        title: sourceName,
         rawText
       };
     }

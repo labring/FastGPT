@@ -9,11 +9,12 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from '../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -48,12 +49,23 @@ const ResponseTags = ({
 
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
     toolCiteLinks = []
-  } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
+  } = useMemo(() => {
+    return {
+      ...addStatisticalDataToHistoryItem(historyItem),
+      ...(!isShowCite
+        ? {
+            totalQuoteList: []
+          }
+        : {})
+    };
+  }, [historyItem, isShowCite]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
@@ -78,6 +90,8 @@ const ResponseTags = ({
     : true;
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
+    if (!isShowCite) return [];
+
     // Dataset citations
     const datasetItems = Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -116,7 +130,7 @@ const ResponseTags = ({
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal]);
+  }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
@@ -276,7 +290,7 @@ const ResponseTags = ({
             </MyTooltip>
           )}
 
-          {notSharePage && (
+          {notSharePage && showWholeResponse && (
             <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
               <MyTag
                 colorSchema="gray"

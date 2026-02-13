@@ -31,13 +31,14 @@ import {
   DatasetCollectionTypeEnum,
   ImportDataSourceEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -87,7 +88,7 @@ const DataCard = () => {
   const [editDataId, setEditDataId] = useState<string>();
 
   // Get collection info
-  const { data: collection, runAsync: reloadCollection } = useRequest2(
+  const { data: collection, runAsync: reloadCollection } = useRequest(
     () => getDatasetCollectionById(collectionId),
     {
       refreshDeps: [collectionId],
@@ -128,6 +129,21 @@ const DataCard = () => {
     }
   });
 
+  const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest(
+    async (collectionId: string) => {
+      await downloadFetch({
+        url: '/api/core/dataset/collection/export',
+        filename: `${collection?.name}.csv`,
+        body: {
+          collectionId
+        }
+      });
+    },
+    {
+      manual: true
+    }
+  );
+
   return (
     <MyBox py={[1, 0]} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
@@ -155,6 +171,19 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
+
+          <Button
+            variant={'whitePrimary'}
+            size={['sm', 'md']}
+            isDisabled={!collection}
+            isLoading={isExportChunksLoading}
+            onClick={() => {
+              onExportAllChunks(collection?._id!);
+            }}
+          >
+            {t('dataset:collection.export_all_chunks')}
+          </Button>
+
           {datasetDetail.type !== 'websiteDataset' &&
             !!collection?.chunkSize &&
             collection.permission?.hasWritePer && (
@@ -382,6 +411,7 @@ const DataCard = () => {
                       </>
                     )}
                   </Flex>
+
                   {canWrite && (
                     <PopoverConfirm
                       Trigger={

@@ -12,15 +12,20 @@ import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
+import type { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type {
   ListItemEditorNode,
   ListEditorNode,
   ParagraphEditorNode,
   EditorState,
-  ListItemInfo
+  ListItemInfo,
+  ChildEditorNode
 } from './type';
+import { TabStr } from './constants';
 
-export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
+export function registerLexicalTextEntity<
+  T extends TextNode | VariableLabelNode | VariableNode | SkillNode
+>(
   editor: LexicalEditor,
   getMatch: (text: string) => null | EntityMatch,
   targetNode: Klass<T>,
@@ -30,7 +35,9 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
     return node instanceof targetNode;
   };
 
-  const replaceWithSimpleText = (node: TextNode | VariableLabelNode | VariableNode): void => {
+  const replaceWithSimpleText = (
+    node: TextNode | VariableLabelNode | VariableNode | SkillNode
+  ): void => {
     const textNode = $createTextNode(node.getTextContent());
     textNode.setFormat(node.getFormat());
     node.replace(textNode);
@@ -185,7 +192,8 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
 // text to editor state
 const parseTextLine = (line: string) => {
   const trimmed = line.trimStart();
-  const indentLevel = Math.floor((line.length - trimmed.length) / 2);
+  const leadingSpaces = line.length - trimmed.length;
+  const indentLevel = Math.floor(leadingSpaces / TabStr.length);
 
   const bulletMatch = trimmed.match(/^- (.*)$/);
   if (bulletMatch) {
@@ -202,7 +210,8 @@ const parseTextLine = (line: string) => {
     };
   }
 
-  return { type: 'paragraph', text: trimmed, indent: indentLevel };
+  // For paragraphs, preserve original leading spaces in text (don't use indent)
+  return { type: 'paragraph', text: line, indent: 0 };
 };
 
 const buildListStructure = (items: ListItemInfo[]) => {
@@ -325,7 +334,7 @@ export const textToEditorState = (text = '', isRichText = false) => {
         ],
         direction: 'ltr',
         format: '',
-        indent: parsed.indent,
+        indent: 0, // Always use 0 for paragraphs, spaces are in text content
         type: 'paragraph',
         version: 1
       });
@@ -425,17 +434,19 @@ const processListItem = ({
     } else if (child.type === 'text') {
       itemText.push(child.text);
     } else if (child.type === 'tab') {
-      itemText.push('  ');
+      itemText.push(TabStr);
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
+    } else if (child.type === 'skill') {
+      itemText.push(`{{@${child.id}@}}`);
     } else if (child.type === 'list') {
       nestedLists.push(child);
     }
   });
 
-  // Add prefix and indent
-  const itemTextString = itemText.join('').trim();
-  const indent = '    '.repeat(indentLevel);
+  // Add prefix and indent (using TabStr for consistency)
+  const itemTextString = itemText.join('');
+  const indent = TabStr.repeat(indentLevel);
   const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
   results.push(indent + prefix + itemTextString);
 
@@ -472,6 +483,79 @@ export const editorStateToText = (editor: LexicalEditor) => {
   const editorState = editor.getEditorState().toJSON() as EditorState;
   const paragraphs = editorState.root.children;
 
+  const extractText = (node: ChildEditorNode): string => {
+    if (!node) return '';
+
+    // Handle line break nodes
+    if (node.type === 'linebreak') {
+      return '\n';
+    }
+
+    // Handle tab nodes
+    if (node.type === 'tab') {
+      return TabStr;
+    }
+
+    // Handle text nodes
+    if (node.type === 'text') {
+      return node.text || '';
+    }
+
+    // Handle custom variable nodes
+    if (node.type === 'variableLabel' || node.type === 'Variable') {
+      return node.variableKey || '';
+    }
+
+    // Handle skill nodes
+    if (node.type === 'skill') {
+      return `{{@${node.id}@}}`;
+    }
+
+    // Handle paragraph nodes - recursively process children
+    if (node.type === 'paragraph') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Handle list item nodes - recursively process children (excluding nested lists)
+    if (node.type === 'listitem') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      // Filter out nested list nodes as they are handled separately
+      return node.children
+        .filter((child) => child.type !== 'list')
+        .map(extractText)
+        .join('');
+    }
+
+    // Handle list nodes - recursively process children
+    if (node.type === 'list') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Unknown node type - return the raw text content if available
+    console.warn('Unknown node type in extractText:', (node as any).type, node);
+
+    // Try to extract text content from unknown node types
+    if ('text' in node && typeof (node as any).text === 'string') {
+      return (node as any).text;
+    }
+
+    // Try to recursively extract from children if present
+    if ('children' in node && Array.isArray((node as any).children)) {
+      return (node as any).children.map(extractText).join('');
+    }
+
+    // Fallback to stringifying the node content
+    return JSON.stringify(node);
+  };
+
   paragraphs.forEach((paragraph) => {
     if (paragraph.type === 'list') {
       const listResults = processList({ list: paragraph });
@@ -480,22 +564,17 @@ export const editorStateToText = (editor: LexicalEditor) => {
       const children = paragraph.children;
       const paragraphText: string[] = [];
 
-      const indentSpaces = '  '.repeat(paragraph.indent || 0);
-
+      // Don't add indent prefix for paragraphs, spaces are already in text content
       children.forEach((child) => {
-        if (child.type === 'linebreak') {
-          paragraphText.push('\n');
-        } else if (child.type === 'text') {
-          paragraphText.push(child.text);
-        } else if (child.type === 'tab') {
-          paragraphText.push('  ');
-        } else if (child.type === 'variableLabel' || child.type === 'Variable') {
-          paragraphText.push(child.variableKey);
-        }
+        const val = extractText(child);
+        paragraphText.push(val);
       });
 
       const finalText = paragraphText.join('');
-      editorStateTextString.push(indentSpaces + finalText);
+      editorStateTextString.push(finalText);
+    } else {
+      const text = extractText(paragraph);
+      editorStateTextString.push(text);
     }
   });
   return editorStateTextString.join('\n');

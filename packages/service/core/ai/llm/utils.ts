@@ -6,12 +6,18 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
-import axios from 'axios';
+} from '@fastgpt/global/core/ai/type';
+import { axios } from '../../../common/api/axios';
+
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../../web/i18n/utils';
-import { addLog } from '../../../common/system/log';
 import { getImageBase64 } from '../../../common/file/image/utils';
+import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { isInternalAddress } from '../../../common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -24,15 +30,15 @@ export const filterGPTMessageByMaxContext = async ({
     return [];
   }
 
-  // If the text length is less than half of the maximum token, no calculation is required
-  if (messages.length < 4) {
-    return messages;
-  }
-
   // filter startWith system prompt
   const chatStartIndex = messages.findIndex(
     (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
   );
+
+  if (chatStartIndex === -1) {
+    return messages;
+  }
+
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
@@ -80,7 +86,7 @@ export const filterGPTMessageByMaxContext = async ({
   return [...systemPrompts, ...chats];
 };
 
-/* 
+/*
   Format requested messages
   1. If not useVision, only retain text.
   2. Remove file_url
@@ -88,7 +94,7 @@ export const filterGPTMessageByMaxContext = async ({
 */
 export const loadRequestMessages = async ({
   messages,
-  useVision = true,
+  useVision = false,
   origin
 }: {
   messages: ChatCompletionMessageParam[];
@@ -125,7 +131,7 @@ export const loadRequestMessages = async ({
       const result: ChatCompletionContentPart[] = [];
 
       // 提取所有HTTPS图片URL并添加到result开头
-      const httpsImages = [...new Set(Array.from(input.matchAll(imageRegex), (m) => m[0]))];
+      const httpsImages = Array.from(new Set(input.matchAll(imageRegex)), (m) => m[0]);
       httpsImages.forEach((url) => {
         result.push({
           type: 'image_url',
@@ -150,12 +156,7 @@ export const loadRequestMessages = async ({
         content.map(async (item) => {
           if (item.type === 'image_url') {
             // Remove url origin
-            const imgUrl = (() => {
-              if (origin && item.image_url.url.startsWith(origin)) {
-                return item.image_url.url.replace(origin, '');
-              }
-              return item.image_url.url;
-            })();
+            const imgUrl = item.image_url.url;
 
             // base64 image
             if (imgUrl.startsWith('data:image/')) {
@@ -164,16 +165,39 @@ export const loadRequestMessages = async ({
 
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
-              if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
-                const { completeBase64: base64 } = await getImageBase64(imgUrl);
+              if (
+                imgUrl.startsWith('/') ||
+                process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
+                (await isInternalAddress(imgUrl))
+              ) {
+                try {
+                  const url = await (async () => {
+                    if (item.key) {
+                      try {
+                        return (
+                          await getS3ChatSource().createGetChatFileURL({
+                            key: item.key,
+                            external: false
+                          })
+                        ).url;
+                      } catch (error) {}
+                    }
+                    return imgUrl;
+                  })();
+                  const { completeBase64: base64 } = await getImageBase64(url);
 
-                return {
-                  ...item,
-                  image_url: {
-                    ...item.image_url,
-                    url: base64
-                  }
-                };
+                  return {
+                    ...item,
+                    image_url: {
+                      ...item.image_url,
+                      url: base64
+                    }
+                  };
+                } catch (error) {
+                  return Promise.reject(
+                    `Cannot load image ${imgUrl}, because ${getErrText(error)}`
+                  );
+                }
               }
 
               // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
@@ -181,14 +205,14 @@ export const loadRequestMessages = async ({
                 timeout: 10000
               });
               if (response.status < 200 || response.status >= 400) {
-                addLog.info(`Filter invalid image: ${imgUrl}`);
+                logger.info('Filtered invalid image URL', { url: imgUrl });
                 return;
               }
             } catch (error: any) {
-              if (error?.response?.status === 405) {
+              if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
-              addLog.warn(`Filter invalid image: ${imgUrl}`, { error });
+              logger.warn('Failed to validate image URL', { url: imgUrl, error });
               return;
             }
           }
@@ -209,6 +233,9 @@ export const loadRequestMessages = async ({
     const result = (
       await Promise.all(
         content.map(async (item) => {
+          // Remove system filed
+
+          delete item.key;
           if (item.type === 'text') {
             // If it is array, not need to parse image
             if (item.text) return item;
@@ -235,14 +262,19 @@ export const loadRequestMessages = async ({
     return loadImageContent;
   };
 
-  const formatAssistantItem = (item: ChatCompletionAssistantMessageParam) => {
+  const formatAssistantItem = (
+    item: ChatCompletionAssistantMessageParam & {
+      reasoning_content?: string;
+    }
+  ) => {
     return {
       role: item.role,
-      content: item.content,
-      function_call: item.function_call,
-      name: item.name,
-      refusal: item.refusal,
-      tool_calls: item.tool_calls
+      content: item.content || undefined,
+      reasoning_content: item.reasoning_content || undefined,
+      function_call: item.function_call || undefined,
+      name: item.name || undefined,
+      refusal: item.refusal || undefined,
+      tool_calls: item.tool_calls || undefined
     };
   };
   const parseAssistantContent = (
@@ -253,7 +285,7 @@ export const loadRequestMessages = async ({
       | undefined
   ) => {
     if (typeof content === 'string') {
-      return content || '';
+      return content?.trim() || '';
     }
     // 交互节点
     if (!content) return '';
@@ -261,7 +293,10 @@ export const loadRequestMessages = async ({
     const result = content.filter((item) => item?.type === 'text');
     if (result.length === 0) return '';
 
-    return result.map((item) => item.text).join('\n');
+    return result
+      .map((item) => item.text)
+      .join('\n')
+      .trim();
   };
 
   if (messages.length === 0) {
@@ -342,6 +377,9 @@ export const loadRequestMessages = async ({
   const loadMessages = (
     await Promise.all(
       mergeMessages.map(async (item, i) => {
+        delete item.dataId;
+        delete item.hideInUI;
+
         if (item.role === ChatCompletionRequestMessageRoleEnum.System) {
           const content = parseSystemMessage(item.content);
           if (!content) return;
@@ -367,10 +405,13 @@ export const loadRequestMessages = async ({
 
           return {
             ...item,
-            content: formatContent
+            content:
+              typeof formatContent === 'string'
+                ? formatContent
+                : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.tool_calls || item.function_call) {
+          if (item.tool_calls || item.function_call || item.reasoning_content) {
             return formatAssistantItem(item);
           }
 

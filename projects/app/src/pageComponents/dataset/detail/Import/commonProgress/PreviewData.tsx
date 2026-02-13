@@ -6,7 +6,7 @@ import { DatasetImportContext } from '../Context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { getPreviewChunks } from '@/web/core/dataset/api';
@@ -32,7 +32,7 @@ const PreviewData = () => {
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
 
-  const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
+  const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest(
     async () => {
       if (!previewFile) return { chunks: [], total: 0 };
 

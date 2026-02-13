@@ -8,7 +8,8 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  useDisclosure
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -16,7 +17,6 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
-import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -25,11 +25,14 @@ import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
+const RechargeModal = dynamic(() =>
+  import('@/components/support/wallet/NotSufficientModal/index').then((mod) => mod.RechargeModal)
+);
 
 const UsageTableList = ({
   filterParams,
@@ -41,6 +44,11 @@ const UsageTableList = ({
   filterParams: UsageFilterParams;
 }) => {
   const { t } = useSafeTranslation();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
@@ -75,7 +83,7 @@ const UsageTableList = ({
 
   const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
 
-  const { runAsync: exportUsage } = useRequest2(
+  const { runAsync: exportUsage } = useRequest(
     async () => {
       await downloadFetch({
         url: `/api/proApi/support/wallet/usage/exportUsage`,
@@ -112,10 +120,22 @@ const UsageTableList = ({
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'100%'} isLoading={isLoading}>
-      <Box>{Tabs}</Box>
+      <Flex>
+        <Box>{Tabs}</Box>
+        <Box flex={1} />
+        <Button
+          size={'md'}
+          variant={'transparentBase'}
+          color={'primary.700'}
+          onClick={onOpenRecharge}
+        >
+          {t('account_usage:check_left_points')}
+        </Button>
+      </Flex>
       <Flex mt={4} w={'100%'}>
         <Box>{Selectors}</Box>
         <Box flex={'1'} />
+
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
@@ -170,6 +190,8 @@ const UsageTableList = ({
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
+
+      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
     </MyBox>
   );
 };

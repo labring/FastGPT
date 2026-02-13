@@ -188,6 +188,21 @@ We are looking for like-minded partners to accelerate the development of FastGPT
 
 ## 🌿 Third-party Ecosystem
 
+## 💪 Our Projects & Links
+
+- [Local Development Quick Start](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [OpenAPI Documentation](https://doc.fastgpt.io/docs/openapi/intro)
+- [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+- [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)
+- [Laf: 3-minute Quick Access to Third-party Applications](https://github.com/labring/laf)
+- [Sealos: Rapid Deployment of Cluster Applications](https://github.com/labring/sealos)
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
+
+## 🌿 Third-party Ecosystem
+
 - [AI Proxy: Large Model Aggregation Service](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Open Source Model Online Experience Platform](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 - [PPIO: One-click Call to Cost-effective Open Source Model API and GPU Containers](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)

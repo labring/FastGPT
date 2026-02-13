@@ -1,7 +1,10 @@
-import axios from 'axios';
+import { axios } from '../../common/api/axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.OUTLINK.TOOLS);
 
 export const addOutLinkUsage = ({
   shareId,
@@ -17,18 +20,20 @@ export const addOutLinkUsage = ({
       lastTime: new Date()
     }
   ).catch((err) => {
-    console.log('update shareChat error', err);
+    logger.error('Failed to update outlink usage', { shareId, error: err });
   });
 };
 
 export const pushResult2Remote = async ({
-  outLinkUid,
   shareId,
+  chatId,
+  outLinkUid,
   appName,
   flowResponses
 }: {
+  shareId: string;
+  chatId: string;
   outLinkUid?: string; // raw id, not parse
-  shareId?: string;
   appName: string;
   flowResponses?: ChatHistoryItemResType[];
 }) => {
@@ -46,8 +51,11 @@ export const pushResult2Remote = async ({
       data: {
         token: outLinkUid,
         appName,
-        responseData: flowResponses
+        responseData: flowResponses,
+        chatId
       }
     });
-  } catch (error) {}
+  } catch (error) {
+    logger.error('Failed to push outlink result to remote hook', { shareId, error });
+  }
 };

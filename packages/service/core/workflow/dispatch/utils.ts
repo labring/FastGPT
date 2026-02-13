@@ -1,14 +1,16 @@
+import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
 import {
-  type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
   type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
@@ -17,14 +19,17 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/httpTools/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import type { WorkflowResponseType } from './type';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -39,18 +44,8 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  return ({
-    write,
-    event,
-    data
-  }: {
-    write?: (text: string) => void;
-    event: SseResponseEventEnum;
-    data: Record<string, any>;
-  }) => {
-    const useStreamResponse = streamResponse;
-
-    if (!res || res.closed || !useStreamResponse) return;
+  const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
+    if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -70,11 +65,84 @@ export const getWorkflowResponseWrite = ({
 
     responseWrite({
       res,
-      write,
       event: detail ? event : undefined,
-      data: JSON.stringify(data)
+      data: JSON.stringify({
+        ...data,
+        ...(stepId && detail && { stepId }),
+        ...(id && detail && { responseValueId: id })
+      })
     });
   };
+  return fn;
+};
+export const getWorkflowChildResponseWrite = ({
+  id,
+  stepId,
+  fn
+}: {
+  id: string;
+  stepId: string;
+  fn?: WorkflowResponseType;
+}): WorkflowResponseType | undefined => {
+  if (!fn) return;
+  return (e: Parameters<WorkflowResponseType>[0]) => {
+    return fn({ ...e, id, stepId });
+  };
+};
+
+/* 
+  Filter orphan edges from workflow.
+  Orphan edges are edges that have a source or target that is not in the nodes array.
+  This is used to prevent errors when the workflow is edited and the nodes are not updated.
+*/
+export const filterOrphanEdges = ({
+  edges,
+  nodes,
+  workflowId
+}: {
+  edges: RuntimeEdgeItemType[];
+  nodes: RuntimeNodeItemType[];
+  workflowId: string;
+}) => {
+  const filterStartTime = Date.now();
+  const validNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const originalEdgeCount = edges.length;
+  const orphanEdges: RuntimeEdgeItemType[] = [];
+
+  const filteredEdges = edges.filter((edge) => {
+    const sourceExists = validNodeIds.has(edge.source);
+    const targetExists = validNodeIds.has(edge.target);
+
+    // Log orphan edges for debugging
+    if (!sourceExists || !targetExists) {
+      orphanEdges.push(edge);
+    }
+
+    return sourceExists && targetExists;
+  });
+
+  const filteredCount = originalEdgeCount - filteredEdges.length;
+  if (filteredCount > 0) {
+    getLogger(LogCategories.MODULE.WORKFLOW).info(
+      `Filtered ${filteredCount} orphan edge(s) from workflow`,
+      {
+        workflowId,
+        originalCount: originalEdgeCount,
+        finalCount: filteredEdges.length
+      }
+    );
+
+    if (orphanEdges.length > 0) {
+      getLogger(LogCategories.MODULE.WORKFLOW).warn(`Orphan edges details: ${orphanEdges.length}`);
+    }
+  }
+
+  const filterDuration = Date.now() - filterStartTime;
+  if (filterDuration > 100) {
+    getLogger(LogCategories.MODULE.WORKFLOW).warn('Orphan edge filtering took significant time');
+  }
+
+  return filteredEdges;
 };
 
 export const filterToolNodeIdByEdges = ({
@@ -117,11 +185,15 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (
-  variables: Record<string, any>,
-  removeObj: Record<string, string> = {},
-  userVariablesConfigs: VariableItemType[] = []
-) => {
+export const runtimeSystemVar2StoreType = ({
+  variables,
+  removeObj = {},
+  userVariablesConfigs = []
+}: {
+  variables: Record<string, any>;
+  removeObj?: Record<string, string>;
+  userVariablesConfigs?: VariableItemType[];
+}) => {
   const copyVariables = { ...variables };
 
   // Delete system variables
@@ -140,11 +212,40 @@ export const removeSystemVariable = (
   // Encrypt password variables
   userVariablesConfigs.forEach((item) => {
     const val = copyVariables[item.key];
-    if (item.type === VariableInputEnum.password && typeof val === 'string') {
-      copyVariables[item.key] = {
-        value: '',
-        secret: encryptSecret(val)
-      };
+    if (item.type === VariableInputEnum.password) {
+      if (typeof val === 'string') {
+        copyVariables[item.key] = {
+          value: '',
+          secret: encryptSecret(val)
+        };
+      }
+    }
+    // Handle file variables
+    else if (item.type === VariableInputEnum.file) {
+      const currentValue = copyVariables[item.key];
+
+      copyVariables[item.key] = currentValue
+        .map((url: string) => {
+          try {
+            const urlObj = new URL(url);
+            // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
+            const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
+            const filename = path.basename(key) || 'file';
+            const extname = path.extname(key).toLowerCase(); // includes the dot, e.g., ".jpg"
+
+            // Check if it's an image type
+            const isImage = extname && imageFileType.includes(extname);
+
+            return {
+              id: path.basename(key, path.extname(key)), // filename without extension
+              key,
+              name: filename
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((file: any) => file !== null);
     }
   });
 
@@ -198,6 +299,7 @@ export const rewriteRuntimeWorkFlow = async ({
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
+
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
     const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
     const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
@@ -230,33 +332,32 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      // mcpToolsetVal.toolId-旧版 MCP
+      const toolSetId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
       toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
+          nodeId: `${toolSetNode.nodeId}${index}`,
+          toolSetId,
           avatar: toolSetNode.avatar,
-          tool,
-          // New ?? Old
-          parentId
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
+          }
         });
-        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
 
-        nodes.push({
-          ...newToolNode,
-          name: `${toolSetNode.name}/${tool.name}`
-        });
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     } else if (httpToolsetVal) {
-      const parentId = toolSetNode.pluginId || '';
       httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
         const newToolNode = getHTTPToolRuntimeNode({
           tool: {
             ...tool,
             name: `${toolSetNode.name}/${tool.name}`
           },
-          nodeId: `${parentId}${index}`,
+          nodeId: `${toolSetNode.nodeId}${index}`,
           avatar: toolSetNode.avatar,
-          parentId
+          toolSetId: toolSetNode.pluginId!
         });
 
         nodes.push(newToolNode);
@@ -281,22 +382,34 @@ export const rewriteRuntimeWorkFlow = async ({
 export const getNodeErrResponse = ({
   error,
   customErr,
-  customNodeResponse
+  responseData,
+  nodeDispatchUsages,
+  runTimes,
+  newVariables,
+  system_memories
 }: {
   error: any;
   customErr?: Record<string, any>;
-  customNodeResponse?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
+  [DispatchNodeResponseKeyEnum.runTimes]?: number;
+  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
   const errorText = getErrText(error);
 
   return {
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: nodeDispatchUsages,
+    [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.memories]: system_memories,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,
       ...(typeof customErr === 'object' ? customErr : {})
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       errorText,
-      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+      ...(typeof responseData === 'object' ? responseData : {})
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
       error: errorText,

@@ -22,6 +22,8 @@ export const CodeNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/codeRun',
+  avatarLinear: 'core/workflow/template/codeRunLinear',
+  colorSchema: 'lime',
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,

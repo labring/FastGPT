@@ -2,7 +2,9 @@ export enum SystemConfigsTypeEnum {
   fastgpt = 'fastgpt',
   fastgptPro = 'fastgptPro',
   systemMsgModal = 'systemMsgModal',
-  license = 'license'
+  license = 'license',
+  operationalAd = 'operationalAd',
+  activityAd = 'activityAd'
 }
 
 export const SystemConfigsTypeMap = {
@@ -17,5 +19,11 @@ export const SystemConfigsTypeMap = {
   },
   [SystemConfigsTypeEnum.license]: {
     label: 'license'
+  },
+  [SystemConfigsTypeEnum.operationalAd]: {
+    label: 'operationalAd'
+  },
+  [SystemConfigsTypeEnum.activityAd]: {
+    label: 'activityAd'
   }
 };

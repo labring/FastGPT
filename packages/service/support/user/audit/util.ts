@@ -1,7 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '../../../../web/i18n/utils';
-import { MongoOperationLog } from './schema';
+import { MongoTeamAudit } from './schema';
 import type {
   AdminAuditEventEnum,
   AuditEventEnum,
@@ -12,13 +12,14 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
-  if (type === AppTypeEnum.simple) return i18nT('account_team:type.Simple bot');
+  if (type === AppTypeEnum.simple) return i18nT('app:type.Chat_Agent');
+  if (type === AppTypeEnum.chatAgent) return 'Agent';
   if (type === AppTypeEnum.workflow) return i18nT('account_team:type.Workflow bot');
-  if (type === AppTypeEnum.plugin) return i18nT('account_team:type.Plugin');
+  if (type === AppTypeEnum.workflowTool) return i18nT('app:toolType_workflow');
   if (type === AppTypeEnum.httpPlugin) return i18nT('account_team:type.Http plugin');
-  if (type === AppTypeEnum.httpToolSet) return i18nT('account_team:type.Http tool set');
-  if (type === AppTypeEnum.toolSet) return i18nT('account_team:type.Tool set');
-  if (type === AppTypeEnum.tool) return i18nT('account_team:type.Tool');
+  if (type === AppTypeEnum.httpToolSet) return i18nT('app:toolType_http');
+  if (type === AppTypeEnum.mcpToolSet) return i18nT('app:toolType_mcp');
+  if (type === AppTypeEnum.tool) return i18nT('app:toolType_mcp');
   return i18nT('common:UnKnow');
 }
 
@@ -86,7 +87,7 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
   params?: any;
 }) {
   retryFn(() =>
-    MongoOperationLog.create({
+    MongoTeamAudit.create({
       tmbId: tmbId,
       teamId: teamId,
       event,

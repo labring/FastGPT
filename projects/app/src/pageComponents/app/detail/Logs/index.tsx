@@ -13,11 +13,14 @@ import ProTag from '@/components/ProTip/Tag';
 import ProText from '@/components/ProTip/ProText';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useLocalStorageState } from 'ahooks';
 
 const Logs = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
+  const [viewMode, setViewMode] = useLocalStorageState<'chart' | 'table'>(`app_log_view_mode`, {
+    defaultValue: feConfigs.isPlus ? 'chart' : 'table'
+  });
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
@@ -33,14 +36,7 @@ const Logs = () => {
   } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
 
   return (
-    <Flex
-      flexDirection={'column'}
-      h={'full'}
-      rounded={'lg'}
-      bg={'myGray.25'}
-      boxShadow={3.5}
-      py={[4, 6]}
-    >
+    <Flex flexDirection={'column'} h={'full'} rounded={'lg'} py={[4, 6]}>
       <Flex px={[4, 8]}>
         <Flex
           w={'full'}
