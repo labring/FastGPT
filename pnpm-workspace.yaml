@@ -3,6 +3,5 @@ packages:
   - projects/app
   - projects/marketplace
   - projects/mcp_server
-  - projects/sandbox
   - scripts/icon
   - sdk/*
