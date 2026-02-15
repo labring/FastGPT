@@ -4,9 +4,9 @@ import { SubprocessRunner } from './base';
 import { generateJsScript } from '../sandbox/js-template';
 import type { RunnerConfig } from '../types';
 
-/** JS 模块白名单 */
+/** JS 模块白名单（网络模块已移除，统一通过 SystemHelper.httpRequest） */
 const ALLOWED_MODULES = [
-  'lodash', 'dayjs', 'axios', 'moment', 'uuid',
+  'lodash', 'dayjs', 'moment', 'uuid',
   'crypto-js', 'qs', 'url', 'querystring'
 ];
 

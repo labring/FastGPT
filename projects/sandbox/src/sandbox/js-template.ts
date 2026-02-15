@@ -9,6 +9,8 @@
  * - 日志收集
  * - 用户代码执行
  */
+import { BLOCKED_IP_RANGES, REQUEST_LIMITS } from './network-config';
+
 export function generateJsScript(
   userCode: string,
   allowedModules: string[],
@@ -28,6 +30,20 @@ Object.setPrototypeOf = () => false;
 Reflect.setPrototypeOf = () => false;
 if (Error.prepareStackTrace) delete Error.prepareStackTrace;
 if (Error.captureStackTrace) delete Error.captureStackTrace;
+
+// 阻止 constructor.constructor 逃逸到全局 Function
+// 保存原始 Function 供内部使用，然后覆盖全局 Function 构造器
+const _OriginalFunction = Function;
+const _SafeFunction = function(...args) {
+  throw new Error('Function constructor is not allowed in sandbox');
+};
+_SafeFunction.prototype = _OriginalFunction.prototype;
+Object.defineProperty(_OriginalFunction.prototype, 'constructor', {
+  value: _SafeFunction,
+  writable: false,
+  configurable: false
+});
+globalThis.Function = _SafeFunction;
 
 // 阻止访问 Bun 内置危险 API
 if (typeof globalThis.Bun !== 'undefined') {
@@ -71,10 +87,61 @@ const _safeRequire = new Proxy(_origRequire, {
 const _fs = _origRequire('fs');
 const _path = _origRequire('path');
 const _crypto = _origRequire('crypto');
+const _http = _origRequire('http');
+const _https = _origRequire('https');
+const _dns = _origRequire('dns');
+const _net = _origRequire('net');
+const _urlMod = _origRequire('url');
+
+// 禁用全局网络 API
+globalThis.fetch = undefined;
+globalThis.XMLHttpRequest = undefined;
+globalThis.WebSocket = undefined;
 
 const TMPDIR = process.env.SANDBOX_TMPDIR;
 const DISK_LIMIT = ${limits.diskMB} * 1024 * 1024;
 let _diskUsed = 0;
+
+// ===== 网络安全 =====
+const _BLOCKED_CIDRS = ${JSON.stringify(BLOCKED_IP_RANGES)};
+const _REQUEST_LIMITS = ${JSON.stringify(REQUEST_LIMITS)};
+let _requestCount = 0;
+
+function _ipToLong(ip) {
+  const parts = ip.split('.').map(Number);
+  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+}
+
+function _isBlockedIP(ip) {
+  if (!ip) return true;
+  // IPv6 loopback
+  if (ip === '::1' || ip === '::') return true;
+  // IPv6 mapped IPv4
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  // IPv6 ULA / link-local
+  if (ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80')) return true;
+  // IPv4 check
+  if (!_net.isIPv4(ip)) return false;
+  const ipLong = _ipToLong(ip);
+  const cidrs = [
+    ['10.0.0.0', 8], ['172.16.0.0', 12], ['192.168.0.0', 16],
+    ['169.254.0.0', 16], ['127.0.0.0', 8], ['0.0.0.0', 8]
+  ];
+  for (const [base, bits] of cidrs) {
+    const mask = (0xFFFFFFFF << (32 - bits)) >>> 0;
+    if ((ipLong & mask) === (_ipToLong(base) & mask)) return true;
+  }
+  return false;
+}
+
+function _dnsResolve(hostname) {
+  return new Promise((resolve, reject) => {
+    _dns.lookup(hostname, { all: true }, (err, addresses) => {
+      if (err) return reject(err);
+      resolve(addresses.map(a => a.address));
+    });
+  });
+}
 
 function _safePath(userPath) {
   const resolved = _path.resolve(TMPDIR, userPath);
@@ -107,6 +174,71 @@ const SystemHelper = {
   delay(ms) {
     if (ms > 10000) throw new Error('Delay must be <= 10000ms');
     return new Promise((r) => setTimeout(r, ms));
+  },
+
+  /**
+   * 安全的 HTTP 请求
+   * @param {string} url - 请求地址
+   * @param {object} opts - 选项 { method, headers, body, timeout }
+   * @returns {Promise<{status: number, statusText: string, headers: object, data: string}>}
+   */
+  async httpRequest(url, opts = {}) {
+    if (++_requestCount > _REQUEST_LIMITS.maxRequests) {
+      throw new Error('Request limit exceeded: max ' + _REQUEST_LIMITS.maxRequests + ' requests per execution');
+    }
+
+    const parsed = new URL(url);
+    if (!_REQUEST_LIMITS.allowedProtocols.includes(parsed.protocol)) {
+      throw new Error('Protocol ' + parsed.protocol + ' is not allowed. Use http: or https:');
+    }
+
+    // DNS 解析后校验 IP
+    const ips = await _dnsResolve(parsed.hostname);
+    for (const ip of ips) {
+      if (_isBlockedIP(ip)) {
+        throw new Error('Request to private/internal network is not allowed');
+      }
+    }
+
+    const method = (opts.method || 'GET').toUpperCase();
+    const headers = opts.headers || {};
+    const body = opts.body != null ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : null;
+    const timeout = Math.min(opts.timeout || _REQUEST_LIMITS.timeoutMs, _REQUEST_LIMITS.timeoutMs);
+
+    if (body && !headers['Content-Type'] && !headers['content-type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const lib = parsed.protocol === 'https:' ? _https : _http;
+
+    return new Promise((resolve, reject) => {
+      const req = lib.request(parsed, { method, headers, timeout }, (res) => {
+        const chunks = [];
+        let size = 0;
+        res.on('data', (chunk) => {
+          size += chunk.length;
+          if (size > _REQUEST_LIMITS.maxResponseSize) {
+            req.destroy();
+            reject(new Error('Response too large: max ' + (_REQUEST_LIMITS.maxResponseSize / 1024 / 1024) + 'MB'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => {
+          const data = Buffer.concat(chunks).toString('utf-8');
+          const respHeaders = {};
+          for (const [k, v] of Object.entries(res.headers)) {
+            respHeaders[k] = v;
+          }
+          resolve({ status: res.statusCode, statusText: res.statusMessage, headers: respHeaders, data });
+        });
+        res.on('error', reject);
+      });
+      req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout: ' + timeout + 'ms')); });
+      req.on('error', reject);
+      if (body) req.write(body);
+      req.end();
+    });
   },
 
   fs: {
@@ -146,6 +278,7 @@ const countToken = SystemHelper.countToken;
 const strToBase64 = SystemHelper.strToBase64;
 const createHmac = SystemHelper.createHmac;
 const delay = SystemHelper.delay;
+const httpRequest = SystemHelper.httpRequest;
 
 // ===== 日志收集 =====
 const _logs = [];
@@ -165,23 +298,25 @@ const _input = JSON.parse(_inputText);
 const variables = _input.variables;
 
 // ===== 用户代码（通过 Function 构造器注入 safe require） =====
-const _userFn = new Function(
+// 使用 _OriginalFunction 因为全局 Function 已被安全覆盖
+const _userFn = new _OriginalFunction(
   'require', 'console', 'SystemHelper',
-  'countToken', 'strToBase64', 'createHmac', 'delay',
+  'countToken', 'strToBase64', 'createHmac', 'delay', 'httpRequest',
   'variables',
   \`${escapedUserCode}
 return main;\`
 );
 const main = _userFn(
   _safeRequire, _safeConsole, SystemHelper,
-  countToken, strToBase64, createHmac, delay,
+  countToken, strToBase64, createHmac, delay, httpRequest,
   variables
 );
 
 // ===== 执行 =====
 try {
   const _result = await main(variables);
-  process.stdout.write(JSON.stringify(_result));
+  // undefined/void 返回值序列化为 null，避免 JSON.stringify 返回 undefined
+  process.stdout.write(JSON.stringify(_result === undefined ? null : _result));
   process.stderr.write(_logs.join('\\n'));
 } catch (err) {
   process.stdout.write(JSON.stringify({ error: err?.message ?? String(err) }));

@@ -10,7 +10,8 @@ const DANGEROUS_MODULES = [
   'multiprocessing', 'threading', 'pickle', 'importlib',
   'code', 'codeop', 'compile', 'compileall',
   'signal', 'resource', 'gc', 'inspect',
-  'tempfile', 'pathlib', 'io', 'fileinput'
+  'tempfile', 'pathlib', 'io', 'fileinput',
+  'urllib', 'http', 'requests', 'httpx', 'aiohttp'
 ];
 
 /**
