@@ -155,8 +155,22 @@ export abstract class SubprocessRunner {
           return;
         }
 
+        // 从 stdout 中提取带前缀标记的结果，避免用户 console.log 干扰
+        const PREFIX = '__SANDBOX_RESULT__:';
+        const prefixIdx = stdout.lastIndexOf(PREFIX);
+        if (prefixIdx === -1) {
+          settle({
+            success: false,
+            message: stdout
+              ? `Invalid output: ${stdout.slice(0, 500)}`
+              : stderr || 'No output from subprocess'
+          });
+          return;
+        }
+
         try {
-          const result = JSON.parse(stdout);
+          const jsonStr = stdout.slice(prefixIdx + PREFIX.length);
+          const result = JSON.parse(jsonStr);
           if (result && result.error) {
             settle({ success: false, message: result.error });
           } else {
