@@ -31,15 +31,32 @@ if (Error.captureStackTrace) delete Error.captureStackTrace;
 
 // 阻止访问 Bun 内置危险 API
 if (typeof globalThis.Bun !== 'undefined') {
-  try { globalThis.Bun.write = undefined; } catch {}
-  try { globalThis.Bun.spawn = undefined; } catch {}
-  try { globalThis.Bun.spawnSync = undefined; } catch {}
-  try { globalThis.Bun.openInEditor = undefined; } catch {}
+  // 注意：不能删除 Bun.file，因为 Bun 内部的 fs 和 process.stdout 依赖它
+  const _dangerousBunAPIs = [
+    'write', 'spawn', 'spawnSync', 'openInEditor',
+    'serve', 'connect', 'listen',
+    'udpSocket', 'dns', 'plugin',
+    'build', 'Transpiler'
+  ];
+  for (const api of _dangerousBunAPIs) {
+    try { globalThis.Bun[api] = undefined; } catch {}
+  }
 }
 
 // ===== 模块白名单 =====
 const _origRequire = require;
 const ALLOWED_MODULES = new Set(${JSON.stringify(allowedModules)});
+
+// 清理 process.env，仅保留必要变量
+{
+  const _keepEnv = ['SANDBOX_TMPDIR', 'SANDBOX_MEMORY_MB', 'SANDBOX_DISK_MB', 'PATH', 'HOME', 'NODE_ENV'];
+  for (const key of Object.keys(process.env)) {
+    if (!_keepEnv.includes(key)) {
+      delete process.env[key];
+    }
+  }
+}
+
 const _safeRequire = new Proxy(_origRequire, {
   apply(target, thisArg, args) {
     const mod = args[0];

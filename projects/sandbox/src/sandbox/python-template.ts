@@ -143,13 +143,21 @@ import builtins as _builtins
 _original_import = _builtins.__import__
 _BLOCKED_MODULES = set(${JSON.stringify(dangerousModules)})
 
-def _safe_import(name, *args, **kwargs):
-    top_level = name.split('.')[0]
-    if top_level in _BLOCKED_MODULES:
-        raise ImportError(f"Importing {name} is not allowed.")
-    return _original_import(name, *args, **kwargs)
+def _make_safe_import(_orig, _blocked):
+    """通过闭包封装原始 import，防止用户代码访问 _original_import"""
+    def _safe_import(name, *args, **kwargs):
+        top_level = name.split('.')[0]
+        if top_level in _blocked:
+            raise ImportError(f"Importing {name} is not allowed.")
+        return _orig(name, *args, **kwargs)
+    return _safe_import
 
-_builtins.__import__ = _safe_import
+_builtins.__import__ = _make_safe_import(_original_import, _BLOCKED_MODULES)
+
+# 清理内部引用，防止用户代码恢复原始 import
+del _original_import
+del _make_safe_import
+del _BLOCKED_MODULES
 
 # ===== 日志收集 =====
 _logs = []
