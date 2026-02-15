@@ -4,6 +4,7 @@ import { bearerAuth } from 'hono/bearer-auth';
 import { config } from './config';
 import { JsRunner } from './runner/js-runner';
 import { PythonRunner } from './runner/python-runner';
+import { getSemaphoreStats } from './runner/base';
 import type { ExecuteOptions } from './types';
 
 const app = new Hono();
@@ -20,7 +21,7 @@ const pythonRunner = new PythonRunner(runnerConfig);
 
 /** 健康检查（不需要认证） */
 app.get('/health', (c) => {
-  return c.json({ status: 'ok', version: '5.0.0' });
+  return c.json({ status: 'ok', version: '5.0.0', concurrency: getSemaphoreStats() });
 });
 
 /** 认证中间件：仅当配置了 token 时启用 */

@@ -4,6 +4,15 @@ import { join } from 'path';
 import { spawn, type ChildProcess } from 'child_process';
 import type { ExecuteOptions, ExecuteResult, RunnerConfig } from '../types';
 import { config } from '../config';
+import { Semaphore } from '../utils/semaphore';
+
+/** 全局信号量，所有 Runner 共享 */
+const semaphore = new Semaphore(config.maxConcurrency);
+
+/** 暴露并发状态供 health 接口使用 */
+export function getSemaphoreStats() {
+  return semaphore.stats;
+}
 
 /**
  * SubprocessRunner 基类
@@ -66,6 +75,9 @@ export abstract class SubprocessRunner {
       return { success: false, message: err.message || String(err) };
     }
 
+    // 并发控制：排队等待许可
+    await semaphore.acquire();
+
     const tempDir = await mkdtemp(join(tmpdir(), 'sandbox_'));
 
     try {
@@ -98,7 +110,9 @@ export abstract class SubprocessRunner {
     } catch (err: any) {
       return { success: false, message: err.message || String(err) };
     } finally {
-      // 5. 销毁临时目录
+      // 5. 释放并发许可
+      semaphore.release();
+      // 6. 销毁临时目录
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
   }
