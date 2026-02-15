@@ -29,6 +29,9 @@ const envSchema = z.object({
   SANDBOX_DISK_MB: int(10),
   SANDBOX_MAX_DISK_MB: int(100),
 
+  // ===== 并发控制 =====
+  SANDBOX_MAX_CONCURRENCY: int(50),
+
   // ===== 网络请求限制 =====
   SANDBOX_MAX_REQUESTS: int(30),
   SANDBOX_REQUEST_TIMEOUT: int(10000),
@@ -59,6 +62,9 @@ export const env = {
   maxMemoryMB: e.SANDBOX_MAX_MEMORY_MB,
   defaultDiskMB: e.SANDBOX_DISK_MB,
   maxDiskMB: e.SANDBOX_MAX_DISK_MB,
+
+  // 并发控制
+  maxConcurrency: e.SANDBOX_MAX_CONCURRENCY,
 
   // 网络请求限制
   maxRequests: e.SANDBOX_MAX_REQUESTS,
