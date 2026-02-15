@@ -12,15 +12,16 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "hono": "^4.7.6",
-    "tiktoken": "1.0.17",
-    "lodash": "^4.17.21",
-    "dayjs": "^1.11.13",
     "axios": "^1.7.9",
-    "moment": "^2.30.1",
-    "uuid": "^9.0.1",
     "crypto-js": "^4.2.0",
-    "qs": "^6.13.1"
+    "dayjs": "^1.11.13",
+    "dotenv": "^17.3.1",
+    "hono": "^4.7.6",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "qs": "^6.13.1",
+    "tiktoken": "1.0.17",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/bun": "^1.2.4",

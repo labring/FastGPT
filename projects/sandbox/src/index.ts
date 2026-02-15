@@ -1,3 +1,4 @@
+import './env'; // dotenv 最先加载
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { config } from './config';
