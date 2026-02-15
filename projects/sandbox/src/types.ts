@@ -25,19 +25,3 @@ export interface RunnerConfig {
   defaultMemoryMB: number;
   defaultDiskMB: number;
 }
-
-/** 进程池配置 */
-export interface PoolConfig {
-  poolSize: number;
-  maxIdleMs: number;
-  maxRecycle: number;
-}
-
-/** 池化进程的抽象 */
-export interface PooledProcess {
-  proc: import('child_process').ChildProcess;
-  useCount: number;
-  lastUsed: number;
-  isAlive(): boolean;
-  kill(): void;
-}

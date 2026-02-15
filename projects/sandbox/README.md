@@ -6,8 +6,6 @@
 
 ```
 HTTP Request → Hono Server → Runner (JS/Python) → Subprocess → Result
-                                ↓
-                          Process Pool (可选预热)
 ```
 
 - **JS 执行**：Bun 子进程 + 安全 shim（禁用 Bun API、冻结 Function 构造器、require 白名单）
@@ -128,15 +126,6 @@ docker run -p 3000:3000 \
 | `SANDBOX_MAX_REQUESTS` | 单次执行最大 HTTP 请求数 | `30` |
 | `SANDBOX_REQUEST_TIMEOUT` | 单次 HTTP 请求超时（ms） | `10000` |
 | `SANDBOX_MAX_RESPONSE_SIZE` | 最大响应体大小（bytes） | `2097152`（2MB） |
-
-### 进程池
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `SANDBOX_JS_POOL_SIZE` | JS 进程池大小（0 = 不预热） | `0` |
-| `SANDBOX_PYTHON_POOL_SIZE` | Python 进程池大小（0 = 不预热） | `0` |
-| `SANDBOX_POOL_MAX_IDLE_MS` | 空闲进程最大存活时间（ms） | `300000` |
-| `SANDBOX_POOL_RECYCLE` | 单个进程最大复用次数 | `50` |
 
 ## 添加 JS 包
 

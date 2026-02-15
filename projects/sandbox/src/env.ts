@@ -33,12 +33,6 @@ const envSchema = z.object({
   SANDBOX_MAX_REQUESTS: int(30),
   SANDBOX_REQUEST_TIMEOUT: int(10000),
   SANDBOX_MAX_RESPONSE_SIZE: int(2 * 1024 * 1024),
-
-  // ===== 进程池 =====
-  SANDBOX_JS_POOL_SIZE: int(0),
-  SANDBOX_PYTHON_POOL_SIZE: int(0),
-  SANDBOX_POOL_MAX_IDLE_MS: int(300000),
-  SANDBOX_POOL_RECYCLE: int(50),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -70,12 +64,6 @@ export const env = {
   maxRequests: e.SANDBOX_MAX_REQUESTS,
   requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
   maxResponseSize: e.SANDBOX_MAX_RESPONSE_SIZE,
-
-  // 进程池
-  jsPoolSize: e.SANDBOX_JS_POOL_SIZE,
-  pythonPoolSize: e.SANDBOX_PYTHON_POOL_SIZE,
-  poolMaxIdleMs: e.SANDBOX_POOL_MAX_IDLE_MS,
-  poolMaxRecycle: e.SANDBOX_POOL_RECYCLE,
 } as const;
 
 export type Env = typeof env;
