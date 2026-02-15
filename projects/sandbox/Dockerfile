@@ -27,9 +27,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./
 
-# 复制预热脚本
-COPY projects/sandbox/scripts ./scripts
-
 ENV NODE_ENV=production
 ENV SANDBOX_PORT=3000
 
