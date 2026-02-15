@@ -146,4 +146,188 @@ describe('PythonRunner', () => {
     expect(result.success).toBe(false);
     expect(result.message).toContain('custom error');
   });
+
+  // ===== 补充：边界与特殊场景 =====
+
+  it('纯空白代码返回错误', async () => {
+    const result = await runner.execute({
+      code: '   \n\t  \n  ',
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('代码中包含三引号字符串', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    text = """hello
+world"""
+    return {"text": text}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.text).toBe('hello\nworld');
+  });
+
+  it('返回字符串值', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return "hello"`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toBe('hello');
+  });
+
+  it('返回数字 0', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return 0`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toBe(0);
+  });
+
+  it('返回布尔 False', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return False`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toBe(false);
+  });
+
+  it('返回空列表', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return []`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual([]);
+  });
+
+  it('返回空字典', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual({});
+  });
+
+  it('Unicode 变量和返回值', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"greeting": v["msg"] + "🎉", "emoji": "✅"}`,
+      variables: { msg: '你好世界' }
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.greeting).toBe('你好世界🎉');
+    expect(result.data?.codeReturn.emoji).toBe('✅');
+  });
+
+  it('变量值为 null 的处理', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"a": v["a"], "is_none": v["a"] is None}`,
+      variables: { a: null }
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.a).toBeNull();
+    expect(result.data?.codeReturn.is_none).toBe(true);
+  });
+
+  it('多种 print 输出混合', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    print("string")
+    print(42)
+    print(True)
+    print(None)
+    print({"key": "val"})
+    print([1, 2, 3])
+    return {"done": True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.log).toContain('string');
+    expect(result.data?.log).toContain('42');
+    expect(result.data?.log).toContain('True');
+  });
+
+  it('limits 参数部分指定时使用默认值', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"ok": True}`,
+      variables: {},
+      limits: { timeoutMs: 5000 }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('大量变量传入', async () => {
+    const variables: Record<string, any> = {};
+    for (let i = 0; i < 100; i++) {
+      variables[`key_${i}`] = `value_${i}`;
+    }
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"count": len(v), "first": v["key_0"], "last": v["key_99"]}`,
+      variables
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.count).toBe(100);
+    expect(result.data?.codeReturn.first).toBe('value_0');
+    expect(result.data?.codeReturn.last).toBe('value_99');
+  });
+
+  it('system_helper.delay 可用', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    system_helper.delay(100)
+    return {"ok": True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('system_helper.fs.tmp_dir 属性可用', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"has_tmpdir": len(system_helper.fs.tmp_dir) > 0}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.has_tmpdir).toBe(true);
+  });
+
+  it('缺少 main 函数报错', async () => {
+    const result = await runner.execute({
+      code: `x = 42`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('main 不是函数报错', async () => {
+    const result = await runner.execute({
+      code: `main = 42`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('除零错误', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {"result": 1 / 0}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('division by zero');
+  });
 });

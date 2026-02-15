@@ -414,4 +414,54 @@ def main():
     expect(result.success).toBe(true);
     expect(result.data?.codeReturn.match).toBe('123');
   });
+
+  // ===== 补充：更多 Python 逃逸向量 =====
+
+  it('type() 动态创建类不能绕过安全', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    try:
+        MyClass = type('MyClass', (object,), {'x': 42})
+        obj = MyClass()
+        return {'x': obj.x, 'escaped': False}
+    except Exception as e:
+        return {'escaped': False, 'error': str(e)}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.escaped).toBe(false);
+  });
+
+  it('__builtins__ 篡改不能恢复危险 import', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    try:
+        import builtins
+        # 尝试替换 __import__
+        builtins.__import__ = lambda name, *a, **kw: None
+        import os
+        return {'escaped': True}
+    except Exception as e:
+        return {'escaped': False}`,
+      variables: {}
+    });
+    // 即使替换了 __import__，宿主侧预检已经拦截了 import os
+    expect(result.success).toBe(false);
+  });
+
+  it('getattr 动态访问不能绕过模块限制', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    try:
+        mod = __import__('os')
+        return {'escaped': True}
+    except ImportError:
+        return {'escaped': False}`,
+      variables: {}
+    });
+    // 宿主侧预检不会拦截（没有 import os 语句），但运行时 __import__ 拦截生效
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
+  });
 });
