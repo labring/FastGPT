@@ -2,13 +2,8 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { SubprocessRunner } from './base';
 import { generateJsScript } from '../sandbox/js-template';
+import { config } from '../config';
 import type { RunnerConfig } from '../types';
-
-/** JS 模块白名单（网络模块已移除，统一通过 SystemHelper.httpRequest） */
-const ALLOWED_MODULES = [
-  'lodash', 'dayjs', 'moment', 'uuid',
-  'crypto-js', 'qs', 'url', 'querystring'
-];
 
 /**
  * JsRunner - 通过 Bun 子进程执行 JS 代码
@@ -33,7 +28,7 @@ export class JsRunner extends SubprocessRunner {
     code: string,
     limits: { timeoutMs: number; memoryMB: number; diskMB: number }
   ): Promise<string> {
-    const script = generateJsScript(code, ALLOWED_MODULES, limits);
+    const script = generateJsScript(code, config.jsAllowedModules, limits);
     const scriptPath = join(tempDir, 'run.mjs');
     await writeFile(scriptPath, script, 'utf-8');
     return scriptPath;

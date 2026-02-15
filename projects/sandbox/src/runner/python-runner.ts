@@ -2,17 +2,8 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { SubprocessRunner } from './base';
 import { generatePythonScript } from '../sandbox/python-template';
+import { config } from '../config';
 import type { RunnerConfig } from '../types';
-
-/** Python 危险模块黑名单 */
-const DANGEROUS_MODULES = [
-  'os', 'sys', 'subprocess', 'shutil', 'socket', 'ctypes',
-  'multiprocessing', 'threading', 'pickle', 'importlib',
-  'code', 'codeop', 'compile', 'compileall',
-  'signal', 'resource', 'gc', 'inspect',
-  'tempfile', 'pathlib', 'io', 'fileinput',
-  'urllib', 'http', 'requests', 'httpx', 'aiohttp'
-];
 
 /**
  * PythonRunner - 通过 python3 子进程执行 Python 代码
@@ -45,7 +36,7 @@ export class PythonRunner extends SubprocessRunner {
     code: string,
     limits: { timeoutMs: number; memoryMB: number; diskMB: number }
   ): Promise<string> {
-    const script = generatePythonScript(code, DANGEROUS_MODULES, limits, tempDir);
+    const script = generatePythonScript(code, config.pythonBlockedModules, limits, tempDir);
     const scriptPath = join(tempDir, 'run.py');
     await writeFile(scriptPath, script, 'utf-8');
     return scriptPath;
@@ -53,11 +44,12 @@ export class PythonRunner extends SubprocessRunner {
 
   /** 正则检测危险导入（快速预检，不依赖 AST） */
   private detectDangerousImports(code: string): string | null {
+    const blocked = config.pythonBlockedModules;
     // 检测 import / from ... import 语句
     const importRegex = /(?:^|\n)\s*(?:import|from)\s+(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = importRegex.exec(code)) !== null) {
-      if (DANGEROUS_MODULES.includes(match[1])) {
+      if (blocked.includes(match[1])) {
         return match[1];
       }
     }
@@ -65,7 +57,7 @@ export class PythonRunner extends SubprocessRunner {
     const dunderImportRegex = /__import__\s*\(\s*['"]([\w.]+)['"]\s*\)/g;
     while ((match = dunderImportRegex.exec(code)) !== null) {
       const topLevel = match[1].split('.')[0];
-      if (DANGEROUS_MODULES.includes(topLevel)) {
+      if (blocked.includes(topLevel)) {
         return topLevel;
       }
     }
