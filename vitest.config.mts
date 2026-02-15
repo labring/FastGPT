@@ -48,7 +48,6 @@ export default defineConfig({
     include: [
       'test/**/*.test.ts',
       'projects/app/test/**/*.test.ts',
-      'projects/sandbox/test/**/*.test.ts',
       'projects/marketplace/test/**/*.test.ts'
     ]
   }

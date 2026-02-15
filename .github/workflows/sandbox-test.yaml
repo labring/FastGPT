@@ -1,0 +1,34 @@
+name: 'Sandbox-Test'
+on:
+  pull_request:
+    paths:
+      - 'projects/sandbox/**'
+  push:
+    paths:
+      - 'projects/sandbox/**'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/sandbox
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Deps
+        run: bun install
+
+      - name: Run Unit Tests
+        run: bun run test
