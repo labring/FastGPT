@@ -53,11 +53,20 @@ export class PythonRunner extends SubprocessRunner {
 
   /** 正则检测危险导入（快速预检，不依赖 AST） */
   private detectDangerousImports(code: string): string | null {
+    // 检测 import / from ... import 语句
     const importRegex = /(?:^|\n)\s*(?:import|from)\s+(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = importRegex.exec(code)) !== null) {
       if (DANGEROUS_MODULES.includes(match[1])) {
         return match[1];
+      }
+    }
+    // 检测 __import__('module') 调用
+    const dunderImportRegex = /__import__\s*\(\s*['"]([\w.]+)['"]\s*\)/g;
+    while ((match = dunderImportRegex.exec(code)) !== null) {
+      const topLevel = match[1].split('.')[0];
+      if (DANGEROUS_MODULES.includes(topLevel)) {
+        return topLevel;
       }
     }
     return null;

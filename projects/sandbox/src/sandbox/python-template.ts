@@ -88,9 +88,10 @@ class _SandboxFs:
         self._tmpdir = tmpdir
         self._disk_limit = disk_limit
         self._disk_used = 0
+        self._file_sizes = {}
 
     def _safe_path(self, path):
-        resolved = _os.path.normpath(_os.path.join(self._tmpdir, path))
+        resolved = _os.path.realpath(_os.path.join(self._tmpdir, path))
         if not resolved.startswith(self._tmpdir):
             raise PermissionError("Path traversal not allowed")
         return resolved
@@ -98,7 +99,8 @@ class _SandboxFs:
     def write_file(self, path, content):
         safe = self._safe_path(path)
         data = content.encode('utf-8') if isinstance(content, str) else content
-        if self._disk_used + len(data) > self._disk_limit:
+        old_size = self._file_sizes.get(safe, 0)
+        if self._disk_used - old_size + len(data) > self._disk_limit:
             raise IOError("Disk quota exceeded: ${limits.diskMB}MB limit")
         parent = _os.path.dirname(safe)
         if not _os.path.exists(parent):
@@ -106,7 +108,8 @@ class _SandboxFs:
         mode = 'wb' if isinstance(content, bytes) else 'w'
         with open(safe, mode) as f:
             f.write(content)
-        self._disk_used += len(data)
+        self._disk_used = self._disk_used - old_size + len(data)
+        self._file_sizes[safe] = len(data)
 
     def read_file(self, path):
         with open(self._safe_path(path), 'r') as f:
@@ -175,14 +178,17 @@ class _SystemHelper:
         if parsed.scheme + ':' not in _REQUEST_LIMITS['allowed_protocols']:
             raise RuntimeError(f"Protocol {parsed.scheme}: is not allowed. Use http: or https:")
 
-        # DNS 解析后校验 IP
+        # DNS 解析后校验 IP，并用 resolved IP 发起连接防止 DNS rebinding
         hostname = parsed.hostname
+        resolved_ip = None
         try:
             infos = _socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
             for info in infos:
                 ip = info[4][0]
                 if _is_blocked_ip(ip):
                     raise RuntimeError("Request to private/internal network is not allowed")
+            if infos:
+                resolved_ip = infos[0][4][0]
         except _socket.gaierror as e:
             raise RuntimeError(f"DNS resolution failed: {e}")
 
@@ -205,7 +211,21 @@ class _SystemHelper:
             else:
                 data = body
 
-        req = _urllib_request.Request(url, data=data, headers=headers, method=method.upper())
+        # 对 HTTP 使用 resolved IP 防止 DNS rebinding；HTTPS 保留原始 URL（证书校验需要 hostname）
+        if resolved_ip and parsed.scheme == 'http':
+            _port = parsed.port
+            if _port:
+                resolved_url = f"http://{resolved_ip}:{_port}{parsed.path}"
+            else:
+                resolved_url = f"http://{resolved_ip}{parsed.path}"
+            if parsed.query:
+                resolved_url += f"?{parsed.query}"
+            if 'Host' not in headers and 'host' not in headers:
+                headers['Host'] = hostname + (f":{_port}" if _port else "")
+        else:
+            resolved_url = url
+
+        req = _urllib_request.Request(resolved_url, data=data, headers=headers, method=method.upper())
         try:
             resp = _urllib_request.urlopen(req, timeout=timeout)
             resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
@@ -231,8 +251,22 @@ create_hmac = system_helper.create_hmac
 delay = system_helper.delay
 http_request = system_helper.http_request
 
-# ===== 模块安全：__import__ 拦截 =====
+# ===== builtins.open 拦截 =====
 import builtins as _builtins
+_original_open = _builtins.open
+def _make_safe_open(_orig, _tmpdir):
+    def _safe_open(file, mode='r', *args, **kwargs):
+        if isinstance(file, str):
+            _abs = _os.path.realpath(_os.path.join(_tmpdir, file) if not _os.path.isabs(file) else file)
+            if not _abs.startswith(_tmpdir):
+                raise PermissionError(f'File access restricted to sandbox: {file}')
+        return _orig(file, mode, *args, **kwargs)
+    return _safe_open
+_builtins.open = _make_safe_open(_original_open, _SANDBOX_TMPDIR)
+del _original_open
+del _make_safe_open
+
+# ===== 模块安全：__import__ 拦截 =====
 _original_import = _builtins.__import__
 _BLOCKED_MODULES = set(${JSON.stringify(dangerousModules)})
 
@@ -326,9 +360,15 @@ try:
                 raise TypeError(f"Missing required argument: '{_p}'")
         _result = main(*_args)
 
-    json.dump(_result, sys.stdout, ensure_ascii=False, default=str)
+    sys.stdout.write('__SANDBOX_RESULT__:' + json.dumps(_result, ensure_ascii=False, default=str))
     sys.stderr.write('\\n'.join(_logs))
 except Exception as _e:
-    json.dump({"error": str(_e)}, sys.stdout, ensure_ascii=False)
+    sys.stdout.write('__SANDBOX_RESULT__:' + json.dumps({"error": str(_e)}, ensure_ascii=False))
+finally:
+    # 清理 __import__ hook，确保不泄露到后续代码
+    try:
+        _builtins.__import__ = __builtins__.__import__ if hasattr(__builtins__, '__import__') else _builtins.__import__
+    except Exception:
+        pass
 `;
 }

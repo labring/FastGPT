@@ -101,6 +101,7 @@ globalThis.WebSocket = undefined;
 const TMPDIR = process.env.SANDBOX_TMPDIR;
 const DISK_LIMIT = ${limits.diskMB} * 1024 * 1024;
 let _diskUsed = 0;
+const _fileSizes = new Map();
 
 // ===== 网络安全 =====
 const _BLOCKED_CIDRS = ${JSON.stringify(BLOCKED_IP_RANGES)};
@@ -149,6 +150,14 @@ function _safePath(userPath) {
   if (rel.startsWith('..') || _path.isAbsolute(rel)) {
     throw new Error('Path traversal not allowed');
   }
+  // Resolve symlinks to prevent symlink-based path traversal
+  if (_fs.existsSync(resolved)) {
+    const real = _fs.realpathSync(resolved);
+    if (!real.startsWith(TMPDIR)) {
+      throw new Error('Path traversal not allowed');
+    }
+    return real;
+  }
   return resolved;
 }
 
@@ -192,7 +201,7 @@ const SystemHelper = {
       throw new Error('Protocol ' + parsed.protocol + ' is not allowed. Use http: or https:');
     }
 
-    // DNS 解析后校验 IP
+    // DNS 解析后校验 IP，并用 resolved IP 发起连接防止 DNS rebinding
     const ips = await _dnsResolve(parsed.hostname);
     for (const ip of ips) {
       if (_isBlockedIP(ip)) {
@@ -209,10 +218,28 @@ const SystemHelper = {
       headers['Content-Type'] = 'application/json';
     }
 
+    // 使用 resolved IP 发起连接，设置 Host header 为原始 hostname（防止 DNS rebinding TOCTOU）
+    const resolvedIP = ips[0];
+    const originalHostname = parsed.hostname;
+    const resolvedUrl = new URL(url);
+    resolvedUrl.hostname = resolvedIP;
+    if (!headers['Host'] && !headers['host']) {
+      headers['Host'] = originalHostname + (parsed.port ? ':' + parsed.port : '');
+    }
+
     const lib = parsed.protocol === 'https:' ? _https : _http;
 
     return new Promise((resolve, reject) => {
-      const req = lib.request(parsed, { method, headers, timeout }, (res) => {
+      const reqOpts = {
+        method,
+        headers,
+        timeout,
+        hostname: resolvedIP,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        servername: originalHostname,  // SNI for TLS
+      };
+      const req = lib.request(reqOpts, (res) => {
         const chunks = [];
         let size = 0;
         res.on('data', (chunk) => {
@@ -245,7 +272,8 @@ const SystemHelper = {
     writeFile(path, content) {
       const safe = _safePath(path);
       const bytes = Buffer.byteLength(content, 'utf-8');
-      if (_diskUsed + bytes > DISK_LIMIT) {
+      const oldBytes = _fileSizes.get(safe) || 0;
+      if (_diskUsed - oldBytes + bytes > DISK_LIMIT) {
         throw new Error('Disk quota exceeded: ${limits.diskMB}MB limit');
       }
       const dir = _path.dirname(safe);
@@ -253,7 +281,8 @@ const SystemHelper = {
         _fs.mkdirSync(dir, { recursive: true });
       }
       _fs.writeFileSync(safe, content, 'utf-8');
-      _diskUsed += bytes;
+      _diskUsed = _diskUsed - oldBytes + bytes;
+      _fileSizes.set(safe, bytes);
     },
     readFile(path) {
       return _fs.readFileSync(_safePath(path), 'utf-8');
@@ -316,10 +345,10 @@ const main = _userFn(
 try {
   const _result = await main(variables);
   // undefined/void 返回值序列化为 null，避免 JSON.stringify 返回 undefined
-  process.stdout.write(JSON.stringify(_result === undefined ? null : _result));
+  process.stdout.write('__SANDBOX_RESULT__:' + JSON.stringify(_result === undefined ? null : _result));
   process.stderr.write(_logs.join('\\n'));
 } catch (err) {
-  process.stdout.write(JSON.stringify({ error: err?.message ?? String(err) }));
+  process.stdout.write('__SANDBOX_RESULT__:' + JSON.stringify({ error: err?.message ?? String(err) }));
 }
 `;
 }

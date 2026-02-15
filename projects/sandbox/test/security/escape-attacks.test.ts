@@ -40,9 +40,12 @@ describe('JS 逃逸攻击测试', () => {
       }`,
       variables: {}
     });
-    // 即使能获取 Function，也不应该能访问外部 process
-    if (result.success && result.data?.codeReturn) {
-      expect(result.data.codeReturn.escaped).toBe(false);
+    // Function constructor 已被安全覆盖，不应能逃逸
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    } else {
+      // 错误冒泡到模板层也说明安全生效
+      expect(result.message).toMatch(/not allowed|Function/i);
     }
   });
 
@@ -294,9 +297,8 @@ def main():
       variables: {}
     });
     // builtins 本身不在黑名单，但 _original_import 已被删除
-    if (result.success && result.data?.codeReturn) {
-      expect(result.data.codeReturn.has_original).toBe(false);
-    }
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.has_original).toBe(false);
   });
 
   // ===== exec/eval 逃逸 =====
@@ -331,13 +333,18 @@ def main():
         return {'escaped': False}`,
       variables: {}
     });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.escaped).toBe(false);
+    // eval 内的 __import__ 被 hook 拦截，异常穿透用户 try/except
+    // success=false 且 message 包含拦截信息即为正确行为
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    } else {
+      expect(result.message).toContain('not allowed');
+    }
   });
 
   // ===== 文件系统逃逸 =====
 
-  it('open("/etc/passwd") 直接访问文件系统', async () => {
+  it('open("/etc/passwd") 被 builtins.open 拦截', async () => {
     const result = await runner.execute({
       code: `def main():
     try:
@@ -347,9 +354,13 @@ def main():
         return {'escaped': False, 'error': str(e)}`,
       variables: {}
     });
-    // Python 的 open 没有被拦截（io 在黑名单但 open 是 builtin）
-    // 这里记录行为，后续可以考虑是否需要限制
-    expect(result.success).toBe(true);
+    // builtins.open 已被覆盖，访问沙盒外文件会抛出 PermissionError
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+      expect(result.data?.codeReturn.error).toMatch(/restricted to sandbox|PermissionError/i);
+    } else {
+      expect(result.message).toMatch(/restricted to sandbox|PermissionError/i);
+    }
   });
 
   it('system_helper.fs 路径遍历被阻止', async () => {
