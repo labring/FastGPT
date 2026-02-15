@@ -98,6 +98,27 @@ globalThis.fetch = undefined;
 globalThis.XMLHttpRequest = undefined;
 globalThis.WebSocket = undefined;
 
+// 限制 process 对象，移除危险 API
+{
+  const _dangerousProcessAPIs = [
+    'binding', 'dlopen', '_linkedBinding',
+    'moduleLoadList', '_channel',
+    'reallyExit', 'abort',
+    'chdir', 'umask',
+    'setuid', 'setgid', 'seteuid', 'setegid',
+    'setgroups', 'initgroups',
+    'kill', '_kill',
+    'execPath', 'execArgv', 'argv0',
+    'config', 'mainModule',
+    '_debugProcess', '_debugEnd', '_startProfilerIdleNotifier', '_stopProfilerIdleNotifier',
+  ];
+  for (const api of _dangerousProcessAPIs) {
+    try { Object.defineProperty(process, api, { value: undefined, writable: false, configurable: false }); } catch {}
+  }
+  // 冻结 process.env 防止用户修改
+  Object.freeze(process.env);
+}
+
 const TMPDIR = process.env.SANDBOX_TMPDIR;
 const DISK_LIMIT = ${limits.diskMB} * 1024 * 1024;
 let _diskUsed = 0;

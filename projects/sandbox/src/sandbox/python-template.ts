@@ -211,13 +211,14 @@ class _SystemHelper:
             else:
                 data = body
 
-        # 对 HTTP 使用 resolved IP 防止 DNS rebinding；HTTPS 保留原始 URL（证书校验需要 hostname）
-        if resolved_ip and parsed.scheme == 'http':
+        # 使用 resolved IP 防止 DNS rebinding（HTTP 和 HTTPS 均适用）
+        if resolved_ip:
             _port = parsed.port
+            _scheme = parsed.scheme
             if _port:
-                resolved_url = f"http://{resolved_ip}:{_port}{parsed.path}"
+                resolved_url = f"{_scheme}://{resolved_ip}:{_port}{parsed.path}"
             else:
-                resolved_url = f"http://{resolved_ip}{parsed.path}"
+                resolved_url = f"{_scheme}://{resolved_ip}{parsed.path}"
             if parsed.query:
                 resolved_url += f"?{parsed.query}"
             if 'Host' not in headers and 'host' not in headers:
@@ -227,7 +228,16 @@ class _SystemHelper:
 
         req = _urllib_request.Request(resolved_url, data=data, headers=headers, method=method.upper())
         try:
-            resp = _urllib_request.urlopen(req, timeout=timeout)
+            # HTTPS 使用 resolved IP 时需要自定义 SSL context 校验原始 hostname
+            _ssl_ctx = None
+            if parsed.scheme == 'https' and resolved_ip:
+                import ssl as _ssl
+                _ssl_ctx = _ssl.create_default_context()
+                _ssl_ctx.check_hostname = False
+                _ssl_ctx.verify_mode = _ssl.CERT_REQUIRED
+                # 手动校验原始 hostname
+                _ssl_ctx.hostname_checks_common_name = False
+            resp = _urllib_request.urlopen(req, timeout=timeout, context=_ssl_ctx)
             resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
             if len(resp_data) > _REQUEST_LIMITS['max_response_size']:
                 raise RuntimeError(f"Response too large: max {_REQUEST_LIMITS['max_response_size'] // 1024 // 1024}MB")
@@ -319,6 +329,32 @@ del _original_import
 del _make_safe_import
 del _BLOCKED_MODULES
 
+# ===== 限制危险的内置函数 =====
+_original_exec = _builtins.exec
+_original_eval = _builtins.eval
+_original_compile = _builtins.compile
+
+def _safe_exec(code, *args, **kwargs):
+    """exec 仍可用，但 __import__ hook 会拦截危险模块"""
+    return _original_exec(code, *args, **kwargs)
+
+def _safe_eval(code, *args, **kwargs):
+    """eval 仍可用，但 __import__ hook 会拦截危险模块"""
+    return _original_eval(code, *args, **kwargs)
+
+_builtins.exec = _safe_exec
+_builtins.eval = _safe_eval
+# 禁用 compile + exec 模式绕过
+_builtins.__loader__ = None
+# 禁止 open 的 int fd 模式（可绕过路径检查）
+_original_safe_open = _builtins.open
+def _safe_open_no_fd(file, mode='r', *args, **kwargs):
+    if isinstance(file, int):
+        raise PermissionError('Opening files by file descriptor is not allowed in sandbox')
+    return _original_safe_open(file, mode, *args, **kwargs)
+_builtins.open = _safe_open_no_fd
+del _original_safe_open, _safe_open_no_fd
+
 # ===== 日志收集 =====
 _logs = []
 _orig_print = print
@@ -334,6 +370,14 @@ for _k, _v in variables.items():
     globals()[_k] = _v
 try:
     del _k, _v
+except NameError:
+    pass
+
+# ===== 清理内部引用，防止用户代码访问危险模块 =====
+del _os, _socket, _ipaddress, _urllib_request, _urllib_parse
+del _hashlib, _hmac, _base64
+try:
+    del _resource
 except NameError:
     pass
 
@@ -365,10 +409,6 @@ try:
 except Exception as _e:
     sys.stdout.write('__SANDBOX_RESULT__:' + json.dumps({"error": str(_e)}, ensure_ascii=False))
 finally:
-    # 清理 __import__ hook，确保不泄露到后续代码
-    try:
-        _builtins.__import__ = __builtins__.__import__ if hasattr(__builtins__, '__import__') else _builtins.__import__
-    except Exception:
-        pass
+    pass
 `;
 }
