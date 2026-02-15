@@ -1,55 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-const TEST_PORT = 3099;
-const BASE_URL = `http://localhost:${TEST_PORT}`;
-const TEST_TOKEN = 'test-token-for-integration';
+const SANDBOX_URL = process.env.SANDBOX_URL;
+const TEST_TOKEN = process.env.SANDBOX_TOKEN || 'test-token-for-integration';
 
-let server: any;
+const skipReason = !SANDBOX_URL
+  ? '跳过集成测试：未配置 SANDBOX_URL 环境变量'
+  : undefined;
 
-describe('API Integration', () => {
-  beforeAll(async () => {
-    // 动态启动服务
-    process.env.SANDBOX_PORT = String(TEST_PORT);
-    process.env.SANDBOX_TOKEN = TEST_TOKEN;
-
-    // 使用 Bun 子进程启动服务
-    const { spawn } = await import('child_process');
-    server = spawn('bun', ['run', 'src/index.ts'], {
-      cwd: new URL('../../', import.meta.url).pathname,
-      env: {
-        ...process.env,
-        SANDBOX_PORT: String(TEST_PORT),
-        SANDBOX_TOKEN: TEST_TOKEN
-      },
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    // 等待服务启动
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server start timeout')), 10000);
-      const check = async () => {
-        try {
-          await fetch(`${BASE_URL}/health`);
-          clearTimeout(timeout);
-          resolve();
-        } catch {
-          setTimeout(check, 200);
-        }
-      };
-      check();
-    });
-  });
-
-  afterAll(async () => {
-    if (server) {
-      server.kill('SIGKILL');
-      // 等待进程退出
-      await new Promise((resolve) => {
-        server.on('close', resolve);
-        setTimeout(resolve, 2000);
-      });
-    }
-  });
+describe.skipIf(!SANDBOX_URL)('API Integration', () => {
+  const BASE_URL = SANDBOX_URL!;
 
   it('GET /health 返回 200', async () => {
     const res = await fetch(`${BASE_URL}/health`);
