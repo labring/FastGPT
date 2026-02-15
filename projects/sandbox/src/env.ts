@@ -1,57 +1,81 @@
 /**
- * 环境变量加载与类型转换
+ * 环境变量加载与校验
  *
- * 在应用最早期 import，确保后续模块读到的 process.env 已包含 .env 文件内容。
- * 提供类型安全的读取辅助函数。
+ * 使用 dotenv 加载 .env 文件，zod 做类型转换和校验。
  */
 import dotenv from 'dotenv';
+import { z } from 'zod';
 
 dotenv.config();
 
-/** 读取字符串，带默认值 */
-function str(key: string, defaultValue: string): string {
-  return process.env[key] ?? defaultValue;
-}
+/** coerce 数字，带默认值 */
+const int = (defaultValue: number) =>
+  z.coerce.number().int().default(defaultValue);
 
-/** 读取整数，带默认值 */
-function int(key: string, defaultValue: number): number {
-  const v = process.env[key];
-  if (v === undefined || v === '') return defaultValue;
-  const n = parseInt(v, 10);
-  return isNaN(n) ? defaultValue : n;
-}
+/** 字符串，带默认值 */
+const str = (defaultValue: string) => z.string().default(defaultValue);
 
-/** 读取布尔值，带默认值 */
-function bool(key: string, defaultValue: boolean): boolean {
-  const v = process.env[key];
-  if (v === undefined || v === '') return defaultValue;
-  return v === 'true' || v === '1';
-}
-
-export const env = {
+const envSchema = z.object({
   // ===== 服务 =====
-  port: int('SANDBOX_PORT', 3000),
-  token: str('SANDBOX_TOKEN', ''),
-  logLevel: str('LOG_LEVEL', 'info'),
+  SANDBOX_PORT: int(3000),
+  SANDBOX_TOKEN: str(''),
+  LOG_LEVEL: str('info'),
 
   // ===== 资源限制 =====
-  defaultTimeoutMs: int('SANDBOX_TIMEOUT', 10000),
-  maxTimeoutMs: int('SANDBOX_MAX_TIMEOUT', 60000),
-  defaultMemoryMB: int('SANDBOX_MEMORY_MB', 64),
-  maxMemoryMB: int('SANDBOX_MAX_MEMORY_MB', 256),
-  defaultDiskMB: int('SANDBOX_DISK_MB', 10),
-  maxDiskMB: int('SANDBOX_MAX_DISK_MB', 100),
+  SANDBOX_TIMEOUT: int(10000),
+  SANDBOX_MAX_TIMEOUT: int(60000),
+  SANDBOX_MEMORY_MB: int(64),
+  SANDBOX_MAX_MEMORY_MB: int(256),
+  SANDBOX_DISK_MB: int(10),
+  SANDBOX_MAX_DISK_MB: int(100),
 
   // ===== 网络请求限制 =====
-  maxRequests: int('SANDBOX_MAX_REQUESTS', 30),
-  requestTimeoutMs: int('SANDBOX_REQUEST_TIMEOUT', 10000),
-  maxResponseSize: int('SANDBOX_MAX_RESPONSE_SIZE', 2 * 1024 * 1024),
+  SANDBOX_MAX_REQUESTS: int(30),
+  SANDBOX_REQUEST_TIMEOUT: int(10000),
+  SANDBOX_MAX_RESPONSE_SIZE: int(2 * 1024 * 1024),
 
   // ===== 进程池 =====
-  jsPoolSize: int('SANDBOX_JS_POOL_SIZE', 0),
-  pythonPoolSize: int('SANDBOX_PYTHON_POOL_SIZE', 0),
-  poolMaxIdleMs: int('SANDBOX_POOL_MAX_IDLE_MS', 300000),
-  poolMaxRecycle: int('SANDBOX_POOL_RECYCLE', 50),
+  SANDBOX_JS_POOL_SIZE: int(0),
+  SANDBOX_PYTHON_POOL_SIZE: int(0),
+  SANDBOX_POOL_MAX_IDLE_MS: int(300000),
+  SANDBOX_POOL_RECYCLE: int(50),
+});
+
+const parsed = envSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  console.error('❌ Invalid environment variables:');
+  console.error(parsed.error.format());
+  process.exit(1);
+}
+
+const e = parsed.data;
+
+/** 类型安全的配置对象，字段名与代码风格一致 */
+export const env = {
+  // 服务
+  port: e.SANDBOX_PORT,
+  token: e.SANDBOX_TOKEN,
+  logLevel: e.LOG_LEVEL,
+
+  // 资源限制
+  defaultTimeoutMs: e.SANDBOX_TIMEOUT,
+  maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,
+  defaultMemoryMB: e.SANDBOX_MEMORY_MB,
+  maxMemoryMB: e.SANDBOX_MAX_MEMORY_MB,
+  defaultDiskMB: e.SANDBOX_DISK_MB,
+  maxDiskMB: e.SANDBOX_MAX_DISK_MB,
+
+  // 网络请求限制
+  maxRequests: e.SANDBOX_MAX_REQUESTS,
+  requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
+  maxResponseSize: e.SANDBOX_MAX_RESPONSE_SIZE,
+
+  // 进程池
+  jsPoolSize: e.SANDBOX_JS_POOL_SIZE,
+  pythonPoolSize: e.SANDBOX_PYTHON_POOL_SIZE,
+  poolMaxIdleMs: e.SANDBOX_POOL_MAX_IDLE_MS,
+  poolMaxRecycle: e.SANDBOX_POOL_RECYCLE,
 } as const;
 
 export type Env = typeof env;
