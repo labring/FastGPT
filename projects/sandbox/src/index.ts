@@ -62,3 +62,6 @@ export default {
   port: config.port,
   fetch: app.fetch
 };
+
+/** 导出 app 供测试使用 */
+export { app };
