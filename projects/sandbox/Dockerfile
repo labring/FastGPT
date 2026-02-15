@@ -7,8 +7,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 # ===== Bun 构建层 =====
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
-COPY projects/sandbox/package.json ./
-RUN bun install
+COPY projects/sandbox/package.json projects/sandbox/bun.lock ./
+RUN bun install --frozen-lockfile
 COPY projects/sandbox/src ./src
 COPY projects/sandbox/tsconfig.json ./
 
