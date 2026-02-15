@@ -9,6 +9,8 @@
  * - 日志收集
  * - 用户代码执行
  */
+import { BLOCKED_IP_RANGES, REQUEST_LIMITS } from './network-config';
+
 export function generatePythonScript(
   userCode: string,
   dangerousModules: string[],
@@ -50,11 +52,36 @@ import hashlib as _hashlib
 import hmac as _hmac
 import base64 as _base64
 import urllib.parse as _urllib_parse
+import urllib.request as _urllib_request
+import socket as _socket
+import ipaddress as _ipaddress
 import time as _time
 import math as _math
 import inspect as _inspect_mod  # 在拦截 __import__ 之前导入
 
 _SANDBOX_TMPDIR = ${JSON.stringify(tempDir)}
+
+# ===== 网络安全 =====
+_BLOCKED_CIDRS = [
+${BLOCKED_IP_RANGES.map((c) => `    _ipaddress.ip_network('${c}')`).join(',\n')}
+]
+_REQUEST_LIMITS = {
+    'max_requests': ${REQUEST_LIMITS.maxRequests},
+    'timeout': ${REQUEST_LIMITS.timeoutMs / 1000},
+    'max_response_size': ${REQUEST_LIMITS.maxResponseSize},
+    'allowed_protocols': ${JSON.stringify(REQUEST_LIMITS.allowedProtocols)}
+}
+_request_count = 0
+
+def _is_blocked_ip(ip_str):
+    try:
+        addr = _ipaddress.ip_address(ip_str)
+        for net in _BLOCKED_CIDRS:
+            if addr in net:
+                return True
+    except ValueError:
+        return True
+    return False
 
 class _SandboxFs:
     def __init__(self, tmpdir, disk_limit):
@@ -128,6 +155,71 @@ class _SystemHelper:
             raise ValueError("Delay must be <= 10000ms")
         _time.sleep(ms / 1000)
 
+    def http_request(self, url, method='GET', headers=None, body=None, timeout=None):
+        """安全的 HTTP 请求
+        Args:
+            url: 请求地址
+            method: HTTP 方法 (GET/POST/PUT/DELETE/PATCH)
+            headers: 请求头字典
+            body: 请求体 (str 或 dict，dict 会自动 JSON 序列化)
+            timeout: 超时秒数
+        Returns:
+            dict: {status, headers, data}
+        """
+        global _request_count
+        _request_count += 1
+        if _request_count > _REQUEST_LIMITS['max_requests']:
+            raise RuntimeError(f"Request limit exceeded: max {_REQUEST_LIMITS['max_requests']} requests per execution")
+
+        parsed = _urllib_parse.urlparse(url)
+        if parsed.scheme + ':' not in _REQUEST_LIMITS['allowed_protocols']:
+            raise RuntimeError(f"Protocol {parsed.scheme}: is not allowed. Use http: or https:")
+
+        # DNS 解析后校验 IP
+        hostname = parsed.hostname
+        try:
+            infos = _socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+            for info in infos:
+                ip = info[4][0]
+                if _is_blocked_ip(ip):
+                    raise RuntimeError("Request to private/internal network is not allowed")
+        except _socket.gaierror as e:
+            raise RuntimeError(f"DNS resolution failed: {e}")
+
+        if timeout is None:
+            timeout = _REQUEST_LIMITS['timeout']
+        else:
+            timeout = min(timeout, _REQUEST_LIMITS['timeout'])
+
+        if headers is None:
+            headers = {}
+
+        data = None
+        if body is not None:
+            if isinstance(body, dict):
+                data = json.dumps(body).encode('utf-8')
+                if 'Content-Type' not in headers and 'content-type' not in headers:
+                    headers['Content-Type'] = 'application/json'
+            elif isinstance(body, str):
+                data = body.encode('utf-8')
+            else:
+                data = body
+
+        req = _urllib_request.Request(url, data=data, headers=headers, method=method.upper())
+        try:
+            resp = _urllib_request.urlopen(req, timeout=timeout)
+            resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
+            if len(resp_data) > _REQUEST_LIMITS['max_response_size']:
+                raise RuntimeError(f"Response too large: max {_REQUEST_LIMITS['max_response_size'] // 1024 // 1024}MB")
+            resp_headers = dict(resp.headers)
+            return {
+                'status': resp.status,
+                'headers': resp_headers,
+                'data': resp_data.decode('utf-8', errors='replace')
+            }
+        except _urllib_request.URLError as e:
+            raise RuntimeError(f"HTTP request failed: {e}")
+
 
 system_helper = _SystemHelper()
 SystemHelper = system_helper
@@ -137,22 +229,56 @@ count_token = system_helper.count_token
 str_to_base64 = system_helper.str_to_base64
 create_hmac = system_helper.create_hmac
 delay = system_helper.delay
+http_request = system_helper.http_request
 
 # ===== 模块安全：__import__ 拦截 =====
 import builtins as _builtins
 _original_import = _builtins.__import__
 _BLOCKED_MODULES = set(${JSON.stringify(dangerousModules)})
 
-def _make_safe_import(_orig, _blocked):
-    """通过闭包封装原始 import，防止用户代码访问 _original_import"""
+def _make_safe_import(_orig, _blocked, _script_path):
+    """通过闭包封装原始 import，防止用户代码访问 _original_import
+    白名单模式：只有来自标准库路径的间接导入才放行，其他一律拦截"""
+    import traceback as _tb
+    import sysconfig as _sysconfig
+    _stdlib_paths = []
+    for _key in ('stdlib', 'platstdlib', 'purelib', 'platlib'):
+        _p = _sysconfig.get_path(_key)
+        if _p:
+            _stdlib_paths.append(_p)
+    # 也包含 frozen modules 和 C 扩展
+    _stdlib_paths.append('<frozen')
+
+    def _is_stdlib_frame(filename):
+        """判断调用帧是否来自标准库/C扩展"""
+        if not filename:
+            return False
+        # frozen modules (如 <frozen importlib._bootstrap>)
+        if filename.startswith('<frozen'):
+            return True
+        # 标准库路径
+        for sp in _stdlib_paths:
+            if filename.startswith(sp):
+                return True
+        return False
+
     def _safe_import(name, *args, **kwargs):
         top_level = name.split('.')[0]
         if top_level in _blocked:
-            raise ImportError(f"Importing {name} is not allowed.")
+            stack = _tb.extract_stack()
+            # stack[-1] = _safe_import, stack[-2] = 发起 import 的代码
+            # 只有当调用者来自标准库时才放行（间接导入）
+            # 用户脚本、exec("<string>")、eval("<string>") 等一律拦截
+            caller_is_stdlib = False
+            if len(stack) >= 2:
+                caller_file = stack[-2].filename
+                caller_is_stdlib = _is_stdlib_frame(caller_file)
+            if not caller_is_stdlib:
+                raise ImportError(f"Importing {name} is not allowed.")
         return _orig(name, *args, **kwargs)
     return _safe_import
 
-_builtins.__import__ = _make_safe_import(_original_import, _BLOCKED_MODULES)
+_builtins.__import__ = _make_safe_import(_original_import, _BLOCKED_MODULES, __file__)
 
 # 清理内部引用，防止用户代码恢复原始 import
 del _original_import
@@ -168,6 +294,14 @@ def print(*args, **kwargs):
 # ===== 读取输入 =====
 _input = json.loads(sys.stdin.read())
 variables = _input['variables']
+
+# 向后兼容：将变量展开为全局变量（旧版行为）
+for _k, _v in variables.items():
+    globals()[_k] = _v
+try:
+    del _k, _v
+except NameError:
+    pass
 
 # ===== 用户代码 =====
 ${userCode}
