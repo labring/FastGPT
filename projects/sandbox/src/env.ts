@@ -36,6 +36,16 @@ const envSchema = z.object({
   SANDBOX_MAX_REQUESTS: int(30),
   SANDBOX_REQUEST_TIMEOUT: int(10000),
   SANDBOX_MAX_RESPONSE_SIZE: int(2 * 1024 * 1024),
+
+  // ===== 模块控制 =====
+  /** JS 可用模块白名单，逗号分隔 */
+  SANDBOX_JS_ALLOWED_MODULES: str('lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring'),
+  /** Python 危险模块黑名单，逗号分隔 */
+  SANDBOX_PYTHON_BLOCKED_MODULES: str(
+    'os,sys,subprocess,shutil,socket,ctypes,multiprocessing,threading,pickle,importlib,' +
+    'code,codeop,compile,compileall,signal,resource,gc,inspect,' +
+    'tempfile,pathlib,io,fileinput,urllib,http,requests,httpx,aiohttp'
+  ),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -70,6 +80,10 @@ export const env = {
   maxRequests: e.SANDBOX_MAX_REQUESTS,
   requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
   maxResponseSize: e.SANDBOX_MAX_RESPONSE_SIZE,
+
+  // 模块控制
+  jsAllowedModules: e.SANDBOX_JS_ALLOWED_MODULES.split(',').map(s => s.trim()).filter(Boolean),
+  pythonBlockedModules: e.SANDBOX_PYTHON_BLOCKED_MODULES.split(',').map(s => s.trim()).filter(Boolean),
 } as const;
 
 export type Env = typeof env;
