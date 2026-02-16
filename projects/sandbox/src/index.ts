@@ -11,7 +11,7 @@ import type { ExecuteOptions } from './types';
 /** 请求体校验 schema */
 const executeSchema = z.object({
   code: z.string().min(1).max(1024 * 1024), // 最大 1MB 代码
-  variables: z.record(z.any()).default({}),
+  variables: z.record(z.string(), z.any()).default({}),
   limits: z.object({
     timeoutMs: z.number().int().positive().optional(),
     memoryMB: z.number().int().positive().optional(),
