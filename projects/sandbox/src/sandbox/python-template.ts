@@ -73,15 +73,19 @@ _REQUEST_LIMITS = {
 }
 _request_count = 0
 
-def _is_blocked_ip(ip_str):
-    try:
-        addr = _ipaddress.ip_address(ip_str)
-        for net in _BLOCKED_CIDRS:
-            if addr in net:
-                return True
-    except ValueError:
-        return True
-    return False
+def _make_is_blocked_ip(_ipaddr_mod):
+    def _is_blocked_ip(ip_str):
+        try:
+            addr = _ipaddr_mod.ip_address(ip_str)
+            for net in _BLOCKED_CIDRS:
+                if addr in net:
+                    return True
+        except ValueError:
+            return True
+        return False
+    return _is_blocked_ip
+_is_blocked_ip = _make_is_blocked_ip(_ipaddress)
+del _make_is_blocked_ip
 
 class _SandboxFs:
     def __init__(self, tmpdir, disk_limit):
@@ -89,9 +93,11 @@ class _SandboxFs:
         self._disk_limit = disk_limit
         self._disk_used = 0
         self._file_sizes = {}
+        # 捕获模块引用，防止全局 del 后失效
+        self._os = _os
 
     def _safe_path(self, path):
-        resolved = _os.path.realpath(_os.path.join(self._tmpdir, path))
+        resolved = self._os.path.realpath(self._os.path.join(self._tmpdir, path))
         if not resolved.startswith(self._tmpdir):
             raise PermissionError("Path traversal not allowed")
         return resolved
@@ -102,9 +108,9 @@ class _SandboxFs:
         old_size = self._file_sizes.get(safe, 0)
         if self._disk_used - old_size + len(data) > self._disk_limit:
             raise IOError("Disk quota exceeded: ${limits.diskMB}MB limit")
-        parent = _os.path.dirname(safe)
-        if not _os.path.exists(parent):
-            _os.makedirs(parent, exist_ok=True)
+        parent = self._os.path.dirname(safe)
+        if not self._os.path.exists(parent):
+            self._os.makedirs(parent, exist_ok=True)
         mode = 'wb' if isinstance(content, bytes) else 'w'
         with open(safe, mode) as f:
             f.write(content)
@@ -116,13 +122,13 @@ class _SandboxFs:
             return f.read()
 
     def readdir(self, path='.'):
-        return _os.listdir(self._safe_path(path))
+        return self._os.listdir(self._safe_path(path))
 
     def mkdir(self, path):
-        _os.makedirs(self._safe_path(path), exist_ok=True)
+        self._os.makedirs(self._safe_path(path), exist_ok=True)
 
     def exists(self, path):
-        return _os.path.exists(self._safe_path(path))
+        return self._os.path.exists(self._safe_path(path))
 
     @property
     def tmp_dir(self):
@@ -132,31 +138,39 @@ class _SandboxFs:
 class _SystemHelper:
     def __init__(self):
         self.fs = _SandboxFs(_SANDBOX_TMPDIR, ${limits.diskMB} * 1024 * 1024)
+        # 捕获模块引用，防止全局 del 后失效
+        self._base64 = _base64
+        self._hmac = _hmac
+        self._time = _time
+        self._math = _math
+        self._urllib_parse = _urllib_parse
+        self._urllib_request = _urllib_request
+        self._socket = _socket
 
     def count_token(self, text):
         if not isinstance(text, str):
             text = str(text)
-        return _math.ceil(len(text) / 4)
+        return self._math.ceil(len(text) / 4)
 
     def str_to_base64(self, text, prefix=''):
-        b64 = _base64.b64encode(text.encode('utf-8')).decode('utf-8')
+        b64 = self._base64.b64encode(text.encode('utf-8')).decode('utf-8')
         return prefix + b64
 
     def create_hmac(self, algorithm, secret):
-        timestamp = str(int(_time.time() * 1000))
+        timestamp = str(int(self._time.time() * 1000))
         string_to_sign = timestamp + '\\n' + secret
-        h = _hmac.new(
+        h = self._hmac.new(
             secret.encode('utf-8'),
             string_to_sign.encode('utf-8'),
             algorithm
         )
-        sign = _urllib_parse.quote(_base64.b64encode(h.digest()).decode('utf-8'))
+        sign = self._urllib_parse.quote(self._base64.b64encode(h.digest()).decode('utf-8'))
         return {"timestamp": timestamp, "sign": sign}
 
     def delay(self, ms):
         if ms > 10000:
             raise ValueError("Delay must be <= 10000ms")
-        _time.sleep(ms / 1000)
+        self._time.sleep(ms / 1000)
 
     def http_request(self, url, method='GET', headers=None, body=None, timeout=None):
         """安全的 HTTP 请求
@@ -174,7 +188,7 @@ class _SystemHelper:
         if _request_count > _REQUEST_LIMITS['max_requests']:
             raise RuntimeError(f"Request limit exceeded: max {_REQUEST_LIMITS['max_requests']} requests per execution")
 
-        parsed = _urllib_parse.urlparse(url)
+        parsed = self._urllib_parse.urlparse(url)
         if parsed.scheme + ':' not in _REQUEST_LIMITS['allowed_protocols']:
             raise RuntimeError(f"Protocol {parsed.scheme}: is not allowed. Use http: or https:")
 
@@ -182,14 +196,14 @@ class _SystemHelper:
         hostname = parsed.hostname
         resolved_ip = None
         try:
-            infos = _socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+            infos = self._socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
             for info in infos:
                 ip = info[4][0]
                 if _is_blocked_ip(ip):
                     raise RuntimeError("Request to private/internal network is not allowed")
             if infos:
                 resolved_ip = infos[0][4][0]
-        except _socket.gaierror as e:
+        except self._socket.gaierror as e:
             raise RuntimeError(f"DNS resolution failed: {e}")
 
         if timeout is None:
@@ -226,7 +240,7 @@ class _SystemHelper:
         else:
             resolved_url = url
 
-        req = _urllib_request.Request(resolved_url, data=data, headers=headers, method=method.upper())
+        req = self._urllib_request.Request(resolved_url, data=data, headers=headers, method=method.upper())
         try:
             # HTTPS 使用 resolved IP 时需要自定义 SSL context 校验原始 hostname
             _ssl_ctx = None
@@ -237,7 +251,7 @@ class _SystemHelper:
                 _ssl_ctx.verify_mode = _ssl.CERT_REQUIRED
                 # 手动校验原始 hostname
                 _ssl_ctx.hostname_checks_common_name = False
-            resp = _urllib_request.urlopen(req, timeout=timeout, context=_ssl_ctx)
+            resp = self._urllib_request.urlopen(req, timeout=timeout, context=_ssl_ctx)
             resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
             if len(resp_data) > _REQUEST_LIMITS['max_response_size']:
                 raise RuntimeError(f"Response too large: max {_REQUEST_LIMITS['max_response_size'] // 1024 // 1024}MB")
@@ -247,7 +261,7 @@ class _SystemHelper:
                 'headers': resp_headers,
                 'data': resp_data.decode('utf-8', errors='replace')
             }
-        except _urllib_request.URLError as e:
+        except self._urllib_request.URLError as e:
             raise RuntimeError(f"HTTP request failed: {e}")
 
 
@@ -264,15 +278,15 @@ http_request = system_helper.http_request
 # ===== builtins.open 拦截 =====
 import builtins as _builtins
 _original_open = _builtins.open
-def _make_safe_open(_orig, _tmpdir):
+def _make_safe_open(_orig, _tmpdir, _os_mod):
     def _safe_open(file, mode='r', *args, **kwargs):
         if isinstance(file, str):
-            _abs = _os.path.realpath(_os.path.join(_tmpdir, file) if not _os.path.isabs(file) else file)
+            _abs = _os_mod.path.realpath(_os_mod.path.join(_tmpdir, file) if not _os_mod.path.isabs(file) else file)
             if not _abs.startswith(_tmpdir):
                 raise PermissionError(f'File access restricted to sandbox: {file}')
         return _orig(file, mode, *args, **kwargs)
     return _safe_open
-_builtins.open = _make_safe_open(_original_open, _SANDBOX_TMPDIR)
+_builtins.open = _make_safe_open(_original_open, _SANDBOX_TMPDIR, _os)
 del _original_open
 del _make_safe_open
 
@@ -347,13 +361,14 @@ _builtins.eval = _safe_eval
 # 禁用 compile + exec 模式绕过
 _builtins.__loader__ = None
 # 禁止 open 的 int fd 模式（可绕过路径检查）
-_original_safe_open = _builtins.open
-def _safe_open_no_fd(file, mode='r', *args, **kwargs):
-    if isinstance(file, int):
-        raise PermissionError('Opening files by file descriptor is not allowed in sandbox')
-    return _original_safe_open(file, mode, *args, **kwargs)
-_builtins.open = _safe_open_no_fd
-del _original_safe_open, _safe_open_no_fd
+def _make_safe_open_no_fd(_orig):
+    def _safe_open_no_fd(file, mode='r', *args, **kwargs):
+        if isinstance(file, int):
+            raise PermissionError('Opening files by file descriptor is not allowed in sandbox')
+        return _orig(file, mode, *args, **kwargs)
+    return _safe_open_no_fd
+_builtins.open = _make_safe_open_no_fd(_builtins.open)
+del _make_safe_open_no_fd
 
 # ===== 日志收集 =====
 _logs = []
