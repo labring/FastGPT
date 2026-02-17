@@ -1,6 +1,7 @@
 import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -29,12 +30,12 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
 
 export const systemStartCb = () => {
   process.on('uncaughtException', (err) => {
-    logger.error('Uncaught exception', { error: err });
+    logger.error('Uncaught exception', { error: getErrText(err) });
     // process.exit(1); // 退出进程
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled promise rejection', { reason, promise });
+    logger.error('Unhandled promise rejection', { reason: getErrText(reason) });
     // process.exit(1); // 退出进程
   });
 };

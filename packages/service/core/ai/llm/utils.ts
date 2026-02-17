@@ -212,7 +212,7 @@ export const loadRequestMessages = async ({
               if (error?.response?.status === 405 || error?.response?.status === 403) {
                 return item;
               }
-              logger.warn('Failed to validate image URL', { url: imgUrl, error });
+              logger.warn('Failed to validate image URL', { url: imgUrl, error: getErrText(error) });
               return;
             }
           }

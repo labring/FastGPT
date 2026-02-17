@@ -858,11 +858,11 @@ const createChatCompletion = async ({
       logger.warn('User AI API error', {
         baseUrl: userKey?.baseUrl,
         request: body,
-        error
+        error: getErrText(error)
       });
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     } else {
-      logger.error('LLM response error', { request: body, error });
+      logger.error('LLM response error', { request: body, error: getErrText(error) });
     }
     return Promise.reject(error);
   }
