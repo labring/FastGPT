@@ -15,6 +15,7 @@ export enum AppTypeEnum {
   workflowTool = 'plugin',
   mcpToolSet = 'toolSet', // 'mcp'
   httpToolSet = 'httpToolSet',
+  skill = 'skill',
   hidden = 'hidden',
 
   // deprecated
@@ -33,7 +34,12 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
+export const AppTypeList = [
+  AppTypeEnum.simple,
+  AppTypeEnum.chatAgent,
+  AppTypeEnum.workflow,
+  AppTypeEnum.skill
+];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

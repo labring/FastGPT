@@ -26,6 +26,14 @@ export const createAppTypeMap = {
     description: i18nT('app:chat_agent_description'),
     imgUrl: '/imgs/app/type/chatAgent.svg'
   },
+  [AppTypeEnum.skill]: {
+    type: AppTypeEnum.skill,
+    icon: 'core/app/type/agentFill',
+    title: i18nT('app:type.Skill'),
+    intro: i18nT('app:type_skill_intro'),
+    description: i18nT('app:type_skill_description'),
+    imgUrl: '/imgs/app/type/chatAgent.svg'
+  },
   [AppTypeEnum.workflowTool]: {
     type: AppTypeEnum.workflowTool,
     icon: 'core/app/type/pluginFill',

@@ -20,6 +20,7 @@ export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.httpToolSet) return i18nT('app:toolType_http');
   if (type === AppTypeEnum.mcpToolSet) return i18nT('app:toolType_mcp');
   if (type === AppTypeEnum.tool) return i18nT('app:toolType_mcp');
+  if (type === AppTypeEnum.skill) return i18nT('app:type.Skill');
   return i18nT('common:UnKnow');
 }
 

@@ -6,6 +6,10 @@ export const appTypeTagMap = {
     label: i18nT('app:type.Chat_Agent_v2'),
     icon: 'core/app/type/simple'
   },
+  [AppTypeEnum.skill]: {
+    label: i18nT('app:type.Skill'),
+    icon: 'core/app/type/simple'
+  },
   [AppTypeEnum.simple]: {
     label: i18nT('app:type.Chat_Agent'),
     icon: 'core/app/type/simple'

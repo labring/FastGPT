@@ -58,6 +58,7 @@ type FormType = {
 
 export type CreateAppType =
   | AppTypeEnum.chatAgent
+  | AppTypeEnum.skill
   | AppTypeEnum.simple
   | AppTypeEnum.workflow
   | AppTypeEnum.workflowTool
