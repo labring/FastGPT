@@ -201,7 +201,8 @@ export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
         .optional()
     })
     .optional(),
-  isFolded: z.boolean().optional()
+  isFolded: z.boolean().optional(),
+  hasBreakpoint: z.boolean().optional()
 });
 export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 

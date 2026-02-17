@@ -50,6 +50,12 @@ type WorkflowDebugContextValue = {
   /** 停止节点调试 */
   onStopNodeDebug: () => void;
 
+  /** 运行到断点 */
+  onRunToBreakpoint: (debugData: DebugDataType) => Promise<void>;
+
+  /** 当前调试变量 */
+  debugVariables: Record<string, any>;
+
   /** 调试模式 */
   debugMode: boolean;
 
@@ -73,6 +79,10 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
   onStopNodeDebug: function (): void {
     throw new Error('Function not implemented.');
   },
+  onRunToBreakpoint: function (debugData: DebugDataType): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  debugVariables: {},
   debugMode: false,
   setDebugMode: function (enabled: boolean): void {
     throw new Error('Function not implemented.');
@@ -81,7 +91,7 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
   // 获取依赖的 context
-  const { setNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { setNodes, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const appId = appDetail._id;
@@ -89,6 +99,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   // 调试状态
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const [debugMode, setDebugMode] = useState(false);
+  const [debugVariables, setDebugVariables] = useState<Record<string, any>>({});
 
   // 单步调试 - 执行下一步节点
   const onNextNodeDebug = useCallback(
@@ -164,6 +175,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
           variables: newVariables,
           usageId
         });
+        setDebugVariables(newVariables);
 
         // 5. selected entry node and Update entry node debug result
         setNodes((state) =>
@@ -216,6 +228,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   // 停止调试 - 清理调试状态
   const onStopNodeDebug = useCallback(() => {
     setWorkflowDebugData(undefined);
+    setDebugVariables({});
     setNodes((state) =>
       state.map((node) => ({
         ...node,
@@ -227,6 +240,64 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
       }))
     );
   }, [setNodes]);
+
+  // 运行到断点 - 自动执行直到遇到有断点的节点
+  const onRunToBreakpoint = useCallback(
+    async (debugData: DebugDataType) => {
+      let currentData = debugData;
+      const maxIterations = 100; // Safety limit
+
+      for (let i = 0; i < maxIterations; i++) {
+        // Check if any of the next entry nodes have a breakpoint
+        const nodes = getNodes();
+        const nextEntryHasBreakpoint = currentData.entryNodeIds.some((entryId) =>
+          nodes.find((n) => n.data.nodeId === entryId && n.data.hasBreakpoint)
+        );
+
+        // If next entry node has breakpoint, stop here (don't execute it)
+        if (nextEntryHasBreakpoint && i > 0) {
+          break;
+        }
+
+        // If no more entry nodes, stop
+        if (currentData.entryNodeIds.length === 0) {
+          break;
+        }
+
+        // Execute next step
+        await onNextNodeDebug(currentData);
+
+        // Get updated debug data after execution
+        // We need to read the latest state since onNextNodeDebug updates it
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Read the latest workflowDebugData
+        const latestData = await new Promise<DebugDataType | undefined>((resolve) => {
+          setWorkflowDebugData((prev) => {
+            resolve(prev);
+            return prev;
+          });
+        });
+
+        if (!latestData || latestData.entryNodeIds.length === 0) {
+          break;
+        }
+
+        currentData = latestData;
+
+        // Check if the next entry nodes have breakpoints
+        const updatedNodes = getNodes();
+        const shouldStop = latestData.entryNodeIds.some((entryId) =>
+          updatedNodes.find((n) => n.data.nodeId === entryId && n.data.hasBreakpoint)
+        );
+
+        if (shouldStop) {
+          break;
+        }
+      }
+    },
+    [getNodes, onNextNodeDebug]
+  );
 
   // 开始调试 - 初始化调试会话
   const onStartNodeDebug = useCallback(
@@ -265,10 +336,20 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
       onNextNodeDebug,
       onStartNodeDebug,
       onStopNodeDebug,
+      onRunToBreakpoint,
+      debugVariables,
       debugMode,
       setDebugMode
     };
-  }, [workflowDebugData, onNextNodeDebug, onStartNodeDebug, onStopNodeDebug, debugMode]);
+  }, [
+    workflowDebugData,
+    onNextNodeDebug,
+    onStartNodeDebug,
+    onStopNodeDebug,
+    onRunToBreakpoint,
+    debugVariables,
+    debugMode
+  ]);
 
   return (
     <WorkflowDebugContext.Provider value={contextValue}>{children}</WorkflowDebugContext.Provider>
