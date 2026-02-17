@@ -41,28 +41,6 @@ export class MCPClient {
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
             headers: this.headers
-          },
-          eventSourceInit: {
-            fetch: (url, init) => {
-              const mergedHeaders: Record<string, string> = {
-                ...this.headers
-              };
-
-              if (init?.headers) {
-                if (init.headers instanceof Headers) {
-                  init.headers.forEach((value, key) => {
-                    mergedHeaders[key] = value;
-                  });
-                } else if (typeof init.headers === 'object') {
-                  Object.assign(mergedHeaders, init.headers);
-                }
-              }
-
-              return fetch(url, {
-                ...init,
-                headers: mergedHeaders
-              });
-            }
           }
         })
       );
