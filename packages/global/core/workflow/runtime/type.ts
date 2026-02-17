@@ -262,12 +262,21 @@ export type RuntimeNodeItemType = {
 //   extensionTokens: z.number().nullish(),
 //   tokens: z.number().nullish()
 // });
+export type NodeLogItemType = {
+  time: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  data?: Record<string, any>;
+};
+
 export type DispatchNodeResponseType = {
   // common
   moduleLogo?: string;
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  // Workflow node logs
+  nodeLogs?: NodeLogItemType[];
   // LLM request tracking
   llmRequestIds?: string[]; // LLM 请求追踪 ID 列表
 

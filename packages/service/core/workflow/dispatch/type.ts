@@ -7,6 +7,7 @@ import type {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { NodeLogItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
   InteractiveNodeResponseType,
@@ -27,6 +28,7 @@ export type WorkflowDebugResponse = {
       type: 'skip' | 'run';
       response?: ChatHistoryItemResType;
       interactiveResponse?: InteractiveNodeResponseType;
+      nodeLogs?: NodeLogItemType[];
     }
   >;
   skipNodeQueue?: { id: string; skippedNodeIdList: string[] }[]; // Cache
