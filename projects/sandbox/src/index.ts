@@ -77,6 +77,40 @@ app.post('/sandbox/python', async (c) => {
   }
 });
 
+/** 查询可用模块 */
+app.get('/sandbox/modules', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      js: {
+        allowedModules: config.jsAllowedModules,
+        builtinGlobals: [
+          'SystemHelper',
+          'countToken',
+          'strToBase64',
+          'createHmac',
+          'delay',
+          'httpRequest',
+          'variables',
+          'console.log'
+        ]
+      },
+      python: {
+        blockedModules: config.pythonBlockedModules,
+        builtinGlobals: [
+          'system_helper',
+          'count_token',
+          'str_to_base64',
+          'create_hmac',
+          'delay',
+          'http_request',
+          'variables'
+        ]
+      }
+    }
+  });
+});
+
 /** 启动服务 */
 console.log(`Sandbox server starting on port ${config.port}...`);
 
