@@ -113,6 +113,24 @@ describe.skipIf(!SANDBOX_URL)('API Integration', () => {
     expect(data.message).toContain('not allowed');
   });
 
+  it('GET /sandbox/modules 返回可用模块列表', async () => {
+    const res = await fetch(`${BASE_URL}/sandbox/modules`, {
+      headers: { Authorization: `Bearer ${TEST_TOKEN}` }
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    // JS
+    expect(Array.isArray(data.data.js.allowedModules)).toBe(true);
+    expect(data.data.js.allowedModules).toContain('lodash');
+    expect(Array.isArray(data.data.js.builtinGlobals)).toBe(true);
+    expect(data.data.js.builtinGlobals).toContain('SystemHelper');
+    // Python
+    expect(Array.isArray(data.data.python.blockedModules)).toBe(true);
+    expect(Array.isArray(data.data.python.builtinGlobals)).toBe(true);
+    expect(data.data.python.builtinGlobals).toContain('system_helper');
+  });
+
   it('POST /sandbox/python 安全拦截', async () => {
     const res = await fetch(`${BASE_URL}/sandbox/python`, {
       method: 'POST',
