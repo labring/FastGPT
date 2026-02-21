@@ -6,7 +6,6 @@ import type { RunnerConfig } from '../../src/types';
 const config: RunnerConfig = {
   defaultTimeoutMs: 15000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 };
 
 describe('基础样例 - JS', () => {

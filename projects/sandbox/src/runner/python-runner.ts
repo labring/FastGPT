@@ -11,8 +11,7 @@ import type { RunnerConfig } from '../types';
  * 安全措施：
  * - 宿主侧正则预检危险导入
  * - 运行时 __import__ 拦截
- * - resource 模块限制 CPU/内存/磁盘
- * - 临时文件系统隔离
+ * - resource 模块限制 CPU/内存
  */
 export class PythonRunner extends SubprocessRunner {
   constructor(runnerConfig: RunnerConfig) {
@@ -34,9 +33,9 @@ export class PythonRunner extends SubprocessRunner {
   async generateScript(
     tempDir: string,
     code: string,
-    limits: { timeoutMs: number; memoryMB: number; diskMB: number }
+    limits: { timeoutMs: number; memoryMB: number }
   ): Promise<string> {
-    const script = generatePythonScript(code, config.pythonBlockedModules, limits, tempDir);
+    const script = generatePythonScript(code, config.pythonBlockedModules, limits);
     const scriptPath = join(tempDir, 'run.py');
     await writeFile(scriptPath, script, 'utf-8');
     return scriptPath;

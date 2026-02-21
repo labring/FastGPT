@@ -2,9 +2,8 @@
  * Python 执行脚本模板生成器
  *
  * 生成一个完整的 Python 脚本，包含：
- * - resource 资源限制（CPU/内存/磁盘）
+ * - resource 资源限制（CPU/内存）
  * - SystemHelper 内置函数
- * - 临时文件系统（路径遍历防护 + 磁盘配额）
  * - __import__ 拦截（模块黑名单）
  * - 日志收集
  * - 用户代码执行
@@ -14,8 +13,7 @@ import { BLOCKED_IP_RANGES, REQUEST_LIMITS } from './network-config';
 export function generatePythonScript(
   userCode: string,
   dangerousModules: string[],
-  limits: { timeoutMs: number; memoryMB: number; diskMB: number },
-  tempDir: string
+  limits: { timeoutMs: number; memoryMB: number }
 ): string {
   const cpuSeconds = Math.max(1, Math.ceil(limits.timeoutMs / 1000));
 
@@ -37,17 +35,10 @@ try:
         _resource.setrlimit(_resource.RLIMIT_CPU, (${cpuSeconds}, ${cpuSeconds}))
     except (ValueError, _resource.error):
         pass
-    # 文件大小限制
-    _disk_limit = ${limits.diskMB} * 1024 * 1024
-    try:
-        _resource.setrlimit(_resource.RLIMIT_FSIZE, (_disk_limit, _disk_limit))
-    except (ValueError, _resource.error):
-        pass
 except ImportError:
     pass  # 非 Linux 平台跳过
 
 # ===== SystemHelper =====
-import os as _os
 import hashlib as _hashlib
 import hmac as _hmac
 import base64 as _base64
@@ -58,8 +49,6 @@ import ipaddress as _ipaddress
 import time as _time
 import math as _math
 import inspect as _inspect_mod  # 在拦截 __import__ 之前导入
-
-_SANDBOX_TMPDIR = ${JSON.stringify(tempDir)}
 
 # ===== 网络安全 =====
 _BLOCKED_CIDRS = [
@@ -87,57 +76,8 @@ def _make_is_blocked_ip(_ipaddr_mod):
 _is_blocked_ip = _make_is_blocked_ip(_ipaddress)
 del _make_is_blocked_ip
 
-class _SandboxFs:
-    def __init__(self, tmpdir, disk_limit):
-        self._tmpdir = tmpdir
-        self._disk_limit = disk_limit
-        self._disk_used = 0
-        self._file_sizes = {}
-        # 捕获模块引用，防止全局 del 后失效
-        self._os = _os
-
-    def _safe_path(self, path):
-        resolved = self._os.path.realpath(self._os.path.join(self._tmpdir, path))
-        if not resolved.startswith(self._tmpdir):
-            raise PermissionError("Path traversal not allowed")
-        return resolved
-
-    def write_file(self, path, content):
-        safe = self._safe_path(path)
-        data = content.encode('utf-8') if isinstance(content, str) else content
-        old_size = self._file_sizes.get(safe, 0)
-        if self._disk_used - old_size + len(data) > self._disk_limit:
-            raise IOError("Disk quota exceeded: ${limits.diskMB}MB limit")
-        parent = self._os.path.dirname(safe)
-        if not self._os.path.exists(parent):
-            self._os.makedirs(parent, exist_ok=True)
-        mode = 'wb' if isinstance(content, bytes) else 'w'
-        with open(safe, mode) as f:
-            f.write(content)
-        self._disk_used = self._disk_used - old_size + len(data)
-        self._file_sizes[safe] = len(data)
-
-    def read_file(self, path):
-        with open(self._safe_path(path), 'r') as f:
-            return f.read()
-
-    def readdir(self, path='.'):
-        return self._os.listdir(self._safe_path(path))
-
-    def mkdir(self, path):
-        self._os.makedirs(self._safe_path(path), exist_ok=True)
-
-    def exists(self, path):
-        return self._os.path.exists(self._safe_path(path))
-
-    @property
-    def tmp_dir(self):
-        return self._tmpdir
-
-
 class _SystemHelper:
     def __init__(self):
-        self.fs = _SandboxFs(_SANDBOX_TMPDIR, ${limits.diskMB} * 1024 * 1024)
         # 捕获模块引用，防止全局 del 后失效
         self._base64 = _base64
         self._hmac = _hmac
@@ -275,22 +215,8 @@ create_hmac = system_helper.create_hmac
 delay = system_helper.delay
 http_request = system_helper.http_request
 
-# ===== builtins.open 拦截 =====
-import builtins as _builtins
-_original_open = _builtins.open
-def _make_safe_open(_orig, _tmpdir, _os_mod):
-    def _safe_open(file, mode='r', *args, **kwargs):
-        if isinstance(file, str):
-            _abs = _os_mod.path.realpath(_os_mod.path.join(_tmpdir, file) if not _os_mod.path.isabs(file) else file)
-            if not _abs.startswith(_tmpdir):
-                raise PermissionError(f'File access restricted to sandbox: {file}')
-        return _orig(file, mode, *args, **kwargs)
-    return _safe_open
-_builtins.open = _make_safe_open(_original_open, _SANDBOX_TMPDIR, _os)
-del _original_open
-del _make_safe_open
-
 # ===== 模块安全：__import__ 拦截 =====
+import builtins as _builtins
 _original_import = _builtins.__import__
 _BLOCKED_MODULES = set(${JSON.stringify(dangerousModules)})
 
@@ -360,15 +286,6 @@ _builtins.exec = _safe_exec
 _builtins.eval = _safe_eval
 # 禁用 compile + exec 模式绕过
 _builtins.__loader__ = None
-# 禁止 open 的 int fd 模式（可绕过路径检查）
-def _make_safe_open_no_fd(_orig):
-    def _safe_open_no_fd(file, mode='r', *args, **kwargs):
-        if isinstance(file, int):
-            raise PermissionError('Opening files by file descriptor is not allowed in sandbox')
-        return _orig(file, mode, *args, **kwargs)
-    return _safe_open_no_fd
-_builtins.open = _make_safe_open_no_fd(_builtins.open)
-del _make_safe_open_no_fd
 
 # ===== 日志收集 =====
 _logs = []
@@ -389,7 +306,7 @@ except NameError:
     pass
 
 # ===== 清理内部引用，防止用户代码访问危险模块 =====
-del _os, _socket, _ipaddress, _urllib_request, _urllib_parse
+del _socket, _ipaddress, _urllib_request, _urllib_parse
 del _hashlib, _hmac, _base64
 try:
     del _resource

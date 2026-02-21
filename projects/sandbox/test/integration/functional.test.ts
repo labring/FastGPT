@@ -12,7 +12,6 @@ import type { RunnerConfig } from '../../src/types';
 const config: RunnerConfig = {
   defaultTimeoutMs: 15000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 };
 
 // ============================================================
@@ -22,7 +21,7 @@ interface TestCase {
   name: string;
   code: string;
   variables?: Record<string, any>;
-  limits?: { timeoutMs?: number; memoryMB?: number; diskMB?: number };
+  limits?: { timeoutMs?: number; memoryMB?: number };
   expect: {
     success: boolean;
     codeReturn?: any;           // 精确匹配

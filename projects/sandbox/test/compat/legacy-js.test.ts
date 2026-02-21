@@ -14,7 +14,6 @@ import { JsRunner } from '../../src/runner/js-runner';
 const runner = new JsRunner({
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 });
 
 describe('旧版 JS 兼容性', () => {

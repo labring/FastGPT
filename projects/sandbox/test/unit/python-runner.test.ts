@@ -4,7 +4,6 @@ import { PythonRunner } from '../../src/runner/python-runner';
 const runner = new PythonRunner({
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 });
 
 describe('PythonRunner', () => {
@@ -293,16 +292,6 @@ world"""
       variables: {}
     });
     expect(result.success).toBe(true);
-  });
-
-  it('system_helper.fs.tmp_dir 属性可用', async () => {
-    const result = await runner.execute({
-      code: `def main(v):
-    return {"has_tmpdir": len(system_helper.fs.tmp_dir) > 0}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.has_tmpdir).toBe(true);
   });
 
   it('缺少 main 函数报错', async () => {

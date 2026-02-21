@@ -15,7 +15,6 @@ import { PythonRunner } from '../../src/runner/python-runner';
 const runner = new PythonRunner({
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 });
 
 describe('旧版 Python 兼容性', () => {

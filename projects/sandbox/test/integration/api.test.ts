@@ -89,7 +89,7 @@ describe.skipIf(!SANDBOX_URL)('API Integration', () => {
       body: JSON.stringify({
         code: 'async function main(v) { return { ok: true } }',
         variables: {},
-        limits: { timeoutMs: 5000, memoryMB: 32, diskMB: 5 }
+        limits: { timeoutMs: 5000, memoryMB: 32 }
       })
     });
     const data = await res.json();

@@ -15,7 +15,6 @@ const executeSchema = z.object({
   limits: z.object({
     timeoutMs: z.number().int().positive().optional(),
     memoryMB: z.number().int().positive().optional(),
-    diskMB: z.number().int().positive().optional(),
   }).optional(),
 });
 
@@ -24,8 +23,7 @@ const app = new Hono();
 /** Runner 实例（单例） */
 const runnerConfig = {
   defaultTimeoutMs: config.defaultTimeoutMs,
-  defaultMemoryMB: config.defaultMemoryMB,
-  defaultDiskMB: config.defaultDiskMB
+  defaultMemoryMB: config.defaultMemoryMB
 };
 
 const jsRunner = new JsRunner(runnerConfig);

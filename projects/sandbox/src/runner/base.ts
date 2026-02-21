@@ -37,7 +37,7 @@ export abstract class SubprocessRunner {
   abstract generateScript(
     tempDir: string,
     code: string,
-    limits: { timeoutMs: number; memoryMB: number; diskMB: number }
+    limits: { timeoutMs: number; memoryMB: number }
   ): Promise<string>;
 
   /** 子类可覆盖：执行前的预检（如危险导入检测） */
@@ -63,10 +63,6 @@ export abstract class SubprocessRunner {
       limits?.memoryMB ?? this.runnerConfig.defaultMemoryMB,
       config.maxMemoryMB
     );
-    const diskMB = Math.min(
-      limits?.diskMB ?? this.runnerConfig.defaultDiskMB,
-      config.maxDiskMB
-    );
 
     // 预检
     try {
@@ -84,8 +80,7 @@ export abstract class SubprocessRunner {
       // 1. 生成执行脚本
       const scriptPath = await this.generateScript(tempDir, code, {
         timeoutMs,
-        memoryMB,
-        diskMB
+        memoryMB
       });
 
       // 2. spawn 子进程
@@ -93,9 +88,7 @@ export abstract class SubprocessRunner {
       const proc = spawn(command, args, {
         cwd: tempDir,
         env: {
-          SANDBOX_TMPDIR: tempDir,
           SANDBOX_MEMORY_MB: String(memoryMB),
-          SANDBOX_DISK_MB: String(diskMB),
           PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin'
         },
         stdio: ['pipe', 'pipe', 'pipe']
