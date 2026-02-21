@@ -980,97 +980,11 @@ describe('Python SSRF 防护', () => {
 });
 
 // ============================================================
-// 7. 文件系统隔离
+// 7. 文件系统隔离（已移除磁盘写入功能）
 // ============================================================
-describe('文件系统隔离 - JS', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
-
-  it('SystemHelper.fs 路径遍历被阻止', async () => {
-    const result = await runner.execute({
-      code: `async function main() {
-        try { const data = SystemHelper.fs.readFile('../../../../etc/passwd'); return { escaped: true }; }
-        catch(e) { return { escaped: false, error: e.message }; }
-      }`,
-      variables: {}
-    });
-    // 错误可能在用户代码外抛出(success=false)，也可能被 catch(escaped=false)
-    if (result.success) {
-      expect(result.data?.codeReturn.escaped).toBe(false);
-    } else {
-      expect(result.message).toMatch(/traversal/i);
-    }
-  });
-
-  it('SystemHelper.fs 绝对路径被阻止', async () => {
-    const result = await runner.execute({
-      code: `async function main() {
-        try { const data = SystemHelper.fs.readFile('/etc/passwd'); return { escaped: true }; }
-        catch(e) { return { escaped: false }; }
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.escaped).toBe(false);
-  });
-});
-
 describe('文件系统隔离 - Python', () => {
   let runner: PythonRunner;
   beforeAll(() => { runner = new PythonRunner(config); });
-
-  it('阻止路径遍历 - 读取', async () => {
-    const result = await runner.execute({
-      code: `def main(v):\n    content = system_helper.fs.read_file("../../etc/passwd")\n    return {"content": content}`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('traversal');
-  });
-
-  it('阻止路径遍历 - 写入', async () => {
-    const result = await runner.execute({
-      code: `def main(v):\n    system_helper.fs.write_file("../../../tmp/evil.txt", "hacked")\n    return {}`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('traversal');
-  });
-
-  it('open() 不接受整数文件描述符', async () => {
-    const result = await runner.execute({
-      code: `
-def main():
-    try:
-        f = open(0, 'r')
-        data = f.read()
-        return {"escaped": True}
-    except PermissionError:
-        return {"escaped": False}
-    except Exception as e:
-        return {"error": str(e), "escaped": False}
-`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.escaped).toBe(false);
-  });
-
-  it('open("/etc/passwd") 被 builtins.open 拦截', async () => {
-    const result = await runner.execute({
-      code: `
-def main():
-    try:
-        with open('/etc/passwd', 'r') as f:
-            return {'escaped': True}
-    except PermissionError:
-        return {'escaped': False}
-`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.escaped).toBe(false);
-  });
 
   it('open() 读取 /proc/self/environ（env 已清理）', async () => {
     const result = await runner.execute({

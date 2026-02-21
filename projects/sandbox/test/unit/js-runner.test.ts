@@ -81,35 +81,6 @@ describe('JsRunner', () => {
     expect(result.data?.codeReturn.elapsed).toBeGreaterThanOrEqual(80);
   });
 
-  it('SystemHelper.fs 临时文件读写', async () => {
-    const result = await runner.execute({
-      code: `async function main() {
-        SystemHelper.fs.writeFile("test.txt", "hello sandbox");
-        const content = SystemHelper.fs.readFile("test.txt");
-        return { content };
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.content).toBe('hello sandbox');
-  });
-
-  it('SystemHelper.fs.mkdir + readdir', async () => {
-    const result = await runner.execute({
-      code: `async function main() {
-        SystemHelper.fs.mkdir("subdir");
-        SystemHelper.fs.writeFile("subdir/a.txt", "aaa");
-        const files = SystemHelper.fs.readdir("subdir");
-        const exists = SystemHelper.fs.exists("subdir/a.txt");
-        return { files, exists };
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.files).toContain('a.txt');
-    expect(result.data?.codeReturn.exists).toBe(true);
-  });
-
   it('console.log 输出收集到 log', async () => {
     const result = await runner.execute({
       code: `async function main() {

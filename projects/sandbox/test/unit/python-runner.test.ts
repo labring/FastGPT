@@ -67,33 +67,6 @@ describe('PythonRunner', () => {
     expect(result.data?.codeReturn.has_sign).toBe(true);
   });
 
-  it('system_helper.fs 临时文件读写', async () => {
-    const result = await runner.execute({
-      code: `def main(v):
-    system_helper.fs.write_file("test.txt", "hello sandbox")
-    content = system_helper.fs.read_file("test.txt")
-    return {"content": content}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.content).toBe('hello sandbox');
-  });
-
-  it('system_helper.fs.mkdir + readdir', async () => {
-    const result = await runner.execute({
-      code: `def main(v):
-    system_helper.fs.mkdir("subdir")
-    system_helper.fs.write_file("subdir/a.txt", "aaa")
-    files = system_helper.fs.readdir("subdir")
-    exists = system_helper.fs.exists("subdir/a.txt")
-    return {"files": files, "exists": exists}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.files).toContain('a.txt');
-    expect(result.data?.codeReturn.exists).toBe(true);
-  });
-
   it('print 输出收集到 log', async () => {
     const result = await runner.execute({
       code: `def main(v):

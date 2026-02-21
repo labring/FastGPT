@@ -272,26 +272,6 @@ describe('JS 功能测试', () => {
         expect: { success: true, codeReturn: { elapsed: true } }
       },
       {
-        name: 'fs 读写文件',
-        code: `async function main() {
-          SystemHelper.fs.writeFile('test.txt', 'hello sandbox');
-          const content = SystemHelper.fs.readFile('test.txt');
-          return { content };
-        }`,
-        expect: { success: true, codeReturn: { content: 'hello sandbox' } }
-      },
-      {
-        name: 'fs 写入后读取验证',
-        code: `async function main() {
-          SystemHelper.fs.writeFile('a.txt', 'content_a');
-          SystemHelper.fs.writeFile('b.txt', 'content_b');
-          const a = SystemHelper.fs.readFile('a.txt');
-          const b = SystemHelper.fs.readFile('b.txt');
-          return { a, b };
-        }`,
-        expect: { success: true, codeReturn: { a: 'content_a', b: 'content_b' } }
-      },
-      {
         name: 'strToBase64 编码',
         code: `async function main() {
           const encoded = SystemHelper.strToBase64('Hello, World!');
@@ -442,11 +422,6 @@ describe('Python 功能测试', () => {
   // --- system_helper ---
   describe('system_helper', () => {
     runMatrix(() => runner, [
-      {
-        name: 'fs 读写文件',
-        code: `def main():\n    system_helper.fs.write_file('test.txt', 'hello sandbox')\n    content = system_helper.fs.read_file('test.txt')\n    return {'content': content}`,
-        expect: { success: true, codeReturn: { content: 'hello sandbox' } }
-      },
       {
         name: 'str_to_base64 编码',
         code: `def main():\n    encoded = system_helper.str_to_base64('Hello, World!')\n    return {'encoded': encoded}`,
