@@ -16,7 +16,6 @@ import { existsSync } from 'fs';
 const config = {
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 };
 
 describe('SubprocessRunner 基类逻辑', () => {
@@ -124,15 +123,6 @@ describe('SubprocessRunner 基类逻辑', () => {
       code: `async function main() { return { ok: true }; }`,
       variables: {},
       limits: { memoryMB: 9999 } // 超过 maxMemoryMB(256)
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('[Test] limits 超过 maxDiskMB 被截断（正常执行）', async () => {
-    const result = await jsRunner.execute({
-      code: `async function main() { return { ok: true }; }`,
-      variables: {},
-      limits: { diskMB: 9999 } // 超过 maxDiskMB(100)
     });
     expect(result.success).toBe(true);
   });

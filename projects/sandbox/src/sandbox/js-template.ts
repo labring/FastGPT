@@ -5,7 +5,6 @@
  * - 安全 shim（原型链冻结、Bun API 禁用）
  * - 模块白名单（通过 Function 构造器注入 safe require）
  * - SystemHelper 内置函数
- * - 临时文件系统（路径遍历防护 + 磁盘配额）
  * - 日志收集
  * - 用户代码执行
  */
@@ -14,7 +13,7 @@ import { BLOCKED_IP_RANGES, REQUEST_LIMITS } from './network-config';
 export function generateJsScript(
   userCode: string,
   allowedModules: string[],
-  limits: { timeoutMs: number; memoryMB: number; diskMB: number }
+  limits: { timeoutMs: number; memoryMB: number }
 ): string {
   // 转义用户代码中的反引号和 ${} 以安全嵌入模板字符串
   const escapedUserCode = userCode
@@ -65,7 +64,7 @@ const ALLOWED_MODULES = new Set(${JSON.stringify(allowedModules)});
 
 // 清理 process.env，仅保留必要变量
 {
-  const _keepEnv = ['SANDBOX_TMPDIR', 'SANDBOX_MEMORY_MB', 'SANDBOX_DISK_MB', 'PATH', 'HOME', 'NODE_ENV'];
+  const _keepEnv = ['SANDBOX_MEMORY_MB', 'PATH', 'HOME', 'NODE_ENV'];
   for (const key of Object.keys(process.env)) {
     if (!_keepEnv.includes(key)) {
       delete process.env[key];
@@ -84,8 +83,6 @@ const _safeRequire = new Proxy(_origRequire, {
 });
 
 // ===== SystemHelper =====
-const _fs = _origRequire('fs');
-const _path = _origRequire('path');
 const _crypto = _origRequire('crypto');
 const _http = _origRequire('http');
 const _https = _origRequire('https');
@@ -118,11 +115,6 @@ globalThis.WebSocket = undefined;
   // 冻结 process.env 防止用户修改
   Object.freeze(process.env);
 }
-
-const TMPDIR = process.env.SANDBOX_TMPDIR;
-const DISK_LIMIT = ${limits.diskMB} * 1024 * 1024;
-let _diskUsed = 0;
-const _fileSizes = new Map();
 
 // ===== 网络安全 =====
 const _BLOCKED_CIDRS = ${JSON.stringify(BLOCKED_IP_RANGES)};
@@ -163,23 +155,6 @@ function _dnsResolve(hostname) {
       resolve(addresses.map(a => a.address));
     });
   });
-}
-
-function _safePath(userPath) {
-  const resolved = _path.resolve(TMPDIR, userPath);
-  const rel = _path.relative(TMPDIR, resolved);
-  if (rel.startsWith('..') || _path.isAbsolute(rel)) {
-    throw new Error('Path traversal not allowed');
-  }
-  // Resolve symlinks to prevent symlink-based path traversal
-  if (_fs.existsSync(resolved)) {
-    const real = _fs.realpathSync(resolved);
-    if (!real.startsWith(TMPDIR)) {
-      throw new Error('Path traversal not allowed');
-    }
-    return real;
-  }
-  return resolved;
 }
 
 const SystemHelper = {
@@ -287,39 +262,6 @@ const SystemHelper = {
       if (body) req.write(body);
       req.end();
     });
-  },
-
-  fs: {
-    writeFile(path, content) {
-      const safe = _safePath(path);
-      const bytes = Buffer.byteLength(content, 'utf-8');
-      const oldBytes = _fileSizes.get(safe) || 0;
-      if (_diskUsed - oldBytes + bytes > DISK_LIMIT) {
-        throw new Error('Disk quota exceeded: ${limits.diskMB}MB limit');
-      }
-      const dir = _path.dirname(safe);
-      if (!_fs.existsSync(dir)) {
-        _fs.mkdirSync(dir, { recursive: true });
-      }
-      _fs.writeFileSync(safe, content, 'utf-8');
-      _diskUsed = _diskUsed - oldBytes + bytes;
-      _fileSizes.set(safe, bytes);
-    },
-    readFile(path) {
-      return _fs.readFileSync(_safePath(path), 'utf-8');
-    },
-    readdir(path = '.') {
-      return _fs.readdirSync(_safePath(path));
-    },
-    mkdir(path) {
-      _fs.mkdirSync(_safePath(path), { recursive: true });
-    },
-    exists(path) {
-      return _fs.existsSync(_safePath(path));
-    },
-    get tmpDir() {
-      return TMPDIR;
-    }
   }
 };
 

@@ -6,13 +6,11 @@ import type { RunnerConfig } from '../../src/types';
 const config: RunnerConfig = {
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 };
 
 const strictConfig: RunnerConfig = {
   defaultTimeoutMs: 3000,
   defaultMemoryMB: 32,
-  defaultDiskMB: 1
 };
 
 describe('边界测试 - JS', () => {

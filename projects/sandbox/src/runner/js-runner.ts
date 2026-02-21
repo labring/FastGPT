@@ -12,7 +12,6 @@ import type { RunnerConfig } from '../types';
  * - 原型链冻结
  * - Bun 危险 API 删除
  * - require 模块白名单
- * - 临时文件系统隔离
  */
 export class JsRunner extends SubprocessRunner {
   constructor(runnerConfig: RunnerConfig) {
@@ -26,7 +25,7 @@ export class JsRunner extends SubprocessRunner {
   async generateScript(
     tempDir: string,
     code: string,
-    limits: { timeoutMs: number; memoryMB: number; diskMB: number }
+    limits: { timeoutMs: number; memoryMB: number }
   ): Promise<string> {
     const script = generateJsScript(code, config.jsAllowedModules, limits);
     const scriptPath = join(tempDir, 'run.mjs');

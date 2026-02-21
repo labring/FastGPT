@@ -23,7 +23,6 @@ import type { RunnerConfig } from '../../src/types';
 const config: RunnerConfig = {
   defaultTimeoutMs: 15000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10
 };
 
 // ============================================================
@@ -1088,21 +1087,6 @@ def main():
     if (result.success && result.data?.codeReturn.readable) {
       expect(result.data.codeReturn.has_sensitive).toBe(false);
     }
-  });
-
-  it('磁盘配额限制', async () => {
-    const result = await runner.execute({
-      code: `def main(v):
-    chunk = "x" * (512 * 1024)
-    system_helper.fs.write_file("a.txt", chunk)
-    system_helper.fs.write_file("b.txt", chunk)
-    system_helper.fs.write_file("c.txt", chunk)
-    return {}`,
-      variables: {},
-      limits: { diskMB: 1 }
-    });
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('quota');
   });
 
   it('delay 超过 10s 报错', async () => {

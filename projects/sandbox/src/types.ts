@@ -5,7 +5,6 @@ export interface ExecuteOptions {
   limits?: {
     timeoutMs?: number;
     memoryMB?: number;
-    diskMB?: number;
   };
 }
 
@@ -23,5 +22,4 @@ export interface ExecuteResult {
 export interface RunnerConfig {
   defaultTimeoutMs: number;
   defaultMemoryMB: number;
-  defaultDiskMB: number;
 }

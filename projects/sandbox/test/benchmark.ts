@@ -9,7 +9,6 @@ import { PythonRunner } from '../src/runner/python-runner';
 const runnerConfig = {
   defaultTimeoutMs: 10000,
   defaultMemoryMB: 64,
-  defaultDiskMB: 10,
 };
 
 async function bench(name: string, fn: () => Promise<any>, iterations: number = 20) {
