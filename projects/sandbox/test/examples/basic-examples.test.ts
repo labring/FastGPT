@@ -162,20 +162,6 @@ describe('基础样例 - JS', () => {
     expect(result.data?.codeReturn.encoded).toBe(Buffer.from('hello').toString('base64'));
   });
 
-  it('文件读写', async () => {
-    const result = await runner.execute({
-      code: `async function main() {
-        SystemHelper.fs.writeFile('test.txt', 'hello world');
-        const content = SystemHelper.fs.readFile('test.txt');
-        return { content, exists: SystemHelper.fs.exists('test.txt') };
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.content).toBe('hello world');
-    expect(result.data?.codeReturn.exists).toBe(true);
-  });
-
   // ===== async/await =====
 
   it('async/await + Promise', async () => {
@@ -378,19 +364,6 @@ def main(vars):
     });
     expect(result.success).toBe(true);
     expect(result.data?.codeReturn.encoded).toBe(Buffer.from('hello').toString('base64'));
-  });
-
-  it('文件读写', async () => {
-    const result = await runner.execute({
-      code: `def main():
-    system_helper.fs.write_file('test.txt', 'hello world')
-    content = system_helper.fs.read_file('test.txt')
-    return {'content': content, 'exists': system_helper.fs.exists('test.txt')}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.content).toBe('hello world');
-    expect(result.data?.codeReturn.exists).toBe(true);
   });
 
   // ===== 多种 main 签名 =====

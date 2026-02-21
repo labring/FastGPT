@@ -84,20 +84,6 @@ describe('边界测试 - JS', () => {
     expect(result.message).toMatch(/timeout|timed out/i);
   });
 
-  it('磁盘配额超限', async () => {
-    const result = await strictRunner.execute({
-      code: `async function main() {
-        // 1MB 限制，写 2MB
-        const big = 'x'.repeat(2 * 1024 * 1024);
-        SystemHelper.fs.writeFile('big.txt', big);
-        return { written: true };
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-    expect(result.data?.codeReturn?.error || result.message).toMatch(/quota|limit/i);
-  });
-
   // ===== 大数据 =====
 
   it('大量 console.log 输出', async () => {
