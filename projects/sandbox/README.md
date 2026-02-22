@@ -22,16 +22,18 @@ HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
 
 ## 性能
 
-进程池 vs 旧版 spawn-per-request 对比（SANDBOX_POOL_SIZE=20，50 并发）：
+进程池 vs 旧版 spawn-per-request 对比（SANDBOX_POOL_SIZE=20）：
 
-| 场景 | 旧版 QPS / 延迟 | 进程池 QPS / 延迟 | 提升 |
-|------|-----------------|-------------------|------|
-| JS 简单函数 | 22 / 1,938ms | 1,422 / 35ms | **65x** |
-| JS IO 500ms | 22 / 2,107ms | 38 / 1,201ms | 1.7x |
-| JS 高 CPU | 9 / 1,079ms | 12 / 804ms | 1.3x |
-| Python 简单函数 | 14.7 / 2,897ms | 5,375 / 9ms | **366x** |
-| Python IO 500ms | 14.2 / 3,066ms | 38 / 1,200ms | 2.7x |
-| Python 高 CPU | 3.1 / 2,845ms | 4 / ~2,500ms | 1.2x |
+| 场景 | 旧版 QPS / P50 | 进程池 QPS / P50 | 提升 |
+|------|----------------|------------------|------|
+| JS 简单函数 (c50) | 22 / 1,938ms | 1,414 / 7ms | **64x** |
+| JS IO 500ms (c50) | 22 / 2,107ms | 38 / 1,005ms | 1.7x |
+| JS 高 CPU (c10) | 9 / 1,079ms | 12 / 796ms | 1.3x |
+| JS 高内存 (c10) | — | 13 / 787ms | — |
+| Python 简单函数 (c50) | 14.7 / 2,897ms | 4,247 / 4ms | **289x** |
+| Python IO 500ms (c50) | 14.2 / 3,066ms | 38 / 1,003ms | 2.7x |
+| Python 高 CPU (c10) | 3.1 / 2,845ms | 4 / 2,191ms | 1.3x |
+| Python 高内存 (c10) | — | 11 / 893ms | — |
 
 资源占用（20+20 workers）：空闲 ~1.5GB RSS，压测峰值 ~2GB RSS。
 
@@ -153,8 +155,6 @@ docker run -p 3000:3000 \
 | `SANDBOX_MAX_TIMEOUT` | 超时上限（ms），请求不可超过此值 | `60000` |
 | `SANDBOX_MEMORY_MB` | 默认内存限制（MB） | `64` |
 | `SANDBOX_MAX_MEMORY_MB` | 内存上限（MB） | `256` |
-| `SANDBOX_DISK_MB` | 默认磁盘限制（MB） | `10` |
-| `SANDBOX_MAX_DISK_MB` | 磁盘上限（MB） | `100` |
 
 ### 网络请求限制
 
@@ -272,14 +272,13 @@ your-new-package
 - `Function` 构造器冻结，阻止 `constructor.constructor` 逃逸
 - `process.env` 清理，仅保留必要变量
 - `fetch`、`XMLHttpRequest`、`WebSocket` 禁用
-- 临时文件系统路径遍历防护 + 磁盘配额
 
 ### Python
 
-- `__import__` 白名单拦截：用户代码无法 import 危险模块
+- `__import__` 黑名单拦截：用户代码无法 import 危险模块（`os`、`sys`、`subprocess` 等）
 - `exec()`/`eval()` 内的 import 同样被拦截（基于调用栈帧检测）
-- `resource` 模块限制 CPU 时间、内存、文件大小
-- 临时文件系统路径遍历防护 + 磁盘配额
+- `builtins.__import__` 通过代理对象保护，用户无法覆盖
+- `signal.SIGALRM` 超时保护
 
 ### 网络
 
@@ -294,38 +293,36 @@ your-new-package
 
 | 函数 | 说明 |
 |------|------|
-| `SystemHelper.httpRequest(url, method, headers, body, timeout)` | HTTP 请求 |
-| `SystemHelper.fs.writeFile(path, content)` | 写临时文件 |
-| `SystemHelper.fs.readFile(path)` | 读临时文件 |
-| `SystemHelper.fs.mkdir(path)` | 创建目录 |
-| `SystemHelper.fs.readdir(path)` | 列出目录 |
-| `SystemHelper.fs.exists(path)` | 文件是否存在 |
-| `countToken(text)` | 估算 token 数 |
-| `strToBase64(text, prefix?)` | 字符串转 Base64 |
-| `createHmac(algorithm, secret)` | HMAC 签名 |
-| `delay(ms)` | 延迟（最大 10s） |
-| `httpRequest(...)` | 同 `SystemHelper.httpRequest` |
+| `SystemHelper.httpRequest(url, opts?)` | HTTP 请求（opts: `{method, headers, body, timeout}`） |
+| `SystemHelper.countToken(text)` | 估算 token 数（`≈ len/4`） |
+| `SystemHelper.strToBase64(text, prefix?)` | 字符串转 Base64 |
+| `SystemHelper.createHmac(algorithm, secret)` | HMAC 签名，返回 `{timestamp, sign}` |
+| `SystemHelper.delay(ms)` | 延迟（最大 10s） |
+| `countToken(text)` | 同 `SystemHelper.countToken` |
+| `strToBase64(text, prefix?)` | 同 `SystemHelper.strToBase64` |
+| `createHmac(algorithm, secret)` | 同 `SystemHelper.createHmac` |
+| `delay(ms)` | 同 `SystemHelper.delay` |
+| `httpRequest(url, opts?)` | 同 `SystemHelper.httpRequest` |
 
 ### Python（全局可用）
 
 | 函数 | 说明 |
 |------|------|
 | `system_helper.http_request(url, method, headers, body, timeout)` | HTTP 请求 |
-| `system_helper.fs.write_file(path, content)` | 写临时文件 |
-| `system_helper.fs.read_file(path)` | 读临时文件 |
-| `system_helper.fs.mkdir(path)` | 创建目录 |
-| `system_helper.fs.readdir(path)` | 列出目录 |
-| `system_helper.fs.exists(path)` | 文件是否存在 |
-| `count_token(text)` | 估算 token 数 |
-| `str_to_base64(text, prefix?)` | 字符串转 Base64 |
-| `create_hmac(algorithm, secret)` | HMAC 签名 |
-| `delay(ms)` | 延迟（最大 10s） |
+| `system_helper.count_token(text)` | 估算 token 数（`≈ len/4`） |
+| `system_helper.str_to_base64(text, prefix?)` | 字符串转 Base64 |
+| `system_helper.create_hmac(algorithm, secret)` | HMAC 签名，返回 `{timestamp, sign}` |
+| `system_helper.delay(ms)` | 延迟（最大 10s） |
+| `count_token(text)` | 同 `system_helper.count_token` |
+| `str_to_base64(text, prefix?)` | 同 `system_helper.str_to_base64` |
+| `create_hmac(algorithm, secret)` | 同 `system_helper.create_hmac` |
+| `delay(ms)` | 同 `system_helper.delay` |
 | `http_request(...)` | 同 `system_helper.http_request` |
 
 ## 测试
 
 ```bash
-# 全部测试（354 cases）
+# 全部测试（351 cases）
 bun run test
 
 # 单个文件
