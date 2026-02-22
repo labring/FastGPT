@@ -314,7 +314,7 @@ your-new-package
 ## 测试
 
 ```bash
-# 全部测试（297 cases）
+# 全部测试（311 cases）
 bun run test
 
 # 单个文件
