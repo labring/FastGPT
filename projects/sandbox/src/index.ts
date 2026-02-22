@@ -3,9 +3,8 @@ import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { z } from 'zod';
 import { config } from './config';
-import { JsRunner } from './runner/js-runner';
-import { PythonRunner } from './runner/python-runner';
-import { getSemaphoreStats } from './runner/base';
+import { ProcessPool } from './pool/process-pool';
+import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
 
 /** 请求体校验 schema */
@@ -20,18 +19,28 @@ const executeSchema = z.object({
 
 const app = new Hono();
 
-/** Runner 实例（单例） */
-const runnerConfig = {
-  defaultTimeoutMs: config.defaultTimeoutMs,
-  defaultMemoryMB: config.defaultMemoryMB
-};
+/** 进程池 */
+const jsPool = new ProcessPool(config.poolSize);
+const pythonPool = new PythonProcessPool(config.poolSize);
 
-const jsRunner = new JsRunner(runnerConfig);
-const pythonRunner = new PythonRunner(runnerConfig);
+const poolReady = Promise.all([
+  jsPool.init(),
+  pythonPool.init()
+]).then(() => {
+  console.log(`Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`);
+}).catch(err => {
+  console.error('Failed to init process pool:', err.message);
+  process.exit(1);
+});
 
 /** 健康检查（不需要认证） */
 app.get('/health', (c) => {
-  return c.json({ status: 'ok', version: '5.0.0', concurrency: getSemaphoreStats() });
+  return c.json({
+    status: 'ok',
+    version: '5.0.0',
+    jsPool: jsPool.stats,
+    pythonPool: pythonPool.stats
+  });
 });
 
 /** 认证中间件：仅当配置了 token 时启用 */
@@ -49,7 +58,7 @@ app.post('/sandbox/js', async (c) => {
     if (!parsed.success) {
       return c.json({ success: false, message: `Invalid request: ${parsed.error.issues[0]?.message || 'validation failed'}` }, 400);
     }
-    const result = await jsRunner.execute(parsed.data as ExecuteOptions);
+    const result = await jsPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
     return c.json({
@@ -67,7 +76,7 @@ app.post('/sandbox/python', async (c) => {
     if (!parsed.success) {
       return c.json({ success: false, message: `Invalid request: ${parsed.error.issues[0]?.message || 'validation failed'}` }, 400);
     }
-    const result = await pythonRunner.execute(parsed.data as ExecuteOptions);
+    const result = await pythonPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
     return c.json({
@@ -119,5 +128,5 @@ export default {
   fetch: app.fetch
 };
 
-/** 导出 app 供测试使用 */
-export { app };
+/** 导出 app 和 poolReady 供测试使用 */
+export { app, poolReady };

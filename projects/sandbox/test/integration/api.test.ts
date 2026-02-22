@@ -2,8 +2,8 @@
  * API 测试 - 使用 app.request() 直接测试 Hono 路由
  * 无需启动服务或配置 SANDBOX_URL
  */
-import { describe, it, expect } from 'vitest';
-import { app } from '../../src/index';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { app, poolReady } from '../../src/index';
 import { config } from '../../src/config';
 
 /** 构造请求 headers，自动带上 auth（如果配置了 token） */
@@ -16,6 +16,10 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
 }
 
 describe('API Routes', () => {
+  beforeAll(async () => {
+    await poolReady;
+  }, 30000);
+
   // ===== Health =====
   it('GET /health 返回 200', async () => {
     const res = await app.request('/health');

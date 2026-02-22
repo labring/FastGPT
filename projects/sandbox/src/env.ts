@@ -34,6 +34,10 @@ const envSchema = z.object({
   // ===== 并发控制 =====
   SANDBOX_MAX_CONCURRENCY: int(50),
 
+  // ===== 进程池 =====
+  /** 进程池大小（预热 worker 数量） */
+  SANDBOX_POOL_SIZE: int(20),
+
   // ===== 网络请求限制 =====
   SANDBOX_MAX_REQUESTS: int(30),
   SANDBOX_REQUEST_TIMEOUT: int(10000),
@@ -75,6 +79,9 @@ export const env = {
 
   // 并发控制
   maxConcurrency: e.SANDBOX_MAX_CONCURRENCY,
+
+  // 进程池
+  poolSize: e.SANDBOX_POOL_SIZE,
 
   // 网络请求限制
   maxRequests: e.SANDBOX_MAX_REQUESTS,
