@@ -1,16 +1,39 @@
 # FastGPT Code Sandbox
 
-基于 Bun + Hono 的代码执行沙盒，支持 JS 和 Python，统一使用子进程模型执行用户代码。
+基于 Bun + Hono 的代码执行沙盒，支持 JS 和 Python。采用进程池架构，预热长驻 worker 进程，通过 stdin/stdout JSON 协议通信，消除每次请求的进程启动开销。
 
 ## 架构
 
 ```
-HTTP Request → Hono Server → Runner (JS/Python) → Subprocess → Result
+HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
+                                ↓
+                         ┌──────────────┐
+                         │  JS Workers   │  bun run worker.ts (×N)
+                         │  Py Workers   │  python3 worker.py (×N)
+                         └──────────────┘
+                         stdin: JSON task → stdout: JSON result
 ```
 
-- **JS 执行**：Bun 子进程 + 安全 shim（禁用 Bun API、冻结 Function 构造器、require 白名单）
-- **Python 执行**：python3 子进程 + `__import__` 拦截 + resource 资源限制
+- **进程池**：启动时预热 N 个 worker 进程（默认 20），请求到达时直接分配空闲 worker，执行完归还池中
+- **JS 执行**：Bun worker 进程 + 安全 shim（禁用 Bun API、冻结 Function 构造器、require 白名单）
+- **Python 执行**：python3 worker 进程 + `__import__` 拦截 + resource 资源限制
 - **网络请求**：统一通过 `SystemHelper.httpRequest()` / `system_helper.http_request()` 收口，内置 SSRF 防护
+- **并发控制**：请求数超过池大小时自动排队，worker 崩溃自动重启补充
+
+## 性能
+
+进程池 vs 旧版 spawn-per-request 对比（SANDBOX_POOL_SIZE=20，50 并发）：
+
+| 场景 | 旧版 QPS / 延迟 | 进程池 QPS / 延迟 | 提升 |
+|------|-----------------|-------------------|------|
+| JS 简单函数 | 22 / 1,938ms | 1,422 / 35ms | **65x** |
+| JS IO 500ms | 22 / 2,107ms | 38 / 1,201ms | 1.7x |
+| JS 高 CPU | 9 / 1,079ms | 12 / 804ms | 1.3x |
+| Python 简单函数 | 14.7 / 2,897ms | 5,375 / 9ms | **366x** |
+| Python IO 500ms | 14.2 / 3,066ms | 38 / 1,200ms | 2.7x |
+| Python 高 CPU | 3.1 / 2,845ms | 4 / ~2,500ms | 1.2x |
+
+资源占用（20+20 workers）：空闲 ~1.5GB RSS，压测峰值 ~2GB RSS。
 
 ## 快速开始
 
@@ -34,6 +57,7 @@ docker build -f projects/sandbox/Dockerfile -t fastgpt-sandbox .
 # 运行
 docker run -p 3000:3000 \
   -e SANDBOX_TOKEN=your-secret-token \
+  -e SANDBOX_POOL_SIZE=20 \
   fastgpt-sandbox
 ```
 
@@ -49,8 +73,7 @@ docker run -p 3000:3000 \
   "variables": { "a": 1, "b": 2 },
   "limits": {
     "timeoutMs": 10000,
-    "memoryMB": 64,
-    "diskMB": 10
+    "memoryMB": 64
   }
 }
 ```
@@ -65,15 +88,23 @@ docker run -p 3000:3000 \
   "variables": { "a": 1, "b": 2 },
   "limits": {
     "timeoutMs": 10000,
-    "memoryMB": 64,
-    "diskMB": 10
+    "memoryMB": 64
   }
 }
 ```
 
 ### `GET /health`
 
-健康检查。
+健康检查，返回进程池状态。
+
+```json
+{
+  "status": "ok",
+  "version": "5.0.0",
+  "jsPool": { "total": 20, "idle": 18, "busy": 2, "queued": 0 },
+  "pythonPool": { "total": 20, "idle": 20, "busy": 0, "queued": 0 }
+}
+```
 
 ### 响应格式
 
@@ -108,6 +139,12 @@ docker run -p 3000:3000 \
 | `SANDBOX_TOKEN` | Bearer Token 认证密钥 | 空（不鉴权） |
 | `LOG_LEVEL` | 日志级别 | `info` |
 
+### 进程池
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `SANDBOX_POOL_SIZE` | 每种语言的 worker 进程数 | `20` |
+
 ### 资源限制
 
 | 变量 | 说明 | 默认值 |
@@ -126,6 +163,40 @@ docker run -p 3000:3000 \
 | `SANDBOX_MAX_REQUESTS` | 单次执行最大 HTTP 请求数 | `30` |
 | `SANDBOX_REQUEST_TIMEOUT` | 单次 HTTP 请求超时（ms） | `10000` |
 | `SANDBOX_MAX_RESPONSE_SIZE` | 最大响应体大小（bytes） | `2097152`（2MB） |
+
+## 项目结构
+
+```
+src/
+├── index.ts                  # 入口：Hono 服务 + 进程池初始化
+├── env.ts                    # 环境变量校验（zod）
+├── config.ts                 # 配置导出
+├── types.ts                  # 类型定义
+├── pool/
+│   ├── process-pool.ts       # JS 进程池管理
+│   ├── python-process-pool.ts # Python 进程池管理
+│   ├── worker.ts             # JS worker（长驻进程）
+│   └── worker.py             # Python worker（长驻进程）
+├── runner/                   # 旧版 spawn-per-request 执行器（测试用）
+│   ├── base.ts
+│   ├── js-runner.ts
+│   └── python-runner.ts
+├── sandbox/
+│   ├── js-template.ts        # JS 安全 shim 模板
+│   ├── python-template.ts    # Python 安全 shim 模板
+│   └── network-config.ts     # 网络安全配置（SSRF 防护）
+└── utils/
+    └── semaphore.ts          # 信号量（旧版并发控制）
+
+test/
+├── unit/                     # 单元测试
+├── integration/              # 集成测试（API 路由）
+├── boundary/                 # 边界测试（超时、内存限制）
+├── security/                 # 安全测试（沙箱逃逸防护）
+├── compat/                   # 兼容性测试（旧版代码格式）
+├── examples/                 # 示例测试（常用包）
+└── benchmark/                # 压测脚本
+```
 
 ## 添加 JS 包
 
@@ -180,7 +251,7 @@ pandas
 your-new-package
 ```
 
-2. **检查模块黑名单**（`src/runner/python-runner.ts`）：
+2. **检查模块黑名单**（`src/sandbox/python-template.ts`）：
 
 确保新包不在 `DANGEROUS_MODULES` 列表中。如果新包依赖了黑名单中的模块（如 `os`），标准库路径的间接导入会自动放行，无需额外配置。
 
@@ -254,12 +325,13 @@ your-new-package
 ## 测试
 
 ```bash
-# 全部测试
+# 全部测试（354 cases）
 bun run test
 
 # 单个文件
-bunx vitest run test/security/escape-attacks.test.ts
+bunx vitest run test/security/security.test.ts
 
-# 集成测试（需要服务运行）
-SANDBOX_URL=http://localhost:3000 SANDBOX_TOKEN=xxx bunx vitest run test/integration/
+# 压测（需先启动服务）
+bash test/benchmark/bench-sandbox.sh
+bash test/benchmark/bench-sandbox-python.sh
 ```
