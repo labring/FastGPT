@@ -15,22 +15,30 @@
  * 8. 变量注入攻击
  * 9. API 输入校验
  */
-import { describe, it, expect, beforeAll } from 'vitest';
-import { JsRunner } from '../../src/runner/js-runner';
-import { PythonRunner } from '../../src/runner/python-runner';
-import type { RunnerConfig } from '../../src/types';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ProcessPool } from '../../src/pool/process-pool';
+import { PythonProcessPool } from '../../src/pool/python-process-pool';
 
-const config: RunnerConfig = {
-  defaultTimeoutMs: 15000,
-  defaultMemoryMB: 64,
-};
+let jsPool: ProcessPool;
+let pyPool: PythonProcessPool;
+
+beforeAll(async () => {
+  jsPool = new ProcessPool(1);
+  await jsPool.init();
+  pyPool = new PythonProcessPool(1);
+  await pyPool.init();
+});
+
+afterAll(async () => {
+  await jsPool.shutdown();
+  await pyPool.shutdown();
+});
 
 // ============================================================
 // 1. JS 模块/API 拦截
 // ============================================================
 describe('JS 模块/API 拦截', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
+  const runner = { execute: (args: any) => jsPool.execute(args) };
 
   it('阻止 require child_process', async () => {
     const result = await runner.execute({
@@ -249,8 +257,7 @@ describe('JS 模块/API 拦截', () => {
 // 2. JS 逃逸攻击
 // ============================================================
 describe('JS 逃逸攻击', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
+  const runner = { execute: (args: any) => jsPool.execute(args) };
 
   it('constructor.constructor 无法获取 Function', async () => {
     const result = await runner.execute({
@@ -408,8 +415,7 @@ describe('JS 逃逸攻击', () => {
 // 3. JS 网络安全（SSRF 防护）
 // ============================================================
 describe('JS SSRF 防护', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
+  const runner = { execute: (args: any) => jsPool.execute(args) };
 
   it('httpRequest 禁止访问 127.0.0.1', async () => {
     const result = await runner.execute({
@@ -513,8 +519,7 @@ describe('JS SSRF 防护', () => {
 // 4. Python 模块拦截（预检 + 运行时）
 // ============================================================
 describe('Python 模块拦截', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  const runner = { execute: (args: any) => pyPool.execute(args) };
 
   // --- 宿主侧预检拦截 ---
   const precheckModules = [
@@ -647,8 +652,7 @@ describe('Python 模块拦截', () => {
 // 5. Python 逃逸攻击
 // ============================================================
 describe('Python 逃逸攻击', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  const runner = { execute: (args: any) => pyPool.execute(args) };
 
   // --- __import__ hook 安全 ---
   it('用户代码无法通过异常恢复原始 __import__', async () => {
@@ -738,7 +742,9 @@ def main():
         return {'escaped': False}`,
       variables: {}
     });
-    expect(result.success).toBe(false);
+    // 安全机制生效：import os 被 _safe_import 拦截，try/except 捕获后返回 escaped=False
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.escaped).toBe(false);
   });
 
   // --- exec/eval 逃逸 ---
@@ -915,8 +921,7 @@ def main():
 // 6. Python 网络安全（SSRF 防护）
 // ============================================================
 describe('Python SSRF 防护', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  const runner = { execute: (args: any) => pyPool.execute(args) };
 
   it('http_request 禁止访问 127.0.0.1', async () => {
     const result = await runner.execute({
@@ -983,8 +988,7 @@ describe('Python SSRF 防护', () => {
 // 7. 文件系统隔离（已移除磁盘写入功能）
 // ============================================================
 describe('文件系统隔离 - Python', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  const runner = { execute: (args: any) => pyPool.execute(args) };
 
   it('open() 读取 /proc/self/environ（env 已清理）', async () => {
     const result = await runner.execute({
@@ -1017,11 +1021,9 @@ describe('文件系统隔离 - Python', () => {
 // 8. 变量注入攻击
 // ============================================================
 describe('变量注入攻击', () => {
-  const jsRunner = new JsRunner(config);
-  const pyRunner = new PythonRunner(config);
 
   it('[JS] 变量值包含恶意 JSON 不影响解析', async () => {
-    const result = await jsRunner.execute({
+    const result = await jsPool.execute({
       code: `async function main(v) { return { val: v.data }; }`,
       variables: { data: '{"__proto__":{"polluted":true}}' }
     });
@@ -1030,7 +1032,7 @@ describe('变量注入攻击', () => {
   });
 
   it('[JS] 变量 key 包含特殊字符', async () => {
-    const result = await jsRunner.execute({
+    const result = await jsPool.execute({
       code: `async function main(v) { return { val: v['a.b'] }; }`,
       variables: { 'a.b': 'dotted-key' }
     });
@@ -1039,7 +1041,7 @@ describe('变量注入攻击', () => {
   });
 
   it('[Python] 变量值包含 Python 代码注入', async () => {
-    const result = await pyRunner.execute({
+    const result = await pyPool.execute({
       code: `def main(v):\n    return {'val': v['code']}`,
       variables: { code: '__import__("os").system("id")' }
     });
@@ -1052,15 +1054,14 @@ describe('变量注入攻击', () => {
 // 9. API 输入校验
 // ============================================================
 describe('API 输入校验', () => {
-  const jsRunner = new JsRunner(config);
 
   it('空代码被拒绝', async () => {
-    const result = await jsRunner.execute({ code: '', variables: {} });
+    const result = await jsPool.execute({ code: '', variables: {} });
     expect(result.success).toBe(false);
   });
 
   it('非字符串代码被拒绝', async () => {
-    const result = await jsRunner.execute({ code: 123 as any, variables: {} });
+    const result = await jsPool.execute({ code: 123 as any, variables: {} });
     expect(result.success).toBe(false);
   });
 });

@@ -1,14 +1,13 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { JsRunner } from '../../src/runner/js-runner';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ProcessPool } from '../../src/pool/process-pool';
 
-const runner = new JsRunner({
-  defaultTimeoutMs: 10000,
-  defaultMemoryMB: 64,
-});
+let pool: ProcessPool;
+beforeAll(async () => { pool = new ProcessPool(1); await pool.init(); });
+afterAll(async () => { await pool.shutdown(); });
 
 describe('JsRunner', () => {
   it('执行基本代码并返回结果', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main(v) { return { sum: v.a + v.b } }',
       variables: { a: 1, b: 2 }
     });
@@ -17,7 +16,7 @@ describe('JsRunner', () => {
   });
 
   it('超时返回错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { while(true){} }',
       variables: {},
       limits: { timeoutMs: 1000 }
@@ -27,7 +26,7 @@ describe('JsRunner', () => {
   });
 
   it('空代码返回错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: '',
       variables: {}
     });
@@ -36,7 +35,7 @@ describe('JsRunner', () => {
   });
 
   it('SystemHelper.countToken 可用', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return { count: SystemHelper.countToken("hello world") } }',
       variables: {}
     });
@@ -45,7 +44,7 @@ describe('JsRunner', () => {
   });
 
   it('SystemHelper.strToBase64 可用', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         return { b64: SystemHelper.strToBase64("hello", "prefix:") };
       }`,
@@ -56,7 +55,7 @@ describe('JsRunner', () => {
   });
 
   it('SystemHelper.createHmac 可用', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const r = SystemHelper.createHmac("sha256", "secret");
         return { hasTimestamp: !!r.timestamp, hasSign: !!r.sign };
@@ -69,7 +68,7 @@ describe('JsRunner', () => {
   });
 
   it('SystemHelper.delay 可用', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const start = Date.now();
         await SystemHelper.delay(100);
@@ -82,7 +81,7 @@ describe('JsRunner', () => {
   });
 
   it('console.log 输出收集到 log', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         console.log("debug info");
         console.log("more", { key: "val" });
@@ -96,7 +95,7 @@ describe('JsRunner', () => {
   });
 
   it('向后兼容全局函数 countToken', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return { count: countToken("test") } }',
       variables: {}
     });
@@ -105,7 +104,7 @@ describe('JsRunner', () => {
   });
 
   it('变量正确传入', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main(v) {
         return { name: v.name, age: v.age, list: v.list };
       }`,
@@ -116,7 +115,7 @@ describe('JsRunner', () => {
   });
 
   it('语法错误返回失败', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return {{{} }',
       variables: {}
     });
@@ -124,7 +123,7 @@ describe('JsRunner', () => {
   });
 
   it('运行时错误返回失败', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         throw new Error("custom error");
       }`,
@@ -137,7 +136,7 @@ describe('JsRunner', () => {
   // ===== 补充：边界与特殊场景 =====
 
   it('纯空白代码返回错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: '   \n\t  \n  ',
       variables: {}
     });
@@ -145,7 +144,7 @@ describe('JsRunner', () => {
   });
 
   it('代码中包含反引号和模板字符串', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main(v) { const s = `hello ${v.name}`; return { s } }',
       variables: { name: 'world' }
     });
@@ -154,7 +153,7 @@ describe('JsRunner', () => {
   });
 
   it('代码中包含 ${ 转义边界', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return { text: "${not a template}" } }',
       variables: {}
     });
@@ -163,7 +162,7 @@ describe('JsRunner', () => {
   });
 
   it('返回原始字符串值', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return "hello" }',
       variables: {}
     });
@@ -172,7 +171,7 @@ describe('JsRunner', () => {
   });
 
   it('返回数字 0', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return 0 }',
       variables: {}
     });
@@ -181,7 +180,7 @@ describe('JsRunner', () => {
   });
 
   it('返回布尔 false', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return false }',
       variables: {}
     });
@@ -190,7 +189,7 @@ describe('JsRunner', () => {
   });
 
   it('返回空数组', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return [] }',
       variables: {}
     });
@@ -199,7 +198,7 @@ describe('JsRunner', () => {
   });
 
   it('require moment 白名单模块', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const moment = require('moment');
         return { isFunction: typeof moment === 'function' };
@@ -211,7 +210,7 @@ describe('JsRunner', () => {
   });
 
   it('require querystring 白名单模块', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const qs = require('querystring');
         return { str: qs.stringify({ a: '1', b: '2' }) };
@@ -223,7 +222,7 @@ describe('JsRunner', () => {
   });
 
   it('require url 白名单模块', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const url = require('url');
         const parsed = new URL('https://example.com/path?q=1');
@@ -236,7 +235,7 @@ describe('JsRunner', () => {
   });
 
   it('Unicode 变量和返回值', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main(v) {
         return { greeting: v.msg + '🎉', emoji: '✅' };
       }`,
@@ -248,7 +247,7 @@ describe('JsRunner', () => {
   });
 
   it('变量值为 null 和 undefined 的处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main(v) {
         return { a: v.a, b: v.b };
       }`,
@@ -259,12 +258,9 @@ describe('JsRunner', () => {
   });
 
   it('SystemHelper.delay 正好 10000ms 不报错', async () => {
-    // 只验证不抛错，不真的等 10s
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
-        // 验证 10000 是允许的上限
         try {
-          // 不真的等，只测试参数校验
           if (10000 > 10000) throw new Error('too long');
           return { ok: true };
         } catch(e) {
@@ -277,7 +273,7 @@ describe('JsRunner', () => {
   });
 
   it('多个 console.log 类型混合输出', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         console.log("string");
         console.log(42);
@@ -296,10 +292,10 @@ describe('JsRunner', () => {
   });
 
   it('limits 参数部分指定时使用默认值', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: 'async function main() { return { ok: true } }',
       variables: {},
-      limits: { timeoutMs: 5000 }  // 只指定 timeout，其他用默认
+      limits: { timeoutMs: 5000 }
     });
     expect(result.success).toBe(true);
   });

@@ -1,21 +1,21 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { JsRunner } from '../../src/runner/js-runner';
-import { PythonRunner } from '../../src/runner/python-runner';
-import type { RunnerConfig } from '../../src/types';
-
-const config: RunnerConfig = {
-  defaultTimeoutMs: 15000,
-  defaultMemoryMB: 64,
-};
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ProcessPool } from '../../src/pool/process-pool';
+import { PythonProcessPool } from '../../src/pool/python-process-pool';
 
 describe('基础样例 - JS', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
+  let pool: ProcessPool;
+  beforeAll(async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+  });
+  afterAll(async () => {
+    await pool.shutdown();
+  });
 
   // ===== 常见数据处理 =====
 
   it('字符串处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ text }) {
         return {
           upper: text.toUpperCase(),
@@ -30,7 +30,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('数组操作 (map/filter/reduce)', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ numbers }) {
         const doubled = numbers.map(n => n * 2);
         const evens = numbers.filter(n => n % 2 === 0);
@@ -48,7 +48,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('JSON 解析和构造', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ jsonStr }) {
         const obj = JSON.parse(jsonStr);
         obj.added = true;
@@ -61,7 +61,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('正则表达式提取', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ text }) {
         const emails = text.match(/[\\w.]+@[\\w.]+/g) || [];
         const phones = text.match(/\\d{3}-\\d{4}-\\d{4}/g) || [];
@@ -77,7 +77,7 @@ describe('基础样例 - JS', () => {
   // ===== 使用白名单模块 =====
 
   it('lodash 数据处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ items }) {
         const _ = require('lodash');
         const grouped = _.groupBy(items, 'type');
@@ -94,7 +94,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('dayjs 日期处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const dayjs = require('dayjs');
         const d = dayjs('2024-01-15');
@@ -112,7 +112,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('crypto-js 加密', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ text, key }) {
         const CryptoJS = require('crypto-js');
         const encrypted = CryptoJS.AES.encrypt(text, key).toString();
@@ -126,7 +126,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('uuid 生成', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const { v4 } = require('uuid');
         const id = v4();
@@ -141,7 +141,7 @@ describe('基础样例 - JS', () => {
   // ===== SystemHelper 使用 =====
 
   it('countToken 计算', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main({ text }) {
         return { tokens: SystemHelper.countToken(text) };
       }`,
@@ -152,7 +152,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('strToBase64 编码', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         return { encoded: SystemHelper.strToBase64('hello') };
       }`,
@@ -165,7 +165,7 @@ describe('基础样例 - JS', () => {
   // ===== async/await =====
 
   it('async/await + Promise', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const results = await Promise.all([
           delay(100).then(() => 1),
@@ -183,7 +183,7 @@ describe('基础样例 - JS', () => {
   // ===== 错误代码样例 =====
 
   it('访问未定义变量', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         return { value: undefinedVar };
       }`,
@@ -193,7 +193,7 @@ describe('基础样例 - JS', () => {
   });
 
   it('无限递归', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `function recurse() { return recurse(); }
 async function main() {
   return recurse();
@@ -204,7 +204,7 @@ async function main() {
   });
 
   it('类型错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `async function main() {
         const x = null;
         return { value: x.property };
@@ -216,13 +216,19 @@ async function main() {
 });
 
 describe('基础样例 - Python', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  let pool: PythonProcessPool;
+  beforeAll(async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+  });
+  afterAll(async () => {
+    await pool.shutdown();
+  });
 
   // ===== 常见数据处理 =====
 
   it('字符串处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(vars):
     text = vars['text']
     return {
@@ -237,7 +243,7 @@ describe('基础样例 - Python', () => {
   });
 
   it('列表推导式', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(vars):
     numbers = vars['numbers']
     doubled = [n * 2 for n in numbers]
@@ -255,7 +261,7 @@ describe('基础样例 - Python', () => {
   });
 
   it('字典操作', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(vars):
     data = vars['data']
     keys = sorted(data.keys())
@@ -270,7 +276,7 @@ describe('基础样例 - Python', () => {
   });
 
   it('正则表达式提取', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import re
 def main(vars):
     text = vars['text']
@@ -287,7 +293,7 @@ def main(vars):
   // ===== 标准库使用 =====
 
   it('datetime 日期处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `from datetime import datetime, timedelta
 def main():
     d = datetime(2024, 1, 15)
@@ -305,7 +311,7 @@ def main():
   });
 
   it('json 处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import json
 def main(vars):
     obj = json.loads(vars['jsonStr'])
@@ -318,7 +324,7 @@ def main(vars):
   });
 
   it('hashlib 哈希计算', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import hashlib
 def main():
     h = hashlib.sha256(b'hello').hexdigest()
@@ -332,7 +338,7 @@ def main():
   });
 
   it('collections 使用', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `from collections import Counter
 def main(vars):
     c = Counter(vars['items'])
@@ -347,7 +353,7 @@ def main(vars):
   // ===== SystemHelper 使用 =====
 
   it('count_token 计算', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(vars):
     return {'tokens': system_helper.count_token(vars['text'])}`,
       variables: { text: 'Hello, this is a test sentence.' }
@@ -357,7 +363,7 @@ def main(vars):
   });
 
   it('str_to_base64 编码', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {'encoded': system_helper.str_to_base64('hello')}`,
       variables: {}
@@ -369,7 +375,7 @@ def main(vars):
   // ===== 多种 main 签名 =====
 
   it('main() 无参数', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {'ok': True}`,
       variables: { unused: 1 }
@@ -379,7 +385,7 @@ def main(vars):
   });
 
   it('main(a, b) 多参数展开', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(name, age):
     return {'name': name, 'age': age}`,
       variables: { name: 'test', age: 25 }
@@ -391,7 +397,7 @@ def main(vars):
   // ===== 错误代码样例 =====
 
   it('访问未定义变量', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {'value': undefined_var}`,
       variables: {}
@@ -400,7 +406,7 @@ def main(vars):
   });
 
   it('无限递归', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def recurse():
     return recurse()
 def main():
@@ -411,7 +417,7 @@ def main():
   });
 
   it('类型错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     x = None
     return {'value': x['property']}`,
@@ -421,7 +427,7 @@ def main():
   });
 
   it('除零错误', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {'value': 1 / 0}`,
       variables: {}
@@ -430,7 +436,7 @@ def main():
   });
 
   it('索引越界', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     arr = [1, 2, 3]
     return {'value': arr[10]}`,
