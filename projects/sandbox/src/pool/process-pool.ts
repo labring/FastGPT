@@ -65,8 +65,15 @@ export class ProcessPool {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
             this.workers.push(worker);
-            this.idleWorkers.push(worker);
             this.setupWorkerEvents(worker);
+            // 如果有等待中的请求，直接分配给它；否则放入 idle
+            const waiter = this.waitQueue.shift();
+            if (waiter) {
+              worker.busy = true;
+              waiter(worker);
+            } else {
+              this.idleWorkers.push(worker);
+            }
             resolve();
           } else {
             reject(new Error(`Worker ${id} init failed: ${line}`));
@@ -95,8 +102,8 @@ export class ProcessPool {
   /** 设置 worker 退出自动恢复 */
   private setupWorkerEvents(worker: PoolWorker): void {
     worker.proc.on('exit', () => {
-      this.removeWorker(worker);
-      if (this.ready) {
+      const removed = this.removeWorker(worker);
+      if (this.ready && removed) {
         this.spawnWorker().catch(err => {
           console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
@@ -104,10 +111,13 @@ export class ProcessPool {
     });
   }
 
-  /** 从池中移除 worker */
-  private removeWorker(worker: PoolWorker): void {
-    this.workers = this.workers.filter(w => w !== worker);
+  /** 从池中移除 worker，返回是否真的移除了 */
+  private removeWorker(worker: PoolWorker): boolean {
+    const idx = this.workers.indexOf(worker);
+    if (idx === -1) return false;
+    this.workers.splice(idx, 1);
     this.idleWorkers = this.idleWorkers.filter(w => w !== worker);
+    return true;
   }
 
   /** 获取一个空闲 worker，没有则排队等待 */
@@ -125,6 +135,8 @@ export class ProcessPool {
   /** 归还 worker 到池中 */
   private release(worker: PoolWorker): void {
     worker.busy = false;
+    // worker 已被 kill 或已移除，不归还
+    if (!this.workers.includes(worker)) return;
     const waiter = this.waitQueue.shift();
     if (waiter) {
       worker.busy = true;
@@ -182,9 +194,16 @@ export class ProcessPool {
         }
       };
 
-      // 超时：杀 worker（会自动 respawn）
+      // 超时：先从池中移除（防止 release 把死 worker 放回），再杀进程，然后主动 respawn
       timer = setTimeout(() => {
+        this.removeWorker(worker);
         worker.proc.kill('SIGKILL');
+        // 主动 respawn（exit 事件不会再 respawn 因为 worker 已移除）
+        if (this.ready) {
+          this.spawnWorker().catch(err => {
+            console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
+          });
+        }
         settle({ success: false, message: `Script execution timed out after ${timeoutMs}ms` });
       }, timeoutMs + 2000);
 
