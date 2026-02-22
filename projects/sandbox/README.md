@@ -168,34 +168,26 @@ docker run -p 3000:3000 \
 
 ```
 src/
-├── index.ts                  # 入口：Hono 服务 + 进程池初始化
-├── env.ts                    # 环境变量校验（zod）
-├── config.ts                 # 配置导出
-├── types.ts                  # 类型定义
+├── index.ts                   # 入口：Hono 服务 + 进程池初始化
+├── env.ts                     # 环境变量校验（zod）
+├── config.ts                  # 配置导出
+├── types.ts                   # 类型定义
 ├── pool/
-│   ├── process-pool.ts       # JS 进程池管理
+│   ├── process-pool.ts        # JS 进程池管理
 │   ├── python-process-pool.ts # Python 进程池管理
-│   ├── worker.ts             # JS worker（长驻进程）
-│   └── worker.py             # Python worker（长驻进程）
-├── runner/                   # 旧版 spawn-per-request 执行器（测试用）
-│   ├── base.ts
-│   ├── js-runner.ts
-│   └── python-runner.ts
-├── sandbox/
-│   ├── js-template.ts        # JS 安全 shim 模板
-│   ├── python-template.ts    # Python 安全 shim 模板
-│   └── network-config.ts     # 网络安全配置（SSRF 防护）
+│   ├── worker.ts              # JS worker（长驻进程，含安全 shim）
+│   └── worker.py              # Python worker（长驻进程，含安全沙箱）
 └── utils/
-    └── semaphore.ts          # 信号量（旧版并发控制）
+    └── semaphore.ts           # 信号量（通用并发控制）
 
 test/
-├── unit/                     # 单元测试
-├── integration/              # 集成测试（API 路由）
-├── boundary/                 # 边界测试（超时、内存限制）
-├── security/                 # 安全测试（沙箱逃逸防护）
-├── compat/                   # 兼容性测试（旧版代码格式）
-├── examples/                 # 示例测试（常用包）
-└── benchmark/                # 压测脚本
+├── unit/                      # 单元测试（进程池、信号量）
+├── integration/               # 集成测试（API 路由）
+├── boundary/                  # 边界测试（超时、内存限制）
+├── security/                  # 安全测试（沙箱逃逸防护）
+├── compat/                    # 兼容性测试（旧版代码格式）
+├── examples/                  # 示例测试（常用包）
+└── benchmark/                 # 压测脚本
 ```
 
 ## 添加 JS 包
@@ -322,7 +314,7 @@ your-new-package
 ## 测试
 
 ```bash
-# 全部测试（351 cases）
+# 全部测试（297 cases）
 bun run test
 
 # 单个文件
