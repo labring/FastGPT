@@ -128,26 +128,10 @@ class _SystemHelper:
             else:
                 data = body
 
-        if resolved_ip:
-            _port = parsed.port
-            _scheme = parsed.scheme
-            resolved_url = f"{_scheme}://{resolved_ip}:{_port}{parsed.path}" if _port else f"{_scheme}://{resolved_ip}{parsed.path}"
-            if parsed.query:
-                resolved_url += f"?{parsed.query}"
-            if 'Host' not in headers and 'host' not in headers:
-                headers['Host'] = hostname + (f":{_port}" if _port else "")
-        else:
-            resolved_url = url
-
-        req = self._urllib_request.Request(resolved_url, data=data, headers=headers, method=method.upper())
+        # DNS 已验证安全，直接用原始 URL（不替换为 IP，避免 SSL SNI 问题）
+        req = self._urllib_request.Request(url, data=data, headers=headers, method=method.upper())
         try:
-            _ssl_ctx = None
-            if parsed.scheme == 'https' and resolved_ip:
-                import ssl as _ssl
-                _ssl_ctx = _ssl.create_default_context()
-                _ssl_ctx.check_hostname = False
-                _ssl_ctx.verify_mode = _ssl.CERT_REQUIRED
-            resp = self._urllib_request.urlopen(req, timeout=timeout, context=_ssl_ctx)
+            resp = self._urllib_request.urlopen(req, timeout=timeout)
             resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
             if len(resp_data) > _REQUEST_LIMITS['max_response_size']:
                 raise RuntimeError("Response too large")
@@ -193,14 +177,50 @@ def _is_stdlib_frame(filename):
     return False
 
 
+# ===== builtins 代理（防止用户覆盖 __import__）=====
+class _BuiltinsProxy:
+    """builtins 模块的代理，__import__ 属性只读"""
+    def __init__(self, real_builtins):
+        object.__setattr__(self, '_real', real_builtins)
+
+    def __getattr__(self, name):
+        if name == '__import__':
+            return _safe_import
+        if name == '_original_import':
+            raise AttributeError("_original_import")
+        return getattr(object.__getattribute__(self, '_real'), name)
+
+    def __setattr__(self, name, value):
+        if name == '__import__':
+            return  # 静默忽略覆盖
+        if name == '_original_import':
+            return
+        setattr(object.__getattribute__(self, '_real'), name, value)
+
+    def __dir__(self):
+        return [n for n in dir(object.__getattribute__(self, '_real'))
+                if n != '_original_import']
+
+_builtins_proxy = None  # init 后创建
+
+
 def _safe_import(name, *args, **kwargs):
     top_level = name.split('.')[0]
+    # 拦截 builtins 模块，返回代理
+    if top_level == 'builtins' and _builtins_proxy is not None:
+        return _builtins_proxy
     if top_level in _blocked_modules:
+        # 检查整个调用栈：只要有任何非 stdlib 帧（用户代码），就拦截
         stack = _tb.extract_stack()
-        caller_is_stdlib = False
-        if len(stack) >= 2:
-            caller_is_stdlib = _is_stdlib_frame(stack[-2].filename)
-        if not caller_is_stdlib:
+        has_user_frame = False
+        for frame in stack[:-1]:  # 排除 _safe_import 自身
+            fn = frame.filename or ''
+            if fn in ('<string>', '<test>', '<module>') or (
+                not _is_stdlib_frame(fn) and fn != __file__
+            ):
+                has_user_frame = True
+                break
+        if has_user_frame:
             raise ImportError(f"Importing {name} is not allowed.")
     return _original_import(name, *args, **kwargs)
 
@@ -247,6 +267,8 @@ def main_loop():
             if msg.get('type') == 'init':
                 _blocked_modules = set(msg.get('blockedModules', []))
                 _builtins.__import__ = _safe_import
+                global _builtins_proxy
+                _builtins_proxy = _BuiltinsProxy(_builtins)
                 write_line({"type": "ready"})
                 initialized = True
             else:
@@ -265,13 +287,29 @@ def main_loop():
         # 替换 print
         _builtins.print = _safe_print
 
+        # 每次执行前强制恢复 __import__，防止上次用户代码篡改
+        _builtins.__import__ = _safe_import
+
         try:
             # 设置超时
             signal.signal(signal.SIGALRM, _timeout_handler)
             signal.alarm(timeout_s)
 
+            # 构建受限的 __builtins__ 字典，移除 _original_import 等内部引用
+            _safe_builtins = {}
+            for _name in dir(_builtins):
+                if _name.startswith('_') and _name not in (
+                    '__name__', '__doc__', '__import__', '__build_class__',
+                ):
+                    continue
+                _safe_builtins[_name] = getattr(_builtins, _name)
+            # 确保 __import__ 指向安全版本
+            _safe_builtins['__import__'] = _safe_import
+            _safe_builtins['__build_class__'] = _builtins.__build_class__
+
             # 构建执行环境
             exec_globals = {
+                '__builtins__': _safe_builtins,
                 'variables': variables,
                 'SystemHelper': system_helper,
                 'system_helper': system_helper,

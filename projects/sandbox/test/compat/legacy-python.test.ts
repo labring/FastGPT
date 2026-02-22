@@ -9,19 +9,25 @@
  * - 危险模块拦截
  * - 各种返回值类型
  */
-import { describe, it, expect } from 'vitest';
-import { PythonRunner } from '../../src/runner/python-runner';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { PythonProcessPool } from '../../src/pool/python-process-pool';
 
-const runner = new PythonRunner({
-  defaultTimeoutMs: 10000,
-  defaultMemoryMB: 64,
+let pool: PythonProcessPool;
+
+beforeAll(async () => {
+  pool = new PythonProcessPool(1);
+  await pool.init();
+});
+
+afterAll(async () => {
+  await pool.shutdown();
 });
 
 describe('旧版 Python 兼容性', () => {
   // ===== main 函数签名兼容 =====
 
   it('main(variables) 单参数字典写法', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     return {"name": variables["name"], "age": variables["age"]}`,
       variables: { name: 'FastGPT', age: 3 }
@@ -31,7 +37,7 @@ describe('旧版 Python 兼容性', () => {
   });
 
   it('main(a, b) 多参数展开写法', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(a, b):
     return {"sum": a + b}`,
       variables: { a: 10, b: 20 }
@@ -41,7 +47,7 @@ describe('旧版 Python 兼容性', () => {
   });
 
   it('main(a, b, c) 三参数展开', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(a, b, c):
     return {"result": a * b + c}`,
       variables: { a: 3, b: 4, c: 5 }
@@ -51,7 +57,7 @@ describe('旧版 Python 兼容性', () => {
   });
 
   it('main() 无参数写法', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {"ok": True}`,
       variables: {}
@@ -61,7 +67,7 @@ describe('旧版 Python 兼容性', () => {
   });
 
   it('旧版写法：main 外部直接访问全局变量', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `prefix = name + "_suffix"
 def main(name, age):
     return {"result": prefix, "name": name, "age": age}`,
@@ -74,7 +80,7 @@ def main(name, age):
   });
 
   it('旧版写法：无参 main 通过全局变量访问', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main():
     return {"name": name, "age": age}`,
       variables: { name: 'test', age: 25 }
@@ -84,7 +90,7 @@ def main(name, age):
   });
 
   it('main 带默认参数', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(name, greeting="Hello"):
     return {"msg": f"{greeting}, {name}!"}`,
       variables: { name: 'World' }
@@ -96,7 +102,7 @@ def main(name, age):
   // ===== 返回值类型兼容 =====
 
   it('返回列表（旧版常见）', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     return [variables["a"], variables["b"], variables["a"] + variables["b"]]`,
       variables: { a: 1, b: 2 }
@@ -106,7 +112,7 @@ def main(name, age):
   });
 
   it('返回嵌套字典', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     return {
         "user": {"name": variables["name"], "tags": ["admin"]},
@@ -120,7 +126,7 @@ def main(name, age):
   });
 
   it('返回布尔值和 None 转换', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     return {"active": True, "deleted": False, "extra": None}`,
       variables: {}
@@ -134,7 +140,7 @@ def main(name, age):
   // ===== print 行为 =====
 
   it('print 输出收集到 log（不影响返回值）', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     print("debug step 1")
     print("processing", variables["name"])
@@ -150,7 +156,7 @@ def main(name, age):
   // ===== 危险模块拦截 =====
 
   it('import os 被拦截', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import os
 def main():
     return {"cwd": os.getcwd()}`,
@@ -161,7 +167,7 @@ def main():
   });
 
   it('import subprocess 被拦截', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import subprocess
 def main():
     return {"out": subprocess.check_output(["ls"])}`,
@@ -172,7 +178,7 @@ def main():
   });
 
   it('from sys import path 被拦截', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `from sys import path
 def main():
     return {"path": path}`,
@@ -185,7 +191,7 @@ def main():
   // ===== 安全模块允许 =====
 
   it('import json 允许', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import json
 def main(variables):
     data = json.dumps(variables)
@@ -198,7 +204,7 @@ def main(variables):
   });
 
   it('import math 允许', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import math
 def main(variables):
     return {"sqrt": math.sqrt(variables["n"]), "pi": round(math.pi, 4)}`,
@@ -210,7 +216,7 @@ def main(variables):
   });
 
   it('import re 允许', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `import re
 def main(variables):
     matches = re.findall(r'\\d+', variables["text"])
@@ -224,7 +230,7 @@ def main(variables):
   // ===== 典型旧版代码模式 =====
 
   it('旧版典型写法：数据过滤', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     items = variables["items"]
     filtered = [x for x in items if x["score"] >= 60]
@@ -243,7 +249,7 @@ def main(variables):
   });
 
   it('旧版典型写法：字符串处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def main(variables):
     text = variables["text"]
     words = text.split()
@@ -261,7 +267,7 @@ def main(variables):
   });
 
   it('旧版典型写法：日期处理', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `from datetime import datetime, timedelta
 def main(variables):
     dt = datetime.strptime(variables["date"], "%Y-%m-%d")
@@ -275,7 +281,7 @@ def main(variables):
   });
 
   it('旧版典型写法：辅助函数 + main', async () => {
-    const result = await runner.execute({
+    const result = await pool.execute({
       code: `def calculate_tax(amount, rate):
     return round(amount * rate, 2)
 

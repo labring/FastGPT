@@ -4,15 +4,9 @@
  * 测试矩阵：输入代码 + 变量 → 预期输出
  * 覆盖真实使用场景，不关心内部实现
  */
-import { describe, it, expect, beforeAll } from 'vitest';
-import { JsRunner } from '../../src/runner/js-runner';
-import { PythonRunner } from '../../src/runner/python-runner';
-import type { RunnerConfig } from '../../src/types';
-
-const config: RunnerConfig = {
-  defaultTimeoutMs: 15000,
-  defaultMemoryMB: 64,
-};
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ProcessPool } from '../../src/pool/process-pool';
+import { PythonProcessPool } from '../../src/pool/python-process-pool';
 
 // ============================================================
 // 测试用例矩阵类型
@@ -31,10 +25,10 @@ interface TestCase {
   };
 }
 
-function runMatrix(getRunner: () => JsRunner | PythonRunner, cases: TestCase[]) {
+function runMatrix(getPool: () => ProcessPool | PythonProcessPool, cases: TestCase[]) {
   for (const tc of cases) {
     it(tc.name, async () => {
-      const result = await getRunner().execute({
+      const result = await getPool().execute({
         code: tc.code,
         variables: tc.variables || {},
         limits: tc.limits
@@ -65,12 +59,18 @@ function runMatrix(getRunner: () => JsRunner | PythonRunner, cases: TestCase[]) 
 // JS 功能测试矩阵
 // ============================================================
 describe('JS 功能测试', () => {
-  let runner: JsRunner;
-  beforeAll(() => { runner = new JsRunner(config); });
+  let pool: ProcessPool;
+  beforeAll(async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+  });
+  afterAll(async () => {
+    await pool.shutdown();
+  });
 
   // --- 基础运算 ---
   describe('基础运算', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '返回简单对象',
         code: `async function main() { return { hello: 'world' }; }`,
@@ -151,7 +151,7 @@ describe('JS 功能测试', () => {
 
   // --- 变量传递 ---
   describe('变量传递', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '接收字符串变量',
         code: `async function main(v) { return { greeting: 'Hello, ' + v.name + '!' }; }`,
@@ -190,7 +190,7 @@ describe('JS 功能测试', () => {
 
   // --- console.log 日志 ---
   describe('日志输出', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'console.log 被捕获',
         code: `async function main() { console.log('debug info'); return { done: true }; }`,
@@ -201,7 +201,7 @@ describe('JS 功能测试', () => {
 
   // --- 白名单模块 ---
   describe('白名单模块', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'require crypto-js',
         code: `async function main() {
@@ -233,7 +233,7 @@ describe('JS 功能测试', () => {
 
   // --- 错误处理 ---
   describe('错误处理', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '语法错误',
         code: `async function main() { return {{{ }`,
@@ -260,7 +260,7 @@ describe('JS 功能测试', () => {
 
   // --- SystemHelper ---
   describe('SystemHelper', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'delay 正常延迟',
         code: `async function main() {
@@ -284,7 +284,7 @@ describe('JS 功能测试', () => {
 
   // --- 网络请求 ---
   describe('网络请求', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'httpRequest GET',
         code: `async function main() {
@@ -315,12 +315,18 @@ describe('JS 功能测试', () => {
 // Python 功能测试矩阵
 // ============================================================
 describe('Python 功能测试', () => {
-  let runner: PythonRunner;
-  beforeAll(() => { runner = new PythonRunner(config); });
+  let pool: PythonProcessPool;
+  beforeAll(async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+  });
+  afterAll(async () => {
+    await pool.shutdown();
+  });
 
   // --- 基础运算 ---
   describe('基础运算', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '返回简单字典',
         code: `def main():\n    return {'hello': 'world'}`,
@@ -361,7 +367,7 @@ describe('Python 功能测试', () => {
 
   // --- 变量传递 ---
   describe('变量传递', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '接收字符串变量',
         code: `def main(v):\n    return {'greeting': f"Hello, {v['name']}!"}`,
@@ -385,7 +391,7 @@ describe('Python 功能测试', () => {
 
   // --- 安全模块使用 ---
   describe('安全模块', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'import json',
         code: `import json\ndef main():\n    data = json.dumps({'key': 'value'}, ensure_ascii=False)\n    parsed = json.loads(data)\n    return {'data': data, 'key': parsed['key']}`,
@@ -421,7 +427,7 @@ describe('Python 功能测试', () => {
 
   // --- system_helper ---
   describe('system_helper', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'str_to_base64 编码',
         code: `def main():\n    encoded = system_helper.str_to_base64('Hello, World!')\n    return {'encoded': encoded}`,
@@ -437,7 +443,7 @@ describe('Python 功能测试', () => {
 
   // --- 错误处理 ---
   describe('错误处理', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '语法错误',
         code: `def main():\n    return {{{`,
@@ -464,7 +470,7 @@ describe('Python 功能测试', () => {
 
   // --- 网络请求 ---
   describe('网络请求', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: 'http_request GET',
         code: `import json\ndef main():\n    res = http_request('https://httpbin.org/get?foo=bar')\n    data = json.loads(res['data'])\n    return {'status': res['status'], 'foo': data['args']['foo']}`,
@@ -480,7 +486,7 @@ describe('Python 功能测试', () => {
 
   // --- 复杂场景 ---
   describe('复杂场景', () => {
-    runMatrix(() => runner, [
+    runMatrix(() => pool, [
       {
         name: '数据处理管道：解析CSV → 过滤 → 聚合',
         code: `def main(v):

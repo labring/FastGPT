@@ -52,6 +52,39 @@ if (typeof (globalThis as any).Bun !== 'undefined') {
 (globalThis as any).XMLHttpRequest = undefined;
 (globalThis as any).WebSocket = undefined;
 
+// ===== process 对象加固 =====
+if (typeof process !== 'undefined') {
+  // 删除危险方法
+  const dangerousMethods = [
+    'binding', 'dlopen', '_linkedBinding', 'kill',
+    'chdir', '_debugProcess', '_debugEnd', '_startProfilerIdleNotifier',
+    '_stopProfilerIdleNotifier', 'reallyExit', 'abort',
+    'umask', 'setuid', 'setgid', 'seteuid', 'setegid',
+    'setgroups', 'initgroups'
+  ];
+  for (const method of dangerousMethods) {
+    try {
+      Object.defineProperty(process, method, {
+        value: undefined,
+        writable: false,
+        configurable: false
+      });
+    } catch {}
+  }
+
+  // 清理 env 敏感变量并冻结
+  const sensitivePatterns = [
+    /secret/i, /password/i, /token/i, /key/i, /credential/i,
+    /auth/i, /private/i, /aws/i, /api_key/i, /apikey/i
+  ];
+  for (const key of Object.keys(process.env)) {
+    if (sensitivePatterns.some(p => p.test(key))) {
+      delete process.env[key];
+    }
+  }
+  Object.freeze(process.env);
+}
+
 // ===== 网络安全 =====
 function ipToLong(ip: string): number {
   const parts = ip.split('.').map(Number);
