@@ -45,9 +45,9 @@ export const getSecretValue = ({
     }
 
     if (key === HeaderSecretTypeEnum.Bearer) {
-      acc['Authorization'] = `Bearer ${actualValue}`;
+      acc['Authorization'] = actualValue.startsWith('Bearer ') ? actualValue : `Bearer ${actualValue}`;
     } else if (key === HeaderSecretTypeEnum.Basic) {
-      acc['Authorization'] = `Basic ${actualValue}`;
+      acc['Authorization'] = actualValue.startsWith('Basic ') ? actualValue : `Basic ${actualValue}`;
     } else {
       acc[key] = actualValue;
     }

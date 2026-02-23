@@ -148,6 +148,28 @@ describe('getSecretValue', () => {
     expect(result).toEqual({ Authorization: 'Bearer my-token' });
   });
 
+  it('should not duplicate Bearer prefix when value already contains it', () => {
+    const encrypted = encryptSecret('Bearer my-token');
+    const result = getSecretValue({
+      storeSecret: {
+        [HeaderSecretTypeEnum.Bearer]: { value: '', secret: encrypted }
+      }
+    });
+
+    expect(result).toEqual({ Authorization: 'Bearer my-token' });
+  });
+
+  it('should not duplicate Basic prefix when value already contains it', () => {
+    const encrypted = encryptSecret('Basic dXNlcjpwYXNz');
+    const result = getSecretValue({
+      storeSecret: {
+        [HeaderSecretTypeEnum.Basic]: { value: '', secret: encrypted }
+      }
+    });
+
+    expect(result).toEqual({ Authorization: 'Basic dXNlcjpwYXNz' });
+  });
+
   it('should convert Basic type to Authorization header', () => {
     const encrypted = encryptSecret('dXNlcjpwYXNz');
     const result = getSecretValue({
