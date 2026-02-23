@@ -314,13 +314,31 @@ your-new-package
 ## 测试
 
 ```bash
-# 全部测试（311 cases）
+# 全部测试（318 cases）
 bun run test
 
 # 单个文件
 bunx vitest run test/security/security.test.ts
 
+# 带详细输出
+bunx vitest run --reporter=verbose
+
 # 压测（需先启动服务）
 bash test/benchmark/bench-sandbox.sh
 bash test/benchmark/bench-sandbox-python.sh
 ```
+
+测试配置：串行执行（`fileParallelism: false`），池大小 1（避免资源竞争）。
+
+测试覆盖维度：
+
+| 分类 | 文件数 | 用例数 | 说明 |
+|------|--------|--------|------|
+| 单元测试 | 4 | 43 | 进程池生命周期/恢复/健康检查、Semaphore 并发控制 |
+| 集成测试 | 2 | 53 | HTTP API 路由、JS/Python 功能验证 |
+| 安全测试 | 1 | 102 | 模块拦截、逃逸攻击、SSRF 防护、注入攻击 |
+| 边界测试 | 1 | 58 | 空输入、超时、大数据、类型边界 |
+| 兼容性测试 | 2 | 39 | 旧版 JS/Python 代码格式兼容 |
+| 示例测试 | 1 | 31 | 常用场景和第三方包 |
+
+详细测试报告见 [`test/README.md`](test/README.md)。
