@@ -8,7 +8,10 @@ import {
   jsonSchema2NodeOutput,
   getNodeInputTypeFromSchemaInputType,
   getSchemaValueType,
-  str2OpenApiSchema
+  str2OpenApiSchema,
+  resolveSchemaType,
+  JSONSchemaInputTypeSchema,
+  JsonSchemaPropertiesItemSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -685,5 +688,145 @@ paths:
     const result = await str2OpenApiSchema(openApiJson);
 
     expect(result.pathData[0].params).toHaveLength(2);
+  });
+});
+
+describe('JSON Schema type validation (issue #6451)', () => {
+  describe('resolveSchemaType', () => {
+    it('should pass through standard types unchanged', () => {
+      expect(resolveSchemaType('string')).toBe('string');
+      expect(resolveSchemaType('number')).toBe('number');
+      expect(resolveSchemaType('integer')).toBe('integer');
+      expect(resolveSchemaType('boolean')).toBe('boolean');
+      expect(resolveSchemaType('array')).toBe('array');
+      expect(resolveSchemaType('object')).toBe('object');
+    });
+
+    it('should resolve "null" to "string"', () => {
+      expect(resolveSchemaType('null')).toBe('string');
+    });
+
+    it('should resolve array type ["string", "null"] to "string"', () => {
+      expect(resolveSchemaType(['string', 'null'])).toBe('string');
+    });
+
+    it('should resolve array type ["null", "integer"] to "integer"', () => {
+      expect(resolveSchemaType(['null', 'integer'])).toBe('integer');
+    });
+
+    it('should resolve array type ["null"] to "string" (fallback)', () => {
+      expect(resolveSchemaType(['null'])).toBe('string');
+    });
+
+    it('should pick the first non-null type from array', () => {
+      expect(resolveSchemaType(['number', 'string'])).toBe('number');
+      expect(resolveSchemaType(['boolean', 'null'])).toBe('boolean');
+    });
+  });
+
+  describe('JSONSchemaInputTypeSchema accepts MCP tool schemas', () => {
+    it('should accept "null" as a property type', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          optionalField: { type: 'null', description: 'Always null' }
+        }
+      };
+      const result = JSONSchemaInputTypeSchema.safeParse(schema);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept array type like ["string", "null"]', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          nullableString: { type: ['string', 'null'], description: 'Nullable string' }
+        }
+      };
+      const result = JSONSchemaInputTypeSchema.safeParse(schema);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept array items with union type', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          tags: {
+            type: 'array',
+            items: { type: ['string', 'null'] },
+            description: 'Nullable string array'
+          }
+        }
+      };
+      const result = JSONSchemaInputTypeSchema.safeParse(schema);
+      expect(result.success).toBe(true);
+    });
+
+    it('should still reject truly invalid types', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          bad: { type: 'foobar' }
+        }
+      };
+      const result = JSONSchemaInputTypeSchema.safeParse(schema);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('getNodeInputTypeFromSchemaInputType with union types', () => {
+    it('should handle ["string", "null"] as string', () => {
+      const result = getNodeInputTypeFromSchemaInputType({
+        type: ['string', 'null'] as any
+      });
+      expect(result).toBe(WorkflowIOValueTypeEnum.string);
+    });
+
+    it('should handle ["integer", "null"] as number', () => {
+      const result = getNodeInputTypeFromSchemaInputType({
+        type: ['integer', 'null'] as any
+      });
+      expect(result).toBe(WorkflowIOValueTypeEnum.number);
+    });
+
+    it('should handle array with union item type', () => {
+      const result = getNodeInputTypeFromSchemaInputType({
+        type: 'array',
+        arrayItems: { type: ['string', 'null'] as any }
+      });
+      expect(result).toBe(WorkflowIOValueTypeEnum.arrayString);
+    });
+  });
+
+  describe('jsonSchema2NodeInput with nullable MCP properties', () => {
+    it('should correctly parse MCP schema with nullable types', () => {
+      const jsonSchema = {
+        type: 'object' as const,
+        properties: {
+          query: { type: 'string' as const, description: 'Search query' },
+          limit: { type: ['integer', 'null'] as any, description: 'Max results' },
+          tags: {
+            type: 'array' as const,
+            items: { type: ['string', 'null'] as any },
+            description: 'Filter tags'
+          }
+        },
+        required: ['query']
+      };
+
+      const result = jsonSchema2NodeInput({ jsonSchema, isToolParams: true });
+
+      expect(result).toHaveLength(3);
+
+      const queryInput = result.find((r) => r.key === 'query');
+      expect(queryInput?.valueType).toBe(WorkflowIOValueTypeEnum.string);
+      expect(queryInput?.required).toBe(true);
+
+      const limitInput = result.find((r) => r.key === 'limit');
+      expect(limitInput?.valueType).toBe(WorkflowIOValueTypeEnum.number);
+
+      const tagsInput = result.find((r) => r.key === 'tags');
+      expect(tagsInput?.valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
+    });
   });
 });

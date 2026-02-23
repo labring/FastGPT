@@ -14,42 +14,66 @@ const SchemaInputValueTypeSchema = z.enum([
   'integer',
   'boolean',
   'array',
-  'object'
+  'object',
+  'null'
 ]);
+
+// JSON Schema allows "type" to be a single string or an array of strings,
+// e.g. "type": "string" or "type": ["string", "null"]
+const JsonSchemaTypeSchema = z.union([
+  SchemaInputValueTypeSchema,
+  z.array(SchemaInputValueTypeSchema)
+]);
+type JsonSchemaType = z.infer<typeof JsonSchemaTypeSchema>;
+
+/**
+ * Resolve a JSON Schema type value (single string or array) to a single
+ * SchemaInputValueType usable by the rest of the codebase.
+ * When the type is an array it picks the first non-"null" entry, falling back
+ * to "string" when only "null" is present.
+ */
+export const resolveSchemaType = (type: JsonSchemaType): SchemaInputValueType => {
+  if (typeof type === 'string') return type === 'null' ? 'string' : type;
+  const nonNull = type.filter((t) => t !== 'null');
+  return (nonNull[0] as SchemaInputValueType) ?? 'string';
+};
+
 type SchemaInputValueType = z.infer<typeof SchemaInputValueTypeSchema>;
 
 export const JsonSchemaPropertiesItemSchema = z.object({
   description: z.string().optional(),
   'x-tool-description': z.string().optional(),
-  type: SchemaInputValueTypeSchema,
+  type: JsonSchemaTypeSchema,
   enum: z.array(z.string()).optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
-  items: z.object({ type: SchemaInputValueTypeSchema }).optional()
+  items: z.object({ type: JsonSchemaTypeSchema }).optional()
 });
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
 export const JSONSchemaInputTypeSchema = z.object({
-  type: SchemaInputValueTypeSchema,
+  type: JsonSchemaTypeSchema,
   properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
   required: z.array(z.string()).optional()
 });
 export type JSONSchemaInputType = z.infer<typeof JSONSchemaInputTypeSchema>;
 
 export const JSONSchemaOutputTypeSchema = z.object({
-  type: SchemaInputValueTypeSchema,
+  type: JsonSchemaTypeSchema,
   properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
   required: z.array(z.string()).optional()
 });
 export type JSONSchemaOutputType = z.infer<typeof JSONSchemaOutputTypeSchema>;
 
 export const getNodeInputTypeFromSchemaInputType = ({
-  type,
+  type: rawType,
   arrayItems
 }: {
-  type: SchemaInputValueType;
-  arrayItems?: { type: SchemaInputValueType };
+  type: JsonSchemaType;
+  arrayItems?: { type: JsonSchemaType };
 }) => {
+  const type = resolveSchemaType(rawType);
+
   if (type === 'string') return WorkflowIOValueTypeEnum.string;
   if (type === 'number') return WorkflowIOValueTypeEnum.number;
   if (type === 'integer') return WorkflowIOValueTypeEnum.number;
@@ -58,7 +82,7 @@ export const getNodeInputTypeFromSchemaInputType = ({
 
   if (!arrayItems) return WorkflowIOValueTypeEnum.arrayAny;
 
-  const itemType = arrayItems.type;
+  const itemType = resolveSchemaType(arrayItems.type);
   if (itemType === 'string') return WorkflowIOValueTypeEnum.arrayString;
   if (itemType === 'number') return WorkflowIOValueTypeEnum.arrayNumber;
   if (itemType === 'integer') return WorkflowIOValueTypeEnum.arrayNumber;
@@ -68,11 +92,12 @@ export const getNodeInputTypeFromSchemaInputType = ({
   return WorkflowIOValueTypeEnum.arrayAny;
 };
 const getNodeInputRenderTypeFromSchemaInputType = ({
-  type,
+  type: rawType,
   enum: enumList,
   minimum,
   maximum
 }: JsonSchemaPropertiesItemType) => {
+  const type = resolveSchemaType(rawType);
   if (enumList && enumList.length > 0) {
     return {
       value: enumList[0],
