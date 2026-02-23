@@ -10,6 +10,7 @@ Python Worker 长驻进程 - 循环接收任务执行
 """
 import json
 import sys
+import copy as _copy
 import hashlib as _hashlib
 import hmac as _hmac
 import base64 as _base64
@@ -24,6 +25,7 @@ import signal
 import traceback as _tb
 import sysconfig as _sysconfig
 import builtins as _builtins
+import types as _types
 
 # ===== 网络安全 =====
 _BLOCKED_CIDRS = [
@@ -245,6 +247,46 @@ def _timeout_handler(signum, frame):
     raise TimeoutError("Script execution timed out")
 
 
+# ===== 模块状态保护 =====
+# 用户代码可能污染共享模块（如 json.dumps = lambda x: "hacked"），
+# 需要在每次执行前快照、执行后恢复。
+_PROTECTED_MODULES = [json, _math, _time]
+
+
+def _snapshot_modules():
+    """保存受保护模块的属性快照"""
+    snapshots = []
+    for mod in _PROTECTED_MODULES:
+        attrs = {}
+        for name in dir(mod):
+            if not name.startswith('__'):
+                try:
+                    attrs[name] = getattr(mod, name)
+                except Exception:
+                    pass
+        snapshots.append((mod, attrs))
+    return snapshots
+
+
+def _restore_modules(snapshots):
+    """恢复受保护模块的属性"""
+    for mod, attrs in snapshots:
+        # 删除用户可能添加的新属性
+        current_names = set(n for n in dir(mod) if not n.startswith('__'))
+        original_names = set(attrs.keys())
+        for name in current_names - original_names:
+            try:
+                delattr(mod, name)
+            except Exception:
+                pass
+        # 恢复原始属性
+        for name, val in attrs.items():
+            try:
+                setattr(mod, name, val)
+            except Exception:
+                pass
+
+
 # ===== 主循环 =====
 def main_loop():
     global _blocked_modules, _request_count, _logs
@@ -275,11 +317,17 @@ def main_loop():
                 write_line({"success": False, "message": "Expected init message"})
             continue
 
+        # ping 健康检查：立即回复 pong
+        if msg.get('type') == 'ping':
+            write_line({"type": "pong"})
+            continue
+
         # 执行任务
         code = msg.get('code', '')
         variables = msg.get('variables', {})
         timeout_ms = msg.get('timeoutMs', 10000)
-        timeout_s = max(1, timeout_ms // 1000)
+        # 修复精度：向上取整而非截断，最小 1 秒
+        timeout_s = max(1, -(-timeout_ms // 1000))  # ceil division
 
         _request_count = 0
         _logs = []
@@ -289,6 +337,9 @@ def main_loop():
 
         # 每次执行前强制恢复 __import__，防止上次用户代码篡改
         _builtins.__import__ = _safe_import
+
+        # 保存模块状态快照
+        _mod_snapshots = _snapshot_modules()
 
         try:
             # 设置超时
@@ -367,6 +418,8 @@ def main_loop():
         finally:
             signal.alarm(0)
             _builtins.print = _orig_print
+            # 恢复模块状态，防止用户代码污染影响后续请求
+            _restore_modules(_mod_snapshots)
 
 
 if __name__ == '__main__':
