@@ -19,8 +19,24 @@ import * as net from 'net';
 const _OriginalFunction = Function;
 
 // ===== 安全 shim =====
-Object.getPrototypeOf = () => Object.create(null);
-Reflect.getPrototypeOf = () => Object.create(null);
+// 只拦截对 Function 相关原型的访问，防止通过原型链拿到原始构造器
+// 不再全局覆盖 Object.getPrototypeOf，避免破坏 lodash 等合法库
+const _origGetProto = Object.getPrototypeOf;
+const _origReflectGetProto = Reflect.getPrototypeOf;
+const _blockedProtos = new Set([
+  _OriginalFunction.prototype,
+]);
+
+Object.getPrototypeOf = function (obj: any) {
+  const proto = _origGetProto(obj);
+  if (_blockedProtos.has(proto)) return Object.create(null);
+  return proto;
+};
+Reflect.getPrototypeOf = function (obj: any) {
+  const proto = _origReflectGetProto(obj);
+  if (_blockedProtos.has(proto)) return Object.create(null);
+  return proto;
+};
 Object.setPrototypeOf = () => false as any;
 Reflect.setPrototypeOf = () => false;
 if ((Error as any).prepareStackTrace) delete (Error as any).prepareStackTrace;
@@ -36,6 +52,20 @@ Object.defineProperty(_OriginalFunction.prototype, 'constructor', {
   configurable: false
 });
 (globalThis as any).Function = _SafeFunction;
+
+// 锁定 AsyncFunction、GeneratorFunction、AsyncGeneratorFunction 构造器
+// 防止通过 (async function(){}).constructor("...") 绕过沙盒
+const _AsyncFunction = (async function () {}).constructor;
+const _GeneratorFunction = (function* () {}).constructor;
+const _AsyncGeneratorFunction = (async function* () {}).constructor;
+
+for (const FnCtor of [_AsyncFunction, _GeneratorFunction, _AsyncGeneratorFunction]) {
+  Object.defineProperty(FnCtor.prototype, 'constructor', {
+    value: _SafeFunction,
+    writable: false,
+    configurable: false
+  });
+}
 
 if (typeof (globalThis as any).Bun !== 'undefined') {
   const dangerous = [
@@ -254,6 +284,12 @@ rl.on('line', async (line: string) => {
     } else {
       writeLine({ success: false, message: 'Expected init message' });
     }
+    return;
+  }
+
+  // ping 健康检查：立即回复 pong
+  if (msg.type === 'ping') {
+    writeLine({ type: 'pong' });
     return;
   }
 

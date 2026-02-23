@@ -175,6 +175,125 @@ describe('ProcessPool 并发与排队', () => {
 });
 
 // ============================================================
+// JS ProcessPool - Worker Ping/Pong 健康检查
+// ============================================================
+describe('ProcessPool Worker 健康检查 (ping/pong)', () => {
+  let pool: ProcessPool;
+
+  afterEach(async () => {
+    try { await pool?.shutdown(); } catch {}
+  });
+
+  it('worker 正常响应 ping 后仍可执行任务', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+
+    // 先执行一个任务确认正常
+    const r1 = await pool.execute({
+      code: `async function main() { return { step: 1 }; }`,
+      variables: {}
+    });
+    expect(r1.success).toBe(true);
+    expect(r1.data?.codeReturn.step).toBe(1);
+
+    // 触发健康检查（通过 triggerHealthCheck）
+    (pool as any).pingWorker((pool as any).idleWorkers[0]);
+
+    // 等 ping/pong 完成
+    await new Promise(r => setTimeout(r, 500));
+
+    // 再执行一个任务确认 worker 没被误杀
+    const r2 = await pool.execute({
+      code: `async function main() { return { step: 2 }; }`,
+      variables: {}
+    });
+    expect(r2.success).toBe(true);
+    expect(r2.data?.codeReturn.step).toBe(2);
+    expect(pool.stats.total).toBe(1);
+  });
+
+  it('连续多次 ping 不影响 worker 状态', async () => {
+    pool = new ProcessPool(2);
+    await pool.init();
+
+    // 对所有 idle worker 连续 ping 3 次
+    for (let i = 0; i < 3; i++) {
+      for (const w of [...(pool as any).idleWorkers]) {
+        (pool as any).pingWorker(w);
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    // 所有 worker 应该还在
+    expect(pool.stats.total).toBe(2);
+    expect(pool.stats.idle).toBe(2);
+
+    // 执行任务确认功能正常
+    const result = await pool.execute({
+      code: `async function main() { return { alive: true }; }`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================
+// Python PythonProcessPool - Worker Ping/Pong 健康检查
+// ============================================================
+describe('PythonProcessPool Worker 健康检查 (ping/pong)', () => {
+  let pool: PythonProcessPool;
+
+  afterEach(async () => {
+    try { await pool?.shutdown(); } catch {}
+  });
+
+  it('worker 正常响应 ping 后仍可执行任务', async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+
+    const r1 = await pool.execute({
+      code: `def main():\n    return {'step': 1}`,
+      variables: {}
+    });
+    expect(r1.success).toBe(true);
+    expect(r1.data?.codeReturn.step).toBe(1);
+
+    // 触发 ping
+    (pool as any).pingWorker((pool as any).idleWorkers[0]);
+    await new Promise(r => setTimeout(r, 500));
+
+    const r2 = await pool.execute({
+      code: `def main():\n    return {'step': 2}`,
+      variables: {}
+    });
+    expect(r2.success).toBe(true);
+    expect(r2.data?.codeReturn.step).toBe(2);
+    expect(pool.stats.total).toBe(1);
+  });
+
+  it('连续多次 ping 不影响 worker 状态', async () => {
+    pool = new PythonProcessPool(2);
+    await pool.init();
+
+    for (let i = 0; i < 3; i++) {
+      for (const w of [...(pool as any).idleWorkers]) {
+        (pool as any).pingWorker(w);
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    expect(pool.stats.total).toBe(2);
+    expect(pool.stats.idle).toBe(2);
+
+    const result = await pool.execute({
+      code: `def main():\n    return {'alive': True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================
 // Python PythonProcessPool
 // ============================================================
 describe('PythonProcessPool 生命周期', () => {

@@ -29,6 +29,9 @@ export class PythonProcessPool {
   private nextId = 0;
   private poolSize: number;
   private ready = false;
+  private healthCheckTimer?: ReturnType<typeof setInterval>;
+  private static readonly HEALTH_CHECK_INTERVAL = 30_000;
+  private static readonly HEALTH_CHECK_TIMEOUT = 5_000;
 
   constructor(poolSize?: number) {
     this.poolSize = poolSize ?? config.poolSize;
@@ -42,6 +45,7 @@ export class PythonProcessPool {
     }
     await Promise.all(promises);
     this.ready = true;
+    this.startHealthCheck();
     console.log(`PythonProcessPool: ${this.poolSize} workers preheated`);
   }
 
@@ -179,6 +183,7 @@ export class PythonProcessPool {
         settled = true;
         clearTimeout(timer);
         worker.rl.removeListener('line', onLine);
+        worker.proc.removeListener('exit', onExit);
         resolve(result);
       };
 
@@ -188,6 +193,14 @@ export class PythonProcessPool {
         } catch {
           settle({ success: false, message: 'Invalid worker response' });
         }
+      };
+
+      // worker 崩溃时提前 settle
+      const onExit = (code: number | null, signal: string | null) => {
+        settle({
+          success: false,
+          message: `Python worker crashed during execution (exit code: ${code}, signal: ${signal})`
+        });
       };
 
       timer = setTimeout(() => {
@@ -203,6 +216,7 @@ export class PythonProcessPool {
       }, timeoutMs + 2000);
 
       worker.rl.once('line', onLine);
+      worker.proc.once('exit', onExit);
 
       try {
         worker.proc.stdin!.write(JSON.stringify(task) + '\n');
@@ -212,8 +226,69 @@ export class PythonProcessPool {
     });
   }
 
+  /** 定期健康检查：检测僵死的 idle worker */
+  private startHealthCheck(): void {
+    this.healthCheckTimer = setInterval(() => {
+      if (!this.ready) return;
+      const idleCopy = [...this.idleWorkers];
+      for (const worker of idleCopy) {
+        this.pingWorker(worker);
+      }
+    }, PythonProcessPool.HEALTH_CHECK_INTERVAL);
+    if (this.healthCheckTimer.unref) this.healthCheckTimer.unref();
+  }
+
+  private pingWorker(worker: PoolWorker): void {
+    if (worker.busy || !this.idleWorkers.includes(worker)) return;
+
+    const replaceWorker = (reason: string) => {
+      console.warn(`PythonProcessPool: worker ${worker.id} ${reason}, replacing`);
+      this.removeWorker(worker);
+      worker.proc.kill('SIGKILL');
+      if (this.ready) {
+        this.spawnWorker().catch(err => {
+          console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
+        });
+      }
+    };
+
+    const timer = setTimeout(() => {
+      worker.rl.removeListener('line', onPong);
+      replaceWorker('health check timeout (no pong)');
+    }, PythonProcessPool.HEALTH_CHECK_TIMEOUT);
+
+    const onPong = (line: string) => {
+      clearTimeout(timer);
+      try {
+        const msg = JSON.parse(line);
+        if (msg.type !== 'pong') {
+          replaceWorker('health check invalid response');
+        }
+      } catch {
+        replaceWorker('health check parse error');
+      }
+    };
+
+    try {
+      if (!worker.proc.stdin!.writable) {
+        clearTimeout(timer);
+        replaceWorker('stdin not writable');
+        return;
+      }
+      worker.rl.once('line', onPong);
+      worker.proc.stdin!.write(JSON.stringify({ type: 'ping' }) + '\n');
+    } catch {
+      clearTimeout(timer);
+      replaceWorker('health check write error');
+    }
+  }
+
   async shutdown(): Promise<void> {
     this.ready = false;
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = undefined;
+    }
     for (const worker of this.workers) {
       worker.proc.kill('SIGTERM');
     }
