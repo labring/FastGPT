@@ -13,6 +13,7 @@ export default defineConfig({
     coverage: {
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
+      reportsDirectory: './coverage',
       reportOnFailure: true,
       all: false, // 只包含被测试实际覆盖的文件，不包含空目录
       include: ['projects/**/*.ts', 'packages/**/*.ts'],
