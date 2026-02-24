@@ -17,6 +17,7 @@ export class MCPClient {
   private client: Client;
   private url: string;
   private headers: Record<string, any> = {};
+  private connectionPromise: Promise<Client> | null = null;
 
   constructor(config: { url: string; headers: Record<string, any> }) {
     this.url = config.url;
@@ -28,6 +29,28 @@ export class MCPClient {
   }
 
   private async getConnection(): Promise<Client> {
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = this.doConnect().catch((error) => {
+      // 连接失败时清除缓存，允许下次重试
+      this.connectionPromise = null;
+      throw error;
+    });
+
+    this.client.onerror = (error) => {
+      logger.error('MCP client connection error', { url: this.url, error });
+      this.connectionPromise = null;
+    };
+    this.client.onclose = () => {
+      this.connectionPromise = null;
+    };
+
+    return this.connectionPromise;
+  }
+
+  private async doConnect(): Promise<Client> {
     try {
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: {
@@ -37,6 +60,7 @@ export class MCPClient {
       await this.client.connect(transport);
       return this.client;
     } catch (error) {
+      logger.debug('StreamableHTTP connect failed, falling back to SSE', { url: this.url, error });
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
@@ -72,6 +96,7 @@ export class MCPClient {
 
   // 内部方法：关闭连接
   async closeConnection() {
+    this.connectionPromise = null;
     try {
       await retryFn(() => this.client.close(), 3);
       logger.debug('MCP client connection closed', { url: this.url });
