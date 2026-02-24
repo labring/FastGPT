@@ -9,6 +9,7 @@ import {
   toolValueTypeList,
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
+import { resolveSchemaType } from '@fastgpt/global/core/app/jsonschema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
@@ -176,6 +177,7 @@ const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {
 
     properties[item.key] = {
       ...jsonSchema,
+      type: resolveSchemaType(jsonSchema.type),
       description: item.desc,
       ...(item.enum ? { enum: item.enum.split('\n').filter(Boolean) } : {})
     };

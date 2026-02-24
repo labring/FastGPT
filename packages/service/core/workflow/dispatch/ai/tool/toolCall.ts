@@ -15,6 +15,7 @@ import { parseJsonArgs } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import { resolveSchemaType } from '@fastgpt/global/core/app/jsonschema';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
@@ -89,6 +90,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
       properties[item.key] = {
         ...jsonSchema,
+        type: resolveSchemaType(jsonSchema.type),
         description: item.toolDescription || '',
         enum: item.enum?.split('\n').filter(Boolean) || undefined
       };
