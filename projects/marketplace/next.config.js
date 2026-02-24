@@ -12,8 +12,6 @@ const nextConfig = {
   compress: true,
   // 禁用 source map（可选，根据需要）
   productionBrowserSourceMaps: false,
-  // 优化编译性能
-  swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
   async headers() {
     return [
       {
@@ -118,18 +116,16 @@ const nextConfig = {
   },
   // 需要转译的包
   transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
+  serverExternalPackages: [
+    'mongoose',
+    'pg',
+    'bullmq',
+    '@zilliz/milvus2-sdk-node',
+    'tiktoken',
+    '@opentelemetry/api-logs'
+  ],
   experimental: {
-    // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
-    serverComponentsExternalPackages: [
-      'mongoose',
-      'pg',
-      'bullmq',
-      '@zilliz/milvus2-sdk-node',
-      'tiktoken',
-      '@opentelemetry/api-logs'
-    ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    instrumentationHook: true,
     workerThreads: true
   }
 };
