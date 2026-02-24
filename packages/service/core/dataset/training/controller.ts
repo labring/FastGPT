@@ -38,7 +38,9 @@ export async function pushDataListToTrainingQueue({
   mode = TrainingModeEnum.chunk,
   indexSize,
   session
-}: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+}: Omit<PushDataToTrainingQueueProps, 'session'> & {
+  session?: ClientSession;
+}): Promise<PushDatasetDataResponse> {
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));
@@ -180,7 +182,7 @@ export async function pushDataListToTrainingQueue({
 
   // 小数据量单事务处理
   if (session) {
-    const insertedCount = await insertDataIterative(data, session as ClientSession);
+    const insertedCount = await insertDataIterative(data, session);
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   } else {
