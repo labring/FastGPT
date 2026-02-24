@@ -1,4 +1,5 @@
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
+import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 export type UnitType = 'day' | 'month';
 

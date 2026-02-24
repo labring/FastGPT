@@ -180,7 +180,7 @@ export async function pushDataListToTrainingQueue({
 
   // 小数据量单事务处理
   if (session) {
-    const insertedCount = await insertDataIterative(data, session);
+    const insertedCount = await insertDataIterative(data, session as ClientSession);
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   } else {

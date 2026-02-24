@@ -40,7 +40,7 @@ export type DatasetUpdateBody = {
 
 /* ================= collection ===================== */
 // Input + store params
-type DatasetCollectionStoreDataType = ChunkSettingsType & {
+export type DatasetCollectionStoreDataType = ChunkSettingsType & {
   parentId?: string;
   metadata?: Record<string, any>;
 

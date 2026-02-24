@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { AppSchema } from '../../core/app/type';
 import type { PublishChannelEnum } from './constant';
 import { RequireOnlyOne } from '../../common/type/utils';
 
@@ -98,7 +97,7 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 };
 
 // Edit the Outlink
-export type OutLinkEditType<T = undefined> = {
+export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
   _id?: string;
   name: string;
   showCite?: OutLinkSchema<T>['showCite'];

@@ -1,4 +1,6 @@
 declare global {
+  var countTrackQueue: Map<string, { event: string; count: number; data: Record<string, any> }>;
+
   namespace NodeJS {
     interface ProcessEnv {
       LOG_DEPTH: string;
@@ -37,10 +39,6 @@ declare global {
       PASSWORD_EXPIRED_MONTH?: string;
       MAX_LOGIN_SESSION?: string;
       CHAT_MAX_QPM?: string;
-
-      // 安全配置
-      // 密码登录锁定时间
-      PASSWORD_LOGIN_LOCK_SECONDS?: string;
 
       CHAT_LOG_URL?: string;
       CHAT_LOG_INTERVAL?: string;

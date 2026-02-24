@@ -1,4 +1,3 @@
-import type { UpdateAppCollaboratorBody } from 'core/app/collaborator';
 import type { RequireOnlyOne } from '../../common/type/utils';
 import { RequireAtLeastOne } from '../../common/type/utils';
 import type { Permission } from './controller';

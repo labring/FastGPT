@@ -9,7 +9,7 @@ import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
-type CommonRenderProps = {
+export type CommonRenderProps = {
   placeholder?: string;
   value: any;
   onChange?: (value: any) => void;
@@ -20,7 +20,7 @@ type CommonRenderProps = {
   customRender?: (props: any) => React.ReactNode;
 } & Omit<BoxProps, 'onChange' | 'list' | 'value'>;
 
-type SpecificProps = {
+export type SpecificProps = {
   inputType: InputTypeEnum;
 
   // input & textarea

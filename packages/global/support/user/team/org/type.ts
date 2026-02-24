@@ -2,7 +2,7 @@ import type { TeamPermission } from '../../../permission/user/controller';
 import { ResourcePermissionType } from '../type';
 import { SourceMemberType } from '../../type';
 
-type OrgSchemaType = {
+export type OrgSchemaType = {
   _id: string;
   teamId: string;
   pathId: string;
@@ -13,7 +13,7 @@ type OrgSchemaType = {
   updateTime: Date;
 };
 
-type OrgMemberSchemaType = {
+export type OrgMemberSchemaType = {
   _id: string;
   teamId: string;
   orgId: string;

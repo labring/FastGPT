@@ -3,8 +3,8 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
   StepTitleItemType,
-  type AIChatItemValueItemType,
-  type ToolModuleResponseItemType
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
@@ -12,7 +12,6 @@ import type {
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
-import type { GeneratedSkillDataType } from '@fastgpt/global/core/chat/helperBot/generatedSkill/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 export type generatingMessageProps = {
@@ -37,7 +36,7 @@ export type generatingMessageProps = {
   // HelperBot
   collectionForm?: UserInputInteractive;
   formData?: TopAgentFormDataType;
-  generatedSkill?: GeneratedSkillDataType;
+  generatedSkill?: Record<string, any>;
 };
 
 export type StartChatFnProps = {

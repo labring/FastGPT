@@ -12,7 +12,7 @@ export type PaginationResponse<T = {}> = {
   list: T[];
 };
 
-type LinkedPaginationProps<T = {}, A = any> = T & {
+export type LinkedPaginationProps<T = {}, A = any> = T & {
   pageSize: number;
   anchor?: A;
   initialId?: string;
@@ -20,7 +20,7 @@ type LinkedPaginationProps<T = {}, A = any> = T & {
   prevId?: string;
 };
 
-type LinkedListResponse<T = {}, A = any> = {
+export type LinkedListResponse<T = {}, A = any> = {
   list: Array<T & { id: string; anchor?: A }>;
   hasMorePrev: boolean;
   hasMoreNext: boolean;

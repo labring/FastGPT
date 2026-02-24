@@ -20,9 +20,9 @@ import type {
   FeishuServer,
   YuqueServer
 } from './apiDataset/type';
-import type { SourceMemberType } from 'support/user/type';
+import type { SourceMemberType } from '../../support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
-import type { ParentIdType } from 'common/parentFolder/type';
+import type { ParentIdType } from '../../common/parentFolder/type';
 
 export type ChunkSettingsType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;

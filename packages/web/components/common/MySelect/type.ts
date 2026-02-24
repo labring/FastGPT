@@ -1,6 +1,6 @@
 import type { ButtonProps } from '@chakra-ui/react';
 
-type ListItemType = {
+export type ListItemType = {
   alias?: string;
   label: string | React.ReactNode;
   value: any;

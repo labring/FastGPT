@@ -1,5 +1,3 @@
-import { ReadFileByBufferParams } from '../../common/file/read/type';
-
 export type ReadRawTextProps<T> = {
   extension: string;
   buffer: T;

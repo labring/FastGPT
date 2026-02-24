@@ -1,4 +1,4 @@
-import type { SourceMemberType } from '../user/type';
+import type { SourceMemberType } from '../type';
 import type { AuditEventEnum } from './constants';
 
 export type TeamAuditSchemaType = {

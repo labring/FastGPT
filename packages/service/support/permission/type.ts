@@ -13,7 +13,7 @@ export type ReqHeaderAuthType = {
   authorization?: string;
 };
 
-type authModeType = {
+export type authModeType = {
   req: ApiRequestProps;
   authToken?: boolean;
   authRoot?: boolean;

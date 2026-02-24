@@ -17,5 +17,5 @@ export type PushDataToTrainingQueueProps = {
   indexSize?: number;
 
   billId?: string;
-  session?: ClientSession;
+  session?: unknown;
 };

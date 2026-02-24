@@ -1,11 +1,9 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
 import { StandSubPlanLevelMapType } from '../../../support/wallet/sub/type';
 import type {
-  ChatModelItemType,
-  FunctionModelItemType,
   LLMModelItemType,
   EmbeddingModelItemType,
-  AudioSpeechModels,
+  TTSModelType,
   STTModelType,
   RerankModelItemType
 } from '../../../core/ai/model.schema';
@@ -34,7 +32,7 @@ export type FastGPTConfigFileType = {
   subPlans?: SubPlanType;
 
   // Abandon
-  llmModels?: ChatModelItemType[];
+  llmModels?: LLMModelItemType[];
   vectorModels?: EmbeddingModelItemType[];
   reRankModels?: RerankModelItemType[];
   audioSpeechModels?: TTSModelType[];
@@ -55,7 +53,6 @@ export type FastGPTFeConfigsType = {
   chineseRedirectUrl?: string;
   botIframeUrl?: string;
 
-  show_emptyChat?: boolean;
   show_appStore?: boolean;
   show_git?: boolean;
   show_pay?: boolean;
@@ -67,7 +64,6 @@ export type FastGPTFeConfigsType = {
   show_coupon?: boolean;
   show_discount_coupon?: boolean;
   showWecomConfig?: boolean;
-  concatMd?: string;
 
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;

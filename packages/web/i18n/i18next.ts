@@ -20,6 +20,7 @@ import type chat from './zh-CN/chat.json';
 import type login from './zh-CN/login.json';
 import type account_model from './zh-CN/account_model.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
+import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
 import type { I18N_NAMESPACES } from './constants';
 
 export interface I18nNamespaces {
@@ -60,7 +61,7 @@ export type I18nKeyFunction = {
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-    defaultNS: I18N_NAMESPACES;
+    defaultNS: typeof I18N_NAMESPACES;
     resources: I18nNamespaces;
   }
 }
