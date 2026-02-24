@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';

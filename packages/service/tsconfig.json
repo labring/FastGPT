@@ -4,5 +4,5 @@
     "baseUrl": ".",
     "moduleResolution": "bundler"
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../../**/*.d.ts"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../../**/*.ts"]
 }

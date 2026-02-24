@@ -1,4 +1,4 @@
-import type { UpdatePlaygroundVisibilityConfigBody } from '@fastgpt/global/support/outLink/api.d';
+import type { UpdatePlaygroundVisibilityConfigBody } from '@fastgpt/global/support/outLink/api';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';

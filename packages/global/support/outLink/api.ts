@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import type { HistoryItemType } from '../../core/chat/type.d';
-import type { OutLinkSchema, PlaygroundVisibilityConfigType } from './type.d';
-import { PlaygroundVisibilityConfigSchema } from './type.d';
+import type { HistoryItemType } from '../../core/chat/type';
+import type { OutLinkSchema, PlaygroundVisibilityConfigType } from './type';
+import { PlaygroundVisibilityConfigSchema } from './type';
 
 export type AuthOutLinkInitProps = {
   outLinkUid: string;

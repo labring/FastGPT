@@ -7,7 +7,7 @@ import {
 import type {
   DatasetCollectionItemType,
   DatasetItemType
-} from '@fastgpt/global/core/dataset/type.d';
+} from '@fastgpt/global/core/dataset/type';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 

@@ -1,5 +1,5 @@
 import { MongoDatasetTraining } from './schema';
-import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';

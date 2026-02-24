@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
-import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
+import type { PostLoginProps } from '@fastgpt/global/support/user/api';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';

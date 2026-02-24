@@ -1,6 +1,6 @@
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 /* ================= dataset ===================== */

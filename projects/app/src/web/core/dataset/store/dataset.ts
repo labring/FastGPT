@@ -1,5 +1,5 @@
 import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { getDatasets } from '@/web/core/dataset/api';
 
 type State = {

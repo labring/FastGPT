@@ -1,6 +1,6 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../mongo';
-import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type.d';
+import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type';
 import { getLogger, LogCategories } from '../../logger';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
