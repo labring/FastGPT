@@ -116,10 +116,21 @@ export const GetMcpToolsBodySchema = z
   });
 export type GetMcpToolsBodyType = z.infer<typeof GetMcpToolsBodySchema>;
 
-export const GetMcpToolsResponseSchema = z.array(McpToolConfigSchema).meta({
-  example: [],
-  description: 'MCP 工具配置列表'
-});
+// Use a permissive schema for MCP tools response since remote MCP servers can
+// return arbitrary JSON Schema structures (anyOf, oneOf, allOf, $ref, etc.)
+// that don't conform to the strict JSONSchemaInputTypeSchema after dereferencing.
+export const GetMcpToolsResponseSchema = z
+  .array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      inputSchema: z.record(z.string(), z.any())
+    })
+  )
+  .meta({
+    example: [],
+    description: 'MCP 工具配置列表'
+  });
 export type GetMcpToolsResponseType = z.infer<typeof GetMcpToolsResponseSchema>;
 
 // Run MCP tool
