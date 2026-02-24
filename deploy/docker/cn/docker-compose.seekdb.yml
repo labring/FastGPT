@@ -149,7 +149,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.7 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.7.1 # git
     ports:
       - 3000:3000
     networks:
