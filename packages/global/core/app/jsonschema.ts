@@ -8,36 +8,26 @@ import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../../web/i18n/utils';
 import z from 'zod';
 
-const SchemaInputValueTypeSchema = z.enum([
-  'string',
-  'number',
-  'integer',
-  'boolean',
-  'array',
-  'object'
-]);
-type SchemaInputValueType = z.infer<typeof SchemaInputValueTypeSchema>;
-
 export const JsonSchemaPropertiesItemSchema = z.object({
   description: z.string().optional(),
   'x-tool-description': z.string().optional(),
-  type: SchemaInputValueTypeSchema,
+  type: z.any().optional(),
   enum: z.array(z.string()).optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
-  items: z.object({ type: SchemaInputValueTypeSchema }).optional()
+  items: z.any().optional()
 });
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
 export const JSONSchemaInputTypeSchema = z.object({
-  type: SchemaInputValueTypeSchema,
+  type: z.any().optional(),
   properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
   required: z.array(z.string()).optional()
 });
 export type JSONSchemaInputType = z.infer<typeof JSONSchemaInputTypeSchema>;
 
 export const JSONSchemaOutputTypeSchema = z.object({
-  type: SchemaInputValueTypeSchema,
+  type: z.any().optional(),
   properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
   required: z.array(z.string()).optional()
 });
@@ -47,14 +37,16 @@ export const getNodeInputTypeFromSchemaInputType = ({
   type,
   arrayItems
 }: {
-  type: SchemaInputValueType;
-  arrayItems?: { type: SchemaInputValueType };
+  type: string;
+  arrayItems?: { type: string };
 }) => {
   if (type === 'string') return WorkflowIOValueTypeEnum.string;
   if (type === 'number') return WorkflowIOValueTypeEnum.number;
   if (type === 'integer') return WorkflowIOValueTypeEnum.number;
   if (type === 'boolean') return WorkflowIOValueTypeEnum.boolean;
   if (type === 'object') return WorkflowIOValueTypeEnum.object;
+
+  if (type !== 'array') return WorkflowIOValueTypeEnum.string;
 
   if (!arrayItems) return WorkflowIOValueTypeEnum.arrayAny;
 
