@@ -139,8 +139,7 @@ const nextConfig = {
     '@opentelemetry/api-logs'
   ],
   experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../../'),
-    workerThreads: true
+    outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };
 
