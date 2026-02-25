@@ -7,6 +7,7 @@ import LogoLight from '@/components/docs/logo';
 import LogoDark from '@/components/docs/logoDark';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
+import { SidebarKeepOpen } from '@/components/sidebarKeepOpen';
 import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
@@ -55,6 +56,8 @@ export default async function Layout({
       url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
     }
   ];
+
+  const tabUrls = tab.map((t) => t.url);
 
   return (
     <DocsLayout
@@ -115,6 +118,7 @@ export default async function Layout({
       }}
       tabMode="navbar"
     >
+      <SidebarKeepOpen tabUrls={tabUrls} />
       {children}
     </DocsLayout>
   );
