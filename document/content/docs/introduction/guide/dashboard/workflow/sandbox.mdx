@@ -63,9 +63,11 @@ def main(data1, data2):
 
 自定义输出中添加 `result` 和 `count` 两个变量即可获取对应的值。
 
-## 内置全局函数
+## 内置函数（SystemHelper）
 
-以下函数在 JS 和 Python 中均可使用：
+内置函数通过 `SystemHelper` 对象调用。JS 中使用 `SystemHelper.xxx()`，Python 中使用 `system_helper.xxx()`。
+
+> 直接调用 `countToken()` / `count_token()` 等方式已弃用，仅保留向后兼容。新代码请统一使用 `SystemHelper` / `system_helper`。
 
 ### delay 延迟
 
@@ -73,8 +75,8 @@ def main(data1, data2):
 
 ```js
 // JavaScript
-async function main(){
-    await delay(1000) // 延迟 1 秒
+async function main({data1, data2}){
+    await SystemHelper.delay(1000) // 延迟 1 秒
     return { result: "done" }
 }
 ```
@@ -82,7 +84,7 @@ async function main(){
 ```python
 # Python
 def main():
-    delay(1000)  # 延迟 1 秒
+    system_helper.delay(1000)  # 延迟 1 秒
     return {"result": "done"}
 ```
 
@@ -93,14 +95,14 @@ def main():
 ```js
 // JavaScript
 function main({input}){
-    return { tokens: countToken(input) }
+    return { tokens: SystemHelper.countToken(input) }
 }
 ```
 
 ```python
 # Python
 def main():
-    return {"tokens": count_token(variables["input"])}
+    return {"tokens": system_helper.count_token(variables["input"])}
 ```
 
 ### strToBase64 字符串转 base64
@@ -113,7 +115,7 @@ function main({svg}){
     return {
         // 参数 1: 要转换的字符串
         // 参数 2: base64 前缀（可选）
-        image: strToBase64(svg, 'data:image/svg+xml;base64,')
+        image: SystemHelper.strToBase64(svg, 'data:image/svg+xml;base64,')
     }
 }
 ```
@@ -122,7 +124,7 @@ function main({svg}){
 # Python
 def main():
     return {
-        "image": str_to_base64(variables["svg"], "data:image/svg+xml;base64,")
+        "image": system_helper.str_to_base64(variables["svg"], "data:image/svg+xml;base64,")
     }
 ```
 
@@ -133,7 +135,7 @@ def main():
 ```js
 // JavaScript
 function main({secret}){
-    const {sign, timestamp} = createHmac('sha256', secret)
+    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
     return { sign, timestamp }
 }
 ```
@@ -141,7 +143,7 @@ function main({secret}){
 ```python
 # Python
 def main():
-    result = create_hmac("sha256", variables["secret"])
+    result = system_helper.create_hmac("sha256", variables["secret"])
     return {"sign": result["sign"], "timestamp": result["timestamp"]}
 ```
 
@@ -152,7 +154,7 @@ def main():
 ```js
 // JavaScript
 async function main({url}){
-    const res = await httpRequest(url, {
+    const res = await SystemHelper.httpRequest(url, {
         method: 'GET',       // 请求方法，默认 GET
         headers: {},         // 自定义请求头
         body: null,          // 请求体（对象会自动 JSON 序列化）
@@ -168,7 +170,7 @@ async function main({url}){
 ```python
 # Python
 def main():
-    res = http_request(variables["url"], method="GET", headers={}, timeout=10)
+    res = system_helper.http_request(variables["url"], method="GET", headers={}, timeout=10)
     return {"status": res["status"], "data": res["data"]}
 ```
 
@@ -274,9 +276,9 @@ def main(data):
 
 ```js
 async function main({secret, url, message}){
-    const {sign, timestamp} = createHmac('sha256', secret)
+    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
     
-    const res = await httpRequest(url, {
+    const res = await SystemHelper.httpRequest(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: {
@@ -293,10 +295,10 @@ async function main({secret, url, message}){
 
 ## JS 与 Python 函数名对照
 
-| 功能 | JavaScript | Python |
+| 功能 | JavaScript (SystemHelper) | Python (system_helper) |
 |------|-----------|--------|
-| 统计 token | `countToken(text)` | `count_token(text)` |
-| 字符串转 base64 | `strToBase64(text, prefix?)` | `str_to_base64(text, prefix?)` |
-| HMAC 签名 | `createHmac(algo, secret)` | `create_hmac(algo, secret)` |
-| 延迟 | `await delay(ms)` | `delay(ms)` |
-| HTTP 请求 | `await httpRequest(url, opts?)` | `http_request(url, method?, headers?, body?, timeout?)` |
+| 统计 token | `SystemHelper.countToken(text)` | `system_helper.count_token(text)` |
+| 字符串转 base64 | `SystemHelper.strToBase64(text, prefix?)` | `system_helper.str_to_base64(text, prefix?)` |
+| HMAC 签名 | `SystemHelper.createHmac(algo, secret)` | `system_helper.create_hmac(algo, secret)` |
+| 延迟 | `await SystemHelper.delay(ms)` | `system_helper.delay(ms)` |
+| HTTP 请求 | `await SystemHelper.httpRequest(url, opts?)` | `system_helper.http_request(url, method?, headers?, body?, timeout?)` |
