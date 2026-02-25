@@ -475,3 +475,65 @@ button[role='tab'] {
   padding-top: 16px;
   padding-bottom: 16px;
 }
+
+/* 移动端侧边栏 padding 缩小 */
+@media (max-width: 767px) {
+  #nd-sidebar-mobile [data-radix-scroll-area-viewport] {
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 0;
+  }
+
+  /* SidebarHeader 底部 padding */
+  #nd-sidebar-mobile > div:first-child {
+    padding-top: 8px;
+    padding-bottom: 22px;
+  }
+
+  /* 去掉 viewport 内部的顶部渐变遮罩 */
+  #nd-sidebar-mobile [data-radix-scroll-area-viewport] > div {
+    mask-image: linear-gradient(transparent, #fff 0px, #fff calc(100% - 12px), transparent) !important;
+    -webkit-mask-image: linear-gradient(transparent, #fff 0px, #fff calc(100% - 12px), transparent) !important;
+  }
+}
+
+/* RootToggle 图标容器：缩小到与图标匹配，修复对齐和间距 */
+#nd-sidebar-mobile .size-9,
+[data-radix-popper-content-wrapper] .size-9 {
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* RootToggle 下拉菜单：增加两侧 padding + 选中项浅蓝背景 */
+[data-radix-popper-content-wrapper] > div {
+  padding: 6px 8px !important;
+}
+
+[data-radix-popper-content-wrapper] a {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  border-radius: 8px;
+}
+
+/* 移动端目录下拉框（TOC Popover Trigger）：文本溢出省略号 */
+@media (max-width: 767px) {
+  button[class*="tocnav"] {
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  button[class*="tocnav"] > span.grid {
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* 文章内超长链接/文本自动换行 */
+  article {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+}
