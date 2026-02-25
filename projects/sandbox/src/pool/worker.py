@@ -161,10 +161,16 @@ _original_import = _builtins.__import__
 _blocked_modules = set()
 
 _stdlib_paths = []
-for _key in ('stdlib', 'platstdlib', 'purelib', 'platlib'):
+_site_packages_paths = []
+for _key in ('stdlib', 'platstdlib'):
     _p = _sysconfig.get_path(_key)
     if _p:
         _stdlib_paths.append(_p)
+for _key in ('purelib', 'platlib'):
+    _p = _sysconfig.get_path(_key)
+    if _p:
+        _stdlib_paths.append(_p)
+        _site_packages_paths.append(_p)
 _stdlib_paths.append('<frozen')
 
 
@@ -174,6 +180,16 @@ def _is_stdlib_frame(filename):
     if filename.startswith('<frozen'):
         return True
     for sp in _stdlib_paths:
+        if filename.startswith(sp):
+            return True
+    return False
+
+
+def _is_site_packages_frame(filename):
+    """Check if a frame is from an installed third-party package (site-packages)."""
+    if not filename:
+        return False
+    for sp in _site_packages_paths:
         if filename.startswith(sp):
             return True
     return False
@@ -212,18 +228,18 @@ def _safe_import(name, *args, **kwargs):
     if top_level == 'builtins' and _builtins_proxy is not None:
         return _builtins_proxy
     if top_level in _blocked_modules:
-        # 检查整个调用栈：只要有任何非 stdlib 帧（用户代码），就拦截
+        # 只检查直接调用者帧（触发 import 的那一帧）
+        # 如果直接调用者是 site-packages 中的第三方库或 stdlib，放行（库内部依赖）
+        # 只有当直接调用者是用户代码时才拦截
         stack = _tb.extract_stack()
-        has_user_frame = False
-        for frame in stack[:-1]:  # 排除 _safe_import 自身
-            fn = frame.filename or ''
-            if fn in ('<string>', '<test>', '<module>') or (
-                not _is_stdlib_frame(fn) and fn != __file__
-            ):
-                has_user_frame = True
-                break
-        if has_user_frame:
-            raise ImportError(f"Importing {name} is not allowed.")
+        # stack[-1] 是 _safe_import 自身，stack[-2] 是直接调用者
+        if len(stack) >= 2:
+            caller_fn = stack[-2].filename or ''
+            if caller_fn in ('<string>', '<test>', '<module>'):
+                raise ImportError(f"Importing {name} is not allowed.")
+            if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
+                raise ImportError(f"Importing {name} is not allowed.")
+    return _original_import(name, *args, **kwargs)
     return _original_import(name, *args, **kwargs)
 
 

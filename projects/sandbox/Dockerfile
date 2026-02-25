@@ -1,9 +1,3 @@
-# ===== Python 基础层 =====
-FROM python:3.11-alpine AS python_base
-RUN apk add --no-cache make g++
-COPY projects/sandbox/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-
 # ===== Bun 构建层 =====
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
@@ -16,11 +10,11 @@ COPY projects/sandbox/tsconfig.json ./
 FROM oven/bun:1-alpine AS runner
 WORKDIR /app
 
+# 安装 Python 及依赖包（使用系统 Python，避免多版本冲突）
 RUN apk add --no-cache python3 py3-pip libffi
-
-# 复制 Python 3.11 及其包
-COPY --from=python_base /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=python_base /usr/local/bin/python3 /usr/local/bin/python3
+COPY projects/sandbox/requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
 
 # 复制 node_modules 和源码
 COPY --from=builder /app/node_modules ./node_modules
