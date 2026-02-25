@@ -138,9 +138,7 @@ const nextConfig = {
     'tiktoken',
     '@opentelemetry/api-logs'
   ],
-  experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../../')
-  }
+  outputFileTracingRoot: path.join(__dirname, '../../')
 };
 
 module.exports = nextConfig;
