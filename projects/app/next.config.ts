@@ -1,21 +1,23 @@
-const { i18n } = require('./next-i18next.config.js');
-const path = require('path');
-const fs = require('fs');
+import type { NextConfig } from 'next';
+import path from 'path';
+import withBundleAnalyzerInit from '@next/bundle-analyzer';
 
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
+const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true'
 });
 
 const isDev = process.env.NODE_ENV === 'development';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
-  i18n,
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'zh-CN', 'zh-Hant'],
+    localeDetection: false
+  },
   output: 'standalone',
-  reactStrictMode: isDev ? false : true,
-  compress: true,
-  // 禁用 source map（可选，根据需要）
+  // 开发环境关闭 strict mode，避免第三方库的双重渲染问题
+  reactStrictMode: !isDev,
   productionBrowserSourceMaps: false,
   async headers() {
     return [
@@ -47,8 +49,7 @@ const nextConfig = {
     ];
   },
 
-  webpack(config, { isServer, nextRuntime }) {
-    // Ignore autoprefixer warnings from third-party libraries
+  webpack(config, { isServer }) {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
       {
@@ -57,7 +58,7 @@ const nextConfig = {
       }
     ];
 
-    Object.assign(config.resolve.alias, {
+    Object.assign(config.resolve!.alias, {
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
       snappy: false,
@@ -68,9 +69,10 @@ const nextConfig = {
       'bson-ext': false,
       'pg-native': false
     });
+
     config.module = {
       ...config.module,
-      rules: config.module.rules.concat([
+      rules: (config.module?.rules || []).concat([
         {
           test: /\.svg$/i,
           issuer: /\.[jt]sx?$/,
@@ -86,18 +88,7 @@ const nextConfig = {
     }
 
     if (isServer) {
-      config.externals.push('@node-rs/jieba');
-
-      if (nextRuntime === 'nodejs') {
-      }
-    } else {
-      config.resolve = {
-        ...config.resolve,
-        fallback: {
-          ...config.resolve.fallback,
-          fs: false
-        }
-      };
+      (config.externals as string[]).push('@node-rs/jieba');
     }
 
     config.experiments = {
@@ -106,29 +97,14 @@ const nextConfig = {
     };
 
     if (isDev && !isServer) {
-      // 使用更快的 source map
-      config.devtool = 'eval-cheap-module-source-map';
-      // 减少文件监听范围
       config.watchOptions = {
         ...config.watchOptions,
         ignored: ['**/node_modules', '**/.git', '**/dist', '**/coverage']
-      };
-      // 启用持久化缓存
-      config.cache = {
-        type: 'filesystem',
-        name: 'client',
-        buildDependencies: {
-          config: [__filename]
-        },
-        cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
-        maxMemoryGenerations: isDev ? 5 : Infinity,
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 天
       };
     }
 
     return config;
   },
-  // 需要转译的包
   transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
   serverExternalPackages: [
     'mongoose',
@@ -138,7 +114,22 @@ const nextConfig = {
     'tiktoken',
     '@opentelemetry/api-logs'
   ],
+  // 优化大库的 barrel exports tree-shaking
+  experimental: {
+    optimizePackageImports: [
+      '@chakra-ui/react',
+      '@chakra-ui/icons',
+      'lodash',
+      'date-fns',
+      'ahooks',
+      'framer-motion',
+      '@emotion/react',
+      '@emotion/styled'
+    ],
+    // 按页面拆分 CSS chunk，减少首屏 CSS 体积
+    cssChunking: 'strict'
+  },
   outputFileTracingRoot: path.join(__dirname, '../../')
 };
 
-module.exports = nextConfig;
+export default withBundleAnalyzer(nextConfig);
