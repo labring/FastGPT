@@ -15,15 +15,33 @@ export const GetLogKeysResponseSchema = z.object({
   logKeys: z
     .array(AppLogKeysSchema)
     .default([])
-    .meta({ example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME], description: '日志键' })
+    .meta({
+      example: [
+        {
+          key: AppLogKeysEnum.SOURCE,
+          enable: true
+        },
+        {
+          key: AppLogKeysEnum.CREATED_TIME,
+          enable: true
+        }
+      ],
+      description: '日志键'
+    })
 });
 export type getLogKeysResponseType = z.infer<typeof GetLogKeysResponseSchema>;
 
 export const UpdateLogKeysBodySchema = z.object({
   appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
-  logKeys: z
-    .array(AppLogKeysSchema)
-    .meta({ example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME], description: '日志键' })
+  logKeys: z.array(AppLogKeysSchema).meta({
+    example: [
+      {
+        key: AppLogKeysEnum.SOURCE,
+        enable: true
+      }
+    ],
+    description: '日志键'
+  })
 });
 export type updateLogKeysBody = z.infer<typeof UpdateLogKeysBodySchema>;
 
@@ -69,6 +87,10 @@ const FeedbackLogParamSchema = z.object({
   unreadOnly: z.boolean().optional().meta({
     example: false,
     description: '是否仅显示未读反馈（当 feedbackType 为 all 时忽略）'
+  }),
+  errorFilter: z.enum(['all', 'has_error']).optional().meta({
+    example: 'has_error',
+    description: '报错筛选：all-全部记录，has_error-仅看报错'
   })
 });
 // Get App Chat Logs Query Parameters (based on GetAppChatLogsProps)
@@ -100,6 +122,13 @@ export const GetAppChatLogsBodySchema = PaginationSchema.extend(
     .meta({
       example: ['tmb123', 'tmb456'],
       description: '团队成员 ID 列表'
+    }),
+  outLinkUids: z
+    .array(z.string())
+    .optional()
+    .meta({
+      example: ['user123', 'user456'],
+      description: '外部用户 ID 列表'
     }),
   chatSearch: z.string().optional().meta({
     example: 'hello',
@@ -250,3 +279,48 @@ export const GetTotalDataResponseSchema = z.object({
   })
 });
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
+
+/* Get log users */
+export const GetLogUsersBodySchema = z.object({
+  appId: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用 ID'
+  }),
+  dateStart: z.string().meta({
+    example: '2024-01-01T00:00:00.000Z',
+    description: '开始时间'
+  }),
+  dateEnd: z.string().meta({
+    example: '2024-12-31T23:59:59.999Z',
+    description: '结束时间'
+  }),
+  searchKey: z.string().optional().meta({
+    example: 'user',
+    description: '搜索用户名'
+  }),
+  sources: z
+    .array(z.string())
+    .optional()
+    .meta({
+      example: ['online', 'share'],
+      description: '来源筛选'
+    })
+});
+export type GetLogUsersBody = z.infer<typeof GetLogUsersBodySchema>;
+
+export const LogUserSchema = z.object({
+  outLinkUid: z.string().nullable().meta({ example: 'outLink123', description: '外链用户 ID' }),
+  tmbId: z.string().nullable().meta({ example: 'tmb123', description: '团队成员 ID' }),
+  name: z.string().meta({ example: '用户名', description: '用户名称' }),
+  avatar: z
+    .string()
+    .optional()
+    .meta({ example: 'https://example.com/avatar.png', description: '头像' }),
+  count: z.number().meta({ example: 10, description: '对话数量' })
+});
+export type LogUserType = z.infer<typeof LogUserSchema>;
+
+export const GetLogUsersResponseSchema = z.object({
+  list: z.array(LogUserSchema).meta({ description: '使用者列表' })
+});
+export type GetLogUsersResponse = z.infer<typeof GetLogUsersResponseSchema>;

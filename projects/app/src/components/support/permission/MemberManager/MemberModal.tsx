@@ -15,7 +15,7 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -76,7 +76,7 @@ function MemberModal({
     refreshDeps: [debouncedSearchKey]
   });
 
-  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
+  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest(
     async () => {
       if (!userInfo?.team?.teamId) return [];
       return getGroupList<false>({
@@ -104,7 +104,7 @@ function MemberModal({
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
   const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
 
-  const { runAsync: _onConfirm, loading: isUpdating } = useRequest2(
+  const { runAsync: _onConfirm, loading: isUpdating } = useRequest(
     () =>
       onUpdateCollaborators({
         collaborators: editCollaborators.map(

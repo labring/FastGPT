@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { type ChatBoxInputFormType, type ChatBoxInputType, type SendPromptFnType } from '../type';
 import { textareaMinH } from '../constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
@@ -21,6 +21,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { postStopV2Chat } from '@/web/core/chat/api';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -32,12 +33,14 @@ const fileTypeFilter = (file: File) => {
 };
 
 const ChatInput = ({
+  lastInteractive,
   onSendMessage,
   onStop,
   TextareaDom,
   resetInputVal,
   chatForm
 }: {
+  lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
@@ -106,7 +109,7 @@ const ChatInput = ({
     showSelectCustomFileExtension;
 
   // Upload files
-  useRequest2(uploadFiles, {
+  useRequest(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
     refreshDeps: [fileList, outLinkAuthData, chatId]
@@ -120,13 +123,14 @@ const ChatInput = ({
 
       onSendMessage({
         text: textareaValue.trim(),
-        files: fileList
+        files: fileList,
+        interactive: lastInteractive
       });
       replaceFiles([]);
     },
-    [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [TextareaDom, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
-  const { runAsync: handleStop, loading: isStopping } = useRequest2(async () => {
+  const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
       if (isChatting) {
         await postStopV2Chat({

@@ -6,7 +6,7 @@ import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
@@ -32,7 +32,7 @@ const QuoteList = React.memo(function QuoteList({
     (v) => v.showRouteToDatasetDetail
   );
 
-  const { data: quoteList } = useRequest2(
+  const { data: quoteList } = useRequest(
     async () =>
       !!chatItemDataId
         ? await getQuoteDataList({

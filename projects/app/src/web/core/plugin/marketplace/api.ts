@@ -24,3 +24,9 @@ export const getMarketPlaceToolTags = () =>
 
 export const getMarketplaceDownloadURL = (toolId: string) =>
   GET<string>('/marketplace/api/tool/getDownloadUrl', { toolId });
+
+export const getMarketplaceDownloadURLs = (toolIds: string[]) =>
+  POST<string[]>('/marketplace/api/tool/getDownloadUrl', { toolIds });
+
+export const getMarketplaceToolVersions = () =>
+  GET<Array<{ toolId: string; version: string }>>('/marketplace/api/tool/versions');

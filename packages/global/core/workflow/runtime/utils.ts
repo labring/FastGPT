@@ -1,7 +1,8 @@
 import json5 from 'json5';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
-import type { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
+import { ChatRoleEnum } from '../../../core/chat/constants';
+import type { ChatItemType } from '../../../core/chat/type';
+import type { NodeOutputItemType } from './type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import {
   NodeInputKeyEnum,
@@ -10,15 +11,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  type InteractiveNodeResponseType,
-  type WorkflowInteractiveResponseType
-} from '../template/system/interactive/type';
-import type { StoreEdgeItemType } from '../type/edge';
+import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
-import type { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
+import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
@@ -170,11 +168,7 @@ export const getLastInteractiveValue = (
   if (lastAIMessage) {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
-    if (
-      !lastValue ||
-      lastValue.type !== ChatItemValueTypeEnum.interactive ||
-      !lastValue.interactive
-    ) {
+    if (!lastValue || !lastValue.interactive) {
       return;
     }
 
@@ -184,18 +178,36 @@ export const getLastInteractiveValue = (
 
     // Check is user select
     if (
-      lastValue.interactive.type === 'userSelect' &&
-      !lastValue.interactive.params.userSelectedVal
+      (lastValue.interactive.type === 'userSelect' ||
+        lastValue.interactive.type === 'agentPlanAskUserSelect') &&
+      !lastValue.interactive?.params?.userSelectedVal
     ) {
       return lastValue.interactive;
     }
 
     // Check is user input
-    if (lastValue.interactive.type === 'userInput' && !lastValue.interactive.params.submitted) {
+    if (
+      (lastValue.interactive.type === 'userInput' ||
+        lastValue.interactive.type === 'agentPlanAskUserForm') &&
+      !lastValue.interactive?.params?.submitted
+    ) {
       return lastValue.interactive;
     }
 
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
+      return lastValue.interactive;
+    }
+
+    // Agent plan check
+    if (
+      lastValue.interactive.type === 'agentPlanCheck' &&
+      !lastValue.interactive?.params?.confirmed
+    ) {
+      return lastValue.interactive;
+    }
+
+    // Agent plan ask query
+    if (lastValue.interactive.type === 'agentPlanAskQuery') {
       return lastValue.interactive;
     }
   }
@@ -364,7 +376,6 @@ export const checkNodeRunStatus = ({
 
   // Classify edges
   const { commonEdges, recursiveEdgeGroups } = splitNodeEdges(node);
-
   // Entry
   if (commonEdges.length === 0 && recursiveEdgeGroups.length === 0) {
     return 'run';
@@ -527,6 +538,7 @@ export function replaceEditorVariable({
   // Build replacement map first to avoid modifying string during iteration
   const replacements: Array<{ pattern: string; replacement: string }> = [];
 
+  const variableRegex = /[.*+?^${}()|[\]\\]/g;
   for (const match of matches) {
     const nodeId = match[1];
     const id = match[2];
@@ -559,8 +571,8 @@ export function replaceEditorVariable({
     }
 
     const formatVal = valToStr(variableVal);
-    const escapedNodeId = nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedNodeId = nodeId.replace(variableRegex, '\\$&');
+    const escapedId = id.replace(variableRegex, '\\$&');
 
     replacements.push({
       pattern: `\\{\\{\\$(${escapedNodeId}\\.${escapedId})\\$\\}\\}`,
@@ -620,7 +632,7 @@ export const textAdaptGptResponse = ({
 /* Update runtimeNode's outputs with interactive data from history */
 export function rewriteNodeOutputByHistories(
   runtimeNodes: RuntimeNodeItemType[],
-  lastInteractive?: InteractiveNodeResponseType
+  lastInteractive?: WorkflowInteractiveResponseType
 ) {
   const interactive = lastInteractive;
   if (!interactive?.nodeOutputs) {

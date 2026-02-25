@@ -32,7 +32,9 @@ async function handler(
     currentCost: updateFields.currentCost,
     hasTokenFee: updateFields.hasTokenFee,
     systemKeyCost: updateFields.systemKeyCost,
-    inputListVal: updateFields.inputListVal ?? null //Important
+    inputListVal: updateFields.inputListVal ?? null, //Important
+    promoteTags: updateFields.promoteTags ?? null,
+    hideTags: updateFields.hideTags ?? null
   };
 
   // 如果是自定义插件,需要更新 customConfig
@@ -59,16 +61,31 @@ async function handler(
       }
     );
   } else {
-    // 系统插件只更新基础字段, 如果有 child，需要更新 child
+    // 系统插件只更新基础字段和 tags（存储在 customConfig 中）
     await mongoSessionRun(async (session) => {
-      await MongoSystemTool.updateOne({ pluginId }, baseUpdateFields, { upsert: true, session });
+      // 构建 customConfig，保留现有配置并添加/更新 tags
+      const existingCustomConfig = plugin?.customConfig || {};
+      const newCustomConfig = updateFields.tagIds
+        ? { ...existingCustomConfig, tags: updateFields.tagIds }
+        : existingCustomConfig;
 
+      await MongoSystemTool.updateOne(
+        { pluginId },
+        {
+          ...baseUpdateFields,
+          ...(Object.keys(newCustomConfig).length > 0 ? { customConfig: newCustomConfig } : {})
+        },
+        { upsert: true, session }
+      );
+
+      // 如果有子工具，更新子工具
       for await (const tool of updateFields.childTools || []) {
         await MongoSystemTool.updateOne(
           { pluginId: tool.pluginId },
           {
             pluginId: tool.pluginId,
-            systemKeyCost: tool.systemKeyCost
+            systemKeyCost: tool.systemKeyCost,
+            inputListVal: updateFields.inputListVal
           },
           { upsert: true, session }
         );

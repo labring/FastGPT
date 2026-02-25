@@ -10,6 +10,7 @@ import type { I18nStringStrictType } from '../../../common/i18n/type';
 import type { I18nStringType } from '../../../common/i18n/type';
 import type { ToolSimpleType, ToolDetailType } from '../../../sdk/fastgpt-plugin';
 import type { PluginStatusType, SystemPluginToolTagType } from '../../plugin/type';
+import type { UserTagsEnum } from '../../../support/user/type';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -60,6 +61,10 @@ export type AppToolTemplateItemType = WorkflowTemplateType & {
   inputList?: FlowNodeInputItemType['inputList'];
   inputListVal?: Record<string, any>;
   hasSystemSecret?: boolean;
+
+  // User tag filtering
+  hideTags?: UserTagsEnum[] | null;
+  promoteTags?: UserTagsEnum[] | null;
 
   // @deprecated use tags instead
   isActive?: boolean;

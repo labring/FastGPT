@@ -1,6 +1,8 @@
 import { getGlobalRedisConnection } from './index';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(LogCategories.INFRA.REDIS);
 
 const redisPrefix = 'cache:';
 const getCacheKey = (key: string) => `${redisPrefix}${key}`;
@@ -34,7 +36,7 @@ export const setRedisCache = async (
         await redis.set(getCacheKey(key), data);
       }
     } catch (error) {
-      addLog.error('Set cache error:', error);
+      logger.error('Redis cache set failed', { key, expireSeconds, error });
       return Promise.reject(error);
     }
   });
@@ -51,7 +53,9 @@ export const incrValueToCache = async (key: string, increment: number) => {
   const redis = getGlobalRedisConnection();
   try {
     await retryFn(() => redis.incrbyfloat(getCacheKey(key), increment));
-  } catch (error) {}
+  } catch (error) {
+    logger.warn('Redis cache increment failed', { key, increment, error });
+  }
 };
 
 export const delRedisCache = async (key: string) => {
@@ -71,7 +75,7 @@ export const appendRedisCache = async (
       await redis.expire(getCacheKey(key), expireSeconds);
     }
   } catch (error) {
-    addLog.error('Append cache error:', error);
+    logger.error('Redis cache append failed', { key, expireSeconds, error });
     return Promise.reject(error);
   }
 };

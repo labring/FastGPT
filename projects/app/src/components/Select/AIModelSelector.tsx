@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -35,7 +35,7 @@ const OneRowSelector = ({
     getMyModelList
   } = useSystemStore();
 
-  const { data: myModels } = useRequest2(
+  const { data: myModels, loading } = useRequest(
     async () => {
       const set = await getMyModelList();
       if (cacheModel) {
@@ -122,7 +122,7 @@ const OneRowSelector = ({
           className="nowheel"
           isDisabled={!!disableTip}
           list={avatarList}
-          placeholder={t('common:not_model_config')}
+          placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
           h={'40px'}
           {...props}
           onChange={(e) => {
@@ -154,7 +154,7 @@ const MultipleRowSelector = ({
     getMyModelList
   } = useSystemStore();
 
-  const { data: myModels } = useRequest2(getMyModelList, {
+  const { data: myModels, loading } = useRequest(getMyModelList, {
     manual: false
   });
 
@@ -238,6 +238,7 @@ const MultipleRowSelector = ({
   );
 
   const SelectedLabel = useMemo(() => {
+    if (loading) return <>{t('common:model_loading')}</>;
     if (!props.value) return <>{t('common:not_model_config')}</>;
     const modelData = modelList.find((model) => model?.model === props.value);
 
@@ -259,7 +260,7 @@ const MultipleRowSelector = ({
         <Box noOfLines={noOfLines}>{modelData?.name}</Box>
       </Flex>
     );
-  }, [props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
+  }, [loading, props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box

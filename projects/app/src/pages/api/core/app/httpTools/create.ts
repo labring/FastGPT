@@ -3,19 +3,20 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { onCreateApp, type CreateAppBody } from '../create';
+import { onCreateApp } from '../create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 
 export type createHttpToolsQuery = {};
 
 export type createHttpToolsBody = {
   createType: 'batch' | 'manual';
-} & Omit<CreateAppBody, 'type' | 'modules' | 'edges' | 'chatConfig'>;
+} & Omit<CreateAppBodyType, 'type' | 'modules' | 'edges' | 'chatConfig'>;
 
 async function handler(
   req: ApiRequestProps<createHttpToolsBody, createHttpToolsQuery>,

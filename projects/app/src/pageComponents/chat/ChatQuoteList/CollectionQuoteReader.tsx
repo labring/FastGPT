@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import DownloadButton from './DownloadButton';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
 import { getDatasetDataPermission } from '@/web/core/dataset/api';
@@ -45,7 +45,7 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData } = useRequest2(async () => await getDatasetDataPermission(datasetId), {
+  const { data: datasetData } = useRequest(async () => await getDatasetDataPermission(datasetId), {
     manual: !userInfo || !datasetId,
     refreshDeps: [datasetId, userInfo]
   });
@@ -123,7 +123,7 @@ const CollectionReader = ({
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
 
-  const { runAsync: handleDownload } = useRequest2(async () => {
+  const { runAsync: handleDownload } = useRequest(async () => {
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',

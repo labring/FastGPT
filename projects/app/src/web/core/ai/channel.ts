@@ -1,11 +1,12 @@
 import axios, { type Method, type AxiosResponse } from 'axios';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import type {
-  DashboardDataItemType,
-  ChannelInfoType,
-  ChannelListResponseType,
-  ChannelLogListItemType,
-  CreateChannelProps
+import {
+  type DashboardDataItemType,
+  type ChannelInfoType,
+  type ChannelListResponseType,
+  type ChannelLogListItemType,
+  type CreateChannelProps,
+  DashboardDataItemSchema
 } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
@@ -210,6 +211,11 @@ export const getDashboardV2 = (params: {
       timestamp: number;
       summary: DashboardDataItemType[];
     }[]
-  >('/dashboardv2/', params);
+  >('/dashboardv2/', params).then((res) =>
+    res.map((item) => ({
+      ...item,
+      summary: item.summary.map((item) => DashboardDataItemSchema.parse(item))
+    }))
+  );
 
 export { responseSuccess, checkRes, responseError, instance, request };

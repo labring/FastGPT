@@ -5,9 +5,10 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger } from '@fastgpt/service/common/logger';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { surrenderProcess } from '@fastgpt/service/common/system/tools';
+const logger = getLogger(['initv4121']);
 
 export type SyncAppChatLogQuery = {};
 
@@ -17,7 +18,7 @@ export type SyncAppChatLogBody = {
 
 export type SyncAppChatLogResponse = {};
 
-/* 
+/*
     将 chats 表全部扫一遍，来获取统计数据
 */
 async function handler(
@@ -28,19 +29,19 @@ async function handler(
 
   const { batchSize = 10 } = req.body;
 
-  console.log('开始同步AppChatLog数据...');
-  console.log(`批处理大小: ${batchSize}`);
+  logger.info('开始同步AppChatLog数据...');
+  logger.info(`批处理大小: ${batchSize}`);
 
   let success = 0;
   const total = await MongoChat.countDocuments({});
-  console.log(`总共需要处理的chat记录数: ${total}`);
+  logger.info(`总共需要处理的chat记录数: ${total}`);
 
   res.json({
     data: '同步任务已开始，可在日志中看到进度'
   });
 
   while (true) {
-    console.log(`对话同步处理进度: ${success}/${total}`);
+    logger.info(`对话同步处理进度: ${success}/${total}`);
 
     try {
       const chats = await MongoChat.find({
@@ -55,11 +56,11 @@ async function handler(
       const result = await Promise.allSettled(chats.map((chat) => processChatRecord(chat)));
       success += result.filter((r) => r.status === 'fulfilled').length;
     } catch (error) {
-      addLog.error('处理chat记录失败', error);
+      logger.error('处理chat记录失败', { error });
     }
   }
 
-  console.log('同步对话完成');
+  logger.info('同步对话完成');
 }
 
 async function processChatRecord(chat: ChatSchemaType) {

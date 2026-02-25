@@ -1,7 +1,10 @@
 import { Schema, getMongoModel } from '../../../common/mongo';
 import { type TTSBufferSchemaType } from './type.d';
+import { getLogger, LogCategories } from '../../logger';
 
 export const collectionName = 'buffer_tts';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const TTSBufferSchema = new Schema({
   bufferId: {
@@ -27,7 +30,7 @@ try {
   //  24 hour
   TTSBufferSchema.index({ createTime: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build TTS buffer indexes', { error });
 }
 
 export const MongoTTSBuffer = getMongoModel<TTSBufferSchemaType>(collectionName, TTSBufferSchema);

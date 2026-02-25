@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
 import React, { useRef, useState, useEffect } from 'react';
@@ -29,7 +29,7 @@ const ToolRow = ({
 }) => {
   const { t, i18n } = useTranslation();
 
-  const { runAsync: updateSystemTool, loading } = useRequest2(
+  const { runAsync: updateSystemTool, loading } = useRequest(
     async (updateFields: {
       defaultInstalled?: boolean;
       hasTokenFee?: boolean;

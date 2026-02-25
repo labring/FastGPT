@@ -8,14 +8,14 @@ import {
 import { getChatSetting } from '@/web/core/chat/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getRecentlyUsedApps } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useMount } from 'ahooks';
+import { useLatest, useMount } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
@@ -77,12 +77,12 @@ export const ChatPageContextProvider = ({
   const [isInitedUser, setIsInitedUser] = useState(false);
 
   // Get recently used apps
-  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest2(
+  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
     () => getRecentlyUsedApps(),
     {
       manual: false,
       errorToast: '',
-      refreshDeps: [userInfo],
+      refreshDeps: [userInfo?.team?.tmbId],
       pollingInterval: 30000,
       throttleWait: 500 // 500ms throttle
     }
@@ -106,9 +106,9 @@ export const ChatPageContextProvider = ({
     if (routeAppId) {
       setAppId(routeAppId);
     }
-  }, [routeAppId, setAppId, userInfo]);
+  }, [routeAppId, setAppId]);
 
-  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest2(
+  const { data: chatSettings, runAsync: refreshChatSetting } = useRequest(
     async () => {
       if (!feConfigs.isPlus) return;
       return await getChatSetting();
@@ -135,9 +135,10 @@ export const ChatPageContextProvider = ({
     }
   );
 
+  const lastestPane = useLatest(pane);
   const handlePaneChange = useCallback(
     async (newPane: ChatSidebarPaneEnum, id?: string, tab?: ChatSettingTabOptionEnum) => {
-      if (newPane === pane && !id && !tab) return;
+      if (newPane === lastestPane.current && !id && !tab) return;
 
       const _id = (() => {
         if (id) return id;
@@ -162,14 +163,14 @@ export const ChatPageContextProvider = ({
       setLastPane(newPane);
       setLastChatAppId(_id);
     },
-    [pane, router, setLastPane, setLastChatAppId, chatSettings?.appId]
+    [lastestPane, router, setLastPane, setLastChatAppId, chatSettings?.appId]
   );
 
   useEffect(() => {
     if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
       handlePaneChange(ChatSidebarPaneEnum.HOME);
     }
-  }, [pane, handlePaneChange]);
+  }, [pane]);
 
   const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({

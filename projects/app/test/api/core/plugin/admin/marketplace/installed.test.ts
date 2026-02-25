@@ -71,8 +71,24 @@ describe('handler (installed)', () => {
 
     expect(result).toEqual({
       list: [
-        { id: 'toolA', version: '1.2.3' },
-        { id: 'toolB', version: '4.5.6' }
+        {
+          id: 'toolA',
+          version: '1.2.3',
+          name: { en: 'Tool A' },
+          description: { en: 'desc' },
+          icon: '',
+          author: undefined,
+          tags: undefined
+        },
+        {
+          id: 'toolB',
+          version: '4.5.6',
+          name: { en: 'Tool B' },
+          description: { en: 'desc' },
+          icon: '',
+          author: undefined,
+          tags: undefined
+        }
       ]
     });
     expect(APIGetSystemToolList).toHaveBeenCalledTimes(1);
@@ -100,7 +116,17 @@ describe('handler (installed)', () => {
     const result = await handler(req, res);
 
     expect(result).toEqual({
-      list: [{ id: 'my-tool-123', version: '0.0.1' }]
+      list: [
+        {
+          id: 'my-tool-123',
+          version: '0.0.1',
+          name: { en: 'My Tool' },
+          description: { en: 'desc' },
+          icon: '',
+          author: undefined,
+          tags: undefined
+        }
+      ]
     });
   });
 
@@ -126,7 +152,17 @@ describe('handler (installed)', () => {
     const result = await handler(req, res);
 
     expect(result).toEqual({
-      list: [{ id: 'randomprefix-toolX', version: '9.9.9' }]
+      list: [
+        {
+          id: 'randomprefix-toolX',
+          version: '9.9.9',
+          name: { en: 'Tool X' },
+          description: { en: 'desc' },
+          icon: '',
+          author: undefined,
+          tags: undefined
+        }
+      ]
     });
   });
 });

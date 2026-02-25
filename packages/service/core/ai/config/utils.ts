@@ -1,5 +1,5 @@
 import type { SystemDefaultModelType, SystemModelItemType } from '../type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoSystemModel } from './schema';
 import {
   type LLMModelItemType,
@@ -7,7 +7,7 @@ import {
   type TTSModelType,
   type STTModelType,
   type RerankModelItemType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
@@ -21,6 +21,7 @@ import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -28,7 +29,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   try {
     await preloadModelProviders();
   } catch (error) {
-    console.log('Load systen model error, please check fastgpt-plugin', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System model provider preload failed', { error });
     return Promise.reject(error);
   }
 
@@ -80,6 +82,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         if (model.isDefaultDatasetImageModel) {
           _systemDefaultModel.datasetImageLLM = model;
         }
+        if (model.model === process.env.HELPER_BOT_MODEL) {
+          _systemDefaultModel.helperBotLLM = model;
+        }
       } else if (model.type === ModelTypeEnum.embedding) {
         _embeddingModelMap.set(model.model, model);
         _embeddingModelMap.set(model.name, model);
@@ -112,11 +117,10 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     // Get model from db and plugin
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
-      pluginClient.model.list().then((res) => {
-        if (res.status === 200) return res.body;
-        console.error('Get fastGPT plugin model error');
-        return [];
-      })
+      pluginClient
+        .listModels()
+        .then((res) => res)
+        .catch(() => [])
     ]);
 
     // Load system model from local
@@ -165,6 +169,13 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       });
     });
 
+    // Sort model list
+    _systemActiveModelList.sort((a, b) => {
+      const providerA = getModelProvider(a.provider, language);
+      const providerB = getModelProvider(b.provider, language);
+      return providerA.order - providerB.order;
+    });
+
     // Default model check
     {
       if (!_systemDefaultModel.llm) {
@@ -180,6 +191,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
           (item) => item.vision
         );
       }
+      if (!_systemDefaultModel.helperBotLLM) {
+        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
+          (item) => item.type === ModelTypeEnum.llm
+        );
+      }
       if (!_systemDefaultModel.embedding) {
         _systemDefaultModel.embedding = Array.from(_embeddingModelMap.values())[0];
       }
@@ -193,13 +209,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.rerank = Array.from(_reRankModelMap.values())[0];
       }
     }
-
-    // Sort model list
-    _systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider, language);
-      const providerB = getModelProvider(b.provider, language);
-      return providerA.order - providerB.order;
-    });
 
     // Set global value
     {
@@ -224,20 +233,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       })) as SystemModelItemType[];
     }
 
-    console.log(
-      JSON.stringify(
-        _systemActiveModelList.map((item) => ({
-          provider: item.provider,
-          model: item.model,
-          name: item.name
-        })),
-        null,
-        2
-      ),
-      `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
-    );
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.debug('System models loaded', {
+      total: _systemModelList.length,
+      active: _systemActiveModelList.length
+    });
   } catch (error) {
-    console.error('Load models error', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System models load failed', { error });
 
     return Promise.reject(error);
   }
@@ -249,13 +252,9 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
   if (modelData.isCustom) return Promise.reject('Custom model not data');
 
   // Read file
-  const modelDefaulConfig = await pluginClient.model.list().then((res) => {
-    if (res.status === 200) {
-      return res.body.find((item) => item.model === model) as SystemModelItemType;
-    }
-
-    return Promise.reject('Can not get model config from plugin');
-  });
+  const modelDefaulConfig = await pluginClient
+    .listModels()
+    .then((models) => models.find((item) => item.model === model) as SystemModelItemType);
 
   return {
     ...modelDefaulConfig,

@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getFeedbackRecordIds } from '@/web/core/chat/feedback/api';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
@@ -194,7 +194,7 @@ export const DetailLogsModalFeedbackTypeFilter = ({
   const { t } = useTranslation();
 
   // Get feedback record IDs when in feedback mode
-  const { data: feedbackRecords, runAsync: loadFeedbackRecords } = useRequest2(
+  const { data: feedbackRecords, runAsync: loadFeedbackRecords } = useRequest(
     async (_feedbackType = feedbackType, _unreadOnly = unreadOnly) => {
       if (!appId || !chatId || _feedbackType === 'all') return null;
       return await getFeedbackRecordIds({

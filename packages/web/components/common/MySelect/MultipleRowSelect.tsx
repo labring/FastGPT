@@ -179,14 +179,15 @@ export const MultipleRowSelect = ({
           _active={{
             transform: 'none'
           }}
+          {...ButtonProps}
           {...(isOpen
             ? {
                 boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
                 borderColor: 'primary.600',
-                color: 'primary.700'
+                color: 'primary.700',
+                bg: 'white !important'
               }
             : {})}
-          {...ButtonProps}
         >
           <Flex alignItems={'center'}>
             <Box flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
@@ -364,17 +365,18 @@ export const MultipleRowArraySelect = ({
         _hover={{
           borderColor: 'primary.500'
         }}
+        {...ButtonProps}
         {...(isOpen
           ? {
               borderColor: 'primary.600',
               color: 'primary.700',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+              bg: 'white !important'
             }
           : {
               borderColor: 'myGray.200',
               boxShadow: 'none'
             })}
-        {...ButtonProps}
         onClick={() => (isOpen ? onClose() : onOpenSelect())}
         className="nowheel"
       >

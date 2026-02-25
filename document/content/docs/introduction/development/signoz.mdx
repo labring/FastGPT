@@ -41,17 +41,22 @@ description: FastGPT 接入 Signoz 服务监控
 
 1. 修改 FastGPT 环境变量
 
-```
-SIGNOZ_BASE_URL=上一步复制的地址
-SIGNOZ_SERVICE_NAME=fastgpt # 服务标识名，必须为英文
-SIGNOZ_STORE_LEVEL=warn # 日志等级，可选值: debug, info, warn, error
+**日志等级枚举**: `trace` | `debug` | `info` | `warning` | `error` | `fatal`
+
+```dotenv
+LOG_ENABLE_CONSOLE=true # 是否开启控制台打印
+LOG_CONSOLE_LEVEL=debug # 控制台打印最低日志等级
+LOG_ENABLE_OTEL=true # 是否开启 OTEL 日志收集
+LOG_OTEL_LEVEL=info # OTEL 日志收集的最低日志等级
+LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
+LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
 ```
 
 2. 重启 FastGPT
 
 ## 查看效果
 
-返回 Sealos 应用管理列表，点击进入 Signoz 前端项目，并访问其公网地址，进入管理台。 
+返回 Sealos 应用管理列表，点击进入 Signoz 前端项目，并访问其公网地址，进入管理台。
 
 | | |
 | --- | --- |
@@ -65,7 +70,7 @@ SIGNOZ_STORE_LEVEL=warn # 日志等级，可选值: debug, info, warn, error
 
 ![alt text](/imgs/image-117.png)
 
-![alt text](/imgs/image-118.png) 
+![alt text](/imgs/image-118.png)
 
 ## 注意事项
 

@@ -93,17 +93,21 @@ export const UpdateBillResponseSchema = z
   .object({
     qrCode: z.string().optional().meta({ description: '支付二维码 URL' }),
     iframeCode: z.string().optional().meta({ description: '支付 iframe 代码' }),
-    markdown: z.string().optional().meta({ description: 'Markdown 格式的支付信息' })
+    markdown: z.string().optional().meta({ description: 'Markdown 格式的支付信息' }),
+    payUrl: z.string().optional().meta({ description: '支付跳转 URL（企微支付）' }),
+    metadata: z.any().nullish().meta({ description: '支付元数据' })
   })
-  .refine((data) => data.qrCode || data.iframeCode || data.markdown, {
-    message: 'At least one of qrCode, iframeCode, or markdown must be provided'
+  .refine((data) => data.qrCode || data.iframeCode || data.markdown || data.payUrl, {
+    message: 'At least one of qrCode, iframeCode, markdown, or payUrl must be provided'
   });
 export type UpdateBillResponseType = z.infer<typeof UpdateBillResponseSchema>;
 
 export const CreateBillResponseSchema = UpdateBillResponseSchema.safeExtend({
-  billId: z.string().meta({ description: '订单 ID' }),
+  billId: ObjectIdSchema.optional().meta({ description: '订单 ID' }),
   readPrice: z.number().min(0).meta({ description: '实际支付价格' }),
   payment: z.enum(BillPayWayEnum).meta({ description: '支付方式' })
+}).meta({
+  description: '创建订单响应。企微支付时候，billId 为空'
 });
 export type CreateBillResponseType = z.infer<typeof CreateBillResponseSchema>;
 

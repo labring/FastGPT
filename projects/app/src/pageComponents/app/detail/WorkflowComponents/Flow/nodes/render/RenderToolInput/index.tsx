@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   Box,
   Button,

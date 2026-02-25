@@ -7,7 +7,6 @@ import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants'
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type CommonRenderProps = {

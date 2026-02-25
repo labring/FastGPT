@@ -51,32 +51,37 @@ function EditModal({
   const avatar = watch('avatar');
   const notificationAccount = watch('notificationAccount');
 
-  const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (data: CreateTeamProps) => {
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
+    async (data: CreateTeamProps) => {
       return postCreateTeam(data);
     },
-    onSuccess() {
-      onSuccess();
-      onClose();
-    },
-    successToast: t('common:create_success'),
-    errorToast: t('common:create_failed')
-  });
-  const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: async (data: EditTeamFormDataType) => {
+    {
+      onSuccess() {
+        onSuccess();
+        onClose();
+      },
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
+    }
+  );
+
+  const { runAsync: onclickUpdate, loading: updating } = useRequest(
+    async (data: EditTeamFormDataType) => {
       if (!data.id) return Promise.resolve('');
       return putUpdateTeam({
         name: data.name,
         avatar: data.avatar
       });
     },
-    onSuccess() {
-      onSuccess();
-      onClose();
-    },
-    successToast: t('common:update_success'),
-    errorToast: t('common:update_failed')
-  });
+    {
+      onSuccess() {
+        onSuccess();
+        onClose();
+      },
+      successToast: t('common:update_success'),
+      errorToast: t('common:update_failed')
+    }
+  );
 
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 

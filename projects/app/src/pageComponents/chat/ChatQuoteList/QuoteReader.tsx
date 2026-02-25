@@ -3,7 +3,7 @@ import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
@@ -26,7 +26,7 @@ const QuoteReader = ({
     return rawSearch.filter((item) => metadata.collectionIdList.includes(item.collectionId));
   }, [rawSearch, metadata.collectionIdList]);
 
-  const { data: quoteList, loading } = useRequest2(
+  const { data: quoteList, loading } = useRequest(
     async () =>
       await getQuoteDataList({
         datasetDataIdList: filterRawSearch.map((item) => item.id),

@@ -3,7 +3,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { RunHTTPToolResult } from '@fastgpt/service/core/app/http';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 
 export type RunHTTPToolQuery = {};
 

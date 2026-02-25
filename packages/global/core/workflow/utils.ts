@@ -17,7 +17,7 @@ import {
   type FlowNodeOutputItemType,
   type ReferenceArrayValueType,
   type ReferenceItemValueType
-} from './type/io.d';
+} from './type/io';
 import { type StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -28,7 +28,7 @@ import type {
   AppChatConfigType,
   AppAutoExecuteConfigType,
   AppQGConfigType,
-  AppSchema
+  AppSchemaType
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -271,7 +271,7 @@ export const appData2FlowNodeIO = ({
           label: item.label,
           debugLabel: item.label,
           description: '',
-          valueType: WorkflowIOValueTypeEnum.any,
+          valueType: item.valueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
@@ -428,13 +428,17 @@ export const removeUnauthModels = async ({
   modules,
   allowedModels = new Set()
 }: {
-  modules: AppSchema['modules'];
+  modules: AppSchemaType['modules'];
   allowedModels?: Set<string>;
 }) => {
   if (modules) {
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
+          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
+          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+            return;
+          }
           if (!allowedModels.has(input.value)) {
             input.value = undefined;
           }

@@ -26,7 +26,8 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 type packageStatus = 'active' | 'inactive' | 'expired';
 
@@ -34,7 +35,9 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { subPlans } = useSystemStore();
-  const { data: teamPlans = [], loading: isLoading } = useRequest2(
+  const { userInfo } = useUserStore();
+  const isWecomTeam = !!userInfo?.team.isWecomTeam;
+  const { data: teamPlans = [], loading: isLoading } = useRequest(
     () =>
       getTeamPlans().then((res) => {
         return [
@@ -138,12 +141,14 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
           </Table>
           <Loading loading={isLoading} fixed={false} />
         </TableContainer>
-        <HStack mt={4} color={'primary.700'}>
-          <MyIcon name={'infoRounded'} w={'1rem'} />
-          <Box fontSize={'mini'} fontWeight={'500'}>
-            {t('account_info:package_usage_rules')}
-          </Box>
-        </HStack>
+        {!isWecomTeam && (
+          <HStack mt={4} color={'primary.700'}>
+            <MyIcon name={'infoRounded'} w={'1rem'} />
+            <Box fontSize={'mini'} fontWeight={'500'}>
+              {t('account_info:package_usage_rules')}
+            </Box>
+          </HStack>
+        )}
       </ModalBody>
     </MyModal>
   );

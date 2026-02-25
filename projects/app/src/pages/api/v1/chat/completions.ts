@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type {
   ChatCompletionCreateParams,
   ChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type.d';
+} from '@fastgpt/global/core/ai/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -22,7 +22,7 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  saveChat,
+  pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -42,7 +42,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -69,6 +69,7 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -91,7 +92,7 @@ export type Props = ChatCompletionCreateParams &
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  app: AppSchema;
+  app: AppSchemaType;
   showCite?: boolean;
   showRunningStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
@@ -341,8 +342,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const isInteractiveRequest = !!getLastInteractiveValue(histories);
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -378,10 +377,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       durationSeconds
     };
-    if (isInteractiveRequest) {
-      await updateInteractiveChat(params);
+    if (interactive) {
+      await updateInteractiveChat({ interactive, ...params });
     } else {
-      await saveChat(params);
+      await pushChatRecords(params);
     }
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -393,7 +392,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
+    logger.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
     const feResponseData = responseAllData
@@ -468,7 +467,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             message: {
               role: 'assistant',
               ...(Array.isArray(formattdResponse)
-                ? { content: formattdResponse }
+                ? {
+                    content: formattdResponse.map((item) => {
+                      // Add value type(适配旧版)
+                      enum ChatItemValueTypeEnum {
+                        text = 'text',
+                        file = 'file',
+                        tool = 'tool',
+                        interactive = 'interactive',
+                        reasoning = 'reasoning'
+                      }
+                      const type = (() => {
+                        if (item.text) return ChatItemValueTypeEnum.text;
+                        if ('file' in item) return ChatItemValueTypeEnum.file;
+                        if ('tool' in item || 'tools' in item) return ChatItemValueTypeEnum.tool;
+                        if ('interactive' in item) return ChatItemValueTypeEnum.interactive;
+                        if ('reasoning' in item) return ChatItemValueTypeEnum.reasoning;
+                        return ChatItemValueTypeEnum.text;
+                      })();
+                      return {
+                        ...item,
+                        type
+                      };
+                    })
+                  }
                 : {
                     content: formattdResponse.content,
                     ...(formattdResponse.reasoning && {
@@ -485,7 +507,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
+      pushResult2Remote({
+        outLinkUid,
+        shareId,
+        appName: app.name,
+        flowResponses,
+        chatId: saveChatId
+      });
       addOutLinkUsage({
         shareId,
         totalPoints

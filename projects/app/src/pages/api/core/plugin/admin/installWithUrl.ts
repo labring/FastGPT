@@ -20,17 +20,7 @@ async function handler(
     return Promise.reject('Download URL is required');
   }
 
-  const result = await pluginClient.tool.upload.install({
-    body: {
-      urls: downloadUrls
-    }
-  });
-
-  if (result.status !== 200) {
-    return Promise.reject(result.body);
-  }
-
-  return result.body;
+  return await pluginClient.installTools(downloadUrls);
 }
 
 export default NextAPI(handler);

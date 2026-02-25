@@ -15,7 +15,7 @@ import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
 import MemberListCard, { type MemberListCardProps } from './MemberListCard';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useTranslation } from 'next-i18next';
@@ -121,7 +121,7 @@ const CollaboratorContextProvider = ({
     },
     runAsync: refetchCollaboratorList,
     loading: isFetchingCollaborator
-  } = useRequest2(
+  } = useRequest(
     async () => {
       if (feConfigs.isPlus) {
         const { clbs, parentClbs = [] } = await onGetCollaboratorList();

@@ -63,9 +63,9 @@
 pre,
 code {
   border-radius: 16px;
-  background: #F5F6F7;
+  background: #f5f6f7;
   font-family: Alef;
-  font-size: 1.0rem;
+  font-size: 1rem;
   font-weight: 400;
   line-height: 16px;
   letter-spacing: 0.48px;
@@ -87,7 +87,7 @@ div[role='tabpanel'] figure:has(+ p) pre code {
 }
 
 pre {
-  padding: 24px 0 24px 24px ;
+  padding: 24px 30px 24px 24px;
 }
 
 pre code {
@@ -118,33 +118,33 @@ code span {
   margin: 0 0.2em;
   color: #272727;
   background: #f5f6f7;
-  font-family: "PingFang SC";
+  font-family: 'PingFang SC';
   font-size: 14px;
   font-style: normal;
   font-weight: 500;
-  line-height: 180%; 
+  line-height: 180%;
   letter-spacing: 0.056px;
   border: none;
   border-radius: 8px;
 }
 
 .dark :not(pre) > code {
-  color: #E6E6E6 !important;
+  color: #e6e6e6 !important;
   background: #282828 !important;
 }
 
-div[role="tablist"] ~ div:has(figure, p, ul) {
+div[role='tablist'] ~ div:has(figure, p, ul) {
   border-radius: 0 !important;
   border: solid 1.5px #e5e5e5;
   border-radius: 0.75rem !important;
 }
 
-.dark div[role="tablist"] ~ div:has(figure, p, ul) {
+.dark div[role='tablist'] ~ div:has(figure, p, ul) {
   border: solid 1.5px #535353;
 }
 
-.dark div[role="tablist"] {
-  background-color: #1E1E1E;
+.dark div[role='tablist'] {
+  background-color: #1e1e1e;
 }
 
 /* 代码块下方的滚动条样式 */
@@ -153,31 +153,31 @@ div.bg-fd-secondary:has(pre) {
 }
 
 .dark div.bg-fd-secondary:has(pre) {
-  background-color: #1E1E1E;
+  background-color: #1e1e1e;
 }
 
 div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
-  background: #e8e8e8; 
+  background: #e8e8e8;
 }
 
 div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
-  background: #b0b0b0; 
+  background: #b0b0b0;
 }
 
 div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
-  background: #909090; 
+  background: #909090;
 }
 
 .dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-track {
-  background: #1a1a1a; 
+  background: #1a1a1a;
 }
 
 .dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb {
-  background: #404040; 
+  background: #404040;
 }
 
 .dark div.bg-fd-secondary:has(pre)::-webkit-scrollbar-thumb:hover {
-  background: #606060; 
+  background: #606060;
 }
 
 /* 代码块中的滚动条样式优化 */
@@ -265,8 +265,8 @@ div[data-state='open'].fixed.inset-0.z-50 {
 }
 
 /* 复制按钮容器和按钮样式 */
-div[class*="bg-fd-card"]:has(button[aria-label='Copy Text']),
-div[class*="bg-fd-card"]:has(button[aria-label='Copied Text']) {
+div[class*='bg-fd-card']:has(button[aria-label='Copy Text']),
+div[class*='bg-fd-card']:has(button[aria-label='Copied Text']) {
   right: 26px;
   top: 24px;
   display: flex;
@@ -305,7 +305,7 @@ button[aria-label='Copy Text']::before {
   background-image: url('../public/icons/copy.svg');
   width: 26px;
   height: 26px;
-  transition: filter 0.2s ease; 
+  transition: filter 0.2s ease;
 }
 
 /* 鼠标悬停时使复制图标颜色变深 */
@@ -419,13 +419,13 @@ div[data-rmiz-modal-overlay='visible'] {
   --color-fd-background: #000000;
   --color-fd-foreground: hsl(220, 60%, 94.5%);
   --color-fd-muted: hsl(220, 50%, 10%);
-  --color-fd-muted-foreground: #B0B0B0;
+  --color-fd-muted-foreground: #b0b0b0;
   --color-fd-popover: hsl(220, 50%, 10%);
   --color-fd-popover-foreground: hsl(220, 60%, 94.5%);
   --color-fd-card: hsla(220, 56%, 15%, 0.4);
   --color-fd-card-foreground: hsl(220, 60%, 94.5%);
   --color-fd-border: hsla(220, 50%, 50%, 0.2);
-  --color-fd-primary: #C2D3FF; /* 文本高亮色 */
+  --color-fd-primary: #c2d3ff; /* 文本高亮色 */
   --color-fd-primary-foreground: hsl(0, 0%, 9%);
   --color-fd-secondary: hsl(220, 50%, 20%);
   --color-fd-secondary-foreground: hsl(220, 80%, 90%);
@@ -443,36 +443,35 @@ button[data-search-full] {
 }
 
 .dark\:text-blue-400:where(.dark, .dark *) {
-  color: #C2D3FF;
+  color: #c2d3ff;
   background-color: #434548;
 }
 
-
-.dark div[role="tabpanel"].bg-fd-background {
-  background-color: #1E1E1E;
+.dark div[role='tabpanel'].bg-fd-background {
+  background-color: #1e1e1e;
 }
 
-div[role="tabpanel"].bg-fd-background {
-  background-color: #F7F7F8;
+div[role='tabpanel'].bg-fd-background {
+  background-color: #f7f7f8;
 }
 
-div[role="tabpanel"].bg-fd-background > div > ul {
+div[role='tabpanel'].bg-fd-background > div > ul {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.dark div[role="tabpanel"].bg-fd-background > div > ul {
+.dark div[role='tabpanel'].bg-fd-background > div > ul {
   margin: 0;
-  background-color: #1E1E1E;
+  background-color: #1e1e1e;
 }
 
-div[role="tabpanel"].bg-fd-background > div > ul > li {
+div[role='tabpanel'].bg-fd-background > div > ul > li {
   margin: 0;
 }
 
-button[role="tab"] {
+button[role='tab'] {
   padding-top: 16px;
   padding-bottom: 16px;
 }

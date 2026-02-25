@@ -1,7 +1,7 @@
 import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { type NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 import QGConfig from '@/components/core/app/QGConfig';
 import TTSSelect from '@/components/core/app/TTSSelect';

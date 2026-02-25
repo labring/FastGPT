@@ -1,6 +1,6 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
-import { addLog } from '../common/system/log';
+import { getLogger, LogCategories } from '../common/logger';
 
 export enum WorkerNameEnum {
   readFile = 'readFile',
@@ -13,8 +13,6 @@ export enum WorkerNameEnum {
 export const getSafeEnv = () => {
   return {
     MAX_HTML_TRANSFORM_CHARS: process.env.MAX_HTML_TRANSFORM_CHARS,
-    LOG_LEVEL: process.env.LOG_LEVEL,
-    STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,
@@ -30,6 +28,7 @@ export const getWorker = (name: `${WorkerNameEnum}`) => {
 };
 
 export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string, any>) => {
+  const logger = getLogger(LogCategories.INFRA.WORKER);
   return new Promise<T>((resolve, reject) => {
     const start = Date.now();
     const worker = getWorker(name);
@@ -43,7 +42,7 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
 
       const time = Date.now() - start;
       if (time > 1000) {
-        addLog.info(`Worker ${name} run time: ${time}ms`);
+        logger.info('Worker task completed', { name, durationMs: time });
       }
     });
 
@@ -130,9 +129,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   }
 
   run(data: Props) {
-    // watch memory
-    // addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
-
     return new Promise<Response>((resolve, reject) => {
       /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
@@ -152,6 +148,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   }
 
   createWorker() {
+    const logger = getLogger(LogCategories.INFRA.WORKER);
     // Create a new worker and push it queue.
     const workerId = `${Date.now()}${Math.random()}`;
     const worker = getWorker(this.name);
@@ -181,13 +178,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
     // Worker error, terminate and delete it.（Un catch error)
     worker.on('error', (err) => {
-      console.log(err);
-      addLog.error('Worker error', err);
+      logger.error('Worker error', { workerId, name: this.name, error: err });
       this.deleteWorker(workerId);
     });
     worker.on('messageerror', (err) => {
-      console.log(err);
-      addLog.error('Worker messageerror', err);
+      logger.error('Worker message error', { workerId, name: this.name, error: err });
       this.deleteWorker(workerId);
     });
 

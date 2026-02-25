@@ -24,7 +24,7 @@ import DateRangePicker, {
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { addDays } from 'date-fns';
 import { useTranslation } from 'next-i18next';
@@ -77,7 +77,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const { data: channelList = [] } = useRequest2(
+  const { data: channelList = [] } = useRequest(
     async () => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
@@ -98,7 +98,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
+  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
     manual: false
   });
   const modelList = useMemo(() => {
@@ -288,7 +288,7 @@ export default ChannelLog;
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
   const { t } = useTranslation();
-  const { data: detailData } = useRequest2(
+  const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
       try {

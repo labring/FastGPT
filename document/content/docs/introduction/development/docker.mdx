@@ -1,5 +1,5 @@
 ---
-title: Docker Compose 快速部署
+title: 通过 Docker 部署
 description: 使用 Docker Compose 快速部署 FastGPT
 ---
 
@@ -9,8 +9,6 @@ import { Alert } from '@/components/docs/Alert';
 
 1. 基础的网络知识：端口，防火墙……
 2. Docker 和 Docker Compose 基础知识
-3. 大模型相关接口和参数
-4. RAG 相关知识：向量模型，向量数据库，向量检索
 
 ## 部署架构图
 
@@ -19,7 +17,7 @@ import { Alert } from '@/components/docs/Alert';
 <Alert icon="🤖" context="success">
 
 - MongoDB：用于存储除了向量外的各类数据
-- PostgreSQL/Milvus/Oceanbase：存储向量数据
+- PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
 - AIProxy: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
 
 </Alert>
@@ -53,6 +51,26 @@ import { Alert } from '@/components/docs/Alert';
 Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
 
 由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
+
+### SeekDB版本
+
+SeekDB 是基于 MySQL 协议的高性能向量数据库，与 OceanBase 协议完全兼容，支持高效的向量检索。
+
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
+
+<Alert icon="🤖" context="success">
+
+SeekDB 使用 MySQL 协议，与 OceanBase 完全兼容：
+- 支持 1536 维向量检索
+- 内置 HNSW 索引算法
+- 提供批量插入和查询优化
+- 自动重试和连接池管理
+
+</Alert>
 
 ## 前置工作
 
@@ -99,123 +117,61 @@ brew install orbstack
 
 ## 开始部署
 
-### 1. 获取 `docker-compose.yml` 和 `config.json` 配置文件
+### 1. 获取配置文件
 
-#### 方法一：使用脚本部署
+#### 方法一：使用交互式脚本部署
 
-<Tabs items={['PgVector版本','Oceanbase版本','Milvus版本','Zilliz版本']}>
-  <Tab value="PgVector版本">
-国内镜像(阿里云)
+需要在 Linux/MacOS/Windows WSL 环境下执行，引导用户选择部署环境、向量库版本，IP地址等。
 
 ```bash
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=pg
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
-
-非国内镜像(dockhub, ghcr)
-
-```bash
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=pg
-```
-需要在 Linux/MacOS/Windows WSL 环境下执行
-    </Tab>
-
-  <Tab value="Oceanbase版本">
-      国内镜像(阿里云)
-
-      ```bash
-      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=oceanbase
-      ```
-
-      非国内镜像(dockhub, ghcr)
-
-      ```bash
-      bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=oceanbase
-      ```
-      需要在 Linux/MacOS/Windows WSL 环境下执行
-  </Tab>
-  <Tab value="Milvus版本">
-  国内镜像(阿里云)
-
-  ```bash
-  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=milvus
-  ```
-
-  非国内镜像(dockhub, ghcr)
-
-  ```bash
-  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=milvus
-  ```
-  需要在 Linux/MacOS/Windows WSL 环境下执行
-  </Tab>
-  <Tab value="Zilliz版本">
-  国内镜像(阿里云)
-
-  ```bash
-  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=cn --vector=zilliz
-  ```
-
-  非国内镜像(dockhub, ghcr)
-
-  ```bash
-  bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --vector=zilliz
-  ```
-  需要在 Linux/MacOS/Windows WSL 环境下执行
-
-  zilliz 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
-  </Tab>
-</Tabs>
 
 #### 方法二：手动下载部署
 如果部署环境为非 *nix 环境或无法访问外网，需要手动下载 `docker-compose.yml` 进行部署
 
-选择并下载您的 `docker-compose.yml` 文件
-- Pgvector
+1. 下载 `docker-compose.yml` 文件：
+
+<details>
+<summary>点击展开查看不同数据库的 docker-compose 配置文件下载地址</summary>
+
+- **Pgvector**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
-- Oceanbase
+- **Oceanbase**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.ob.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.ob.yml)
-- Milvus
+- **Milvus**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.milvus.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.milvus.yml)
-- Zilliz
+- **Zilliz**
   - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+- **SeekDB**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.seekdb.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.seekdb.yml)
+
+2. 下载 `config.json` 文件：
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+</details>
 
 下载 config.json 文件
 - [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
 
-<Alert icon="🤖" context="success">
+### 2. 修改环境变量
 
-所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AVX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24\*\*（需要自己在docker hub下载，阿里云镜像没做备份）
+对于 `Zilliz 版本` 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥), 其他版本可直接下一步。
 
-</Alert>
+### 3. 开放外网端口/配置域名
 
-### 2. 开放外网端口/配置域名
+以下端口必须被访问到：
 
-以下两个端口必须被访问到：
+1. 3000 端口（FastGPT 主服务）
+2. 9000 端口（S3 服务）
+1. 3005 端口（FastGPT SSE MCP server 服务）
 
-1. 指向 3000 端口（FastGPT 主服务）
-2. 指向 9000 端口（S3 服务）
-
-### 3. 修改环境变量
-
-1. 修改`STORAGE_EXTERNAL_ENDPOINT`变量，改成客户端和FastGPT 服务均可访问的地址。
-
-**重要：**
-
-> 填入的地址不可为`127.0.0.1`或者`localhost`等本地回环地址，可填 Docker 部署时的宿主机本地IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
->
-> 具体查看 [对象存储配置及常见问题](/docs/introduction/development/object-storage)
-
-2. 按照您的需求自行修改环境变量，建议在生产环境修改账号密码等。
-3. 对于 Zilliz 版本 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥)
-
-### 4. 修改 config.json 配置文件
-
-修改`config.json`文件中的`mcpServerProxyEndpoint`值，设置成`mcp server`的公网可访问地址，yml 文件中默认给出了映射到 3005 端口，如通过 IP 访问，则可能是：`120.172.2.10:3005`。
-
-### 5. 启动容器
+### 4. 启动容器
 
 在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
@@ -224,19 +180,19 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh) --region=global --ve
 docker-compose up -d
 ```
 
-### 6. 访问 FastGPT
+### 5. 访问 FastGPT
 
 可通过第二步开放的端口/域名访问 FastGPT。
 登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致）。
 
-### 7. 配置模型
+### 6. 配置模型
 
 - 首次登录FastGPT后，系统会提示未配置`语言模型`和`索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
 - 如果系统未正常跳转，可以在`账号-模型提供商`页面，进行模型配置。[点击查看相关教程](/docs/introduction/development/modelConfig/ai-proxy)
 - 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该tab，重新打开一次即可。
 
-### 8. 安装系统插件
+### 7. 按需安装系统插件
 
 从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
 
@@ -247,6 +203,24 @@ docker-compose up -d
 ![alt text](/imgs/image-121.png)
 
 ## FAQ
+
+### FastGPT 和 FastGPT-plugin 版本对应
+
+| FastGPT-plugin 版本  |  FastGPT 主服务 |
+| ------------------- | ---------------- |
+|   0.5.x      |     >= 4.14.6         |
+|  < 0.5.0      |   < 4.14.6        |
+
+### S3 无法正常连接
+
+
+检查`STORAGE_EXTERNAL_ENDPOINT`变量，需设置成客户端和 FastGPT 服务均可访问的地址。
+
+**重要：**
+
+> 填入的地址不可为`127.0.0.1`或者`localhost`等本地回环地址，可填 Docker 部署时的宿主机本地IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
+>
+> 具体查看 [对象存储配置及常见问题](/docs/introduction/development/object-storage)
 
 ### 登录系统后，浏览器无法响应
 

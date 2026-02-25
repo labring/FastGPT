@@ -28,7 +28,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Path from '@/components/common/folder/Path';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppBasicInfoByIds, getMyApps } from '@/web/core/app/api';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
@@ -70,7 +70,7 @@ const SelectAppModal = ({
   >([]);
 
   // Load selected app
-  useRequest2(() => getAppBasicInfoByIds(selectedApps.map((item) => item.appId)), {
+  useRequest(() => getAppBasicInfoByIds(selectedApps.map((item) => item.appId)), {
     manual: false,
     onSuccess: (data) => {
       setSelectedList(
@@ -89,7 +89,7 @@ const SelectAppModal = ({
   const [searchKey, setSearchKey] = useState('');
   const [parentId, setParentId] = useState<ParentIdType>('');
 
-  const { data: apps = [], loading: loadingApps } = useRequest2(
+  const { data: apps = [], loading: loadingApps } = useRequest(
     () =>
       getMyApps({
         searchKey,
@@ -101,7 +101,7 @@ const SelectAppModal = ({
       throttleWait: 200
     }
   );
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
@@ -277,7 +277,7 @@ const EditMcpModal = ({
     name: 'apps'
   });
 
-  const { runAsync: createMcp, loading: loadingCreate } = useRequest2(
+  const { runAsync: createMcp, loading: loadingCreate } = useRequest(
     (data: EditMcForm) =>
       postCreateMcpServer({
         name: data.name,
@@ -294,7 +294,7 @@ const EditMcpModal = ({
       onSuccess
     }
   );
-  const { runAsync: updateMcp, loading: loadingUpdate } = useRequest2(
+  const { runAsync: updateMcp, loading: loadingUpdate } = useRequest(
     (data: EditMcForm) =>
       putUpdateMcpServer({
         id: data.id!,

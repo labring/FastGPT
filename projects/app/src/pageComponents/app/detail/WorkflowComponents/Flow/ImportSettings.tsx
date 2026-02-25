@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
@@ -26,7 +26,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const [value, setValue] = useState('');
   const { getMyModelList } = useSystemStore();
 
-  const { data: myModels } = useRequest2(getMyModelList, {
+  const { data: myModels } = useRequest(getMyModelList, {
     manual: false
   });
 

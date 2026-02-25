@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -13,6 +13,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 export type backupQuery = {};
 
@@ -26,7 +27,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
@@ -79,7 +80,7 @@ async function handler(req: ApiRequestProps<backupBody, backupQuery>) {
 
     return {};
   } catch (error) {
-    addLog.error(`Backup dataset collection create error: ${error}`);
+    logger.error(`Backup dataset collection create error: ${error}`);
     return Promise.reject(error);
   } finally {
     multer.clearDiskTempFiles(filepaths);

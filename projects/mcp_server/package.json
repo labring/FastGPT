@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@fastgpt/service": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "chalk": "^5.3.0",
     "dayjs": "^1.11.7",
     "dotenv": "^16.5.0",

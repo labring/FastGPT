@@ -5,6 +5,7 @@ import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetDataCollectionName } from './schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const DatasetDataTextCollectionName = 'dataset_data_texts';
 
@@ -43,7 +44,8 @@ try {
   DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
   DatasetDataTextSchema.index({ dataId: 'hashed' });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset data text indexes', { error });
 }
 
 export const MongoDatasetDataText = getMongoModel<DatasetDataTextSchemaType>(

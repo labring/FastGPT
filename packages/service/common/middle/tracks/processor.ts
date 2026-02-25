@@ -1,7 +1,9 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.EVENT.TRACK);
 
 const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 10000);
 
@@ -109,9 +111,9 @@ export const countTrackTimer = async () => {
 
     if (bulkOps.length > 0) {
       await TrackModel.bulkWrite(bulkOps);
-      addLog.info('Track timer processing success');
+      logger.info('Track timer processing succeeded', { operations: bulkOps.length });
     }
   } catch (error) {
-    addLog.error('Track timer processing error', error);
+    logger.error('Track timer processing failed', { error });
   }
 };

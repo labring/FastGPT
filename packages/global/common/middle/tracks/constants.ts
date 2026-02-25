@@ -19,5 +19,6 @@ export enum TrackEnum {
   chatHistoryCleanup = 'chatHistoryCleanup',
 
   // web tracks
-  clientError = 'clientError'
+  clientError = 'clientError',
+  workflowDemoMode = 'workflowDemoMode'
 }

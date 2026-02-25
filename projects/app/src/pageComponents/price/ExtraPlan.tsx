@@ -9,17 +9,25 @@ import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { calculatePrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
 import { formatActivityExpirationTime } from './utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
+  const { userInfo, teamPlanStatus } = useUserStore();
+
+  // For Wecom teams, free plan should not be able to buy extra plan
+  const isDisabledBuy =
+    userInfo?.team.isWecomTeam &&
+    teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free;
 
   // 额外的知识库索引量
   const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
@@ -38,7 +46,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const watchedDatasetSize = watchDatasetSize('datasetSize');
   const watchedDatasetMonth = watchDatasetSize('month');
 
-  const { runAsync: onclickBuyDatasetSize, loading: isLoadingBuyDatasetSize } = useRequest2(
+  const { runAsync: onclickBuyDatasetSize, loading: isLoadingBuyDatasetSize } = useRequest(
     async ({ datasetSize, month }: { datasetSize: number; month: number }) => {
       datasetSize = Math.ceil(datasetSize);
       month = Math.ceil(month);
@@ -58,6 +66,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
       });
       setQRPayData({
         tip: t('common:button.extra_dataset_size_tip'),
+        billId: res.billId!,
         ...res
       });
     },
@@ -82,7 +91,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     return t('common:one_year');
   };
 
-  const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest2(
+  const { runAsync: onclickBuyExtraPoints, loading: isLoadingBuyExtraPoints } = useRequest(
     async ({ points, month }: { points: number; month: number }) => {
       points = Math.ceil(points);
       month = Math.ceil(month);
@@ -95,6 +104,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
 
       setQRPayData({
         tip: t('common:button.extra_points_tip'),
+        billId: res.billId!,
         ...res
       });
     },
@@ -301,6 +311,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               selectedPackageIndex === undefined || !extraPointsPackages[selectedPackageIndex]
             }
             onClick={() => {
+              if (isDisabledBuy) {
+                return toast({
+                  status: 'warning',
+                  title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                });
+              }
               if (selectedPackageIndex !== undefined && extraPointsPackages[selectedPackageIndex]) {
                 const selectedPackage = extraPointsPackages[selectedPackageIndex];
                 onclickBuyExtraPoints({
@@ -461,7 +477,15 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               h={['40px', '44px']}
               variant={'primaryGhost'}
               isLoading={isLoadingBuyDatasetSize}
-              onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
+              onClick={(e) => {
+                if (isDisabledBuy) {
+                  return toast({
+                    status: 'warning',
+                    title: t('common:support.wallet.subscription.extra_plan_disabled_tip')
+                  });
+                }
+                handleSubmitDatasetSize(onclickBuyDatasetSize)(e);
+              }}
               color={'primary.700'}
               fontSize={['14px', '16px']}
             >

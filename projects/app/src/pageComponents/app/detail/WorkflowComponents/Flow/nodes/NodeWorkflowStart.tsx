@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';

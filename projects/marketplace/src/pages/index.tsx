@@ -18,7 +18,7 @@ import {
   getMarketplaceTools,
   getToolTags
 } from '@/web/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 import Head from 'next/head';
 
@@ -152,14 +152,14 @@ const ToolkitMarketplace = () => {
     }
   );
 
-  const { data: toolTags = [] } = useRequest2(getToolTags, {
+  const { data: toolTags = [] } = useRequest(getToolTags, {
     manual: false
   });
 
   const displayTools: ToolCardItemType[] = useMemo(() => {
     if (!tools || !Array.isArray(tools) || !toolTags) return [];
 
-    return tools.map((tool: ToolListItem) => {
+    return tools.map((tool) => {
       return {
         id: tool.toolId,
         name: parseI18nString(tool.name || '', i18n.language) || '',

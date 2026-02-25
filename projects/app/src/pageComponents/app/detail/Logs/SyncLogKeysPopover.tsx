@@ -3,7 +3,7 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import type {
@@ -27,7 +27,7 @@ const SyncLogKeysPopover = ({
 }) => {
   const { t } = useTranslation();
 
-  const { runAsync: updateList, loading: updateLoading } = useRequest2(
+  const { runAsync: updateList, loading: updateLoading } = useRequest(
     async (data: updateLogKeysBody) => {
       await updateLogKeys(data);
     },

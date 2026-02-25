@@ -7,6 +7,8 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv490']);
 
 // 所有 trainingType=auto 的 collection，都改成 trainingType=chunk
 const updateCollections = async () => {
@@ -60,13 +62,13 @@ const upgradePgVector = async () => {
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
 
-  console.log('升级 PG vector 插件');
+  logger.info('升级 PG vector 插件');
   await upgradePgVector();
 
-  console.log('变更所有 collection 的 trainingType 为 chunk');
+  logger.info('变更所有 collection 的 trainingType 为 chunk');
   await updateCollections();
 
-  console.log(
+  logger.info(
     "更新所有 data 的 index, autoIndex=true 的，增加type='default'，其他的增加 type='custom'"
   );
   await updateData();

@@ -17,7 +17,7 @@ import {
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import {
@@ -75,7 +75,7 @@ const Upload = () => {
     }
   }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
-  const { runAsync: startUpload, loading: isLoading } = useRequest2(
+  const { runAsync: startUpload, loading: isLoading } = useRequest(
     async ({ customPdfParse, webSelector, ...data }: ImportFormType) => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');

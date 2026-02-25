@@ -5,7 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
 import {
   setBdVId,
@@ -129,7 +129,7 @@ export const useInitApp = () => {
     };
   });
 
-  useRequest2(initFetch, {
+  useRequest(initFetch, {
     refreshDeps: [userInfo?.username],
     manual: false,
     pollingInterval: 300000 // 5 minutes refresh

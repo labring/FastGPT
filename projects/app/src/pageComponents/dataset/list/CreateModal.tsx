@@ -3,7 +3,7 @@ import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakr
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -75,7 +75,7 @@ const CreateModal = ({
     });
 
   /* create a new kb and router to it */
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (data: CreateDatasetParams) => await postCreateDataset(data),
     {
       successToast: t('common:create_success'),

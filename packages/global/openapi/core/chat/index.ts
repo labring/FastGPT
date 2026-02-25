@@ -6,6 +6,7 @@ import { ChatHistoryPath } from './history/index';
 import { GetRecentlyUsedAppsResponseSchema } from './api';
 import { TagsMap } from '../../tag';
 import { ChatControllerPath } from './controler';
+import { HelperBotPath } from './helperBot';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatSettingPath,
@@ -13,6 +14,7 @@ export const ChatPath: OpenAPIPath = {
   ...ChatFeedbackPath,
   ...ChatHistoryPath,
   ...ChatControllerPath,
+  ...HelperBotPath,
 
   '/core/chat/recentlyUsed': {
     get: {

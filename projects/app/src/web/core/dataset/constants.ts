@@ -1,4 +1,4 @@
-import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/model';
+import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/constants';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,

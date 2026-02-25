@@ -4,8 +4,10 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { type NextApiRequest, type NextApiResponse } from 'next';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4819']);
 
-/* 
+/*
   简单版迁移：直接升级到最新镜像，会去除 MongoDatasetData 里的索引。直接执行这个脚本。
   无缝迁移：
     1. 移动 User 表中的 avatar 字段到 TeamMember 表中。
@@ -21,7 +23,7 @@ export default NextAPI(handler);
 const moveUserAvatar = async () => {
   try {
     const users = await MongoUser.find({}, '_id avatar');
-    console.log('Total users:', users.length);
+    logger.info('Start avatar migration', { totalUsers: users.length });
     let success = 0;
     for await (const user of users) {
       // @ts-ignore
@@ -44,12 +46,12 @@ const moveUserAvatar = async () => {
           await user.save({ session });
         });
         success++;
-        console.log('Move avatar success:', success);
+        logger.info('Avatar migration progress', { success });
       } catch (error) {
-        console.error(error);
+        logger.error('Failed to migrate app permission records', { error });
       }
     }
   } catch (error) {
-    console.error(error);
+    logger.error('Failed to migrate app permission records', { error });
   }
 };

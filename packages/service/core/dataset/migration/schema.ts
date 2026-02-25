@@ -1,4 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 
 export const DatasetMigrationLogCollectionName = 'dataset_migration_logs';
@@ -246,7 +247,8 @@ try {
   // 唯一索引：同一个资源在同一个批次只能有一条记录
   DatasetMigrationLogSchema.index({ batchId: 1, resourceType: 1, resourceId: 1 }, { unique: true });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset migration indexes', { error });
 }
 
 export const MongoDatasetMigrationLog = getMongoModel<DatasetMigrationLogSchemaType>(

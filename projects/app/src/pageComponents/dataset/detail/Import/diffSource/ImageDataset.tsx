@@ -10,7 +10,7 @@ import FileSelector, { type SelectFileItemType } from '../components/FileSelecto
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext } from '../Context';
@@ -63,7 +63,7 @@ const SelectFile = React.memo(function SelectFile() {
     });
   };
 
-  const { runAsync: onCreate, loading: creating } = useRequest2(
+  const { runAsync: onCreate, loading: creating } = useRequest(
     async ({ name: collectionName }: { name: string }) => {
       return await createImageDatasetCollection({
         parentId,

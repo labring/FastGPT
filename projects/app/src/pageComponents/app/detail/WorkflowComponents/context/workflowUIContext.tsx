@@ -2,7 +2,10 @@
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowBufferDataContext } from './workflowInitContext';
+import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
 
 // 创建 Context
 type WorkflowUIContextValue = {
@@ -140,6 +143,12 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
   );
   // 演示模式
   const [presentationMode, setPresentationMode] = useState(false);
+
+  // ---- 演示模式埋点 ----
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const nodeAmount = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeAmount);
+  useWorkflowDemoTrack(appId, nodeAmount, presentationMode);
+
   // 右键菜单
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
 

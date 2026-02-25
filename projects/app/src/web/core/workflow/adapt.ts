@@ -189,7 +189,7 @@ type V1WorkflowType = {
     max?: number; // slider, number input
     min?: number; // slider, number input
 
-    llmModelType?: `${LLMModelTypeEnum}`;
+    llmModelType?: LLMModelTypeEnum;
   }[];
   outputs: {
     type?: OutputTypeEnum;
@@ -264,7 +264,7 @@ export const v1Workflow2V2 = (
       [FlowTypeEnum.pluginInput]: FlowNodeTypeEnum.pluginInput,
       [FlowTypeEnum.pluginOutput]: FlowNodeTypeEnum.pluginOutput,
       [FlowTypeEnum.queryExtension]: FlowNodeTypeEnum.queryExtension,
-      [FlowTypeEnum.tools]: FlowNodeTypeEnum.agent,
+      [FlowTypeEnum.tools]: FlowNodeTypeEnum.toolCall,
       [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool,
       [FlowTypeEnum.lafModule]: FlowNodeTypeEnum.lafModule
     };

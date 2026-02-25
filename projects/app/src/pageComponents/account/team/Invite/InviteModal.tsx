@@ -27,7 +27,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Tag from '@fastgpt/web/components/common/Tag';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import format from 'date-fns/format';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -42,7 +42,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
     data: invitationLinkList,
     loading: isLoadingLink,
     runAsync: refetchInvitationLinkList
-  } = useRequest2(() => getInvitationLinkList(), {
+  } = useRequest(() => getInvitationLinkList(), {
     manual: false
   });
 
@@ -71,7 +71,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
     [copyData, feConfigs?.systemTitle, t, userInfo?.team.memberName, userInfo?.team.teamName]
   );
 
-  const { runAsync: onForbid, loading: forbiding } = useRequest2(putForbidInvitationLink, {
+  const { runAsync: onForbid, loading: forbiding } = useRequest(putForbidInvitationLink, {
     manual: true,
     onSuccess: refetchInvitationLinkList,
     successToast: t('account_team:forbid_success')

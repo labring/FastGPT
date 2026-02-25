@@ -18,14 +18,13 @@ declare global {
       VECTOR_VQ_LEVEL: string;
       PG_URL: string;
       OCEANBASE_URL: string;
+      SEEKDB_URL: string;
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
 
       SANDBOX_URL: string;
       FE_DOMAIN: string;
       FILE_DOMAIN: string;
-      LOG_LEVEL?: string;
-      STORE_LOG_LEVEL?: string;
       USE_IP_LIMIT?: string;
       WORKFLOW_MAX_RUN_TIMES?: string;
       WORKFLOW_MAX_LOOP_TIMES?: string;
@@ -42,10 +41,6 @@ declare global {
       // 安全配置
       // 密码登录锁定时间
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
-
-      // Signoz
-      SIGNOZ_BASE_URL?: string;
-      SIGNOZ_SERVICE_NAME?: string;
 
       CHAT_LOG_URL?: string;
       CHAT_LOG_INTERVAL?: string;

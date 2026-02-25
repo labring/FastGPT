@@ -8,6 +8,7 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -40,11 +41,14 @@ const TeamMemberSchema = new Schema({
     type: Date
   },
 
-  // Abandoned
+  /** @deprecated
+   * But some code still use this to judge whether the member is a owner.
+   * TODO: Remove this field and replace it with a more appropriate way to determine ownership.
+   */
   role: {
     type: String
   },
-  // Abandoned
+  /** @deprecated */
   defaultTeam: {
     type: Boolean
   }
@@ -67,7 +71,8 @@ try {
   TeamMemberSchema.index({ teamId: 1 }, { background: true });
   TeamMemberSchema.index({ userId: 1 }, { background: true });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build team member indexes', { error });
 }
 
 export const MongoTeamMember = getMongoModel<TeamMemberType>(

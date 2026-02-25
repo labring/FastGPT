@@ -2,11 +2,13 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
-import { addLog } from '../../../common/system/log';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
 /*
   Query Extension - Semantic Search Enhancement
@@ -209,7 +211,7 @@ assistant: ${chatBg}
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
   if (start === -1 || end === -1) {
-    addLog.warn('Query extension failed, not a valid JSON', {
+    logger.warn('Query extension returned invalid JSON', {
       answer
     });
     return {
@@ -267,7 +269,7 @@ assistant: ${chatBg}
       embeddingTokens
     };
   } catch (error) {
-    addLog.warn('Query extension failed', {
+    logger.warn('Query extension failed', {
       error,
       answer
     });

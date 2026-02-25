@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { listCustomDomain } from '@/web/support/customDomain/api';
 import { useState, useMemo, useEffect } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -33,7 +33,7 @@ export const ShareLinkContainer = ({
   const { t } = useTranslation();
   const [customDomain, setCustomDomain] = useState<string | undefined>(undefined);
 
-  const { data: customDomainList = [] } = useRequest2(listCustomDomain, {
+  const { data: customDomainList = [] } = useRequest(listCustomDomain, {
     manual: !showCustomDomainSelector
   });
 

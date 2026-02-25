@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetDataCollectionName } from '../data/schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
@@ -122,7 +123,8 @@ try {
   TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build dataset training indexes', { error });
 }
 
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(

@@ -6,7 +6,7 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 
@@ -52,7 +52,7 @@ function OrgInfoModal({
   });
   const avatar = watch('avatar');
 
-  const { run: onCreate, loading: isLoadingCreate } = useRequest2(
+  const { run: onCreate, loading: isLoadingCreate } = useRequest(
     async (data: OrgFormType) => {
       if (parentId === undefined) return;
       return postCreateOrg({
@@ -71,7 +71,7 @@ function OrgInfoModal({
     }
   );
 
-  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest(
     async (data: OrgFormType) => {
       if (!editOrg._id) return;
       return putUpdateOrg({

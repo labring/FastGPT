@@ -46,20 +46,22 @@ export const getMCPToolSetRuntimeNode = ({
 export const getMCPToolRuntimeNode = ({
   tool,
   avatar = 'core/app/type/mcpToolsFill',
-  parentId
+  nodeId,
+  toolSetId
 }: {
+  nodeId: string;
   tool: McpToolConfigType;
   avatar?: string;
-  parentId: string;
+  toolSetId: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: getNanoid(),
+    nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
     toolConfig: {
       mcpTool: {
-        toolId: `${AppToolSourceEnum.mcp}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.mcp}-${toolSetId}/${tool.name}` // When runtool is used, parentId and toolname will be employed
       }
     },
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }),

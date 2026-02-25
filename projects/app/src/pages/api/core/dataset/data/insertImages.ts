@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
+import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -14,6 +14,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
+import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 export type insertImagesQuery = {};
 
@@ -23,16 +24,6 @@ export type insertImagesBody = {
 
 export type insertImagesResponse = {};
 
-const authUploadLimit = (tmbId: string, num: number) => {
-  if (!global.feConfigs.uploadFileMaxAmount) return;
-  return authFrequencyLimit({
-    eventId: `${tmbId}-uploadfile`,
-    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
-    expiredTime: addSeconds(new Date(), 30), // 30s
-    num
-  });
-};
-
 async function handler(
   req: ApiRequestProps<insertImagesBody, insertImagesQuery>
 ): Promise<insertImagesResponse> {
@@ -41,7 +32,7 @@ async function handler(
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { collectionId } = result.data;
@@ -55,7 +46,14 @@ async function handler(
     });
     const dataset = collection.dataset;
 
-    await authUploadLimit(tmbId, result.fileMetadata.length);
+    const planStatus = await getTeamPlanStatus({ teamId });
+    await authFrequencyLimit({
+      eventId: `${tmbId}-uploadfile`,
+      maxAmount:
+        planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      expiredTime: addSeconds(new Date(), 30), // 30s
+      num: result.fileMetadata.length
+    });
 
     const imageIds = await Promise.all(
       result.fileMetadata.map(async (file) =>

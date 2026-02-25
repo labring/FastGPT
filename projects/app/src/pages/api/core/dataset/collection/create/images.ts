@@ -10,22 +10,13 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { CreateCollectionResponse } from '@/global/core/dataset/api';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
+import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
-
-const authUploadLimit = (tmbId: string, num: number) => {
-  if (!global.feConfigs.uploadFileMaxAmount) return;
-  return authFrequencyLimit({
-    eventId: `${tmbId}-uploadfile`,
-    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
-    expiredTime: addSeconds(new Date(), 30), // 30s
-    num
-  });
-};
+import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 async function handler(
   req: ApiRequestProps<ImageCreateDatasetCollectionParams>
@@ -35,7 +26,7 @@ async function handler(
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs?.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { parentId, datasetId, collectionName } = result.data;
@@ -48,7 +39,14 @@ async function handler(
       authApiKey: true
     });
 
-    await authUploadLimit(tmbId, result.fileMetadata.length);
+    const planStatus = await getTeamPlanStatus({ teamId });
+    await authFrequencyLimit({
+      eventId: `${tmbId}-uploadfile`,
+      maxAmount:
+        planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      expiredTime: addSeconds(new Date(), 30), // 30s
+      num: result.fileMetadata.length
+    });
 
     if (!dataset.vlmModel) {
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));

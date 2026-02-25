@@ -12,7 +12,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolRow from '@/pageComponents/config/tool/ToolRow';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import TagManageModal from '@/pageComponents/config/TagManageModal';
 import dynamic from 'next/dynamic';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -47,7 +47,7 @@ const ToolProvider = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
 
-  const { runAsync: refreshTools, loading: loadingTools } = useRequest2(
+  const { runAsync: refreshTools, loading: loadingTools } = useRequest(
     () => getAdminSystemTools({ parentId: null }),
     {
       onSuccess: (data) => {

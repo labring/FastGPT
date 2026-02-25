@@ -15,7 +15,7 @@ import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
@@ -56,7 +56,7 @@ const AppChatWindow = () => {
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 

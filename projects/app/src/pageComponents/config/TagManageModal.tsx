@@ -1,7 +1,7 @@
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -41,7 +41,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     data: tags = [],
     run: loadTags,
     loading
-  } = useRequest2(getPluginToolTags, {
+  } = useRequest(getPluginToolTags, {
     manual: false
   });
   useEffect(() => {
@@ -54,7 +54,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [editingTagId]);
 
-  const { runAsync: handleAddTag } = useRequest2(
+  const { runAsync: handleAddTag } = useRequest(
     async (tagName: string) => {
       await createPluginToolTag({ tagName });
     },
@@ -67,7 +67,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: handleUpdateTag } = useRequest2(
+  const { runAsync: handleUpdateTag } = useRequest(
     async (tagId: string, tagName: string) => {
       await updatePluginToolTag({ tagId, tagName });
     },
@@ -80,7 +80,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: handleDeleteTag } = useRequest2(
+  const { runAsync: handleDeleteTag } = useRequest(
     async (tag: SystemPluginToolTagType) => {
       await deletePluginToolTag({ tagId: tag.tagId });
     },
@@ -91,7 +91,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { runAsync: handleUpdateOrder } = useRequest2(
+  const { runAsync: handleUpdateOrder } = useRequest(
     async (newList: SystemPluginToolTagType[]) => {
       await updatePluginToolTagOrder({ tags: newList });
     },

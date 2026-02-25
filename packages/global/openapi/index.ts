@@ -5,6 +5,7 @@ import { PluginPath } from './core/plugin';
 import { AppPath } from './core/app';
 import { SupportPath } from './support';
 import { DatasetPath } from './core/dataset';
+import { AIPath } from './core/ai';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -18,23 +19,30 @@ export const openAPIDocument = createDocument({
     ...ChatPath,
     ...DatasetPath,
     ...PluginPath,
-    ...SupportPath
+    ...SupportPath,
+    ...AIPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
+      name: '我的应用/工具管理',
+      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.appPer]
+    },
+    {
       name: 'Agent 应用',
-      tags: [TagsMap.appCommon, TagsMap.appLog, TagsMap.publishChannel]
+      tags: [TagsMap.appLog, TagsMap.publishChannel]
+    },
+    {
+      name: 'AI 相关',
+      tags: [TagsMap.aiSkill]
+    },
+    {
+      name: '对话',
+      tags: [TagsMap.chatSetting, TagsMap.chatPage]
     },
     {
       name: '对话管理',
-      tags: [
-        TagsMap.chatPage,
-        TagsMap.chatHistory,
-        TagsMap.chatController,
-        TagsMap.chatFeedback,
-        TagsMap.chatSetting
-      ]
+      tags: [TagsMap.chatHistory, TagsMap.chatController, TagsMap.chatFeedback]
     },
     {
       name: '知识库',
@@ -49,12 +57,20 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon]
     },
     {
+      name: '通用-核心功能',
+      tags: [TagsMap.aiCommon]
+    },
+    {
       name: '通用-辅助功能',
       tags: [TagsMap.customDomain, TagsMap.apiKey]
     },
     {
       name: '管理员-插件管理',
       tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
+    },
+    {
+      name: '系统接口',
+      tags: [TagsMap.helperBot]
     }
   ]
 });

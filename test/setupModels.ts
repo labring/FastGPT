@@ -1,4 +1,4 @@
-import { ModelTypeEnum } from 'packages/global/core/ai/model';
+import { ModelTypeEnum } from 'packages/global/core/ai/constants';
 
 export default async function setupModels() {
   global.llmModelMap = new Map<string, any>();

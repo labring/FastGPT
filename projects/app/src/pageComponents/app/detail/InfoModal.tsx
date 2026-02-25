@@ -18,12 +18,12 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import type { AppSchema } from '@fastgpt/global/core/app/type.d';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback } from 'react';
@@ -55,8 +55,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const avatar = watch('avatar');
 
   // submit config
-  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
-    async (data: AppSchema) => {
+  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest(
+    async (data: AppSchemaType) => {
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
@@ -105,7 +105,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       ...props
     });
 
-  const { runAsync: resumeInheritPermission } = useRequest2(() => resumeInheritPer(appDetail._id), {
+  const { runAsync: resumeInheritPermission } = useRequest(() => resumeInheritPer(appDetail._id), {
     errorToast: t('common:resume_failed'),
     onSuccess: () => {
       reloadApp();

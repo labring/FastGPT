@@ -1,7 +1,7 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FolderPath from '@/components/common/folder/Path';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -13,6 +13,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '../context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const SelectCollections = ({
   datasetId,
@@ -29,8 +30,8 @@ const SelectCollections = ({
   datasetId: string;
   type: 'folder' | 'collection';
   onClose: () => void;
-  onChange?: (e: { parentId: string; collectionIds: string[] }) => void | Promise<void>;
-  onSuccess?: (e: { parentId: string; collectionIds: string[] }) => void | Promise<void>;
+  onChange?: (e: { parentId: ParentIdType; collectionIds: string[] }) => void | Promise<void>;
+  onSuccess?: (e: { parentId: ParentIdType; collectionIds: string[] }) => void | Promise<void>;
   defaultSelectedId?: string[];
   title?: string;
   tip?: string;
@@ -44,11 +45,11 @@ const SelectCollections = ({
   const { Loading } = useLoading();
   const [selectedDatasetCollectionIds, setSelectedDatasetCollectionIds] =
     useState<string[]>(defaultSelectedId);
-  const [parentId, setParentId] = useState('');
+  const [parentId, setParentId] = useState<ParentIdType>('');
 
   useQuery(['loadDatasetDetail', datasetId], () => loadDatasetDetail(datasetId));
 
-  const { data, loading: isLoading } = useRequest2(
+  const { data, loading: isLoading } = useRequest(
     () =>
       getDatasetCollections({
         datasetId,
@@ -87,8 +88,8 @@ const SelectCollections = ({
     getDatasetCollectionPathById(parentId)
   );
 
-  const { mutate, isLoading: isResponding } = useRequest({
-    mutationFn: async () => {
+  const { runAsync: mutate, loading: isResponding } = useRequest(
+    async () => {
       if (type === 'folder') {
         await onSuccess?.({ parentId: paths[paths.length - 1]?.parentId || '', collectionIds: [] });
       } else {
@@ -100,8 +101,10 @@ const SelectCollections = ({
 
       return null;
     },
-    errorToast: t('common:request_error')
-  });
+    {
+      errorToast: t('common:request_error')
+    }
+  );
 
   return (
     <MyModal

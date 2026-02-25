@@ -27,15 +27,13 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
 // Update chat history schema
-export const UpdateHistoryBodySchema = OutLinkChatAuthSchema.and(
-  z.object({
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('对话ID'),
-    title: z.string().optional().describe('标题'),
-    customTitle: z.string().optional().describe('自定义标题'),
-    top: z.boolean().optional().describe('是否置顶')
-  })
-);
+export const UpdateHistoryBodySchema = OutLinkChatAuthSchema.extend({
+  appId: ObjectIdSchema.describe('应用ID'),
+  chatId: z.string().min(1).describe('对话ID'),
+  title: z.string().optional().describe('标题'),
+  customTitle: z.string().optional().describe('自定义标题'),
+  top: z.boolean().optional().describe('是否置顶')
+});
 export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodySchema>;
 
 // Delete single chat history schema

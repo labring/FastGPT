@@ -106,21 +106,6 @@ describe('formatVectors function test', () => {
       expect(isNormalized(result)).toBe(true);
       // Should be truncated and normalized regardless of normalization flag
     });
-
-    it('should log warning for vectors with length > 1536', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const inputVector = createNormalizedVector(2000);
-
-      formatVectors(inputVector, false);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'The current vector dimension is 2000, and the vector dimension cannot exceed 1536'
-        )
-      );
-
-      consoleSpy.mockRestore();
-    });
   });
 
   describe('Less than 1536 dimension vectors', () => {

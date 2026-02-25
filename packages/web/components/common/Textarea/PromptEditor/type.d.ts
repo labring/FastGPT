@@ -1,4 +1,5 @@
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type EditorVariablePickerType = {
   key: string;
@@ -46,7 +47,6 @@ export type TabEditorNode = BaseEditorNode & {
   type: 'tab';
 };
 
-// Rich text
 export type ParagraphEditorNode = BaseEditorNode & {
   type: 'paragraph';
   children: ChildEditorNode[];
@@ -55,17 +55,20 @@ export type ParagraphEditorNode = BaseEditorNode & {
   indent: number;
 };
 
-// ListItem 节点的 children 可以包含嵌套的 list 节点
-export type ListItemChildEditorNode =
-  | TextEditorNode
-  | LineBreakEditorNode
-  | TabEditorNode
-  | VariableLabelEditorNode
-  | VariableEditorNode;
+export type ListEditorNode = BaseEditorNode & {
+  type: 'list';
+  children: ListItemEditorNode[];
+  direction: string | null;
+  format: string;
+  indent: number;
+  listType: 'bullet' | 'number';
+  start: number;
+  tag: 'ul' | 'ol';
+};
 
 export type ListItemEditorNode = BaseEditorNode & {
   type: 'listitem';
-  children: (ListItemChildEditorNode | ListEditorNode)[];
+  children: ChildEditorNode[];
   direction: string | null;
   format: string;
   indent: number;
@@ -82,15 +85,13 @@ export type VariableEditorNode = BaseEditorNode & {
   variableKey: string;
 };
 
-export type ListEditorNode = BaseEditorNode & {
-  type: 'list';
-  children: ListItemEditorNode[];
-  direction: string | null;
-  format: string;
-  indent: number;
-  listType: 'bullet' | 'number';
-  start: number;
-  tag: 'ul' | 'ol';
+export type SkillEditorNode = BaseEditorNode & {
+  type: 'skill';
+  id: string;
+  name?: string;
+  icon?: string;
+  skillType?: `${FlowNodeTypeEnum}`;
+  format: number;
 };
 
 export type ChildEditorNode =
@@ -101,7 +102,8 @@ export type ChildEditorNode =
   | ListEditorNode
   | ListItemEditorNode
   | VariableLabelEditorNode
-  | VariableEditorNode;
+  | VariableEditorNode
+  | SkillEditorNode;
 
 export type EditorState = {
   root: {

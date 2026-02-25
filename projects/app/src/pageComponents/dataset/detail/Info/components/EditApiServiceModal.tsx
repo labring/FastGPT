@@ -2,7 +2,7 @@ import React from 'react';
 import { ModalFooter, ModalBody, Button, Flex, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
@@ -38,7 +38,7 @@ const EditAPIDatasetInfoModal = ({
     defaultValues: defaultForm
   });
 
-  const { runAsync: onSave, loading } = useRequest2(
+  const { runAsync: onSave, loading } = useRequest(
     (data: EditAPIDatasetInfoFormType) => onEdit(data),
     {
       onSuccess: (res) => {

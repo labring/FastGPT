@@ -1,5 +1,7 @@
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import Redis from 'ioredis';
+
+const logger = getLogger(LogCategories.INFRA.REDIS);
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
@@ -10,9 +12,15 @@ const REDIS_BASE_OPTION = {
     // Never give up retrying to ensure worker keeps running
     const delay = Math.min(times * 50, 2000); // Max 2s between retries
     if (times > 10) {
-      addLog.error(`[Redis connection failed] attempt ${times}, will keep retrying...`);
+      logger.error('Redis reconnect failed, continuing to retry', {
+        attempt: times,
+        delayMs: delay
+      });
     } else {
-      addLog.warn(`Redis reconnecting... attempt ${times}, delay ${delay}ms`);
+      logger.warn('Redis reconnecting', {
+        attempt: times,
+        delayMs: delay
+      });
     }
     return delay; // Always return a delay to keep retrying
   },
@@ -23,7 +31,7 @@ const REDIS_BASE_OPTION = {
 
     const shouldReconnect = reconnectErrors.some((errType) => message.includes(errType));
     if (shouldReconnect) {
-      addLog.warn(`Redis reconnecting due to error: ${message}`);
+      logger.warn('Redis reconnecting due to error', { message });
     }
     return shouldReconnect;
   },
@@ -62,13 +70,13 @@ export const getGlobalRedisConnection = () => {
   });
 
   global.redisClient.on('connect', () => {
-    addLog.info('[Global Redis] connected');
+    logger.info('Global Redis connected');
   });
   global.redisClient.on('error', (error) => {
-    addLog.error('[Global Redis] connection error', error);
+    logger.error('Global Redis connection error', { error });
   });
   global.redisClient.on('close', () => {
-    addLog.warn('[Global Redis] connection closed');
+    logger.warn('Global Redis connection closed');
   });
 
   return global.redisClient;

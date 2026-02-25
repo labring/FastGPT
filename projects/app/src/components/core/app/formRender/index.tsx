@@ -13,7 +13,7 @@ import TimeInput from './TimeInput';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isSecretValue } from '@fastgpt/global/common/secret/utils';
 import FileSelector from '../FileSelector/index';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
@@ -274,10 +274,11 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <TimeInput
         value={val ? new Date(val) : undefined}
-        onDateTimeChange={(date) => onChange?.(date ? date.toISOString() : undefined)}
+        onDateTimeChange={(date) => onChange?.(date ? formatToISOWithTimezone(date) : undefined)}
         timeGranularity={props.timeGranularity}
         minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
         maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+        isDisabled={isDisabled}
       />
     );
   }
@@ -296,7 +297,7 @@ const InputRender = (props: InputRenderProps) => {
             value={startDate ? new Date(formatTime2YMDHMS(startDate)) : undefined}
             onDateTimeChange={(date) => {
               const newArray = [...rangeArray];
-              newArray[0] = date ? date.toISOString() : undefined;
+              newArray[0] = date ? formatToISOWithTimezone(date) : undefined;
               onChange?.(newArray);
             }}
             timeGranularity={props.timeGranularity}
@@ -304,6 +305,7 @@ const InputRender = (props: InputRenderProps) => {
               endDate ? new Date(endDate) : timeRangeEnd ? new Date(timeRangeEnd) : undefined
             }
             minDate={timeRangeStart ? new Date(timeRangeStart) : undefined}
+            isDisabled={isDisabled}
           />
         </Box>
         <Box>
@@ -314,7 +316,7 @@ const InputRender = (props: InputRenderProps) => {
             value={endDate ? new Date(formatTime2YMDHMS(endDate)) : undefined}
             onDateTimeChange={(date) => {
               const newArray = [...rangeArray];
-              newArray[1] = date ? date.toISOString() : undefined;
+              newArray[1] = date ? formatToISOWithTimezone(date) : undefined;
               onChange?.(newArray);
             }}
             timeGranularity={props.timeGranularity}
@@ -326,6 +328,7 @@ const InputRender = (props: InputRenderProps) => {
                   : undefined
             }
             maxDate={timeRangeEnd ? new Date(timeRangeEnd) : undefined}
+            isDisabled={isDisabled}
           />
         </Box>
       </Box>

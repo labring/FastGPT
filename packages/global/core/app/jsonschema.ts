@@ -6,47 +6,52 @@ import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../../web/i18n/utils';
+import z from 'zod';
 
-type SchemaInputValueType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
-export type JsonSchemaPropertiesItemType = {
-  description?: string;
-  'x-tool-description'?: string;
-  type: SchemaInputValueType;
-  enum?: string[];
-  minimum?: number;
-  maximum?: number;
-  items?: { type: SchemaInputValueType };
-};
-export type JSONSchemaInputType = {
-  type: SchemaInputValueType;
-  properties?: Record<string, JsonSchemaPropertiesItemType>;
-  required?: string[];
-};
-export type JSONSchemaOutputType = {
-  type: SchemaInputValueType;
-  properties?: Record<string, JsonSchemaPropertiesItemType>;
-  required?: string[];
-};
+export const JsonSchemaPropertiesItemSchema = z.object({
+  description: z.string().optional(),
+  'x-tool-description': z.string().optional(),
+  type: z.any(),
+  enum: z.array(z.string()).optional(),
+  minimum: z.number().optional(),
+  maximum: z.number().optional(),
+  items: z.any().optional() // Array 时候有
+});
+export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
+
+export const JSONSchemaInputTypeSchema = z.object({
+  type: z.any().optional(),
+  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+  required: z.array(z.string()).optional()
+});
+export type JSONSchemaInputType = z.infer<typeof JSONSchemaInputTypeSchema>;
+
+export const JSONSchemaOutputTypeSchema = z.object({
+  type: z.any().optional(),
+  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+  required: z.array(z.string()).optional()
+});
+export type JSONSchemaOutputType = z.infer<typeof JSONSchemaOutputTypeSchema>;
 
 export const getNodeInputTypeFromSchemaInputType = ({
   type,
   arrayItems
 }: {
-  type: SchemaInputValueType;
-  arrayItems?: { type: SchemaInputValueType };
+  type: string;
+  arrayItems?: { type: string };
 }) => {
   if (type === 'string') return WorkflowIOValueTypeEnum.string;
-  if (type === 'number') return WorkflowIOValueTypeEnum.number;
-  if (type === 'integer') return WorkflowIOValueTypeEnum.number;
+  if (type === 'number' || type === 'integer') return WorkflowIOValueTypeEnum.number;
   if (type === 'boolean') return WorkflowIOValueTypeEnum.boolean;
   if (type === 'object') return WorkflowIOValueTypeEnum.object;
+
+  if (type !== 'array') return WorkflowIOValueTypeEnum.any;
 
   if (!arrayItems) return WorkflowIOValueTypeEnum.arrayAny;
 
   const itemType = arrayItems.type;
   if (itemType === 'string') return WorkflowIOValueTypeEnum.arrayString;
-  if (itemType === 'number') return WorkflowIOValueTypeEnum.arrayNumber;
-  if (itemType === 'integer') return WorkflowIOValueTypeEnum.arrayNumber;
+  if (itemType === 'number' || itemType === 'integer') return WorkflowIOValueTypeEnum.arrayNumber;
   if (itemType === 'boolean') return WorkflowIOValueTypeEnum.arrayBoolean;
   if (itemType === 'object') return WorkflowIOValueTypeEnum.arrayObject;
 
@@ -111,8 +116,7 @@ export const jsonSchema2NodeOutput = (
     required: jsonSchema?.required?.includes(key),
     type: FlowNodeOutputTypeEnum.static,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
-    description: value.description,
-    toolDescription: value['x-tool-description'] ?? value.description ?? key
+    description: value.description
   }));
 };
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {

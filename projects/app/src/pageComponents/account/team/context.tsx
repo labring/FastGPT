@@ -11,7 +11,7 @@ import {
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 
@@ -57,17 +57,17 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     data: myTeams = [],
     loading: isLoadingTeams,
     refresh: refetchTeams
-  } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
+  } = useRequest(() => getTeamList(TeamMemberStatusEnum.active), {
     manual: false,
     refreshDeps: [userInfo?._id]
   });
 
-  const { data: teamMemberCountData, refresh: refetchTeamSize } = useRequest2(getTeamMemberCount, {
+  const { data: teamMemberCountData, refresh: refetchTeamSize } = useRequest(getTeamMemberCount, {
     manual: false,
     refreshDeps: [userInfo?.team?.teamId]
   });
 
-  const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
+  const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest(
     async (teamId: string) => {
       await putSwitchTeam(teamId);
       return initUserInfo();

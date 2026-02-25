@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getPlaygroundVisibilityConfig,
   updatePlaygroundVisibilityConfig
@@ -43,7 +43,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     return '';
   }, [appId]);
 
-  useRequest2(() => getPlaygroundVisibilityConfig({ appId }), {
+  useRequest(() => getPlaygroundVisibilityConfig({ appId }), {
     onSuccess: (data) => {
       reset({
         showRunningStatus: data.showRunningStatus,
@@ -56,7 +56,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     manual: false
   });
 
-  const { runAsync: saveConfig } = useRequest2(
+  const { runAsync: saveConfig } = useRequest(
     async (data: PlaygroundVisibilityConfigType) => {
       return await updatePlaygroundVisibilityConfig({
         appId,

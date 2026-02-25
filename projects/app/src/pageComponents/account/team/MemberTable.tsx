@@ -28,9 +28,9 @@ import { TeamContext } from './context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
-import { GetSearchUserGroupOrg, postSyncMembers } from '@/web/support/user/api';
+import { postSyncMembers } from '@/web/support/user/api';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum
@@ -38,7 +38,7 @@ import {
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -53,11 +53,12 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
+const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { userInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isSyncMode = feConfigs?.register_method?.includes('sync');
 
@@ -94,6 +95,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     onClose: onCloseTeamTagsAsync
   } = useDisclosure();
 
+  const isWecomTeam = useMemo(() => {
+    return !!userInfo?.team?.isWecomTeam;
+  }, [userInfo?.team?.isWecomTeam]);
+
+  const {
+    isOpen: isOpenTransferModal,
+    onOpen: onOpenTransferModal,
+    onClose: onCloseTransferModal
+  } = useDisclosure();
+
   // member action
   const [searchKey, setSearchKey] = useState<string>('');
   const {
@@ -123,13 +134,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
-  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(postSyncMembers, {
+  const { runAsync: onSyncMember, loading: isSyncing } = useRequest(postSyncMembers, {
     onSuccess: onRefreshMembers,
     successToast: t('account_team:sync_member_success'),
     errorToast: t('account_team:sync_member_failed')
   });
 
-  const { runAsync: onLeaveTeam } = useRequest2(delLeaveTeam, {
+  const { runAsync: onLeaveTeam } = useRequest(delLeaveTeam, {
     onSuccess() {
       const defaultTeam = myTeams[0];
       onSwitchTeam(defaultTeam.teamId);
@@ -137,11 +148,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:user_team_leave_team_failed')
   });
 
-  const { runAsync: onRemoveMember } = useRequest2(delRemoveMember, {
+  const { runAsync: onRemoveMember } = useRequest(delRemoveMember, {
     onSuccess: onRefreshMembers
   });
 
-  const { runAsync: onRestore } = useRequest2(postRestoreMember, {
+  const { runAsync: onRestore } = useRequest(postRestoreMember, {
     onSuccess: onRefreshMembers,
     successToast: t('common:Success'),
     errorToast: t('common:user.team.invite.Reject')
@@ -213,7 +224,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:sync_immediately')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && !isSyncMode && (
+          {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
             <Button
               variant={'primary'}
               size="md"
@@ -223,6 +234,17 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               onClick={onOpenInvite}
             >
               {t('account_team:user_team_invite_member')}
+            </Button>
+          )}
+          {userInfo?.team.permission.isOwner && !isSyncMode && isWecomTeam && (
+            <Button
+              variant={'whitePrimary'}
+              size="md"
+              borderRadius={'md'}
+              ml={3}
+              onClick={onOpenTransferModal}
+            >
+              {t('account_team:transfer_team_ownership')}
             </Button>
           )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
@@ -242,7 +264,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:export_members')}
             </Button>
           )}
-          {!userInfo?.team.permission.isOwner && !isSyncMode && (
+          {!userInfo?.team.permission.isOwner && !isSyncMode && !isWecomTeam && (
             <PopoverConfirm
               Trigger={
                 <Button
@@ -382,6 +404,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
+      {isOpenTransferModal && (
+        <TransferOwnershipModal
+          onClose={onCloseTransferModal}
+          onSuccess={() => {
+            onCloseTransferModal();
+            initUserInfo();
+            refetchMemberList();
+          }}
+        />
+      )}
     </>
   );
 }

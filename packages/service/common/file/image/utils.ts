@@ -1,8 +1,10 @@
 import { axios } from '../../api/axios';
-import { addLog } from '../../system/log';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getContentTypeFromHeader } from '../utils';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 // 图片格式魔数映射表
 const IMAGE_SIGNATURES: { type: string; magic: number[]; check?: (buffer: Buffer) => boolean }[] = [
@@ -95,7 +97,7 @@ export const guessBase64ImageType = (str: string): string => {
 };
 
 export const getImageBase64 = async (url: string) => {
-  addLog.debug(`Load image to base64: ${url}`);
+  logger.debug('Load image to base64', { url });
 
   try {
     const response = await retryFn(() =>
@@ -132,8 +134,7 @@ export const getImageBase64 = async (url: string) => {
       mime: imageType
     };
   } catch (error) {
-    addLog.debug(`Load image to base64 failed: ${url}`);
-    console.log(error);
+    logger.warn('Load image to base64 failed', { url, error });
     return Promise.reject(error);
   }
 };

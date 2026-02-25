@@ -5,6 +5,7 @@ import {
   TeamCollectionName,
   TeamTagsCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 const TeamTagSchema = new Schema({
   teamId: {
@@ -29,7 +30,8 @@ const TeamTagSchema = new Schema({
 try {
   TeamTagSchema.index({ teamId: 1 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build team tag indexes', { error });
 }
 
 export const MongoTeamTags = getMongoModel<TeamTagsSchemaType>(

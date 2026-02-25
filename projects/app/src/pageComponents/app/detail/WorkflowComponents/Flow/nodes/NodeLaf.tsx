@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -23,7 +23,7 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
@@ -128,7 +128,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     [lafFunctionSelectList, requestUrl?.value]
   );
 
-  const { run: onSyncParams, loading: isSyncing } = useRequest2(
+  const { run: onSyncParams, loading: isSyncing } = useRequest(
     async () => {
       await refetchFunction();
       const lafFunction = lafData?.lafFunctions.find(

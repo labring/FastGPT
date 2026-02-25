@@ -8,7 +8,7 @@ import type {
   AudioSpeechModels,
   STTModelType,
   RerankModelItemType
-} from '../../../core/ai/model.d';
+} from '../../../core/ai/model.schema';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
 export type NavbarItemType = {
@@ -66,6 +66,7 @@ export type FastGPTFeConfigsType = {
   show_aiproxy?: boolean;
   show_coupon?: boolean;
   show_discount_coupon?: boolean;
+  showWecomConfig?: boolean;
   concatMd?: string;
 
   show_dataset_feishu?: boolean;
@@ -105,14 +106,15 @@ export type FastGPTFeConfigsType = {
       tenantId?: string;
       customButton?: string;
     };
+    wecom?: boolean;
   };
   limit?: {
     exportDatasetLimitMinutes?: number;
     websiteSyncLimitMinuted?: number;
   };
 
-  uploadFileMaxAmount?: number;
-  uploadFileMaxSize?: number;
+  uploadFileMaxAmount: number;
+  uploadFileMaxSize: number; // MB
   evalFileMaxLines?: number;
 
   // Compute by systemEnv.customPdfParse

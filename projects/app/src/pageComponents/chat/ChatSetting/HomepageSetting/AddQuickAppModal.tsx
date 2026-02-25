@@ -1,7 +1,7 @@
 import { getMyApps, getAppBasicInfoByIds } from '@/web/core/app/api';
 import { Box, Button, Grid, GridItem, HStack, VStack, Flex, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 type Props = {
   selectedIds: string[];
@@ -37,12 +38,12 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   });
   const searchAppName = watch('name');
 
-  const [parentId, setParentId] = useState('');
+  const [parentId, setParentId] = useState<ParentIdType>('');
 
   const {
     data: appData = { apps: [], paths: [] as { parentId: string; parentName: string }[] },
     loading: isFetching
-  } = useRequest2(
+  } = useRequest(
     async () => {
       const [apps, paths] = await Promise.all([
         getMyApps({
@@ -127,7 +128,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
       .catch(() => {});
   }, [localSelectedIds, selectedInfo]);
 
-  const { loading: isUpdating, runAsync: confirmSelect } = useRequest2(
+  const { loading: isUpdating, runAsync: confirmSelect } = useRequest(
     async () => {
       onConfirm(checkedQuickApps);
     },

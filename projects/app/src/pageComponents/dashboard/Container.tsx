@@ -9,10 +9,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import TeamPlanStatusCard from './TeamPlanStatusCard';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   agent = 'agent',
@@ -38,6 +39,7 @@ const DashboardContainer = ({
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
+  const { userInfo } = useUserStore();
 
   // First tab
   const currentTab = useMemo(() => {
@@ -54,13 +56,15 @@ const DashboardContainer = ({
   };
 
   // Template market
-  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest2(
+  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateTagList().then((res) => [
             {
               typeId: AppTemplateTypeEnum.recommendation,
-              typeName: t('app:templateMarket.templateTags.Recommendation'),
+              typeName: userInfo?.team.isWecomTeam
+                ? t('app:templateMarket.templateTags.WecomZone')
+                : t('app:templateMarket.templateTags.Recommendation'),
               typeOrder: 0
             },
             ...res
@@ -71,7 +75,7 @@ const DashboardContainer = ({
       refreshDeps: [currentTab]
     }
   );
-  const { data: templateData, loading: isLoadingTemplates } = useRequest2(
+  const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateMarketItemList({ type: appType })
@@ -108,12 +112,17 @@ const DashboardContainer = ({
             typeName: t('app:type.All')
           },
           {
+            typeId: AppTypeEnum.workflow,
+            typeName: t('app:type.Workflow bot')
+          },
+
+          {
             typeId: AppTypeEnum.simple,
             typeName: t('app:type.Chat_Agent')
           },
           {
-            typeId: AppTypeEnum.workflow,
-            typeName: t('app:type.Workflow bot')
+            typeId: AppTypeEnum.chatAgent,
+            typeName: t('app:type.Chat_Agent_v2')
           }
         ]
       },

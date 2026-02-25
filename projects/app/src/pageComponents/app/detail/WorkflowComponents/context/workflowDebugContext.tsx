@@ -156,6 +156,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
 
         // 4. Store debug result
         setWorkflowDebugData({
+          // memoryNodes和memoryEdges包含了完整的响应，不需要再进行初始化
           runtimeNodes: memoryNodes,
           runtimeEdges: memoryEdges,
           entryNodeIds,
@@ -181,7 +182,7 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
                   response: result.response,
                   showResult: true,
                   isExpired: false,
-                  workflowInteractiveResponse: result.interactiveResponse
+                  interactiveResponse: result.interactiveResponse
                 }
               }
             };

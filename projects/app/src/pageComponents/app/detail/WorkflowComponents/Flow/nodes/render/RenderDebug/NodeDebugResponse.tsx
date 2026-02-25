@@ -5,14 +5,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FormInputComponent,
   SelectOptionsComponent
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
@@ -95,14 +95,13 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
 
   const response = debugResult?.response;
 
-  const interactive = debugResult?.workflowInteractiveResponse;
+  const interactive = debugResult?.interactiveResponse;
   const onNextInteractive = useCallback(
     (userContent: string) => {
       if (!workflowDebugData || !workflowDebugData || !interactive) return;
 
       const updatedQuery: UserChatItemValueItemType[] = [
         {
-          type: ChatItemValueTypeEnum.text,
           text: { content: userContent }
         }
       ];
@@ -112,12 +111,11 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           obj: ChatRoleEnum.AI,
           value: [
             {
-              type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
-                entryNodeIds: workflowDebugData.entryNodeIds || [],
-                memoryEdges: interactive.memoryEdges || [],
-                nodeOutputs: interactive.nodeOutputs || []
+                entryNodeIds: workflowDebugData.entryNodeIds,
+                memoryEdges: [],
+                nodeOutputs: []
               }
             }
           ]

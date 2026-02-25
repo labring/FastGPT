@@ -20,8 +20,8 @@ import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
-import { isArray } from 'lodash';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
+import MyLoading from '../MyLoading';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -59,6 +59,8 @@ export type SelectProps<T = any> = {
   inputValue?: string;
   setInputValue?: (val: string) => void;
 
+  onOpenFunc?: () => void;
+
   tagStyle?: FlexProps;
 } & Omit<ButtonProps, 'onSelect'>;
 
@@ -86,14 +88,23 @@ const MultipleSelect = <T = any,>({
   inputValue,
   setInputValue,
 
+  onOpenFunc,
+
   tagStyle,
+  isLoading,
   ...props
 }: SelectProps<T>) => {
   const SearchInputRef = useRef<HTMLInputElement>(null);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen: originalOnOpen, onClose } = useDisclosure();
+
+  const onOpen = useCallback(() => {
+    originalOnOpen();
+    onOpenFunc?.();
+  }, [originalOnOpen, onOpenFunc]);
+
   const canInput = setInputValue !== undefined;
 
   const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
@@ -442,6 +453,7 @@ const MultipleSelect = <T = any,>({
           zIndex={99}
           maxH={'40vh'}
           overflowY={'auto'}
+          position={'relative'}
         >
           {setIsSelectAll && (
             <>
@@ -467,6 +479,8 @@ const MultipleSelect = <T = any,>({
           )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
+
+          {isLoading && <MyLoading fixed={false} />}
         </MenuList>
       </Menu>
     </Box>

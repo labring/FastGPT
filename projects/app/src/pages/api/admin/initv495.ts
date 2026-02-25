@@ -9,6 +9,8 @@ import {
   TeamDatasetCreatePermissionVal
 } from '@fastgpt/global/support/permission/user/constant';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv495']);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
@@ -23,7 +25,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
 
   for await (const rp of rps) {
     const per = rp.permission;
-    console.log(per);
+    logger.info('Collection training type migration progress', { progress: per });
     if (per & 0b010) {
       // has 0b010
       rp.permission =
@@ -37,7 +39,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
           await rp.save();
         });
       } catch (error) {
-        console.log('更新权限异常', error);
+        logger.error('更新权限异常', { error: error });
       }
     }
   }

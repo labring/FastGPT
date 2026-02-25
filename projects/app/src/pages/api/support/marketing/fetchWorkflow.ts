@@ -26,7 +26,7 @@ async function handler(
   if (!url) {
     return Promise.reject('Url is empty');
   }
-  if (isInternalAddress(url)) {
+  if (await isInternalAddress(url)) {
     return Promise.reject('Url is invalid');
   }
 
@@ -39,6 +39,11 @@ async function handler(
     timeout: 30000,
     validateStatus: (status) => status < 500
   });
+
+  // Check type
+  if (typeof data !== 'object') {
+    return Promise.reject('Invalid data');
+  }
 
   return data;
 }

@@ -1,6 +1,5 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { PipelineStage } from '@fastgpt/service/common/mongo';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
@@ -28,8 +27,18 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<getAppChatLogsResponseType> {
-  const { appId, dateStart, dateEnd, sources, tmbIds, chatSearch, feedbackType, unreadOnly } =
-    GetAppChatLogsBodySchema.parse(req.body);
+  const {
+    appId,
+    dateStart,
+    dateEnd,
+    sources,
+    tmbIds,
+    outLinkUids,
+    chatSearch,
+    feedbackType,
+    unreadOnly,
+    errorFilter
+  } = GetAppChatLogsBodySchema.parse(req.body);
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 
@@ -72,8 +81,24 @@ async function handler(
       unreadOnly && {
         hasUnreadBadFeedback: true
       }),
+    ...(errorFilter === 'has_error' && {
+      errorCount: { $gt: 0 }
+    }),
     ...(sources && { source: { $in: sources } }),
-    ...(tmbIds && { tmbId: { $in: tmbIds.map((item) => new Types.ObjectId(item)) } }),
+    // User filter: tmbIds(排除外链用户) 或 outLinkUids
+    ...((tmbIds?.length || outLinkUids?.length) && {
+      $or: [
+        ...(tmbIds?.length
+          ? [
+              {
+                tmbId: { $in: tmbIds.map((id) => new Types.ObjectId(id)) },
+                outLinkUid: { $in: [null, ''] }
+              }
+            ]
+          : []),
+        ...(outLinkUids?.length ? [{ outLinkUid: { $in: outLinkUids } }] : [])
+      ]
+    }),
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
@@ -143,28 +168,6 @@ async function handler(
                   customFeedback: {
                     $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
                   },
-                  errorCountFromChatItem: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $gt: [
-                            {
-                              $size: {
-                                $filter: {
-                                  input: { $ifNull: ['$responseData', []] },
-                                  as: 'item',
-                                  cond: { $ne: [{ $ifNull: ['$$item.errorText', null] }, null] }
-                                }
-                              }
-                            },
-                            0
-                          ]
-                        },
-                        1,
-                        0
-                      ]
-                    }
-                  },
                   totalPointsFromChatItem: {
                     $sum: {
                       $reduce: {
@@ -196,12 +199,6 @@ async function handler(
               {
                 $group: {
                   _id: null,
-                  // errorCount from chatItemResponse data
-                  errorCountFromResponse: {
-                    $sum: {
-                      $cond: [{ $ne: [{ $ifNull: ['$data.errorText', null] }, null] }, 1, 0]
-                    }
-                  },
                   // totalPoints from chatItemResponse data
                   totalPointsFromResponse: {
                     $sum: { $ifNull: ['$data.totalPoints', 0] }
@@ -249,17 +246,7 @@ async function handler(
                 0
               ]
             },
-            errorCount: {
-              $add: [
-                { $ifNull: [{ $arrayElemAt: ['$chatItemsData.errorCountFromChatItem', 0] }, 0] }, // 适配旧版，响应字段存在 chat_items 里
-                {
-                  $ifNull: [
-                    { $arrayElemAt: ['$chatItemResponsesData.errorCountFromResponse', 0] },
-                    0
-                  ]
-                }
-              ]
-            },
+            errorCount: { $ifNull: ['$errorCount', 0] },
             totalPoints: {
               $add: [
                 { $ifNull: [{ $arrayElemAt: ['$chatItemsData.totalPointsFromChatItem', 0] }, 0] },

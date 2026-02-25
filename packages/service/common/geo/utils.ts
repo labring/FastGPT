@@ -1,4 +1,5 @@
 import type { City } from '@maxmind/geoip2-node';
+export type { City } from '@maxmind/geoip2-node';
 
 export function extractLocationData(response: City) {
   return {

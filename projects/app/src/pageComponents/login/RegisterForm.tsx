@@ -8,7 +8,7 @@ import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getBdVId,
   getFastGPTSem,
@@ -49,7 +49,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
 
-  const { runAsync: onclickRegister, loading: requesting } = useRequest2(
+  const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {
       loginSuccess(
         await postRegister({

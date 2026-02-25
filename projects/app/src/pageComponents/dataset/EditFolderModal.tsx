@@ -30,16 +30,18 @@ const EditFolderModal = ({
     [isEdit, t]
   );
 
-  const { mutate: onSave, isLoading } = useRequest({
-    mutationFn: () => {
+  const { runAsync: onSave, loading: isLoading } = useRequest(
+    () => {
       const val = inputRef.current?.value;
       if (!val) return Promise.resolve('');
       return editCallback(val);
     },
-    onSuccess: () => {
-      onClose();
+    {
+      onSuccess: () => {
+        onClose();
+      }
     }
-  });
+  );
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc="common/folderFill" title={typeMap.title}>

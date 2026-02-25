@@ -8,7 +8,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './FormLayout';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import PolicyTip from './PolicyTip';
 import { useSearchParams } from 'next/navigation';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -38,7 +38,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     formState: { errors }
   } = useForm<LoginFormType>();
 
-  const { runAsync: onclickLogin, loading: requesting } = useRequest2(
+  const { runAsync: onclickLogin, loading: requesting } = useRequest(
     async ({ username, password }: LoginFormType) => {
       const { code } = await getPreLogin(username);
       loginSuccess(

@@ -22,6 +22,9 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -96,9 +99,9 @@ export async function getInitConfig() {
 
         global.systemVersion = packageJson?.version;
       }
-      console.log(`System Version: ${global.systemVersion}`);
+      logger.info('System version resolved', { systemVersion: global.systemVersion });
     } catch (error) {
-      console.log(error);
+      logger.error('System version resolve failed', { error });
 
       global.systemVersion = '0.0.0';
     }
@@ -111,7 +114,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi/intro',
+  openAPIDocUrl: 'https://doc.fastgpt.io/docs/openapi/intro',
   submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
@@ -124,8 +127,9 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   },
   scripts: [],
   favicon: '/favicon.ico',
-  uploadFileMaxSize: 500,
-  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || ''
+  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
+  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
+  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
 };
 
 export async function initSystemConfig() {
@@ -163,11 +167,13 @@ export async function initSystemConfig() {
   // set config
   initFastGPTConfig(config);
 
-  console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData
+  logger.info('System config loaded', {
+    fastgpt: {
+      feConfigs: global.feConfigs,
+      systemEnv: global.systemEnv,
+      subPlans: global.subPlans,
+      licenseData: global.licenseData
+    }
   });
 }
 
@@ -194,7 +200,7 @@ export async function initSystemPluginTags() {
       await MongoPluginToolTag.bulkWrite(bulkOps);
     }
   } catch (error) {
-    console.error('Error initializing system plugin tags:', error);
+    logger.error('Error initializing system plugin tags:', { error });
   }
 }
 
@@ -218,6 +224,6 @@ export async function initAppTemplateTypes() {
       })
     );
   } catch (error) {
-    console.error('Error initializing system templates:', error);
+    logger.error('Error initializing system templates:', { error });
   }
 }

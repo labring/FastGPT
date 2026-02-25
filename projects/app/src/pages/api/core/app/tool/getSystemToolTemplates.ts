@@ -1,4 +1,4 @@
-import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -10,8 +10,10 @@ import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSystemToolsWithInstalled } from '@fastgpt/service/core/app/tool/controller';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
 
 export type GetSystemPluginTemplatesBody = {
+  getAll?: boolean;
   searchKey?: string;
   parentId?: ParentIdType;
   tags?: string[];
@@ -21,12 +23,16 @@ async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
-  const { teamId, isRoot } = await authCert({ req, authToken: true });
-  const { searchKey, parentId, tags } = req.body;
+  const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
+  const { searchKey, parentId, tags, getAll } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
-  const tools = await getSystemToolsWithInstalled({ teamId, isRoot });
+  // Get user tags for auto-install logic
+  const userDetail = await getUserDetail({ tmbId });
+  const userTags = userDetail.tags || [];
+
+  const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
 
   return tools
     .filter((tool) => {
@@ -49,6 +55,7 @@ async function handler(
       tags: tool.tags
     }))
     .filter((item) => {
+      if (getAll) return true;
       if (searchKey) {
         const regex = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
         return regex.test(String(item.name)) || regex.test(String(item.intro || ''));

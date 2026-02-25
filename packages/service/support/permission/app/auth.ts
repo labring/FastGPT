@@ -1,6 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NullRoleVal,
   PerResourceTypeEnum,
@@ -30,10 +30,10 @@ export const authPluginByTmbId = async ({
   appId: string;
   per: PermissionValueType;
 }) => {
-  const { source } = splitCombineToolId(appId);
-  if (source === AppToolSourceEnum.personal) {
+  const { authAppId } = splitCombineToolId(appId);
+  if (authAppId) {
     const { app } = await authAppByTmbId({
-      appId,
+      appId: authAppId,
       tmbId,
       per
     });

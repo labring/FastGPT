@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
+import path from 'path';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -133,14 +134,6 @@ export const customNanoid = (str: string, size: number) => customAlphabet(str, s
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export const getRegQueryStr = (text: string, flags = 'i') => {
-  const formatText = replaceRegChars(text);
-  const chars = formatText.split('');
-  const regexPattern = chars.join('.*');
-
-  return new RegExp(regexPattern, flags);
-};
-
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
   str = str.trim();
@@ -173,7 +166,9 @@ export const sliceJsonStr = (str: string) => {
   return str;
 };
 
-export const sliceStrStartEnd = (str: string, start: number, end: number) => {
+export const sliceStrStartEnd = (str: string | null = '', start: number, end: number) => {
+  if (!str) return '';
+
   const overSize = str.length > start + end;
 
   if (!overSize) return str;
@@ -193,13 +188,14 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
     => pdf
 */
 export const parseFileExtensionFromUrl = (url = '') => {
-  // Remove query params
-  const urlWithoutQuery = url.split('?')[0];
-  // Get file name
-  const fileName = urlWithoutQuery.split('/').pop() || '';
-  // Get file extension
-  const extension = fileName.split('.').pop();
-  return (extension || '').toLowerCase();
+  // Remove query params and hash first
+  const urlWithoutQuery = url.split('?')[0].split('#')[0];
+  const extension = path.extname(urlWithoutQuery);
+  // path.extname returns '.ext' or ''
+  if (extension.startsWith('.')) {
+    return extension.slice(1).toLowerCase();
+  }
+  return '';
 };
 
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {

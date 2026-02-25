@@ -17,6 +17,7 @@
   "bill.valid_time": "Effective Time",
   "bill.you_can_convert": "You can convert",
   "bill.yuan": "Yuan",
+  "common.current_package": "Current plan",
   "current_package": "Current package: ",
   "delete.admin_failed": "Failed to Delete Admin",
   "delete.admin_success": "Admin Deleted Successfully",

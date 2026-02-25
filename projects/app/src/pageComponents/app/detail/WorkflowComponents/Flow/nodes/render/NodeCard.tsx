@@ -2,10 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type {
-  FlowNodeItemType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -31,7 +28,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
@@ -237,7 +234,7 @@ const NodeCard = (props: Props) => {
     return false;
   }, [isAppNode, node]);
 
-  const { data: nodeTemplate } = useRequest2(
+  const { data: nodeTemplate } = useRequest(
     async () => {
       if (node?.pluginData?.error) {
         return undefined;
@@ -273,7 +270,9 @@ const NodeCard = (props: Props) => {
 
   const RenderToolHandle = useMemo(
     () =>
-      node?.flowNodeType === FlowNodeTypeEnum.agent ? <ToolSourceHandle nodeId={nodeId} /> : null,
+      node?.flowNodeType === FlowNodeTypeEnum.toolCall ? (
+        <ToolSourceHandle nodeId={nodeId} />
+      ) : null,
     [node?.flowNodeType, nodeId]
   );
 
@@ -473,7 +472,7 @@ const NodeTitleSection = React.memo<{
     });
   }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
-  const { runAsync: onGetPermission } = useRequest2(getAppPermission, {
+  const { runAsync: onGetPermission } = useRequest(getAppPermission, {
     onSuccess(permission) {
       if (permission.hasWritePer) {
         window.open(`/app/detail?appId=${childAppId}`, '_blank');
@@ -526,13 +525,10 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const nodeIsTool = useContextSelector(WorkflowUtilsContext, (ctx) =>
+    ctx.splitToolInputs([], nodeId)
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const NodeIsTool = useMemo(() => {
-    const { isTool } = splitToolInputs([], nodeId);
-    return isTool;
-  }, [nodeId, splitToolInputs]);
 
   // edit intro
   const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
@@ -548,7 +544,7 @@ const NodeIntro = React.memo(function NodeIntro({
           <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
             {t(intro as any) || t('app:node_not_intro')}
           </Box>
-          {NodeIsTool && (
+          {nodeIsTool && (
             <Flex
               p={'7px'}
               rounded={'sm'}
@@ -578,7 +574,7 @@ const NodeIntro = React.memo(function NodeIntro({
         <EditIntroModal maxLength={500} />
       </>
     );
-  }, [EditIntroModal, intro, NodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
+  }, [EditIntroModal, intro, nodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
 
   return Render;
 });
@@ -601,7 +597,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     manual: false
   });
 
-  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest(
     async (versionId: string) => {
       if (!node) return;
 

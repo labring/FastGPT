@@ -1,6 +1,6 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { Flex, type FlexProps, Box, Button } from '@chakra-ui/react';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from '../type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -11,7 +11,7 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 export type ChatControllerProps = {
@@ -75,7 +75,7 @@ const ChatController = ({
   const {
     runAsync: requestOnToggleFeedbackReadStatus,
     loading: isLoadingOnToggleFeedbackReadStatus
-  } = useRequest2(async () => onToggleFeedbackReadStatus?.(), {
+  } = useRequest(async () => onToggleFeedbackReadStatus?.(), {
     manual: true,
     onSuccess: () => {
       eventBus.emit(EventNameEnum.refreshFeedback);

@@ -16,7 +16,7 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
@@ -92,9 +92,7 @@ const VariableEdit = ({
       {/* Row box */}
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <FormLabel ml={2} color={'myGray.600'}>
-          {t('common:core.module.Variable')}
-        </FormLabel>
+        <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
         <Button

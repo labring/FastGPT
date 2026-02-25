@@ -1,0 +1,47 @@
+---
+title: 'V4.14.5.1(包含升级脚本)'
+description: 'FastGPT V4.14.5.1 更新说明'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.14.5.1
+- 更新 FastGPT 商业版镜像tag: v4.14.5.1
+- 更新 fastgpt-plugin 镜像 tag: v0.4.0
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+- mongo 无需更新
+
+### 2. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv41451' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. 迁移系统工具的系统密钥配置
+
+## 🚀 新增内容
+
+1. Markdown 表格支持导出 csv。
+
+## ⚙️ 优化
+
+1. 工作流触摸板移动时，遇到输入框后会被强制阻拦。
+2. 工作流粘贴节点，精确按鼠标位置粘贴。
+3. 精确移除请求 LLM 时多余的系统字段，避免部分模型接口报错。
+4. 使用 path.extname 从 URL 获取文件扩展名
+
+## 🐛 修复
+
+1. 系统工具工具集设置系统密钥后，子工具无法读取到设置的系统密钥
+2. 密码类型的全局变量，必填规则校验错误。
+3. 时间类型的全局变量，选择月份被遮挡。
+4. 手动复制弹窗，换行丢失。
+5. 未传入文件上传类型变量，对话接口报错。

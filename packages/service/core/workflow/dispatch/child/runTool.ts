@@ -10,7 +10,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -23,6 +23,7 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getS3ChatSource } from '../../../../common/s3/sources/chat';
+import { getWorkflowContext } from '../../utils/context';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -205,8 +206,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
+      // pluginId: toolSetAppId/toolsetName/toolName
       const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolName] = pluginId.split('/');
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -215,16 +217,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
 
+      const context = getWorkflowContext();
       // Buffer mcpClient in this workflow
       const mcpClient =
-        props.mcpClientMemory?.[url] ??
+        context.mcpClientMemory?.[url] ??
         new MCPClient({
           url,
           headers: getSecretValue({
             storeSecret: headerSecret
           })
         });
-      props.mcpClientMemory[url] = mcpClient;
+      context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });

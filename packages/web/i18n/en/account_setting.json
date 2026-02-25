@@ -1,6 +1,6 @@
 {
-  "language": "language",
+  "update_data_success": "Update data successfully",
   "personalization": "personalization",
-  "timezone": "time zone",
-  "update_data_success": "Update data successfully"
+  "language": "language",
+  "timezone": "time zone"
 }

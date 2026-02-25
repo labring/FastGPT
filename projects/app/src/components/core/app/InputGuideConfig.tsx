@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type.d';
+import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyInput from '@/components/MyInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -32,7 +32,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
@@ -85,7 +85,7 @@ const InputGuideConfig = ({
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
       <Flex alignItems={'center'}>
-        <FormLabel color={'myGray.600'}>{t('chat:input_guide')}</FormLabel>
+        <FormLabel>{t('chat:input_guide')}</FormLabel>
         <ChatFunctionTip type={'inputGuide'} />
       </Flex>
       <Box flex={1} />
@@ -214,7 +214,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     }
   });
 
-  const { run: createNewData, loading: isCreating } = useRequest2(
+  const { run: createNewData, loading: isCreating } = useRequest(
     async (textList: string[]) => {
       if (textList.filter(Boolean).length === 0) {
         return Promise.resolve();

@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import { getQuoteData } from '@/web/core/dataset/api';
@@ -74,7 +74,7 @@ const CiteLink = React.memo(function CiteLink({
     data: datasetCiteData,
     loading,
     runAsync: getQuoteDataById
-  } = useRequest2((id: string) => getQuoteData({ id, ...chatAuthData }), {
+  } = useRequest((id: string) => getQuoteData({ id, ...chatAuthData }), {
     manual: true
   });
   const sourceData = useMemo(

@@ -11,7 +11,9 @@ import {
   GetTotalDataResponseSchema,
   GetLogKeysQuerySchema,
   GetLogKeysResponseSchema,
-  UpdateLogKeysBodySchema
+  UpdateLogKeysBodySchema,
+  GetLogUsersBodySchema,
+  GetLogUsersResponseSchema
 } from './api';
 
 export const AppLogPath: OpenAPIPath = {
@@ -145,6 +147,30 @@ export const AppLogPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetChartDataResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/logs/getUsers': {
+    post: {
+      summary: '获取日志用户列表',
+      description: '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序',
+      tags: [TagsMap.appLog],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetLogUsersBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取日志用户列表',
+          content: {
+            'application/json': {
+              schema: GetLogUsersResponseSchema
             }
           }
         }

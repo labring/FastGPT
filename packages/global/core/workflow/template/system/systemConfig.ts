@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { type FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 

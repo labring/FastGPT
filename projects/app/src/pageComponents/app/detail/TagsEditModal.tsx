@@ -32,21 +32,23 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>(appDetail?.teamTags || []);
 
   // submit config
-  const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
-    mutationFn: async () => {
+  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest(
+    async () => {
       await updateAppDetail({
         teamTags: selectedTags
       });
     },
-    onSuccess() {
-      onClose();
-      toast({
-        title: t('common:update_success'),
-        status: 'success'
-      });
-    },
-    errorToast: t('common:update_failed')
-  });
+    {
+      onSuccess() {
+        onClose();
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
+      },
+      errorToast: t('common:update_failed')
+    }
+  );
 
   const { data: teamTags = [] } = useQuery(['getTeamsTags'], getTeamsTags);
   const [searchKey, setSearchKey] = useState('');
@@ -133,7 +135,7 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        <Button isLoading={btnLoading} onClick={(e) => saveSubmitSuccess(e)}>
+        <Button isLoading={btnLoading} onClick={(e) => saveSubmitSuccess()}>
           {t('common:Save')}
         </Button>
       </ModalFooter>

@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
@@ -132,7 +132,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     onClose: onCloseWebsiteModal
   } = useDisclosure();
 
-  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
+  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest(
     async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
         id: datasetId,

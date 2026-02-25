@@ -12,7 +12,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { getNanoid } from '../../../../common/string/tools';
-import { type FlowNodeInputItemType } from '../../type/io.d';
+import { type FlowNodeInputItemType } from '../../type/io';
 import { i18nT } from '../../../../../web/i18n/utils';
 
 export const getOneQuoteInputTemplate = ({

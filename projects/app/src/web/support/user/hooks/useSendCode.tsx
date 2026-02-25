@@ -3,7 +3,7 @@ import { sendAuthCode } from '@/web/support/user/api';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
 import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
 import { useMemoizedFn } from 'ahooks';
@@ -17,7 +17,7 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
   const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
 
-  const { runAsync: sendCode, loading: codeSending } = useRequest2(
+  const { runAsync: sendCode, loading: codeSending } = useRequest(
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
       const googleToken = await getClientToken(feConfigs.googleClientVerKey);

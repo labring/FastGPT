@@ -1,0 +1,50 @@
+{
+  "name": "@fastgpt-sdk/sandbox-server",
+  "version": "0.0.5",
+  "description": "Type-safe SDK for FastGPT Sandbox Server API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:js": "bun build index.ts --outdir dist --target node",
+    "build:dts": "tsc --emitDeclarationOnly --outDir dist",
+    "build": "bun run clean && bun run build:js && bun run build:dts",
+    "dev": "bun run --watch index.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "fastgpt",
+    "sandbox",
+    "sdk",
+    "typescript"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "axios": "^1.7.0",
+    "zod": "^3.22.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

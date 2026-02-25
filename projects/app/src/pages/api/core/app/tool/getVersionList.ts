@@ -36,7 +36,7 @@ async function handler(
     };
   }
 
-  const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
+  const { source, pluginId: formatPluginId, authAppId } = splitCombineToolId(pluginId);
 
   // System tool plugin
   if (source === AppToolSourceEnum.systemTool) {
@@ -54,10 +54,9 @@ async function handler(
 
   // Workflow plugin
   const appId = await (async () => {
-    if (source === AppToolSourceEnum.personal || source === AppToolSourceEnum.mcp) {
-      const appId = getMCPParentId(formatPluginId);
+    if (authAppId) {
       const { app } = await authApp({
-        appId,
+        appId: authAppId,
         req,
         per: ReadPermissionVal,
         authToken: true

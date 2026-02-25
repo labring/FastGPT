@@ -1,3 +1,4 @@
+import { SEEKDB_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
 import { vi } from 'vitest';
 
 /**
@@ -60,7 +61,8 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({
   PG_ADDRESS: 'mock://pg',
   OCEANBASE_ADDRESS: undefined,
   MILVUS_ADDRESS: undefined,
-  MILVUS_TOKEN: undefined
+  MILVUS_TOKEN: undefined,
+  SEEKDB_ADDRESS: undefined
 }));
 
 // Export mocks for test assertions

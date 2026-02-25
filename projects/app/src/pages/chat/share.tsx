@@ -15,14 +15,14 @@ import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
@@ -35,13 +35,16 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -69,6 +72,7 @@ const OutLink = (props: Props) => {
     authToken,
     customUid,
     showWorkorder,
+    hideMenu = '0',
     ...customVariables
   } = router.query as {
     shareId: string;
@@ -76,6 +80,7 @@ const OutLink = (props: Props) => {
     showHead: '0' | '1';
     authToken: string;
     showWorkorder: '0' | '1';
+    hideMenu: '0' | '1';
     [key: string]: string;
   };
   const { isPc } = useSystem();
@@ -102,7 +107,7 @@ const OutLink = (props: Props) => {
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
 
   const initSign = useRef(false);
-  const { data, loading } = useRequest2(
+  const { data, loading } = useRequest(
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;
@@ -279,6 +284,7 @@ const OutLink = (props: Props) => {
                     totalRecordsCount={totalRecordsCount}
                     showHistory={showHistory === '1'}
                     reserveSpace={showWorkorder !== undefined}
+                    hideMenu={hideMenu === '1'}
                   />
                 ) : null}
                 {/* chat box */}
@@ -331,10 +337,10 @@ const Render = (props: Props) => {
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
 
-  const chatHistoryProviderParams = useMemo(() => {
+  const chatHistoryProviderParams = useMemoEnhance(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId || '' };
   }, [authToken, customUid, localUId, shareId]);
-  const chatRecordProviderParams = useMemo(() => {
+  const chatRecordProviderParams = useMemoEnhance(() => {
     return {
       appId,
       shareId,
@@ -384,7 +390,7 @@ const Render = (props: Props) => {
     }
   });
 
-  return source === ChatSourceEnum.share ? (
+  return source === ChatSourceEnum.share && chatHistoryProviderParams.outLinkUid ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}
@@ -419,10 +425,13 @@ export async function getServerSideProps(context: any) {
         },
         'appId canDownloadSource showCite showFullText showRunningStatus'
       )
-        .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
+        .populate<{ associatedApp: AppSchemaType }>('associatedApp', 'name avatar intro')
         .lean();
     } catch (error) {
-      addLog.error('getServerSideProps', error);
+      logger.error('getServerSideProps failed', {
+        error,
+        shareId
+      });
       return undefined;
     }
   })();

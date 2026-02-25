@@ -20,17 +20,7 @@ async function handler(
     return Promise.reject('Tool IDs are required');
   }
 
-  const result = await pluginClient.tool.upload.confirmUpload({
-    body: {
-      toolIds
-    }
-  });
-
-  if (result.status !== 200) {
-    return Promise.reject(result.body);
-  }
-
-  return result.body;
+  return await pluginClient.confirmToolUpload(toolIds);
 }
 
 export default NextAPI(handler);

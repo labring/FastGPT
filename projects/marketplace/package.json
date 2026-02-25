@@ -18,7 +18,7 @@
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "i18next": "23.16.8",
     "mongoose": "^8.10.1",
     "next": "14.2.35",

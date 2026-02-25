@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { DashboardDataItemType } from '@/global/aiproxy/type.d';
+import type { DashboardDataItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type DashboardDataEntry = {
@@ -32,16 +32,18 @@ export type DataTableComponentProps = {
     }
   >;
   onViewDetail: (model: string) => void;
+  isLLMModel: (model: string) => boolean;
 };
 
-type SortFieldType = 'totalCalls' | 'errorCalls' | 'totalCost';
+type SortFieldType = 'totalCalls' | 'errorCalls' | 'totalCost' | 'cacheHitRate';
 
 const DataTableComponent = ({
   data,
   filterProps,
   onViewDetail,
   channelList,
-  modelPriceMap
+  modelPriceMap,
+  isLLMModel
 }: DataTableComponentProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -78,6 +80,7 @@ const DataTableComponent = ({
       totalCost: number;
       avgResponseTime: number;
       avgTtfb: number;
+      cacheHitRate: number;
     }[] = [];
 
     if (showChannelColumn) {
@@ -91,6 +94,8 @@ const DataTableComponent = ({
           totalCost: number;
           totalResponseTime: number;
           totalTtfb: number;
+          cacheHitCount: number;
+          llmRequestCount: number;
         }
       >();
 
@@ -105,13 +110,19 @@ const DataTableComponent = ({
             errorCalls: 0,
             totalCost: 0,
             totalResponseTime: 0,
-            totalTtfb: 0
+            totalTtfb: 0,
+            cacheHitCount: 0,
+            llmRequestCount: 0
           };
 
           existing.totalCalls += item.request_count || 0;
           existing.errorCalls += item.exception_count || 0;
           existing.totalResponseTime += item.total_time_milliseconds || 0;
           existing.totalTtfb += item.total_ttfb_milliseconds || 0;
+          existing.cacheHitCount += item.cache_hit_count || 0;
+          if (isLLMModel(item.model)) {
+            existing.llmRequestCount += item.request_count || 0;
+          }
 
           const modelPricing = modelPriceMap.get(item.model);
           if (modelPricing) {
@@ -134,6 +145,8 @@ const DataTableComponent = ({
 
       channelMap.forEach((item, channelId) => {
         const successCalls = item.totalCalls - item.errorCalls;
+        const cacheHitRate =
+          item.llmRequestCount === 0 ? 0 : formatNumber(item.cacheHitCount / item.llmRequestCount);
 
         rows.push({
           channelName: channelIdToNameMap.get(parseInt(channelId)) || '',
@@ -142,7 +155,8 @@ const DataTableComponent = ({
           errorCalls: item.errorCalls,
           totalCost: Math.floor(item.totalCost),
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
-          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
+          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
+          cacheHitRate
         });
       });
     } else {
@@ -155,6 +169,8 @@ const DataTableComponent = ({
           totalCost: number;
           totalResponseTime: number;
           totalTtfb: number;
+          cacheHitCount: number;
+          llmRequestCount: number;
         }
       >();
 
@@ -168,13 +184,19 @@ const DataTableComponent = ({
             errorCalls: 0,
             totalCost: 0,
             totalResponseTime: 0,
-            totalTtfb: 0
+            totalTtfb: 0,
+            cacheHitCount: 0,
+            llmRequestCount: 0
           };
 
           existing.totalCalls += item.request_count || 0;
           existing.errorCalls += item.exception_count || 0;
           existing.totalResponseTime += item.total_time_milliseconds || 0;
           existing.totalTtfb += item.total_ttfb_milliseconds || 0;
+          existing.cacheHitCount += item.cache_hit_count || 0;
+          if (isLLMModel(modelName)) {
+            existing.llmRequestCount += item.request_count || 0;
+          }
 
           const modelPricing = modelPriceMap.get(item.model);
           if (modelPricing) {
@@ -197,13 +219,16 @@ const DataTableComponent = ({
 
       modelMap.forEach((item, modelName) => {
         const successCalls = item.totalCalls - item.errorCalls;
+        const cacheHitRate =
+          item.llmRequestCount === 0 ? 0 : formatNumber(item.cacheHitCount / item.llmRequestCount);
         rows.push({
           model: modelName,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
           totalCost: Math.floor(item.totalCost),
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
-          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0
+          avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
+          cacheHitRate
         });
       });
     }
@@ -218,7 +243,15 @@ const DataTableComponent = ({
     }
 
     return rows;
-  }, [data, showChannelColumn, sortField, modelPriceMap, channelIdToNameMap, sortDirection]);
+  }, [
+    data,
+    showChannelColumn,
+    sortField,
+    modelPriceMap,
+    channelIdToNameMap,
+    sortDirection,
+    isLLMModel
+  ]);
 
   const handleSort = (field: SortFieldType) => {
     if (sortField === field) {
@@ -269,6 +302,13 @@ const DataTableComponent = ({
               )}
               <Th>{t('account_model:avg_response_time')}</Th>
               <Th>{t('account_model:avg_ttfb')}</Th>
+              <Th
+                cursor="pointer"
+                onClick={() => handleSort('cacheHitRate')}
+                _hover={{ color: 'primary.600' }}
+              >
+                {t('account_model:cache_hit_rate')} {getSortIcon('cacheHitRate')}
+              </Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -284,6 +324,11 @@ const DataTableComponent = ({
                   {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                 </Td>
                 <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}` : '-'}</Td>
+                <Td>
+                  {isLLMModel(item.model)
+                    ? `${formatNumber(item.cacheHitRate).toLocaleString()}`
+                    : '-'}
+                </Td>
                 <Td>
                   <Button
                     leftIcon={<MyIcon name={'menu'} w={'1rem'} />}

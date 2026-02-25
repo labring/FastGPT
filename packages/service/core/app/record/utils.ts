@@ -1,5 +1,7 @@
 import { MongoAppRecord } from './schema';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 export const recordAppUsage = async ({
   appId,
@@ -22,6 +24,6 @@ export const recordAppUsage = async ({
       upsert: true
     }
   ).catch((error) => {
-    addLog.error('recordAppUsage error', error);
+    logger.error('Failed to record app usage', { appId, tmbId, teamId, error });
   });
 };

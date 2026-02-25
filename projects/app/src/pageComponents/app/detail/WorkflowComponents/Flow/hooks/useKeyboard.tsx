@@ -9,7 +9,7 @@ import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 
@@ -21,7 +21,7 @@ export const useKeyboard = () => {
   const mousePosition = useContextSelector(WorkflowUIContext, (v) => v.mousePosition);
 
   const { getMyModelList } = useSystemStore();
-  const { data: myModels } = useRequest2(getMyModelList, {
+  const { data: myModels } = useRequest(getMyModelList, {
     manual: false
   });
 

@@ -3,7 +3,6 @@ import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback } from 'react';
 import { htmlTemplate } from '@/web/core/chat/constants';
 import { fileDownload } from '@/web/common/file/utils';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useTranslation } from 'next-i18next';
 export const useChatBox = () => {
   const { t } = useTranslation();
@@ -47,13 +46,13 @@ export const useChatBox = () => {
               .map((item) => {
                 let result = `Role: ${item.obj}\n`;
                 const content = item.value.map((item) => {
-                  if (item.type === ChatItemValueTypeEnum.text) {
+                  if (item.text) {
                     return item.text?.content;
-                  } else if (item.type === ChatItemValueTypeEnum.file) {
+                  } else if ('file' in item && item.file) {
                     return `
 ![${item.file?.name}](${item.file?.url})
 `;
-                  } else if (item.type === ChatItemValueTypeEnum.tool) {
+                  } else if ('tools' in item && item.tools) {
                     return `
 \`\`\`Tool
 ${JSON.stringify(item.tools, null, 2)}

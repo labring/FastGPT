@@ -1,4 +1,3 @@
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FieldValues, UseFormReturn } from 'react-hook-form';
 import type { PluginRunBoxTabEnum } from './constants';

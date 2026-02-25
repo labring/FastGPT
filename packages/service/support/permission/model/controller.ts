@@ -35,6 +35,7 @@ export const getMyModels = async ({
     resourceType: PerResourceTypeEnum.model
   }).lean();
 
+  // 未配置权限的，默认是有权限
   const permissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
   const unconfiguredModels = global.systemModelList.filter(
     (model) => !permissionConfiguredModelSet.has(model.model)

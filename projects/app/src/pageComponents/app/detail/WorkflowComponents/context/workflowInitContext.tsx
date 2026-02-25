@@ -165,7 +165,8 @@ const WorkflowInitContextProvider = ({
           return {
             key: output.key,
             label: output.label,
-            valueType: output.valueType
+            valueType: output.valueType,
+            invalid: output.invalid
           };
         })
       });
@@ -199,7 +200,7 @@ const WorkflowInitContextProvider = ({
         allNodeFolded = false;
       }
 
-      if (flowNodeType === FlowNodeTypeEnum.agent) {
+      if (flowNodeType === FlowNodeTypeEnum.agent || flowNodeType === FlowNodeTypeEnum.toolCall) {
         hasToolNode = true;
       }
     });

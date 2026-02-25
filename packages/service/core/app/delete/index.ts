@@ -11,7 +11,8 @@ export const initAppDeleteWorker = () => {
   return getWorker<AppDeleteJobData>(QueueNames.appDelete, appDeleteProcessor, {
     concurrency: 1, // 确保同时只有1个删除任务
     removeOnFail: {
-      age: 30 * 24 * 60 * 60 // 保留30天失败记录
+      age: 90 * 24 * 60 * 60, // 保留90天失败记录
+      count: 10000 // 最多保留10000个失败任务
     }
   });
 };

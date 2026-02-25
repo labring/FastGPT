@@ -12,7 +12,7 @@ import {
   Flex
 } from '@chakra-ui/react';
 import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -29,7 +29,7 @@ import RenderToolInput from '../render/RenderToolInput';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io.d';
+} from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';

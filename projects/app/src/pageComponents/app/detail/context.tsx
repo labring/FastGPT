@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { type AppUpdateParams, type PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -124,7 +124,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
-  const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
+  const { loading: loadingApp, runAsync: reloadApp } = useRequest(
     () => {
       if (appId) {
         return getAppDetailById(appId);
@@ -144,7 +144,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
+  const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest(
     () => getAppLatestVersion({ appId }),
     {
       manual: !appDetail?.permission?.hasWritePer,
@@ -152,7 +152,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { runAsync: updateAppDetail } = useRequest2(async (data: AppUpdateParams) => {
+  const { runAsync: updateAppDetail } = useRequest(async (data: AppUpdateParams) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
       ...state,
@@ -161,7 +161,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onSaveApp } = useRequest2(
+  const { runAsync: onSaveApp } = useRequest(
     async (data: PostPublishAppProps) => {
       try {
         if (!appDetail.permission.hasWritePer) return;
@@ -190,7 +190,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     type: 'delete',
     content: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip')
   });
-  const { runAsync: deleteApp } = useRequest2(
+  const { runAsync: deleteApp } = useRequest(
     async () => {
       if (!appDetail) return Promise.reject('Not load app');
       return delAppById(appDetail._id);

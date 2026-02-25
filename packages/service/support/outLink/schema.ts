@@ -6,6 +6,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../core/app/schema';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -104,11 +105,13 @@ OutLinkSchema.virtual('associatedApp', {
   justOne: true
 });
 
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
 try {
   OutLinkSchema.index({ shareId: -1 });
   OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build outlink indexes', { error });
 }
 
 export const MongoOutLink = getMongoModel<SchemaType>('outlinks', OutLinkSchema);

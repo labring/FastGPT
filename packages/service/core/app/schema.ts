@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { Schema, getMongoModel } from '../../common/mongo';
-import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
+import type { AppSchemaType as AppType } from '@fastgpt/global/core/app/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

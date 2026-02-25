@@ -8,7 +8,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useMemoizedFn } from 'ahooks';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { useTranslation } from 'next-i18next';
@@ -47,7 +47,7 @@ const SelectOneResource = ({
     return [root];
   }, [dataList, t]);
 
-  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+  const { runAsync: requestServer } = useRequest((e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId]);
@@ -56,7 +56,7 @@ const SelectOneResource = ({
     );
   }, {});
 
-  const { loading } = useRequest2(() => requestServer({ parentId: null }), {
+  const { loading } = useRequest(() => requestServer({ parentId: null }), {
     manual: false,
     onSuccess: (data) => {
       setDataList(

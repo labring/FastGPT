@@ -57,8 +57,12 @@ export default function VariableLabelPickerPlugin({
         selection.insertNodes([
           $createTextNode(`{{$${selectedOption.parent?.id}.${selectedOption.key}$}}`)
         ]);
-        closeMenu();
       });
+
+      // Close menu after editor update to avoid flushSync warning
+      setTimeout(() => {
+        closeMenu();
+      }, 0);
     },
     [editor]
   );

@@ -1,9 +1,9 @@
-import type { TmpDataEnum } from '@fastgpt/global/support/tmpData/constant';
+import type { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import {
   TmpDataExpireTime,
   type TmpDataMetadata,
   type TmpDataType
-} from '@fastgpt/global/support/tmpData/constant';
+} from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from './schema';
 import { type TmpDataSchema } from '@fastgpt/global/support/tmpData/type';
 import { addMilliseconds } from 'date-fns';

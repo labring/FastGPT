@@ -7,7 +7,7 @@ import { PluginRunContext } from '../context';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -70,7 +70,7 @@ const RenderInput = () => {
     appId,
     chatId
   });
-  useRequest2(uploadFiles, {
+  useRequest(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
     refreshDeps: [fileList, outLinkAuthData]
@@ -82,7 +82,7 @@ const RenderInput = () => {
     if (histories.length === 0) return pluginInputs;
     try {
       const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+      const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
 
       if (!inputValueString) return pluginInputs;
       return JSON.parse(inputValueString) as FlowNodeInputItemType[];
@@ -134,7 +134,7 @@ const RenderInput = () => {
       if (!historyValue) return undefined;
 
       try {
-        const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+        const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
         return (
           inputValueString &&
           JSON.parse(inputValueString).reduce(
@@ -159,7 +159,7 @@ const RenderInput = () => {
     // Parse history file
     const historyFileList = (() => {
       const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      return historyValue?.filter((item) => item.type === 'file').map((item) => item.file);
+      return historyValue?.filter((item) => item.file).map((item) => item.file);
     })();
 
     reset({

@@ -18,6 +18,12 @@ export const formatTime2YMD = (time?: Date | number) =>
 export const formatTime2HM = (time: Date = new Date()) => dayjs(time).format('HH:mm');
 
 /**
+ * 格式化为带时区偏移的 ISO-8601 字符串
+ */
+export const formatToISOWithTimezone = (time?: Date | number) =>
+  time ? dayjs(time).format('YYYY-MM-DDTHH:mm:ss.SSSZ') : '';
+
+/**
  * 格式化时间成聊天格式
  */
 export const formatTimeToChatTime = (time: Date) => {

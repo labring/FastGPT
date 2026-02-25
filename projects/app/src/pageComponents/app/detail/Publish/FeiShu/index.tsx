@@ -27,7 +27,7 @@ import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
@@ -49,7 +49,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetchShareChatList
-  } = useRequest2(
+  } = useRequest(
     () => getShareChatList<FeishuAppType>({ appId, type: PublishChannelEnum.feishu }),
     {
       manual: false

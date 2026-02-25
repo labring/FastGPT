@@ -4,12 +4,12 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   type FlowNodeTemplateType,
   type NodeTemplateListItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -21,19 +21,19 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import ConfigToolModal from '@/pageComponents/app/detail/SimpleApp/components/ConfigToolModal';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
+import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
-  chatConfig?: AppSimpleEditFormType['chatConfig'];
+  chatConfig?: AppFormEditFormType['chatConfig'];
   onAddTool: (tool: FlowNodeTemplateType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
@@ -55,7 +55,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     data: rawTemplates = [],
     runAsync: loadTemplates,
     loading: isLoading
-  } = useRequest2(
+  } = useRequest(
     async ({
       parentId = '',
       searchVal = searchKey
@@ -69,12 +69,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       onSuccess(_, [{ parentId = '' }]) {
         setParentId(parentId);
       },
-      refreshDeps: [searchKey, parentId],
-      errorToast: t('common:core.module.templates.Load plugin error')
+      refreshDeps: [searchKey, parentId]
     }
   );
 
-  const { data: allTags = [] } = useRequest2(getPluginToolTags, {
+  const { data: allTags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
@@ -87,7 +86,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     });
   }, [rawTemplates, selectedTagIds]);
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => {
       return getAppToolPaths({ sourceId: parentId, type: 'current' });
     },
@@ -106,7 +105,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     [loadTemplates]
   );
 
-  useRequest2(() => loadTemplates({ searchVal: searchKey }), {
+  useRequest(() => loadTemplates({ searchVal: searchKey }), {
     manual: false,
     throttleWait: 300,
     refreshDeps: [searchKey]
@@ -185,7 +184,7 @@ const RenderList = React.memo(function RenderList({
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
 
-  const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
+  const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
 
@@ -268,9 +267,6 @@ const RenderList = React.memo(function RenderList({
       } else {
         onAddTool(defaultForm);
       }
-    },
-    {
-      errorToast: t('common:core.module.templates.Load plugin error')
     }
   );
 

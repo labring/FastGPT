@@ -1,7 +1,7 @@
 import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { addDays } from 'date-fns';
 import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
@@ -27,7 +27,7 @@ const UsageDashboard = ({
   const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
-  const { data: totalPoints = [], loading: totalPointsLoading } = useRequest2(
+  const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
     () =>
       getDashboardData({
         dateStart: dateRange.from

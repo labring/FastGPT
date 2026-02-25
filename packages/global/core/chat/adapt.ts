@@ -4,10 +4,12 @@ import type {
   ChatItemValueItemType,
   RuntimeUserPromptType,
   SystemChatItemValueItemType,
+  ToolModuleResponseItemType,
+  UserChatItemFileItemType,
   UserChatItemType,
   UserChatItemValueItemType
-} from '../../core/chat/type.d';
-import { ChatFileTypeEnum, ChatItemValueTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
+} from './type';
+import { ChatFileTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
   ChatCompletionContentPart,
   ChatCompletionFunctionMessageParam,
@@ -15,10 +17,11 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionToolMessageParam
-} from '../../core/ai/type.d';
+} from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+import { getNanoid } from '../../common/string/tools';
 
-const GPT2Chat = {
+export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
@@ -62,13 +65,13 @@ export const chats2GPTMessages = ({
     } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
         .map((item) => {
-          if (item.type === ChatItemValueTypeEnum.text) {
+          if (item.text) {
             return {
               type: 'text',
               text: item.text?.content || ''
             };
           }
-          if (item.type === ChatItemValueTypeEnum.file) {
+          if (item.file) {
             if (item.file?.type === ChatFileTypeEnum.image) {
               return {
                 type: 'image_url',
@@ -97,13 +100,17 @@ export const chats2GPTMessages = ({
       });
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+      const existsPlanId = new Set<string>();
 
-      //AI
       item.value.forEach((value, i) => {
-        if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
+        // 只需要把根节点转化即可
+        if (value.stepId) return;
+
+        if ((value.tools || value.tool) && reserveTool) {
+          const tools = value.tools || [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
-          value.tools.forEach((tool) => {
+          tools.forEach((tool) => {
             tool_calls.push({
               id: tool.id,
               type: 'function',
@@ -115,8 +122,7 @@ export const chats2GPTMessages = ({
             toolResponse.push({
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              name: tool.functionName,
-              content: tool.response
+              content: tool.response || ''
             });
           });
           aiResults.push({
@@ -125,19 +131,14 @@ export const chats2GPTMessages = ({
             tool_calls
           });
           aiResults.push(...toolResponse);
-        } else if (
-          value.type === ChatItemValueTypeEnum.text &&
-          typeof value.text?.content === 'string'
-        ) {
+        } else if (typeof value.text?.content === 'string') {
           if (!value.text.content && item.value.length > 1) {
             return;
           }
           // Concat text
-          const lastValue = item.value[i - 1];
           const lastResult = aiResults[aiResults.length - 1];
           if (
-            lastValue &&
-            lastValue.type === ChatItemValueTypeEnum.text &&
+            lastResult?.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
             typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
@@ -148,27 +149,72 @@ export const chats2GPTMessages = ({
               content: value.text.content
             });
           }
-        } else if (value.type === ChatItemValueTypeEnum.interactive) {
+        } else if (value.plan && reserveTool) {
+          const planId = value.plan.planId;
+          if (existsPlanId.has(planId)) {
+            return;
+          }
+          existsPlanId.add(planId);
+          const steps = item.value
+            .filter((item) => item.plan?.planId === planId)
+            .flatMap((item) => item.plan?.steps || [])
+            .map((step) => {
+              const stepResponse = item.value
+                .filter((item) => item.stepId === step.id)
+                ?.map((item) => item.text?.content)
+                .join('\n');
+
+              return {
+                title: step.title,
+                response: stepResponse
+              };
+            });
+          const toolId = getNanoid(6);
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            interactive: value.interactive
+            tool_calls: [
+              {
+                id: toolId,
+                type: 'function',
+                function: {
+                  name: 'plan_agent',
+                  arguments: JSON.stringify({
+                    task: value.plan.task,
+                    description: value.plan.description,
+                    background: value.plan.background
+                  })
+                }
+              }
+            ]
           });
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: toolId,
+            content: JSON.stringify(steps)
+          });
+        } else if (value.interactive) {
+          if (value.interactive.type === 'agentPlanAskQuery') {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: value.interactive.params.content
+            });
+          } else if (value.interactive.type === 'agentPlanAskUserForm') {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: `${value.interactive.params.description}
+
+Answer: ${value.interactive.params.inputForm.map((item) => `- ${item.label}: ${item.value}`).join('\n')}`
+            });
+          }
         }
       });
 
       // Auto add empty assistant message
-      results = results.concat(
-        aiResults.length > 0
-          ? aiResults
-          : [
-              {
-                dataId,
-                role: ChatCompletionRequestMessageRoleEnum.Assistant,
-                content: ''
-              }
-            ]
-      );
+      results = results.concat(aiResults);
     }
   });
 
@@ -178,190 +224,193 @@ export const chats2GPTMessages = ({
 export const GPTMessages2Chats = ({
   messages,
   reserveTool = true,
+  reserveReason = true,
   getToolInfo
 }: {
   messages: ChatCompletionMessageParam[];
   reserveTool?: boolean;
+  reserveReason?: boolean;
   getToolInfo?: (name: string) => { name: string; avatar: string };
 }): ChatItemType[] => {
   const chatMessages = messages
     .map((item) => {
       const obj = GPT2Chat[item.role];
 
-      const value = (() => {
-        if (
-          obj === ChatRoleEnum.System &&
-          item.role === ChatCompletionRequestMessageRoleEnum.System
-        ) {
-          const value: SystemChatItemValueItemType[] = [];
+      if (
+        obj === ChatRoleEnum.System &&
+        item.role === ChatCompletionRequestMessageRoleEnum.System
+      ) {
+        const value: SystemChatItemValueItemType[] = [];
 
-          if (Array.isArray(item.content)) {
-            item.content.forEach((item) => [
+        if (Array.isArray(item.content)) {
+          item.content.forEach((item) => [
+            value.push({
+              text: {
+                content: item.text
+              }
+            })
+          ]);
+        } else {
+          value.push({
+            text: {
+              content: item.content
+            }
+          });
+        }
+        return {
+          dataId: item.dataId,
+          obj,
+          hideInUI: item.hideInUI,
+          value
+        };
+      } else if (
+        obj === ChatRoleEnum.Human &&
+        item.role === ChatCompletionRequestMessageRoleEnum.User
+      ) {
+        const value: UserChatItemValueItemType[] = [];
+
+        if (typeof item.content === 'string') {
+          value.push({
+            text: {
+              content: item.content
+            }
+          });
+        } else if (Array.isArray(item.content)) {
+          item.content.forEach((item) => {
+            if (item.type === 'text') {
               value.push({
-                type: ChatItemValueTypeEnum.text,
                 text: {
                   content: item.text
                 }
-              })
-            ]);
-          } else {
-            value.push({
-              type: ChatItemValueTypeEnum.text,
-              text: {
-                content: item.content
-              }
-            });
-          }
-          return value;
-        } else if (
-          obj === ChatRoleEnum.Human &&
-          item.role === ChatCompletionRequestMessageRoleEnum.User
-        ) {
-          const value: UserChatItemValueItemType[] = [];
-
-          if (typeof item.content === 'string') {
-            value.push({
-              type: ChatItemValueTypeEnum.text,
-              text: {
-                content: item.content
-              }
-            });
-          } else if (Array.isArray(item.content)) {
-            item.content.forEach((item) => {
-              if (item.type === 'text') {
-                value.push({
-                  type: ChatItemValueTypeEnum.text,
-                  text: {
-                    content: item.text
-                  }
-                });
-              } else if (item.type === 'image_url') {
-                value.push({
-                  //@ts-ignore
-                  type: ChatItemValueTypeEnum.file,
-                  file: {
-                    type: ChatFileTypeEnum.image,
-                    name: '',
-                    url: item.image_url.url,
-                    key: item.key
-                  }
-                });
-              } else if (item.type === 'file_url') {
-                value.push({
-                  // @ts-ignore
-                  type: ChatItemValueTypeEnum.file,
-                  file: {
-                    type: ChatFileTypeEnum.file,
-                    name: item.name,
-                    url: item.url,
-                    key: item.key
-                  }
-                });
-              }
-            });
-          }
-          return value;
-        } else if (
-          obj === ChatRoleEnum.AI &&
-          item.role === ChatCompletionRequestMessageRoleEnum.Assistant
-        ) {
-          const value: AIChatItemValueItemType[] = [];
-
-          if (typeof item.reasoning_text === 'string' && item.reasoning_text) {
-            value.push({
-              type: ChatItemValueTypeEnum.reasoning,
-              reasoning: {
-                content: item.reasoning_text
-              }
-            });
-          }
-          if (item.tool_calls && reserveTool) {
-            // save tool calls
-            const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
-            value.push({
-              //@ts-ignore
-              type: ChatItemValueTypeEnum.tool,
-              tools: toolCalls.map((tool) => {
-                let toolResponse =
-                  messages.find(
-                    (msg) =>
-                      msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                      msg.tool_call_id === tool.id
-                  )?.content || '';
-                toolResponse =
-                  typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
-
-                const toolInfo = getToolInfo?.(tool.function.name);
-
-                return {
-                  id: tool.id,
-                  toolName: toolInfo?.name || '',
-                  toolAvatar: toolInfo?.avatar || '',
-                  functionName: tool.function.name,
-                  params: tool.function.arguments,
-                  response: toolResponse as string
-                };
-              })
-            });
-          }
-          if (item.function_call && reserveTool) {
-            const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
-            const functionResponse = messages.find(
-              (msg) =>
-                msg.role === ChatCompletionRequestMessageRoleEnum.Function &&
-                msg.name === item.function_call?.name
-            ) as ChatCompletionFunctionMessageParam;
-
-            if (functionResponse) {
-              value.push({
-                //@ts-ignore
-                type: ChatItemValueTypeEnum.tool,
-                tools: [
-                  {
-                    id: functionCall.id || '',
-                    toolName: functionCall.toolName || '',
-                    toolAvatar: functionCall.toolAvatar || '',
-                    functionName: functionCall.name,
-                    params: functionCall.arguments,
-                    response: functionResponse.content || ''
-                  }
-                ]
               });
-            }
-          }
-          if (item.interactive) {
-            value.push({
-              //@ts-ignore
-              type: ChatItemValueTypeEnum.interactive,
-              interactive: item.interactive
-            });
-          }
-          if (typeof item.content === 'string' && item.content) {
-            const lastValue = value[value.length - 1];
-            if (lastValue && lastValue.type === ChatItemValueTypeEnum.text && lastValue.text) {
-              lastValue.text.content += item.content;
-            } else {
+            } else if (item.type === 'image_url') {
               value.push({
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content: item.content
+                file: {
+                  type: ChatFileTypeEnum.image,
+                  name: '',
+                  url: item.image_url.url,
+                  key: item.key
+                }
+              });
+            } else if (item.type === 'file_url') {
+              value.push({
+                file: {
+                  type: ChatFileTypeEnum.file,
+                  name: item.name,
+                  url: item.url,
+                  key: item.key
                 }
               });
             }
-          }
+          });
+        }
+        return {
+          dataId: item.dataId,
+          obj,
+          hideInUI: item.hideInUI,
+          value
+        };
+      } else if (
+        obj === ChatRoleEnum.AI &&
+        item.role === ChatCompletionRequestMessageRoleEnum.Assistant
+      ) {
+        const value: AIChatItemValueItemType[] = [];
 
-          return value;
+        if (typeof item.reasoning_content === 'string' && item.reasoning_content && reserveReason) {
+          value.push({
+            reasoning: {
+              content: item.reasoning_content
+            }
+          });
+        }
+        if (item.tool_calls && reserveTool) {
+          // save tool calls
+          const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
+
+          const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
+            // Skil plan tool
+            if (tool.function.name === 'plan_agent') {
+              return [];
+            }
+            let toolResponse =
+              messages.find(
+                (msg) =>
+                  msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                  msg.tool_call_id === tool.id
+              )?.content || '';
+            toolResponse =
+              typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
+
+            const toolInfo = getToolInfo?.(tool.function.name);
+
+            return [
+              {
+                id: tool.id,
+                toolName: toolInfo?.name || '',
+                toolAvatar: toolInfo?.avatar || '',
+                functionName: tool.function.name,
+                params: tool.function.arguments,
+                response: toolResponse as string
+              }
+            ];
+          });
+          value.push({
+            tools
+          });
+        }
+        if (item.function_call && reserveTool) {
+          const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
+          const functionResponse = messages.find(
+            (msg) =>
+              msg.role === ChatCompletionRequestMessageRoleEnum.Function &&
+              msg.name === item.function_call?.name
+          ) as ChatCompletionFunctionMessageParam;
+
+          if (functionResponse) {
+            value.push({
+              tool: {
+                id: functionCall.id || '',
+                toolName: functionCall.toolName || '',
+                toolAvatar: functionCall.toolAvatar || '',
+                functionName: functionCall.name,
+                params: functionCall.arguments,
+                response: functionResponse.content || ''
+              }
+            });
+          }
+        }
+        if (item.interactive) {
+          value.push({
+            interactive: item.interactive
+          });
+        }
+        if (typeof item.content === 'string' && item.content) {
+          const lastValue = value[value.length - 1];
+          if (lastValue && lastValue.text) {
+            lastValue.text.content += item.content;
+          } else {
+            value.push({
+              text: {
+                content: item.content
+              }
+            });
+          }
         }
 
-        return [];
-      })();
+        return {
+          dataId: item.dataId,
+          obj,
+          hideInUI: item.hideInUI,
+          value
+        };
+      }
 
       return {
         dataId: item.dataId,
         obj,
         hideInUI: item.hideInUI,
-        value
-      } as ChatItemType;
+        value: []
+      };
     })
     .filter((item) => item.value.length > 0);
 
@@ -388,7 +437,7 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
     text: ''
   };
   value.forEach((item) => {
-    if (item.type === 'file' && item.file) {
+    if ('file' in item && item.file) {
       prompt.files.push(item.file);
     } else if (item.text) {
       prompt.text += item.text.content;
@@ -397,21 +446,20 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   return prompt;
 };
 
-export const runtimePrompt2ChatsValue = (
-  prompt: RuntimeUserPromptType
-): UserChatItemType['value'] => {
+export const runtimePrompt2ChatsValue = (prompt: {
+  files?: UserChatItemFileItemType[];
+  text?: string;
+}): UserChatItemType['value'] => {
   const value: UserChatItemType['value'] = [];
   if (prompt.files) {
     prompt.files.forEach((file) => {
       value.push({
-        type: ChatItemValueTypeEnum.file,
         file
       });
     });
   }
   if (prompt.text) {
     value.push({
-      type: ChatItemValueTypeEnum.text,
       text: {
         content: prompt.text
       }
@@ -425,7 +473,7 @@ export const getSystemPrompt_ChatItemType = (prompt?: string): ChatItemType[] =>
   return [
     {
       obj: ChatRoleEnum.System,
-      value: [{ type: ChatItemValueTypeEnum.text, text: { content: prompt } }]
+      value: [{ text: { content: prompt } }]
     }
   ];
 };

@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -60,7 +60,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
 
-  const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
+  const { data: paths = [] } = useRequest(() => getDatasetCollectionPathById(parentId), {
     refreshDeps: [parentId],
     manual: false
   });
@@ -92,7 +92,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     onClose: onCloseTemplateImportModal
   } = useDisclosure();
 
-  const { runAsync: onCreateCollection } = useRequest2(
+  const { runAsync: onCreateCollection } = useRequest(
     async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
       const id = await postDatasetCollection({
         parentId,

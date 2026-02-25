@@ -14,12 +14,13 @@ import {
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
@@ -38,8 +39,14 @@ const FileSelect = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
+
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值（这里是指对话中，最多上传多少文件）
+  const maxSelectFiles = Math.min(
+    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    50
+  );
 
   const [localValue, setLocalValue] = useState(value);
 
@@ -66,9 +73,7 @@ const FileSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'} {...labelStyle}>
-        {t('app:file_upload')}
-      </FormLabel>
+      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_file_upload')}>

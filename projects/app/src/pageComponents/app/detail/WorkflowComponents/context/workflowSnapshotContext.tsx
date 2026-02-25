@@ -10,7 +10,7 @@ import {
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';

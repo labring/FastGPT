@@ -7,10 +7,10 @@ import type { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/workflow
 import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io.d';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/io';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import type { SourceMember } from '@fastgpt/global/support/user/type';
@@ -22,7 +22,7 @@ export interface ShareAppItem {
   name: string;
   intro: string;
   userId: string;
-  share: AppSchema['share'];
+  share: AppSchemaType['share'];
   isCollection: boolean;
 }
 

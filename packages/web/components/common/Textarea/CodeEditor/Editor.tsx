@@ -22,9 +22,10 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
   language?: string;
+  options?: any;
 };
 
-const options = {
+const defaultOptions = {
   lineNumbers: 'on',
   guides: {
     indentation: false
@@ -55,10 +56,19 @@ const MyEditor = ({
   defaultHeight = 200,
   onOpenModal,
   language = 'typescript',
+  options,
   ...props
 }: Props) => {
   const [height, setHeight] = useState(defaultHeight);
   const initialY = useRef(0);
+
+  const mergedOptions = React.useMemo(
+    () => ({
+      ...defaultOptions,
+      ...options
+    }),
+    [options]
+  );
 
   const registerPythonCompletion = usePythonCompletion();
 
@@ -146,7 +156,7 @@ const MyEditor = ({
       <Editor
         height={'100%'}
         language={language}
-        options={options as any}
+        options={mergedOptions}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
         defaultValue={defaultValue}

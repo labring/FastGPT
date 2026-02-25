@@ -17,11 +17,13 @@ import { getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { addS3DelJob } from '../mq';
 import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+
+const logger = getLogger(LogCategories.INFRA.S3);
 
 type IStorage = ReturnType<typeof createStorage>;
 
@@ -63,6 +65,18 @@ export class S3BaseBucket {
     return this.client.bucketName;
   }
 
+  async checkBucketHealth() {
+    await this.createPresignedPutUrl({
+      rawKey: 'health-check.txt',
+      filename: 'health-check.txt',
+      metadata: {
+        contentDisposition: 'attachment; filename="health-check.txt"',
+        originFilename: 'health-check.txt',
+        uploadTime: new Date().toISOString()
+      }
+    });
+  }
+
   // TODO: 加到 MQ 里保障幂等
   async move({ from, to }: { from: string; to: string }): Promise<void> {
     await this.copy({ from, to, options: { temporary: false } });
@@ -95,9 +109,10 @@ export class S3BaseBucket {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
       }
-      addLog.error(`[S3 delete error]`, {
-        message: err.message,
-        data: { code: err.code, key: objectKey }
+      logger.error('S3 delete object failed', {
+        key: objectKey,
+        code: err?.code,
+        error: err
       });
       throw err;
     });
@@ -154,7 +169,11 @@ export class S3BaseBucket {
         maxSize: formatMaxFileSize
       };
     } catch (error) {
-      addLog.error('Failed to create presigned put url', error);
+      logger.error('Failed to create S3 presigned PUT URL', {
+        key: params.rawKey,
+        filename: params.filename,
+        error
+      });
       return Promise.reject('Failed to create presigned put url');
     }
   }

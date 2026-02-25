@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { jwtVerifyS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+const logger = getLogger(LogCategories.INFRA.FILE);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -50,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream.pipe(res);
 
         stream.on('error', (error) => {
-          addLog.error('Error reading dataset file', { error });
+          logger.error('Error reading dataset file', { error });
           if (!res.headersSent) {
             return jsonRes(res, {
               code: 500,

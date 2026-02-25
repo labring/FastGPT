@@ -10,7 +10,11 @@ export const encryptSecret = (text: string) => {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}:${authTag.toString('hex')}`;
 };
 
-export const decryptSecret = (encryptedText: string) => {
+export const decryptSecret = (encryptedText?: string) => {
+  if (!encryptedText) {
+    return '';
+  }
+
   const [ivHex, encryptedHex, authTagHex] = encryptedText.split(':');
 
   if (!ivHex || !encryptedHex || !authTagHex) {

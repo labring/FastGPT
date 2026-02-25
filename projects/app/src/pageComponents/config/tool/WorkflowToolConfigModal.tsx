@@ -19,7 +19,7 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
@@ -81,7 +81,7 @@ const WorkflowToolConfigModal = ({
     setValue('tagIds', selectedTags);
   }, [selectedTags, setValue]);
 
-  useRequest2(
+  useRequest(
     async () => {
       if (toolId) {
         const res = await getAdminSystemToolDetail({ toolId });
@@ -120,7 +120,7 @@ const WorkflowToolConfigModal = ({
   const [searchKey, setSearchKey] = useState('');
   const [lastPluginId, setLastPluginId] = useState<string | undefined>('');
 
-  const { data: apps = [], loading: loadingPlugins } = useRequest2(
+  const { data: apps = [], loading: loadingPlugins } = useRequest(
     () => getAdminAllSystemAppTool({ searchKey }),
     {
       manual: false,
@@ -128,7 +128,7 @@ const WorkflowToolConfigModal = ({
     }
   );
 
-  const { data: tags = [], loading: loadingTags } = useRequest2(getPluginToolTags, {
+  const { data: tags = [], loading: loadingTags } = useRequest(getPluginToolTags, {
     manual: false
   });
   const pluginTypeSelectList = useMemo(
@@ -160,7 +160,7 @@ const WorkflowToolConfigModal = ({
     }
   });
 
-  const { runAsync: onSubmit, loading: isSubmitting } = useRequest2(
+  const { runAsync: onSubmit, loading: isSubmitting } = useRequest(
     (data: UpdateToolBodyType) => {
       if (!data.associatedPluginId) {
         return Promise.reject(t('app:custom_plugin_associated_plugin_required'));
@@ -189,7 +189,7 @@ const WorkflowToolConfigModal = ({
     }
   );
 
-  const { runAsync: onDelete, loading: isDeleting } = useRequest2(delAdminSystemTool, {
+  const { runAsync: onDelete, loading: isDeleting } = useRequest(delAdminSystemTool, {
     onSuccess() {
       toast({
         title: t('app:custom_plugin_delete_success'),

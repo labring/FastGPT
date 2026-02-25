@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { putUpdateTeam } from '@/web/support/user/team/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const WorkflowVariableModal = ({
   defaultData,
@@ -25,7 +25,7 @@ const WorkflowVariableModal = ({
     }
   });
 
-  const { runAsync: onSubmit, loading } = useRequest2(
+  const { runAsync: onSubmit, loading } = useRequest(
     async (data: { key: string; value: string }) => {
       if (!userInfo?.team.teamId) return;
 

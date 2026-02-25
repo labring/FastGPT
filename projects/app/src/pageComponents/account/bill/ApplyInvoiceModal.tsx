@@ -22,7 +22,7 @@ import {
 import { billTypeMap } from '@fastgpt/global/support/wallet/bill/constants';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dayjs from 'dayjs';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useState } from 'react';
@@ -57,7 +57,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     loading: isLoading,
     data: billsList,
     run: getInvoiceBills
-  } = useRequest2(() => getInvoiceBillsList(), {
+  } = useRequest(() => getInvoiceBillsList(), {
     manual: false
   });
 
@@ -72,7 +72,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     [chosenBillDataList]
   );
 
-  const { runAsync: onSubmitApply, loading: isSubmitting } = useRequest2(
+  const { runAsync: onSubmitApply, loading: isSubmitting } = useRequest(
     (data) =>
       submitInvoice({
         amount: totalPrice,
@@ -104,7 +104,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { loading: isLoadingHeader } = useRequest2(() => getTeamInvoiceHeader(), {
+  const { loading: isLoadingHeader } = useRequest(() => getTeamInvoiceHeader(), {
     manual: false,
     onSuccess: (res) => inputForm.reset(res)
   });

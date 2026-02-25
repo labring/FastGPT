@@ -5,6 +5,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { OrgMemberCollectionName } from './orgMemberSchema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 
 export const OrgSchema = new Schema(
@@ -56,6 +57,8 @@ OrgSchema.virtual('members', {
   }
 });
 
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
 try {
   OrgSchema.index({
     teamId: 1,
@@ -71,7 +74,7 @@ try {
     }
   );
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build org indexes', { error });
 }
 
 export const MongoOrgModel = getMongoModel<OrgSchemaType>(OrgCollectionName, OrgSchema);

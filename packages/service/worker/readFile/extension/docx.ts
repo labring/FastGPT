@@ -1,12 +1,14 @@
 import mammoth, { images } from 'mammoth';
 import { type ReadRawTextByBuffer, type ReadFileResponse, type ImageType } from '../type';
 import { html2md } from '../../htmlStr2Md/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 /**
  * read docx to markdown
  */
 export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const imageList: ImageType[] = [];
+  const logger = getLogger(LogCategories.INFRA.WORKER);
   try {
     const { value: html } = await mammoth.convertToHtml(
       {
@@ -37,7 +39,7 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
       imageList
     };
   } catch (error) {
-    console.log('error doc read:', error);
+    logger.error('Failed to parse docx file', { error });
     return Promise.reject('Can not read doc file, please convert to PDF');
   }
 };

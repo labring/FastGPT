@@ -14,7 +14,9 @@ async function handler(
 ): Promise<GetPluginTagListResponse> {
   await authCert({ req, authToken: true });
 
-  return await MongoPluginToolTag.find().sort({ tagOrder: 1 }).lean();
+  return (await MongoPluginToolTag.find().sort({ tagOrder: 1 }).lean()).filter(
+    (item) => !!item.tagId
+  );
 }
 
 export default NextAPI(handler);

@@ -3,9 +3,10 @@ import fs from 'fs';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
 import { clearDirFiles } from '../../common/file/utils';
-import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const DEFAULTDECOMPRESSSUBLOCATION = '/tmp';
+const logger = getLogger(LogCategories.INFRA.WORKER);
 
 function getNewFileName(ext: string) {
   return `${DEFAULTDECOMPRESSSUBLOCATION}/${getNanoid()}.${ext}`;
@@ -129,7 +130,7 @@ export const parseOffice = async ({
           return Promise.reject('只能读取 .pptx 文件');
       }
     } catch (error) {
-      addLog.error(`Load ppt error`, { error });
+      logger.error('Failed to parse pptx file', { extension, error });
     }
     return '';
   })();

@@ -3,7 +3,8 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger } from '@fastgpt/service/common/logger';
+const logger = getLogger(['initv4145']);
 
 export type ResponseType = {
   message: string;
@@ -58,9 +59,9 @@ async function migrateOutLinkData(): Promise<{
       link.showCite = link.showCite ?? link.responseDetail ?? false;
       link.canDownloadSource = link.canDownloadSource ?? link.showRawSource ?? false;
       await link.save();
-      addLog.info(`[initv4145] 迁移 OutLink 数据成功: ${link.shareId}`);
+      logger.info(`[initv4145] 迁移 OutLink 数据成功: ${link.shareId}`);
     } catch (error) {
-      addLog.error('[initv4145] 迁移 OutLink 数据失败:', error);
+      logger.error('[initv4145] 迁移 OutLink 数据失败:', { error });
     }
   }
 
@@ -90,7 +91,7 @@ async function handler(
   try {
     shareLinkMigration = await migrateOutLinkData();
   } catch (error) {
-    console.error('Failed to migrate outLink data:', error);
+    logger.error('Failed to migrate outLink data:', { error });
     // 即使迁移失败，也继续返回 S3 任务处理的结果
   }
 

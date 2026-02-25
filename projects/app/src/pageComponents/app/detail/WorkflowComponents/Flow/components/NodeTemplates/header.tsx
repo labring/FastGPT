@@ -6,7 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppToolPaths } from '@/web/core/app/api/tool';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
@@ -29,7 +29,7 @@ export type NodeTemplateListHeaderProps = {
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   onUpdateTemplateType: (type: TemplateTypeEnum) => void;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: ParentIdType) => void;
 
   selectedTagIds: string[];
   setSelectedTagIds: (e: string[]) => any;
@@ -54,7 +54,7 @@ const NodeTemplateListHeader = ({
   const router = useRouter();
 
   // Get paths
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => {
       if (templateType === TemplateTypeEnum.systemTools)
         return getAppToolPaths({ sourceId: parentId, type: 'current' });
@@ -184,7 +184,7 @@ const NodeTemplateListHeader = ({
               _hover={{
                 color: 'primary.600'
               }}
-              onClick={() => router.push('/plugin/tool')}
+              onClick={() => router.push('/dashboard/systemTool')}
               gap={1}
               ml={4}
             >

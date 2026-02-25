@@ -7,7 +7,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -34,7 +34,7 @@ const ToolParamsEditModal = ({
   });
   const valueType = watch('valueType');
 
-  const { runAsync: onClickSubmit } = useRequest2(
+  const { runAsync: onClickSubmit } = useRequest(
     async (e: FlowNodeInputItemType) => {
       e.key = e.key.trim();
 

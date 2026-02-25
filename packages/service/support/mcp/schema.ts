@@ -53,9 +53,4 @@ const McpKeySchema = new Schema({
   }
 });
 
-try {
-} catch (error) {
-  console.log(error);
-}
-
 export const MongoMcpKey = getMongoModel<McpKeyType>(mcpCollectionName, McpKeySchema);

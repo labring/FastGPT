@@ -16,7 +16,7 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteMcpServer, getMcpServerList } from '@/web/support/mcp/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditMcpModal, {
@@ -44,14 +44,14 @@ const McpServer = () => {
     data: mcpServerList = [],
     loading: loadingList,
     refresh: loadMcpList
-  } = useRequest2(getMcpServerList, {
+  } = useRequest(getMcpServerList, {
     manual: false
   });
 
   const [editMcp, setEditMcp] = useState<EditMcForm>();
   const [usageWay, setUsageWay] = useState<McpKeyType>();
 
-  const { runAsync: onDeleteMcpServer } = useRequest2(deleteMcpServer, {
+  const { runAsync: onDeleteMcpServer } = useRequest(deleteMcpServer, {
     manual: true,
     onSuccess: () => {
       loadMcpList();

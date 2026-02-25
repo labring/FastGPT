@@ -12,7 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  # @see https://fastgpt.cn/docs/introduction/development/object-storage
+  # @see https://doc.fastgpt.cn/docs/introduction/development/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -23,10 +23,17 @@ x-share-db-config: &x-share-db-config
   STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
+# Log 配置
+x-log-config: &x-log-config
+  LOG_ENABLE_CONSOLE: true
+  LOG_CONSOLE_LEVEL: debug
+  LOG_ENABLE_OTEL: false
+  LOG_OTEL_LEVEL: info
+  LOG_OTEL_URL: http://localhost:4318/v1/logs
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/test
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 
 
 version: '3.3'
@@ -52,8 +59,8 @@ services:
       - OB_SERVER_IP=127.0.0.1
       # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
     volumes:
-      - ../ob/data:/root/ob
-      - ../ob/config:/root/.obd/cluster
+      - ./ob/data:/root/ob
+      - ./ob/config:/root/.obd/cluster
     configs:
       - source: init_sql
         target: /root/boot/init.d/init.sql
@@ -68,8 +75,6 @@ services:
       timeout: 10s
       retries: 1000
       start_period: 10s
-
-
   mongo:
     image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
@@ -157,7 +162,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.5 # git
+    image: ghcr.io/labring/fastgpt:v4.14.7.1 # git
     ports:
       - 3000:3000
     networks:
@@ -168,7 +173,7 @@ services:
       - vectorDB
     restart: always
     environment:
-      <<: [*x-share-db-config, *x-vec-config]
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config]
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       FE_DOMAIN:
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
@@ -192,9 +197,9 @@ services:
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
 
-      # 日志等级: debug, info, warn, error
-      LOG_LEVEL: info
-      STORE_LOG_LEVEL: warn
+      # 传递给 OTLP 收集器的服务名称
+      LOG_OTEL_SERVICE_NAME: fastgpt-client
+
       # 工作流最大运行次数
       WORKFLOW_MAX_RUN_TIMES: 1000
       # 批量执行节点，最大输入长度
@@ -209,39 +214,42 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.5
+    image: ghcr.io/labring/fastgpt-sandbox:v4.14.7
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.5-fix
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.6
     networks:
       - fastgpt
     ports:
       - 3005:3000
     restart: always
     environment:
-      - FASTGPT_ENDPOINT=http://fastgpt:3000
+      <<: [*x-log-config]
+      FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.4.0
+    image: ghcr.io/labring/fastgpt-plugin:v0.5.4
     container_name: fastgpt-plugin
     restart: always
     networks:
       - fastgpt
     environment:
-      <<: *x-share-db-config
+      <<: [*x-share-db-config, *x-log-config]
       AUTH_TOKEN: *x-plugin-auth-token
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小
       MAX_API_SIZE: 10
+      # 传递给 OTLP 收集器的服务名称
+      LOG_OTEL_SERVICE_NAME: fastgpt-plugin
     depends_on:
       fastgpt-minio:
         condition: service_healthy
   # AI Proxy
   aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.3.2
+    image: ghcr.io/labring/aiproxy:v0.3.5
     container_name: aiproxy
     restart: unless-stopped
     depends_on:

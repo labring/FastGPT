@@ -16,7 +16,7 @@ import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
@@ -113,7 +113,7 @@ export const DatasetPageContextProvider = ({
   const [checkedDatasetTag, setCheckedDatasetTag] = useState<DatasetTagType[]>([]);
   const [searchTagKey, setSearchTagKey] = useState('');
 
-  const { runAsync: loadAllDatasetTags, data: allDatasetTags = [] } = useRequest2(
+  const { runAsync: loadAllDatasetTags, data: allDatasetTags = [] } = useRequest(
     async () => {
       if (!feConfigs?.isPlus || !datasetDetail._id) return [];
 
@@ -125,7 +125,7 @@ export const DatasetPageContextProvider = ({
       refreshDeps: [datasetDetail._id]
     }
   );
-  const { data: searchDatasetTagsResult = [] } = useRequest2(
+  const { data: searchDatasetTagsResult = [] } = useRequest(
     async () => {
       if (!searchTagKey) return allDatasetTags;
       const { list } = await getDatasetCollectionTags({
@@ -142,7 +142,7 @@ export const DatasetPageContextProvider = ({
       refreshDeps: [datasetDetail._id, searchTagKey, allDatasetTags]
     }
   );
-  const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest2(
+  const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest(
     (tag: string) =>
       postCreateDatasetCollectionTag({
         datasetId: datasetDetail._id,
@@ -164,7 +164,7 @@ export const DatasetPageContextProvider = ({
       refetchInterval: 10000
     });
 
-  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+  const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () =>
       getDatasetPaths({
         sourceId: datasetDetail?._id,

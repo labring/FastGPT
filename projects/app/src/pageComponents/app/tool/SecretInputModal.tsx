@@ -24,7 +24,7 @@ import InputRender from '@/components/core/app/formRender';
 import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getAppToolTemplates } from '@/web/core/app/api/tool';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 
 export type ToolParamsFormType = {
@@ -81,7 +81,7 @@ const SecretInputModal = ({
     });
   const configType = watch('type');
 
-  const { data: childTools = [] } = useRequest2<NodeTemplateListItemType[], []>(
+  const { data: childTools = [] } = useRequest<NodeTemplateListItemType[], []>(
     async () => {
       if (!isFolder) return [];
       return getAppToolTemplates({ parentId });
