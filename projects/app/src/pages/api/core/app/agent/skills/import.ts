@@ -7,6 +7,7 @@ import {
   parseSkillPackage,
   extractSkillFromMarkdown
 } from '@fastgpt/service/core/agentSkill/utils';
+import { standardizeSkillPackage } from '@fastgpt/service/core/agentSkill/zipBuilder';
 import type {
   ImportSkillResponse,
   ExtractedSkillPackage
@@ -119,21 +120,18 @@ async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPack
   // Read ZIP file to buffer
   const zipBuffer = await fs.readFile(filePath);
 
-  // Load ZIP
+  // 1. Initial extraction to get SKILL.md for metadata
   const zip = await JSZip.loadAsync(zipBuffer);
   const files = Object.keys(zip.files);
 
   // Find SKILL.md (required)
   let skillMdKey = files.find((key) => key === 'SKILL.md' || key.toLowerCase() === 'skill.md');
 
-  // If not found in root, check single-level subdirectory (e.g., check-sysinfo/SKILL.md)
-  let subDir: string | undefined;
+  // If not found in root, check single-level subdirectory
   if (!skillMdKey) {
     for (const key of files) {
-      const lowerKey = key.toLowerCase();
-      if (lowerKey.endsWith('/skill.md') && key.split('/').length === 2) {
+      if (key.toLowerCase().endsWith('/skill.md') && key.split('/').length === 2) {
         skillMdKey = key;
-        subDir = key.split('/')[0];
         break;
       }
     }
@@ -143,45 +141,20 @@ async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPack
     throw new Error('SKILL.md not found in ZIP archive (not in root or single-level subdirectory)');
   }
 
-  // Get markdown content
   const skillMdFile = zip.file(skillMdKey);
   if (!skillMdFile) {
     throw new Error('SKILL.md not found in ZIP archive');
   }
   const markdown = await skillMdFile.async('string');
 
-  // Filter files based on whether SKILL.md is in a subdirectory
-  let filteredFiles = files;
-  let processedZipBuffer: ArrayBuffer | Buffer = zipBuffer;
-
-  if (subDir) {
-    // Only include files in the subdirectory
-    filteredFiles = files.filter((key) => {
-      return key.startsWith(`${subDir}/`);
-    });
-
-    // Rebuild ZIP without the subdirectory prefix
-    const newZip = new JSZip();
-    for (const key of filteredFiles) {
-      const file = zip.file(key);
-      if (file && !file.dir) {
-        const content = await file.async('arraybuffer');
-        // Remove subdirectory prefix from file path
-        const newKey = key.substring(`${subDir}/`.length);
-        newZip.file(newKey, content);
-      }
-    }
-
-    // Generate new ZIP buffer
-    processedZipBuffer = await newZip.generateAsync({ type: 'arraybuffer' });
-  }
-
   // Extract skill metadata from SKILL.md frontmatter
-  const { skill, error } = extractSkillFromMarkdown(markdown);
-
-  if (error) {
-    throw new Error(error);
+  const { skill, error: extractError } = extractSkillFromMarkdown(markdown);
+  if (extractError || !skill) {
+    throw new Error(extractError || 'Failed to parse SKILL.md');
   }
+
+  // 2. Standardize ZIP structure (enforce root folder named after skill)
+  const { buffer: standardizedZipBuffer } = await standardizeSkillPackage(zipBuffer, skill.name);
 
   // Build package
   const packageData = {
@@ -191,31 +164,26 @@ async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPack
 
   // Validate package
   const result = parseSkillPackage(packageData);
-
   if (!result.success) {
     throw new Error(result.error);
   }
 
-  // Extract metadata for all ZIP entries
-  const entriesMetadata = filteredFiles.map((key) => {
-    const file = zip.files[key];
+  // Extract metadata for all ZIP entries from the standardized ZIP
+  const finalZip = await JSZip.loadAsync(standardizedZipBuffer);
+  const entriesMetadata = Object.entries(finalZip.files).map(([name, file]) => {
     return {
-      name: key,
-      size: 0, // Compressed size not easily accessible
+      name: name,
+      size: 0,
       isDirectory: file.dir,
-      uncompressedSize: 0, // Uncompressed size not easily accessible without _data
-      compressionMethod: 8 // Default compression method (DEFLATE)
+      uncompressedSize: 0,
+      compressionMethod: 8
     };
   });
 
   return {
     skillPackage: result.package!,
-    zipBuffer: Buffer.isBuffer(processedZipBuffer)
-      ? processedZipBuffer
-      : Buffer.from(processedZipBuffer),
+    zipBuffer: standardizedZipBuffer,
     zipEntries: entriesMetadata,
-    totalSize: Buffer.isBuffer(processedZipBuffer)
-      ? processedZipBuffer.length
-      : processedZipBuffer.byteLength
+    totalSize: standardizedZipBuffer.length
   };
 }

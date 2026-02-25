@@ -11,6 +11,7 @@ import { MongoSkillSandbox } from './sandboxSchema';
 import { MongoAgentSkill } from './schema';
 import { MongoSkillVersion } from './versionSchema';
 import { downloadSkillPackage } from './storage';
+import { standardizeSkillPackage } from './zipBuilder';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
@@ -195,22 +196,25 @@ export async function createEditDebugSandbox(
 
     addLog.info('[Sandbox] Package downloaded', { size: packageBuffer.length });
 
+    // Standardize the ZIP package (ensure root folder named after skill)
+    const { buffer: standardizedBuffer } = await standardizeSkillPackage(packageBuffer, skill.name);
+
     // Step 6: Upload to sandbox and extract
-    const zipPath = `${defaults.homeDirectory}/package.zip`;
+    const zipPath = `${defaults.workDirectory}/package.zip`;
 
     addLog.info('[Sandbox] Uploading package to sandbox', { path: zipPath });
 
     await sandbox.writeFiles([
       {
         path: zipPath,
-        data: packageBuffer
+        data: standardizedBuffer
       }
     ]);
 
     // Extract the package
     addLog.info('[Sandbox] Extracting package');
     const extractResult = await sandbox.execute(
-      `cd ${defaults.homeDirectory} && unzip -o package.zip && rm package.zip`
+      `mkdir -p ${defaults.workDirectory} && cd ${defaults.workDirectory} && unzip -o package.zip && rm package.zip`
     );
 
     if (extractResult.exitCode !== 0) {
@@ -257,7 +261,7 @@ export async function createEditDebugSandbox(
             storage: {
               bucket: activeVersion.storage.bucket,
               key: activeVersion.storage.key,
-              size: packageBuffer.length,
+              size: standardizedBuffer.length,
               uploadedAt: new Date()
             },
             metadata: new Map([
@@ -448,7 +452,7 @@ export async function packageSkillInSandbox(params: {
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
-  const targetDir = workDirectory || defaults.homeDirectory;
+  const targetDir = workDirectory || defaults.workDirectory;
 
   addLog.info('[Sandbox] Packaging skill in sandbox', {
     providerSandboxId,
