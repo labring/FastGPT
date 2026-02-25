@@ -18,6 +18,7 @@ export type SandboxDefaults = {
   inactiveThreshold: number; // in seconds
   defaultImage: SandboxImageConfigType;
   homeDirectory: string;
+  workDirectory: string;
   targetPort: number;
 };
 
@@ -49,6 +50,7 @@ export function getSandboxDefaults(): SandboxDefaults {
       tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || '18-alpine'
     },
     homeDirectory: '/home/coder',
+    workDirectory: '/workspace/projects',
     targetPort: 8080
   };
 }

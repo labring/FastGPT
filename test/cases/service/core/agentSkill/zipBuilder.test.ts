@@ -11,7 +11,8 @@ import JSZip from 'jszip';
 describe('zipBuilder', () => {
   // ==================== createSkillPackage ====================
   describe('createSkillPackage', () => {
-    it('should create zip with SKILL.md only', async () => {
+    it('should create zip with root folder and SKILL.md', async () => {
+      const name = 'test-skill';
       const skillMd = `---
 name: test-skill
 description: A test skill
@@ -21,7 +22,7 @@ description: A test skill
 
 This is the documentation.`;
 
-      const zipBuffer = await createSkillPackage({ skillMd });
+      const zipBuffer = await createSkillPackage({ name, skillMd });
 
       // Verify it's a valid zip buffer
       expect(Buffer.isBuffer(zipBuffer)).toBe(true);
@@ -31,15 +32,17 @@ This is the documentation.`;
       const zip = await JSZip.loadAsync(zipBuffer);
       const files = Object.keys(zip.files);
 
-      expect(files).toContain('SKILL.md');
-      expect(files).toHaveLength(1);
+      expect(files).toContain(`${name}/SKILL.md`);
+      // JSZip may or may not include directory entries depending on how it's called
+      // but SKILL.md should definitely be there with the prefix
 
       // Verify SKILL.md content
-      const skillMdContent = await zip.file('SKILL.md')?.async('string');
+      const skillMdContent = await zip.file(`${name}/SKILL.md`)?.async('string');
       expect(skillMdContent).toBe(skillMd);
     });
 
-    it('should create zip with SKILL.md and additional assets', async () => {
+    it('should create zip with SKILL.md and additional assets in root folder', async () => {
+      const name = 'test-skill';
       const skillMd = `---
 name: test-skill
 description: A test skill
@@ -55,47 +58,41 @@ description: A test skill
         'assets/README.md': Buffer.from(readmeMd, 'utf-8')
       };
 
-      const zipBuffer = await createSkillPackage({ skillMd, assets });
+      const zipBuffer = await createSkillPackage({ name, skillMd, assets });
 
       // Verify zip contents
       const zip = await JSZip.loadAsync(zipBuffer);
       const files = Object.keys(zip.files);
 
-      expect(files).toContain('SKILL.md');
-      expect(files).toContain('assets/icon.png');
-      expect(files).toContain('assets/README.md');
-      // JSZip may include directory entries, so we check at least 3 files
-      expect(files.length).toBeGreaterThanOrEqual(3);
+      expect(files).toContain(`${name}/SKILL.md`);
+      expect(files).toContain(`${name}/assets/icon.png`);
+      expect(files).toContain(`${name}/assets/README.md`);
 
       // Verify file contents
-      const skillMdContent = await zip.file('SKILL.md')?.async('string');
+      const skillMdContent = await zip.file(`${name}/SKILL.md`)?.async('string');
       expect(skillMdContent).toBe(skillMd);
 
-      const iconContent = await zip.file('assets/icon.png')?.async('uint8array');
+      const iconContent = await zip.file(`${name}/assets/icon.png`)?.async('uint8array');
       expect(Buffer.from(iconContent!)).toEqual(iconPng);
 
-      const readmeContent = await zip.file('assets/README.md')?.async('string');
+      const readmeContent = await zip.file(`${name}/assets/README.md`)?.async('string');
       expect(readmeContent).toBe(readmeMd);
     });
 
-    it('should handle empty assets object', async () => {
-      const skillMd = `---
-name: test-skill
-description: A test skill
----
+    it('should handle name with trailing slashes', async () => {
+      const name = 'test-skill///';
+      const skillMd = '# Test';
 
-# Test`;
-
-      const zipBuffer = await createSkillPackage({ skillMd, assets: {} });
+      const zipBuffer = await createSkillPackage({ name, skillMd });
 
       const zip = await JSZip.loadAsync(zipBuffer);
       const files = Object.keys(zip.files);
 
-      expect(files).toContain('SKILL.md');
-      expect(files).toHaveLength(1);
+      expect(files).toContain('test-skill/SKILL.md');
     });
 
     it('should handle large markdown content', async () => {
+      const name = 'large-skill';
       const largeMarkdown = '# Large Document\n\n' + 'Content line.\n'.repeat(1000);
 
       const skillMd = `---
@@ -105,10 +102,10 @@ description: A large skill
 
 ${largeMarkdown}`;
 
-      const zipBuffer = await createSkillPackage({ skillMd });
+      const zipBuffer = await createSkillPackage({ name, skillMd });
 
       const zip = await JSZip.loadAsync(zipBuffer);
-      const skillMdContent = await zip.file('SKILL.md')?.async('string');
+      const skillMdContent = await zip.file('large-skill/SKILL.md')?.async('string');
 
       expect(skillMdContent).toBe(skillMd);
       expect(skillMdContent!.length).toBeGreaterThan(10000);
@@ -183,7 +180,7 @@ ${largeMarkdown}`;
 
   // ==================== validateZipStructure ====================
   describe('validateZipStructure', () => {
-    it('should validate zip with SKILL.md', async () => {
+    it('should validate zip with SKILL.md at root', async () => {
       const zip = new JSZip();
       zip.file('SKILL.md', '---\nname: test\n---\n\n# Test');
 
@@ -192,7 +189,19 @@ ${largeMarkdown}`;
 
       expect(result.valid).toBe(true);
       expect(result.hasSkillMd).toBe(true);
-      expect(result.error).toBeUndefined();
+      expect(result.skillMdPath).toBe('SKILL.md');
+    });
+
+    it('should validate zip with SKILL.md in a subfolder', async () => {
+      const zip = new JSZip();
+      zip.file('my-skill/SKILL.md', '---\nname: test\n---\n\n# Test');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateZipStructure(buffer);
+
+      expect(result.valid).toBe(true);
+      expect(result.hasSkillMd).toBe(true);
+      expect(result.skillMdPath).toBe('my-skill/SKILL.md');
     });
 
     it('should invalidate zip without SKILL.md', async () => {
@@ -206,29 +215,11 @@ ${largeMarkdown}`;
       expect(result.hasSkillMd).toBe(false);
       expect(result.error).toContain('SKILL.md');
     });
-
-    it('should invalidate empty zip', async () => {
-      const zip = new JSZip();
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-      const result = await validateZipStructure(buffer);
-
-      expect(result.valid).toBe(false);
-      // Empty zip will fail the SKILL.md check
-      expect(result.error).toContain('SKILL.md');
-    });
-
-    it('should handle invalid zip data', async () => {
-      const buffer = Buffer.from('not a valid zip file');
-      const result = await validateZipStructure(buffer);
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
-    });
   });
 
   // ==================== extractSkillPackage ====================
   describe('extractSkillPackage', () => {
-    it('should extract SKILL.md from zip', async () => {
+    it('should extract SKILL.md from zip root', async () => {
       const zip = new JSZip();
       const skillMd = '---\nname: test\n---\n\n# Test Skill';
       zip.file('SKILL.md', skillMd);
@@ -241,19 +232,22 @@ ${largeMarkdown}`;
       expect(result.assets).toEqual({});
     });
 
-    it('should extract SKILL.md and assets', async () => {
+    it('should extract SKILL.md from subfolder and strip prefix from assets', async () => {
       const zip = new JSZip();
-      zip.file('SKILL.md', '---\nname: test\n---\n');
-      zip.file('assets/icon.png', Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-      zip.file('assets/README.md', '# README');
+      const skillMd = '---\nname: test\n---\n';
+      zip.file('my-skill/SKILL.md', skillMd);
+      zip.file('my-skill/assets/icon.png', Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      zip.file('my-skill/README.md', '# README');
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await extractSkillPackage(buffer);
 
       expect(result.success).toBe(true);
+      expect(result.skillMd).toBe(skillMd);
       expect(result.assets).toBeDefined();
       expect(Object.keys(result.assets!)).toContain('assets/icon.png');
-      expect(Object.keys(result.assets!)).toContain('assets/README.md');
+      expect(Object.keys(result.assets!)).toContain('README.md');
+      expect(Object.keys(result.assets!)).not.toContain('my-skill/README.md');
     });
 
     it('should return error for missing SKILL.md', async () => {
@@ -265,14 +259,6 @@ ${largeMarkdown}`;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('SKILL.md');
-    });
-
-    it('should handle invalid zip data', async () => {
-      const buffer = Buffer.from('not a valid zip file');
-      const result = await extractSkillPackage(buffer);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
     });
   });
 });

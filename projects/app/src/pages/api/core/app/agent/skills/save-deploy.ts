@@ -16,7 +16,8 @@ import {
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkill/storage';
 import {
   validateZipStructure,
-  extractSkillPackage
+  extractSkillPackage,
+  standardizeSkillPackage
 } from '@fastgpt/service/core/agentSkill/zipBuilder';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkill/utils';
 import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkill/sandboxSchema';
@@ -149,6 +150,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Standardize the ZIP package (ensure root folder named after skill)
+    let standardizedPackageBuffer: Buffer;
+    try {
+      const { buffer } = await standardizeSkillPackage(packageBuffer, skillMetadata.name);
+      standardizedPackageBuffer = buffer;
+    } catch (error: any) {
+      return jsonRes(res, {
+        code: 500,
+        error: `Failed to standardize skill package: ${error.message || 'Unknown error'}`
+      });
+    }
+
     // Get next version number
     const nextVersion = await getNextVersionNumber(skillId);
 
@@ -162,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           teamId,
           skillId,
           version: nextVersion,
-          zipBuffer: packageBuffer
+          zipBuffer: standardizedPackageBuffer
         });
       } catch (error: any) {
         throw new Error(`Failed to upload package: ${error.message || 'Unknown error'}`);
