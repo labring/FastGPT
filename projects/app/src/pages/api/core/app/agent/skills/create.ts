@@ -91,7 +91,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       // 2. Create ZIP package
-      const zipBuffer = await createSkillPackage({ skillMd });
+      const zipBuffer = await createSkillPackage({
+        name: name.trim(),
+        skillMd
+      });
 
       // 3. Create skill record first (to get the skillId)
       const newSkillId = await createSkill(

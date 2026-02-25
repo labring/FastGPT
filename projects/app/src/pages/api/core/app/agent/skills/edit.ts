@@ -8,7 +8,7 @@ import type {
 } from '@fastgpt/global/core/agentSkill/api';
 
 /**
- * POST /api/core/app/agent/skills/sandbox/create-edit-debug
+ * POST /api/core/app/agent/skills/sandbox/edit
  *
  * Create an edit-debug sandbox for a skill
  */
