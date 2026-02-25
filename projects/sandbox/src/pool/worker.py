@@ -42,7 +42,7 @@ _BLOCKED_CIDRS = [
 
 _REQUEST_LIMITS = {
     'max_requests': 30,
-    'timeout': 10,
+    'timeout': 60,
     'max_response_size': 2 * 1024 * 1024,
     'allowed_protocols': ['http:', 'https:']
 }
