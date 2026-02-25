@@ -1,0 +1,37 @@
+projects/app/src/pages/api/core/app/agent/skills/create.ts
+  2ad1a41d118d02fb 95
+packages/service/core/agentSkill/zipBuilder.ts
+  2ad1a41d118d02fb 11,22,36,39-44,46,51,58,107-112,114,117,139-140,159,168-173,176,187,190-192,211-238
+projects/app/src/pages/api/core/app/agent/skills/import.ts
+  2ad1a41d118d02fb 10,123,130,133,151-153,156-158,171-173,175-176,178-179,185,187
+test/cases/service/core/agentSkill/zipBuilder.test.ts
+  2ad1a41d118d02fb 14-15,25,35-37,40,44-45,61,67-69,72,75,78,82-84,86,91,95,105,108,183,192,195,197,202-204,207,209-210,215,222,235,237-240,246,249-250
+test/cases/service/core/agentSkill/import.test.ts
+  2ad1a41d118d02fb 69,90,92,94-100,114-116,119-120,135-137,139,149,151,157-159,165,168-171,174-178,182,184-188,192-193,206-209,216-217,237-238,252,278-279,288,395-396,411-416,420-421,431
+packages/service/core/agentSkill/sandboxConfig.ts
+  2ad1a41d118d02fb 21,53
+projects/app/src/pages/api/core/app/agent/skills/save-deploy.ts
+  2ad1a41d118d02fb 19-20,153-164,178
+packages/service/core/agentSkill/sandboxController.ts
+  2ad1a41d118d02fb 14,199-201,203,210,217,264,455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.1",
+  "base_commit_sha": "271a371deac0567947d76516d47ded2b07f083d9",
+  "prompts": {
+    "2ad1a41d118d02fb": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "2e52a973-46a5-4f2b-845c-e57bf8332a50",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 235,
+      "total_deletions": 206,
+      "accepted_lines": 224,
+      "overriden_lines": 0
+    }
+  }
+}
