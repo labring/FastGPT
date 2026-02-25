@@ -984,25 +984,49 @@ describe('Python SSRF 防护', () => {
 });
 
 // ============================================================
-// 7. 文件系统隔离（已移除磁盘写入功能）
+// 7. 文件系统隔离
 // ============================================================
 describe('文件系统隔离 - Python', () => {
   const runner = { execute: (args: any) => pyPool.execute(args) };
 
-  it('open() 读取 /proc/self/environ（env 已清理）', async () => {
+  it('open() 读取 /etc/passwd 被拦截', async () => {
     const result = await runner.execute({
-      code: `def main():
-    try:
-        with open('/proc/self/environ', 'r') as f:
-            data = f.read()
-        has_sensitive = 'SECRET' in data or 'TOKEN' in data or 'PASSWORD' in data
-        return {'readable': True, 'has_sensitive': has_sensitive}
-    except Exception as e:
-        return {'readable': False}`,
+      code: `def main():\n    with open('/etc/passwd') as f:\n        return {'data': f.read()[:100]}`,
       variables: {}
     });
-    if (result.success && result.data?.codeReturn.readable) {
-      expect(result.data.codeReturn.has_sensitive).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('not allowed');
+  });
+
+  it('open() 读取 /proc/self/environ 被拦截', async () => {
+    const result = await runner.execute({
+      code: `def main():\n    with open('/proc/self/environ', 'r') as f:\n        return {'data': f.read()}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('not allowed');
+  });
+
+  it('open() 写入文件被拦截', async () => {
+    const result = await runner.execute({
+      code: `def main():\n    with open('/tmp/evil.txt', 'w') as f:\n        f.write('hacked')\n    return {'ok': 1}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('not allowed');
+  });
+
+  it('第三方库内部 open() 不受影响（numpy 可正常使用）', async () => {
+    const result = await runner.execute({
+      code: `import numpy as np\ndef main():\n    return {'mean': float(np.array([1,2,3]).mean())}`,
+      variables: {}
+    });
+    // numpy 可能未安装（CI 环境），跳过验证
+    if (result.success) {
+      expect(result.data?.codeReturn.mean).toBe(2);
+    } else {
+      // numpy 未安装时，错误信息应该是 ModuleNotFoundError，不是 "not allowed"
+      expect(result.message).not.toContain('File system access is not allowed');
     }
   });
 
@@ -1016,7 +1040,46 @@ describe('文件系统隔离 - Python', () => {
   });
 });
 
-// ============================================================
+describe('文件系统隔离 - JS', () => {
+  const runner = { execute: (args: any) => jsPool.execute(args) };
+
+  it('import("fs") 动态导入被拦截', async () => {
+    const result = await runner.execute({
+      code: `async function main() { const fs = await import("fs"); return { data: fs.readFileSync("/etc/passwd", "utf-8") }; }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('import()');
+  });
+
+  it('import("child_process") 动态导入被拦截', async () => {
+    const result = await runner.execute({
+      code: `async function main() { const cp = await import("child_process"); return cp.execSync("id").toString(); }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('import()');
+  });
+
+  it('import("os") 动态导入被拦截', async () => {
+    const result = await runner.execute({
+      code: `async function main() { const os = await import("os"); return { hostname: os.hostname() }; }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('import()');
+  });
+
+  it('字符串中包含 import 不被误杀', async () => {
+    const result = await runner.execute({
+      code: `async function main() { const s = "this is an import statement"; return { s }; }`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.s).toBe('this is an import statement');
+  });
+});
+
 // 8. 变量注入攻击
 // ============================================================
 describe('变量注入攻击', () => {
