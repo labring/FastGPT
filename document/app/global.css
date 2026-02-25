@@ -475,3 +475,11 @@ button[role='tab'] {
   padding-top: 16px;
   padding-bottom: 16px;
 }
+
+/* 移动端侧边栏左侧 padding 缩小 */
+@media (max-width: 767px) {
+  #nd-sidebar-mobile [data-radix-scroll-area-viewport] {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}

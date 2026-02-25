@@ -11,6 +11,7 @@ import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
 import GithubLogoDark from '@/components/docs/githubLogoDark';
+import { BookOpen, Code, Lightbulb, CircleHelp, Scale, History } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -21,28 +22,35 @@ export default async function Layout({
 }) {
   const { lang } = await params;
 
+  const iconClass = 'size-4';
   const tab = [
     {
+      icon: <BookOpen className={iconClass} />,
       title: t('common:introduction', lang),
       url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction'
     },
     {
+      icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
       url: lang === 'zh-CN' ? '/docs/openapi' : '/en/docs/openapi'
     },
     {
+      icon: <Lightbulb className={iconClass} />,
       title: t('common:use-cases', lang),
       url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
     },
     {
+      icon: <CircleHelp className={iconClass} />,
       title: t('common:faq', lang),
       url: lang === 'zh-CN' ? '/docs/faq' : '/en/docs/faq'
     },
     {
+      icon: <Scale className={iconClass} />,
       title: t('common:protocol', lang),
       url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
     },
     {
+      icon: <History className={iconClass} />,
       title: t('common:upgrading', lang),
       url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
     }

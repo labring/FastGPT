@@ -1,295 +1,99 @@
 ---
-title: 代码运行
-description: FastGPT 代码运行节点介绍
+title: 代码运行（旧版）
+description: FastGPT 代码运行节点介绍（适用于 4.14.7 及以下版本）
 ---
+
+> 本文档适用于 FastGPT **4.14.7 及以下版本**。4.14.8 及以上版本请参考 [代码运行（新版）](/docs/introduction/guide/dashboard/workflow/sandbox-v5)。
+
+![alt text](/imgs/image.png)
 
 ## 功能
 
-代码运行节点支持在安全沙盒中执行 JavaScript 和 Python 代码，用于数据处理、格式转换、逻辑计算等场景。
-
-**支持的语言**
-
-- JavaScript（基于 Bun 运行时）
-- Python 3
+可用于执行一段简单的 js 代码，用于进行一些复杂的数据处理。代码运行在沙盒中，无法进行网络请求、dom和异步操作。如需复杂操作，需外挂 HTTP 实现。
 
 **注意事项**
 
-- 私有化用户需要部署 `fastgpt-sandbox` 镜像，并配置 `SANDBOX_URL` 环境变量。
-- 沙盒默认最大运行 10s，可通过配置调整。
-- 代码运行在隔离的进程池中，无法访问文件系统和内网。
+- 私有化用户需要部署`fastgpt-sandbox` 镜像，并配置`SANDBOX_URL`环境变量。
+- 沙盒最大运行 10s， 32M 内存限制。
 
-## 变量输入
 
-可在自定义输入中添加代码运行需要的变量。
+## 变量输入 
 
-**JavaScript** — 在 main 函数参数中解构：
+可在自定义输入中添加代码运行需要的变量，在代码的 main 函数中，可解构出相同名字的变量。
 
-```js
-async function main({data1, data2}){
-    return {
-        result: data1 + data2
-    }
-}
-```
-
-**Python** — 在 main 函数参数中按变量名接收：
-
-```python
-def main(data1, data2):
-    return {"result": data1 + data2}
-```
+如上图，自定义输入中有 data1 和 data2 两个变量，main 函数中可以解构出相同名字的变量。
 
 ## 结果输出
 
-务必返回一个 object 对象（JS）或 dict 字典（Python）。
+务必返回一个 object 对象
 
-自定义输出中，可以添加变量名来获取对应 key 下的值。例如返回了：
+自定义输出中，可以添加变量名来获取 object 对应 key 下的值。例如上图中，返回了一个对象：
 
 ```json
 {
-  "result": "hello",
-  "count": 42
+  result: data1,
+  data2
 }
 ```
 
-自定义输出中添加 `result` 和 `count` 两个变量即可获取对应的值。
+他有 2 个 key：result和 data2(js 缩写，key=data2，value=data2)。这时候自定义输出中就可以添加 2 个变量来获取对应 key 下的 value。
 
-## 内置函数（SystemHelper）
-
-内置函数统一通过 `SystemHelper` 对象调用，JS 和 Python 使用相同的 API。
-
-> 直接调用 `countToken()` / `count_token()` 等方式已弃用，仅保留向后兼容。新代码请统一使用 `SystemHelper`。
+## 内置 JS 全局变量
 
 ### delay 延迟
 
-延迟指定毫秒后继续执行，最大 10000ms。
+延迟 1 秒后返回
 
 ```js
-// JavaScript
 async function main({data1, data2}){
-    await SystemHelper.delay(1000) // 延迟 1 秒
-    return { result: "done" }
+    await delay(1000)
+    return {
+        result: "111"
+    }
 }
-```
-
-```python
-# Python
-def main():
-    SystemHelper.delay(1000)  # 延迟 1 秒
-    return {"result": "done"}
 ```
 
 ### countToken 统计 token
 
-估算文本的 token 数量（按字符数 / 4 计算）。
-
 ```js
-// JavaScript
 function main({input}){
-    return { tokens: SystemHelper.countToken(input) }
-}
-```
-
-```python
-# Python
-def main():
-    return {"tokens": SystemHelper.countToken(variables["input"])}
-```
-
-### strToBase64 字符串转 base64
-
-将字符串编码为 base64，可选添加前缀。适用于将 SVG 等内容转为 data URI。
-
-```js
-// JavaScript
-function main({svg}){
     return {
-        // 参数 1: 要转换的字符串
-        // 参数 2: base64 前缀（可选）
-        image: SystemHelper.strToBase64(svg, 'data:image/svg+xml;base64,')
+        result: countToken(input)
     }
 }
 ```
 
-```python
-# Python
-def main():
-    return {
-        "image": SystemHelper.strToBase64(variables["svg"], "data:image/svg+xml;base64,")
-    }
-```
+![alt text](/imgs/image-1.png)
 
-### createHmac 签名
+### strToBase64 字符串转 base64(4.8.11 版本新增)
 
-生成 HMAC 签名，返回 `{timestamp, sign}`。常用于对接钉钉、飞书等 Webhook。
+可用于将 SVG 图片转换为 base64 格式展示。
 
 ```js
-// JavaScript
+function main({input}){
+     
+    return {
+        /* 
+            param1: input 需要转换的字符串
+            param2: base64 prefix 前缀
+        */
+        result: strToBase64(input,'data:image/svg+xml;base64,')
+    }
+}
+```
+
+![alt text](/imgs/image-2.png)
+
+### createHmac 加密
+
+与 node 中 crypto 的 createHmac 方法一致。
+
+```js
 function main({secret}){
-    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
-    return { sign, timestamp }
-}
-```
+    const {sign,timestamp} = createHmac('sha256',secret)
 
-```python
-# Python
-def main():
-    result = SystemHelper.createHmac("sha256", variables["secret"])
-    return {"sign": result["sign"], "timestamp": result["timestamp"]}
-```
-
-### httpRequest 发起 HTTP 请求
-
-在沙盒内发起外部 HTTP 请求。自动拦截内网地址（SSRF 防护）。
-
-```js
-// JavaScript
-async function main({url}){
-    const res = await SystemHelper.httpRequest(url, {
-        method: 'GET',       // 请求方法，默认 GET
-        headers: {},         // 自定义请求头
-        body: null,          // 请求体（对象会自动 JSON 序列化）
-        timeout: 60          // 超时秒数，最大 60s
-    })
     return {
-        status: res.status,
-        data: res.data
+        sign,timestamp
     }
 }
 ```
-
-```python
-# Python
-def main():
-    res = SystemHelper.httpRequest(variables["url"], method="GET", headers={}, timeout=10)
-    return {"status": res["status"], "data": res["data"]}
-```
-
-**限制：**
-- 每次执行最多 30 个请求
-- 单次请求超时 60s
-- 响应体最大 2MB
-- 仅允许 http/https 协议
-- 自动拦截内网 IP（127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 等）
-
-## 可用模块
-
-### JavaScript 白名单模块
-
-以下 npm 模块可通过 `require()` 使用：
-
-| 模块 | 说明 | 示例 |
-|------|------|------|
-| `lodash` | 工具函数库 | `const _ = require('lodash')` |
-| `moment` | 日期处理 | `const moment = require('moment')` |
-| `dayjs` | 轻量日期库 | `const dayjs = require('dayjs')` |
-| `crypto-js` | 加密库 | `const CryptoJS = require('crypto-js')` |
-| `uuid` | UUID 生成 | `const { v4 } = require('uuid')` |
-| `qs` | 查询字符串解析 | `const qs = require('qs')` |
-
-其他模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
-
-### Python 安全模块
-
-以下 Python 标准库模块可直接 import：
-
-| 模块 | 说明 |
-|------|------|
-| `json` | JSON 解析 |
-| `math` | 数学函数 |
-| `re` | 正则表达式 |
-| `datetime` | 日期时间 |
-| `hashlib` | 哈希计算 |
-| `base64` | Base64 编解码 |
-| `collections` | 数据结构 |
-| `time` | 时间函数 |
-
-危险模块（如 `os`, `subprocess`, `sys`, `socket` 等）被禁止使用。
-
-## 安全限制
-
-沙盒提供多层安全防护：
-
-- **模块拦截**：JS 和 Python 均只允许使用白名单模块
-- **网络隔离**：自动拦截内网 IP 请求（SSRF 防护）
-- **文件隔离**：无法读写容器文件系统
-- **超时保护**：默认 10s 超时，防止死循环
-- **进程隔离**：每次执行在独立的沙盒进程中运行
-
-## 使用示例
-
-### 数据格式转换
-
-```js
-// 将逗号分隔的字符串转为数组
-function main({input}){
-    const items = input.split(',').map(s => s.trim()).filter(Boolean)
-    return { items, count: items.length }
-}
-```
-
-### 日期计算
-
-```js
-const dayjs = require('dayjs')
-
-function main(){
-    const now = dayjs()
-    return {
-        today: now.format('YYYY-MM-DD'),
-        nextWeek: now.add(7, 'day').format('YYYY-MM-DD'),
-        timestamp: now.valueOf()
-    }
-}
-```
-
-### Python 数据处理
-
-```python
-import json
-import math
-
-def main(data):
-    # 计算列表的统计信息
-    numbers = data.get("numbers", [])
-    if not numbers:
-        return {"error": "no data"}
-    
-    return {
-        "mean": sum(numbers) / len(numbers),
-        "max": max(numbers),
-        "min": min(numbers),
-        "std": math.sqrt(sum((x - sum(numbers)/len(numbers))**2 for x in numbers) / len(numbers))
-    }
-```
-
-### 飞书 Webhook 签名
-
-```js
-async function main({secret, url, message}){
-    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
-    
-    const res = await SystemHelper.httpRequest(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: {
-            timestamp,
-            sign,
-            msg_type: 'text',
-            content: { text: message }
-        }
-    })
-    
-    return { success: res.status === 200 }
-}
-```
-
-## JS 与 Python 函数名对照
-
-| 功能 | JavaScript (SystemHelper) | Python (system_helper) |
-|------|-----------|--------|
-| 统计 token | `SystemHelper.countToken(text)` | `SystemHelper.countToken(text)` |
-| 字符串转 base64 | `SystemHelper.strToBase64(text, prefix?)` | `SystemHelper.strToBase64(text, prefix?)` |
-| HMAC 签名 | `SystemHelper.createHmac(algo, secret)` | `SystemHelper.createHmac(algo, secret)` |
-| 延迟 | `await SystemHelper.delay(ms)` | `SystemHelper.delay(ms)` |
-| HTTP 请求 | `await SystemHelper.httpRequest(url, opts?)` | `SystemHelper.httpRequest(url, method?, headers?, body?, timeout?)` |
