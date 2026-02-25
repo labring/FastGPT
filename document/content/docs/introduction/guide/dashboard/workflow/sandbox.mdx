@@ -56,9 +56,9 @@ def main(data1, data2):
 
 ## 内置函数（SystemHelper）
 
-内置函数通过 `SystemHelper` 对象调用。JS 中使用 `SystemHelper.xxx()`，Python 中使用 `system_helper.xxx()`。
+内置函数统一通过 `SystemHelper` 对象调用，JS 和 Python 使用相同的 API。
 
-> 直接调用 `countToken()` / `count_token()` 等方式已弃用，仅保留向后兼容。新代码请统一使用 `SystemHelper` / `system_helper`。
+> 直接调用 `countToken()` / `count_token()` 等方式已弃用，仅保留向后兼容。新代码请统一使用 `SystemHelper`。
 
 ### delay 延迟
 
@@ -75,7 +75,7 @@ async function main({data1, data2}){
 ```python
 # Python
 def main():
-    system_helper.delay(1000)  # 延迟 1 秒
+    SystemHelper.delay(1000)  # 延迟 1 秒
     return {"result": "done"}
 ```
 
@@ -93,7 +93,7 @@ function main({input}){
 ```python
 # Python
 def main():
-    return {"tokens": system_helper.count_token(variables["input"])}
+    return {"tokens": SystemHelper.countToken(variables["input"])}
 ```
 
 ### strToBase64 字符串转 base64
@@ -115,7 +115,7 @@ function main({svg}){
 # Python
 def main():
     return {
-        "image": system_helper.str_to_base64(variables["svg"], "data:image/svg+xml;base64,")
+        "image": SystemHelper.strToBase64(variables["svg"], "data:image/svg+xml;base64,")
     }
 ```
 
@@ -134,7 +134,7 @@ function main({secret}){
 ```python
 # Python
 def main():
-    result = system_helper.create_hmac("sha256", variables["secret"])
+    result = SystemHelper.createHmac("sha256", variables["secret"])
     return {"sign": result["sign"], "timestamp": result["timestamp"]}
 ```
 
@@ -161,7 +161,7 @@ async function main({url}){
 ```python
 # Python
 def main():
-    res = system_helper.http_request(variables["url"], method="GET", headers={}, timeout=10)
+    res = SystemHelper.httpRequest(variables["url"], method="GET", headers={}, timeout=10)
     return {"status": res["status"], "data": res["data"]}
 ```
 
@@ -288,8 +288,8 @@ async function main({secret, url, message}){
 
 | 功能 | JavaScript (SystemHelper) | Python (system_helper) |
 |------|-----------|--------|
-| 统计 token | `SystemHelper.countToken(text)` | `system_helper.count_token(text)` |
-| 字符串转 base64 | `SystemHelper.strToBase64(text, prefix?)` | `system_helper.str_to_base64(text, prefix?)` |
-| HMAC 签名 | `SystemHelper.createHmac(algo, secret)` | `system_helper.create_hmac(algo, secret)` |
-| 延迟 | `await SystemHelper.delay(ms)` | `system_helper.delay(ms)` |
-| HTTP 请求 | `await SystemHelper.httpRequest(url, opts?)` | `system_helper.http_request(url, method?, headers?, body?, timeout?)` |
+| 统计 token | `SystemHelper.countToken(text)` | `SystemHelper.countToken(text)` |
+| 字符串转 base64 | `SystemHelper.strToBase64(text, prefix?)` | `SystemHelper.strToBase64(text, prefix?)` |
+| HMAC 签名 | `SystemHelper.createHmac(algo, secret)` | `SystemHelper.createHmac(algo, secret)` |
+| 延迟 | `await SystemHelper.delay(ms)` | `SystemHelper.delay(ms)` |
+| HTTP 请求 | `await SystemHelper.httpRequest(url, opts?)` | `SystemHelper.httpRequest(url, method?, headers?, body?, timeout?)` |
