@@ -147,6 +147,11 @@ class _SystemHelper:
 
 
 system_helper = _SystemHelper()
+# 驼峰别名，与 JS 端 SystemHelper API 保持一致
+system_helper.countToken = system_helper.count_token
+system_helper.strToBase64 = system_helper.str_to_base64
+system_helper.createHmac = system_helper.create_hmac
+system_helper.httpRequest = system_helper.http_request
 SystemHelper = system_helper
 count_token = system_helper.count_token
 str_to_base64 = system_helper.str_to_base64
