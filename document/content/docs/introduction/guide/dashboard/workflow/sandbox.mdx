@@ -32,18 +32,9 @@ async function main({data1, data2}){
 }
 ```
 
-**Python** — 通过 `variables` 字典或函数参数获取：
+**Python** — 在 main 函数参数中按变量名接收：
 
 ```python
-# 方式 1：无参数，通过全局 variables 访问
-def main():
-    return {"result": variables["data1"] + variables["data2"]}
-
-# 方式 2：单参数，接收 variables 字典
-def main(v):
-    return {"result": v["data1"] + v["data2"]}
-
-# 方式 3：多参数，按变量名匹配
 def main(data1, data2):
     return {"result": data1 + data2}
 ```
