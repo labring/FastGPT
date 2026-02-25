@@ -1,6 +1,6 @@
 /* push data to training queue */
 import type { NextApiResponse } from 'next';
-import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';

@@ -12,7 +12,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '../../common/logger';
 
 export const DatasetCollectionName = 'datasets';

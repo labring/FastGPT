@@ -9,8 +9,8 @@ import type {
   DatasetSimpleItemType,
   DatasetTagType,
   TagUsageType
-} from '@fastgpt/global/core/dataset/type.d';
-import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
+} from '@fastgpt/global/core/dataset/type';
+import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import type {
   AddTagsToCollectionsParams,
   ApiDatasetCreateDatasetCollectionV2Params,
@@ -24,13 +24,13 @@ import type {
   PostDatasetSyncParams,
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
-} from '@fastgpt/global/core/dataset/api.d';
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
-import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
+} from '@fastgpt/global/core/dataset/api';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api';
+import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import type {

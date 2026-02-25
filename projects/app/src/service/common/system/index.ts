@@ -1,7 +1,7 @@
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import fs, { existsSync } from 'fs';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
-import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
+import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';

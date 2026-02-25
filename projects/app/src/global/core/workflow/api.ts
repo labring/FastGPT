@@ -1,0 +1,31 @@
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type {
+  ChatHistoryItemResType,
+  UserChatItemValueItemType,
+  ChatItemType
+} from '@fastgpt/global/core/chat/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  RuntimeEdgeItemType,
+  StoreEdgeItemType
+} from '@fastgpt/global/core/workflow/type/edge';
+import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
+
+export type PostWorkflowDebugProps = {
+  nodes: RuntimeNodeItemType[];
+  edges: RuntimeEdgeItemType[];
+  skipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  variables: Record<string, any>;
+  appId: string;
+  query?: UserChatItemValueItemType[];
+  history?: ChatItemType[];
+  chatConfig?: AppSchemaType['chatConfig'];
+  usageId?: string;
+};
+
+export type PostWorkflowDebugResponse = WorkflowDebugResponse & {
+  newVariables: Record<string, any>;
+  usageId: string;
+};

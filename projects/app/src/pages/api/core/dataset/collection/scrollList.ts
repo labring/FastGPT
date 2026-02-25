@@ -9,7 +9,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type GetScrollCollectionsProps = PaginationProps<{

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { IconProps } from '@chakra-ui/react';
 import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
-import type { IconNameType } from './type.d';
+import type { IconNameType } from './type';
 
 const iconCache: Record<string, any> = {};
 

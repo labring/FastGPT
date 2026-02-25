@@ -50,7 +50,7 @@
     "mermaid": "^10.9.4",
     "minio": "^8.0.5",
     "nanoid": "^5.1.3",
-    "next": "14.2.35",
+    "next": "15.5.12",
     "next-i18next": "15.4.2",
     "nprogress": "^0.2.0",
     "p-limit": "^7.2.0",
@@ -93,7 +93,7 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "8.56.0",
-    "eslint-config-next": "14.2.26",
+    "eslint-config-next": "15.5.12",
     "tsx": "^4.20.6",
     "typescript": "^5.1.3",
     "vitest": "^3.0.9"

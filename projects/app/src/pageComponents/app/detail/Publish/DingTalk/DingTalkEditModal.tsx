@@ -44,8 +44,8 @@ const DingTalkEditModal = ({
         appId,
         type: PublishChannelEnum.dingtalk,
         app: {
-          clientId: e?.app?.clientId?.trim(),
-          clientSecret: e.app?.clientSecret?.trim()
+          clientId: e?.app?.clientId?.trim() ?? '',
+          clientSecret: e.app?.clientSecret?.trim() ?? ''
         }
       }),
     {
@@ -60,8 +60,8 @@ const DingTalkEditModal = ({
       updateShareChat({
         ...e,
         app: {
-          clientId: e?.app?.clientId?.trim(),
-          clientSecret: e.app?.clientSecret?.trim()
+          clientId: e?.app?.clientId?.trim() ?? '',
+          clientSecret: e.app?.clientSecret?.trim() ?? ''
         }
       }),
     {

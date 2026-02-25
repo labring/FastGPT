@@ -22,7 +22,7 @@ async function handler(req: NextApiRequest) {
     per: ReadPermissionVal
   });
 
-  return await getParents(type === 'current' ? dataset._id : dataset.parentId);
+  return await getParents(type === 'current' ? dataset._id : dataset.parentId ?? undefined);
 }
 
 export async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
@@ -34,7 +34,7 @@ export async function getParents(parentId?: string): Promise<ParentTreePathItemT
 
   if (!parent) return [];
 
-  const paths = await getParents(parent.parentId);
+  const paths = await getParents(parent.parentId ?? undefined);
   paths.push({ parentId, parentName: parent.name });
 
   return paths;

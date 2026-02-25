@@ -4,7 +4,7 @@ import type {
   DingtalkAppType,
   FeishuAppType,
   OutLinkEditType
-} from '@fastgpt/global/support/outLink/type.d';
+} from '@fastgpt/global/support/outLink/type';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 export const defaultApp: AppDetailType = {
   _id: '',

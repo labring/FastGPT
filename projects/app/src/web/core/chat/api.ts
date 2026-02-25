@@ -5,9 +5,9 @@ import type {
   InitChatResponse,
   InitOutLinkChatProps,
   InitTeamChatProps
-} from '@/global/core/chat/api.d';
+} from '@/global/core/chat/api';
 
-import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
+import type { DeleteChatItemProps } from '@/global/core/chat/api';
 import type {
   getChatRecordsBody,
   getChatRecordsResponse

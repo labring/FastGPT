@@ -23,7 +23,7 @@ import {
   delOpenApiById,
   putOpenApiKey
 } from '@/web/support/openapi/api';
-import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
+import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import dayjs from 'dayjs';
 import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
