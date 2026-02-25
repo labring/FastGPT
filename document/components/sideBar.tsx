@@ -71,7 +71,7 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
 };
 
 const CustomSeparator: FC<{ item: PageTree.Separator }> = ({ item }) => (
-  <div className="text-sm font-semibold px-2 py-2 mt-4 mb-2">{item.name}</div>
+  <div className="text-sm font-semibold px-2 py-1.5 mt-1 mb-1 first:mt-0">{item.name}</div>
 );
 
 export const CustomSidebarComponents: SidebarComponents = {
