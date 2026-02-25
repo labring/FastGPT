@@ -1,6 +1,4 @@
 import type { TeamPermission } from '../../../permission/user/controller';
-import { ResourcePermissionType } from '../type';
-import { SourceMemberType } from '../../type';
 
 export type OrgSchemaType = {
   _id: string;

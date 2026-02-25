@@ -1,7 +1,6 @@
 import type { RequireOnlyOne } from '../../common/type/utils';
-import { RequireAtLeastOne } from '../../common/type/utils';
 import type { Permission } from './controller';
-import type { PermissionValueType, RoleValueType } from './type';
+import type { PermissionValueType } from './type';
 
 export type CollaboratorIdType = RequireOnlyOne<{
   tmbId: string;

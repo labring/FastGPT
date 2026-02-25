@@ -1,7 +1,6 @@
 import type { TeamMetaType, UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { GroupMemberRole } from '../../permission/memberGroup/constant';
-export type { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 import type { TeamPermission } from '../../permission/user/controller';
 
 export type ThirdPartyAccountType = {

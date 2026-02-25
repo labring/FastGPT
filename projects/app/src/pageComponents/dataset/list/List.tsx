@@ -254,14 +254,12 @@ function List() {
                     color={'myGray.500'}
                   >
                     <HStack spacing={3.5}>
-                      {dataset.sourceMember && (
-                        <UserBox
-                          sourceMember={dataset.sourceMember}
-                          fontSize="xs"
-                          avatarSize="1rem"
-                          spacing={0.5}
-                        />
-                      )}
+                      <UserBox
+                        sourceMember={dataset.sourceMember}
+                        fontSize="xs"
+                        avatarSize="1rem"
+                        spacing={0.5}
+                      />
                       <PermissionIconText
                         flexShrink={0}
                         private={dataset.private}

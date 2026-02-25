@@ -1,5 +1,5 @@
 import type { UpdateClbPermissionProps } from '../../support/permission/collaborator';
-import { PermissionValueType } from '../../support/permission/type';
+import {} from '../../support/permission/type';
 import type { RequireOnlyOne } from '../../common/type/utils';
 
 export type UpdateDatasetCollaboratorBody = UpdateClbPermissionProps & {

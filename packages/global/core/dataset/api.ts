@@ -1,17 +1,5 @@
-import type {
-  ChunkSettingsType,
-  DatasetDataIndexItemType,
-  DatasetDataFieldType,
-  DatasetSchemaType
-} from './type';
-import type {
-  DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum,
-  ChunkSettingModeEnum,
-  DataChunkSplitModeEnum,
-  ChunkTriggerConfigTypeEnum,
-  ParagraphChunkAIModeEnum
-} from './constants';
+import type { ChunkSettingsType, DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import type { DatasetCollectionTypeEnum, DatasetCollectionDataProcessModeEnum } from './constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import type { APIFileItemType } from './apiDataset/type';
 
@@ -40,7 +28,7 @@ export type DatasetUpdateBody = {
 
 /* ================= collection ===================== */
 // Input + store params
-export type DatasetCollectionStoreDataType = ChunkSettingsType & {
+type DatasetCollectionStoreDataType = ChunkSettingsType & {
   parentId?: string;
   metadata?: Record<string, any>;
 

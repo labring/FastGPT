@@ -1,5 +1,3 @@
-import { TeamMemberItemType } from '../../user/team/type';
-import { TeamPermission } from '../user/controller';
 import type { GroupMemberRole } from './constant';
 import type { Permission } from '../controller';
 

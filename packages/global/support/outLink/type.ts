@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import type { PublishChannelEnum } from './constant';
-import { RequireOnlyOne } from '../../common/type/utils';
 
 // Feishu Config interface
 export interface FeishuAppType {

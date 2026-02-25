@@ -1,6 +1,5 @@
 import type { RequireOnlyOne } from '../../common/type/utils';
 import { type UpdateClbPermissionProps } from '../../support/permission/collaborator';
-import { PermissionValueType } from '../../support/permission/type';
 
 export type UpdateAppCollaboratorBody = UpdateClbPermissionProps & {
   appId: string;

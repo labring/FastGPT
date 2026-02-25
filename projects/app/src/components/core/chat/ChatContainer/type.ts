@@ -3,7 +3,6 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import type {
   ChatHistoryItemResType,
   StepTitleItemType,
-  AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -36,7 +35,6 @@ export type generatingMessageProps = {
   // HelperBot
   collectionForm?: UserInputInteractive;
   formData?: TopAgentFormDataType;
-  generatedSkill?: Record<string, any>;
 };
 
 export type StartChatFnProps = {

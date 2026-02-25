@@ -14,7 +14,6 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';

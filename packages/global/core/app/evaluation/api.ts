@@ -1,11 +1,4 @@
-import type { RequireOnlyOne } from '../../../common/type/utils';
-
-type PaginationProps<T = {}> = T & {
-  pageSize: number | string;
-} & RequireOnlyOne<{
-    offset: number | string;
-    pageNum: number | string;
-  }>;
+import type { PaginationProps } from '../../../openapi/api';
 
 export type listEvaluationsBody = PaginationProps<{
   searchKey?: string;

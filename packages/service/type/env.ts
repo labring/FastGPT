@@ -3,6 +3,8 @@ declare global {
 
   namespace NodeJS {
     interface ProcessEnv {
+      DEFAULT_ROOT_PSW: string;
+      PRO_URL: string;
       LOG_DEPTH: string;
       DB_MAX_LINK: string;
       FILE_TOKEN_KEY: string;
@@ -35,7 +37,7 @@ declare global {
       SHOW_COUPON?: string;
       SHOW_DISCOUNT_COUPON?: string;
       CONFIG_JSON_PATH?: string;
-      PASSWORD_LOGIN_LOCK_SECONDS?: string;
+      PASSWORD_LOGIN_LOCK_SECONDS?: string; // 密码登录锁定时间
       PASSWORD_EXPIRED_MONTH?: string;
       MAX_LOGIN_SESSION?: string;
       CHAT_MAX_QPM?: string;
