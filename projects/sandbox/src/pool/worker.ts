@@ -306,6 +306,13 @@ rl.on('line', async (line: string) => {
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
+    // 静态检查：拦截 import() 动态导入，防止绕过 require 白名单
+    // 匹配 import( 但排除注释中的（简单启发式）
+    if (/\bimport\s*\(/.test(code)) {
+      writeLine({ success: false, message: "Dynamic import() is not allowed in sandbox. Use require() instead." });
+      return;
+    }
+
     const resultPromise = (async () => {
       const userFn = new (_OriginalFunction as any)(
         'require', 'console', 'SystemHelper',
