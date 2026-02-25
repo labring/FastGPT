@@ -536,4 +536,12 @@ button[role='tab'] {
     overflow-wrap: break-word;
     word-break: break-word;
   }
+
+  /* RootToggle 图标容器：缩小尺寸，对齐文字 */
+  #nd-sidebar-mobile [data-radix-popper-anchor] .size-9,
+  #nd-sidebar-mobile button .size-9 {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0;
+  }
 }
