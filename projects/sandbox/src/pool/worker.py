@@ -240,7 +240,23 @@ def _safe_import(name, *args, **kwargs):
             if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
                 raise ImportError(f"Importing {name} is not allowed.")
     return _original_import(name, *args, **kwargs)
-    return _original_import(name, *args, **kwargs)
+
+
+# ===== 文件系统限制 =====
+_original_open = open
+
+def _restricted_open(*args, **kwargs):
+    """限制 open() — 只允许第三方库内部调用，禁止用户代码直接读写文件"""
+    stack = _tb.extract_stack()
+    if len(stack) >= 2:
+        caller_fn = stack[-2].filename or ''
+        # 用户代码（<string>）不允许直接 open
+        if caller_fn in ('<string>', '<test>', '<module>'):
+            raise PermissionError("File system access is not allowed in sandbox")
+        # 非 stdlib、非 site-packages、非 worker 自身的帧也不允许
+        if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
+            raise PermissionError("File system access is not allowed in sandbox")
+    return _original_open(*args, **kwargs)
 
 
 # ===== 日志收集 =====
@@ -373,6 +389,8 @@ def main_loop():
             # 确保 __import__ 指向安全版本
             _safe_builtins['__import__'] = _safe_import
             _safe_builtins['__build_class__'] = _builtins.__build_class__
+            # 限制 open() — 禁止用户代码直接读写文件系统
+            _safe_builtins['open'] = _restricted_open
 
             # 构建执行环境
             exec_globals = {
