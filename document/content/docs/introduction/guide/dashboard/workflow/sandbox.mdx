@@ -149,7 +149,7 @@ async function main({url}){
         method: 'GET',       // 请求方法，默认 GET
         headers: {},         // 自定义请求头
         body: null,          // 请求体（对象会自动 JSON 序列化）
-        timeout: 10          // 超时秒数，最大 10s
+        timeout: 60          // 超时秒数，最大 60s
     })
     return {
         status: res.status,
@@ -167,7 +167,7 @@ def main():
 
 **限制：**
 - 每次执行最多 30 个请求
-- 单次请求超时 10s
+- 单次请求超时 60s
 - 响应体最大 2MB
 - 仅允许 http/https 协议
 - 自动拦截内网 IP（127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 等）

@@ -151,7 +151,7 @@ function dnsResolve(hostname: string): Promise<string[]> {
 
 const REQUEST_LIMITS = {
   maxRequests: 30,
-  timeoutMs: 10000,
+  timeoutMs: 60000,
   maxResponseSize: 2 * 1024 * 1024,
   allowedProtocols: ['http:', 'https:']
 };
