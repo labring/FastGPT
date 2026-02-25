@@ -4,7 +4,7 @@ import type {
   AuthOutLinkLimitProps,
   AuthOutLinkInitProps,
   AuthOutLinkResponse
-} from '@fastgpt/global/support/outLink/api.d';
+} from '@fastgpt/global/support/outLink/api';
 import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';

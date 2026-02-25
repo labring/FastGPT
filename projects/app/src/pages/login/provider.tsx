@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';

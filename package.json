@@ -24,7 +24,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vitest/coverage-v8": "^3.0.9",
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.1.0",
+    "eslint-config-next": "^15.5.12",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
     "js-yaml": "^4.1.1",
@@ -50,6 +50,13 @@
       "pnpm initDocToc",
       "git add ."
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "18.3.1"
+    }
   },
   "resolutions": {
     "mdast-util-gfm-autolink-literal": "2.0.0"

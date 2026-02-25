@@ -2,7 +2,7 @@ import type { ClientSession, AnyBulkWriteOperation } from '../../common/mongo';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from './schema';
-import type { ResourcePermissionType, ResourceType } from '@fastgpt/global/support/permission/type';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';

@@ -60,7 +60,7 @@ RUN apk add --no-cache curl ca-certificates \
 
 # copy running files
 COPY --from=builder /app/projects/app/public /app/projects/app/public
-COPY --from=builder /app/projects/app/next.config.js /app/projects/app/next.config.js
+COPY --from=builder /app/projects/app/next.config.ts /app/projects/app/next.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/standalone /app/
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/static /app/projects/app/.next/static
 # copy server chunks

@@ -1,5 +1,5 @@
 import type { NextApiRequest } from 'next';
-import type { TextCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
+import type { TextCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';

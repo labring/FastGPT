@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { type EditorVariablePickerType } from '../../type.d';
+import { type EditorVariablePickerType } from '../../type';
 
 export default function VariablePickerPlugin({
   variables

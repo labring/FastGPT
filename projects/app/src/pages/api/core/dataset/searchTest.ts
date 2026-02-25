@@ -1,4 +1,4 @@
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import {

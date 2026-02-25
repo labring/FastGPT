@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
@@ -9,13 +9,13 @@ import type {
   OauthLoginProps,
   PostLoginProps,
   SearchResult
-} from '@fastgpt/global/support/user/api.d';
+} from '@fastgpt/global/support/user/api';
 import type {
   AccountRegisterBody,
   GetWXLoginQRResponse
-} from '@fastgpt/global/support/user/login/api.d';
+} from '@fastgpt/global/support/user/login/api';
 import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
-import type { WxLoginProps } from '@fastgpt/global/support/user/api.d';
+import type { WxLoginProps } from '@fastgpt/global/support/user/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const sendAuthCode = (data: {

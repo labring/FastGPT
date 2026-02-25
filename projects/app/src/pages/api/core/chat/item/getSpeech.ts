@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
-import { type GetChatSpeechProps } from '@/global/core/chat/api.d';
+import { type GetChatSpeechProps } from '@/global/core/chat/api';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
