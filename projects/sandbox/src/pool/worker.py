@@ -4,7 +4,7 @@
 Python Worker 长驻进程 - 循环接收任务执行
 
 协议：
-  第 1 行 stdin: {"type":"init","blockedModules":["os","sys",...]}
+  第 1 行 stdin: {"type":"init","allowedModules":["math","json",...]}
   后续每行 stdin: {"code":"...","variables":{},"timeoutMs":10000}
   每行 stdout:    {"success":true,"data":{...}} 或 {"success":false,"message":"..."}
 """
@@ -163,7 +163,7 @@ _request_count = 0
 
 # ===== __import__ 拦截（init 后设置）=====
 _original_import = _builtins.__import__
-_blocked_modules = set()
+_allowed_modules = set()
 
 _stdlib_paths = []
 _site_packages_paths = []
@@ -232,7 +232,7 @@ def _safe_import(name, *args, **kwargs):
     # 拦截 builtins 模块，返回代理
     if top_level == 'builtins' and _builtins_proxy is not None:
         return _builtins_proxy
-    if top_level in _blocked_modules:
+    if top_level not in _allowed_modules:
         # 只检查直接调用者帧（触发 import 的那一帧）
         # 如果直接调用者是 site-packages 中的第三方库或 stdlib，放行（库内部依赖）
         # 只有当直接调用者是用户代码时才拦截
@@ -241,9 +241,9 @@ def _safe_import(name, *args, **kwargs):
         if len(stack) >= 2:
             caller_fn = stack[-2].filename or ''
             if caller_fn in ('<string>', '<test>', '<module>'):
-                raise ImportError(f"Importing {name} is not allowed.")
+                raise ImportError(f"Module '{name}' is not in the allowlist.")
             if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
-                raise ImportError(f"Importing {name} is not allowed.")
+                raise ImportError(f"Module '{name}' is not in the allowlist.")
     return _original_import(name, *args, **kwargs)
 
 
@@ -326,7 +326,7 @@ def _restore_modules(snapshots):
 
 # ===== 主循环 =====
 def main_loop():
-    global _blocked_modules, _request_count, _logs
+    global _allowed_modules, _request_count, _logs
 
     initialized = False
 
@@ -344,7 +344,7 @@ def main_loop():
         # 初始化
         if not initialized:
             if msg.get('type') == 'init':
-                _blocked_modules = set(msg.get('blockedModules', []))
+                _allowed_modules = set(msg.get('allowedModules', []))
                 _builtins.__import__ = _safe_import
                 global _builtins_proxy
                 _builtins_proxy = _BuiltinsProxy(_builtins)

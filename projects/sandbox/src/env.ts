@@ -47,11 +47,18 @@ const envSchema = z.object({
   // ===== 模块控制 =====
   /** JS 可用模块白名单，逗号分隔 */
   SANDBOX_JS_ALLOWED_MODULES: str('lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring'),
-  /** Python 危险模块黑名单，逗号分隔 */
-  SANDBOX_PYTHON_BLOCKED_MODULES: str(
-    'os,sys,subprocess,shutil,socket,ctypes,multiprocessing,threading,pickle,importlib,' +
-      'code,codeop,compile,compileall,signal,resource,gc,inspect,' +
-      'tempfile,pathlib,io,fileinput,urllib,http,requests,httpx,aiohttp'
+  /** Python 可用模块白名单，逗号分隔 */
+  SANDBOX_PYTHON_ALLOWED_MODULES: str(
+    'math,cmath,decimal,fractions,random,statistics,' +
+      'collections,array,heapq,bisect,queue,copy,' +
+      'itertools,functools,operator,' +
+      'string,re,difflib,textwrap,unicodedata,codecs,' +
+      'datetime,time,calendar,' +
+      'json,csv,base64,binascii,struct,' +
+      'hashlib,hmac,secrets,uuid,' +
+      'typing,abc,enum,dataclasses,contextlib,' +
+      'pprint,weakref,' +
+      'numpy,pandas,matplotlib'
   )
 });
 
@@ -92,7 +99,7 @@ export const env = {
   jsAllowedModules: e.SANDBOX_JS_ALLOWED_MODULES.split(',')
     .map((s) => s.trim())
     .filter(Boolean),
-  pythonBlockedModules: e.SANDBOX_PYTHON_BLOCKED_MODULES.split(',')
+  pythonAllowedModules: e.SANDBOX_PYTHON_ALLOWED_MODULES.split(',')
     .map((s) => s.trim())
     .filter(Boolean)
 } as const;

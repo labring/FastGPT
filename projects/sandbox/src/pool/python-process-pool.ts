@@ -2,7 +2,7 @@
  * PythonProcessPool - Python 子进程池
  *
  * 预热 N 个长驻 python3 worker 进程（worker.py），通过 stdin/stdout 行协议通信。
- * 启动时发送 init 消息传入 blockedModules，后续通过行协议收发任务。
+ * 启动时发送 init 消息传入 allowedModules，后续通过行协议收发任务。
  */
 import { spawn, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
@@ -98,7 +98,7 @@ export class PythonProcessPool {
       proc.stdin!.write(
         JSON.stringify({
           type: 'init',
-          blockedModules: config.pythonBlockedModules
+          allowedModules: config.pythonAllowedModules
         }) + '\n'
       );
     });
