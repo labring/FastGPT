@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
+import Script from 'next/script';
 
 const inter = Inter({
   subsets: ['latin']
@@ -41,9 +42,26 @@ export default async function Layout({
 }) {
   const { lang } = await params;
 
+  // Get tracking config from env
+  const trackSrc = process.env.NEXT_PUBLIC_DOC_TRACK_SRC;
+  const trackCn = process.env.NEXT_PUBLIC_DOC_TRACK_CN;
+  const trackIo = process.env.NEXT_PUBLIC_DOC_TRACK_IO;
+  
+  // Determine site ID based on domain
+  const domain = process.env.FASTGPT_HOME_DOMAIN || '';
+  const siteId = domain.includes('fastgpt.cn') ? trackCn : trackIo;
+
   return (
     <html lang={lang} className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
+        {trackSrc && siteId && (
+          <Script
+            src={trackSrc}
+            data-site-id={siteId}
+            defer
+            strategy="afterInteractive"
+          />
+        )}
         <RootProvider
           i18n={{
             locale: lang,

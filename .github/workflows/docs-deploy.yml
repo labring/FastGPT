@@ -121,6 +121,9 @@ jobs:
           platforms: linux/amd64
           build-args: |
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+            DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
+            DOC_TRACK_CN=${{ secrets.DOC_TRACK_CN }}
+            DOC_TRACK_IO=${{ secrets.DOC_TRACK_IO }}
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
@@ -134,6 +137,9 @@ jobs:
           platforms: linux/amd64
           build-args: |
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
+            DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
+            DOC_TRACK_CN=${{ secrets.DOC_TRACK_CN }}
+            DOC_TRACK_IO=${{ secrets.DOC_TRACK_IO }}
 
   update-images:
     needs: [generate-timestamp, build-images]
