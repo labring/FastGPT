@@ -20,6 +20,6 @@ export interface ExecuteResult {
 
 /** Runner 配置 */
 export interface RunnerConfig {
-  defaultTimeoutMs: number;
+  maxTimeoutMs: number;
   defaultMemoryMB: number;
 }

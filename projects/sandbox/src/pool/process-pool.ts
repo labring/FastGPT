@@ -32,7 +32,7 @@ export class ProcessPool {
   private ready = false;
   private healthCheckTimer?: ReturnType<typeof setInterval>;
   private static readonly HEALTH_CHECK_INTERVAL = 30_000; // 30s
-  private static readonly HEALTH_CHECK_TIMEOUT = 5_000;   // 5s
+  private static readonly HEALTH_CHECK_TIMEOUT = 5_000; // 5s
 
   constructor(poolSize?: number) {
     this.poolSize = poolSize ?? config.poolSize;
@@ -99,10 +99,12 @@ export class ProcessPool {
       });
 
       // 发送 init 消息
-      proc.stdin!.write(JSON.stringify({
-        type: 'init',
-        allowedModules: config.jsAllowedModules
-      }) + '\n');
+      proc.stdin!.write(
+        JSON.stringify({
+          type: 'init',
+          allowedModules: config.jsAllowedModules
+        }) + '\n'
+      );
     });
   }
 
@@ -111,7 +113,7 @@ export class ProcessPool {
     worker.proc.on('exit', () => {
       const removed = this.removeWorker(worker);
       if (this.ready && removed) {
-        this.spawnWorker().catch(err => {
+        this.spawnWorker().catch((err) => {
           console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
       }
@@ -123,7 +125,7 @@ export class ProcessPool {
     const idx = this.workers.indexOf(worker);
     if (idx === -1) return false;
     this.workers.splice(idx, 1);
-    this.idleWorkers = this.idleWorkers.filter(w => w !== worker);
+    this.idleWorkers = this.idleWorkers.filter((w) => w !== worker);
     return true;
   }
 
@@ -161,15 +163,16 @@ export class ProcessPool {
       return { success: false, message: 'Code cannot be empty' };
     }
 
-    const timeoutMs = Math.min(
-      limits?.timeoutMs ?? config.defaultTimeoutMs,
-      config.maxTimeoutMs
-    );
+    const timeoutMs = Math.min(limits?.timeoutMs ?? config.maxTimeoutMs, config.maxTimeoutMs);
 
     const worker = await this.acquire();
 
     try {
-      return await this.sendTask(worker, { code, variables: variables || {}, timeoutMs }, timeoutMs);
+      return await this.sendTask(
+        worker,
+        { code, variables: variables || {}, timeoutMs },
+        timeoutMs
+      );
     } finally {
       this.release(worker);
     }
@@ -216,7 +219,7 @@ export class ProcessPool {
         worker.proc.kill('SIGKILL');
         // 主动 respawn（exit 事件不会再 respawn 因为 worker 已移除）
         if (this.ready) {
-          this.spawnWorker().catch(err => {
+          this.spawnWorker().catch((err) => {
             console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
           });
         }
@@ -257,7 +260,7 @@ export class ProcessPool {
       this.removeWorker(worker);
       worker.proc.kill('SIGKILL');
       if (this.ready) {
-        this.spawnWorker().catch(err => {
+        this.spawnWorker().catch((err) => {
           console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
       }
@@ -315,7 +318,7 @@ export class ProcessPool {
     return {
       total: this.workers.length,
       idle: this.idleWorkers.length,
-      busy: this.workers.filter(w => w.busy).length,
+      busy: this.workers.filter((w) => w.busy).length,
       queued: this.waitQueue.length,
       poolSize: this.poolSize
     };

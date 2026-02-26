@@ -9,8 +9,7 @@ import { z } from 'zod';
 dotenv.config();
 
 /** coerce 数字，带默认值 */
-const int = (defaultValue: number) =>
-  z.coerce.number().int().default(defaultValue);
+const int = (defaultValue: number) => z.coerce.number().int().default(defaultValue);
 
 /** 字符串，带默认值 */
 const str = (defaultValue: string) => z.string().default(defaultValue);
@@ -19,14 +18,16 @@ const envSchema = z.object({
   // ===== 服务 =====
   SANDBOX_PORT: int(3000),
   /** Bearer token，仅允许 ASCII 可打印字符（RFC 6750） */
-  SANDBOX_TOKEN: z.string().default('').refine(
-    (v) => v === '' || /^[\x21-\x7E]+$/.test(v),
-    { message: 'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.' }
-  ),
+  SANDBOX_TOKEN: z
+    .string()
+    .default('')
+    .refine((v) => v === '' || /^[\x21-\x7E]+$/.test(v), {
+      message:
+        'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
+    }),
   LOG_LEVEL: str('info'),
 
   // ===== 资源限制 =====
-  SANDBOX_TIMEOUT: int(10000),
   SANDBOX_MAX_TIMEOUT: int(60000),
   SANDBOX_MEMORY_MB: int(64),
   SANDBOX_MAX_MEMORY_MB: int(256),
@@ -49,9 +50,9 @@ const envSchema = z.object({
   /** Python 危险模块黑名单，逗号分隔 */
   SANDBOX_PYTHON_BLOCKED_MODULES: str(
     'os,sys,subprocess,shutil,socket,ctypes,multiprocessing,threading,pickle,importlib,' +
-    'code,codeop,compile,compileall,signal,resource,gc,inspect,' +
-    'tempfile,pathlib,io,fileinput,urllib,http,requests,httpx,aiohttp'
-  ),
+      'code,codeop,compile,compileall,signal,resource,gc,inspect,' +
+      'tempfile,pathlib,io,fileinput,urllib,http,requests,httpx,aiohttp'
+  )
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -72,7 +73,6 @@ export const env = {
   logLevel: e.LOG_LEVEL,
 
   // 资源限制
-  defaultTimeoutMs: e.SANDBOX_TIMEOUT,
   maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,
   defaultMemoryMB: e.SANDBOX_MEMORY_MB,
   maxMemoryMB: e.SANDBOX_MAX_MEMORY_MB,
@@ -89,8 +89,12 @@ export const env = {
   maxResponseSize: e.SANDBOX_MAX_RESPONSE_SIZE,
 
   // 模块控制
-  jsAllowedModules: e.SANDBOX_JS_ALLOWED_MODULES.split(',').map(s => s.trim()).filter(Boolean),
-  pythonBlockedModules: e.SANDBOX_PYTHON_BLOCKED_MODULES.split(',').map(s => s.trim()).filter(Boolean),
+  jsAllowedModules: e.SANDBOX_JS_ALLOWED_MODULES.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+  pythonBlockedModules: e.SANDBOX_PYTHON_BLOCKED_MODULES.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
 } as const;
 
 export type Env = typeof env;

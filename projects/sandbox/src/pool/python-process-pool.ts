@@ -95,10 +95,12 @@ export class PythonProcessPool {
       });
 
       // 发送 init 消息
-      proc.stdin!.write(JSON.stringify({
-        type: 'init',
-        blockedModules: config.pythonBlockedModules
-      }) + '\n');
+      proc.stdin!.write(
+        JSON.stringify({
+          type: 'init',
+          blockedModules: config.pythonBlockedModules
+        }) + '\n'
+      );
     });
   }
 
@@ -107,7 +109,7 @@ export class PythonProcessPool {
     worker.proc.on('exit', () => {
       const removed = this.removeWorker(worker);
       if (this.ready && removed) {
-        this.spawnWorker().catch(err => {
+        this.spawnWorker().catch((err) => {
           console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
       }
@@ -119,7 +121,7 @@ export class PythonProcessPool {
     const idx = this.workers.indexOf(worker);
     if (idx === -1) return false;
     this.workers.splice(idx, 1);
-    this.idleWorkers = this.idleWorkers.filter(w => w !== worker);
+    this.idleWorkers = this.idleWorkers.filter((w) => w !== worker);
     return true;
   }
 
@@ -155,15 +157,16 @@ export class PythonProcessPool {
       return { success: false, message: 'Code cannot be empty' };
     }
 
-    const timeoutMs = Math.min(
-      limits?.timeoutMs ?? config.defaultTimeoutMs,
-      config.maxTimeoutMs
-    );
+    const timeoutMs = Math.min(limits?.timeoutMs ?? config.maxTimeoutMs, config.maxTimeoutMs);
 
     const worker = await this.acquire();
 
     try {
-      return await this.sendTask(worker, { code, variables: variables || {}, timeoutMs }, timeoutMs);
+      return await this.sendTask(
+        worker,
+        { code, variables: variables || {}, timeoutMs },
+        timeoutMs
+      );
     } finally {
       this.release(worker);
     }
@@ -208,7 +211,7 @@ export class PythonProcessPool {
         worker.proc.kill('SIGKILL');
         // 主动 respawn
         if (this.ready) {
-          this.spawnWorker().catch(err => {
+          this.spawnWorker().catch((err) => {
             console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
           });
         }
@@ -246,7 +249,7 @@ export class PythonProcessPool {
       this.removeWorker(worker);
       worker.proc.kill('SIGKILL');
       if (this.ready) {
-        this.spawnWorker().catch(err => {
+        this.spawnWorker().catch((err) => {
           console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
       }
@@ -301,7 +304,7 @@ export class PythonProcessPool {
     return {
       total: this.workers.length,
       idle: this.idleWorkers.length,
-      busy: this.workers.filter(w => w.busy).length,
+      busy: this.workers.filter((w) => w.busy).length,
       queued: this.waitQueue.length,
       poolSize: this.poolSize
     };
