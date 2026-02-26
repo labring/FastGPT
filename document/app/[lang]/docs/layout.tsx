@@ -28,32 +28,32 @@ export default async function Layout({
     {
       icon: <BookOpen className={iconClass} />,
       title: t('common:introduction', lang),
-      url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction'
+      url: `/${lang}/docs/introduction`
     },
     {
       icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
-      url: lang === 'zh-CN' ? '/docs/openapi' : '/en/docs/openapi'
+      url: `/${lang}/docs/openapi`
     },
     {
       icon: <Lightbulb className={iconClass} />,
       title: t('common:use-cases', lang),
-      url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
+      url: `/${lang}/docs/use-cases`
     },
     {
       icon: <CircleHelp className={iconClass} />,
       title: t('common:faq', lang),
-      url: lang === 'zh-CN' ? '/docs/faq' : '/en/docs/faq'
+      url: `/${lang}/docs/faq`
     },
     {
       icon: <Scale className={iconClass} />,
       title: t('common:protocol', lang),
-      url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
+      url: `/${lang}/docs/protocol`
     },
     {
       icon: <History className={iconClass} />,
       title: t('common:upgrading', lang),
-      url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
+      url: `/${lang}/docs/upgrading`
     }
   ];
 
