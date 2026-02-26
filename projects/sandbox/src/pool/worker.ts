@@ -23,9 +23,7 @@ const _OriginalFunction = Function;
 // 不再全局覆盖 Object.getPrototypeOf，避免破坏 lodash 等合法库
 const _origGetProto = Object.getPrototypeOf;
 const _origReflectGetProto = Reflect.getPrototypeOf;
-const _blockedProtos = new Set([
-  _OriginalFunction.prototype,
-]);
+const _blockedProtos = new Set([_OriginalFunction.prototype]);
 
 Object.getPrototypeOf = function (obj: any) {
   const proto = _origGetProto(obj);
@@ -55,9 +53,9 @@ Object.defineProperty(_OriginalFunction.prototype, 'constructor', {
 
 // 锁定 AsyncFunction、GeneratorFunction、AsyncGeneratorFunction 构造器
 // 防止通过 (async function(){}).constructor("...") 绕过沙盒
-const _AsyncFunction = (async function () {}).constructor;
-const _GeneratorFunction = (function* () {}).constructor;
-const _AsyncGeneratorFunction = (async function* () {}).constructor;
+const _AsyncFunction = async function () {}.constructor;
+const _GeneratorFunction = function* () {}.constructor;
+const _AsyncGeneratorFunction = async function* () {}.constructor;
 
 for (const FnCtor of [_AsyncFunction, _GeneratorFunction, _AsyncGeneratorFunction]) {
   Object.defineProperty(FnCtor.prototype, 'constructor', {
@@ -69,12 +67,23 @@ for (const FnCtor of [_AsyncFunction, _GeneratorFunction, _AsyncGeneratorFunctio
 
 if (typeof (globalThis as any).Bun !== 'undefined') {
   const dangerous = [
-    'write', 'spawn', 'spawnSync', 'openInEditor',
-    'serve', 'connect', 'listen',
-    'udpSocket', 'dns', 'plugin', 'build', 'Transpiler'
+    'write',
+    'spawn',
+    'spawnSync',
+    'openInEditor',
+    'serve',
+    'connect',
+    'listen',
+    'udpSocket',
+    'dns',
+    'plugin',
+    'build',
+    'Transpiler'
   ];
   for (const api of dangerous) {
-    try { (globalThis as any).Bun[api] = undefined; } catch {}
+    try {
+      (globalThis as any).Bun[api] = undefined;
+    } catch {}
   }
 }
 
@@ -86,11 +95,24 @@ if (typeof (globalThis as any).Bun !== 'undefined') {
 if (typeof process !== 'undefined') {
   // 删除危险方法
   const dangerousMethods = [
-    'binding', 'dlopen', '_linkedBinding', 'kill',
-    'chdir', '_debugProcess', '_debugEnd', '_startProfilerIdleNotifier',
-    '_stopProfilerIdleNotifier', 'reallyExit', 'abort',
-    'umask', 'setuid', 'setgid', 'seteuid', 'setegid',
-    'setgroups', 'initgroups'
+    'binding',
+    'dlopen',
+    '_linkedBinding',
+    'kill',
+    'chdir',
+    '_debugProcess',
+    '_debugEnd',
+    '_startProfilerIdleNotifier',
+    '_stopProfilerIdleNotifier',
+    'reallyExit',
+    'abort',
+    'umask',
+    'setuid',
+    'setgid',
+    'seteuid',
+    'setegid',
+    'setgroups',
+    'initgroups'
   ];
   for (const method of dangerousMethods) {
     try {
@@ -104,11 +126,19 @@ if (typeof process !== 'undefined') {
 
   // 清理 env 敏感变量并冻结
   const sensitivePatterns = [
-    /secret/i, /password/i, /token/i, /key/i, /credential/i,
-    /auth/i, /private/i, /aws/i, /api_key/i, /apikey/i
+    /secret/i,
+    /password/i,
+    /token/i,
+    /key/i,
+    /credential/i,
+    /auth/i,
+    /private/i,
+    /aws/i,
+    /api_key/i,
+    /apikey/i
   ];
   for (const key of Object.keys(process.env)) {
-    if (sensitivePatterns.some(p => p.test(key))) {
+    if (sensitivePatterns.some((p) => p.test(key))) {
       delete process.env[key];
     }
   }
@@ -130,11 +160,15 @@ function isBlockedIP(rawIp: string): boolean {
   if (!net.isIPv4(ip)) return false;
   const ipLong = ipToLong(ip);
   const cidrs: [string, number][] = [
-    ['10.0.0.0', 8], ['172.16.0.0', 12], ['192.168.0.0', 16],
-    ['169.254.0.0', 16], ['127.0.0.0', 8], ['0.0.0.0', 8]
+    ['10.0.0.0', 8],
+    ['172.16.0.0', 12],
+    ['192.168.0.0', 16],
+    ['169.254.0.0', 16],
+    ['127.0.0.0', 8],
+    ['0.0.0.0', 8]
   ];
   for (const [base, bits] of cidrs) {
-    const mask = (0xFFFFFFFF << (32 - bits)) >>> 0;
+    const mask = (0xffffffff << (32 - bits)) >>> 0;
     if ((ipLong & mask) === (ipToLong(base) & mask)) return true;
   }
   return false;
@@ -175,7 +209,7 @@ const SystemHelper = {
   },
   delay(ms: number): Promise<void> {
     if (ms > 10000) throw new Error('Delay must be <= 10000ms');
-    return new Promise(r => setTimeout(r, ms));
+    return new Promise((r) => setTimeout(r, ms));
   },
   async httpRequest(url: string, opts: any = {}): Promise<any> {
     if (++requestCount > REQUEST_LIMITS.maxRequests) {
@@ -191,9 +225,12 @@ const SystemHelper = {
     }
     const method = (opts.method || 'GET').toUpperCase();
     const headers = opts.headers || {};
-    const body = opts.body != null
-      ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body))
-      : null;
+    const body =
+      opts.body != null
+        ? typeof opts.body === 'string'
+          ? opts.body
+          : JSON.stringify(opts.body)
+        : null;
     const timeout = Math.min(opts.timeout || REQUEST_LIMITS.timeoutMs, REQUEST_LIMITS.timeoutMs);
     if (body && !headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json';
@@ -204,33 +241,41 @@ const SystemHelper = {
     }
     const lib = parsed.protocol === 'https:' ? https : http;
     return new Promise((resolve, reject) => {
-      const req = lib.request({
-        method, headers, timeout,
-        hostname: resolvedIP,
-        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-        path: parsed.pathname + parsed.search,
-        servername: parsed.hostname,
-      }, (res: any) => {
-        const chunks: Buffer[] = [];
-        let size = 0;
-        res.on('data', (chunk: Buffer) => {
-          size += chunk.length;
-          if (size > REQUEST_LIMITS.maxResponseSize) {
-            req.destroy();
-            reject(new Error('Response too large'));
-            return;
-          }
-          chunks.push(chunk);
-        });
-        res.on('end', () => {
-          const data = Buffer.concat(chunks).toString('utf-8');
-          const h: Record<string, any> = {};
-          for (const [k, v] of Object.entries(res.headers)) h[k] = v;
-          resolve({ status: res.statusCode, statusText: res.statusMessage, headers: h, data });
-        });
-        res.on('error', reject);
+      const req = lib.request(
+        {
+          method,
+          headers,
+          timeout,
+          hostname: resolvedIP,
+          port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+          path: parsed.pathname + parsed.search,
+          servername: parsed.hostname
+        },
+        (res: any) => {
+          const chunks: Buffer[] = [];
+          let size = 0;
+          res.on('data', (chunk: Buffer) => {
+            size += chunk.length;
+            if (size > REQUEST_LIMITS.maxResponseSize) {
+              req.destroy();
+              reject(new Error('Response too large'));
+              return;
+            }
+            chunks.push(chunk);
+          });
+          res.on('end', () => {
+            const data = Buffer.concat(chunks).toString('utf-8');
+            const h: Record<string, any> = {};
+            for (const [k, v] of Object.entries(res.headers)) h[k] = v;
+            resolve({ status: res.statusCode, statusText: res.statusMessage, headers: h, data });
+          });
+          res.on('error', reject);
+        }
+      );
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
       });
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
       req.on('error', reject);
       if (body) req.write(body);
       req.end();
@@ -300,7 +345,7 @@ rl.on('line', async (line: string) => {
   const logs: string[] = [];
   const safeConsole = {
     log(...args: any[]) {
-      logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+      logs.push(args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
     }
   };
 
@@ -309,20 +354,35 @@ rl.on('line', async (line: string) => {
     // 静态检查：拦截 import() 动态导入，防止绕过 require 白名单
     // 匹配 import( 但排除注释中的（简单启发式）
     if (/\bimport\s*\(/.test(code)) {
-      writeLine({ success: false, message: "Dynamic import() is not allowed in sandbox. Use require() instead." });
+      writeLine({
+        success: false,
+        message: 'Dynamic import() is not allowed in sandbox. Use require() instead.'
+      });
       return;
     }
 
     const resultPromise = (async () => {
       const userFn = new (_OriginalFunction as any)(
-        'require', 'console', 'SystemHelper',
-        'countToken', 'strToBase64', 'createHmac', 'delay', 'httpRequest',
+        'require',
+        'console',
+        'SystemHelper',
+        'countToken',
+        'strToBase64',
+        'createHmac',
+        'delay',
+        'httpRequest',
         'variables',
         code + '\nreturn main;'
       );
       const main = userFn(
-        safeRequire, safeConsole, SystemHelper,
-        countToken, strToBase64, createHmac, delay, httpRequest,
+        safeRequire,
+        safeConsole,
+        SystemHelper,
+        countToken,
+        strToBase64,
+        createHmac,
+        delay,
+        httpRequest,
         variables || {}
       );
       return await main(variables || {});

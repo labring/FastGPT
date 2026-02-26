@@ -11,10 +11,12 @@ FROM oven/bun:1-alpine AS runner
 WORKDIR /app
 
 # 安装 Python 及依赖包（使用系统 Python，避免多版本冲突）
-RUN apk add --no-cache python3 py3-pip libffi
+RUN apk add --no-cache python3 py3-pip libffi && \
+    apk add --no-cache --virtual .build-deps gcc g++ musl-dev python3-dev libffi-dev
 COPY projects/sandbox/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && \
-    rm /tmp/requirements.txt
+    rm /tmp/requirements.txt && \
+    apk del .build-deps
 
 # 复制 node_modules 和源码
 COPY --from=builder /app/node_modules ./node_modules
