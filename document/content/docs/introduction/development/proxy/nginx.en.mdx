@@ -1,0 +1,101 @@
+---
+title: Nginx Proxy
+description: Deploy Nginx on Sealos as a proxy
+---
+
+## Log in to Sealos
+
+[Sealos](https://cloud.sealos.io?uid=fnWRt09fZP)
+
+## Create an Application
+
+Open **App Launchpad** and click **New Application**:
+
+![](/imgs/sealos3.webp)  
+![](/imgs/sealos4.png)
+
+### Fill in Basic Configuration
+
+Make sure to enable external access and copy the provided external access address.
+
+![](/imgs/sealos5.png)
+
+### Add Configuration File
+
+1. Copy the configuration below. Replace the content after `server_name` with the external access address from step 2.
+
+   ```nginx
+   user nginx;
+   worker_processes auto;
+   worker_rlimit_nofile 51200;
+   
+   events {
+       worker_connections 1024;
+   }
+   
+   http {
+       resolver 8.8.8.8;
+       proxy_ssl_server_name on;
+   
+       access_log off;
+       server_names_hash_bucket_size 512;
+       client_header_buffer_size 64k;
+       large_client_header_buffers 4 64k;
+       client_max_body_size 50M;
+   
+       proxy_connect_timeout       240s;
+       proxy_read_timeout          240s;
+       proxy_buffer_size 128k;
+       proxy_buffers 4 256k;
+   
+       server {
+           listen 80;
+           server_name tgohwtdlrmer.cloud.sealos.io; # Replace with the Sealos external address
+   
+           location ~ /openai/(.*) {
+               proxy_pass https://api.openai.com/$1$is_args$args;
+               proxy_set_header Host api.openai.com;
+               proxy_set_header X-Real-IP $remote_addr;
+               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+               # For streaming responses
+               proxy_set_header Connection '';
+               proxy_http_version 1.1;
+               chunked_transfer_encoding off;
+               proxy_buffering off;
+               proxy_cache off;
+               # For regular responses
+               proxy_buffer_size 128k;
+               proxy_buffers 4 256k;
+               proxy_busy_buffers_size 256k;
+           }
+       }
+   }
+   ```
+
+2. Open **Advanced Configuration**.
+3. Click **Add Config File**.
+4. File name: `/etc/nginx/nginx.conf`.
+5. File value: the code you just copied.
+6. Click **Confirm**.
+
+   ![](/imgs/sealos6.png)
+
+### Deploy the Application
+
+After filling everything in, click **Deploy** in the top right corner to complete deployment.
+
+## Update FastGPT Environment Variables
+
+1. Go to the deployed app's details and copy the external address.
+
+   > Note: This is an API address — clicking it won't work. To verify, visit: `*.cloud.sealos.io/openai/api`. If you see `Invalid URL (GET /api)`, it's working.
+   
+   ![](/imgs/sealos7.png)
+
+2. Update the environment variable (FastGPT's environment variable, not Sealos'):
+
+   ```bash
+   OPENAI_BASE_URL=https://tgohwtdlrmer.cloud.sealos.io/openai/v1
+   ```
+   
+**Done!**

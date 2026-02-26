@@ -1,0 +1,42 @@
+---
+title: HTTP Proxy
+description: Use an HTTP proxy for routing
+---
+
+If you have a proxy tool (like [Clash](https://github.com/Dreamacro/clash) or [sing-box](https://github.com/SagerNet/sing-box)), you can use an HTTP proxy to access OpenAI. Just add these two environment variables:
+
+```bash
+AXIOS_PROXY_HOST=
+AXIOS_PROXY_PORT=
+```
+
+Using Clash as an example, we recommend routing only `api.openai.com` through the proxy and direct-connecting everything else. Example configuration:
+
+```yaml
+mixed-port: 7890
+allow-lan: false
+bind-address: '*'
+mode: rule
+log-level: warning
+dns:  
+  enable: true  
+  ipv6: false  
+  nameserver:  
+    - 8.8.8.8
+    - 8.8.4.4 
+  cache-size: 400
+proxies:
+    - 
+proxy-groups:
+  - { name: '♻️ Auto Select', type: url-test,  proxies: [HK-V01×1.5], url: 'https://api.openai.com', interval: 3600}
+rules:
+  - 'DOMAIN-SUFFIX,api.openai.com,♻️ Auto Select'
+  - 'MATCH,DIRECT'
+```
+
+Then add these two environment variables to FastGPT:
+
+```bash
+AXIOS_PROXY_HOST=127.0.0.1
+AXIOS_PROXY_PORT=7890
+```
