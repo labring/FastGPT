@@ -42,14 +42,9 @@ export default async function Layout({
 }) {
   const { lang } = await params;
 
-  // Get tracking config from env
+  // Get tracking config from env (site ID is injected per-build by CI)
   const trackSrc = process.env.NEXT_PUBLIC_DOC_TRACK_SRC;
-  const trackCn = process.env.NEXT_PUBLIC_DOC_TRACK_CN;
-  const trackIo = process.env.NEXT_PUBLIC_DOC_TRACK_IO;
-  
-  // Determine site ID based on domain
-  const domain = process.env.FASTGPT_HOME_DOMAIN || '';
-  const siteId = domain.includes('fastgpt.cn') ? trackCn : trackIo;
+  const siteId = process.env.NEXT_PUBLIC_DOC_TRACK_SITE_ID;
 
   return (
     <html lang={lang} className={inter.className} suppressHydrationWarning>
