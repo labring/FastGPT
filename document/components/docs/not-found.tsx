@@ -1,7 +1,8 @@
 'use client';
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { useCurrentLang, useLocalizedPath } from '@/lib/localized-navigation';
+import { useCurrentLang } from '@/lib/localized-navigation';
+import { getLocalizedPath } from '@/lib/i18n';
 
 const exactMap: Record<string, string> = {
   '/docs': '/docs/introduction',
@@ -30,7 +31,6 @@ const fallbackRedirect = '/docs/introduction';
 export default function NotFound() {
   const pathname = usePathname();
   const lang = useCurrentLang();
-  const getLocalizedPath = (path: string) => useLocalizedPath(path);
 
   useEffect(() => {
     (async () => {
@@ -38,14 +38,14 @@ export default function NotFound() {
       const pathWithoutLang = pathname.replace(new RegExp(`^/${lang}`), '');
 
       if (exactMap[pathWithoutLang]) {
-        window.location.replace(getLocalizedPath(exactMap[pathWithoutLang]));
+        window.location.replace(getLocalizedPath(exactMap[pathWithoutLang], lang));
         return;
       }
 
       for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
         if (pathWithoutLang.startsWith(oldPrefix)) {
           const rest = pathWithoutLang.slice(oldPrefix.length);
-          window.location.replace(getLocalizedPath(newPrefix + rest));
+          window.location.replace(getLocalizedPath(newPrefix + rest, lang));
           return;
         }
       }
@@ -61,16 +61,16 @@ export default function NotFound() {
 
         if (validPage) {
           console.log('validPage', validPage);
-          window.location.replace(getLocalizedPath(validPage));
+          window.location.replace(getLocalizedPath(validPage, lang));
           return;
         }
       } catch (e) {
         console.warn('meta.json fallback failed:', e);
       }
 
-      window.location.replace(getLocalizedPath(fallbackRedirect));
+      window.location.replace(getLocalizedPath(fallbackRedirect, lang));
     })();
-  }, [pathname, lang, getLocalizedPath]);
+  }, [pathname, lang]);
 
   return null;
 }

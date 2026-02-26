@@ -23,14 +23,7 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
         </div>
       )
     },
-    i18n: {
-      locale,
-      languages: i18n.languages.map((lang) => ({
-        name: lang === 'zh-CN' ? '简体中文' : 'English',
-        locale: lang
-      })),
-      hideLocale: i18n.hideLocale
-    },
+    i18n: true,
     searchToggle: {
       enabled: true
     }
