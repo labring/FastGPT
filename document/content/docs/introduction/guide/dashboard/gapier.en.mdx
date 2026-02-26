@@ -1,31 +1,31 @@
 ---
-title: Quickly Import Agent Tools Using Gapier
-description: FastGPT quickly import Agent tools using Gapier
+title: Import Agent Tools with Gapier
+description: Quickly import Agent tools into FastGPT using Gapier
 ---
 
-FastGPT V4.7 added tool calling, compatible with GPTs Actions. This means you can directly import GPTs-compatible Agent tools.
+FastGPT V4.7 introduced tool calling, compatible with GPTs Actions. This means you can directly import GPTs-compatible Agent tools.
 
-Gapier is an online GPTs Actions tool offering 50+ ready-made tools with daily free quotas for testing, making it convenient for users to try. Official site: [https://gapier.com/](https://gapier.com/).
+Gapier is an online GPTs Actions platform offering 50+ ready-made tools with a daily free quota for testing. Official site: [https://gapier.com/](https://gapier.com/).
 
 ![](/imgs/gapierToolResult1.webp)
 
-Now, let's import Gapier tools into FastGPT.
+Let's walk through importing Gapier tools into FastGPT.
 
-## 1. Create Plugin
+## 1. Create a Plugin
 
 | Step1 | Step2 | Step3 |
 | --- | --- | --- |
-| ![](/imgs/gapierTool1.png) | ![](/imgs/gapierTool2.png) | Log in to [Gapier](https://gapier.com/) and copy relevant parameters <br/> ![](/imgs/gapierTool3.png) |
+| ![](/imgs/gapierTool1.png) | ![](/imgs/gapierTool2.png) | Log in to [Gapier](https://gapier.com/) and copy the relevant parameters <br/> ![](/imgs/gapierTool3.png) |
 | Step4 | Step5 | Step6 |
-| Custom request header: Authorization<br/>Request value: Bearer copied_key <br/> ![](/imgs/gapierTool4.png) | ![](/imgs/gapierTool5.png) | ![](/imgs/gapierTool6.png) |
+| Custom request header: Authorization<br/>Value: Bearer your_copied_key <br/> ![](/imgs/gapierTool4.png) | ![](/imgs/gapierTool5.png) | ![](/imgs/gapierTool6.png) |
 
-After creation, if you need to make changes, no need to recreate — just modify the corresponding parameters. It will automatically compare and update differences.
+After creation, if you need to make changes, there's no need to recreate — just modify the parameters and the system will automatically detect and apply the differences.
 
 ![](/imgs/gapierTool7.png)
 
-## 2. Bind Tools to Application
+## 2. Bind Tools to an Application
 
-### Simple Mode
+### Basic Mode
 
 | Step1 | Step2 |
 | --- | --- |
@@ -43,14 +43,14 @@ After creation, if you need to make changes, no need to recreate — just modify
 
 ![](/imgs/gapierTool16.webp)
 
-## 3. Tool Calling Instructions
+## 3. Tool Calling Notes
 
 ### Differences Between Models
 
-Different models use different methods to call tools. Some models support toolChoice and functionCall for better results. Models that don't support these two methods use prompts for calling, but the results aren't great. To ensure smooth calling, FastGPT's built-in prompts only support calling one tool at a time.
+Different models use different methods for tool calling. Models that support toolChoice and functionCall produce better results. Models without these capabilities fall back to prompt-based calling, which is less reliable. To ensure smooth operation, FastGPT's built-in prompts only support calling one tool at a time.
 
-Check the official website to see which models support functionCall (OneAPI support is also required), and adjust the corresponding fields in the model configuration file (see configuration field descriptions for details).
+Check the official documentation to see which models support functionCall (OneAPI support is also required), and adjust the corresponding fields in the model configuration file (see the configuration field reference for details).
 
-Online version users can see whether function calling is supported when selecting models.
+Cloud version users can see whether function calling is supported when selecting a model.
 
 ![](/imgs/gapierTool17.webp)

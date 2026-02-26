@@ -2,10 +2,10 @@
 title: Errors
 ---
 
-1. ### Current group upstream load is saturated, please try again later (request id:202407100753411462086782835521)
+1. ### "Current group upstream load is saturated, please try again later" (request id: 202407100753411462086782835521)
 
-This is an OneAPI channel issue. You can switch to a different model or use a different relay service.
+This is an OneAPI channel issue. Try switching to a different model or a different relay provider.
 
-1. ### Connection Error in logs when using API
+1. ### "Connection Error" in logs when using the API
 
-Most likely the api-key was filled with openapi, and the deployed server is in China and cannot access overseas APIs. You can use a relay or reverse proxy to solve the access issue.
+Most likely the API key is pointing to OpenAI's API, but the server is deployed in mainland China and can't reach overseas endpoints. Use a relay service or reverse proxy to resolve the connectivity issue.

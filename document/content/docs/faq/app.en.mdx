@@ -1,79 +1,77 @@
 ---
-title: App Usage Issues
-description: Common FastGPT app usage issues, including simple apps, workflows, and plugins
+title: App Usage
+description: Common questions about using FastGPT apps, including simple apps, workflows, and plugins
 ---
 
-## How to Ensure Continuous Questions Are Correctly Classified in Multi-Turn Conversations
+## How do I get the Question Classification node to work correctly across multi-turn conversations?
 
-The question classification node can access context information. When processing two highly related questions, the model's judgment accuracy often depends on the connection between these questions and the model's capabilities. For example, when a user first asks "How do I use this feature?" and then asks "What are the limitations of this feature?", the model can understand and respond more accurately with context information.
+The Question Classification node has access to conversation context. When two consecutive questions are closely related, the model can usually classify them accurately based on their connection. For example, if a user asks "How do I use this feature?" followed by "What are the limitations?", the model leverages context to understand and respond correctly.
 
-However, when the correlation between consecutive questions is low, the model's judgment accuracy may be limited. In this case, we can introduce global variables to record classification results. In subsequent classification stages, first check if the global variable has a classification result. If yes, use that result directly; if not, let the model judge on its own.
+However, when consecutive questions have little relation to each other, classification accuracy may drop. To handle this, you can use a global variable to store the classification result. In subsequent classification steps, check the global variable first — if a result exists, reuse it; otherwise, let the model classify on its own.
 
-Recommendation: Build batch testing scripts to evaluate question classification accuracy.
+Tip: Build batch test scripts to evaluate your question classification accuracy.
 
-## Timing of Scheduled Execution
+## When does scheduled execution trigger?
 
-Regarding scheduled execution in system workflow configuration, if a user opens a shared link and stays on that page, scheduled execution trigger question:
+If a user opens a shared link and stays on the page, scheduled execution still works as expected — it takes effect after the app is published and runs in the background.
 
-Scheduled execution takes effect after the app is published and runs in the background.
-
-## V4.8.18-FIX2 mentions "1. Fixed HTTP node, `{{}}` format variable reference compatibility issue. Recommend replacing with / pattern for variables, `{{}}` syntax is deprecated." Does replacing `{{}}` reference format only affect HTTP nodes, or all nodes?
+## In V4.8.18-FIX2, it says "Fixed HTTP node `{{}}` variable reference compatibility. Please switch to the / pattern for variables — `{{}}` syntax is deprecated." Does this only affect HTTP nodes, or all nodes?
 
 Only HTTP nodes use this syntax.
 
-## Workflow-type apps work normally in preview mode but have issues after publishing to no-login window.
+## My workflow app works fine in preview but breaks after publishing to a no-login window.
 
-Usually caused by incorrect publishing. Click [Save and Publish] in the top right corner of the workflow.
+This is usually caused by not publishing correctly. Click **Save and Publish** in the top-right corner of the workflow editor.
 
-## How to Make Question Suggestions Display in Chinese
+## How do I make "Suggested Questions" display in Chinese?
 
-Note: Update to V4.8.17 or above and change the question suggestion prompt to Chinese.
+Make sure you're on V4.8.17 or later, then change the suggested questions prompt to Chinese.
 ![](/imgs/quizApp2.png)
 
-## Remove Markdown Syntax Requirement from AI Chat Response
+## How do I stop AI responses from using Markdown formatting?
 
-Modify the dataset default prompt. The default uses a standard template prompt that requires Markdown output. You can remove this requirement:
+Edit the Knowledge Base default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
 
 | | |
 | --- | --- |
 | ![](/imgs/image-83.png) | ![](/imgs/image-84.png) |
 
-## App Behaves Differently Across Different Sources
+## Why does my app behave differently across different sources?
 
-Q: App behaves differently between debugging and production; behaves differently when called via API.
+Q: The app produces different results in debug mode vs. production, or when called via API.
 
-A: Usually caused by inconsistent context. You can find the corresponding record in the conversation log and check the run details for comparison.
+A: This is usually caused by differences in context. Check the conversation logs, find the relevant entry, and compare the run details side by side.
 
 | | | |
 | --- | --- | --- |
 | ![](/imgs/image-85.png) | ![](/imgs/image-86.png) | ![](/imgs/image-87.png) |
-In the dataset response requirements, you need to configure a prompt. Otherwise, it uses the default, which includes this syntax.
+The Knowledge Base response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
 
-## Workflow Operation: A workflow starts with a question classification node, routes to different branches based on classification, accesses corresponding datasets and AI chat. After AI chat returns content, how to skip the question classification node and instead search the dataset, then use history as context for another AI query?
+## How do I route follow-up questions directly to the Knowledge Base instead of going through Question Classification again?
 
-Use a condition node: if it's the first conversation (history count is 0), go through question classification; if not zero, go directly to dataset and AI.
+Scenario: A workflow starts with a Question Classification node that routes to different branches, each with its own Knowledge Base and AI Chat. After the first AI response, you want subsequent questions to skip classification and go straight to the Knowledge Base with chat history as context.
 
-## Real-time Chat: Set FastGPT to poll, e.g., fetch webhook messages every 3000ms to the AI page
+Solution: Add a condition check — if it's the first message (history count is 0), route through Question Classification. Otherwise, go directly to the Knowledge Base and AI Chat.
 
-Scheduled execution doesn't support such high-frequency polling. To implement a real-time chat bot in WeCom,
-Currently, building with low-code workflows won't work. You need to write code yourself and call FastGPT's API Key for responses. WeCom doesn't seem to provide an "auto-listen" interface for group chat messages (or trigger message push by @mentioning the bot). You can only send messages to the app and receive message pushes from this document https://developer.work.weixin.qq.com/document/path/90238 to implement real-time chat. Or poll for group chat messages using the interface shown in this document https://developer.work.weixin.qq.com/document/path/98914, then push messages using this interface https://developer.work.weixin.qq.com/document/path/90248.
+## Can I set up real-time polling to fetch webhook messages every 3000ms?
 
-## Workflow Database Connection
+Scheduled execution doesn't support that kind of frequency. To build a real-time chatbot in WeCom, low-code workflows won't cut it — you'll need to write custom code that calls FastGPT's API Key for responses. WeCom doesn't provide an auto-listen interface for group messages (though you can trigger message pushes by @mentioning the bot). You can either send messages to the app and receive pushes via the [message callback API](https://developer.work.weixin.qq.com/document/path/90238), or poll for group messages using [this API](https://developer.work.weixin.qq.com/document/path/98914) and push responses via [this API](https://developer.work.weixin.qq.com/document/path/90248).
 
-Workflows provide database connection functionality. Using this database connection plugin can implement text2SQL, but it's relatively risky—write operations are not recommended.
+## Can workflows connect to a database?
+
+Yes. Workflows support database connections. The database connection plugin can implement text-to-SQL, but it's risky — write operations are not recommended.
 
 ![](/imgs/quizApp1.png)
 
-## About Loop Node: Understanding loop conditions, termination conditions, loop methods, and whether parameters called within the loop are local or global scope
+## How does the Loop node work?
 
-Can be understood as a for function—pass an array, and each item executes once.
+Think of it like a `for` loop — you pass in an array, and the loop body executes once for each element. Variables inside the loop are scoped locally to each iteration.
 
-## Formulas Not Displaying Correctly
+## Formulas aren't rendering correctly
 
-Add relevant prompts to guide the model to output formulas in Markdown format
+Add a prompt to guide the model to output formulas in LaTeX/Markdown format:
 
 ```bash
-Latex inline: \(x^2\) 
+Latex inline: \(x^2\)
 Latex block: $$e=mc^2$$
 ```
-

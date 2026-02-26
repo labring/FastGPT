@@ -1,15 +1,15 @@
 ---
-title: Dalle3 Image Generation
-description: Use HTTP module to generate images
+title: DALL-E 3 Image Generation
+description: Generate images using the HTTP Request module with DALL-E 3
 ---
 
 |                       |                       |
 | --------------------- | --------------------- |
 | ![](/imgs/demo-dalle1.webp) | ![](/imgs/demo-dalle2.webp) |
 
-## OpenAI Dalle3 API
+## OpenAI DALL-E 3 API
 
-First, let's look at the official API parameters and response:
+Here are the official API parameters and response format:
 
 Body
 
@@ -22,7 +22,7 @@ Body
 }
 ```
 
-Response 
+Response
 
 ```json
 {
@@ -40,14 +40,14 @@ Response
 
 ## Workflow Design
 
-1. Use AI to optimize the image generation prompt (this step is skipped—find your own prompt)
-2. Use the `【HTTP Request】module` to call the Dalle3 API and get the image URL.
-3. Use the `【Text Processing】module` to build the `Markdown` image format.
-4. Use the `【Specified Reply】module` to directly output the image link.
+1. Use AI to optimize the image generation prompt (skipped here — use your own prompt).
+2. Use the `HTTP Request` module to call the DALL-E 3 API and retrieve the image URL.
+3. Use the `Text Editor` module to construct a `Markdown` image tag.
+4. Use the `Specified Reply` module to output the image link directly.
 
-### 1. Build HTTP Module
+### 1. Build the HTTP Module
 
-Copy the Dalle3 API request parameters directly and change prompt to a variable. Add a `Headers.Authorization`.
+Copy the DALL-E 3 API request parameters and replace `prompt` with a variable. You also need to add a `Headers.Authorization` header.
 
 Body:
 
@@ -66,17 +66,17 @@ Headers:
 
 Response:
 
-The response needs to extract values from the Dalle3 API return. Since we're only generating 1 image, we only need the first image's URL. Add a custom output `data[0].url` to the HTTP module.
+Extract the response value based on the DALL-E 3 API return format. Since we only generate one image, we just need the first image's URL. Add a custom output `data[0].url` to the HTTP module.
 
-### 2. Text Processing - Build Image Link
+### 2. Text Editor — Build Image Link
 
-In `Markdown` syntax, `![image description](image link)` inserts an image. The image link is output by the【HTTP Request】module.
+In `Markdown` syntax, `![image description](image URL)` inserts an image, where the image URL comes from the `HTTP Request` module output.
 
-Therefore, add an input to receive the image link output from the `【HTTP Request】module`, and reference the image link through a variable in the `【Text Processing】module - Text` to get a complete `Markdown` image format.
+Add an input to receive the image URL from the `HTTP Request` module, then reference it as a variable in the `Text Editor` module to produce a complete `Markdown` image tag.
 
 ### 3. Specified Reply
 
-Specified Reply can directly output the passed content to the client, so you can directly output the processed `Markdown` image format.
+The Specified Reply module outputs incoming content directly to the client, so it can render the processed `Markdown` image format as-is.
 
 ## Workflow Configuration
 <details>
@@ -87,8 +87,8 @@ Specified Reply can directly output the passed content to the client, so you can
   "nodes": [
     {
       "nodeId": "userGuide",
-      "name": "System Configuration",
-      "intro": "Configure application system parameters",
+      "name": "System Config",
+      "intro": "Configure system parameters for the application",
       "avatar": "/imgs/workflow/userGuide.png",
       "flowNodeType": "userGuide",
       "position": {
@@ -195,7 +195,7 @@ Specified Reply can directly output the passed content to the client, so you can
     {
       "nodeId": "tMyUnRL5jIrC",
       "name": "HTTP Request",
-      "intro": "Can send an HTTP request to implement more complex operations (web search, database queries, etc.)",
+      "intro": "Send an HTTP request for advanced operations (web search, database queries, etc.)",
       "avatar": "/imgs/workflow/http.png",
       "flowNodeType": "httpRequest468",
       "showStatus": true,
@@ -313,7 +313,7 @@ Specified Reply can directly output the passed content to the client, so you can
           "id": "httpRawResponse",
           "key": "httpRawResponse",
           "label": "Raw Response",
-          "description": "Raw response from HTTP request. Only accepts string or JSON type response data.",
+          "description": "The raw HTTP response. Only accepts string or JSON response data.",
           "valueType": "any",
           "type": "static"
         },
@@ -328,8 +328,8 @@ Specified Reply can directly output the passed content to the client, so you can
     },
     {
       "nodeId": "CO3POL8svbbi",
-      "name": "Text Processing",
-      "intro": "Can process fixed or passed text and output it. Non-string data types will ultimately be converted to string type.",
+      "name": "Text Editor",
+      "intro": "Process fixed or incoming text and output the result. Non-string data is converted to string.",
       "avatar": "/imgs/workflow/textEditor.svg",
       "flowNodeType": "pluginModule",
       "showStatus": false,
@@ -377,9 +377,9 @@ Specified Reply can directly output the passed content to the client, so you can
           ]
         },
         {
-          "key": "Text",
+          "key": "文本",
           "valueType": "string",
-          "label": "Text",
+          "label": "文本",
           "renderTypeList": [
             "textarea"
           ],
@@ -413,7 +413,7 @@ Specified Reply can directly output the passed content to the client, so you can
     {
       "nodeId": "7mapnCgHfKW6",
       "name": "Specified Reply",
-      "intro": "This module can directly reply with specified content. Commonly used for guidance and prompts. Non-string content will be converted to string for output.",
+      "intro": "Directly replies with specified content. Commonly used for guidance and prompts. Non-string input is converted to string for output.",
       "avatar": "/imgs/workflow/reply.png",
       "flowNodeType": "answerNode",
       "position": {

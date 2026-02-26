@@ -1,9 +1,9 @@
 ---
 title: Text Content Extraction
-description: FastGPT content extraction module guide
+description: FastGPT Text Content Extraction node overview
 ---
 
-## Features
+## Characteristics
 
 - Can be added multiple times
 - Requires manual configuration
@@ -13,15 +13,15 @@ description: FastGPT content extraction module guide
 
 ![](/imgs/extract1.png)
 
-## Function
+## What It Does
 
-Extracts structured data from text, typically used with the HTTP module for extensions. Can also perform direct extraction operations, such as translation.
+Extracts structured data from text, typically used with the HTTP node for extended functionality. It can also perform direct extraction tasks such as translation.
 
 ## Parameters
 
-### Extraction Requirements Description
+### Extraction Requirement Description
 
-As the name suggests, set a goal for the model — what content needs to be extracted.
+Set a goal for the model describing what content needs to be extracted.
 
 **Example 1**
 
@@ -29,25 +29,25 @@ As the name suggests, set a goal for the model — what content needs to be extr
 
 **Example 2**
 
-> You are a Google search assistant. Extract search keywords from the conversation
+> You are a Google search assistant. Extract search keywords from the conversation.
 
 **Example 3**
 
-> Translate my question directly to English, don't answer the question
+> Translate my question directly into English without answering it.
 
 ### Chat History
 
-Usually some chat history is needed to extract user questions more completely. For example, in the image above, you need to provide name, time, and lab name. The user might initially only provide time and lab name without their name. After a round of prompting for missing info, the user inputs their name. At this point, you need to combine the previous record to completely extract all 3 pieces of information.
+Some chat history is usually needed for more complete extraction. For example, if the task requires a name, time, and lab name, the user might initially provide only the time and lab name. After being prompted for the missing info, the user provides their name. At that point, the previous record is needed to extract all 3 fields completely.
 
 ### Target Fields
 
-Target fields correspond to extraction results. As shown above, each added field creates a corresponding output.
+Target fields correspond to extraction results. As shown above, each new field adds a corresponding output.
 
-+ **key**: Unique field identifier, cannot be duplicated!
-+ **Field description**: Describes what the field is about, e.g., name, time, search term, etc.
-+ **Required**: Whether to force the model to extract this field. May extract an empty string.
++ **key**: Unique identifier for the field. Must not be duplicated.
++ **Field description**: Describes what the field represents, e.g., name, time, search keyword, etc.
++ **Required**: Whether the model is forced to extract this field. It may still return an empty string.
 
-## Output Description
+## Output
 
-- **Complete extraction result**: A JSON string containing extraction results for all fields.
-- **Target field extraction results**: All string type.
+- **Complete extraction result**: A JSON string containing all extracted fields.
+- **Target field extraction results**: All returned as string type.

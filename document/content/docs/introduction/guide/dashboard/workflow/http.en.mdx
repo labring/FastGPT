@@ -1,11 +1,11 @@
 ---
 title: HTTP Request
-description: FastGPT HTTP module guide
+description: FastGPT HTTP Request node overview
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-## Features
+## Characteristics
 
 - Can be added multiple times
 - Manual configuration
@@ -16,15 +16,15 @@ import { Alert } from '@/components/docs/Alert';
 
 ## Overview
 
-The HTTP module sends an `HTTP` request to a specified address. It works similarly to tools like Postman and ApiFox.
+The HTTP node sends an `HTTP` request to a specified URL. It works similarly to tools like Postman and ApiFox.
 
-- Params are path query parameters, commonly used in GET requests.
+- Params are query parameters, commonly used in GET requests.
 - Body is the request body, commonly used in POST/PUT requests.
-- Headers are request headers for passing special information.  
-- Custom variables can receive outputs from previous nodes as variables
-- All 3 data types support `{{}}` for variable references.
-- URLs can also use `{{}}` for variable references.
-- Variables come from `global variables`, `system variables`, and `previous node outputs`
+- Headers are request headers for passing additional information.
+- Custom variables can receive outputs from upstream nodes.
+- All 3 data types support variable references via `{{}}`.
+- The URL also supports `{{}}` variable references.
+- Variables come from `global variables`, `system variables`, and `upstream node outputs`.
 
 ## Parameter Structure
 
@@ -33,15 +33,15 @@ The HTTP module sends an `HTTP` request to a specified address. It works similar
 Hover over the question mark next to `Request Parameters` to see available variables.
 
 - appId: Application ID
-- chatId: Current conversation ID (doesn't exist in test mode)
-- responseChatItemId: Response message ID in current conversation (doesn't exist in test mode)
-- variables: Global variables for current conversation
+- chatId: Current conversation ID (not available in test mode)
+- responseChatItemId: Response message ID in the current conversation (not available in test mode)
+- variables: Global variables for the current conversation
 - cTime: Current time
-- histories: Chat history (defaults to max 10 entries, length cannot be modified)
+- histories: Chat history (defaults to max 10 entries, length is not configurable)
 
 ### Params, Headers
 
-Similar to Postman and ApiFox usage.
+Usage is the same as Postman and ApiFox.
 
 Use `{{key}}` to reference variables. For example:
 
@@ -52,11 +52,13 @@ Use `{{key}}` to reference variables. For example:
 
 ### Body
 
-Only takes effect for specific request types.
+Only takes effect with certain request types.
 
-Write a `custom JSON` and use `{{key}}` to reference variables. For example:
+Write a custom JSON body and use `{{key}}` to reference variables. For example:
 
-<Tabs items={['Assume these variables','Body declaration in HTTP module','Final parsed result']}> <Tab value="Assume these variables" >
+<Tabs items={['Sample variables','Body declaration in HTTP node','Final parsed result']}>
+  <Tab value="Sample variables" >
+
 
 ```json
 {
@@ -71,10 +73,12 @@ Write a `custom JSON` and use `{{key}}` to reference variables. For example:
 }
 ```
 
-  </Tab>
-  <Tab value="Body declaration in HTTP module" >
 
-Note: In Body, if you reference a `string`, you need to add `""`, for example: `"{{string}}"`.
+  </Tab>
+  <Tab value="Body declaration in HTTP node" >
+
+
+When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 
 ```json
 {
@@ -88,8 +92,10 @@ Note: In Body, if you reference a `string`, you need to add `""`, for example: `
 }
 ```
 
+
   </Tab>
   <Tab value="Final parsed result" >
+
 
 ```json
 {
@@ -106,16 +112,19 @@ Note: In Body, if you reference a `string`, you need to add `""`, for example: `
 }
 ```
 
+
   </Tab>
 </Tabs>
 
-### How to Get Return Values
+### Extracting Return Values
 
-As shown in the image, FastGPT allows adding multiple return values. These don't represent the API response itself, but rather `how to parse the API response`. You can use `JSON path` syntax to `extract` values from the API response.
+As shown in the image, FastGPT lets you add multiple return values. These don't represent the raw API response -- they define `how to parse the API response`. You can use `JSON path` syntax to `extract` values from the response.
 
 Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
-<Tabs items={['API response example','Extraction example']}> <Tab value="API response example" >
+<Tabs items={['API response example','Extraction example']}>
+  <Tab value="API response example" >
+
 
 ```json
 {
@@ -137,8 +146,10 @@ Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 }
 ```
 
+
   </Tab>
   <Tab value="Extraction example" >
+
 
 ```json
 {
@@ -157,28 +168,32 @@ Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 }
 ```
 
+
   </Tab>
 </Tabs>
 
-You can configure the corresponding `key` to get values from `FastGPT's transformed format`. This follows JavaScript object access rules. For example:
 
-1. To get `message` content, configure the `key` as `message`.
-2. To get `user's name`, the `key` can be: `data.user.name`.
-3. To get the second element in list, the `key` can be: `data.list[1]`, then select string as output type to automatically get the `json` string of `[ { "test": 22 } ]`.
+Configure the `key` to extract values from FastGPT's parsed format, following standard JavaScript object access rules. For example:
+
+1. To get the `message` content, set the `key` to `message`.
+2. To get the user's name, set the `key` to `data.user.name`.
+3. To get the second element in the list, set the `key` to `data.list[1]`. If you select string as the output type, it will automatically return the JSON string `[ { "test": 22 } ]`.
 
 ### Auto-format Output
 
-Starting from FastGPT v4.6.8, output formatting was added, mainly converting `json` to `string`. If you select `string` as the output type, the value of the corresponding `HTTP` `key` will be converted to a `json` string for output. This means you can now directly output content from `HTTP` to `Text Processing`, append appropriate prompts, and finally input to `AI Chat`.
+Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.
+
 
 <Alert context="warning">
-The HTTP module is very powerful. You can integrate public APIs to enhance workflow functionality.
+The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow capabilities.
 
-If you don't want to deploy additional services, use [Laf](https://laf.dev/) to quickly develop and deploy APIs — write and publish instantly, no deployment needed.
+If you don't want to deploy additional services, use [Laf](https://laf.dev/) to quickly develop and publish APIs -- write and ship instantly with no deployment needed.
 </Alert>
 
 ## Laf HTTP Integration Example
 
-Here's a POST request example written in Laf:
+
+Here is a POST request example written in Laf:
 
 ```ts
 import cloud from '@lafjs/cloud'
@@ -209,12 +224,13 @@ export default async function (ctx: FunctionContext) {
       return await removeRecord(parseBody)
     }
 
+
     return {
-      response: "异常"
+      response: "Error"
     }
   } catch (err) {
     return {
-      response: "异常"
+      response: "Error"
     }
   }
 }
@@ -222,15 +238,16 @@ export default async function (ctx: FunctionContext) {
 
 ## Use Cases
 
-The HTTP module enables unlimited extensions, such as:
+The HTTP node enables unlimited extensibility, such as:
 - Database operations
 - External data source calls
 - Web searches
-- Email sending
+- Sending emails
 - ....
+
 
 ## Related Examples
 
 - [Google Search](/docs/use-cases/app-cases/google_search/)
-- [Send Feishu Webhook](/docs/use-cases/app-cases/feishu_webhook/)
+- [Send Lark Webhook](/docs/use-cases/app-cases/feishu_webhook/)
 - [Lab Appointment (Database Operations)](/docs/use-cases/app-cases/lab_appointment/)

@@ -1,21 +1,21 @@
 ---
-title: WeChat Official Account Integration Tutorial
+title: WeChat Official Account Integration
 description: FastGPT WeChat Official Account Integration Tutorial
 ---
 
-Starting from version 4.8.10, FastGPT commercial version supports direct WeChat Official Account integration without additional APIs.
+Starting from version 4.8.10, FastGPT commercial edition supports direct WeChat Official Account integration without additional APIs.
 
-**Note⚠️: Currently only supports verified official accounts (both Service Accounts and Subscription Accounts)**
+**Note: Currently only verified official accounts are supported (both Service Accounts and Subscription Accounts).**
 
-## 1. Create Publishing Channel in FastGPT
+## 1. Create a Publishing Channel in FastGPT
 
-In FastGPT, select the application you want to integrate. On the _Publishing Channels_ page, create a new WeChat Official Account publishing channel and fill in the basic information.
+In FastGPT, select the app you want to integrate. On the _Publishing Channels_ page, create a new WeChat Official Account publishing channel and fill in the basic information.
 
 ![Image](/imgs/offiaccount-1.png)
 
 ## 2. Get AppID, Secret, and Token
 
-### 1. Log in to WeChat Official Account Platform and select your account.
+### 1. Log in to the WeChat Official Account Platform and select your account.
 
 Open the WeChat Official Account website: https://mp.weixin.qq.com
 
@@ -35,7 +35,7 @@ Developers can apply for a WeChat Official Account test account from this link f
 
 Self-hosted users can check their own IP address.
 
-International version users (cloud.fastgpt.io) can add the following IP whitelist:
+International edition users (cloud.fastgpt.io) can add the following IP whitelist:
 
 ```
 35.240.227.100
@@ -60,7 +60,7 @@ International version users (cloud.fastgpt.io) can add the following IP whitelis
 35.247.161.35
 ```
 
-Mainland China users (fastgpt.cn) can add the following IP whitelist:
+China Mainland users (fastgpt.cn) can add the following IP whitelist:
 
 ```
 47.97.1.240
@@ -99,9 +99,9 @@ Mainland China users (fastgpt.cn) can add the following IP whitelist:
 
 ![Image](/imgs/offiaccount-6.png)
 
-1. Randomly generate AESKey and enter it into the FastGPT configuration dialog.
+1. Randomly generate an AES Key and enter it into the FastGPT configuration dialog.
 
-2. Select encryption mode as Secure Mode.
+2. Select the encryption mode as Secure Mode.
 
 ## 5. Get URL
 
@@ -125,4 +125,4 @@ Now when users send messages to the official account, messages will be forwarded
 
 ### How to start a new chat history
 
-If you want to reset your chat history, send a `Reset` message to the bot (case-sensitive), and the bot will start a new chat history.
+To reset your chat history, send a `Reset` message to the bot (case-sensitive), and the bot will start a new chat history.

@@ -1,29 +1,28 @@
 ---
-title: Integrating bge-rerank Reranking Models
-description: How to integrate bge-rerank reranking models
+title: Integrating bge-rerank Reranking Model
+description: Integrating bge-rerank reranking model with FastGPT
 ---
 
 ## Recommended Configuration by Model
 
-Recommended specs:
+| Model Name | RAM | VRAM | Disk Space | Start Command |
+|------|---------|---------|----------|--------------------------|
+| bge-reranker-base | >=4GB | >=4GB | >=8GB | python app.py |
+| bge-reranker-large | >=8GB | >=8GB | >=8GB | python app.py |
+| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB | python app.py |
 
-| Model Name          | RAM    | VRAM   | Disk Space | Start Command    |
-| ------------------- | ------ | ------ | ---------- | ---------------- |
-| bge-reranker-base   | >=4GB  | >=4GB  | >=8GB      | python app.py    |
-| bge-reranker-large  | >=8GB  | >=8GB  | >=8GB      | python app.py    |
-| bge-reranker-v2-m3  | >=8GB  | >=8GB  | >=8GB      | python app.py    |
 
 ## Source Code Deployment
 
-### 1. Install Environment
+### 1. Environment Setup
 
 - Python 3.9 or 3.10
 - CUDA 11.7
-- VPN/proxy for accessing external resources
+- Network access to download models
 
 ### 2. Download Code
 
-Code for the 3 models:
+Code repositories for the 3 models:
 
 1. [https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-base)
 2. [https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-large)
@@ -52,17 +51,17 @@ Dockerfile
 requirements.txt
 ```
 
-### 5. Run the Code
+### 5. Run
 
 ```bash
 python app.py
 ```
 
-After successful startup, you should see an address like this:
+On successful startup, you should see an address like this:
 
 ![](/imgs/rerank1.png)
 
-> The `http://0.0.0.0:6006` shown here is your connection address.
+> `http://0.0.0.0:6006` is the connection address.
 
 ## Docker Deployment
 
@@ -79,25 +78,24 @@ After successful startup, you should see an address like this:
 **Environment Variables**
 
 ```
-ACCESS_TOKEN=Your access token. Include in requests as: Authorization: Bearer ${ACCESS_TOKEN}
+ACCESS_TOKEN=your_access_token (used in request header: Authorization: Bearer ${ACCESS_TOKEN})
 ```
 
-**Example Run Command**
+**Run Command Example**
 
 ```sh
-# auth token is mytoken
+# auth token set to mytoken
 docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
 ```
 
 **docker-compose.yml Example**
-
 ```
 version: "3"
 services:
   reranker:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
     container_name: reranker
-    # GPU runtime environment. If not installed on host, comment out the deploy section
+    # GPU runtime. If the host doesn't have GPU drivers installed, comment out the deploy section.
     deploy:
       resources:
         reservations:
@@ -109,12 +107,12 @@ services:
       - 6006:6006
     environment:
       - ACCESS_TOKEN=mytoken
-```
 
+```
 ## Integrate with FastGPT
 
-1. Open FastGPT model configuration and add a new reranking model.
-2. Fill in the model config form: Model ID is `bge-reranker-base`, URL is `{{host}}/v1/rerank`, where host is your deployed domain/IP:Port.
+1. Open the FastGPT model configuration and add a new reranking model.
+2. Fill in the model configuration form: set the Model ID to `bge-reranker-base` and the address to `{{host}}/v1/rerank`, where host is your deployed domain or IP:Port.
 
 ![alt text](/imgs/image-102.png)
 
@@ -122,11 +120,11 @@ services:
 
 ### 403 Error
 
-The custom request token in FastGPT doesn't match the ACCESS_TOKEN environment variable.
+The custom request token in FastGPT does not match the ACCESS_TOKEN environment variable.
 
-### Docker Shows `Bus error (core dumped)`
+### Docker reports `Bus error (core dumped)`
 
-Try increasing the `shm_size` config in `docker-compose.yml` to expand the shared memory directory size in the container.
+Try adding the `shm_size` option to your `docker-compose.yml` to increase the shared memory size in the container.
 
 ```
 ...

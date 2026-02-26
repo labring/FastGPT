@@ -1,79 +1,75 @@
 ---
-title: Dataset Usage Issues
-description: Common dataset usage issues
+title: Knowledge Base Usage
+description: Common Knowledge Base usage questions
 ---
 
-## Uploaded file content shows Chinese garbled text
+## Uploaded file content shows garbled characters
 
-Save the file as UTF-8 encoding format.
+Re-save the file with UTF-8 encoding.
 
-## What is the file processing model in dataset configuration? How is it different from the index model?
+## What's the difference between the File Processing Model and the Index Model in Knowledge Base settings?
 
-* **File Processing Model**: Used for [Enhanced Processing] and [Q&A Splitting] in data processing. In [Enhanced Processing], it generates related questions and summaries. In [Q&A Splitting], it performs Q&A pair generation.
-* **Index Model**: Used for vectorization, which processes and organizes text data to build a quickly queryable data structure.
+* **File Processing Model**: Used for **Enhanced Processing** and **Q&A Splitting** during data ingestion. Enhanced Processing generates related questions and summaries; Q&A Splitting generates question-answer pairs.
+* **Index Model**: Used for vectorization — it processes and organizes text data into a structure optimized for fast retrieval.
 
-## Dataset supports importing Excel-type files
+## Does the Knowledge Base support Excel files?
 
-xlsx and others can be uploaded, not just CSV.
+Yes. You can upload xlsx and other spreadsheet formats, not just CSV.
 
-## How are dataset tokens calculated?
+## How are Knowledge Base tokens calculated?
 
-Uniformly calculated according to GPT-3.5 standards.
+All token counts use the GPT-3.5 tokenizer as the standard.
 
-## After accidentally deleting the rerank model, how to add the rerank model back to FastGPT?
+## I accidentally deleted the rerank model. How do I add it back?
 
 ![](/imgs/dataset3.png)
 
-After configuring in the config.json file, you can select the rerank model.
+Add the rerank model configuration in your `config.json` file, then you'll be able to select it again.
 
-## If I create apps and datasets on the online platform, will the data be cleared if I don't renew shortly after expiration?
+## If I created apps and Knowledge Bases on the cloud platform, will my data be deleted if I don't renew right away?
 
-The free version clears the dataset after 30 days of no login, but apps won't be affected. Other paid plans automatically switch to the free version after expiration.
+On the free plan, Knowledge Base data is cleared after 30 days of inactivity (no login). Apps are not affected. Paid plans automatically downgrade to the free plan upon expiration.
 ![](/imgs/dataset4.png)
 
-## Based on dataset queries, but there are too many relevant answers. AI stops responding halfway through.
+## The AI stops responding mid-answer when there are too many relevant Knowledge Base results.
 
-FastGPT response length calculation formula:
+FastGPT calculates the maximum response length as:
 
-Max response = min(configured max response (built-in limit), max context (sum of input and output) - history)
+Max Response = min(Configured Max Response, Max Context Window - History)
 
-18K model -> sum of input and output
+For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
 
-Output increases -> input decreases
+To fix this:
 
-So you can:
+1. Check your configured max response (response limit) setting.
+2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
 
-1. Check the configured max response (response limit)
-2. Reduce input to increase output, i.e., reduce history, which in workflows is "chat history"
-
-Configured max response:
+Where to find the max response setting:
 
 ![](/imgs/dataset1.png)
 
 ![](/imgs/dataset2.png)
 
-Additionally, when deploying privately, when configuring model parameters in the backend, you can reserve some space when configuring max context. For example, for a 128000 model, you can configure only 120000, and the remaining space will be allocated to output later.
+For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
 
 
-## Limited by model context, sometimes can't reach the number of chat history rounds. Too many consecutive conversation words will cause a context insufficient error.
+## I'm hitting context limit errors before reaching the configured number of chat history turns.
 
-FastGPT response length calculation formula:
+FastGPT calculates the maximum response length as:
 
-Max response = min(configured max response (built-in limit), max context (sum of input and output) - history)
+Max Response = min(Configured Max Response, Max Context Window - History)
 
-18K model -> sum of input and output
+For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
 
-Output increases -> input decreases
+To fix this:
 
-So you can:
+1. Check your configured max response (response limit) setting.
+2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
 
-1. Check the configured max response (response limit)
-2. Reduce input to increase output, i.e., reduce history, which in workflows is "chat history"
-
-Configured max response:
+Where to find the max response setting:
 
 ![](/imgs/dataset1.png)
 
 ![](/imgs/dataset2.png)
 
-Additionally, when deploying privately, when configuring model parameters in the backend, you can reserve some space when configuring max context. For example, for a 128000 model, you can configure only 120000, and the remaining space will be allocated to output later.
+For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.

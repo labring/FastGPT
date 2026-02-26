@@ -3,27 +3,27 @@ title: Configuration File Guide
 description: FastGPT configuration parameters explained
 ---
 
-Since environment variables aren't ideal for complex configurations, newer versions of FastGPT use ConfigMap-style mounted configuration files. You can find the default configuration at `projects/app/data/config.json`. See the [Docker Compose quick deployment guide](/docs/introduction/development/docker/) for instructions on mounting the config file.
+Since environment variables aren't ideal for complex configurations, newer versions of FastGPT use ConfigMap-style mounted configuration files. You can find the default config at `projects/app/data/config.json`. See the [Docker Compose deployment guide](/docs/introduction/development/docker/) for how to mount the config file.
 
-**In development environments**, you need to copy the example config file `config.json` to `config.local.json` for it to take effect.
+**In development**, copy the example config `config.json` to `config.local.json` for it to take effect.
 
-The configuration file below includes system parameters and model configurations:
+The example below includes system parameters and model configurations:
 
-## Configuration File Example (v4.8.20+)
+## Config File Example (v4.8.20+)
 
 > Starting from v4.8.20, models are configured through the UI.
 
 ```json
 {
   "feConfigs": {
-    "lafEnv": "https://laf.dev" // Laf environment. Use https://laf.run (Hangzhou Alibaba Cloud) or your private Laf instance. For Laf OpenAPI features, you need the latest version of Laf.
+    "lafEnv": "https://laf.dev" // Laf environment. Use https://laf.run (Hangzhou Alibaba Cloud) or your private Laf instance. Laf OpenAPI requires the latest version of Laf.
   },
   "systemEnv": {
     "vectorMaxProcess": 15, // Vector processing thread count
     "qaMaxProcess": 15, // Q&A splitting thread count
     "vlmMaxProcess": 15, // Vision-language model max processing threads
-    "tokenWorkers": 50, // Token calculation worker count. Keeps memory occupied, don't set too high.
-    "hnswEfSearch": 100, // Vector search parameter, only affects PG and OB. Higher = more accurate but slower. 100 gives 99%+ accuracy.
+    "tokenWorkers": 50, // Token calculation worker count — keeps memory occupied, don't set too high
+    "hnswEfSearch": 100, // Vector search parameter (PG and OB only). Higher = more accurate but slower. 100 gives 99%+ accuracy.
     "customPdfParse": {
       // Added in v4.9.0
       "url": "", // Custom PDF parsing service URL
@@ -37,7 +37,7 @@ The configuration file below includes system parameters and model configurations
 
 ## Custom PDF Parsing Configuration
 
-Custom PDF parsing services take priority over Doc2x. If you're using Doc2x, don't configure a custom PDF service.
+Custom PDF parsing takes priority over Doc2x. If you're using Doc2x, don't configure a custom PDF service.
 
 ### Using Sealos PDF Parsing Service
 
@@ -47,12 +47,12 @@ Custom PDF parsing services take priority over Doc2x. If you're using Doc2x, don
 
 #### 2. Update FastGPT Configuration
 
-Set `systemEnv.customPdfParse.url` to `https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf`  
-Set `systemEnv.customPdfParse.key` to the API key you got from Sealos AI Proxy.
+Set `systemEnv.customPdfParse.url` to `https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf`
+Set `systemEnv.customPdfParse.key` to the API key from Sealos AI Proxy.
 
-### Using Doc2x to Parse PDF Files
+### Using Doc2x for PDF Parsing
 
-`Doc2x` is a professional PDF parsing service based in China.
+`Doc2x` is a professional PDF parsing service.
 
 #### 1. Sign Up for Doc2x
 
@@ -60,14 +60,14 @@ Set `systemEnv.customPdfParse.key` to the API key you got from Sealos AI Proxy.
 
 #### 2. Update FastGPT Configuration
 
-**Community Edition users:** Add `systemEnv.customPdfParse.doc2xKey` to your `config.json` file with the API key you received, then restart the service.
+Community Edition users: add `systemEnv.customPdfParse.doc2xKey` to your `config.json` with the API key, then restart the service.
 
-**Commercial Edition users:** Fill in the Doc2x service key in the Admin dashboard following the form instructions.
+Commercial Edition users: fill in the Doc2x service key in the Admin dashboard following the form instructions.
 
 #### 3. Start Using It
 
-When importing data to your knowledge base or configuring file uploads in your app, check the `Enhanced PDF Parsing` option. PDFs will then be parsed using the Doc2x service.
+When importing data to your knowledge base or configuring file uploads in your app, check `Enhanced PDF Parsing`. PDFs will then be parsed using the Doc2x service.
 
-### Using Marker to Parse PDF Files
+### Using Marker for PDF Parsing
 
 [View the Marker integration tutorial](/docs/introduction/development/custom-models/marker)

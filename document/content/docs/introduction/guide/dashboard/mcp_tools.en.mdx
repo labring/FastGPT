@@ -1,50 +1,51 @@
 ---
 title: MCP Tools
-description: Quick guide to integrating MCP tools into FastGPT
+description: A quick guide to integrating MCP tools with FastGPT
 ---
 
-Starting from FastGPT v4.9.6, a new application type called MCP Tools has been added. It allows you to input an MCP SSE URL to batch create MCP tools that models can easily call. Let's see how to create MCP tools and have AI call them.
+Starting from FastGPT v4.9.6, a new application type called MCP Tools has been added. It lets you provide an MCP SSE URL to batch-create tools that models can easily call. Here's how to create MCP tools and have AI use them.
 
 ## Create an MCP Tools Collection
 
-First, select to create a new MCP Tools collection. Using Amap (Gaode Maps) MCP Server as an example, [Amap MCP Server](https://lbs.amap.com/api/mcp-server/create-project-and-key)
+First, select "New MCP Tools Collection." We'll use the Amap (Gaode Maps) MCP Server as an example: [Amap MCP Server](https://lbs.amap.com/api/mcp-server/create-project-and-key)
 
-You need to obtain an MCP address, e.g., https://mcp.amap.com/sse?key=xxx
+You'll need an MCP URL, e.g., https://mcp.amap.com/sse?key=xxx
 
 ![Create MCP tools](/imgs/mcp_tools1.png)
 
-Then fill it into the corresponding position in the popup and click parse. It will parse out a series of corresponding tools.
+Enter the URL in the dialog and click Parse. The system will discover and list the available tools.
 
-Click create to easily create MCP tools and MCP tools collection.
+Click Create to finish setting up the MCP tools and collection.
 
 ## Test MCP Tools
 
-Enter the MCP tools collection to debug each individual MCP tool.
+Inside the MCP Tools collection, you can debug each tool individually.
 
 ![Test MCP tools](/imgs/mcp_tools3.png)
 
-Taking maps_weather (weather query tool) as an example, click run to see the specific weather for Hangzhou.
+For example, select the maps_weather tool and click Run to see the weather data for Hangzhou.
 
-## Model Calling Tools
+
+## AI Calling Tools
 
 ### Call Individual Tools
 
 ![Call individual tools](/imgs/mcp_tools4.png)
 
-Using maps_weather and maps_text_search as examples, ask AI two questions. You can see AI intelligently calls the corresponding tools to get needed information, then answers based on that information.
+Using maps_weather and maps_text_search as examples, ask the AI two different questions. The AI intelligently selects the appropriate tool, retrieves the needed information, and responds based on the results.
 
 | | |
 |---|---|
 | ![](/imgs/mcp_tools5.png) | ![](/imgs/mcp_tools6.png) |
 
-### Call Tools Collection
+### Call an Entire Tools Collection
 
-FastGPT also supports calling entire MCP tools collections. AI automatically selects needed tools to execute.
+FastGPT also supports calling an entire MCP Tools collection. The AI automatically picks the right tool to execute.
 
-Click MCP tools collection to add a tools collection type node, connected using the tool calling node.
+Click the MCP Tools collection to add a collection-type node, then connect it using the Tool Calling node.
 
 | | |
 |---|---|
 | ![](/imgs/mcp_tools7.png) | ![](/imgs/mcp_tools8.png) |
 
-You can see AI similarly intelligently calls corresponding tools, gets needed information, then answers based on that information.
+The AI similarly selects the appropriate tool, retrieves the needed information, and responds based on the results.

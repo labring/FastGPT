@@ -1,14 +1,14 @@
 ---
 title: External Channel Integration
-description: How to integrate FastGPT with external channels to support multiple platforms
+description: How to integrate FastGPT with external channels and platforms
 ---
 
-1. ### When integrating with CoW, image-text conversations cannot directly display images
+1. ### Images don't display inline when using CoW for image-text conversations
 
-Guide with prompts not to output in markdown format. Images require custom development in CoW to extract image links and send them.
+Use prompts to instruct the model not to output in Markdown format. To display images directly, you'll need to customize CoW to extract image URLs and send them as native image messages.
 
-1. ### Can I get records of user Q&A?
+1. ### Can I access user Q&A records?
 
-You can view them in the app's conversation logs.
+Yes — check the conversation logs in your app.
 
 ![](/imgs/integration1.png)

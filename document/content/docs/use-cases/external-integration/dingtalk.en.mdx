@@ -1,54 +1,55 @@
 ---
-title: DingTalk Bot Integration Tutorial
+title: DingTalk Bot Integration
 description: FastGPT DingTalk Bot Integration Tutorial
 ---
 
-Starting from version 4.8.16, FastGPT commercial version supports direct integration with DingTalk bots without additional APIs.
+Starting from version 4.8.16, FastGPT commercial edition supports direct DingTalk bot integration without additional APIs.
 
-## 1. Create DingTalk Enterprise Internal App
+## 1. Create a DingTalk Internal Enterprise App
 
-1. Create an enterprise internal app in the [DingTalk Developer Console](https://open-dev.dingtalk.com/fe/app).
+1. Create an internal enterprise app in the [DingTalk Developer Console](https://open-dev.dingtalk.com/fe/app).
 
 ![Image 1](/imgs/dingtalk-bot-1.png)
 
-2. Get the **Client ID** and **Client Secret**.
+2. Obtain the **Client ID** and **Client Secret**.
 
 ![Image 2](/imgs/dingtalk-bot-2.png)
 
-## 2. Add Publishing Channel to FastGPT
+## 2. Add a Publishing Channel in FastGPT
 
-In FastGPT, select the app you want to integrate. On the **Publishing Channels** page, create a new publishing channel for DingTalk bot integration.
+In FastGPT, select the app you want to integrate. On the **Publishing Channels** page, create a new DingTalk bot publishing channel.
 
-Fill in the **Client ID** and **Client Secret** obtained earlier into the configuration dialog.
+Enter the **Client ID** and **Client Secret** obtained earlier into the configuration dialog.
 
 ![Image 3](/imgs/dingtalk-bot-3.png)
 
 After creation, click the **Request URL** button and copy the callback address.
 
-## 3. Add **Bot** App Capability
+## 3. Add **Bot** Capability to the App
 
-In the DingTalk Developer Console, click **Add App Capability** on the left, and add the **Bot** app capability to the enterprise internal app you just created.
+In the DingTalk Developer Console, click **Add App Capability** on the left sidebar, and add the **Bot** capability to the internal enterprise app you just created.
 
 ![Image 4](/imgs/dingtalk-bot-4.png)
 
 ## 4. Configure Bot Callback Address
 
-Click the **Bot** app capability on the left, then set the **Message Receiving Mode** at the bottom to **HTTP Mode**, and fill in the FastGPT callback address copied earlier as the message receiving address.
+Click the **Bot** capability on the left sidebar, then set the **Message Receiving Mode** at the bottom to **HTTP Mode**, and paste the FastGPT callback address you copied earlier as the message receiving address.
 
 ![Image 5](/imgs/dingtalk-bot-5.png)
 
 After debugging, click **Publish**.
 
-## 5. Publish App
+## 5. Publish the App
+
 After the bot is published, you still need to publish the app version on the **Version Management and Publishing** page.
 
 ![Image 6](/imgs/dingtalk-bot-6.png)
 
-After clicking **Create New Version**, set the version number and description, then click save to publish.
+Click **Create New Version**, set the version number and description, then click save to publish.
 
 ![Image 7](/imgs/dingtalk-bot-7.png)
 
-After the app is published, you can use the bot in your DingTalk enterprise. You can chat with the bot privately, or add the bot to a group and `@mention the bot` to trigger a conversation.
+Once the app is published, you can use the bot within your DingTalk enterprise. You can chat with the bot privately, or add the bot to a group and `@mention the bot` to start a conversation.
 
 ![Image 8](/imgs/dingtalk-bot-8.png)
 
@@ -57,4 +58,4 @@ After the app is published, you can use the bot in your DingTalk enterprise. You
 
 ### How to start a new chat history
 
-If you want to reset your chat history, you can send a `Reset` message to the bot (case-sensitive), and the bot will start a new chat history.
+To reset your chat history, send a `Reset` message to the bot (case-sensitive), and the bot will start a new chat history.

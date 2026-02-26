@@ -1,131 +1,134 @@
 ---
-title: Knowledge Base Search Solutions and Parameters
-description: This section details FastGPT's knowledge base structure design, understanding its QA storage format and multi-vector mapping for better knowledge base construction. It also introduces each search parameter's functionality. This introduction focuses mainly on usage, with limited detailed principles.
+title: Knowledge Base Search Methods and Parameters
+description:
+  This section covers FastGPT's knowledge base architecture, including its QA
+  storage format and multi-vector mapping, to help you build better knowledge bases. It also explains each search parameter. This guide focuses on practical usage rather than in-depth theory.
 ---
 
 ## Understanding Vectors
 
-FastGPT uses the Embedding approach from RAG to build knowledge bases. To use FastGPT effectively, you need a basic understanding of how `Embedding` vectors work and their characteristics.
+FastGPT uses an Embedding-based RAG approach for its knowledge base. To use FastGPT effectively, you need a basic understanding of how `Embedding` vectors work and their characteristics.
 
-Human text, images, videos, and other media cannot be directly understood by computers. To make computers understand whether two pieces of text are similar or related, they typically need to be converted into computer-understandable language. Vectors are one such method.
+Human text, images, videos, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
 
-Vectors can be simply understood as number arrays. The `distance` between two vectors can be calculated through mathematical formulas — the smaller the distance, the greater the similarity between the two vectors. This maps to text, images, videos, and other media to judge similarity between two media. Vector search leverages this principle.
+A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, videos, and other media to measure similarity between them. Vector search leverages this principle.
 
-Since text has many types and thousands of combination methods, it's difficult to guarantee precision when converting to vectors for similarity matching. In vector-based knowledge bases, the `topk` recall method is typically used — finding the top `k` most similar contents and passing them to large models for further `semantic judgment`, `logical reasoning`, and `summarization`, thus achieving knowledge base Q&A. Therefore, vector search is the most important step in knowledge base Q&A.
+Since text comes in many types with countless combinations, exact matching is hard to guarantee when converting to vectors for similarity comparison. In vector-based knowledge bases, a `top-k` recall approach is typically used — finding the top `k` most similar results and passing them to an LLM for further `semantic evaluation`, `logical reasoning`, and `summarization`, enabling knowledge base Q&A. This makes vector search the most critical step in the process.
 
-Many factors affect vector search accuracy, mainly including: vector model quality, data quality (length, completeness, diversity), and retriever precision (trade-off between speed and accuracy). Corresponding to data quality is search term quality.
+Many factors affect vector search accuracy, including: vector model quality, data quality (length, completeness, diversity), and retriever precision (the speed vs. accuracy tradeoff). Search query quality is equally important.
 
-Retriever precision is relatively easy to solve, vector model training is slightly complex, so data and search term quality optimization becomes an important step.
+Retriever precision is relatively straightforward to address, and training vector models is more complex, so optimizing data and query quality becomes a key focus.
 
-### Methods to Improve Vector Search Accuracy
 
-1. Better word/sentence segmentation: When a passage's structure and semantics are complete and singular, accuracy improves
-2. Streamline `index` content, reduce vector content length: When `index` content is less and more accurate, retrieval accuracy naturally improves
-3. Enrich `index` quantity: Add multiple `index` groups for the same `chunk` content
-4. Optimize search terms: In actual use, user questions are usually vague or incomplete. Optimizing user questions (search terms) can greatly improve accuracy
-5. Fine-tune vector models: Since directly used vector models are general-purpose models with low retrieval accuracy in specific domains, fine-tuning vector models can greatly improve retrieval effectiveness in professional domains
+### Improving Vector Search Accuracy
 
-## FastGPT Knowledge Base Construction Solution
+1. Better tokenization and chunking: When a text segment has complete and singular structure and semantics, accuracy improves. Many systems optimize their tokenizers to preserve data completeness.
+2. Streamline `index` content by reducing vector content length: Shorter, more precise `index` content improves search accuracy, though it may narrow the search scope. Best suited for scenarios requiring strict answers.
+3. Increase `index` quantity: Add multiple `index` entries for the same `chunk` to improve recall.
+4. Optimize search queries: In practice, user questions are often vague or incomplete. Refining the query (search term) can significantly improve accuracy.
+5. Fine-tune vector models: Off-the-shelf vector models are general-purpose and may underperform in specific domains. Fine-tuning can greatly improve domain-specific search results.
+
+## FastGPT Knowledge Base Architecture
 
 ### Data Storage Structure
 
-In FastGPT, the entire knowledge base consists of 3 parts: library, collection, and data. Collections can be simply understood as `files`. A `library` can contain multiple `collections`, and a `collection` can contain multiple `data` groups. The minimum search unit is `library` — when searching the knowledge base, the entire `library` is searched, while collections are only for data classification management and unrelated to search effectiveness.
+In FastGPT, a knowledge base consists of three parts: libraries, collections, and data entries. A collection can be thought of as a "file." A library can contain multiple collections, and a collection can contain multiple data entries. The smallest searchable unit is the library — searches span the entire library. Collections are only for organizing and managing data and do not affect search results (at least for now).
 
 ![](/imgs/dataset_tree.png)
 
 ### Vector Storage Structure
 
-FastGPT uses `PostgreSQL`'s `PG Vector` plugin as the vector retriever, with `HNSW` indexing. `PostgreSQL` is only used for vector retrieval (this engine can be replaced with other databases), while `MongoDB` is used for other data storage.
+FastGPT uses `PostgreSQL`'s `PG Vector` extension as the vector retriever, with `HNSW` indexing. `PostgreSQL` is used solely for vector search (this engine can be swapped for other databases), while `MongoDB` handles all other data storage.
 
-In `MongoDB`'s `dataset.datas` table, vector raw data information is stored, with an `indexes` field recording corresponding vector IDs. This is an array, meaning one data group can correspond to multiple vectors.
+In `MongoDB`'s `dataset.datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors.
 
-In `PostgreSQL` tables, a `vector` field stores vectors. During retrieval, vectors are recalled first, then based on vector IDs, raw data content is found in `MongoDB`. If corresponding to the same raw data group, they're merged, with the highest vector score taken.
+In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
 
 ![](/imgs/datasetSetting1.png)
 
-### Purpose and Usage of Multi-vectors
+### Purpose and Usage of Multi-Vector Mapping
 
-In a vector group, content length and semantic richness are usually contradictory and cannot be achieved simultaneously. Therefore, FastGPT uses multi-vector mapping to map one data group to multiple vector groups, ensuring data completeness and semantic richness.
+In a single vector, content length and semantic richness are often at odds. FastGPT uses multi-vector mapping to map a single data entry to multiple vectors, preserving both data completeness and semantic richness.
 
-You can add multiple vector groups for a longer text, so during retrieval, as long as one vector group is retrieved, that data will be recalled.
+You can add multiple vectors to a longer text so that if any one vector is matched during search, the entire data entry is recalled.
 
-This means you can continuously improve data block accuracy by annotating data blocks.
+This means you can continuously improve data chunk accuracy through annotation.
 
-### Retrieval Solution
+### Search Pipeline
 
-1. Achieve coreference resolution and question expansion through `question optimization`, increasing continuous dialogue retrieval capability and semantic richness
-2. Increase `Rerank` continuous dialogue ranking accuracy through `Concat query`
-3. Comprehensively merge multi-channel retrieval effects through `RRF` merging
-4. Secondary sorting through `Rerank` to improve accuracy
+1. Use `Query Optimization` for coreference resolution and query expansion, improving multi-turn conversation search capability and semantic richness.
+2. Use `Concat Query` to improve `Rerank` accuracy during multi-turn conversations.
+3. Use `RRF` (Reciprocal Rank Fusion) to merge results from multiple search channels.
+4. Use `Rerank` for secondary sorting to improve precision.
 
 ![](/imgs/dataset_search_process.png)
 
-## Search Parameters
 
+## Search Parameters
 | | | |
 | --- |---| --- |
 |![](/imgs/dataset_search_params1.png)| ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
 
-### Search Mode
+### Search Modes
 
-#### Semantic Retrieval
+#### Semantic Search
 
-Semantic retrieval calculates the distance between user questions and knowledge base content through vector distance, deriving "similarity" — though this isn't linguistic similarity, but mathematical.
+Semantic search calculates the vector distance between the user's query and knowledge base content to determine "similarity" — mathematical similarity, not linguistic.
 
-Advantages:
-- Similar semantic understanding
-- Cross-language understanding (e.g., matching English knowledge points with Chinese questions)
+Pros:
+- Understands similar semantics
+- Cross-language understanding (e.g., Chinese query matching English content)
 - Multimodal understanding (text, images, audio/video, etc.)
 
-Disadvantages:
-- Depends on model training effectiveness
-- Unstable accuracy
+Cons:
+- Depends on model training quality
+- Inconsistent accuracy
 - Affected by keywords and sentence completeness
 
-#### Full-text Retrieval
+#### Full-Text Search
 
-Uses traditional full-text retrieval methods. Suitable for finding key subjects and predicates.
+Uses traditional full-text search. Best for finding key subjects, predicates, and other specific terms.
 
-#### Hybrid Retrieval
+#### Hybrid Search
 
-Uses both vector retrieval and full-text retrieval simultaneously, merging two search results through RRF formula. Generally, search results are more comprehensive and accurate.
+Combines vector search and full-text search, merging results using the RRF formula. Generally produces richer and more accurate results.
 
-Since hybrid retrieval has a large search range and cannot directly filter by similarity, reranking models are typically used to re-sort results and filter using reranking scores.
+Since hybrid search covers a large range and cannot directly filter by similarity, a rerank model is typically used to re-sort results and filter by rerank scores.
 
 #### Result Reranking
 
-Uses `ReRank` models to rerank search results. In most cases, this effectively improves search result accuracy. However, reranking models have some relationship with question completeness (complete subject-predicate). Usually, question optimization is performed first before search-reranking. After reranking, a `0-1` score is obtained, representing search content relevance to the question. This score is usually more precise than vector scores and can be used for filtering.
+Uses a `ReRank` model to re-sort search results. In most cases, this significantly improves accuracy. Rerank models work better with complete questions (with proper subjects and predicates), so query optimization is usually applied before search and reranking. Reranking produces a score between `0-1` representing the relevance between the search content and the query — this score is typically more accurate than vector similarity scores and can be used for filtering.
 
-FastGPT uses `RRF` to merge reranking results, vector search results, and full-text retrieval results to get final search results.
+FastGPT uses `RRF` to merge rerank results, vector search results, and full-text search results into the final output.
 
-### Search Filtering
+### Search Filters
 
 #### Reference Limit
 
-Each search references at most `n` `tokens` of content.
+The maximum number of `tokens` to reference per search.
 
-Instead of using `top k`, this approach was adopted because in hybrid knowledge bases (Q&A library, document library), different `chunk` lengths vary greatly, causing unstable `top k` results. Therefore, the `tokens` method is used for reference limit control.
+Instead of using `top k`, we found that in mixed knowledge bases (Q&A + document), different `chunk` lengths vary significantly, making `top k` results unstable. Using a `token` limit provides more consistent control.
 
 #### Minimum Relevance
 
-A `0-1` value that filters out low-relevance search results.
+A value between `0-1` that filters out low-relevance search results.
 
-This value only takes effect in `semantic retrieval` or when using `result reranking`.
+This only takes effect when using `Semantic Search` or `Result Reranking`.
 
-### Question Optimization
+### Query Optimization
 
 #### Background
 
-In RAG, we need to perform embedding searches in the database based on input questions to find relevant content (knowledge base search).
+In RAG, we need to perform embedding searches against the database based on the input query to find similar content (i.e., knowledge base search).
 
-During search, especially in continuous dialogue search, we often find subsequent questions difficult to search for appropriate content. One reason is that knowledge base search only uses the "current" question. See the example below:
+During search — especially in multi-turn conversations — follow-up questions often fail to find relevant content because knowledge base search only uses the "current" question. Consider this example:
 
 ![](/imgs/coreferenceResolution2.webp)
 
-When the user asks "What is the second point?", it only searches the knowledge base for "What is the second point?" and finds nothing. What actually needs to be queried is "What is the QA structure?". Therefore, we need a [Question Optimization] module to complete the user's current question, enabling knowledge base search to find appropriate content. After using completion, the effect is:
+When the user asks "What's the second point?", the system searches for "What's the second point?" in the knowledge base, which returns nothing useful. The actual query should be "What is the QA structure?". This is why we need a Query Optimization module to complete the user's current question, enabling the knowledge base search to find relevant content. Here's the result after optimization:
 
 ![](/imgs/coreferenceResolution3.webp)
 
-#### Implementation
+#### How It Works
 
-Before `data retrieval`, the model first performs `coreference resolution` and `question expansion`. This solves unclear reference object problems while expanding question semantic richness. You can view completion results through conversation details after each dialogue.
+Before performing `data retrieval`, the model first performs `coreference resolution` and `query expansion`. This resolves ambiguous references and enriches the query's semantic content. You can view the optimized query in the conversation details after each interaction.

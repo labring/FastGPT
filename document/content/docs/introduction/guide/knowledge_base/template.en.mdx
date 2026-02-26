@@ -1,42 +1,42 @@
 ---
 title: Template Import
-description: FastGPT template import feature introduction and usage
+description: Introduction and usage of the FastGPT template import feature
 ---
 
 ## Background
 
-FastGPT provides a template import feature that allows users to batch import Q&A pair data through preset CSV template formats. This method is particularly suitable for users who already have structured Q&A data and can quickly import data into the knowledge base.
+FastGPT provides a template import feature that lets you batch-import Q&A pair data using a predefined CSV template format. This is especially useful if you already have structured Q&A data and want to quickly load it into a knowledge base.
 
-## Template Structure Description
+## Template Structure
 
-The template uses CSV format and includes the following columns:
+The template uses CSV format with the following columns:
 
-- q: Question column, stores questions users might ask
-- a: Answer column, stores standard answers to corresponding questions
-- indexes: Index column, stores indexes related to the question
+- q: Question column — stores questions users might ask
+- a: Answer column — stores the corresponding answers
+- indexes: Index column — stores related indexes for the question
 
-### Sample Data
+### Example Data
 
 ```csv
 q,a,indexes
-"Who are you?","I'm an AI assistant, always ready to chat with you, answer your questions, whether it's knowledge discussions in learning, small questions in life, or creative inspiration collisions. I can participate and use my 'knowledge brain' to provide help and companionship, hoping to become your good partner for interactive communication and exploring the world.","1. What are you?\n2. What can you do?\n3. What questions can you answer?\n4. What kind of partner do you hope to be?\n5. How do you provide help?"
-"What are you?","I'm an AI assistant, always ready to chat with users, answer questions, participate in knowledge discussions in learning, small questions in life, and creative inspiration collisions, using my 'knowledge brain' to provide help and companionship, hoping to become a good partner for users' interactive communication and exploring the world.","What are you?"
-"What can you do?","I can chat with users, answer questions, participate in knowledge discussions in learning, small questions in life, and creative inspiration collisions, using my 'knowledge brain' to provide help and companionship.","What can you do?"
+"Who are you?","I'm an AI assistant, always here to chat with you, answer your questions, discuss topics, address everyday queries, or brainstorm creative ideas. I do my best to help using my 'knowledge brain' — I hope to be your go-to partner for exploring and learning!","1. What are you?\n2. What can you do?\n3. What kinds of questions can you answer?\n4. What kind of partner do you want to be?\n5. How do you provide help?"
+"What are you?","I'm an AI assistant, always ready to chat with users and answer their questions. I can participate in knowledge discussions, address everyday queries, and brainstorm creative ideas, providing help and companionship through my 'knowledge brain'. I hope to be a great partner for interaction and exploration.","What are you?"
+"What can you do?","I can chat with users, answer questions, participate in knowledge discussions, address everyday queries, and brainstorm creative ideas, providing help and companionship through my 'knowledge brain'.","What can you do?"
 ```
 
 ## Usage Instructions
 
-### 1. Open knowledge base, click import, select template import
+### 1. Open the Knowledge Base, Click Import, and Select Template Import
 
 ![](/imgs/template/import.png)
 
 ![](/imgs/template/box.png)
 
-### 2. Download template
+### 2. Download the Template
 
-Click to download CSV template, which contains two mode contents
+Click to download the CSV template. It contains two content modes:
 
-#### Regular mode data template
+#### Standard Mode Template
 
 ![](/imgs/template/nomal.png)
 
@@ -44,9 +44,9 @@ Corresponding CSV format:
 
 ![](/imgs/template/nomal_data.png)
 
-In regular mode, q is content, a is empty, indexes can be multiple
+In standard mode, q is the content, a is empty, and indexes can have multiple entries.
 
-#### Q&A pair data template
+#### Q&A Pair Mode Template
 
 ![](/imgs/template/Question-answer.png)
 
@@ -54,60 +54,60 @@ Corresponding CSV format:
 
 ![](/imgs/template/Question-answer_data.png)
 
-In Q&A pair mode, q is question, a is answer, indexes is the index part
+In Q&A pair mode, q is the question, a is the answer, and indexes are the index entries.
 
-### 3. Fill in data
+### 3. Fill in Your Data
 
-Fill in your Q&A data according to template format:
-- Each row represents one content or one Q&A pair
-- Question (q) is always non-empty
-- Within a row, index parts can continue to be added
+Fill in your Q&A data following the template format:
+- Each row represents one content entry or one Q&A pair
+- The question (q) must never be empty
+- Within a row, you can add more index entries by extending columns to the right
 
-### 4. Import limitations
+### 4. Import Limits
 
-- Only supports CSV format files
-- Single file size limit is 100MB
-- Must strictly follow template format, otherwise import may fail
+- Only CSV format files are supported
+- Maximum file size is 100MB
+- Data must strictly follow the template format, otherwise import may fail
 - Only one file can be imported at a time
 
-After successful import:
+After a successful import:
 
 ![](/imgs/template/import_csv.png)
 
-### 4. Notes
+### 4. Important Notes
 
-- Ensure CSV file uses UTF-8 encoding
-- If content contains commas, wrap entire content in double quotes
-- Content in indexes column will be used as related question indexes, helping improve retrieval accuracy
-- Recommend testing with small amounts of data before importing large amounts
+- Ensure the CSV file uses UTF-8 encoding
+- If content contains commas, wrap the entire value in double quotes
+- The indexes column is used as search indexes for related questions, helping improve retrieval accuracy
+- We recommend testing with a small dataset before importing large amounts of data
 
 ## Best Practices
 
 1. **Data Preparation**
-   - Ensure quality of content or Q&A pairs, answers should be clear and accurate
-   - Add appropriate index keywords for each import
+   - Ensure content or Q&A pair quality — answers should be clear and accurate
+   - Add appropriate index keywords for each import entry
    - Avoid duplicate content or Q&A pairs
 
 2. **Format Check**
-   - Check CSV file format is correct before import
-   - Ensure no extra blank lines or spaces
-   - Verify special characters are correctly escaped
+   - Verify the CSV file format before importing
+   - Ensure there are no extra blank lines or spaces
+   - Verify that special characters are properly escaped
 
 3. **Batch Import**
-   - If data volume is large, recommend batch import
-   - Verify data correctness after each batch import
+   - For large datasets, import in batches
+   - Verify data correctness after each batch
 
 ## FAQ
 
 Q: Why did my file import fail?
-A: Please check the following:
-- Is file format CSV?
-- Is encoding UTF-8?
-- Did you strictly follow template format?
-- Does file size exceed limit?
+A: Check the following:
+- Is the file format CSV?
+- Is the encoding UTF-8?
+- Does the data strictly follow the template format?
+- Does the file exceed the size limit?
 
-Q: How to verify import success?
-A: After successful import, you can:
-- Search for imported questions in knowledge base
-- Test answer accuracy through dialogue
-- Check knowledge base data statistics
+Q: How do I verify a successful import?
+A: After a successful import, you can:
+- Search for imported questions in the knowledge base
+- Test answer accuracy through conversations
+- Check the knowledge base data statistics

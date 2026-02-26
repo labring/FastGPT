@@ -1,23 +1,23 @@
 ---
-title: Send Feishu Webhook Notifications
-description: Use the tool call module to send Feishu webhook notifications
+title: Send Lark Webhook Notifications
+description: Use the Tool Call module to send Lark webhook notifications
 ---
 
-This guide shows you how to send a simple Feishu webhook notification. You can apply the same approach to send other types of notifications.
+This article shows how to send a simple Lark webhook notification. The same approach applies to other types of notifications.
 
 |                       |                       |
 | --------------------- | --------------------- |
 | ![](/imgs/feishuwebhook1.webp) | ![](/imgs/feishuwebhook2.webp) |
 
-## 1. Set Up Your Feishu Bot
+## 1. Set Up the Lark Bot
 
 |                       |                       | |
 | --------------------- | --------------------- |--------------------- |
 | ![](/imgs/feishuwebhook3.png) | ![](/imgs/feishuwebhook4.webp) |![](/imgs/feishuwebhook5.png) |
 
-## 2. Import the Workflow Configuration
+## 2. Import Workflow Configuration
 
-Copy the configuration below, click the import button in the top-right corner of "Advanced Workflow", and paste it in. After importing, copy the webhook URL provided by Feishu into the "HTTP Module".
+Copy the configuration below, click the import button in the top-right corner of "Advanced Orchestration", and import it. After importing, paste the webhook URL provided by Lark into the "HTTP Request" module.
 
 <details>
 <summary>Workflow Configuration</summary>
@@ -76,7 +76,7 @@ Copy the configuration below, click the import button in the top-right corner of
     {
       "nodeId": "u6IAOEssxoZT",
       "name": "工具调用",
-      "intro": "通过AI模型自动选择一个或多个功能块进行调用,也可以对插件进行调用。",
+      "intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
       "avatar": "/imgs/workflow/tool.svg",
       "flowNodeType": "tools",
       "showStatus": true,
@@ -176,7 +176,7 @@ Copy the configuration below, click the import button in the top-right corner of
     {
       "nodeId": "fvY5hb0K646V",
       "name": "工具调用终止",
-      "intro": "该模块需配置工具调用使用。当该模块被执行时,本次工具调用将会强制结束,并且不再调用AI针对工具调用结果回答问题。",
+      "intro": "该模块需配置工具调用使用。当该模块被执行时，本次工具调用将会强制结束，并且不再调用AI针对工具调用结果回答问题。",
       "avatar": "/imgs/workflow/toolStop.svg",
       "flowNodeType": "stopTool",
       "position": {
@@ -300,7 +300,7 @@ Copy the configuration below, click the import button in the top-right corner of
           "id": "error",
           "key": "error",
           "label": "请求错误",
-          "description": "HTTP请求错误信息,成功时返回空",
+          "description": "HTTP请求错误信息，成功时返回空",
           "valueType": "object",
           "type": "static"
         },
@@ -318,7 +318,7 @@ Copy the configuration below, click the import button in the top-right corner of
     {
       "nodeId": "aGHGqH2oUupj",
       "name": "指定回复",
-      "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时,会转成字符串进行输出。",
+      "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
       "avatar": "/imgs/workflow/reply.png",
       "flowNodeType": "answerNode",
       "position": {
@@ -338,7 +338,7 @@ Copy the configuration below, click the import button in the top-right corner of
           "label": "core.module.input.label.Response content",
           "description": "core.module.input.description.Response content",
           "placeholder": "core.module.input.description.Response content",
-          "value": "嘻嘻,发送成功"
+          "value": "嘻嘻，发送成功"
         }
       ],
       "outputs": []
@@ -402,7 +402,7 @@ Copy the configuration below, click the import button in the top-right corner of
 
 ## 3. How It Works
 
-1. Attach an HTTP module to the tool call node with the description: "Call Feishu webhook to send a notification."
-2. In the HTTP module's input parameters, enter the Feishu bot's webhook URL and the notification content.
-3. Connect the HTTP module's output to a "Stop Tool" module to force-end the tool call. Without this, the result would be sent back to the model, causing it to generate another response and waste tokens.
-4. Also connect the HTTP module's output to a "Specified Reply" module to directly return a success message, replacing the AI's response.
+1. Attach an HTTP module to the Tool Call with the description: "Call Lark webhook to send a notification."
+2. In the HTTP module's input parameters, fill in the Lark bot's webhook URL and the notification content.
+3. Connect the HTTP module's output to a Tool Call Terminator to force-end the tool call. Without this, the result would be sent back to the model, which would generate another response — wasting tokens.
+4. Also connect the HTTP module's output to a Specified Reply to directly return a success message, replacing the AI's response.

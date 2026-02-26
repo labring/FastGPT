@@ -1,46 +1,46 @@
 ---
 title: Connect Models via PPIO LLM API
-description: Integrate models through PPIO LLM API
+description: Connect Models via PPIO LLM API
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-FastGPT can also integrate models through PPIO LLM API.
+FastGPT can also connect models through the PPIO LLM API.
 
 <Alert context="warning">
   The following content is adapted from [FastGPT Integration with PPIO LLM
   API](https://ppinfra.com/docs/third-party/fastgpt-use) and may not always be up to date.
 </Alert>
 
-FastGPT is a platform that simplifies the entire AI development, deployment, and usage workflow into visual operations. It allows developers to skip deep algorithm research and users to avoid complex technical knowledge, making AI technology accessible through a one-stop service.
+FastGPT is a platform that simplifies the entire AI development, deployment, and usage workflow into visual operations. Developers don't need to dive deep into algorithms, and users don't need to master complex technologies — it turns AI into an easy-to-use tool through a one-stop service.
 
-PPIO Cloud provides easy-to-use API interfaces that let developers easily call models like DeepSeek.
+PPIO Cloud provides simple and easy-to-use API interfaces that allow developers to easily call models like DeepSeek.
 
-- **For developers:** No need to restructure your architecture — 3 interfaces cover everything from text generation to decision reasoning. Design AI workflows like building blocks.
-- **For ecosystems:** Automatically adapts resource requirements from small apps to enterprise systems, letting intelligence grow naturally with your business.
+- For developers: No need to restructure your architecture. Complete integration for all scenarios from text generation to decision reasoning with just 3 interfaces — design AI workflows like building blocks.
+- For the ecosystem: Automatically adapts resource requirements from small applications to enterprise systems, letting intelligence grow naturally with your business.
 
-The tutorial below provides a complete integration guide (including key configuration) to help you quickly connect FastGPT with PPIO API.
+The tutorial below provides a complete integration guide (including key configuration) to help you quickly connect FastGPT with the PPIO API.
 
 ## 1. Prerequisites
 
 (1) Get the API endpoint
 
-Fixed URL: `https://api.ppinfra.com/v3/openai/chat/completions`
+Fixed at: `https://api.ppinfra.com/v3/openai/chat/completions`.
 
-(2) Get your **API Key**
+(2) Get the API Key
 
 Log in to the PPIO Cloud console [API Key Management](https://www.ppinfra.com/settings/key-management) page and click the create button.
-Register with invitation code **VOJL20** to get a ¥50 voucher.
+Use invitation code [VOJL20] when registering to receive a 50 yuan voucher.
 
 <img
   src="https://static.ppinfra.com/docs/image/llm/BKWqbzI5PoYG6qxwAPxcinQDnob.png"
   alt="Create API Key"
 />
 
-(3) Generate and save your **API Key**
+(3) Generate and save the API Key
 
 <Alert context="warning">
-  Keys are encrypted on the server. Save your key when it's generated — if you lose it, you'll need to delete and create a new one in the console.
+  Keys are stored encrypted on the server. Please save your key when it is generated. If lost, you can delete it and create a new one in the console.
 </Alert>
 
 <img
@@ -52,11 +52,12 @@ Register with invitation code **VOJL20** to get a ¥50 voucher.
   alt="Save API Key"
 />
 
-(4) Get the model ID you want to use
+(4) Get the model IDs you need
 
 DeepSeek series:
 
 - DeepSeek R1: deepseek/deepseek-r1/community
+
 - DeepSeek V3: deepseek/deepseek-v3/community
 
 For other model IDs, max context, and pricing, see: [Model List](https://ppinfra.com/model-api/pricing)
@@ -64,50 +65,41 @@ For other model IDs, max context, and pricing, see: [Model List](https://ppinfra
 ## 2. Deploy the Latest FastGPT to Your Local Environment
 
 <Alert context="warning">
-  Use version v4.8.22 or later. Deployment guide: [Deploy FastGPT](/docs/introduction/development/intro/)
+  Please use version v4.8.22 or above. Deployment reference: [Deploy FastGPT](/docs/introduction/development/intro/)
 </Alert>
 
-## 3. Model Configuration (Choose One Method)
+## 3. Model Configuration (Choose One of the Two Methods Below)
 
-**(1) Integrate PPIO Models via OneAPI**
+(1) Connect PPIO models via OneAPI: Refer to the OneAPI documentation to update FastGPT environment variables. After generating a token in One API, FastGPT can send requests to One API by modifying the baseurl and key, and One API will forward them to the appropriate models. Update these two environment variables (make sure to include v1; if on the same network, you can use the internal address):
 
-Refer to the OneAPI documentation and update FastGPT's environment variables.
+OPENAI_BASE_URL= http://OneAPI-IP:OneAPI-PORT/v1
 
-After generating a token in One API, FastGPT can request One API by modifying the baseurl and key, and One API will route to different models. Update these two environment variables:
+The key below is the token provided by One API: CHAT_API_KEY=sk-UyVQcpQWMU7ChTVl74B562C28e3c46Fe8f16E6D8AeF8736e
 
-```bash
-# Must include v1. If on the same network, you can use an internal address.
-OPENAI_BASE_URL=http://OneAPI-IP:OneAPI-PORT/v1
-
-# The key below is the token provided by One API
-CHAT_API_KEY=sk-UyVQcpQWMU7ChTVl74B562C28e3c46Fe8f16E6D8AeF8736e
-```
-
-- After updating, restart FastGPT and select PPIO Cloud in the model provider settings as shown below:
+- After restarting FastGPT, select PPIO Cloud in the model providers as shown below:
 
 <img
   src="https://static.ppinfra.com/docs/image/llm/Fvqzb3kTroys5Uxkjlzco7kwnsb.png"
   alt="Select PPIO Cloud"
 />
 
-- **Test connectivity**
-  Using DeepSeek as an example, select `deepseek/deepseek-r1/community` in the model list and click the test button (②) to test connectivity. A green success message confirms the connection is working and you can proceed with conversation configuration.
+- Test connectivity
+  Using DeepSeek as an example, select deepseek/deepseek-r1/community in the model list, click the position marked 2 in the image to test connectivity. A green success indicator confirms the connection is working and you can proceed with configuring conversations.
   <img
     src="https://static.ppinfra.com/docs/image/llm/FzKGbGsSPoX4Eexobj2cxcaTnib.png"
     alt="Test Connectivity"
   />
 
-**(2) Integrate PPIO Models Without OneAPI**
+(2) Connect PPIO models without OneAPI
 
-Select PPIO Cloud in the model provider settings as shown below:
+Select PPIO Cloud in the model providers as shown below:
 
 <img
   src="https://static.ppinfra.com/docs/image/llm/QbcdbPqRsoAmuyx2nlycQWFanrc.png"
   alt="Select PPIO Cloud"
 />
 
-- **Configure the model**
-  Enter the custom request URL: `https://api.ppinfra.com/v3/openai/chat/completions`
+- Configure the model: Enter `https://api.ppinfra.com/v3/openai/chat/completions` in the custom request URL field.
 
   <img
     src="https://static.ppinfra.com/docs/image/llm/ZVyAbDIaxo7ksAxLI3HcexYYnZf.png"
@@ -118,13 +110,13 @@ Select PPIO Cloud in the model provider settings as shown below:
     alt="Configure Model"
   />
 
-- **Test connectivity**
+- Test connectivity
   <img
     src="https://static.ppinfra.com/docs/image/llm/V1f0b89uloab9uxxj7IcKT0rn3e.png"
     alt="Test Connectivity"
   />
 
-A green success message confirms the connection is working and you can proceed with conversation configuration.
+A green success indicator confirms the connection is working and you can proceed with configuring conversations.
 
 ## 4. Configure Conversations
 
@@ -132,20 +124,16 @@ A green success message confirms the connection is working and you can proceed w
 
 <img
   src="https://static.ppinfra.com/docs/image/llm/ZaGpbBH6QoVubIx2TsLcwYEInfe.png"
-  alt="Create New Workspace"
+  alt="Create Workspace"
 />
-
 (2) Start chatting
-
 <img
   src="https://static.ppinfra.com/docs/image/llm/HzcTb4gobokVRQxTlU7cD5OunMf.png"
   alt="Start Chatting"
 />
 
-## PPIO's New Benefits Are Here 🔥
+## PPIO New User Benefits
 
-After successfully completing the tutorial configuration, you'll unlock two benefits:
-1. Enjoy the powerful combination of PPIO's high-speed channel and FastGPT's efficiency
-2. Activate the **"New User Referral Reward"** — invite friends with your exclusive code, and both you and your friend get ¥50 vouchers. Hardcore benefits to boost your AI tool efficiency!
+After completing the tutorial configuration steps, you'll unlock two benefits: 1. Enjoy the combination of PPIO's high-speed channel with FastGPT's capabilities; 2. Activate the "New User Referral Reward" — invite friends to register using your exclusive invitation code, and both you and your friend will receive a 50 yuan voucher to boost your AI tool efficiency!
 
-🎁 New user exclusive: Register now with invitation code **VOJL20** and get your ¥50 voucher instantly!
+New user exclusive: Register now with invitation code [VOJL20] and receive a 50 yuan voucher instantly!

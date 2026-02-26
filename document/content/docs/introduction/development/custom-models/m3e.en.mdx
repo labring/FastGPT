@@ -1,28 +1,28 @@
 ---
-title: Integrating M3E Vector Model
-description: Connect FastGPT to the private M3E vector model
+title: Integrating M3E Embedding Model
+description: Integrating the private M3E embedding model with FastGPT
 ---
 
-## Overview
+## Introduction
 
-FastGPT uses OpenAI's embedding vector model by default. For private deployment, you can replace it with the M3E vector model. M3E is a small model with low resource requirements — it can even run on CPU. This tutorial is based on an image provided by user "睡大觉".
+FastGPT uses OpenAI's embedding model by default. For private deployment, you can replace it with the M3E embedding model. M3E is a lightweight model with low resource requirements -- it can even run on CPU. The following tutorial is based on an image provided by community contributor "睡大觉".
 
 ## Deploy the Image
 
-Image name: `stawky/m3e-large-api:latest`  
-China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest`  
-Port: 6008  
+Image: `stawky/m3e-large-api:latest`
+China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest`
+Port: 6008
 Environment variables:
 
 ```
-# Set access token (channel key in OneAPI)
+# Set the security token (used as the channel key in OneAPI)
 Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
-Can also be set via environment variable: sk-key. For Docker environment variable setup, please refer to Docker tutorials.
+You can also set it via the environment variable: sk-key. Refer to Docker documentation for how to pass environment variables.
 ```
 
-## Integrate with One API
+## Connect to One API
 
-Add a channel with these parameters:
+Add a channel with the following parameters:
 
 ![](/imgs/model-m3e1.png)
 
@@ -36,15 +36,15 @@ curl --location --request POST 'https://domain/v1/embeddings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "m3e",
-  "input": ["laf是什么"]
+  "input": ["What is laf"]
 }'
 ```
 
-Authorization is sk-key. Model is the custom model name you just entered in One API.
+Set Authorization to your sk-key. The model field should match the custom model name you entered in One API.
 
 ## Integrate with FastGPT
 
-Update your config.json file — add M3E to vectorModels:
+Edit the config.json file and add the M3E model to `vectorModels`:
 
 ```json
 "vectorModels": [
@@ -57,7 +57,7 @@ Update your config.json file — add M3E to vectorModels:
     },
     {
       "model": "m3e",
-      "name": "M3E (Testing)",
+      "name": "M3E (for testing)",
       "price": 0.1,
       "defaultToken": 500,
       "maxToken": 1800
@@ -65,21 +65,21 @@ Update your config.json file — add M3E to vectorModels:
 ]
 ```
 
-## Using the Model
+## Usage
 
-1. Select the M3E model when creating a knowledge base.
+1. Select the M3E model when creating a Knowledge Base.
 
-   Note: Once selected, the vector model for the knowledge base cannot be changed.
+      Note: once selected, the embedding model for the Knowledge Base cannot be changed.
 
-   ![](/imgs/model-m3e2.png)
+      ![](/imgs/model-m3e2.png)
 
 2. Import data
 3. Test search
 
-   ![](/imgs/model-m3e3.png)
+      ![](/imgs/model-m3e3.png)
 
-4. Bind knowledge base to app
+4. Bind the Knowledge Base to an app
 
-   Note: Apps can only bind knowledge bases using the same vector model — no cross-model binding. Also, you'll need to adjust similarity thresholds, as different vector models have different similarity (distance) metrics. Test and experiment to find the right values.
+      Note: an app can only bind Knowledge Bases that use the same embedding model -- cross-model binding is not supported. You may also need to adjust the similarity threshold, as different embedding models produce different similarity (distance) scores. Test and tune accordingly.
 
-   ![](/imgs/model-m3e4.png)
+      ![](/imgs/model-m3e4.png)

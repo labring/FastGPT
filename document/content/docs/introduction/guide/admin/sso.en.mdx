@@ -1,49 +1,49 @@
 ---
 title: SSO & External Member Sync
-description: FastGPT external member system integration design and configuration
+description: FastGPT External Member System Integration and Configuration
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-If you don't need SSO/member sync functionality, or only need quick login with Github, Google, Microsoft, or WeChat Official Account, you can skip this chapter. This chapter is for users who need to integrate their own member systems or mainstream office IMs.
+If you don't need SSO or member sync, or only need quick login via GitHub, Google, Microsoft, or WeChat Official Account, you can skip this section. This guide is for users who need to integrate their own member systems or mainstream office IMs.
 
 ## Overview
 
-To easily integrate **external member systems**, FastGPT provides a set of **standard interfaces** for connecting to external systems, along with a FastGPT-SSO-Service image as an **adapter**.
+To simplify integration with **external member systems**, FastGPT provides a set of **standard interfaces** for connecting to external systems, along with a FastGPT-SSO-Service image that serves as an **adapter**.
 
-Through this standard interface set, you can achieve:
+Through these standard interfaces, you can:
 
-1. SSO login. After callback from an external system, create a user in FastGPT.
-2. Member and organizational structure synchronization (referred to as member sync below).
+1. SSO login. After a callback from an external system, create a user in FastGPT.
+2. Member and organizational structure sync (referred to as "member sync" below).
 
 **How It Works**
 
-FastGPT-pro has a standard set of SSO and member sync interfaces. The system performs SSO and member sync operations based on these interfaces.
+FastGPT-pro includes a standard set of SSO and member sync interfaces. The system performs SSO and member sync operations based on these interfaces.
 
-FastGPT-SSO-Service aggregates SSO and member sync interfaces from different sources and converts them into interfaces recognizable by fastgpt-pro.
+FastGPT-SSO-Service aggregates SSO and member sync interfaces from different sources and converts them into the format recognized by fastgpt-pro.
 
    ![](/imgs/sso2.png)
 
 ## System Configuration Tutorial
 
-### 1. Deploy SSO-service Image
+### 1. Deploy the SSO-Service Image
 
 Deploy using docker-compose:
 
 ```yaml
   fastgpt-sso:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0  # This version number must match the fastgpt image version
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0  # This version must match the FastGPT image version
     container_name: fastgpt-sso
     restart: always
     networks:
       - fastgpt
     environment:
       - SSO_PROVIDER=example
-      - AUTH_TOKEN=xxxxx # Authentication info, used by fastgpt-pro
-      # Provider-specific environment variables
+      - AUTH_TOKEN=xxxxx # Auth token, used by fastgpt-pro
+      # Provider-specific environment variables below
 ```
 
-Depending on the provider, you need to configure different environment variables. Below are the built-in generic protocols/IMs:
+Depending on the provider, you'll need different environment variables. Below are the built-in protocols/IMs:
 
 <table className="table-hover table-striped-columns">
   <thead>
@@ -55,12 +55,12 @@ Depending on the provider, you need to configure different environment variables
   </thead>
   <tbody>
     <tr>
-      <td>Feishu (Lark)</td>
+      <td>Lark</td>
       <td>Yes</td>
       <td>Yes</td>
     </tr>
     <tr>
-      <td>WeCom (Enterprise WeChat)</td>
+      <td>WeCom</td>
       <td>Yes</td>
       <td>Yes</td>
     </tr>
@@ -86,7 +86,7 @@ Depending on the provider, you need to configure different environment variables
 
 #### 1. Configure Environment Variables
 
-The `EXTERNAL_USER_SYSTEM_BASE_URL` in the environment variables is an internal network address. For example, in the above configuration, the environment variable should be set to:
+The `EXTERNAL_USER_SYSTEM_BASE_URL` environment variable should be set to the internal network address. For example, with the configuration above:
 
 ```yaml
 env:
@@ -94,28 +94,28 @@ env:
    - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
-#### 2. Configure button text, icons, etc. in the commercial version backend
+#### 2. Configure button text, icons, etc. in the commercial version admin panel.
 
 <table className="table-hover table-striped-columns text-center">
   <thead>
     <tr>
       <th>WeCom</th>
       <th>DingTalk</th>
-      <th>Feishu</th>
+      <th>Lark</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>![WeCom](/imgs/sso15.png)</td>
       <td>![DingTalk](/imgs/sso16.png)</td>
-      <td>![Feishu](/imgs/sso17.png)</td>
+      <td>![Lark](/imgs/sso17.png)</td>
     </tr>
   </tbody>
 </table>
 
 #### 3. Enable Member Sync (Optional)
 
-If you need to sync members from external systems, you can enable member sync. For team mode details, see: [Team Mode Documentation](/docs/introduction/guide/admin/teamMode)
+If you need to sync members from an external system, you can enable member sync. For team mode details, see: [Team Mode Documentation](/docs/introduction/guide/admin/teamMode)
 
 ![](/imgs/sso1.png)
 
@@ -127,28 +127,28 @@ Set the fastgpt-pro environment variable to enable automatic member sync:
 
 ```yaml
 env:
-   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron expression, executes at 0:00 daily. Note: uses UTC (timezone 0). For example, to sync at 12:00 Beijing time, configure as "0 4 * * *" (UTC 4:00)
+   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron expression, runs daily at 00:00. Note: uses UTC (timezone 0). For example, to sync at 12:00 Beijing time, set this to "0 4 * * *" (UTC 04:00)
 ```
 
-## Built-in Generic Protocol/IM Configuration Examples
+## Built-in Protocol/IM Configuration Examples
 
-### Feishu (Lark)
+### Lark
 
 #### 1. Get Parameters
 
    App ID and App Secret
 
-   Go to the developer console, click on enterprise self-built apps, and view app credentials on the credentials and basic info page.
+   Go to the developer console, click on your enterprise self-built app, and view the app credentials on the Credentials & Basic Info page.
 
    ![](/imgs/sso3.png)
 
 #### 2. Permission Configuration
 
-   Go to the developer console, click on enterprise self-built apps, and enable permissions on the permission management page under development configuration.
+   Go to the developer console, click on your enterprise self-built app, and enable permissions on the Permission Management page under Development Configuration.
 
    ![](/imgs/sso4.png)
 
-   You can use the **batch import/export permissions** feature to import the following permission configuration:
+   You can use the **Batch Import/Export Permissions** feature to import the following permission configuration:
 
 ```json
 {
@@ -168,12 +168,12 @@ env:
 }
 ```
 
-Note: Accessible data scope needs to be set to visible to all members.
+Note: The accessible data scope must be set to visible to all members.
 
 #### 3. Redirect URL
 
-   Go to the developer console, click on enterprise self-built apps, and set the redirect URL in security settings under development configuration.
-   The redirect URL should be in the form `https://www.fastgpt.cn/login/provider` — replace the domain with your publicly accessible FastGPT domain after deployment.
+   Go to the developer console, click on your enterprise self-built app, and set the redirect URL in Security Settings under Development Configuration.
+   The redirect URL should follow the format `https://www.fastgpt.cn/login/provider` — replace the domain with your publicly accessible FastGPT domain.
    ![](/imgs/sso5.png)
 
 #### 4. yml Configuration Example
@@ -188,17 +188,17 @@ fastgpt-sso:
     environment:
       - SSO_PROVIDER=feishu
       - AUTH_TOKEN=xxxxx
-      # OAuth interface (for private Feishu deployments, change to private address, same below)
+      # OAuth endpoint (for private Lark deployments, replace with your private address; same below)
       - SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
-      # Get token interface
+      # Token endpoint
       - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
-      # Get user info interface
+      # User info endpoint
       - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-      # Redirect address, set to the exact same address as in step 3 above
+      # Redirect address — must match the URL from step 3 exactly
       - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
-      # Feishu APP application ID, usually starts with cli
+      # Lark App ID, usually starts with cli
       - FEISHU_APP_ID=xxx
-      # Feishu APP application secret
+      # Lark App Secret
       - FEISHU_APP_SECRET=xxx
 ```
 
@@ -208,21 +208,21 @@ fastgpt-sso:
 
    CLIENT_ID and CLIENT_SECRET
 
-   Go to DingTalk Open Platform, click on app development, select your app, and record the Client ID and Client secret on the credentials and basic info page.
+   Go to the DingTalk Open Platform, click App Development, select your app, and record the Client ID and Client Secret on the Credentials & Basic Info page.
    ![](/imgs/sso6.png)
 
 #### 2. Permission Configuration
 
-   Go to DingTalk Open Platform, click on app development, select your app, and operate on the permission management page under development configuration. Required permissions include:
+   Go to the DingTalk Open Platform, click App Development, select your app, and manage permissions on the Permission Management page under Development Configuration. Required permissions:
 
    1. ***Personal phone number information***
    2. ***Contact personal information read permission***
-   3. ***Basic permission to get DingTalk open interface user access credentials***
+   3. ***Basic permission to obtain DingTalk open interface user access credentials***
 
 #### 3. Redirect URL
 
-   Go to DingTalk Open Platform, click on app development, select your app, and operate on the security settings page under development configuration.
-   You need to fill in two items:
+   Go to the DingTalk Open Platform, click App Development, select your app, and configure on the Security Settings page under Development Configuration.
+   Two items need to be filled in:
 
    1. Server egress IP (list of server IPs calling DingTalk server-side APIs)
    2. Redirect URL (callback domain)
@@ -239,19 +239,19 @@ fastgpt-sso:
    environment:
       - SSO_PROVIDER=dingtalk
       - AUTH_TOKEN=xxxxx
-      # OAuth interface
+      # OAuth endpoint
       - SSO_TARGET_URL=https://login.dingtalk.com/oauth2/auth
-      # Get token interface
+      # Token endpoint
       - DINGTALK_TOKEN_URL=https://api.dingtalk.com/v1.0/oauth2/userAccessToken
-      # Get user info interface
+      # User info endpoint
       - DINGTALK_GET_USER_INFO_URL=https://oapi.dingtalk.com/v1.0/contact/users/me
-      # DingTalk APP application ID
+      # DingTalk App ID
       - DINGTALK_CLIENT_ID=xxx
-      # DingTalk APP application secret
+      # DingTalk App Secret
       - DINGTALK_CLIENT_SECRET=xxx
 ```
 
-### WeCom (Enterprise WeChat)
+### WeCom
 
 #### 1. Get Parameters
 
@@ -259,7 +259,7 @@ fastgpt-sso:
 
       a. Log in to the WeCom admin console with an admin account: `https://work.weixin.qq.com/wework_admin/loginpage_wx`
 
-      b. Click **My Enterprise** page and view the **Enterprise ID**
+      b. Go to the "My Enterprise" page and find the Enterprise ID
 
       ![](/imgs/sso7.png)
 
@@ -271,17 +271,18 @@ fastgpt-sso:
 
       ![](/imgs/sso8.png)
 
+
       ![](/imgs/sso9.png)
 
    3. A domain name with the following requirements:
 
       a. Resolves to a publicly accessible server
 
-      b. Can mount static files at the root directory (for domain ownership verification — follow the prompts at the configuration location, only need to mount one static file, can delete after verification)
+      b. Can serve static files at the root path (for domain ownership verification — follow the prompts, you only need to host one static file, which can be removed after verification)
 
       c. Configure web authorization, JS-SDK, and WeCom authorization login
 
-      d. Can set "hide app in workbench" at the bottom of the **WeCom Authorization Login** page
+      d. You can set "Hide app in workbench" at the bottom of the WeCom Authorization Login page
 
       ![](/imgs/sso10.png)
 
@@ -289,19 +290,19 @@ fastgpt-sso:
 
       ![](/imgs/sso12.png)
 
-   4. Get "Contact Sync Assistant" secret
+   4. Get the "Contact Sync Assistant" secret
 
-      Getting contacts and organization member IDs requires using the "Contact Sync Assistant" secret
+      Retrieving contacts and organization member IDs requires the "Contact Sync Assistant" secret
 
-      **Security & Management** -- **Management Tools** -- **Contact Sync**
+      Security & Management -- Management Tools -- Contact Sync
 
       ![](/imgs/sso13.png)
 
    5. Enable interface sync
 
-   6. Get Secret
+   6. Get the Secret
 
-   7. Configure enterprise trusted IP
+   7. Configure enterprise trusted IPs
 
       ![](/imgs/sso14.png)
 
@@ -317,13 +318,13 @@ fastgpt-sso:
    environment:
       - AUTH_TOKEN=xxxxx
       - SSO_PROVIDER=wecom
-      # OAuth interface, used in WeCom terminal
+      # OAuth endpoint, used in WeCom client
       - WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
-      # SSO interface, QR code scan
+      # SSO endpoint, QR code scan
       - WECOM_TARGET_URL_SSO=https://login.work.weixin.qq.com/wwlogin/sso/login
-      # Get user ID (can only get ID)
+      # Get user ID (returns ID only)
       - WECOM_GET_USER_ID_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo
-      # Get detailed user info (has everything except name)
+      # Get detailed user info (everything except name)
       - WECOM_GET_USER_INFO_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail
       # Get user info (has name, no other info)
       - WECOM_GET_USER_NAME_URL=https://qyapi.weixin.qq.com/cgi-bin/user/get
@@ -343,46 +344,46 @@ fastgpt-sso:
 
 ### Standard OAuth 2.0
 
-We provide RFC 6749 authorization code mode OAuth 2.0 integration support.
+We provide OAuth 2.0 integration support using the authorization code grant from RFC 6749.
 References:
 - [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749) documentation
-- [Ruan Yifeng's Network Log](https://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html)
+- [Ruan Yifeng's blog post on OAuth 2.0](https://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html)
 
 #### Parameter Requirements
 
-##### Three Addresses
-We provide a standard OAuth 2.0 integration flow. Three addresses are needed:
+##### Three Endpoints
+We provide a standard OAuth 2.0 integration flow requiring three endpoints:
 
-1. Login authorization address (users will be redirected to this address with parameters after clicking the SSO button), e.g., `http://example.com/oauth/authorize`
+1. Login authorization endpoint (users are redirected here with parameters after clicking the SSO button), e.g., `http://example.com/oauth/authorize`
     ```bash
     curl -X GET\
     "http://example.com/oauth/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
     ```
-      After entering credentials, users will be redirected to redirect_uri with a code parameter:
+      After entering credentials, users are redirected to redirect_uri with a code parameter:
       `https://fastgpt.cn/login/provider?code=4/P7qD2qAz4&state=xyz`
-2. Address to get access_token. After getting the code, request this address via *server request* to get access_token, e.g., `http://example.com/oauth/access_token`
+2. Access token endpoint. After obtaining the code, make a *server-side request* to this endpoint to get the access_token, e.g., `http://example.com/oauth/access_token`
     ```bash
     curl -X POST\
         -H "Content-Type: application/x-www-form-urlencoded"\
     "http://example.com/oauth/access_token?grant_type=authorization_code&client_id=s6BhdRkqt3&client_secret=xxx&code=4/P7qD2qAz4&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
     ```
     Note: Content-Type must be application/x-www-form-urlencoded, not application/json
-3. Address to get user info, requires passing access_token, e.g., `http://example.com/oauth/user_info`
+3. User info endpoint, requires passing the access_token, e.g., `http://example.com/oauth/user_info`
     ```bash
     curl -X GET\
         -H "Authorization: Bearer 4/P7qD2qAz4"\
         "http://example.com/oauth/user_info"
     ```
-    Note: access_token is passed as Authorization header, format: Bearer xxxx
+    Note: access_token is passed as the Authorization header in the format: Bearer xxxx
 
 ##### Parameter Configuration
 - CLIENT_ID: Required
-- CLIENT_SECRET: Optional, can skip if not available
-- SCOPE: Optional, can skip if not available
+- CLIENT_SECRET: Optional, skip if not needed
+- SCOPE: Optional, skip if not needed
 
-> redirect_uri parameter will be auto-completed based on runtime environment
+> The redirect_uri parameter is auto-populated based on the runtime environment
 >
-> Other fixed parameters like grant_type, response_type will be auto-completed
+> Other fixed parameters like grant_type and response_type are auto-populated
 
 #### Configuration Example
 
@@ -400,14 +401,14 @@ fastgpt-sso:
         # === Request URLs ===
         # 1. OAuth2 login authorization URL (required)
         - OAUTH2_AUTHORIZE_URL=
-        # 2. OAuth2 get AccessToken URL (required)
+        # 2. OAuth2 access token URL (required)
         - OAUTH2_TOKEN_URL=
-        # 3. OAuth2 get user info URL (required)
+        # 3. OAuth2 user info URL (required)
         - OAUTH2_USER_INFO_URL=
         # === Parameters ===
         # 1. client_id (required)
         - OAUTH2_CLIENT_ID=
-        # 2. client_secret (optional, skip if not available)
+        # 2. client_secret (optional)
         - OAUTH2_CLIENT_SECRET=
         # 3. scope (optional)
         - OAUTH2_SCOPE=
@@ -424,22 +425,23 @@ fastgpt-sso:
 
 ## Standard Interface Documentation
 
-Below is the standard interface documentation for SSO and member sync in FastGPT-pro. If you need to integrate with non-standard systems, refer to this section for development.
+Below is the standard interface documentation for SSO and member sync in FastGPT-pro. If you need to integrate with a non-standard system, refer to this section for development.
 
 ![](/imgs/sso18.png)
 
-FastGPT provides the following standard interface support:
+FastGPT provides the following standard interfaces:
 
-1. https://example.com/login/oauth/getAuthURL - Get authorization redirect URL
-2. https://example.com/login/oauth/getUserInfo?code=xxxxx - Consume code, exchange for user info
-3. https://example.com/org/list - Get organization list
-4. https://example.com/user/list - Get member list
+1. https://example.com/login/oauth/getAuthURL - Get the authorization redirect URL
+2. https://example.com/login/oauth/getUserInfo?code=xxxxx - Consume the code and exchange it for user info
+3. https://example.com/org/list - Get the organization list
+4. https://example.com/user/list - Get the member list
 
 ### Get SSO Login Redirect URL
 
-Returns a redirect login URL. FastGPT will automatically redirect to this URL. redirect_uri will be automatically appended to the URL's query.
+Returns a redirect login URL. FastGPT will automatically redirect to this URL. The redirect_uri is automatically appended to the URL query string.
 
-<Tabs items={['Request Example','Response Example']}> <Tab value="Request Example" >
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
 
 ```bash
 curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
@@ -472,6 +474,7 @@ Failure:
 
   </Tab>
 </Tabs>
+
 
 ### SSO Get User Info
 
@@ -531,16 +534,16 @@ curl -X GET "https://example.com/org/list" \
 
   <Tab value="Response Example" >
 
-⚠️ Note: Only one root department can exist. If your system has multiple root departments, you need to handle this first by adding a virtual root department. Return value type:
+Warning: Only one root department can exist. If your system has multiple root departments, you need to add a virtual root department first. Return type:
 
 ```ts
 type OrgListResponseType = {
     message?: string; // Error message
     success: boolean;
     orgList: {
-        id: string; // Department unique ID
+        id: string; // Unique department ID
         name: string; // Name
-        parentId: string; // parentId, empty string if root department
+        parentId: string; // parentId — empty string for root department
     }[];
 }
 ```
@@ -567,7 +570,9 @@ type OrgListResponseType = {
   </Tab>
 </Tabs>
 
+
 ### Get Members
+
 
 <Tabs items={['Request Example','Response Example']}>
   <Tab value="Request Example" >
@@ -582,14 +587,14 @@ curl -X GET "https://example.com/user/list" \
 
   <Tab value="Response Example" >
 
-Return value type:
+Return type:
 
 ```typescript
 type UserListResponseListType = {
     message?: string; // Error message
     success: boolean;
     userList: {
-      username: string; // Unique ID username must match the username returned by the SSO interface. Must have a prefix, e.g., sync-aaaaa, consistent with the SSO interface prefix
+      username: string; // Unique ID. username must match the username returned by the SSO interface. Must include a prefix, e.g., sync-aaaaa, consistent with the SSO interface prefix
       memberName?: string; // Name, used as tmbname
       avatar?: string;
       contact?: string; // email or phone number
@@ -597,7 +602,6 @@ type UserListResponseListType = {
     }[];
 }
 ```
-
 curl example
 
 ```json
@@ -607,14 +611,14 @@ curl example
   "userList": [
     {
       "username": "fastgpt-123456789",
-      "memberName": "Zhang San",
+      "memberName": "John Doe",
       "avatar": "https://example.webp",
       "contact": "+861234567890",
       "orgs": ["od-125151515", "od-51516152"]
     },
     {
       "username": "fastgpt-12345678999",
-      "memberName": "Li Si",
+      "memberName": "Jane Smith",
       "avatar": "",
       "contact": "",
       "orgs": ["od-125151515"]
@@ -627,10 +631,13 @@ curl example
   </Tab>
 </Tabs>
 
+
+
+
 ## How to Integrate Non-Standard Systems
 
-1. Customer self-development: Develop according to the standard interfaces provided by FastGPT, and enter the deployed service address into fastgpt-pro
-   You can refer to this template repository for development: [fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template)
+1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address into fastgpt-pro.
+   You can use this template repository as a starting point: [fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template)
 2. Custom development by the FastGPT team:
-   a. Provide SSO documentation for the system, documentation for getting members and organizations, and external test addresses.
-   b. In fastgpt-sso-service, add the corresponding provider and environment variables, and write code for integration.
+   a. Provide the system's SSO documentation, member and organization retrieval documentation, and an external test address.
+   b. In fastgpt-sso-service, add the corresponding provider and environment variables, and write the integration code.

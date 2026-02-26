@@ -1,49 +1,50 @@
 ---
-title: File Input Feature
-description: FastGPT file input feature guide
+title: File Input
+description: FastGPT file input feature overview
 ---
 
-Starting from version 4.8.9, FastGPT supports file and image uploads in both `Simple Mode` and `Workflow`. This guide covers how to use the file input feature and explains how file parsing works.
+Starting from version 4.8.9, FastGPT supports configuring file and image uploads in both `Basic Mode` and `Workflows`. This guide covers how to use the file input feature and explains how document parsing works under the hood.
 
-## Using File Input in Simple Mode
 
-When file upload is enabled in simple mode, it uses tool calling mode — the model decides whether to read the file content.
+## Using in Basic Mode
 
-Find the file upload configuration on the left side and click the `Enable`/`Disable` button to open the configuration dialog.
+When file upload is enabled in Basic Mode, it uses tool-calling mode — the model decides whether to read the file content.
+
+Find the file upload option on the left panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
 ![Enable file upload](/imgs/fileinpu-1.png)
 
-Once enabled, a file selection icon appears in your debug chat box. Click it to select files to upload.
+Once enabled, a file selection icon appears in the chat input area. Click it to select files for upload.
 
 ![Enable file upload](/imgs/fileinpu-2.png)
 
-**Working Mode**
+**Behavior**
 
-Starting from version 4.8.13, simple mode forces file parsing and places content in the system prompt to ensure the model consistently references files during conversations, avoiding situations where the model doesn't proactively call the file reading tool.
+Starting from version 4.8.13, Basic Mode forces file parsing and injects the content into the system prompt, preventing cases where the model skips reading the file during multi-turn conversations.
 
-## Using File Input in Workflow
+## Using in Workflows
 
-In workflows, find the `File Input` configuration in system settings and click the `Enable`/`Disable` button to open the configuration dialog.
+In Workflows, find the `File Input` option in the system configuration panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
 ![Enable file upload](/imgs/fileinpu-4.jpg)
 
-There are many ways to use files in workflows. The simplest approach, shown below, is to connect document parsing via tool calling, achieving the same effect as simple mode.
+There are many ways to use files in Workflows. The simplest approach, shown below, connects document parsing via tool calling — achieving the same result as Basic Mode.
 
 | | |
 | --------------------- | --------------------- |
 | ![](/imgs/image-5.png) | ![](/imgs/image-6.png) |
 
-You can also extract content, analyze documents, and pass results to HTTP or other modules in workflows, creating file processing SOPs.
+You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other modules to build a document processing pipeline.
 
 ![Document parsing](/imgs/image-7.png)
 
 ## How Document Parsing Works
 
-Unlike image recognition, LLM models don't currently support direct document parsing. All document "understanding" happens by converting documents to text and appending prompts. Here are some FAQs explaining how document parsing works. Understanding these principles helps you use document parsing more effectively in workflows.
+Unlike image recognition, LLMs currently cannot parse documents directly. All document "understanding" is achieved by converting documents to text and injecting it into the prompt. The following FAQs explain how this works — understanding the mechanics helps you use document parsing more effectively in Workflows.
 
 ### How are uploaded files stored in the database?
 
-In FastGPT's chat history structure, messages with role=user store values in this format:
+In FastGPT's chat history, messages with role=user store their value in this structure:
 
 ```ts
 type UserChatItemValueItemType = {
@@ -59,21 +60,21 @@ type UserChatItemValueItemType = {
 };
 ```
 
-Uploaded images and documents are stored as URLs in the database, not as `parsed document content`.
+Uploaded images and documents are stored as URLs — the parsed document content is not stored.
 
 ### How are images handled?
 
-The document parsing node doesn't process images. Image URLs are filtered out. For image recognition, use LLM models that support vision.
+The document parsing node does not process images. Image URLs are filtered out. For image recognition, use an LLM that supports vision.
 
 ### How does the document parsing node work?
 
-Document parsing relies on the document parsing node, which receives an `array<string>` input (file URLs) and outputs a `string` (parsed document content).
+The document parsing node accepts an `array<string>` input (file URLs) and outputs a `string` (the parsed content).
 
-* The document parsing node only processes `document` type URLs, determined by the file extension extracted from the URL. If you select both documents and images, images are ignored.
-* **The document parsing node only parses files from the current workflow run, not from chat history.**
+* The node only parses URLs with document-type file extensions. If you upload both documents and images, images are ignored.
+* **The document parsing node only processes files from the current workflow run, not files from chat history.**
 * How multiple documents are concatenated:
 
-Documents are concatenated using this template — filename + file content as a string, with different documents separated by: `\n******\n`
+Multiple files are concatenated using the following template — filename + content, separated by `\n******\n`:
 
 ```
 File: ${filename}
@@ -84,9 +85,9 @@ ${content}
 
 ### How to use document parsing in AI nodes
 
-AI nodes (AI Chat/Tool Calling) now include a document link input that can directly reference document URLs, enabling document content references.
+AI nodes (AI Chat / Tool Calling) have a document URL input that lets you reference document addresses directly.
 
-It accepts an `Array<string>` input. These URLs are parsed and concatenated into prompts placed in role=system messages. The prompt template:
+It accepts an `Array<string>` input. The URLs are parsed and injected into a system message using this prompt template:
 
 ```
 Use the content in <FilesContent></FilesContent> as reference for this conversation:
@@ -95,14 +96,14 @@ Use the content in <FilesContent></FilesContent> as reference for this conversat
 </FilesContent>
 ```
 
-# File Upload Updates in Version 4.8.13
+# Changes to File Upload in Version 4.8.13
 
-There are some differences from version 4.8.9. While we've maintained backward compatibility to avoid breaking workflows immediately, please update your workflows to follow the new rules as soon as possible. Compatibility code will be removed in future versions.
+There are some differences from version 4.8.9. We've maintained backward compatibility to avoid breaking existing workflows, but please update your workflows to follow the new rules as soon as possible — compatibility code will be removed in future versions.
 
-1. Simple mode: File parsing is now forced, no longer decided by the model, ensuring documents are always referenced.
-2. Document parsing: No longer parses files from chat history.
-3. Tool calling: Supports direct document reference selection without mounting the document parsing tool. Automatically parses files from chat history.
-4. AI chat: Supports direct document reference selection without the document parsing node. Automatically parses files from chat history.
-5. Plugin standalone execution: No longer supports global files; plugin inputs support file type configuration, replacing global file upload.
-6. **Workflow calling plugin: No longer automatically passes workflow-uploaded files to plugins. You must manually specify variables for plugin inputs.**
-7. **Workflow calling workflow: No longer automatically passes workflow-uploaded files to sub-workflows. You can manually select which file links to pass.**
+1. Basic Mode now forces file parsing instead of letting the model decide, ensuring documents are always referenced.
+2. Document parsing: no longer parses files from chat history.
+3. Tool Calling: supports direct document reference selection — no need to attach a document parsing tool. Automatically parses files from chat history.
+4. AI Chat: supports direct document reference selection — no need to go through the document parsing node. Automatically parses files from chat history.
+5. Standalone plugin execution: no longer supports global files. Plugin inputs now support file-type configuration as a replacement for global file upload.
+6. **Workflow calling plugins: uploaded files are no longer automatically passed to plugins. You must manually specify the variable for plugin input.**
+7. **Workflow calling sub-workflows: uploaded files are no longer automatically passed to sub-workflows. You can manually select which file URLs to pass.**

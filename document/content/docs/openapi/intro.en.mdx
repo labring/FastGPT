@@ -9,22 +9,22 @@ The automated API documentation covers all endpoints in the current version, reg
 
 All future endpoints will be auto-generated, with documentation continuously improved.
 
-- [China API Documentation](https://cloud.fastgpt.cn/openapi)
+- [China Mainland API Documentation](https://cloud.fastgpt.cn/openapi)
 - [International API Documentation](https://cloud.fastgpt.io/openapi)
 
 ## Usage Guide
 
-FastGPT OpenAPI lets you authenticate with an API Key to access FastGPT services and resources, such as: calling app chat endpoints, uploading knowledge base data, testing searches, and more. For compatibility and security reasons, not all endpoints support API Key access.
+FastGPT OpenAPI lets you authenticate with an API Key to access FastGPT services and resources -- such as calling app chat endpoints, uploading knowledge base data, search testing, and more. For compatibility and security reasons, not all endpoints support API Key access.
 
 ## How to Find Your BaseURL
 
-**Note: BaseURL is not an endpoint address—it's the root URL for all endpoints. Requesting the BaseURL directly won't work.**
+**Note: BaseURL is not an endpoint address -- it's the root URL for all endpoints. Requesting the BaseURL directly won't work.**
 
 ![](/imgs/fastgpt-api-baseurl.png)
 
 ## How to Get an API Key
 
-FastGPT has **2 types** of API Keys: a global key (cannot directly call app chat) and an app-specific key with an AppId (can directly call app chat).
+FastGPT has **2 types** of API Keys: a global key (cannot directly call app chat) and an app-specific key that includes an AppId (can directly call app chat).
 
 We recommend using `app-specific keys` only for app or chat-related endpoints, and `global keys` for everything else.
 
@@ -85,4 +85,4 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 }'
 ```
 
-In the chat history, this record will show the user as `xxxxxx`.
+In the chat history, this record's user will be displayed as `xxxxxx`.

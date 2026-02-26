@@ -1,78 +1,78 @@
 ---
 title: Tool Calling & Termination
-description: FastGPT tool calling module guide
+description: FastGPT Tool Calling module overview
 ---
 
 ![](/imgs/flow-tool1.png)
 
-### **What is a Tool**
+### What is a Tool
 
-A tool can be a system module, such as: AI Chat, Knowledge Base Search, HTTP module, etc. It can also be a plugin.
+A tool can be a built-in module (e.g., AI Chat, Knowledge Base Search, HTTP) or a plugin.
 
-Tool calling allows LLMs to make more dynamic workflow decisions rather than following fixed flows. (The downside is higher token usage.)
+Tool calling lets the LLM dynamically decide the workflow path instead of following a fixed sequence. (The trade-off is higher token consumption.)
 
-### **Tool Components**
+### Tool Components
 
-1. Tool description. Usually the module or plugin description, which tells the LLM what the tool does.
-2. Tool parameters. For system modules, tool parameters are fixed and don't need additional configuration. For plugins, tool parameters are configurable.
+1. **Tool description.** Typically the module or plugin description that tells the LLM what the tool does.
+2. **Tool parameters.** For built-in modules, parameters are fixed and require no extra configuration. For plugins, parameters are configurable.
 
-### **How Tools Work**
+### How Tools Work
 
-To understand how tools work, you first need to know their execution conditions.
+To understand how tools run, you need to know the execution prerequisites:
 
-1. Tool description (or introduction). This tells the LLM what the tool does. The LLM decides whether to call the tool based on context semantics.
-2. Tool parameters. Some tools may need special parameters when called. Parameters have 2 key values: `parameter description` and `is required`.
+1. A tool description is required. It tells the LLM what the tool does, and the LLM uses contextual semantics to decide whether to invoke it.
+2. Tool parameters. Some tools require special parameters when called. Each parameter has two key properties: `parameter description` and `required`.
 
-Combining the tool description, parameter descriptions, and whether parameters are required, the LLM decides whether to call the tool. There are several scenarios:
+Based on the tool description, parameter descriptions, and whether parameters are required, the LLM decides whether to call the tool. The scenarios are:
 
-1. Tools without parameters: Directly decide whether to execute based on tool description. Example: get current time.
-2. Tools with parameters:
-   1. No required parameters: The tool can be called even if there are no suitable parameters in the context. However, sometimes the LLM may fabricate a parameter.
-   2. Has required parameters: If there are no suitable parameters, the LLM may not call the tool. You can use prompts to guide users to provide parameters.
+1. **Tools without parameters:** The LLM decides based solely on the tool description. Example: get current time.
+2. **Tools with parameters:**
+   1. No required parameters: The tool can still be called even without suitable context parameters, though the LLM may sometimes fabricate a value.
+   2. Has required parameters: If no suitable parameters are available, the LLM may skip the tool. Use prompts to guide users into providing the needed parameters.
 
-#### **Tool Calling Logic**
+#### Tool Calling Logic
 
-In models that support `function calling`, multiple tools can be called at once. The calling logic:
+Models that support `function calling` can invoke multiple tools in a single turn. The calling logic:
 
 ![](/imgs/flow-tool2.png)
 
-### **How to Use**
+### How to Use
 
 | | |
 | --- | --- |
 | ![](/imgs/flow-tool3.png) | ![](/imgs/flow-tool4.png) |
 
-In advanced workflows, drag the tool calling connection point. Available tools will show a diamond shape at the top, which you can connect to the diamond at the bottom of the tool calling module.
+In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling module.
 
-Connected tools automatically separate tool inputs from regular inputs, and you can edit the `description` to make tool calling timing more precise.
+Connected tools automatically separate tool inputs from regular inputs. You can also edit the `description` to fine-tune when the tool gets called.
 
-Debugging tool calling is still somewhat of an art, so it's recommended not to add too many tools at once. Start with a few tools, optimize them, and then try adding more.
+Debugging tool calling is still more art than science, so start with a small number of tools, optimize them, then gradually add more.
 
 #### Use Cases
 
-By default, after the tool calling node decides to call a tool, it returns the tool's results to the AI for summarization. Sometimes, if you don't need the AI to further summarize the output, you can use this node at the end of the tool workflow.
+By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. If you don't need the AI to summarize, place this node at the end of the tool's workflow branch.
 
-As shown below, after executing knowledge base search, it sends to an HTTP request. The search won't return results to tool calling for AI summarization.
+In the example below, after the Knowledge Base Search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
 
 ![](/imgs/flow-tool5.png)
 
 ### Additional Nodes
 
-When you use the tool calling node, tool calling termination and custom variable nodes also appear, further enhancing the tool calling experience.
+When you use the tool calling node, a Tool Calling Termination node and a Custom Variable node also become available, further enhancing the tool calling experience.
 
 #### Tool Calling Termination
 
-Tool calling termination can end the current call. It can be placed after a tool. When the workflow reaches this node, it forcibly ends the current tool call, won't call other tools, and won't call the AI to answer questions based on tool results.
+Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
 ![](/imgs/flow-tool6.png)
 
 ### Custom Tool Variables
 
-Custom variables can extend tool variable inputs. For nodes that aren't treated as tool parameters or can't be tool-called, you can define custom tool variables with corresponding parameter descriptions. Tool calling will then call this node and its subsequent workflow accordingly.
+Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
 
 ![](/imgs/flow-tool7.png)
 
-### **Related Examples**
+### Related Examples
 
 - [Google Search](https://doc.fastgpt.in/docs/use-cases/app-cases/google_search/)
-- [Send Feishu Webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)
+- [Send Lark Webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)

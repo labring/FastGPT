@@ -1,6 +1,6 @@
 ---
 title: Conditional (IF/ELSE)
-description: FastGPT conditional module guide
+description: FastGPT Conditional module overview
 ---
 
 ## Features
@@ -13,12 +13,12 @@ description: FastGPT conditional module guide
 
 ## Function
 
-Performs `IF` judgment on any variable. If the condition is met, executes the `IF` branch; otherwise executes the `ELSE` branch.
+Performs an `IF` evaluation on any variable. If the condition is met, the `IF` branch executes; otherwise the `ELSE` branch runs.
 
-In the example above, if the length of the "Knowledge Base Reference" variable equals 0, the `IF` branch executes; otherwise the `ELSE` branch executes.
+In the example above, if the "Knowledge Base Citation" variable has a length of 0, the `IF` branch executes; otherwise the `ELSE` branch runs.
 
-Supports adding more conditions and branches, following the same logic as `IF` statements in programming languages.
+You can add more conditions and branches, following the same logic as `IF` statements in programming languages.
 
 ## Use Cases
 
-Suitable scenarios include: having the LLM make a judgment then output fixed content, or determining whether to trigger subsequent modules based on LLM response content.
+Common scenarios include: having the LLM make a judgment and then output fixed content, or checking the LLM's response to decide whether to trigger downstream modules.

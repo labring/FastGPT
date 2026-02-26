@@ -1,65 +1,68 @@
 ---
 title: MCP Server
-description: Quick guide to FastGPT MCP server
+description: A quick overview of FastGPT MCP Server
 ---
 
-## MCP Server Introduction
+## What is MCP Server?
 
-MCP (Model Context Protocol) was released by Anthropic in early November 2024. Its purpose is to standardize communication between AI models and external systems, simplifying integration challenges. With OpenAI's official support for MCP, more AI vendors are adopting the protocol.
+MCP (Model Context Protocol) was released by Anthropic in early November 2024. It standardizes communication between AI models and external systems, simplifying integration. With OpenAI officially supporting MCP, more and more AI vendors are adopting the protocol.
 
-MCP consists of two main parts: Client and Server. Simply put, the Client uses the AI model and provides it with capabilities to call external systems through MCP Client; the Server provides external system calls and actually runs those external systems.
+MCP has two main components: Client and Server. The Client is the AI model consumer — it uses MCP Client to give the model the ability to call external systems. The Server provides and runs those external system integrations.
 
-FastGPT's MCP Server feature lets you select `multiple` applications built on FastGPT and expose them via MCP protocol for external calls.
+FastGPT's MCP Server feature lets you select `multiple` applications built on FastGPT and expose them via MCP protocol for external consumption.
 
-Currently, FastGPT's MCP server uses SSE communication protocol, which will be replaced with `HTTP streamable` in the future.
+Currently, FastGPT's MCP Server uses the SSE transport protocol, with plans to migrate to `HTTP Streamable` in the future.
 
 ## Using MCP Server in FastGPT
 
-### 1. Create MCP Server
+### 1. Create an MCP Server
 
-After logging into FastGPT, open `Workspace`, click `MCP server` to enter the management page where you can see all your created MCP servers and the number of applications they manage.
+After logging into FastGPT, open `Workspace` and click `MCP Server` to access the management page. Here you can see all your MCP Servers and the number of applications each one manages.
 
 ![Create MCP server](/imgs/mcp_server1.png)
 
-You can customize the MCP server name and select associated applications.
+You can customize the MCP Server name and select which applications to associate.
 
 | | |
-|---|---|\n| ![](/imgs/mcp_server2.png) | ![](/imgs/mcp_server3.png) |
+|---|---|
+| ![](/imgs/mcp_server2.png) | ![](/imgs/mcp_server3.png) |
 
-### 2. Get MCP Server Address
+### 2. Get the MCP Server URL
 
-After creating the MCP server, click `Start Using` to get the MCP server access address.
+After creating an MCP Server, click `Start Using` to get the access URL.
 
 | | |
 |---|---|
 | ![](/imgs/mcp_server4.png) | ![](/imgs/mcp_server5.png) |
 
-#### 3. Use MCP Server
+#### 3. Use the MCP Server
 
-You can use these addresses in MCP-compatible clients to call FastGPT applications, such as: `Cursor`, `Cherry Studio`. Below is an example using Cursor.
+Use the URL in any MCP-compatible client to call your FastGPT applications — for example, `Cursor` or `Cherry Studio`. Here's how to set it up in Cursor.
 
-Open Cursor's settings page, click MCP to enter the MCP configuration page. Click the new MCP server button, which opens a JSON configuration file. Copy the `integration script` from step 2 into the `JSON file` and save.
+Open Cursor's settings page and click MCP to enter the MCP configuration page. Click the new MCP Server button to open a JSON configuration file. Paste the `integration script` from step 2 into the `JSON file` and save.
 
-Return to Cursor's MCP management page to see your created MCP server. Remember to set it to `enabled` status.
+Return to Cursor's MCP management page and you'll see your MCP Server listed. Make sure to set it to `enabled`.
 
 | | | |
 |---|---|---|
 | ![](/imgs/mcp_server6.png) | ![](/imgs/mcp_server7.png) | ![](/imgs/mcp_server8.png) |
 
-Open Cursor's chat box and switch to `Agent` model — only this model will call MCP server.  
-After sending a question about `fastgpt`, you'll see Cursor call an MCP tool (described as: query fastgpt knowledge base), which calls the FastGPT application to process the question and return results.
+
+Open Cursor's chat panel and switch to `Agent` mode — only this mode triggers MCP Server calls.
+After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (described as: query fastgpt knowledge base), which calls the FastGPT application to process the question and return results.
 
 | | |
 |---|---|
 | ![](/imgs/mcp_server9.png) | ![](/imgs/mcp_server10.png) |
 
-## Self-Hosted MCP Server Issues
 
-Self-hosted FastGPT deployments need to upgrade to `v4.9.6` or higher to use MCP server functionality.
+## Self-Hosted MCP Server Setup
 
-### Modify docker-compose.yml File
+Self-hosted FastGPT deployments require version `v4.9.6` or higher to use MCP Server.
 
-In the `docker-compose.yml` file, add the `fastgpt-mcp-server` service:
+### Update docker-compose.yml
+
+Add the `fastgpt-mcp-server` service to your `docker-compose.yml`:
 
 ```yml
 fastgpt-mcp-server:
@@ -74,23 +77,25 @@ fastgpt-mcp-server:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
 ```
 
-### Modify FastGPT Container Environment Variables
+### Update FastGPT Configuration
 
-Modify the `config.json` configuration file, add: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server access address"`, without trailing /, for example:
+In your `config.json`, add: `"feconfigs.mcpServerProxyEndpoint": "<your fastgpt-mcp-server URL>"` (no trailing slash). For example:
 ```json
 {
   "feConfigs": {
     "lafEnv": "https://laf.dev",
-    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn" 
+    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
   }
 }
 ```
 
-### Restart FastGPT Container
+### Restart FastGPT
 
-Since you modified mounted files, you can force down then up the service. After starting, you'll see the MCP server service option in the workspace.
+Since you modified a mounted config file, force a full restart:
 
 ```bash
 docker-compose down
 docker-compose up -d
 ```
+
+After restarting, the MCP Server option will appear in the Workspace.

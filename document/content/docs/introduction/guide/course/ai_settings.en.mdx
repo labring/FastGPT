@@ -1,23 +1,21 @@
 ---
-title: AI Parameter Configuration
-description: Understanding FastGPT's AI parameter settings
+title: AI Configuration Parameters
+description: FastGPT AI configuration parameters explained
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-FastGPT's AI Chat module includes advanced AI configuration options with various model parameters. This guide explains what each setting does.
+The AI Chat module in FastGPT includes an advanced configuration section with various model parameters. This guide explains what each setting does.
 
 |  |  | |
 | --- | --- | --- |
 | ![alt text](/imgs/image-51.png) | ![alt text](/imgs/image-52.png) | ![alt text](/imgs/image-53.png) |
 
-## Stream Response (Advanced Workflow AI Chat Only)
+## Stream Response (Workflow AI Chat only)
 
 Previously called "Return AI Content," now renamed to "Stream Response."
 
-This is a toggle. When enabled, the AI Chat module streams its output back to the browser (API response) as it generates.
-
-When disabled, the model is forced to use non-streaming mode, and AI output won't return to the browser. However, the generated content can still be accessed via the [AI Reply] output and connected to other modules for further processing.
+This is a toggle. When enabled, the AI Chat module streams its output to the browser (API response) in real time. When disabled, the model is called in non-streaming mode and the output is not sent to the browser. However, the generated content can still be accessed via the [AI Reply] output and connected to other modules for further use.
 
 ### Max Context
 
@@ -29,76 +27,76 @@ Models that support function calling are more accurate when using tools.
 
 ### Temperature
 
-Lower values produce more precise, focused responses with less fluff. (In practice, the difference is subtle.)
+Lower values produce more focused, deterministic responses (in practice, the difference is subtle).
 
-### Max Tokens
+### Max Output Tokens
 
 The maximum number of tokens in the response. Note: this is the response token limit, not the context token limit.
 
-Typically, max tokens = min(model's max response limit, max context - used context)
+Typically: max output = min(model's max output limit, max context - used context)
 
-When configuring models, it's common to set max context below the model's actual limit to reserve space for responses. For example, a 128k model might be configured with max_context=115000.
+Because of this, you generally don't set max context to the model's actual maximum — instead, reserve space for the response. For example, a 128k model might use max_context=115000.
 
 ### System Prompt
 
-Placed at the beginning of the context array with role "system" to guide the model's behavior.
+Placed at the beginning of the context array with role `system` to guide the model's behavior.
 
-### Memory Rounds (Simple Mode Only)
+### Memory Rounds (Basic Mode only)
 
-Configure how many conversation turns the model remembers. If the conversation exceeds the context limit, the system automatically truncates to stay within bounds.
+Configures how many conversation rounds the model retains. If the context exceeds the model's limit, the system automatically truncates to stay within bounds.
 
-So even if you configure 30 rounds, the actual runtime may not reach 30 rounds depending on context usage.
+So even if you set 30 rounds, the actual number at runtime may be fewer.
 
-## Quote Template & Quote Prompt
+## Citation Template & Citation Prompt
 
-After searching the knowledge base, you can customize how search results are formatted into prompts. This configuration is only available in the AI Chat node in workflows and only takes effect when knowledge base content is referenced.
+After a Knowledge Base search, you can customize how search results are formatted into prompts. This setting is only available in the AI Chat node within workflows, and only takes effect when Knowledge Base content is referenced.
 
 ![alt text](/imgs/image-54.png)
 
 ### AI Chat Message Structure
 
-To understand these variables, you first need to know the message format sent to the AI model. It's an array structured like this in FastGPT:
+To use these two variables effectively, you need to understand the message format sent to the AI model. It's an array structured as follows in FastGPT:
 
 ```json
 [
     Built-in prompt (from config.json, usually empty)
-    System prompt (user-provided prompt)
+    System prompt (user-defined prompt)
     Chat history
-    Question (composed of quote prompt, quote template, and user question)
+    Question (composed of citation prompt, citation template, and user question)
 ]
 ```
 
 <Alert icon="🍅" context="success">
-Tips: Click the context button to view the complete context structure for debugging.
+Tip: Click the context button to view the full context composition for easier debugging.
 </Alert>
 
-### Quote Template and Prompt Design
+### Citation Template and Prompt Design
 
-This feature has been removed from simple mode and is only configurable in workflows. Click the `setting icon` next to the knowledge base reference in the `AI Chat node` to configure it. As models improve, this feature will gradually become less important.
+This feature has been removed from Basic Mode and is only configurable in workflows. Click the `settings icon` next to the Knowledge Base citation in the `AI Chat node` to configure it. As models improve, this feature will gradually become less critical.
 
-Quote templates and quote prompts typically work together, with the quote prompt depending on the quote template.
+Citation templates and citation prompts typically work as a pair — the citation prompt depends on the citation template.
 
-FastGPT's knowledge base stores data in Q&A pairs (not necessarily question-answer format, just two variables). When converting to strings, the **quote template** formats the data. The knowledge base includes several variables: q, a, sourceId (data ID), index (nth item), source (collection name/filename), score (distance score, 0-1). You can use `{{q}}` `{{a}}` `{{sourceId}}` `{{index}}` `{{source}}` `{{score}}` as needed. Here's a template example:
+FastGPT stores Knowledge Base data in QA pairs (not necessarily in question-answer format — just two variables). When converting to strings, the data is formatted according to the **citation template**. Available variables include: q, a, sourceId (data ID), index (nth entry), source (collection/file name), and score (distance score, 0-1). Reference them as needed using `{{q}}` `{{a}}` `{{sourceId}}` `{{index}}` `{{source}}` `{{score}}`. Here's an example:
 
-Learn more about knowledge base structure in the [Knowledge Base Structure Guide](/docs/introduction/guide/knowledge_base/dataset_engine/).
+See [Knowledge Base Structure](/docs/introduction/guide/knowledge_base/dataset_engine/) for details on how the Knowledge Base is structured.
 
-#### Quote Template
+#### Citation Template
 
 ```
 {instruction:"{{q}}",output:"{{a}}",source:"{{source}}"}
 ```
 
-Search results automatically replace q, a, and source with corresponding content. Each search result is separated by `\n`. For example:
+Search results automatically replace q, a, and source with the corresponding content. Each result is separated by `\n`. For example:
 ```
-{instruction:"Who directed the movie Suzume?",output:"The movie Suzume was directed by Makoto Shinkai.",source:"Manual input"}
+{instruction:"Who directed the movie 'Suzume'?",output:"The movie 'Suzume' was directed by Makoto Shinkai.",source:"Manual input"}
 {instruction:"Who is the protagonist?",output:"The protagonist is a girl named Suzume.",source:""}
-{instruction:"Who is the male lead in Suzume?",output:"The male lead is Souta Munakata, voiced by Hokuto Matsumura.",source:""}
-{instruction:"Who wrote the screenplay for Suzume?",output:"Makoto Shinkai wrote the screenplay.",source:"Manual input"}
+{instruction:"Who is the male lead in 'Suzume'?",output:"The male lead in 'Suzume' is Souta Munakata, voiced by Hokuto Matsumura.",source:""}
+{instruction:"Who wrote the screenplay for 'Suzume'?",output:"Makoto Shinkai wrote the screenplay.",source:"Manual input"}
 ```
 
-#### Quote Prompt
+#### Citation Prompt
 
-The quote template works together with the quote prompt. The prompt can include format descriptions and conversation requirements. Use `{{quote}}` to reference the **quote template** and `{{question}}` to include the question. For example:
+The citation template must be used together with a citation prompt. The prompt can describe the template format and specify conversation requirements. Use `{{quote}}` to insert the **citation template** content, and `{{question}}` to insert the question. For example:
 
 ```
 Your background knowledge:
@@ -106,9 +104,9 @@ Your background knowledge:
 {{quote}}
 """
 Conversation requirements:
-1. The background knowledge is up-to-date, where instruction provides context and output provides expected answers or supplements.
+1. The background knowledge is up-to-date. "instruction" provides relevant context, and "output" is the expected answer or supplement.
 2. Use the background knowledge to answer questions.
-3. If the background knowledge can't answer the question, politely respond to the user.
+3. If the background knowledge cannot answer the question, respond politely.
 My question is: "{{question}}"
 ```
 
@@ -116,34 +114,34 @@ After substitution:
 ```
 Your background knowledge:
 """
-{instruction:"Who directed the movie Suzume?",output:"The movie Suzume was directed by Makoto Shinkai.",source:"Manual input"}
+{instruction:"Who directed the movie 'Suzume'?",output:"The movie 'Suzume' was directed by Makoto Shinkai.",source:"Manual input"}
 {instruction:"Who is the protagonist?",output:"The protagonist is a girl named Suzume.",source:""}
-{instruction:"Who is the male lead in Suzume?",output:"The male lead is Souta Munakata, voiced by Hokuto Matsumura"}
+{instruction:"Who is the male lead in 'Suzume'?",output:"The male lead in 'Suzume' is Souta Munakata, voiced by Hokuto Matsumura}
 """
 Conversation requirements:
-1. The background knowledge is up-to-date, where instruction provides context and output provides expected answers or supplements.
+1. The background knowledge is up-to-date. "instruction" provides relevant context, and "output" is the expected answer or supplement.
 2. Use the background knowledge to answer questions.
-3. If the background knowledge can't answer the question, politely respond to the user.
+3. If the background knowledge cannot answer the question, respond politely.
 My question is: "{{question}}"
 ```
 
 #### Summary
 
-The quote template defines how search results are formatted into a single statement, composed of variables like q, a, index, and source.
+The citation template defines how each search result is formatted into a string, composed of variables like q, a, index, and source.
 
-The quote prompt combines the `quote template` with a `prompt` that typically describes the template format and provides requirements for the model.
+The citation prompt combines the `citation template` with `instructions` that typically describe the template format and specify requirements for the model.
 
-### Quote Template and Prompt Design Examples
+### Citation Template and Prompt Design Examples
 
-#### General Template vs Q&A Template Comparison
+#### General Template vs. QA Template
 
-We'll compare the general template and Q&A template using manual "Who are you?" data. We intentionally added a humorous answer. With the general template, GPT-3.5 becomes less obedient, while with the Q&A template, GPT-3.5 still answers correctly. This is because structured prompts have stronger guidance in large language models.
+We compared the general template and QA template using a set of "Who are you?" manual data entries. We intentionally included a humorous answer — under the general template, GPT-3.5 became less compliant, while under the QA template it still answered correctly. This is because structured prompts provide stronger guidance for LLMs.
 
 <Alert icon="🍅" context="success">
-Tips: For different scenarios, it's recommended to use only one data type per knowledge base to maximize the effectiveness of prompts.
+Tip: For best results, use only one data type per Knowledge Base for each scenario to maximize prompt effectiveness.
 </Alert>
 
-| General Template Configuration & Results | Q&A Template Configuration & Results |
+| General template config & results | QA template config & results |
 | --- | --- |
 | ![](/imgs/datasetprompt1.jpg) | ![](/imgs/datasetprompt2.jpg) |
 | ![](/imgs/datasetprompt3.jpg) | ![](/imgs/datasetprompt5.jpg) |
@@ -151,16 +149,16 @@ Tips: For different scenarios, it's recommended to use only one data type per kn
 
 #### Strict Template
 
-With a non-strict template, if you ask about something not in the knowledge base, the model typically answers based on its own knowledge.
+With a non-strict template, asking about something not in the Knowledge Base typically causes the model to answer from its own knowledge.
 
-| Non-Strict Template Results | Select Strict Template | Strict Template Results |
+| Non-strict template results | Selecting strict template | Strict template results |
 | --- | --- | --- |
 | ![](/imgs/datasetprompt7.webp) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
 
 #### Prompt Design Tips
 
 1. Use numbered lists for different requirements.
-2. Use words like "first," "then," "finally" for sequential descriptions.
-3. When listing requirements for different scenarios, be comprehensive. For example: clearly describe all three scenarios — background knowledge fully answers the question, partially answers, or is unrelated.
-4. Use structured prompts cleverly. For example, in the Q&A template, using `instruction` and `output` clearly tells the model that `output` is the expected answer.
+2. Use sequencing words like "first," "then," and "finally."
+3. When listing requirements for different scenarios, be thorough. For example, cover all three cases: the background knowledge fully answers the question, partially answers it, or is unrelated.
+4. Leverage structured prompts — for instance, in the QA template, `instruction` and `output` clearly tell the model that `output` is the expected answer.
 5. Use correct and complete punctuation.

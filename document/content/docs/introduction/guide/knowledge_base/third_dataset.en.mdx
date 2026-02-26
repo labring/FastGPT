@@ -1,30 +1,31 @@
 ---
-title: Third-party Knowledge Base Development
-description: This section details how to integrate third-party knowledge bases into FastGPT
+title: Third-Party Knowledge Base Development
+description: How to integrate a third-party knowledge base with FastGPT
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-Currently, there are various document libraries on the internet, such as Feishu, Yuque, etc. Different FastGPT users may use different document libraries. FastGPT currently has built-in Feishu and Yuque document libraries. If you need to integrate other document libraries, refer to this section.
+There are many document libraries available online, such as Lark, Yuque, and others. Different FastGPT users may use different document libraries. FastGPT has built-in support for Lark and Yuque, but if you need to integrate other document libraries, follow this guide.
 
-## Unified Interface Specifications
 
-To achieve unified integration of different document libraries, FastGPT has standardized interfaces for third-party document libraries, including 4 interface contents. You can [view API File Library Interface](/docs/introduction/guide/knowledge_base/api_dataset).
+## Unified API Specification
 
-All built-in document libraries are extended based on the standard API file library. Refer to the code in `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` to extend other document libraries. You need to complete 4 interface developments:
+To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](/docs/introduction/guide/knowledge_base/api_dataset).
+
+All built-in document libraries are extensions of the standard API File Library. Refer to the code in `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` to build extensions for other document libraries. You need to implement 4 endpoints:
 
 1. Get file list
-2. Get file content/file link
-3. Get original preview address
+2. Get file content / file link
+3. Get original file preview URL
 4. Get file detail information
 
-## Starting a Third-party File Library
+## Building a Third-Party File Library
 
-For explanation purposes, we'll use adding Feishu Knowledge Base (FeishuKnowledgeDataset) as an example.
+For this walkthrough, we'll use adding a Lark Knowledge Dataset (FeishuKnowledgeDataset) as an example.
 
-### 1. Add Third-party Document Library Parameters
+### 1. Add Third-Party Document Library Parameters
 
-First, go to the `FastGPT\packages\global\core\dataset\apiDataset.d.ts` file in the FastGPT project path and add the third-party document library Server type. The knowledge base type fields are designed by yourself, mainly what content you need. For example, in Yuque knowledge base, you need to provide `userId` and `token` fields as authentication information.
+First, go to `FastGPT\packages\global\core\dataset\apiDataset.d.ts` in the FastGPT project and add the third-party document library server type. Design the fields based on your needs. For example, the Yuque knowledge base requires `userId` and `token` for authentication.
 
 ```ts
 export type YuqueServer = {
@@ -36,130 +37,131 @@ export type YuqueServer = {
 
 <Alert icon="🤖" context="success">
 
-If the document library has a `root directory` selection function, you need to add a `basePath` field [Click to view `root directory` function](/docs/introduction/guide/knowledge_base/third_dataset/#添加配置表单)
+If the document library supports a `root directory` selection feature, add a `basePath` field. [See the root directory feature](/docs/introduction/guide/knowledge_base/third_dataset/#adding-the-configuration-form)
 
 </Alert>
 
 ![](/imgs/thirddataset-1.png)
 
-### 2. Create Hook File
+### 2. Create the Hook File
 
-Each third-party document library uses Hooks to maintain a set of API interfaces. The Hook contains 5 functions to complete.
+Each third-party document library uses a Hook pattern to maintain a set of API endpoints. The Hook contains 5 functions to implement.
 
-- Create a document library folder under `FastGPT\packages\service\core\dataset\apiDataset\`, then create an `api.ts` file in the folder
-- In the `api.ts` file, you need to complete 5 function definitions:
-  - `listFiles`: Get file list
-  - `getFileContent`: Get file content/file link
+- Create a folder for your document library under `FastGPT\packages\service\core\dataset\apiDataset\`, then create an `api.ts` file inside it
+- In `api.ts`, define the following 5 functions:
+  - `listFiles`: Get the file list
+  - `getFileContent`: Get file content / file link
   - `getFileDetail`: Get file detail information
-  - `getFilePreviewUrl`: Get original preview address
-  - `getFileId`: Get original file real ID
+  - `getFilePreviewUrl`: Get the original file preview URL
+  - `getFileId`: Get the original file's real ID
 
-### 3. Add Knowledge Base Type
+### 3. Add the Knowledge Base Type
 
-In the `FastGPT\packages\global\core\dataset\type.d.ts` file, import your created knowledge base type.
+In `FastGPT\packages\global\core\dataset\type.d.ts`, import your new knowledge base type.
 
 ![](/imgs/thirddataset-2.png)
 
 ### 4. Add Knowledge Base Data Retrieval
 
-In the `FastGPT\packages\global\core\dataset\apiDataset\utils.ts` file, add the following content.
+In `FastGPT\packages\global\core\dataset\apiDataset\utils.ts`, add the following content.
 
 ![](/imgs/thirddataset-3.png)
 
-### 5. Add Knowledge Base Calling Method
+### 5. Add Knowledge Base Invocation Method
 
-In the `FastGPT\packages\service\core\dataset\apiDataset\index.ts` file, add the following content.
+In `FastGPT\packages\service\core\dataset\apiDataset\index.ts`, add the following content.
 
 ![](/imgs/thirddataset-4.png)
 
-## Add Frontend
+## Adding the Frontend
 
-Add your I18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Using Chinese translation as an example, you generally need the following content:
+Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Using Chinese translations as an example, you'll generally need the following:
 
 ![](/imgs/thirddataset-5.png)
 
-Add the following content in the `FastGPT\packages\service\support\user/audit\util.ts` file to support getting I18n translations.
+In `FastGPT\packages\service\support\user/audit\util.ts`, add the following to support i18n translation retrieval.
 
 ![](/imgs/thirddataset-6.png)
 
 <Alert icon="🤖" context="success">
 
-This I18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\account_team.json`, `FastGPT\packages\web\i18n\zh-CN\account_team.json`, and `FastGPT\packages\web\i18n\en\account_team.json`. The field format is `dataset.XXX_dataset`. Using Feishu knowledge base as an example, the field value is `dataset.feishu_knowledge_dataset`
+The i18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\account_team.json`, `FastGPT\packages\web\i18n\zh-CN\account_team.json`, and `FastGPT\packages\web\i18n\en\account_team.json`. The field format is `dataset.XXX_dataset`. For example, for the Lark knowledge base, the field value is `dataset.feishu_knowledge_dataset`.
 
 </Alert>
 
-Add your knowledge base icons in `FastGPT\packages\web\components\common\Icon\icons\core\dataset\`. There are two types: `Outline` and `Color`, colored and colorless respectively, as shown in the images below.
+Add your knowledge base icons under `FastGPT\packages\web\components\common\Icon\icons\core\dataset\`. You need two icons: `Outline` (monochrome) and `Color` (colored), as shown below.
 
 ![](/imgs/thirddataset-7.png)
 
-In the `FastGPT\packages\web\components\common\Icon\constants.ts` file, add your icon. `import` is the icon storage path.
+
+In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your icons. The `import` path points to where the icons are stored.
 
 ![](/imgs/thirddataset-8.png)
 
-In `FastGPT\packages\global\core\dataset\constants.ts`, add your knowledge base type. You need to add content in both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
+In `FastGPT\packages\global\core\dataset\constants.ts`, add your knowledge base type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
 | | |
-| --- | --- | 
+| --- | --- |
 | ![](/imgs/thirddataset-9.png) | ![](/imgs/thirddataset-10.png) |
 
 <Alert icon="🤖" context="success">
 
-The `courseUrl` field is the corresponding documentation. If available, you can add it.
-Documentation is added in `FastGPT/document/content/docs/introduction/guide/dashboard/workflow/knowledge_base_search_merge.mdx`
-The `label` content is the knowledge base name you previously added through i18n translation.
-`icon` and `avatar` are the two icons you previously added
+The `courseUrl` field links to the relevant documentation — add it if available.
+Documentation goes in `FastGPT/document/content/docs/introduction/guide/dashboard/workflow/knowledge_base_search_merge.mdx`.
+The `label` value is the knowledge base name you added via i18n translations.
+`icon` and `avatar` are the two icons you added earlier.
 
 </Alert>
 
-In the `FastGPT\projects\app\src\pages\dataset\list\index.tsx` file, add the following content. This file is responsible for the menu after clicking the `Create` button on the knowledge base list page. Only after adding the knowledge base in this file can you create a knowledge base.
+In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. This file handles the menu that appears when clicking the "New" button on the knowledge base list page. Your knowledge base must be added here to be creatable.
 
 ![](/imgs/thirddataset-11.png)
 
-In the `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx` file, add the following content. This configuration corresponds to the UI interface below.
+In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, add the following. This configuration corresponds to the UI shown below.
 
 | | |
 | --- | --- |
 ![](/imgs/thirddataset-12.png)|![](/imgs/thirddataset-13.png)
 
-## Add Configuration Form
+## Adding the Configuration Form
 
-In the `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx` file, add your content. This file is responsible for field filling on the create knowledge base page.
+In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the following. This file handles the field input form when creating a knowledge base.
 
 | | | |
 | --- | --- | --- |
 | ![](/imgs/thirddataset-14.png) | ![](/imgs/thirddataset-15.png) | ![](/imgs/thirddataset-16.png) |
 
-The two components added in the code render the root directory selection, corresponding to the designed API's getfiledetail method. If your knowledge base doesn't support it, you don't need to reference it.
+The two components added in the code render the root directory selector, corresponding to the `getFileDetail` API method. If your knowledge base doesn't support this, you can omit them.
 
 ```
-{renderBaseUrlSelector()} //This renders the `Base URL` field
-{renderDirectoryModal()} //The `Select Root Directory` window that appears after clicking `Select`, see image
+{renderBaseUrlSelector()} // Renders the `Base URL` field
+{renderDirectoryModal()} // The `Select Root Directory` modal that appears when clicking `Select` (see image)
 ```
 
 | | |
-| --- | --- | 
+| --- | --- |
 | ![](/imgs/thirddataset-17.png) | ![](/imgs/thirddataset-18.png) |
 
-If the knowledge base needs to support root directory, you also need to add the following content in the `ApiDatasetForm` file.
+If the knowledge base needs root directory support, also add the following in the `ApiDatasetForm` file.
 
-### 1. Parse Knowledge Base Type
+### 1. Parse the Knowledge Base Type
 
-You need to parse your knowledge base type from `apiDatasetServer`, as shown:
+Parse your knowledge base type from `apiDatasetServer`, as shown:
 
 ![](/imgs/thirddataset-19.png)
 
-### 2. Add Root Directory Selection Logic and `parentId` Assignment Logic
+### 2. Add Root Directory Selection Logic and `parentId` Assignment
 
-You need to add root directory selection logic to ensure users have filled in required fields for calling API methods, such as Token.
+Add root directory selection logic to ensure the user has filled in all required fields for the API methods, such as the Token.
 
 ![](/imgs/thirddataset-20.png)
 
-### 3. Add Field Check and Assignment Logic
+### 3. Add Field Validation and Assignment Logic
 
-You need to check again before calling methods whether all required fields have been obtained. After selecting the root directory, assign the root directory value to the corresponding field.
+Verify that all required fields are present before calling the API, and assign the root directory value to the corresponding field after selection.
 
 ![](/imgs/thirddataset-21.png)
 
 ## Tips
 
-After creating the knowledge base, it's recommended to thoroughly test all knowledge base functions to ensure there are no issues. If you have problems adding your knowledge base and can't find corresponding files in the documentation to solve it, it's definitely because miscellaneous items haven't been added completely. It's recommended to repeat a global search for `YuqueServer` and `yuqueServer` to check if there are places where you haven't added your type.
+After creating the knowledge base, we recommend running a full test of all knowledge base features to check for issues. If you encounter problems that aren't covered in this documentation, it's likely that some configuration was missed. Do a global search for `YuqueServer` and `yuqueServer` to verify that your type has been added everywhere it's needed.

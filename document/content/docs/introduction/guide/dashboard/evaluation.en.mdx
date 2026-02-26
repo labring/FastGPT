@@ -1,74 +1,74 @@
 ---
-title: 'Application Evaluation (Beta)'
-description: 'Quick guide to FastGPT application evaluation feature'
+title: 'App Evaluation (Beta)'
+description: 'A quick overview of FastGPT app evaluation'
 ---
 
-Starting from FastGPT v4.11.0, batch application evaluation is supported. By inputting multiple Q&A pairs, the system automatically scores application execution results, enabling quantitative assessment of application performance.
+Starting from FastGPT v4.11.0, batch app evaluation is supported. By providing multiple QA pairs, the system automatically scores your app's responses, enabling quantitative assessment of app performance.
 
-The system supports three evaluation metrics: answer accuracy, question relevance, and semantic accuracy. The current beta version only includes answer accuracy, with remaining metrics to be added in future versions.
+The system supports three evaluation metrics: answer accuracy, question relevance, and semantic accuracy. The current beta only includes answer accuracy — the remaining metrics will be added in future releases.
 
-## Create Application Evaluation
+## Create an App Evaluation
 
-### Enter Evaluation Page
+### Go to the Evaluation Page
 
-![Create application evaluation](/imgs/evaluation1.png)
+![Create app evaluation](/imgs/evaluation1.png)
 
-Go to the application evaluation directory in the workspace and click the "Create Task" button in the upper right corner.
+Navigate to the App Evaluation section under Workspace and click the "Create Task" button in the upper right corner.
 
-### Fill in Evaluation Information
+### Fill in Evaluation Details
 
-![Create application evaluation](/imgs/evaluation2.png)
+![Create app evaluation](/imgs/evaluation2.png)
 
-On the create task page, fill in the following information:
+On the task creation page, provide the following:
 
-- **Evaluation Task Name**: Identifier name for the task
-- **Evaluation Model**: Model used for scoring this task
-- **Evaluation Application**: Application to be scored
+- **Task Name**: A label to identify this evaluation
+- **Evaluation Model**: The model used for scoring
+- **Target App**: The app to be evaluated
 
 ### Prepare Evaluation Data
 
-![Create application evaluation](/imgs/evaluation2.png)
+![Create app evaluation](/imgs/evaluation2.png)
 
-After selecting the evaluation application, the system displays a button to download the CSV template. The template includes these fields:
+After selecting the target app, a button appears to download the CSV template. The template includes these fields:
 
 - Global variables
 - q (question)
-- a (standard answer)
+- a (expected answer)
 - Chat history
 
-**Important Notes:**
+**Notes:**
 
-- Maximum 1000 Q&A pairs supported
+- Maximum of 1,000 QA pairs
 - Follow the template format when filling in data
 
-After completing the file, upload it and click "Start Evaluation" to create an application evaluation task.
+Upload the completed file and click "Start Evaluation" to create the task.
 
-## View Application Evaluation
+## View Evaluation Results
 
 ### Evaluation List
 
-![View application evaluation](/imgs/evaluation4.png)
+![View app evaluation](/imgs/evaluation4.png)
 
-The evaluation list page displays all evaluation tasks with key information:
+The evaluation list shows all tasks with key information:
 
-- **Progress**: Current execution status of the evaluation task
-- **Executor**: User who created the evaluation task
-- **Evaluation Application**: Name of the evaluated application
-- **Start Time/End Time**: Execution time range of the evaluation task
-- **Overall Score**: Overall score of the evaluation task
+- **Progress**: Current execution status
+- **Created By**: The user who created the task
+- **Target App**: The app being evaluated
+- **Start/End Time**: Execution time range
+- **Overall Score**: The task's aggregate score
 
-This information allows clear comparison of effects after each application improvement.
+Use this to compare results across iterations as you improve your app.
 
 ### Evaluation Details
 
-![View application evaluation](/imgs/evaluation5.png)
+![View app evaluation](/imgs/evaluation5.png)
 
-Click "View Details" to enter the evaluation task details page:
+Click "View Details" to open the detail page:
 
-**Task Overview**: Top of the page shows overall task information, including evaluation configuration and statistical results.
+**Task Overview**: The top section shows overall task information, including evaluation configuration and summary statistics.
 
-**Detailed Results**: Bottom of the page displays each Q&A pair in the evaluation task and its score, showing:
+**Detailed Results**: The bottom section lists each QA pair with its score, showing:
 
 - User question
-- Standard output
-- Application output
+- Expected output
+- App output

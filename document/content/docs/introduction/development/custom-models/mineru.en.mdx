@@ -1,34 +1,33 @@
 ---
-title: Integrating MinerU PDF Document Parsing
+title: Integrating MinerU PDF Parsing
 description: Use MinerU to parse PDF documents with image extraction, layout recognition, table recognition, and formula recognition
 ---
 
 ## Background
 
-PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on the pdfjs library, which uses logical parsing and can't effectively handle complex PDFs. When parsing PDFs with images, tables, formulas, or other non-simple text content, you'll find the results lacking.
+PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
 
-There are several methods for parsing PDFs on the market. One option is [MinerU](https://github.com/opendatalab/MinerU), which uses YOLO, PaddleOCR, and table recognition models for vision-based parsing. It can effectively extract images, tables, formulas, and other complex content.
+There are several PDF parsing solutions available. [MinerU](https://github.com/opendatalab/MinerU) uses YOLO, PaddleOCR, and table recognition models for vision-based parsing, effectively extracting images, tables, formulas, and other complex content.
 
-Community Edition users can add `systemEnv.customPdfParse` configuration to their `config.json` file to use MinerU for PDF parsing. Commercial Edition users can fill in the form in the Admin dashboard — the tutorial below explains this in detail.
+Community edition users can add the `systemEnv.customPdfParse` configuration in `config.json` to use MinerU for PDF parsing. Commercial edition users can configure this directly in the Admin panel via the form -- details are covered in the tutorial below.
 
-## Usage Guide
+## Tutorial
 
-Hardware requirements: 16GB+ GPU VRAM for inference, minimum 16GB+ RAM (32GB+ recommended). For other requirements, see the [official site](https://github.com/opendatalab/MinerU).
+Hardware requirements: 16GB+ GPU VRAM, minimum 16GB+ RAM (32GB+ recommended). See the [official page](https://github.com/opendatalab/MinerU) for other requirements.
 
 ### 1. Install MinerU
 
 Quick Docker installation:
 
-Pull the fastgpt-mineru image → Create container and start parsing service → Add the deployed URL to FastGPT config file
+Pull the fastgpt-mineru image --> Create and start the parsing service container --> Add the deployed URL to the FastGPT configuration file
 
 ```dockerfile
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 ```
+This MinerU integration uses pipeline mode with built-in parallelization inside the Docker container. It creates multiple processes based on the number of GPUs to handle uploaded PDFs concurrently.
 
-This MinerU integration uses pipeline mode and is parallelized inside Docker — it creates multiple processes based on GPU count to handle uploaded PDFs simultaneously.
-
-### 2. Update FastGPT Configuration
+### 2. Add FastGPT Configuration
 
 ```json
 {
@@ -36,7 +35,7 @@ This MinerU integration uses pipeline mode and is parallelized inside Docker —
   "systemEnv": {
     xxx
     "customPdfParse": {
-      "url": "http://xxxx.com/v2/parse/file", // Custom PDF parsing service URL (MinerU)
+      "url": "http://xxxx.com/v2/parse/file", // Custom PDF parsing service URL for MinerU
       "key": "", // Custom PDF parsing service key
       "doc2xKey": "", // doc2x service key
       "price": 0 // PDF parsing service price
@@ -45,38 +44,39 @@ This MinerU integration uses pipeline mode and is parallelized inside Docker —
 }
 ```
 
-For Commercial Edition, configure as shown below:
+For the commercial edition, configure as shown below:
 
 ![alt text](/imgs/mineru6.png)
 
-**Note:** Services added via config file require a service restart.
+**Note:** Services added via the configuration file require a restart to take effect.
 
-### 3. Test It Out
+### 3. Test
 
-Upload a PDF file to your knowledge base and check the `Enhanced PDF Parsing` option.
+Upload a PDF file through the Knowledge Base and enable the `Enhanced PDF Parsing` option.
 
 ![alt text](/imgs/mineru1.png)
 
-After confirming the upload, you should see logs like this (LOG_LEVEL needs to be set to info or debug):
+After uploading, you should see the following logs (LOG_LEVEL must be set to info or debug):
 
 ```
 [Info] 2024-12-05 15:04:42 Parsing files from an external service
 [Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms
 ```
 
-Similarly, in your app, you can check the `Enhanced PDF Parsing` option in the file upload configuration.
+
+Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload settings.
 
 ![alt text](/imgs/mineru2.png)
 
 ## Results
 
-Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example, here's what MinerU parsing looks like:
+Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example:
 
-|                                   |                                   |                                   |
-| --------------------------------- | --------------------------------- | --------------------------------- |
-| ![alt text](/imgs/mineru3-1.png)  | ![alt text](/imgs/mineru4-1.png)  | ![alt text](/imgs/mineru5-1.png)  |
-| ![alt text](/imgs/mineru3.png)    | ![alt text](/imgs/mineru4.png)    | ![alt text](/imgs/mineru5.png)    |
+|                                 |                                 |                                 |
+| ------------------------------- | ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/mineru3-1.png) | ![alt text](/imgs/mineru4-1.png) | ![alt text](/imgs/mineru5-1.png) |
+| ![alt text](/imgs/mineru3.png) | ![alt text](/imgs/mineru4.png) | ![alt text](/imgs/mineru5.png) |
 
-Top row shows chunked results, bottom row shows the original PDF. Images, formulas, and OCR handwriting are all extracted successfully — the results are solid.
+The top row shows chunked results; the bottom row shows the original PDF. Images, formulas, and OCR handwriting are all extracted effectively.
 
-Note that [MinerU](https://github.com/opendatalab/MinerU) is licensed under `GPL-3.0 license`. Please use it in compliance with the license terms.
+Note that [MinerU](https://github.com/opendatalab/MinerU) is licensed under `GPL-3.0 license`. Please ensure compliance with the license when using it.

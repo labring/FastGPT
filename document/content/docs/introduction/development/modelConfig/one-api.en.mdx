@@ -1,13 +1,13 @@
 ---
 title: Connect Models via OneAPI
-description: Integrate models through OneAPI
+description: Connect Models via OneAPI
 ---
 
-FastGPT uses a model-separation deployment approach. FastGPT only supports OpenAI's model specification (for non-OpenAI models, it uses a more generic specification) and relies on [One API](https://github.com/songquanpeng/one-api) to unify different model interfaces.
+FastGPT uses a model-separated deployment approach. FastGPT only supports the OpenAI model specification (models not available in OpenAI follow a more generic specification), and uses [One API](https://github.com/songquanpeng/one-api) to unify access to different model interfaces.
 
-[One API](https://github.com/songquanpeng/one-api) is an OpenAI interface management & distribution system. It lets you access all major LLMs through the standard OpenAI API format, ready to use out of the box.
+[One API](https://github.com/songquanpeng/one-api) is an OpenAI API management and distribution system that provides access to all LLMs through the standard OpenAI API format, ready to use out of the box.
 
-## FastGPT and One API Relationship
+## Relationship Between FastGPT and One API
 
 Think of One API as a gateway. The relationship between FastGPT and One API:
 
@@ -22,23 +22,23 @@ Think of One API as a gateway. The relationship between FastGPT and One API:
 
 ![alt text](/imgs/image-59.png)
 
-After deployment, open the OneAPI access link to proceed.
+After deployment, open the OneAPI access link to proceed with the next steps.
 
-## OneAPI Basics
+## OneAPI Basic Tutorial
 
 ### Concepts
 
-1. **Channel:**
-   1. In OneAPI, each channel corresponds to one `API Key`. This key can be from GPT, Microsoft, ChatGLM, Wenxin Yiyan, etc. One `API Key` typically supports multiple models from the same provider.
-   2. One API routes requests based on the `model` parameter. If multiple channels support the same model, it randomly selects one.
-2. **Token:** The credential needed to access One API. You only need this `1` token to access all models configured in One API. In FastGPT, you only need to configure One API's `baseurl` and `token`. Don't set any model scope restrictions on the token, or you'll get errors.
+1. Channels:
+   1. In OneAPI, a channel corresponds to one `Api Key`, which can be from GPT, Microsoft, ChatGLM, ERNIE Bot, etc. A single `Api Key` can typically call multiple models from the same provider.
+   2. One API routes requests to channels based on the `model` specified in the request. If a model maps to multiple channels, one is selected at random.
+2. Tokens: Credentials required to access One API. You only need this single credential to access all models configured in One API. In FastGPT, you only need to configure the `baseurl` and `token` from One API. Do not set any model scope restrictions on the token, as this can cause errors.
 
 ![alt text](/imgs/image-60.png)
 
-### Basic Workflow
+### General Workflow
 
-1. Client sends a request to One API
-2. One API matches the channel based on the `model` parameter in the request (must match exactly with the channel's model list). If multiple channels match, it randomly selects one (same priority).
+1. Client sends a request to One API.
+2. One API matches the request to a channel based on the `model` parameter (must match exactly with the models in the channel). If multiple channels match, one is selected at random (same priority).
 3. One API sends the request to the actual endpoint.
 4. One API returns the result to the client.
 
@@ -48,7 +48,7 @@ After deployment, open the OneAPI access link to proceed.
 
 ### 2. Create a Channel
 
-Add the corresponding channel in One API. Click **Add Base Model**. Don't forget to add the embedding model.
+Add a channel in One API. Click [Add Base Models] directly — don't forget the embedding models.
 
 ![step6](/imgs/oneapi-step6.png)
 
@@ -58,66 +58,66 @@ Add the corresponding channel in One API. Click **Add Base Model**. Don't forget
 | --- | --- |
 | ![step7](/imgs/oneapi-step7.png) | ![alt text](/imgs/image-61.png) |
 
-### 4. Modify Account Balance
+### 4. Adjust Account Balance
 
-One API's default root user has only $200. You can edit this yourself.
+One API defaults to $200 for the root user. You can edit this as needed.
 
 ![alt text](/imgs/image-62.png)
 
 ### 5. Update FastGPT Environment Variables
 
-Once you have the One API token, FastGPT can request One API by modifying the `baseurl` and `key`, and One API will route to different models. Update these two environment variables:
+With the One API token, FastGPT can send requests to One API by modifying the `baseurl` and `key`, and One API will forward them to the appropriate models. Update these two environment variables:
 
 ```bash
-# Must include v1. If on the same network, you can use an internal address.
+# Make sure to include v1. If on the same network, you can use the internal address.
 OPENAI_BASE_URL=https://xxxx.cloud.sealos.io/v1
 # The key below is the token provided by One API
 CHAT_API_KEY=sk-xxxxxx
 ```
 
-## Integrating Other Models
+## Connect Other Models
 
-**Example: Adding Wenxin Yiyan (Baidu ERNIE):**
+**Example: Adding ERNIE Bot:**
 
-### 1. Add Model Channel in OneAPI
+### 1. Add a Model Channel in OneAPI
 
-Select Baidu Wenxin Qianfan as the type.
+Select "Baidu Wenxin Qianfan" as the type.
 
 ![](/imgs/oneapi-demo1.png)
 
 ### 2. Update FastGPT Model Configuration
 
-Open FastGPT model configuration and enable the Wenxin Qianfan model. If it's not built-in, you can add it as a custom model.
+Open FastGPT model configuration and enable the Wenxin Qianfan model. If the model is not built-in, you can add it manually through the "Add Model" option.
 
 ![alt text](/imgs/image-103.png)
 
-## Other Provider Integration Examples
+## Other Provider Integration References
 
-This section covers tutorials for integrating various providers into OneAPI. Don't forget to enable them in FastGPT's model configuration after setup.
+This section covers tutorials for connecting various providers to OneAPI. After configuration, don't forget to enable the models in FastGPT's model configuration.
 
-### Alibaba Tongyi Qianwen
+### Alibaba Qwen (Tongyi Qianwen)
 
-Qianwen now supports GPT format, so you can directly select the OpenAI type for integration. As shown below, select `OpenAI` as the type and enter Alibaba Cloud's proxy address.
+Qwen is now compatible with the GPT format and can be connected directly using the OpenAI type. As shown below, select `OpenAI` as the type and fill in the Alibaba Cloud proxy address.
 
-You can directly use Alibaba Cloud's language models and the `text-embedding-v3` embedding model (tested and confirmed to be normalized, ready to use).
+You can directly use Alibaba Cloud's language models and the `text-embedding-v3` embedding model (confirmed to be normalized and ready to use).
 
 ![alt text](/imgs/image-63.png)
 
-### SiliconCloud — Open-Source Model Collection
+### SiliconCloud — Open Source Model Collection
 
-[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform dedicated to providing open-source model APIs with its own acceleration engine. It has broad model coverage and is ideal for low-cost testing of open-source models. Integration tutorial:
+[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform specializing in open source model inference with its own acceleration engine. It offers a wide range of models, making it ideal for low-cost testing of open source models. Integration steps:
 
-1. [Register for a SiliconCloud account](https://cloud.siliconflow.cn/i/TR9Ym0c4)
+1. [Register a SiliconCloud account](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 2. Go to the console and get your API key: https://cloud.siliconflow.cn/account/ak
-3. Add a OneAPI channel, select `OpenAI` type, enter proxy: `https://api.siliconflow.cn`, and use the key from step 2.
+3. Add a new OneAPI channel, select `OpenAI` as the type, set the proxy to `https://api.siliconflow.cn`, and use the API key from step 2.
 
 ![alt text](/imgs/image-64.png)
 
-Since OneAPI doesn't have SiliconCloud model names built-in, you can add them via custom model names. Here's how to get the model names:
+Since OneAPI doesn't include SiliconCloud model names by default, you can enter custom model names. Here's how to find the model names:
 
 1. Open the [SiliconCloud model list](https://siliconflow.cn/zh-cn/models)
 2. Click on a model to open its details.
-3. Copy the model name to OneAPI.
+3. Copy the model name into OneAPI.
 
 | | | |
 | --- | --- | --- |

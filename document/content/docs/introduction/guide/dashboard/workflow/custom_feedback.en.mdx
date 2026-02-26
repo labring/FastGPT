@@ -1,29 +1,31 @@
 ---
 title: Custom Feedback
-description: Custom feedback module introduction
+description: FastGPT Custom Feedback node overview
 ---
 
-This is a temporary module. A more comprehensive design will be implemented in the future.
+This is a temporary module that will receive a more comprehensive redesign in the future.
 
-## Features
+## Characteristics
 
 - Can be added multiple times
-- No external inputs
-- Automatic execution
+- No external input
+- Auto-executed
+
 
 |                       |                       |
 | --------------------- | --------------------- |
 | ![](/imgs/customfeedback1.jpg) | ![](/imgs/customfeedback2.jpg) |
 | ![](/imgs/customfeedback3.jpg) | ![](/imgs/customfeedback4.jpg) |
 
-## Introduction
 
-The custom feedback module adds a feedback marker to your conversations, making it easier to analyze conversation data in the backend.
+## Overview
 
-In debug mode, feedback content isn't recorded. Instead, it displays: `Auto feedback test: feedback content`.
+The Custom Feedback node adds a feedback tag to conversations, making it easier to analyze conversation data from the admin panel.
 
-In conversation mode (chat, share window, API calls with chatId), feedback content is recorded in conversation logs (with a 60s delay).
+In debug mode, feedback content is not recorded. Instead it displays: `Auto feedback test: feedback content`.
+
+In conversation mode (chat, shared window, or API calls with chatId), feedback content is recorded in the conversation log with a 60-second delay.
 
 ## Use Cases
 
-The custom feedback module functions like "event tracking" in software development, helping you observe conversation data.
+The Custom Feedback node works like event tracking in software development, letting you observe and monitor data within conversations.
