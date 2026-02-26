@@ -1,0 +1,85 @@
+---
+title: Integrating M3E Vector Model
+description: Connect FastGPT to the private M3E vector model
+---
+
+## Overview
+
+FastGPT uses OpenAI's embedding vector model by default. For private deployment, you can replace it with the M3E vector model. M3E is a small model with low resource requirements — it can even run on CPU. This tutorial is based on an image provided by user "睡大觉".
+
+## Deploy the Image
+
+Image name: `stawky/m3e-large-api:latest`  
+China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest`  
+Port: 6008  
+Environment variables:
+
+```
+# Set access token (channel key in OneAPI)
+Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+Can also be set via environment variable: sk-key. For Docker environment variable setup, please refer to Docker tutorials.
+```
+
+## Integrate with One API
+
+Add a channel with these parameters:
+
+![](/imgs/model-m3e1.png)
+
+## Test
+
+curl example:
+
+```bash
+curl --location --request POST 'https://domain/v1/embeddings' \
+--header 'Authorization: Bearer xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "m3e",
+  "input": ["laf是什么"]
+}'
+```
+
+Authorization is sk-key. Model is the custom model name you just entered in One API.
+
+## Integrate with FastGPT
+
+Update your config.json file — add M3E to vectorModels:
+
+```json
+"vectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "price": 0.2,
+      "defaultToken": 500,
+      "maxToken": 3000
+    },
+    {
+      "model": "m3e",
+      "name": "M3E (Testing)",
+      "price": 0.1,
+      "defaultToken": 500,
+      "maxToken": 1800
+    }
+]
+```
+
+## Using the Model
+
+1. Select the M3E model when creating a knowledge base.
+
+   Note: Once selected, the vector model for the knowledge base cannot be changed.
+
+   ![](/imgs/model-m3e2.png)
+
+2. Import data
+3. Test search
+
+   ![](/imgs/model-m3e3.png)
+
+4. Bind knowledge base to app
+
+   Note: Apps can only bind knowledge bases using the same vector model — no cross-model binding. Also, you'll need to adjust similarity thresholds, as different vector models have different similarity (distance) metrics. Test and experiment to find the right values.
+
+   ![](/imgs/model-m3e4.png)

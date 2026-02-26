@@ -1,0 +1,118 @@
+---
+title: Integrating ChatGLM2-6B
+description: Connect FastGPT to the private ChatGLM2-6B model
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## Overview
+
+FastGPT lets you use your own OpenAI API key to quickly call OpenAI interfaces. It currently integrates GPT-3.5, GPT-4, and embedding models for building your own knowledge bases. However, for data security reasons, you may not want to send all your data to cloud-based LLMs.
+
+So how do you integrate private models with FastGPT? This guide uses Tsinghua's ChatGLM2 as an example to show you how to connect private models to FastGPT.
+
+## ChatGLM2-6B Overview
+
+ChatGLM2-6B is the second-generation version of the open-source bilingual (Chinese-English) chat model ChatGLM-6B. For details, see the [ChatGLM2-6B project page](https://github.com/THUDM/ChatGLM2-6B).
+
+<Alert context="warning">
+Note: ChatGLM2-6B weights are fully open for academic research. Commercial use is allowed only with official written permission. This tutorial simply demonstrates usage — it does not grant any authorization!
+</Alert>
+
+## Recommended Configuration
+
+According to official data, generating 8192 tokens requires: FP16 uses 12.8GB VRAM, int8 uses 8.1GB VRAM, int4 uses 5.1GB VRAM. Quantization slightly affects performance, but not significantly.
+
+Recommended specs:
+
+| Type | RAM    | VRAM   | Disk Space | Start Command            |
+| ---- | ------ | ------ | ---------- | ------------------------ |
+| fp16 | >=16GB | >=16GB | >=25GB     | python openai_api.py 16  |
+| int8 | >=16GB | >=9GB  | >=25GB     | python openai_api.py 8   |
+| int4 | >=16GB | >=6GB  | >=25GB     | python openai_api.py 4   |
+
+## Deployment
+
+### Environment Requirements
+
+- Python 3.8.10
+- CUDA 11.8
+- VPN/proxy for accessing external resources
+
+### Source Code Deployment
+
+1. Set up the environment according to the requirements above (use GPT for specific tutorials);
+2. Download the [Python file](https://github.com/labring/FastGPT/blob/main/plugins/model/llm-ChatGLM2/openai_api.py)
+3. Run `pip install -r requirements.txt` in the command line;
+4. Open the py file you want to start, and configure the token in the `verify_token` method. This token adds a layer of verification to prevent unauthorized API access;
+5. Run `python openai_api.py --model_name 16`. Choose the number based on the configuration above.
+
+Wait for the model to download and load. If you encounter errors, ask GPT first.
+
+After successful startup, you should see an address like this:
+
+![](/imgs/chatglm2.png)
+
+> The `http://0.0.0.0:6006` shown here is your connection address.
+
+### Docker Deployment
+
+**Image and Port**
+
++ Image name: `stawky/chatglm2:latest`  
++ China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
++ Port: 6006
+
+```
+# Set access token (channel key in OneAPI)
+Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+Can also be set via environment variable: sk-key. For Docker environment variable setup, please refer to Docker tutorials.
+```
+
+## Integrate with One API
+
+Add a channel for chatglm2 with these parameters:
+
+![](/imgs/model-m3e1.png)
+
+Here I'm adding chatglm2 as the language model.
+
+## Test
+
+curl example:
+
+```bash
+curl --location --request POST 'https://domain/v1/chat/completions' \
+--header 'Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "chatglm2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+Authorization is sk-aaabbbcccdddeeefffggghhhiiijjjkkk. Model is the custom model name you just entered in One API.
+
+## Integrate with FastGPT
+
+Update your config.json file — add chatglm2 to llmModels:
+
+```json
+"llmModels": [
+  // Existing models
+  {
+    "model": "chatglm2",
+    "name": "chatglm2",
+    "maxContext": 4000,
+    "maxResponse": 4000,
+    "quoteMaxToken": 2000,
+    "maxTemperature": 1,
+    "vision": false, 
+    "defaultSystemChatPrompt": ""
+  }
+]
+```
+
+## Using the Model
+
+Simply select chatglm2 as your model.

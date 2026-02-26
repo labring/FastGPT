@@ -1,0 +1,116 @@
+---
+title: Integrating ChatGLM2-m3e Models
+description: Connect FastGPT to private ChatGLM2 and m3e-large models
+---
+
+## Overview
+
+FastGPT uses OpenAI's LLM and vector models by default. For private deployment, you can use ChatGLM2 and m3e-large models instead. This guide is based on a method provided by user @不做了睡大觉. The image directly integrates both M3E-Large and ChatGLM2-6B models, ready to use out of the box.
+
+## Deploy the Image
+
+- Image name: `stawky/chatglm2-m3e:latest`
+- China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
+- Port: 6006
+
+```
+# Set access token (channel key in OneAPI)
+Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+Can also be set via environment variable: sk-key. For Docker environment variable setup, please refer to Docker tutorials.
+```
+
+## Integrate with OneAPI
+
+Documentation: [One API](/docs/introduction/development/modelconfig/one-api/)
+
+Add a channel for each model (chatglm2 and m3e-large) with these parameters:
+
+![](/imgs/model-m3e1.png)
+
+Here I'm adding m3e as the vector model and chatglm2 as the language model.
+
+## Test
+
+curl examples:
+
+```bash
+curl --location --request POST 'https://domain/v1/embeddings' \
+--header 'Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "m3e",
+  "input": ["laf是什么"]
+}'
+```
+
+```bash
+curl --location --request POST 'https://domain/v1/chat/completions' \
+--header 'Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "chatglm2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+Authorization is sk-aaabbbcccdddeeefffggghhhiiijjjkkk. Model is the custom model name you just entered in One API.
+
+## Integrate with FastGPT
+
+Update your config.json file — add chatglm2 to llmModels and M3E to vectorModels:
+
+```json
+"llmModels": [
+  // Other chat models
+  {
+    "model": "chatglm2",
+    "name": "chatglm2",
+    "maxToken": 8000,
+    "price": 0,
+    "quoteMaxToken": 4000,
+    "maxTemperature": 1.2,
+    "defaultSystemChatPrompt": ""
+  }
+],
+"vectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "price": 0.2,
+      "defaultToken": 500,
+      "maxToken": 3000
+    },
+    {
+      "model": "m3e",
+      "name": "M3E (Testing)",
+      "price": 0.1,
+      "defaultToken": 500,
+      "maxToken": 1800
+    }
+]
+```
+
+## Using the Models
+
+**M3E model usage:**
+
+1. Select the M3E model when creating a knowledge base.
+
+   Note: Once selected, the vector model for the knowledge base cannot be changed.
+
+   ![](/imgs/model-m3e2.png)
+
+2. Import data
+3. Test search
+
+   ![](/imgs/model-m3e3.png)
+
+4. Bind knowledge base to app
+
+   Note: Apps can only bind knowledge bases using the same vector model — no cross-model binding. Also, you'll need to adjust similarity thresholds, as different vector models have different similarity (distance) metrics. Test and experiment to find the right values.
+
+   ![](/imgs/model-m3e4.png)
+
+**ChatGLM2 model usage:**
+
+Simply select chatglm2 as your model.

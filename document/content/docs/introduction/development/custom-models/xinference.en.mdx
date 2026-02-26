@@ -1,0 +1,158 @@
+---
+title: Integrating Local Models with Xinference
+description: One-stop local LLM private deployment
+---
+
+[Xinference](https://github.com/xorbitsai/inference) is an open-source model inference platform. Beyond LLMs, it can also deploy Embedding and ReRank models, which are critical for enterprise-grade RAG construction. Xinference also provides advanced features like Function Calling and supports distributed deployment — meaning it can scale horizontally as your application usage grows.
+
+## Installing Xinference
+
+Xinference supports multiple inference engines as backends to meet different deployment scenarios. Below we'll introduce these three inference backends by use case and how to use them.
+
+### 1. Server
+
+If you're deploying LLMs on a Linux or Windows server, you can choose Transformers or vLLM as Xinference's inference backend:
+
+- [Transformers](https://huggingface.co/docs/transformers/index): By integrating Hugging Face's Transformers library as the backend, Xinference can quickly integrate the most cutting-edge models in natural language processing (NLP), including LLMs.
+- [vLLM](https://vllm.ai/): vLLM is an open-source library developed by UC Berkeley, designed for efficiently serving large language models. It introduces the PagedAttention algorithm to improve memory management by effectively managing attention keys and values. Throughput can reach 24x that of Transformers, making vLLM suitable for production environments handling high-concurrency user access.
+
+If your server has an NVIDIA GPU, you can refer to [this article's instructions to install CUDA](https://xorbits.cn/blogs/langchain-streamlit-doc-chat) to maximize GPU acceleration with Xinference.
+
+#### Docker Deployment
+
+You can use Xinference's official Docker image for one-click installation and startup (make sure Docker is installed on your machine):
+
+```bash
+docker run -p 9997:9997 --gpus all xprobe/xinference:latest xinference-local -H 0.0.0.0
+```
+
+#### Direct Deployment
+
+First, prepare a Python 3.9+ environment to run Xinference. We recommend installing conda first according to the conda official documentation, then create a Python 3.11 environment:
+
+```bash
+conda create --name py311 python=3.11
+conda activate py311
+```
+
+The following two commands install Xinference with Transformers and vLLM as inference engine backends:
+
+```bash
+pip install "xinference[transformers]"
+pip install "xinference[vllm]"
+pip install "xinference[transformers,vllm]" # Install both simultaneously
+```
+
+PyPI automatically installs PyTorch when installing Transformers and vLLM, but the auto-installed CUDA version may not match your environment. In that case, you can manually install according to PyTorch's [installation guide](https://pytorch.org/get-started/locally/).
+
+Start the Xinference service on your server with:
+
+```bash
+xinference-local -H 0.0.0.0
+```
+
+Xinference starts locally by default on port 9997. With the -H 0.0.0.0 parameter configured, non-local clients can also access the Xinference service via the machine's IP address.
+
+### 2. Personal Devices
+
+If you want to deploy LLMs on your Macbook or personal computer, we recommend installing CTransformers as Xinference's inference backend. CTransformers is a C++ version of Transformers implemented with GGML.
+
+[GGML](https://ggml.ai/) is a C++ library that lets large language models [run on consumer hardware](https://github.com/ggerganov/llama.cpp/discussions/205). GGML's biggest feature is model quantization. Quantizing an LLM is the process of reducing weight representation precision, thereby reducing the resources needed to use the model. For example, representing a high-precision float (like 0.0001) requires more space than a low-precision float (like 0.1). Since LLMs need to be loaded into memory during inference, you need disk space to store them and enough RAM to load them during execution. GGML supports many different quantization strategies, each offering different trade-offs between efficiency and performance.
+
+Install CTransformers as Xinference's inference backend with:
+
+```bash
+pip install xinference
+pip install ctransformers
+```
+
+Since GGML is a C++ library, Xinference uses the `llama-cpp-python` library for language bindings. For different hardware platforms, we need to use different compilation parameters:
+
+- Apple Metal (MPS): `CMAKE_ARGS="-DLLAMA_METAL=on" pip install llama-cpp-python`
+- Nvidia GPU: `CMAKE_ARGS="-DLLAMA_CUBLAS=on" pip install llama-cpp-python`
+- AMD GPU: `CMAKE_ARGS="-DLLAMA_HIPBLAS=on" pip install llama-cpp-python`
+
+After installation, just enter `xinference-local` to start the Xinference service on your Mac.
+
+## Create and Deploy Models (Using Qwen-14B as Example)
+
+### 1. Launch Model via WebUI
+
+After starting Xinference, enter `http://127.0.0.1:9997` in your browser to access the local Xinference Web UI.
+
+Open the "Launch Model" tab, search for qwen-chat, select model launch parameters, then click the small rocket 🚀 button in the lower left of the model card to deploy the model to Xinference. The default Model UID is qwen-chat (you'll access the model through this ID later).
+
+![](/imgs/xinference-launch-model.png)
+
+When you first launch the Qwen model, Xinference downloads model parameters from HuggingFace, which takes a few minutes. Xinference caches model files locally so subsequent launches don't require re-downloading. Xinference also supports downloading model files from other model sites, like [modelscope](https://inference.readthedocs.io/en/latest/models/sources/sources.html).
+
+### 2. Launch Model via Command Line
+
+You can also use Xinference's command-line tool to launch models. The default Model UID is qwen-chat (you'll access the model through this ID later).
+
+```bash
+xinference launch -n qwen-chat -s 14 -f pytorch
+```
+
+Beyond WebUI and command-line tools, Xinference also provides Python SDK and RESTful API interaction methods. For more usage, refer to the [Xinference official documentation](https://inference.readthedocs.io/en/latest/getting_started/index.html).
+
+## Integrate Local Models with One API
+
+For One API deployment and integration, refer to [here](/docs/introduction/development/modelconfig/one-api/).
+
+Add a channel for qwen1.5-chat. The Base URL needs to be the Xinference service endpoint, and register qwen-chat (the model's UID).
+
+![](/imgs/one-api-add-xinference-models.jpg)
+
+Test with this command:
+
+```bash
+curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
+--header 'Authorization: Bearer [oneapi_token]' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "qwen-chat",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+Replace [oneapi_url] with your One API address and [oneapi_token] with your One API token. Model is the custom model name you just entered in One API.
+
+## Integrate Local Models with FastGPT
+
+Update the llmModels section of FastGPT's `config.json` configuration file to add the qwen-chat model:
+
+```json
+...
+  "llmModels": [
+    {
+      "model": "qwen-chat", // Model name (matches the model name in OneAPI channel)
+      "name": "Qwen", // Model alias
+      "avatar": "/imgs/model/Qwen.svg", // Model logo
+      "maxContext": 125000, // Max context
+      "maxResponse": 4000, // Max response
+      "quoteMaxToken": 120000, // Max quote content
+      "maxTemperature": 1.2, // Max temperature
+      "charsPointsPrice": 0, // n points/1k token (Commercial Edition)
+      "censor": false, // Enable content moderation (Commercial Edition)
+      "vision": true, // Supports image input
+      "datasetProcess": true, // Set as knowledge base processing model (QA), must have at least one true or knowledge base will error
+      "usedInClassify": true, // Use for question classification (must have at least one true)
+      "usedInExtractFields": true, // Use for content extraction (must have at least one true)
+      "usedInToolCall": true, // Use for tool calling (must have at least one true)
+      "toolChoice": true, // Supports tool choice (used in classification, content extraction, tool calling)
+      "functionCall": false, // Supports function calling (used in classification, content extraction, tool calling. toolChoice is prioritized; if false, uses functionCall; if still false, uses prompt mode)
+      "customCQPrompt": "", // Custom text classification prompt (for models that don't support tools and function calling)
+      "customExtractPrompt": "", // Custom content extraction prompt
+      "defaultSystemChatPrompt": "", // Default system prompt for conversations
+      "defaultConfig": {} // Default config to include in API requests (e.g., GLM4's top_p)
+    }
+  ],
+...
+```
+
+Restart FastGPT and you can select the Qwen model in app configuration for conversations:
+
+![](/imgs/fastgpt-list-models.png)
+
+- Reference: [FastGPT + Xinference: One-Stop Local LLM Private Deployment and Application Development](https://xorbits.cn/blogs/fastgpt-weather-chat)

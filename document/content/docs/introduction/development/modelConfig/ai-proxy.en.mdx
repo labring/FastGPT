@@ -1,0 +1,125 @@
+---
+title: Connect Models via AI Proxy
+description: Connect models through AI Proxy
+---
+
+Starting with `FastGPT 4.8.23`, AI Proxy makes model configuration even easier.
+
+Like One API, AI Proxy is an OpenAI interface management & distribution system. It lets you access all major LLMs through the standard OpenAI API format, ready to use out of the box.
+
+## Deployment
+
+### Docker Version
+
+The `docker-compose.yml` file already includes AI Proxy configuration. [View the latest yml config](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml)
+
+If you're upgrading from an older version, copy the AI Proxy section from the yml and add it to your existing file.
+
+## How It Works
+
+AI Proxy has three core modules:
+
+1. **Channel Management:** Manages API keys and available models for each provider.
+2. **Model Invocation:** Routes requests to the right channel based on the model, constructs the request body according to the channel's API format, sends the request, and returns a standardized response.
+3. **Call Logs:** Records detailed logs of model calls, including input parameters and error messages for troubleshooting.
+
+**Flow:**
+
+![aiproxy12](/imgs/aiproxy1.png)
+
+## Using AI Proxy in FastGPT
+
+Find AI Proxy features in **Account → Model Providers**.
+
+### 1. Create a Channel
+
+Go to **Model Providers** and click **Model Channels** to enter the channel configuration page.
+
+![aiproxy1](/imgs/aiproxy-1.png)
+
+Click **Add Channel** in the top right corner.
+
+![aiproxy2](/imgs/aiproxy-2.png)
+
+Here's an example using Alibaba Cloud models:
+
+![aiproxy3](/imgs/aiproxy-3.png)
+
+1. **Channel Name:** Display name for the channel (for identification only).
+2. **Provider:** The model provider. Different providers have different default addresses and API key formats.
+3. **Models:** Specific models available through this channel. The system includes mainstream models by default. If you don't see what you need, click **Add Model** to [add a custom model](/docs/introduction/development/modelconfig/intro/#add-custom-model).
+4. **Model Mapping:** Maps FastGPT's model names to the provider's actual model names. Example:
+
+```json
+{
+  "gpt-4o-test": "gpt-4o"
+}
+```
+
+FastGPT uses `gpt-4o-test` internally and sends that name to AI Proxy. AI Proxy then sends `gpt-4o` to the upstream provider.
+
+5. **Proxy Address:** The request endpoint. The system provides default addresses for mainstream providers — leave blank if you don't need to change it.
+6. **API Key:** The API credential from the model provider. Some providers require multiple keys — follow the prompts.
+
+Click **Add** to see your new channel in the **Model Channels** list.
+
+![aiproxy4](/imgs/aiproxy-4.png)
+
+### 2. Test the Channel
+
+Test the channel to ensure your models work correctly.
+
+![aiproxy5](/imgs/aiproxy-5.png)
+
+Click **Model Test** to see your configured models, then click **Start Test**.
+
+![aiproxy6](/imgs/aiproxy-6.png)
+
+After testing completes, you'll see results and response times for each model.
+
+![aiproxy7](/imgs/aiproxy-7.png)
+
+### 3. Enable Models
+
+Finally, go to **Model Configuration** and enable the models you want to use in the platform. See [Model Configuration](/docs/introduction/development/modelconfig/intro) for more details.
+
+![aiproxy8](/imgs/aiproxy-8.png)
+
+## Additional Features
+
+### Priority
+
+Range: 1–100. Higher values get selected first.
+
+![aiproxy9](/imgs/aiproxy-9.png)
+
+### Enable/Disable
+
+Use the control menu on the right side of each channel to enable or disable it. Disabled channels won't provide model services.
+
+![aiproxy10](/imgs/aiproxy-10.png)
+
+### Call Logs
+
+The **Call Logs** page shows request records sent to models, including input/output tokens, request time, duration, endpoint, etc. Failed requests include detailed parameters and error messages for troubleshooting. Logs are retained for 1 hour by default (configurable via environment variables).
+
+![aiproxy11](/imgs/aiproxy-11.png)
+
+## Migrating from OneAPI to AI Proxy
+
+Send an HTTP request from any terminal. Replace `{{host}}` with your AI Proxy address and `{{admin_key}}` with the `ADMIN_KEY` value from AI Proxy.
+
+The `dsn` body parameter is your OneAPI MySQL connection string.
+
+```bash
+curl --location --request POST '{{host}}/api/channels/import/oneapi' \
+--header 'Authorization: Bearer {{admin_key}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dsn": "mysql://root:s5mfkwst@tcp(dbconn.sealoshzh.site:33123)/mydb"
+}'
+```
+
+A successful execution returns `"success": true`.
+
+The script isn't perfect — it does basic data mapping for **proxy addresses**, **models**, and **API keys**. We recommend manually verifying the migration afterward.

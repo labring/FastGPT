@@ -1,0 +1,202 @@
+---
+title: Docker Mongo Migration (Dump Mode)
+description: Migrate FastGPT MongoDB using Docker
+---
+
+## Author
+
+[https://github.com/samqin123](https://github.com/samqin123)
+
+[Related PR — open this to discuss with the author](https://github.com/labring/FastGPT/pull/1426)
+
+## Overview
+
+How to use `mongodump` to migrate FastGPT's MongoDB from Environment A to Environment B.
+
+**Prerequisites:**
+
+- **Environment A:** Your existing FastGPT deployment (e.g., on Alibaba Cloud) that you want to migrate from.
+- **Environment B:** The new FastGPT deployment (e.g., on Tencent Cloud or a NAS like Synology/QNAP). Note: NAS deployments require MongoDB 4.2 or 4.4 — cloud deployments support the default FastGPT MongoDB version.
+- **Environment C:** Your local machine, used as a staging area to hold files and coordinate the transfer.
+
+## 1. Prepare: Access Docker Mongo [Environment A]
+
+```bash
+docker exec -it mongo sh
+mongo -u 'username' -p 'password'
+>> show dbs
+```
+
+Confirm you can see the `fastgpt` database. Note the database name for export.
+
+**Create backup directories** on both the container and the host in all environments [A + C]:
+
+Create a temporary directory for import/export, e.g., `data/backup`.
+
+#### Create the directory in [Environment A] for the dump operation
+
+Enter the FastGPT Docker container:
+
+```bash
+docker exec -it fastgpt sh
+mkdir -p /data/backup
+```
+
+Once created, exported MongoDB data will automatically sync to the `data/backup` directory under your FastGPT installation folder on the host. If it doesn't sync automatically, use `docker cp` to copy the files manually (this rarely happens).
+
+#### Set up [Environment C] host directory
+
+Navigate to your FastGPT directory, go into the `mongo` folder, and create a `backup` subdirectory:
+
+```bash
+mkdir -p /fastgpt/data/backup
+```
+
+Also create a directory in the new [Environment B]:
+
+```bash
+mkdir -p /fastgpt/mongobackup
+```
+
+> Note: Don't create this inside `fastgpt/data/` — you'll need to clear that directory later, and having files there will cause import errors.
+
+## 2. Export Data from [Environment A]
+
+Use `mongodump` to export the MongoDB database from the source environment.
+
+### 2.1 Export
+
+Run this command directly on the host (no need to enter the container):
+
+```bash
+docker exec -it mongo bash -c "mongodump --db fastgpt -u 'username' -p 'password' --authenticationDatabase admin --out /data/backup"
+```
+
+Alternatively, enter the container and run everything in one go:
+
+```bash
+# 1. Enter the container
+docker exec -it fastgpt sh
+
+# 2. Create the backup directory
+mkdir -p /data/backup
+
+# 3. Run the dump
+mongodump --host 127.0.0.1:27017 --db fastgpt -u "username" -p "password" --authenticationDatabase admin --out /data/backup
+```
+
+**If the files don't sync automatically**, copy them to the host manually:
+
+```bash
+docker cp mongo:/data/backup [your-local-fastgpt-dir]:/fastgpt/data/backup
+```
+
+### 2.2 Compress and Transfer [A → C]
+
+For safety, compress the backup directory and download it to your local machine (Environment C). This lets you verify file counts and keep a local copy.
+
+Experienced users can skip C and transfer directly to B.
+
+**Navigate to the data directory on [Environment A]:**
+
+```bash
+cd /usr/fastgpt/mongo/data
+```
+
+**Compress the backup:**
+
+```bash
+tar -czvf ../fastgpt-mongo-backup-$(date +%Y-%m-%d).tar.gz ./
+```
+
+**Download to local machine [A → C]:**
+
+```bash
+scp -i /Users/path/[your-pem-file] root@[your-cloud-server-ip]:/usr/fastgpt/mongo/fastgptbackup-2024-05-03.tar.gz /[local-path]/Downloads/fastgpt
+```
+
+**Or transfer directly to the new server [A → B]:**
+
+```bash
+scp -i /Users/path/[your-pem-file] root@[old-server-ip]:/usr/fastgpt/mongo/fastgptbackup-2024-05-03.tar.gz root@[new-server-ip]:/Downloads/fastgpt2
+```
+
+### 2.3 Verify the Archive [Environment C]
+
+After downloading, extract and verify the file count matches the original:
+
+```bash
+tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
+```
+
+The extracted files should be `.bson` files. Compare the count with the source. If they don't match, re-export before proceeding — a mismatch means no data will appear after import.
+
+<img width="1561" alt="image" src="https://github.com/labring/FastGPT/assets/103937568/cbb8a93c-5834-4a0d-be6c-c45c701f593e" />
+
+Once verified, upload the archive to [Environment B]:
+
+```bash
+scp -rfv [local-path]/Downloads/fastgpt/fastgptbackup-2024-05-03.tar.gz root@[new-server-ip]:/Downloads/fastgpt/backup
+```
+
+## 3. Import and Restore
+
+### 3.1 Extract the Archive on [Environment B]
+
+```bash
+tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
+```
+
+Verify the file count again against your earlier check.
+
+### 3.2 Copy Files into the Docker Container [Environment C]
+
+Since the files aren't in the `data/` directory, they won't auto-sync into the container. Copy them manually:
+
+```bash
+docker cp user/fastgpt/mongobackup/data mongo:/tmp/backup
+```
+
+### 3.3 Initialize the Mongo Data Directory
+
+If the `mongo/db` directory isn't freshly initialized, `mongorestore` may fail. Clear it first:
+
+```bash
+cd /fastgpt-install-dir/mongo/data
+rm -rf *
+```
+
+Then run `docker compose up` to reinitialize the directory.
+
+## 4. Restore with mongorestore [Environment C]
+
+Run this from the host to import in one command:
+
+```bash
+docker exec -it mongo mongorestore -u "username" -p "password" --authenticationDatabase admin /tmp/backup/ --db fastgpt
+```
+
+<img width="1668" alt="image" src="https://github.com/labring/FastGPT/assets/103937568/32c2cdb8-bf80-4d31-9269-4bf3909cf04e" />
+
+> If the imported file count looks too low, the restore likely failed. A failed restore means you can log in to FastGPT but see no data.
+
+## 5. Restart Containers [Environment C]
+
+```bash
+docker compose restart
+docker logs -f mongo  # Check mongo logs before accessing the web UI
+```
+
+A healthy MongoDB startup looks like this:
+
+<img width="1736" alt="iShot_2024-05-09_19 21 26" src="https://github.com/labring/FastGPT/assets/103937568/94ee00db-43de-48bd-a1fc-22dfe86aaa90" />
+
+An error state looks like this:
+
+<img width="508" alt="iShot_2024-05-09_19 23 13" src="https://github.com/labring/FastGPT/assets/103937568/2e2afc9f-484c-4b63-93ee-1c14aef03de0" />
+
+## 6. Verify
+
+After starting the FastGPT container, log in to the web UI. If you can see all your original data, the migration was successful.
+
+<img width="1728" alt="iShot_2024-05-09_19 23 51" src="https://github.com/labring/FastGPT/assets/103937568/846b6157-6b6a-4468-a1d9-c44d681ebf7c" />
