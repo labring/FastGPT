@@ -2,12 +2,12 @@
   "title": "Documentation",
   "root": true,
   "pages": [
-    "---入门---",
+    "---Getting Started---",
     "index",
     "cloud",
     "commercial",
     "development",
-    "---功能介绍---",
+    "---Features---",
     "...guide"
   ],
   "order": 1

@@ -3,9 +3,9 @@
   "description": "More information about FastGPT practical use cases",
   "root": true,
   "pages": [
-    "---外部调用 FastGPT---",
+    "---External Integration---",
     "...external-integration",
-    "---应用搭建案例---",
+    "---Application Examples---",
     "...app-cases"
   ]
 }
