@@ -1,0 +1,53 @@
+---
+title: Text Content Extraction
+description: FastGPT content extraction module guide
+---
+
+## Features
+
+- Can be added multiple times
+- Requires manual configuration
+- Trigger-based execution
+- function_call module
+- Core module
+
+![](/imgs/extract1.png)
+
+## Function
+
+Extracts structured data from text, typically used with the HTTP module for extensions. Can also perform direct extraction operations, such as translation.
+
+## Parameters
+
+### Extraction Requirements Description
+
+As the name suggests, set a goal for the model — what content needs to be extracted.
+
+**Example 1**
+
+> You are a lab appointment assistant. Extract the name, appointment time, and lab number from the conversation. Current time `{{cTime}}`
+
+**Example 2**
+
+> You are a Google search assistant. Extract search keywords from the conversation
+
+**Example 3**
+
+> Translate my question directly to English, don't answer the question
+
+### Chat History
+
+Usually some chat history is needed to extract user questions more completely. For example, in the image above, you need to provide name, time, and lab name. The user might initially only provide time and lab name without their name. After a round of prompting for missing info, the user inputs their name. At this point, you need to combine the previous record to completely extract all 3 pieces of information.
+
+### Target Fields
+
+Target fields correspond to extraction results. As shown above, each added field creates a corresponding output.
+
++ **key**: Unique field identifier, cannot be duplicated!
++ **Field description**: Describes what the field is about, e.g., name, time, search term, etc.
++ **Required**: Whether to force the model to extract this field. May extract an empty string.
+
+## Output Description
+
+- **Complete extraction result**: A JSON string containing extraction results for all fields.
+- **Target field extraction results**: All string type.

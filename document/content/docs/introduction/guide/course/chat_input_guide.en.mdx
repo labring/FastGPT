@@ -1,0 +1,49 @@
+---
+title: Chat Input Suggestions
+description: FastGPT chat input suggestion guide
+---
+
+![](/imgs/questionGuide.png)
+
+## What are Custom Input Suggestions?
+
+You can preset questions for your app. As users type, the system dynamically searches these questions based on their input and suggests them as prompts, helping users ask questions faster.
+
+You can configure the question library directly in FastGPT or provide a custom API endpoint.
+
+## Custom Question Library API
+
+The endpoint must be accessible from the user's browser.
+
+**Request:**
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=你'
+```
+
+Where `appId` is the application ID and `searchKey` is the search keyword (max 50 characters).
+
+**Response:**
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": [
+    "是你",
+    "你是谁呀",
+    "你好好呀",
+    "你好呀",
+    "你是谁!",
+    "你好"
+  ]
+}
+```
+
+The data array contains matching questions. Return up to 5 questions.
+
+**Parameters:**
+
+- appId - Application ID
+- searchKey - Search keyword

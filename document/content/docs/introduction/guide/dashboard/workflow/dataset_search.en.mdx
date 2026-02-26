@@ -1,0 +1,30 @@
+---
+title: Knowledge Base Search
+description: FastGPT AI knowledge base search module guide
+---
+
+For detailed parameter descriptions and internal logic, see: [FastGPT Knowledge Base Search Solution](/docs/introduction/guide/knowledge_base/rag/)
+
+## Features
+
+- Can be added multiple times (prevents messy lines in complex workflows, looks cleaner)
+- Has external inputs
+- Has static configuration
+- Trigger-based execution
+- Core module
+
+![](/imgs/flow-dataset1.png)
+
+## Parameters
+
+### Input - Associated Knowledge Bases
+
+Select one or more knowledge bases with the **same vector model** for vector search.
+
+### Input - Search Parameters
+
+[View parameter descriptions](/docs/introduction/guide/knowledge_base/dataset_engine/#搜索参数)
+
+### Output - Referenced Content
+
+Outputs references in array format, length can be 0. This means the output path continues even if no content is found.

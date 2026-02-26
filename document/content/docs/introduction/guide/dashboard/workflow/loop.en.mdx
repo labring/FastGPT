@@ -1,0 +1,222 @@
+---
+title: Batch Processing
+description: FastGPT batch processing node introduction and usage
+---
+
+## Node Overview
+
+The **Batch Processing** node is an important feature added in FastGPT V4.8.11. It allows workflows to iteratively process array-type input data, processing one element at a time and automatically executing subsequent nodes until the entire array is processed.
+
+This node's design is inspired by loop structures in programming languages, but presented in a visual way.
+
+![Batch processing node](/imgs/fastgpt-loop-node.png)
+
+> In programming, nodes can be understood as functions or interfaces. Think of them as **steps**. By connecting multiple nodes together, you can build step-by-step processes that lead to the final AI output.
+
+The **Batch Processing** node is essentially a function whose main responsibility is to automate the repeated execution of specific workflows.
+
+## Core Features
+
+1. **Array Batch Processing**
+   - Supports array-type data input
+   - Automatically iterates through array elements
+   - Maintains processing order
+   - Supports parallel processing (performance optimization)
+
+2. **Automatic Iteration Execution**
+   - Automatically triggers subsequent nodes
+   - Supports conditional termination
+   - Supports loop counting
+   - Maintains execution context
+
+3. **Coordination with Other Nodes**
+   - Works with AI Chat nodes
+   - Works with HTTP nodes
+   - Works with Content Extraction nodes
+   - Works with Conditional nodes
+
+## Use Cases
+
+The **Batch Processing** node's main purpose is to extend workflow processing capabilities through automation, enabling FastGPT to better handle batch tasks and complex data processing flows. Especially when processing large-scale data or scenarios requiring multiple iterations, the batch processing node can significantly improve workflow efficiency and automation.
+
+The **Batch Processing** node is particularly suitable for:
+
+1. **Batch Data Processing**
+   - Batch text translation
+   - Batch document summarization
+   - Batch content generation
+
+2. **Data Pipeline Processing**
+   - Analyze search results one by one
+   - Process knowledge base retrieval results one by one
+   - Process array data from HTTP requests item by item
+
+3. **Recursive or Iterative Tasks**
+   - Long text segmented processing
+   - Multi-round content optimization
+   - Chain data processing
+
+## Usage
+
+### Input Parameter Configuration
+
+The **Batch Processing** node requires two core input parameters:
+
+1. **Array (Required)**: Receives an array-type input, which can be:
+   - String array (`Array<string>`)
+   - Number array (`Array<number>`)
+   - Boolean array (`Array<boolean>`)
+   - Object array (`Array<object>`)
+
+2. **Loop Body (Required)**: Defines the node flow to execute in each loop, including:
+   - Loop body start: Marks the loop start position
+   - Loop body end: Marks the loop end position and optionally outputs result variables
+
+### Loop Body Configuration
+
+![Loop body configuration](/imgs/fastgpt-loop-node-config.webp)
+
+1. Inside the loop body, you can add any type of node, such as:
+   - AI Chat node
+   - HTTP Request node
+   - Content Extraction node
+   - Text Processing node, etc.
+
+2. Loop body end node configuration:
+   - Select the variable to output via dropdown menu
+   - This variable will be collected as the current loop's result
+   - Results from all loops will form a new array as the final output
+
+## Scenario Examples
+
+### Batch Process Array
+
+Suppose we have an array containing multiple texts that need AI processing. This is the most basic and common use case for the batch processing node.
+
+#### Implementation Steps
+
+1. Prepare input array
+   
+   ![Prepare input array](/imgs/fastgpt-loop-node-example-1.png)
+   
+   Use the [Code Execution] node to create a test array:
+
+   ```javascript
+   const texts = [
+     "这是第一段文本",
+     "这是第二段文本",
+     "这是第三段文本"
+   ];
+   return { textArray: texts };
+   ```
+
+2. Configure batch processing node
+
+   ![Configure batch processing node](/imgs/fastgpt-loop-node-example-2.png)
+
+   - Array input: Select the output variable `textArray` from the previous code execution node
+   - Add an [AI Chat] node inside the loop body to process each text. Here we input the prompt: `Please translate this text to English`
+   - Add a [Specified Reply] node to output the translated text
+   - Loop body end node selects the AI reply content as output variable
+
+#### Execution Flow
+
+![Execution flow](/imgs/fastgpt-loop-node-example-3.png)
+
+1. [Code Execution] node executes, generating test array
+2. [Batch Processing] node receives array, starts iteration
+3. For each array element:
+   - [AI Chat] node processes current element
+   - [Specified Reply] node outputs translated text
+   - [Loop Body End] node collects processing results
+4. After processing all elements, outputs result array
+
+### Long Text Translation
+
+When processing long text translation, we often face these challenges:
+
+- Text length exceeds LLM token limits
+- Need to maintain consistent translation style
+- Need to maintain context coherence
+- Translation quality needs multiple rounds of optimization
+
+The **Batch Processing** node can solve these problems well.
+
+#### Implementation Steps
+
+1. Text preprocessing and segmentation
+   
+   ![Text preprocessing and segmentation](/imgs/fastgpt-loop-node-example-4.png)
+   
+   Use the [Code Execution] node for text segmentation with this code:
+
+   ```javascript
+   const MAX_HEADING_LENGTH = 7;
+   const MAX_HEADING_CONTENT_LENGTH = 200;
+   const MAX_HEADING_UNDERLINE_LENGTH = 200;
+   const MAX_HTML_HEADING_ATTRIBUTES_LENGTH = 100;
+   const MAX_LIST_ITEM_LENGTH = 200;
+   const MAX_NESTED_LIST_ITEMS = 6;
+   const MAX_LIST_INDENT_SPACES = 7;
+   const MAX_BLOCKQUOTE_LINE_LENGTH = 200;
+   const MAX_BLOCKQUOTE_LINES = 15;
+   const MAX_CODE_BLOCK_LENGTH = 1500;
+   const MAX_CODE_LANGUAGE_LENGTH = 20;
+   const MAX_INDENTED_CODE_LINES = 20;
+   const MAX_TABLE_CELL_LENGTH = 200;
+   const MAX_TABLE_ROWS = 20;
+   const MAX_HTML_TABLE_LENGTH = 2000;
+   const MIN_HORIZONTAL_RULE_LENGTH = 3;
+   const MAX_SENTENCE_LENGTH = 400;
+   const MAX_QUOTED_TEXT_LENGTH = 300;
+   const MAX_PARENTHETICAL_CONTENT_LENGTH = 200;
+   const MAX_NESTED_PARENTHESES = 5;
+   const MAX_MATH_INLINE_LENGTH = 100;
+   const MAX_MATH_BLOCK_LENGTH = 500;
+   const MAX_PARAGRAPH_LENGTH = 1000;
+   const MAX_STANDALONE_LINE_LENGTH = 800;
+   const MAX_HTML_TAG_ATTRIBUTES_LENGTH = 100;
+   const MAX_HTML_TAG_CONTENT_LENGTH = 1000;
+   const LOOKAHEAD_RANGE = 100;
+   
+   // ... (regex pattern code omitted for brevity)
+   
+   function main({text}){
+     const chunks = [];
+     let currentChunk = '';
+     const tokens = countToken(text)
+   
+     const matches = text.match(regex);
+     if (matches) {
+       matches.forEach((match) => {
+         if (currentChunk.length + match.length <= 1000) {
+           currentChunk += match;
+         } else {
+           if (currentChunk) {
+             chunks.push(currentChunk);
+           }
+           currentChunk = match;
+         }
+       });
+       if (currentChunk) {
+         chunks.push(currentChunk);
+       }
+     }
+   
+     return {chunks, tokens};
+   }
+   ```
+
+   Here we use [a powerful regex from Jina AI](https://x.com/JinaAI_/status/1823756993108304135) that leverages all possible boundary clues and heuristics to precisely split text.
+
+2. Configure batch processing node
+
+   ![Configure batch processing node](/imgs/fastgpt-loop-node-example-5.png)
+
+   - Array input: Select the output variable `chunks` from the previous code execution node
+   - Add a [Code Execution] node inside the loop body to format source text
+   - Add a [Search Glossary] node to search a knowledge base of proper nouns before translation
+   - Add an [AI Chat] node using CoT (Chain of Thought) to have the LLM explicitly and systematically generate reasoning chains, showing the complete translation thought process
+   - Add a [Code Execution] node to extract the final translation result from the [AI Chat] node
+   - Add a [Specified Reply] node to output the translated text
+   - Loop body end node selects the output variable `result` from [Extract Translation Text]
