@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/notebook';
 import { baseOptions } from '@/app/layout.config';
-import { t, getLocalizedPath } from '@/lib/i18n';
+import { t, getLocalizedPath, i18n } from '@/lib/i18n';
 import LogoLight from '@/components/docs/logo';
 import LogoDark from '@/components/docs/logoDark';
 import '@/app/global.css';
@@ -107,7 +107,7 @@ export default async function Layout({
           text: 'github'
         }
       ]}
-      tree={source.pageTree[lang]}
+      tree={source.pageTree[lang] || source.pageTree[i18n.defaultLanguage]}
       searchToggle={{
         enabled: true
       }}
