@@ -1,0 +1,42 @@
+---
+title: V4.8.19 (Includes Migration Script)
+description: FastGPT V4.8.19 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update images:
+
+- Update the fastgpt image tag to v4.8.19-beta
+- Update the fastgpt-pro commercial edition image tag to v4.8.19-beta
+- Sandbox image update is not required
+
+### 2. Run migration script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4819' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This migrates user avatars from the user table to the member table.
+
+## Full Release Notes
+
+1. New - Workflow Knowledge Base search supports filtering by Knowledge Base permissions.
+2. New - Lark/Yuque Knowledge Base view original source.
+3. New - Flow wait plugin that pauses execution for n milliseconds before continuing.
+4. New - Lark bot integration supports configuring a private Lark server URL.
+5. Improved - Member list pagination loading.
+6. Improved - Unified pagination loading code.
+7. Improved - Chat page loading now supports configuring whether it's a standalone page.
+8. Improved - Member avatars migrated to the member table.
+9. Fixed - Yuque file library import: nested file contents could not be expanded.
+10. Fixed - Workflow editor: LLM parameters could not be disabled.
+11. Fixed - Workflow editor: code execution node template restoration issue.
+12. Fixed - HTTP interface object string parsing compatibility.
+13. Fixed - API file upload (localFile) endpoint: image expiration flag not being cleared.
+14. Fixed - Workflow import: number input types could not be overridden.
+15. Fixed - Some model provider logos not displaying correctly.

@@ -1,0 +1,35 @@
+---
+title: V4.8.21
+description: FastGPT V4.8.21 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update images:
+
+- Update the fastgpt image tag to v4.8.21-fix
+- Update the fastgpt-pro commercial edition image tag to v4.8.21-fix
+- Sandbox image update is not required
+
+## Full Release Notes
+
+1. New - Deprecated/deleted plugin indicators.
+2. New - Chat logs with source categorization, title search, and export.
+3. New - Global variables support drag-and-drop reordering.
+4. New - LLM models support `top_p`, `response_format`, and `json_schema` parameters.
+5. New - Doubao 1.5 model preset. Alibaba Embedding v3 preset.
+6. New - Vector models support normalization configuration to accommodate unnormalized vector models such as Doubao embedding models.
+6. New - AI chat node supports outputting thinking process results, which can be referenced by other nodes.
+7. Improved - Embedded chat widget with window position adaptation.
+8. Improved - Better error messages when models are not configured.
+9. Improved - Support for non-stream mode thinking output.
+10. Improved - Added null pointer protection when TTS voice is not configured.
+11. Improved - Markdown link parsing/splitting rules switched to strict matching mode, sacrificing compatibility for fewer false positives.
+12. Improved - Reduced data fetching scope for unauthenticated users to improve system privacy.
+13. Fixed - Simple Mode: switching to a non-vision model now correctly disables image recognition.
+14. Fixed - o1/o3 models: field mapping not taking effect during testing, causing errors.
+15. Fixed - WeChat Official Account chat null pointer exception.
+16. Fixed - Multiple audio/video files displaying incorrectly.
+17. Fixed - Share link authentication error causing infinite loop.

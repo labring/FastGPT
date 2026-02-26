@@ -1,0 +1,409 @@
+---
+title: Deploy with Docker
+description: Quickly deploy FastGPT using Docker Compose
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## Prerequisites
+
+1. Basic networking knowledge: ports, firewalls, etc.
+2. Docker and Docker Compose basics
+
+## Deployment Architecture
+
+![](/imgs/sealos-fastgpt.webp)
+
+<Alert icon="🤖" context="success">
+
+- MongoDB: Stores all data except vectors
+- PostgreSQL/Milvus/Oceanbase/SeekDB: Stores vector data
+- AIProxy: Aggregates various AI APIs with multi-model support (for any model issues, test with OneAPI first)
+
+</Alert>
+
+## Recommended Specs
+
+### PgVector Version
+
+Very lightweight, suitable for knowledge base indexes under 50 million.
+
+| Environment                        | Minimum (Single Node) | Recommended  |
+| ---------------------------------- | --------------------- | ------------ |
+| Testing (reduce compute processes) | 2c4g                  | 2c8g         |
+| 1M vector groups                   | 4c8g 50GB             | 4c16g 50GB   |
+| 5M vector groups                   | 8c32g 200GB           | 16c64g 200GB |
+
+### Milvus Version
+
+Better performance for 100M+ vectors.
+
+[View Milvus official recommended specs](https://milvus.io/docs/prerequisite-docker.md)
+
+| Environment      | Minimum (Single Node) | Recommended |
+| ---------------- | --------------------- | ----------- |
+| Testing          | 2c8g                  | 4c16g       |
+| 1M vector groups | Not tested            |             |
+| 5M vector groups |                       |             |
+
+### Zilliz Cloud Version
+
+Zilliz Cloud is built by the Milvus team — a fully managed SaaS vector database with better performance than Milvus and SLA guarantees. [Try Zilliz Cloud](https://zilliz.com.cn/).
+
+Since the vector database runs in the cloud, no local resources are needed.
+
+### SeekDB Version
+
+SeekDB is a high-performance vector database based on MySQL protocol, fully compatible with OceanBase, supporting efficient vector retrieval.
+
+| Environment                        | Minimum (Single Node) | Recommended  |
+| ---------------------------------- | --------------------- | ------------ |
+| Testing (reduce compute processes) | 2c4g                  | 2c8g         |
+| 1M vector groups                   | 4c8g 50GB             | 4c16g 50GB   |
+| 5M vector groups                   | 8c32g 200GB           | 16c64g 200GB |
+
+<Alert icon="🤖" context="success">
+
+SeekDB uses MySQL protocol, fully compatible with OceanBase:
+- Supports 1536-dimensional vector retrieval
+- Built-in HNSW index algorithm
+- Batch insert and query optimization
+- Automatic retry and connection pool management
+
+</Alert>
+
+## Preparation
+
+### 1. Ensure Network Access
+
+If using `OpenAI` or other international model APIs, make sure you can access them, or you'll get `Connection error`. See: [Proxy Solutions](/docs/introduction/development/proxy/nginx)
+
+### 2. Prepare Docker Environment
+
+<Tabs items={['Linux','MacOS','Windows']}>
+  <Tab value="Linux">
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+systemctl enable --now docker
+# Install docker-compose
+curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+# Verify installation
+docker -v
+docker-compose -v
+# If it fails, search online for solutions
+```
+  </Tab>
+  <Tab value="MacOS">
+We recommend [Orbstack](https://orbstack.dev/). Install via Homebrew:
+
+```bash
+brew install orbstack
+```
+
+Or [download the installer](https://orbstack.dev/download) directly.
+
+  </Tab>
+  <Tab value="Windows">
+We recommend storing source code and data in the Linux filesystem when binding to Linux containers, not the Windows filesystem.
+
+You can [install Docker Desktop with WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/).
+
+Or [install the command-line version of Docker directly in WSL 2](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop).
+
+  </Tab>
+</Tabs>
+
+## Start Deployment
+
+### 1. Get Configuration Files
+
+#### Method 1: Interactive Script Deployment
+
+Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployment environment, vector database version, IP address, etc.
+
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+#### Method 2: Manual Download
+If your environment is non-*nix or can't access external networks, manually download `docker-compose.yml`.
+
+1. Download the `docker-compose.yml` file:
+
+<details>
+<summary>Click to view docker-compose config file download links for different databases</summary>
+
+- **Pgvector**
+  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
+- **Oceanbase**
+  - China mirror (Alibaba Cloud): [docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.ob.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.ob.yml)
+- **Milvus**
+  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.milvus.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.milvus.yml)
+- **Zilliz**
+  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+- **SeekDB**
+  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.seekdb.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.seekdb.yml)
+
+2. Download the `config.json` file:
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+</details>
+
+Download config.json file:
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+### 2. Modify Environment Variables
+
+For `Zilliz version`, you also need credentials — see [Deploy Zilliz Version: Get Account and Credentials](#deploy-zilliz-version-get-account-and-credentials). Other versions can skip to the next step.
+
+### 3. Open External Ports / Configure Domain
+
+These ports must be accessible:
+
+1. Port 3000 (FastGPT main service)
+2. Port 9000 (S3 service)
+1. Port 3005 (FastGPT SSE MCP server service)
+
+### 4. Start Containers
+
+Run in the same directory as docker-compose.yml. Ensure `docker-compose` version is 2.17+, or automated commands may fail.
+
+```bash
+# Start containers
+docker-compose up -d
+```
+
+### 5. Access FastGPT
+
+Access FastGPT via the port/domain opened in step 3.
+Login username is `root`, password is the `DEFAULT_ROOT_PSW` set in `docker-compose.yml` environment variables.
+Each container restart automatically initializes the root user with password `1234` (matching `DEFAULT_ROOT_PSW`).
+
+### 6. Configure Models
+
+- After first login, the system prompts that `Language Model` and `Index Model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
+- If the redirect doesn't happen, go to `Account - Model Providers` to configure models. [View tutorial](/docs/introduction/development/modelConfig/ai-proxy)
+- Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
+
+### 7. Install System Plugins as Needed
+
+Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All FastGPT systems must manually install system plugins.
+
+* Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
+* If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
+* You can also sort tools, set default installations, and manage tags.
+
+![alt text](/imgs/image-121.png)
+
+## FAQ
+
+### FastGPT and FastGPT-plugin Version Compatibility
+
+| FastGPT-plugin Version | FastGPT Main Service |
+| ---------------------- | -------------------- |
+| 0.5.x                  | >= 4.14.6            |
+| < 0.5.0                | < 4.14.6             |
+
+### S3 Connection Issues
+
+Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both the client and FastGPT service.
+
+**Important:**
+
+> Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
+>
+> See [Object Storage Configuration & Common Issues](/docs/introduction/development/object-storage)
+
+### Browser Unresponsive After Login
+
+Can't click anything, refresh doesn't help. Close the tab and reopen it.
+
+### Mongo Replica Set Auto-Initialization Failed
+
+The latest docker-compose examples have fully automated Mongo replica set initialization. Tested on Ubuntu 20/22, CentOS 7, WSL2, macOS, and Windows. If it still won't start, the CPU likely doesn't support AVX instructions — switch to Mongo 4.x.
+
+To manually initialize the replica set:
+
+1. Create a mongo key in the terminal:
+
+```bash
+openssl rand -base64 756 > ./mongodb.key
+chmod 600 ./mongodb.key
+# Change key permissions — some systems use admin, others use root
+chown 999:root ./mongodb.key
+```
+
+2. Modify docker-compose.yml to mount the key:
+
+```yml
+mongo:
+  #  image: mongo:5.0.18
+  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # Alibaba Cloud
+  container_name: mongo
+  ports:
+    - 27017:27017
+  networks:
+    - fastgpt
+  command: mongod --keyFile /data/mongodb.key --replSet rs0
+  environment:
+    # Default username and password, only effective on first run
+    - MONGO_INITDB_ROOT_USERNAME=myusername
+    - MONGO_INITDB_ROOT_PASSWORD=mypassword
+  volumes:
+    - ./mongo/data:/data/db
+    - ./mongodb.key:/data/mongodb.key
+```
+
+3. Restart services:
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+4. Enter the container and initialize the replica set:
+
+```bash
+# Check if mongo container is running
+docker ps
+# Enter container
+docker exec -it mongo bash
+
+# Connect to database (use your Mongo username and password)
+mongo -u myusername -p mypassword --authenticationDatabase admin
+
+# Initialize replica set. For external access, add directConnection=true to the Mongo connection parameters
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# Check status — if it shows rs0 status, it's running successfully
+rs.status()
+```
+
+### How to Change API Address and Key
+
+By default, OneAPI connection address and key are configured. Modify the environment variables in the fastgpt container in `docker-compose.yml`:
+
+`OPENAI_BASE_URL` (API endpoint, must include /v1)
+`CHAT_API_KEY` (API credentials)
+
+After modifying, restart:
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+### How to Update Versions?
+
+1. Check the [update documentation](/docs/upgrading) to confirm the target version — avoid skipping versions.
+2. Change the image tag to the target version
+3. Run these commands to pull and restart:
+
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   ```
+
+4. Run initialization scripts (if any)
+
+### How to Customize Configuration Files?
+
+Modify `config.json`, then run `docker-compose down` followed by `docker-compose up -d` to restart. For details, see [Configuration Guide](/docs/introduction/development/configuration).
+
+### How to Check if Custom Config File is Mounted
+
+1. `docker logs fastgpt` shows logs. After starting the container, the first web request reads the config file — check for success or error messages.
+2. `docker exec -it fastgpt sh` enters the container. Use `ls data` to check if `config.json` is mounted. Use `cat data/config.json` to view it.
+
+**Possible reasons it's not working:**
+
+1. Incorrect mount directory
+2. Invalid config file — logs will show `invalid json`. The file must be valid JSON.
+3. Didn't run `docker-compose down` then `docker-compose up -d` after changes. A simple restart doesn't remount files.
+
+### How to Check if Environment Variables Loaded
+
+1. `docker exec -it fastgpt sh` to enter the container.
+2. Run `env` to view all environment variables.
+
+### Why Can't I Connect to Local Model Images
+
+`docker-compose.yml` uses bridge mode to create the `fastgpt` network. To access other images via 0.0.0.0 or image name, add those images to the same network.
+
+### How to Resolve Port Conflicts?
+
+Docker-compose port format: `mapped_port:running_port`.
+
+In bridge mode, container running ports don't conflict, but mapped ports can. Change the mapped port to a different value.
+
+If `container1` needs to connect to `container2`, use `container2:running_port`.
+
+(Brush up on Docker basics as needed)
+
+### relation "modeldata" does not exist
+
+PG database not connected or initialization failed — check logs. FastGPT initializes tables on each PG connection. Errors will appear in the logs.
+
+1. Check if the database container started normally
+2. For non-Docker deployments, manually install the pg vector extension
+3. Check fastgpt logs for related errors
+
+### Illegal instruction
+
+Possible causes:
+
+1. ARM architecture — use the official Mongo image: mongo:5.0.18
+2. CPU doesn't support AVX — switch to mongo4.x. Change the mongo image to: mongo:4.4.29
+
+### Operation `auth_codes.findOne()` buffering timed out after 10000ms
+
+Mongo connection failed — check mongo's running status and **logs**.
+
+Possible causes:
+
+1. Mongo service didn't start (some CPUs don't support AVX — switch to mongo4.x, find the latest 4.x on Docker Hub, update the image version, and rerun)
+2. Database connection environment variables are wrong (username/password, check host and port — for non-container network connections, use public IP and add directConnection=true)
+3. Replica set startup failed, causing the container to keep restarting
+4. `Illegal instruction.... Waiting for MongoDB to start`: CPU doesn't support AVX — switch to mongo4.x
+
+### First Deployment: Root User Shows Unregistered
+
+Logs will show error messages. Most likely Mongo replica set mode wasn't started.
+
+### Can't Export Knowledge Base / Can't Use Voice Input or Playback
+
+SSL certificate not configured — some features require it.
+
+### Login Shows Network Error
+
+Caused by service initialization errors triggering a restart.
+
+- 90% of cases: incorrect config file causing JSON parsing errors
+- The rest: usually because the vector database can't connect
+
+### How to Change Password
+
+Modify `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart — the password auto-updates.
+
+### Deploy Zilliz Version: Get Account and Credentials
+
+Open [Zilliz Cloud](https://zilliz.com.cn/), create an instance, and get the credentials.
+
+![zilliz_key](/imgs/zilliz_key.png)
+
+<Alert icon="🤖" context="success">
+
+1. Set `MILVUS_ADDRESS` and `MILVUS_TOKEN` to match Zilliz's `Public Endpoint` and `Api key`. Remember to add your IP to the whitelist.
+
+</Alert>

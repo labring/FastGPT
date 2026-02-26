@@ -1,0 +1,46 @@
+---
+title: 'V4.11.1'
+description: 'FastGPT V4.11.1 Update Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.11.1-fix2
+- Update FastGPT commercial edition image tag: v4.11.1-fix
+- Update fastgpt-plugin image tag: v0.1.7
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. System tools: toolsets can now be used directly for tool calls.
+2. MCP architecture rewrite — after updating MCP, all active MCP components are automatically updated without needing to remove and re-add them.
+3. Chat log dashboard now supports custom field display.
+4. Account deletion.
+5. New documentation framework.
+6. GLM 4.5 series model configurations.
+
+## Improvements
+
+1. Redemption code feature now supports specifying corporate payment mode.
+2. Optimized payment plan mode.
+3. Renaming a global variable no longer causes referenced values in nodes to be lost.
+4. Moved model preset configurations to the FastGPT Plugin project.
+
+## Bug Fixes
+
+1. MCP object-type data was passed incorrectly.
+2. Login page UI misalignment.
+3. Excel files with line break characters caused chunking errors.
+4. Doc2x PDF parsing: removed extraneous tags.
+5. 404 page translations were not applied.
+
+## Tool Updates
+
+1. New: libulibu drawing tool.
+2. New: Metaso search tool.
+3. New: Signoz system monitoring integration.
+4. Fixed: incorrect data type in the math expression tool.

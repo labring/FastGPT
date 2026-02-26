@@ -1,0 +1,46 @@
+---
+title: V4.8.20 (Includes Migration Script)
+description: FastGPT V4.8.20 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update environment variables
+
+If you are an early adopter who configured `ONEAPI_URL`, you need to change it to `OPENAI_BASE_URL`.
+
+### 3. Update images:
+
+- Update the fastgpt image tag to v4.8.20-fix2
+- Update the fastgpt-pro commercial edition image tag to v4.8.20-fix2
+- Sandbox image update is not required
+
+### 4. Run migration script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4820' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+The script automatically loads models from the old configuration file into the new model configuration.
+
+## Full Release Notes
+
+1. New - Visual model parameter configuration, replacing the old config file approach. Over 100 model presets included, with one-click testing for all model types. (Full in-page channel configuration is planned for the next version.) [View model configuration guide](/docs/introduction/development/modelconfig/intro/)
+2. New - DeepSeek Reasoner model supports outputting the thinking process.
+3. New - Usage record export and dashboard.
+4. New - Markdown syntax extension supporting audio and video (via `audio` and `video` code blocks).
+5. New - Adjusted `max_tokens` calculation logic. `max_tokens` is now prioritized at the configured value; if it exceeds the maximum context, history is reduced instead. For example, requesting 8000 `max_tokens` reduces the context length by 8000.
+6. Improved - Query optimization now includes context filtering to prevent exceeding context limits.
+7. Improved - Page component extraction to reduce page component routing.
+8. Improved - Full-text search is now case-insensitive.
+9. Improved - QA generation and enhanced indexing switched to streaming output to prevent timeouts with some models.
+10. Improved - Automatically adds `null` to empty assistant `content`, and merges consecutive text assistant messages to prevent errors from some models.
+11. Improved - Adjusted image host: domain is no longer appended during upload but before sending a conversation, preventing broken images after domain changes.
+12. Fixed - Member list not triggering bottom-loading in some scenarios.
+13. Fixed - Workflow recursive execution failing under certain conditions.

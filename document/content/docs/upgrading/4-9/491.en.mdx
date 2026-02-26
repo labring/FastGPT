@@ -1,0 +1,61 @@
+---
+title: V4.9.1
+description: FastGPT V4.9.1 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Database
+
+### 2. Update Images
+
+- Update FastGPT image tag: v4.9.1-fix2
+- Update FastGPT Pro image tag: v4.9.1-fix2
+- Sandbox image: no update required
+- AIProxy image changed to: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.1.3
+
+### 3. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv491' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**Script Functions**
+
+Re-processes tokenization using the latest jieba dictionary. This takes a while — you can monitor progress in the logs.
+
+## New Features
+
+1. Pro edition supports single-team mode for better internal member management.
+2. Knowledge base chunk reader.
+3. API knowledge base supports PDF enhanced parsing.
+4. Team member invitations now use an invite link model.
+5. Hybrid search weight configuration support.
+6. Rerank model selection and weight configuration support. The knowledge base search weight calculation has been adjusted from `vector search weight + full-text search weight + rerank weight` to `search weight + rerank weight`. This may affect search results — you can adjust the relevant weights to adapt your data.
+
+## Improvements
+
+1. Knowledge base data input UI improvements.
+2. App-bound knowledge base data fetching moved to backend processing.
+3. Added dependency package security version checks and upgraded some dependencies.
+4. Model testing code improvements.
+5. Optimized reasoning output parsing: as long as a model is configured to support reasoning, `<think>` tags will always be parsed, even when reasoning is disabled during a conversation.
+6. Loaded the latest jieba dictionary for improved full-text search tokenization.
+
+## Bug Fixes
+
+1. Max response tokens tooltip showing incorrect values.
+2. HTTP Node failing to parse strings containing newline characters.
+3. Knowledge base question optimization not passing conversation history.
+4. Missing error message translations.
+5. Content extraction node: incorrect schema for array types.
+6. Model channel testing not actually targeting the specified channel.
+7. Adding a custom model would also save default model fields, causing incorrect default model detection.
+8. Prompt-mode tool calls not null-checking the reasoning chain, causing UI rendering errors.
+9. Editing app info causing avatar loss.
+10. Share link titles being reset on refresh.
+11. Authentication failure when calculating parentPath, causing it to be cleared.

@@ -1,0 +1,37 @@
+---
+title: Access App via API
+description: Access FastGPT app via API
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+In FastGPT, you can create multiple API keys for each app to access the app's API endpoints. Each key can only access one app. For complete endpoint documentation, [see the Chat API reference](/docs/openapi/intro).
+
+## Get API Key
+
+Go to App -> "API Access", then click "API Key" to create a key.
+
+<Alert context="warning">
+  Keep your key safe. Once the dialog is closed, you cannot copy the key again -- you can only create a new key and copy it.
+</Alert>
+
+![](/imgs/fastgpt-api1.jpg)
+
+<Alert icon="🍅" context="success">
+  Tip: For security, you can set a quota or expiration time to prevent key abuse.
+</Alert>
+
+## Replace Variables in Third-Party Apps
+
+```bash
+OPENAI_API_BASE_URL: http://localhost:3000/api (replace with your deployed domain)
+OPENAI_API_KEY = the key obtained in the previous step
+```
+
+**[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**
+
+![](/imgs/chatgptnext.png)
+
+**[ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) Example:**
+
+![](/imgs/chatgptweb.png)

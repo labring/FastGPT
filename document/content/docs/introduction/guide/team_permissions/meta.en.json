@@ -1,0 +1,9 @@
+{
+  "title": "Team & Permissions",
+  "description": "Team management, member groups, and permission settings to ensure data security and proper permission allocation in team collaboration.",
+  "pages": [
+    "team_roles_permissions",
+    "invitation_link",
+    "customDomain"
+  ]
+}

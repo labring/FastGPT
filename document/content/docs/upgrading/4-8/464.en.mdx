@@ -1,0 +1,37 @@
+---
+title: V4.6.4 (Includes Migration Script)
+description: FastGPT V4.6.4
+---
+
+## 1. Run the Initialization API
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
+
+1. https://xxxxx/api/admin/initv464
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv464' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+What the initialization does:
+
+1. Initializes the createTime field in PG.
+2. Initializes the feedback field for chats in Mongo.
+
+## V4.6.4 New Features
+
+1. Rewritten - Share link identity logic, now using localID to track user IDs.
+2. New (Commercial edition) - Share link SSO support. With just 3 API endpoints via an authentication URL, you can fully integrate your existing user system. See [Share Link Authentication](/docs/openapi/share/) for details.
+3. New - More embedding options for share links, with additional DIY customization.
+4. Improved - History module. The old history module has been deprecated — simply enter the value directly in the relevant field.
+5. Adjusted - Knowledge base search module topK logic now uses MaxToken calculation, accommodating text chunks of varying lengths.
+6. Adjusted - Authentication order to prioritize API keys, preventing cookies from overriding API key authentication.
+7. Link fetching now supports multiple selectors. See [Web Site Sync Usage](/docs/introduction/guide/knowledge_base/websync/).
+8. Fixed - Image upload authentication issue in share links.
+9. Fixed - Mongo connection pool not being released.
+10. Fixed - Dataset description (Intro) not updating.
+11. Fixed - Markdown code block rendering issue.
+12. Fixed - Root permission issue.
+13. Optimized Dockerfile.

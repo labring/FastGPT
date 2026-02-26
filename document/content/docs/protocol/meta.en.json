@@ -1,0 +1,11 @@
+{
+  "title": "Legal",
+  "root": true,
+  "description": "Legal",
+  "pages": [
+    "open-source",
+    "terms",
+    "privacy"
+  ],
+  "order": 3
+}

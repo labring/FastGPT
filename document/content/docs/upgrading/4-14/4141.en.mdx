@@ -1,0 +1,51 @@
+---
+title: 'V4.14.1 (Includes Upgrade Script)'
+description: 'FastGPT V4.14.1 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.14.1
+- Update FastGPT commercial edition image tag: v4.14.1
+- Update fastgpt-plugin image tag: v0.3.1
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+### 2. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4141' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will create a copy of the original app directory for tool usage.
+
+## New Features
+
+1. New workbench interaction. The original "Plugin" has been renamed to "Workflow Tool" and moved under the My Tools category.
+2. Workflows now provide a "Continue" button after running out of credits, so you don't have to start over.
+
+## Improvements
+
+1. MCP Client instances are now persisted within the same conversation turn and will not be destroyed.
+2. When reloading models, the global model configuration is no longer cleared and re-added, which previously caused model call errors during the reload phase.
+3. Auto-save now creates a team cloud save record.
+
+## Bug Fixes
+
+1. Interactive nodes did not work properly in debug mode.
+2. Tab spacing was misaligned in the rich text editor.
+3. When running nested Agents, the skip-node queue was not initialized, preventing normal execution.
+4. Condition node threw an error when the right-side value was a number reference.
+5. File selection input did not show the selection dialog when used as a workflow tool parameter.
+6. HTTP plugin could not correctly handle HTTP (non-HTTPS) protocol requests.
+7. UI issue with the default value editor for text-type global variables.
+8. Code node content overlapped when exceeding 100 lines.
+9. Deleting an app did not delete items inside its directory.
+10. Browser did not pass the real-time date to the server.

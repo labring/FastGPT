@@ -1,0 +1,49 @@
+---
+title: 'V4.12.2'
+description: 'FastGPT V4.12.2 Update Notes, released on 2025-8-26'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.12.2-fix3
+- Update FastGPT commercial edition image tag: v4.12.2-fix3
+- Update fastgpt-plugin image tag: v0.1.11
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Embedding model concurrency settings — no longer hardcoded to 10, since some embedding models don't support concurrency. Default is now 1, configurable in model settings.
+2. Chat page: admins can configure featured apps to recommend to team members.
+3. Chat page home: admins can configure shortcut apps for commonly used team applications.
+4. Support for disabling the team chat homepage.
+
+## Improvements
+
+1. Added anomaly detection for **isolated branches** in workflows.
+2. When truncating embedding vectors above 1536 dimensions, normalization is now enforced. For other dimensions, normalization is determined entirely by configuration, reducing unnecessary automatic computation.
+3. Moved model provider configuration into the plugin SDK.
+4. Encapsulated LLM call functions to simplify LLM requests and tool calls.
+5. Optimized workflow scheduling code to avoid deep recursion.
+6. Improved workflow recursion detection with grouped checks on recursive paths, supporting more diverse connection patterns.
+
+## Bug Fixes
+
+1. Standalone chat page: various UI issues.
+2. Standalone chat page: plugin interactions could not be rendered.
+3. Standalone chat page: incorrect default URL when using sub-routes.
+4. Multi-select picker causing page crashes.
+5. Mobile: shared links incorrectly loaded the authenticated chat page navigation.
+6. User sync could encounter write conflict issues.
+7. System plans could not be fully disabled — empty object defaults caused authentication errors.
+8. Workflow: searching for team apps was not working.
+9. App versions: incorrect `ref` field prevented normal usage.
+10. OceanBase: batch inserts did not correctly return inserted IDs.
+11. Interaction nodes conflicted with toolsets, causing toolsets to malfunction after an interaction node.
+
+## Tool Updates
+
+1. Doc2x tool: incorrect response values.

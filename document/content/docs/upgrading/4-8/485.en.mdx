@@ -1,0 +1,57 @@
+---
+title: V4.8.5 (Includes Upgrade Script)
+description: FastGPT V4.8.5 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Database
+
+### 2. Update Images
+
+- Update the fastgpt image tag to v4.8.5
+- Update the commercial edition image tag to v4.8.5
+
+### 3. Run Initialization
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv485' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will merge the plugin data table into the app table. The plugin table will not be deleted.
+
+------
+
+**Commercial edition users: run the additional initialization below**
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/init/485' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will reset the Knowledge Base permission system.
+
+## V4.8.5 Release Notes
+
+1. New - Merged plugins and apps into a unified workspace.
+2. New - App duplication feature.
+3. New - App template creation.
+4. New - Code execution results can now be used as tool output.
+5. New - Markdown image output supports pinch-to-zoom on mobile.
+6. Improved - Raw file encoding for storage and retrieval.
+7. Improved - Simple mode now filters out deleted Knowledge Bases to avoid false error states.
+8. Improved - Folder reading now supports more than 100 files per folder.
+9. Improved - QA splitting / manual entry: when an `a` field is present, the `q` field is automatically used as a supplementary index.
+10. Improved - Chat dialog page code.
+11. Improved - New workflow nodes are now auto-numbered.
+12. Fixed - Scheduled tasks could not actually be disabled.
+13. Fixed - Input guide special characters causing regex errors.
+14. Fixed - Files containing unescaped `%` characters causing page crashes.
+15. Fixed - Page crash when selecting Knowledge Base references in custom input.

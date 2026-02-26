@@ -1,0 +1,52 @@
+---
+title: Dialog Boxes & HTML Rendering
+description: How to embed HTML code blocks in FastGPT via Markdown, with fullscreen, source code toggle, and other interactive features
+---
+
+| Source Mode | Preview Mode | Fullscreen Mode |
+| --- | --- | --- |
+| ![](/imgs/htmlRendering1.png) | ![](/imgs/htmlRendering2.png) | ![](/imgs/htmlRendering3.png) |
+
+### 1. Design Background
+
+While Markdown natively supports embedded HTML tags, many platforms restrict HTML rendering for security reasons -- especially for dynamic content, interactive elements, and external resources. These restrictions limit flexibility when authoring complex documents that need embedded HTML. To address this, FastGPT uses `iframe` to embed and render HTML content, combined with the `sandbox` attribute to ensure safe rendering.
+
+### 2. Feature Overview
+
+This module extends FastGPT's Markdown rendering to support embedded HTML content. Since rendering uses an iframe, the content height cannot be determined automatically, so FastGPT sets a fixed height for the iframe. JavaScript execution within the HTML is not supported.
+
+### 3. Technical Implementation
+
+This module implements HTML rendering and interactivity through:
+
+- **Component Design:** The module displays HTML content via `iframe`-type code blocks using a custom `IframeBlock` component. The `sandbox` attribute ensures embedded content security by restricting behaviors like script execution and form submissions. Helper functions integrate with the Markdown renderer to handle `iframe`-embedded HTML content.
+- **Security Mechanism:** The `iframe`'s `sandbox` attribute and `referrerPolicy` prevent potential security risks. The `sandbox` attribute provides fine-grained control, allowing specific capabilities (scripts, forms, popups, etc.) to run in a restricted environment so rendered HTML cannot compromise the system.
+- **Display & Interaction:** Users can switch between display modes (fullscreen, preview, source code) for flexible viewing and control of embedded HTML. The `iframe` adapts to the parent container's width while ensuring content displays properly.
+
+### 4. How to Use
+
+Simply use a Markdown code block with the language set to `html`. For example:
+
+```md
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Welcome to FastGPT</title>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#gallery">Gallery</a></li>
+      </ul>
+    </nav>
+  </body>
+</html>
+```
+```

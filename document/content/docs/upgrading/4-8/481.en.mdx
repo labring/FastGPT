@@ -1,0 +1,34 @@
+---
+title: V4.8.1 (Includes Upgrade Script)
+description: FastGPT V4.8.1 Release Notes
+---
+
+## Initialization Script
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT domain.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv481' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+Due to previously inconsistent collection names, this initialization will reset table names. Before running, make sure the `dataset.trainings` table has no data. It's best to pause all active operations before initializing to avoid data conflicts.
+
+## Run Stale Data Cleanup
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT domain.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+After initialization, you can run this command. The previous scheduled cleanup timer had some issues and missed certain data. This allows you to trigger a full cleanup manually.
+
+## V4.8.1 Release Notes
+
+If you're using the Chat API, note that a new `event: updateVariables` event has been added for updating variables.
+
+[View the full release notes](https://github.com/labring/FastGPT/releases/tag/v4.8.1)

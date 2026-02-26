@@ -1,0 +1,15 @@
+{
+  "title": "Knowledge Base",
+  "description": "Basic principles of knowledge base, search solutions, web site synchronization, and usage methods for external file knowledge bases.",
+  "pages": [
+    "RAG",
+    "dataset_engine",
+    "collection_tags",
+    "api_dataset",
+    "lark_dataset",
+    "yuque_dataset",
+    "websync",
+    "third_dataset",
+    "template"
+  ]
+}
