@@ -1,0 +1,85 @@
+---
+title: Integrating M3E Embedding Model
+description: Integrating the private M3E embedding model with FastGPT
+---
+
+## Introduction
+
+FastGPT uses OpenAI's embedding model by default. For private deployment, you can replace it with the M3E embedding model. M3E is a lightweight model with low resource requirements -- it can even run on CPU. The following tutorial is based on an image provided by community contributor "睡大觉".
+
+## Deploy the Image
+
+Image: `stawky/m3e-large-api:latest`
+China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest`
+Port: 6008
+Environment variables:
+
+```
+# Set the security token (used as the channel key in OneAPI)
+Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+You can also set it via the environment variable: sk-key. Refer to Docker documentation for how to pass environment variables.
+```
+
+## Connect to One API
+
+Add a channel with the following parameters:
+
+![](/imgs/model-m3e1.png)
+
+## Test
+
+curl example:
+
+```bash
+curl --location --request POST 'https://domain/v1/embeddings' \
+--header 'Authorization: Bearer xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "m3e",
+  "input": ["What is laf"]
+}'
+```
+
+Set Authorization to your sk-key. The model field should match the custom model name you entered in One API.
+
+## Integrate with FastGPT
+
+Edit the config.json file and add the M3E model to `vectorModels`:
+
+```json
+"vectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "price": 0.2,
+      "defaultToken": 500,
+      "maxToken": 3000
+    },
+    {
+      "model": "m3e",
+      "name": "M3E (for testing)",
+      "price": 0.1,
+      "defaultToken": 500,
+      "maxToken": 1800
+    }
+]
+```
+
+## Usage
+
+1. Select the M3E model when creating a Knowledge Base.
+
+      Note: once selected, the embedding model for the Knowledge Base cannot be changed.
+
+      ![](/imgs/model-m3e2.png)
+
+2. Import data
+3. Test search
+
+      ![](/imgs/model-m3e3.png)
+
+4. Bind the Knowledge Base to an app
+
+      Note: an app can only bind Knowledge Bases that use the same embedding model -- cross-model binding is not supported. You may also need to adjust the similarity threshold, as different embedding models produce different similarity (distance) scores. Test and tune accordingly.
+
+      ![](/imgs/model-m3e4.png)

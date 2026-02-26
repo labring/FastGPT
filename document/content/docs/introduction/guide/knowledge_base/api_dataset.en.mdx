@@ -1,0 +1,183 @@
+---
+title: API File Library
+description: Introduction and usage of the FastGPT API File Library
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+| | |
+| --- | --- |
+| ![](/imgs/image-18.png) | ![](/imgs/image-19.png) |
+
+## Background
+
+FastGPT supports local file imports, but in many cases users already have an existing document library. Re-importing files would create duplicate storage and complicate management. To address this, FastGPT offers an API File Library that connects to your existing document library through simple API endpoints, with flexible import options.
+
+The API File Library lets you integrate your existing document library seamlessly. Implement a few endpoints that conform to FastGPT's API File Library specification, provide the service's baseURL and token when creating a knowledge base, and you can browse and selectively import files directly from the UI.
+
+## How to Use the API File Library
+
+When creating a knowledge base, select the API File Library type and configure two key parameters: the baseURL of your file service and the request header for authentication. As long as your endpoints conform to FastGPT's specification, the system will automatically fetch and display the complete file list for selective import.
+
+You need to provide two parameters:
+- baseURL: The base URL of your file service
+- authorization: The authentication request header, sent as `Authorization: Bearer <token>`
+
+## API Specification
+
+Response format:
+
+```ts
+type ResponseType = {
+  success: boolean;
+  message: string;
+  data: any;
+}
+```
+
+Data types:
+
+```ts
+// Single file item in the file list
+type FileListItem = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  type: 'file' | 'folder';
+  updateTime: Date;
+  createTime: Date;
+}
+```
+
+
+### 1. Get File Tree
+
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
+
+
+<Alert icon=" " context="success">
+- parentId - Parent ID, optional or null.
+- searchKey - Search keyword, optional
+</Alert>
+
+```bash
+curl --location --request POST '{{baseURL}}/v1/file/list' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "parentId": null,
+    "searchKey": ""
+}'
+```
+
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+
+```json
+{
+    "code": 200,
+    "success": true,
+    "message": "",
+    "data": [
+        {
+            "id": "xxxx",
+            "parentId": "xxxx",
+            "type": "file",  // file | folder
+            "name":"test.json",
+            "updateTime":"2024-11-26T03:05:24.759Z",
+            "createTime":"2024-11-26T03:05:24.759Z"
+        }
+   ]
+}
+```
+
+
+  </Tab>
+</Tabs>
+
+### 2. Get Single File Content (Text Content or Access Link)
+
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
+
+
+```bash
+curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
+--header 'Authorization: Bearer {{authorization}}'
+```
+
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+
+```json
+{
+    "code": 200,
+    "success": true,
+    "message": "",
+    "data": {
+        "title": "Document Title",
+        "content": "FastGPT is an LLM-based knowledge base Q&A system with out-of-the-box data processing and model invocation capabilities. It also supports visual workflow orchestration via Flow for complex Q&A scenarios!\n",
+        "previewUrl": "xxxx"
+    }
+}
+```
+
+<Alert icon=" " context="success">
+
+- title - File title.
+- content - File content, used directly.
+- previewUrl - File link; the system will request this URL to fetch the file content.
+
+Return either `content` or `previewUrl`. If both are returned, `content` takes priority. When `previewUrl` is returned, the system will access that link to read the document content.
+
+</Alert>
+
+
+  </Tab>
+</Tabs>
+
+
+### 3. Get File Read Link (for Viewing the Original)
+
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
+
+
+id is the file's ID.
+
+```bash
+curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
+--header 'Authorization: Bearer {{authorization}}'
+```
+
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+
+```json
+{
+    "code": 200,
+    "success": true,
+    "message": "",
+    "data": {
+        "url": "xxxx"
+    }
+}
+```
+
+<Alert icon=" " context="success">
+- url - File access link; opens automatically once retrieved.
+</Alert>
+
+
+  </Tab>
+</Tabs>

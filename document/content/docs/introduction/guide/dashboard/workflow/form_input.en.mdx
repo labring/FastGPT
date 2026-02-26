@@ -1,0 +1,28 @@
+---
+title: Form Input
+description: FastGPT Form Input node overview
+---
+
+## Characteristics
+
+- User interaction
+- Can be added multiple times
+- Trigger-based execution
+
+![](/imgs/form_input1.png)
+
+## What It Does
+
+The Form Input node is a user interaction node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
+
+![](/imgs/form_input2.png)
+
+In the example above, when the Form Input node is triggered, the chat box is hidden and the conversation enters interactive mode.
+
+![](/imgs/form_input3.png)
+
+After the user fills in the required fields and clicks submit, the node collects the form data and passes it to subsequent nodes.
+
+## Use Cases
+
+Precisely collect specific user information, then perform follow-up operations based on that data.

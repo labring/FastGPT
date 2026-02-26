@@ -1,0 +1,57 @@
+---
+title: V4.8.22 (Includes Migration Script)
+description: FastGPT V4.8.22 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update images:
+
+- Update the fastgpt image tag to v4.8.22
+- Update the fastgpt-pro commercial edition image tag to v4.8.22
+- Sandbox image update is not required
+
+### 3. Run migration script
+
+Only required for commercial edition users providing SaaS services.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4822' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This migrates contact information to the corresponding user table.
+
+## New Features
+
+1. AI chat node parses `<think></think>` tag content as chain-of-thought, enabling thinking process output for various models. You need to manually enable model thinking output.
+2. Chat API optimization: conversation logs are now saved regardless of whether a `chatId` is provided. If no `chatId` is passed, a random one is generated for storage.
+3. PPIO model provider.
+
+## Improvements
+
+1. Better prompts when models are not configured, reducing conflicting messages.
+2. Usage record code improvements.
+3. Content extraction node: long field descriptions now wrap. Output names now use `key` instead of `description`.
+4. Team management interaction improvements.
+5. Chat API non-stream responses now include error fields.
+
+## Bug Fixes
+
+1. Thinking content not counted toward output tokens.
+2. Thinking chain stream output sometimes out of order with main content.
+3. API workflow calls: images that don't support HEAD detection were being filtered out. Added error detection to prevent incorrect filtering.
+4. Some template marketplace templates had errors.
+5. Guest window unable to correctly detect whether language recognition is enabled.
+6. Chat log export not compatible with sub-path deployments.
+7. Member list not refreshing when switching teams.
+8. List API null pointer possibility when joining member data.
+9. Workflow base nodes unable to upgrade.
+10. Vector search results not deduplicated.
+11. User selection node unable to connect properly.
+12. Chat record source not being saved correctly.

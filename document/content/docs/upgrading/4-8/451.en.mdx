@@ -1,0 +1,32 @@
+---
+title: V4.5.1 (Includes Migration Script)
+description: FastGPT V4.5.1 Update
+---
+
+## Run the Initialization API
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
+
+1. https://xxxxx/api/admin/initv451
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv451' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+What the initialization does:
+
+1. Renames database fields.
+2. Initializes knowledge base-related fields in the Mongo APP collection.
+3. Initializes PG and Mongo content — creates a collection in Mongo for each file and assigns the references back to PG.
+
+**This initialization endpoint may be very slow. If the request times out, don't worry — just check the logs.**
+
+## What's New
+
+### Fast GPT V4.5.1
+
+1. New - Knowledge base folder management.
+2. Fixed - OpenAI 4.x SDK incompatibility with OneAPI's Zhipu and Alibaba interfaces.
+3. Fixed - Some nodes failing to trigger completion events.

@@ -57,7 +57,35 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  // Continue with i18n middleware
+  // Check if URL has a language prefix
+  const hasLangPrefix = i18n.languages.some(
+    (l) => pathname.startsWith(`/${l}/`) || pathname === `/${l}`
+  );
+
+  if (hasLangPrefix) {
+    // Save user's language preference to cookie when visiting a localized URL
+    const currentCookie = request.cookies.get('FD_LOCALE')?.value;
+    if (currentCookie !== lang) {
+      // @ts-expect-error - Fumadocs middleware signature mismatch
+      const response = i18nMiddleware(request) ?? NextResponse.next();
+      // @ts-ignore
+      response.cookies.set('FD_LOCALE', lang, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365
+      });
+      return response;
+    }
+  } else {
+    // No language prefix — check cookie for user's language preference
+    const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
+    if (cookieLocale && i18n.languages.includes(cookieLocale)) {
+      const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
+      newUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(newUrl);
+    }
+  }
+
+  // Continue with i18n middleware (falls back to Accept-Language detection)
   // @ts-expect-error - Fumadocs middleware signature mismatch
   return i18nMiddleware(request);
 }

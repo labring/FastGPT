@@ -1,0 +1,15 @@
+{
+  "title": "Application Building Cases",
+  "description": "FastGPT application scenarios and feature implementation building cases",
+  "pages": [
+    "submit_application_template",
+    "translate-subtitle-using-gpt",
+    "multi_turn_translation_bot",
+    "english_essay_correction_bot",
+    "fixingEvidence",
+    "lab_appointment",
+    "dalle3",
+    "google_search",
+    "feishu_webhook"
+  ]
+}

@@ -1,0 +1,25 @@
+---
+title: V4.1
+description: Upgrade guide from older versions to FastGPT V4.1
+---
+
+If you are **upgrading from an older version to V4.1**, the chat storage structure has been redesigned. You'll need to initialize the existing stored data.
+
+## Update Environment Variables
+
+V4.1 simplified the PostgreSQL and MongoDB connection variables — you now only need a single URL for each:
+
+Note: `/fastgpt` and `/postgres` refer to database names and must match the values from your previous configuration.
+
+```bash
+# MongoDB config — no changes needed. If connection fails, try removing ?authSource=admin
+- MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
+# PostgreSQL config — no changes needed
+- PG_URL=postgresql://username:password@pg:5432/postgres
+```
+
+## Initialization API
+
+Deploy the new version, then send 1 HTTP request (remember to include `headers.rootkey` — this value comes from your environment variables):
+
+- https://xxxxx/api/admin/initChatItem

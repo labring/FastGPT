@@ -1,0 +1,29 @@
+---
+title: V4.6.6 (Configuration Changes Required)
+description: FastGPT V4.6.6
+---
+
+## Configuration Changes
+
+To reduce code duplication, we've made some changes to the configuration file: [View the latest configuration file](/docs/introduction/development/configuration/)
+
+## Commercial Edition Changes
+
+1. Update the commercial edition image to version 4.6.6.
+2. Move `SystemParams.pluginBaseUrl` from the old configuration file to an environment variable:
+
+   PRO_URL=commercial edition image address (no longer needs to end with /api), for example:
+   PRO_URL=http://fastgpt-plugin.ns-hsss5d.svc.cluster.local:3000
+
+3. The `FeConfig` section has been removed from the configuration file. You can now configure it directly through the commercial edition's web interface. All FastGPT parameters and models can be configured from the commercial edition dashboard — no need to modify `config.json` anymore.
+
+## V4.6.6 Release Notes
+
+1. Check out the [FastGPT 2024 RoadMap](https://github.com/labring/FastGPT?tab=readme-ov-file#-%E5%9C%A8%E7%BA%BF%E4%BD%BF%E7%94%A8).
+2. New - HTTP node now supports a JSON editor for request headers.
+3. New - [ReRank Model Deployment](/docs/introduction/development/custom-models/bge-rerank/)
+4. New - Search modes: separated vector semantic search, full-text search, and reranking, with RRF (Reciprocal Rank Fusion) for merging results.
+5. Improved - Question classifier prompts with ID-guided classification. Tested with Chinese commercial API models (Baidu, Alibaba, Zhipu, iFlytek) — all work correctly in Prompt mode.
+6. UI improvements — the interface will be gradually updated with a new design going forward.
+7. Code optimization: Icons extracted and auto-generated.
+8. Fixed - Link-based datasets not saving selectors, causing syncs to run without them.

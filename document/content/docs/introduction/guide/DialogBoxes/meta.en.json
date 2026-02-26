@@ -1,0 +1,8 @@
+{
+  "title": "Dialog Boxes",
+  "description": "Dialog box components that support multiple interaction methods to enhance user experience in applications.",
+  "pages": [
+    "htmlRendering",
+    "quoteList"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Basic Tutorial",
+  "description": "FastGPT basic tutorial",
+  "pages": [
+    "quick-start",
+    "ai_settings",
+    "chat_input_guide",
+    "fileInput"
+  ]
+}

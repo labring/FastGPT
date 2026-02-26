@@ -1,0 +1,87 @@
+---
+title: V4.5 (Complex Update Required)
+description: FastGPT V4.5 Update
+---
+
+FastGPT V4.5 introduces PgVector 0.5's HNSW index, which dramatically improves knowledge base search performance — roughly 3x to 10x faster than the `IVFFlat` index, easily achieving millisecond-level searches across millions of records. The downside is that index building is very slow: on a 4C16G machine with 5 million records, a `parallel build` took about 48 hours. For detailed parameter configuration, refer to the [PgVector official documentation](https://github.com/pgvector/pgvector).
+
+The following database operations are required for the upgrade:
+
+## PgVector Upgrade: Sealos Deployment
+
+1. Open the Database app from the [Sealos Desktop](https://cloud.sealos.io?uid=fnWRt09fZP).
+2. Click on the details of the **pg** database.
+3. Click Restart in the upper-right corner and wait for it to complete.
+4. Click "One-Click Connect" on the left sidebar and wait for the Terminal to open.
+5. Run the following SQL commands in order:
+
+```sql
+-- Upgrade the extension
+ALTER EXTENSION vector UPDATE;
+-- Verify the upgrade was successful — the vector extension version should be 0.5.0 (previously 0.4.1)
+\dx
+
+-- The following two statements set the memory available to PG during index building. Adjust based on your database specs — a good rule of thumb is 1/4 of total memory.
+alter system set maintenance_work_mem = '2400MB';
+select pg_reload_conf();
+
+-- Rebuild database indexes and collation
+REINDEX DATABASE postgres;
+
+-- Start building the index. This takes a very long time — just close the Terminal by clicking the X in the upper-right corner.
+CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip_ops) WITH (m = 16, ef_construction = 64);
+-- You can reconnect to the Terminal and run the command below. If you see "vector_index" hnsw (vector vector_ip_ops) WITH (m='16', ef_construction='64'), the build is complete (make sure there is no INVALID at the end).
+\d modeldata
+```
+
+|                      |                      |
+| -------------------- | -------------------- |
+| ![](/imgs/v45-1.jpg) | ![](/imgs/v45-2.jpg) |
+| ![](/imgs/v45-3.jpg) | ![](/imgs/v45-4.jpg) |
+
+## PgVector Upgrade: Docker Compose Deployment
+
+The commands below are based on the provided docker-compose template. If you've changed the database username or password, adjust accordingly.
+
+1. Update the PG image version in `docker-compose.yml` to `ankane/pgvector:v0.5.0` or `registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0`.
+2. Restart the PG container (`docker-compose pull && docker-compose up -d`) and wait for it to complete.
+3. Enter the container: `docker exec -it pg bash`
+4. Connect to the database: `psql 'postgresql://username:password@localhost:5432/postgres'`
+5. Run the following SQL commands:
+
+```sql
+-- Upgrade the extension
+ALTER EXTENSION vector UPDATE;
+-- Verify the upgrade was successful — the vector extension version should be 0.5.0 (previously 0.4.2)
+\dx
+
+-- The following two statements set the memory available to PG during index building. Adjust based on your database specs — a good rule of thumb is 1/4 of total memory.
+alter system set maintenance_work_mem = '2400MB';
+select pg_reload_conf();
+
+-- Rebuild database indexes and collation
+REINDEX DATABASE postgres;
+ALTER DATABASE postgres REFRESH COLLATION VERSION;
+
+-- Start building the index. This takes a very long time — just close the terminal window. Do NOT use ctrl+c to cancel.
+CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip_ops) WITH (m = 16, ef_construction = 64);
+-- You can reconnect to the database and run the command below. If you see "vector_index" hnsw (vector vector_ip_ops) WITH (m='16', ef_construction='64'), the build is complete (make sure there is no INVALID at the end).
+\d modeldata
+
+
+```
+
+## New Features
+
+### Fast GPT V4.5
+
+1. New - Upgraded PgVector extension with HNSW index, dramatically improving knowledge base search speed.
+2. New - AI Chat node now includes a "Return AI Content" option, allowing you to prevent AI responses from being sent directly to the browser.
+3. New - Support for selecting models in the Question Classifier.
+4. Improved - TextSplitter now uses a recursive splitting approach.
+5. Improved - Advanced orchestration UX performance.
+6. Fixed - Share link authentication issue.
+
+## Configuration File Changes Required
+
+For the latest configuration, refer to: [V4.5 Latest config.json](/docs/introduction/development/configuration)

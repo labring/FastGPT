@@ -1,0 +1,14 @@
+{
+  "title": "Documentation",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "cloud",
+    "commercial",
+    "development",
+    "---Features---",
+    "...guide"
+  ],
+  "order": 1
+}

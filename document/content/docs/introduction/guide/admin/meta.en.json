@@ -1,0 +1,8 @@
+{
+  "title": "Commercial Admin",
+  "description": "Commercial admin usage tutorial",
+  "pages": [
+    "sso",
+    "teamMode"
+  ]
+}

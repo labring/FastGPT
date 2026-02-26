@@ -1,0 +1,30 @@
+---
+title: V4.8.2
+description: FastGPT V4.8.2 Release Notes
+---
+
+## Sealos Upgrade Instructions
+
+1. Create a new app in App Management with the image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.8.1
+2. No external access URL is needed. Set the port to 3000.
+3. After deployment, copy the app's internal network address.
+4. Click "Update" on FastGPT, modify the environment variables, and add the following:
+
+```
+SANDBOX_URL=internal-network-address
+```
+
+## Docker Deployment
+
+You can pull the latest [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker/docker-compose.yml) file for reference.
+
+1. Add a new `sandbox` container.
+2. Add the `SANDBOX_URL` environment variable to the fastgpt and fastgpt-pro (commercial edition) containers.
+3. It's recommended not to expose the sandbox to the public network, as it has no credential verification.
+
+## V4.8.2 Release Notes
+
+1. New - JavaScript code execution node (with improved type hints; more enhancements coming).
+2. New - Content extraction node now supports data type selection.
+3. Fixed - Newly added site sync not working.
+4. Fixed - Scheduled tasks unable to accept input content.

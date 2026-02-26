@@ -1,0 +1,62 @@
+---
+title: Invitation Links
+description: How to use invitation links to invite team members
+---
+
+Starting from v4.9.1, team member invitations use the **invitation link** method, replacing the previous username-based approach.
+
+After upgrading, any pending invitations that haven't been accepted will be automatically cleared. Please use invitation links to re-invite members.
+
+## How to Use
+
+1. **On the team management page, admins can click the "Invite Members" button to open the invitation dialog**
+
+![](/imgs/guide/team_permissions/invitation_link/image1.png)
+
+2. **In the invitation dialog, click "Create Invitation Link" to generate a new link**
+
+![](/imgs/guide/team_permissions/invitation_link/image2.png)
+
+3. **Fill in the details**
+
+![](/imgs/guide/team_permissions/invitation_link/image3.png)
+
+Link description: We recommend describing the intended use case or purpose. The description cannot be changed after creation.
+
+Expiration: 30 minutes, 7 days, or 1 year
+
+Usage limit: 1 person or unlimited
+
+4. **Click "Copy Link" and send it to the people you want to invite**
+
+![](/imgs/guide/team_permissions/invitation_link/image4.png)
+
+5. **When a user visits the link, they will be redirected to the login page if not logged in or registered. After logging in, they will be taken to the team page to handle the invitation.**
+
+> Invitation links look like: fastgpt.cn/account/team?invitelinkid=xxxx
+
+![](/imgs/guide/team_permissions/invitation_link/image5.png)
+
+Click "Accept" to join the team.
+
+Click "Ignore" to close the dialog. The user can still accept the invitation by visiting the link again later.
+
+## Link Expiration and Auto-Cleanup
+
+### Why Links Expire
+
+Links are manually disabled by an admin.
+
+The invitation link reaches its expiration date and is automatically disabled.
+
+A single-use link (1 person limit) has already been used.
+
+Expired links cannot be accessed or re-enabled.
+
+### Link Limits
+
+Each user can have up to 10 **active** invitation links at a time.
+
+### Auto-Cleanup
+
+Expired links are automatically deleted after 30 days.

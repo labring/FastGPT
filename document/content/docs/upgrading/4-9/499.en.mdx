@@ -1,0 +1,39 @@
+---
+title: V4.9.9
+description: FastGPT V4.9.9 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Data
+
+### 2. Pro Edition Users: Replace Your License
+
+Pro edition users can contact the FastGPT team for a license replacement plan. After replacement, you can upgrade the system directly — the admin panel will prompt you to enter the new license.
+
+### 3. Update Image Tags
+
+- Update FastGPT image tag: v4.9.9
+- Update FastGPT Pro image tag: v4.9.9
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Switched from JWT to SessionId-based login authentication, with configurable maximum concurrent client sessions.
+2. New Pro edition license management model.
+3. WeChat Official Account calls now display and log chat conversation errors for easier troubleshooting.
+4. API knowledge base now supports BasePath selection. Requires an additional API endpoint — see [API Knowledge Base Introduction](/docs/introduction/guide/knowledge_base/api_dataset/#4-获取文件详细信息用于获取文件信息) for details.
+
+## Improvements
+
+1. Optimized tool call logic for new tool detection.
+2. Adjusted citation prompt text.
+
+## Bug Fixes
+
+1. Unable to retrieve app history save/publish records.
+2. Member MCP tool creation permission issues.
+3. Source citation display passing incorrect IDs, causing "no permission to access this file" errors.
+4. Answer annotation frontend data errors.

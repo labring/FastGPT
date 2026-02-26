@@ -1,0 +1,64 @@
+---
+title: V4.8.12 (Includes Migration Script)
+description: FastGPT V4.8.12 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your data
+
+### 2. Update images
+
+- Update the FastGPT image tag to v4.8.12-fix
+- Update the FastGPT admin image tag to v4.8.12 (fastgpt-pro image)
+- Sandbox image update is optional
+
+
+### 3. Run initialization (Commercial Edition)
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/init/4812' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This initializes member group data for apps and Knowledge Bases.
+
+### 4. Rebuild Milvus data
+
+Due to JavaScript int64 precision loss, users who previously deployed with Milvus or Zilliz and experienced data precision loss need to rebuild their Milvus data. (Check the `dataset_datas` collection — if `dataId` values in the `indexes` field have trailing precision loss, a rebuild is needed.) PG users do not need to take action.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+## Release Notes
+
+1. New - Global variables support number type, with configurable default values and input field parameters.
+2. New - Plugin custom inputs (text fields, number fields, select boxes, toggles) all support being referenced as variables by default.
+3. New - `FE_DOMAIN` environment variable. When configured, uploaded files/images get a complete URL with the domain suffix (resolves the issue where models sometimes fabricate image domains for docx file image links).
+4. New - Tool calls support using the interaction node.
+5. New - Debug mode supports inputting global variables.
+6. New - Chat OpenAPI documentation.
+7. New - Wiki search plugin.
+8. New - Google search plugin.
+9. New - Database connection and operation plugin.
+10. New - Cookie privacy policy prompt.
+11. New - HTTP node supports JSONPath expressions.
+12. New - Apps and Knowledge Bases support member group permission configuration.
+13. Improved - Loop node supports selecting variables from external nodes.
+14. Improved - Docx file reading: optimized HTML-to-Markdown conversion for better speed and significantly reduced memory consumption.
+15. Fixed - File extension detection now ignores query string parameters.
+16. Fixed - Empty AI responses causing LLM history record merging.
+17. Fixed - User interaction node not blocking the workflow.
+18. Fixed - Creating a new app sometimes causing a null pointer error.
+19. Fixed - Incorrect execution when multiple loop nodes are present.
+20. Fixed - Variable modifications inside loop nodes not propagating.
+21. Fixed - In non-stream mode, nested child apps/plugins unable to receive child app responses.
+22. Fixed - Data chunking strategy now chunks each Markdown section independently.
