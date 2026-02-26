@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useCurrentLang, useLocalizedPath } from '@/lib/localized-navigation';
 
 const exactMap: Record<string, string> = {
   '/docs': '/docs/introduction',
@@ -28,25 +29,29 @@ const fallbackRedirect = '/docs/introduction';
 
 export default function NotFound() {
   const pathname = usePathname();
-  const router = useRouter();
+  const lang = useCurrentLang();
+  const getLocalizedPath = (path: string) => useLocalizedPath(path);
 
   useEffect(() => {
     (async () => {
-      if (exactMap[pathname]) {
-        window.location.replace(exactMap[pathname]);
+      // Remove language prefix from pathname for matching
+      const pathWithoutLang = pathname.replace(new RegExp(`^/${lang}`), '');
+
+      if (exactMap[pathWithoutLang]) {
+        window.location.replace(getLocalizedPath(exactMap[pathWithoutLang]));
         return;
       }
 
       for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-        if (pathname.startsWith(oldPrefix)) {
-          const rest = pathname.slice(oldPrefix.length);
-          window.location.replace(newPrefix + rest);
+        if (pathWithoutLang.startsWith(oldPrefix)) {
+          const rest = pathWithoutLang.slice(oldPrefix.length);
+          window.location.replace(getLocalizedPath(newPrefix + rest));
           return;
         }
       }
 
       try {
-        const basePath = pathname.replace(/\/$/, '');
+        const basePath = pathWithoutLang.replace(/\/$/, '');
         const res = await fetch(`/api/meta?path=${basePath}`);
         console.log('res', res);
 
@@ -56,16 +61,16 @@ export default function NotFound() {
 
         if (validPage) {
           console.log('validPage', validPage);
-          window.location.replace(validPage);
+          window.location.replace(getLocalizedPath(validPage));
           return;
         }
       } catch (e) {
         console.warn('meta.json fallback failed:', e);
       }
 
-      window.location.replace(fallbackRedirect);
+      window.location.replace(getLocalizedPath(fallbackRedirect));
     })();
-  }, [pathname, router]);
+  }, [pathname, lang, getLocalizedPath]);
 
   return null;
 }

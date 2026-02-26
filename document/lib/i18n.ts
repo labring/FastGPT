@@ -3,7 +3,7 @@ import type { I18nConfig } from 'fumadocs-core/i18n';
 export const i18n: I18nConfig = {
   defaultLanguage: 'zh-CN',
   languages: ['zh-CN', 'en'],
-  hideLocale: 'default-locale'
+  hideLocale: 'never'
 };
 
 export async function getTranslations(locale: string) {
@@ -55,3 +55,9 @@ export function getLocalizedPath(path: string, lang: string): string {
   // Fallback: no prefix
   return path;
 }
+
+/**
+ * Server-side redirect with automatic language prefix
+ * Import from next/navigation and use this wrapper
+ */
+export { redirect } from 'next/navigation';
