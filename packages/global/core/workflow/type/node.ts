@@ -195,7 +195,7 @@ export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
             time: z.string(),
             level: z.enum(['debug', 'info', 'warn', 'error']),
             message: z.string(),
-            data: z.record(z.any()).optional()
+            data: z.record(z.string(), z.any()).optional()
           })
         )
         .optional()
