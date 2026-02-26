@@ -1,0 +1,17 @@
+---
+title: V4.2
+description: Upgrade guide from older versions to FastGPT V4.2
+---
+
+99.9% of users are unaffected. The V4.2 upgrade primarily changes the `QAModel` format in the configuration file, converting it from an array to an object:
+
+```json
+"QAModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "name": "GPT35-16k",
+    "maxToken": 16000,
+    "price": 0
+}
+```
+
+The rationale behind this change is that there's no need to offer multiple choices — just pick the most suitable model for the task.

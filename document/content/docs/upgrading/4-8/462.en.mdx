@@ -1,0 +1,28 @@
+---
+title: V4.6.2 (Includes Migration Script)
+description: FastGPT V4.6.2
+---
+
+## 1. Run the Initialization API
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
+
+1. https://xxxxx/api/admin/initv462
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv462' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+What the initialization does:
+
+1. Initializes full-text indexing.
+
+## V4.6.2 New Features
+
+1. New - Full-text indexing (requires a ReRank model; working on making it available in the community edition — the model API is somewhat specialized).
+2. New - Plugin sources (expected to be officially used in V4.7/V4.8).
+3. Improved - PDF parsing.
+4. Improved - DOCX file parsing, now converts to Markdown while preserving images.
+5. Fixed and improved the TextSplitter function.

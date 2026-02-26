@@ -1,0 +1,31 @@
+---
+title: V4.6.7 (Initialization Required)
+description: FastGPT V4.6.7
+---
+
+## 1. Run the Initialization API
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
+
+1. https://xxxxx/api/admin/initv467
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv467' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+What the initialization does:
+
+1. Re-associates images with their datasets.
+2. Sets null values in the PG table.
+
+## V4.6.7 Release Notes
+
+1. Redesigned knowledge base UI with a new import workflow.
+2. Optimized knowledge base and chat data indexing.
+3. Knowledge base OpenAPI — you can now [manage knowledge bases via API](/docs/openapi/dataset).
+4. New - Input field variable hints. After typing `{`, you'll see available variable suggestions. Based on community feedback on advanced orchestration, we plan to improve variable handling in the February release, adding support for node-scoped local variables and more global variables.
+5. Improved - Switching teams now saves your selection, so you'll automatically log into that team on your next visit.
+6. Fixed - chatId conflicts when using the API for conversations.
+7. Fixed - Potential window.onLoad conflicts when embedding via iframe.

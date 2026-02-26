@@ -1,0 +1,28 @@
+---
+title: V4.6.5 (Configuration Changes Required)
+description: FastGPT V4.6.5
+---
+
+## Configuration Changes
+
+Since OpenAI has begun deprecating function calls in favor of tool choice, FastGPT has updated its configuration and invocation methods accordingly. You'll need to make some changes to your configuration file:
+
+[View the latest configuration file](/docs/introduction/development/configuration/)
+
+1. The main change is renaming the `functionCall` field to `toolChoice` in your model configuration. Models with this set to `true` will use OpenAI's tools mode by default; models without it or with it set to `false` will use prompt-based generation.
+
+The question optimization model and content extraction model now share the same configuration.
+
+2. Add `"ReRankModels": []` to your configuration.
+
+## V4.6.5 New Features
+
+1. New - [Question Optimization node](/docs/introduction/guide/dashboard/workflow/coreferenceresolution/)
+2. New - [Text Editor node](/docs/introduction/guide/dashboard/workflow/text_editor/)
+3. New - [Classifier node](/docs/introduction/guide/dashboard/workflow/tfswitch//)
+4. New - [Custom Feedback node](/docs/introduction/guide/dashboard/workflow/custom_feedback/)
+5. New - The Content Extraction node now supports model selection and field enumerations.
+6. Improved - DOCX parsing with table support (tables are converted to Markdown).
+7. Improved - Advanced orchestration connection line interactions.
+8. Improved - Fixed CPU-intensive computation caused by html2md that was blocking the thread.
+9. Fixed - Prompt extraction descriptions in advanced orchestration.

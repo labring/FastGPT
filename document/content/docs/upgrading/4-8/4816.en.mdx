@@ -1,0 +1,67 @@
+---
+title: V4.8.16 (Configuration File Update)
+description: FastGPT V4.8.16 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update images:
+
+- Update the fastgpt image tag to v4.8.16
+- Update the fastgpt-pro commercial edition image tag to v4.8.16
+- Update the Sandbox image tag to v4.8.16
+
+### 2. Update configuration file
+
+Refer to the latest [configuration file documentation](/docs/introduction/development/configuration/) and update your `config.json` or admin model configuration. Add the `provider` field to LLMModel and VectorModel for model categorization. For example:
+
+```json
+{
+  "provider": "OpenAI", // This is new
+  "model": "gpt-4o",
+  "name": "gpt-4o",
+  "maxContext": 125000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 120000,
+  "maxTemperature": 1.2,
+  "charsPointsPrice": 0,
+  "censor": false,
+  "vision": true,
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "usedInExtractFields": true,
+  "usedInToolCall": true,
+  "usedInQueryExtension": true,
+  "toolChoice": true,
+  "functionCall": false,
+  "customCQPrompt": "",
+  "customExtractPrompt": "",
+  "defaultSystemChatPrompt": "",
+  "defaultConfig": {},
+  "fieldMap": {}
+}
+```
+
+## Full Release Notes
+
+1. New - SearXNG search plugin. [View tutorial](/docs/introduction/guide/plugins/searxng_plugin_guide/)
+2. New - Commercial edition supports scheduled sync for API Knowledge Bases and link collections.
+3. New - "Suggested questions" supports model selection and custom prompts.
+4. New - DingTalk and WeCom bot webhook plugins.
+5. New - Commercial edition supports DingTalk SSO login configuration. [View tutorial](/docs/introduction/guide/admin/sso#钉钉)
+6. New - Commercial edition supports Lark and Yuque Knowledge Base import. [View tutorial](/docs/introduction/guide/knowledge_base/lark_dataset/)
+7. New - Sandbox adds `createHmac` encryption global method.
+8. New - Right-click in workflow supports "Collapse all".
+9. Improved - Model selector.
+10. Improved - SSR rendering now pre-detects mobile vs. desktop to reduce page jitter.
+11. Improved - Workflow/Simple Mode variable initialization code. Removed listener-based initialization to prevent failures from inconsistent render order.
+12. Improved - Workflow now performs type conversion when receiving mismatched data types, preventing `undefined`.
+13. Fixed - Unable to auto-switch default language. Share links now force a default language switch on load.
+14. Fixed - Array selector auto-compatibility with pre-4.8.13 data.
+15. Fixed - Site sync Knowledge Base not using the selector for link syncing.
+16. Fixed - Converting Simple Mode to workflow did not convert system configuration items.
+17. Fixed - Plugin standalone execution not applying initial variable values.
+18. Fixed - Workflow modal components sometimes causing page offset after closing.
+19. Fixed - Plugin debug logs not saving plugin input parameters.
+20. Fixed - Some template marketplace templates.
+21. Fixed - Incorrect image file URL when NEXT_PUBLIC_BASE_URL is set.

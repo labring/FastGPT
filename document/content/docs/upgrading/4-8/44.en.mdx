@@ -1,0 +1,18 @@
+---
+title: V4.4 (includes upgrade script)
+description: Upgrade guide from older versions to FastGPT V4.4
+---
+
+## Run the Initialization API
+
+Send 1 HTTP request (remember to include `headers.rootkey` — this value comes from your environment variables):
+
+1. https://xxxxx/api/admin/initv44
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv44' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will initialize certain fields in MongoDB.

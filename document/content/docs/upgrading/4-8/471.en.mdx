@@ -1,0 +1,35 @@
+---
+title: V4.7.1 (Includes Upgrade Script)
+description: FastGPT V4.7.1 Release Notes
+---
+
+## Initialization Script
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT domain.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This request runs stale data cleanup (removes invalid files, images, Knowledge Base collections, and vectors).
+
+## Update Configuration File
+
+Added Laf environment configuration. [View the latest configuration file](/docs/introduction/development/configuration/)
+
+## V4.7.1 Release Notes
+
+1. New - Full voice input configuration. Supports toggling voice input on/off (including on share pages), auto-send after voice input, and auto voice playback after input (streaming).
+2. New - PPTX and XLSX file reading. Note that all file reading now happens server-side, which consumes more server resources and prevents content preview during upload.
+3. New - Laf cloud function integration. You can use cloud functions from your Laf account as HTTP modules.
+4. New - Scheduled cleanup timer for stale data. Uses incremental cleanup (cleans data from the last N hours), so keep the service running continuously. For a full cleanup after extended downtime, use the `clearInvalidData` endpoint.
+5. Commercial Edition - Admin panel system notification configuration.
+6. Improved - Knowledge Base export now supports IP-based mode.
+7. Changed - CSV import template no longer validates headers; automatically reads the first two columns.
+8. Fixed - Tool calling module connection data type validation error.
+9. Fixed - Custom index input data destructuring failure.
+10. Fixed - ReRank model data format.
+11. Fixed - Query completion history bug.
+12. Fixed - Share page slow loading in certain edge cases (caused by database connections not being triggered during SSR).

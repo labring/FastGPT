@@ -1,0 +1,57 @@
+---
+title: 'V4.10.0'
+description: 'FastGPT V4.10.0 Update Notes'
+---
+
+## Upgrade Guide
+
+### Docker Deployment
+
+- Refer to the latest [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker/docker-compose-pgvector.yml) file to add the `fastgpt-plugin` and `minio` services.
+- Set the `fastgpt-plugin` environment variable `AUTH_TOKEN` to a sufficiently complex value.
+- Set the `fastgpt-plugin` environment variable `MINIO_CUSTOM_ENDPOINT` to `http://ip:port` or a relevant domain name that is accessible to FastGPT users.
+- Update the environment variables for the `fastgpt` and `fastgpt-pro` (commercial edition) containers:
+
+```
+PLUGIN_BASE_URL=http://fastgpt-plugin:3000
+PLUGIN_TOKEN=the AUTH_TOKEN value you just set
+```
+- Update the `fastgpt` and `fastgpt-pro` image tags to: v4.10.0-fix
+- Run `docker-compose up -d` to start/update all services.
+
+### Sealos Deployment
+
+- In the Sealos desktop `Object Storage`, create a new bucket with `publicRead` permissions and obtain the relevant credentials:
+
+![](/imgs/sealos-s3.png)
+
+- Deploy the `fastgpt-plugin` service using the image `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0`. Expose internal port 3000 (no public access required) and set the following environment variables:
+
+```
+AUTH_TOKEN=authentication token
+
+# Log level: debug, info, warn, error
+LOG_LEVEL=info
+
+# S3 configuration
+MINIO_CUSTOM_ENDPOINT=External
+MINIO_ENDPOINT=Internal address
+MINIO_PORT=80
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY=Access Key
+MINIO_SECRET_KEY=Secret Key
+MINIO_BUCKET=bucket name
+```
+
+- Update the environment variables and image tags for the `fastgpt` and `fastgpt-pro` (commercial edition) containers to: v4.10.0-fix
+
+```
+PLUGIN_BASE_URL=internal address of the fastgpt-plugin service
+PLUGIN_TOKEN=the AUTH_TOKEN value you just set
+```
+
+## New Features
+
+1. Standalone system tool service with support for independent development and debugging of system tools.
+2. Updated [System Tool Development Guide](/docs/introduction/guide/plugins/dev_system_tool/).
+3. Updated [System Tool Design Documentation](/docs/introduction/guide/plugins/design_plugin/).

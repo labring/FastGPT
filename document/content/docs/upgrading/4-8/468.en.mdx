@@ -1,0 +1,94 @@
+---
+title: V4.6.8 (Initialization Required)
+description: FastGPT V4.6.8 Release Notes
+---
+
+## Docker Deployment - Manually Update MongoDB
+
+1. Modify the mongo section in docker-compose.yml by adding the `command` and `entrypoint` fields:
+
+```yml
+mongo:
+  image: mongo:5.0.18
+  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # Alibaba Cloud
+  container_name: mongo
+  ports:
+    - 27017:27017
+  networks:
+    - fastgpt
+  command: mongod --keyFile /data/mongodb.key --replSet rs0
+  environment:
+    # Make sure the password matches your previous configuration
+    - MONGO_INITDB_ROOT_USERNAME=username
+    - MONGO_INITDB_ROOT_PASSWORD=password
+  volumes:
+    - ./mongo/data:/data/db
+  entrypoint:
+    - bash
+    - -c
+    - |
+      openssl rand -base64 128 > /data/mongodb.key
+      chmod 400 /data/mongodb.key
+      chown 999:999 /data/mongodb.key
+      echo 'const isInited = rs.status().ok === 1
+      if(!isInited){
+        rs.initiate({
+            _id: "rs0",
+            members: [
+                { _id: 0, host: "mongo:27017" }
+            ]
+        })
+      }' > /data/initReplicaSet.js
+      # Start MongoDB service
+      exec docker-entrypoint.sh "$@" &
+
+      # Wait for MongoDB to start
+      until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+        echo "Waiting for MongoDB to start..."
+        sleep 2
+      done
+
+      # Run the replica set initialization script
+      mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+      # Wait for the MongoDB process started by docker-entrypoint.sh
+      wait $!
+```
+
+2. Restart MongoDB
+
+```bash
+# Restart Mongo
+docker-compose down
+docker-compose up -d
+```
+
+## Sealos Deployment - No MongoDB Update Required
+
+## Update Configuration File
+
+Removed duplicate model configurations. All LLM models are now consolidated into a single property. [View the latest configuration file](/docs/introduction/development/configuration/)
+
+## Commercial Edition Initialization
+
+Commercial edition users need to run an initialization to format team information.
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your commercial edition domain):
+
+```bash
+curl --location --request POST 'https://{{host}}/api/init/v468' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will initialize the billing system. For internal use, you can increase the free storage quota.
+
+## V4.6.8 Release Notes
+
+1. New - Knowledge Base search merge module.
+2. New - Redesigned HTTP module with more flexible parameter input. Supports automatic input/output data type conversion (e.g., JSON output is automatically converted to string type for use by other modules). Additional examples are available in the documentation.
+3. Improved - Query completion. Query completion is now built into the Knowledge Base Search module, enabling both "reference resolution" and "query expansion" in a single pass. See [Knowledge Base Search Introduction](/docs/introduction/guide/dashboard/workflow/dataset_search/) for details.
+4. Improved - LLM model configuration no longer distinguishes between chat, classification, and extraction models. Default parameters per model are now supported via `defaultConfig` to avoid parameter conflicts between different models.
+5. Improved - Streaming response, inspired by `ChatNextWeb`'s streaming implementation for smoother output. This may also fix previously reported issues with garbled text and interruptions that resolved after refreshing.
+6. Fixed - Voice input file upload failure.
+7. Fixed - Chat box regeneration not working.

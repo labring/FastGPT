@@ -1,0 +1,54 @@
+---
+title: 'V4.11.0'
+description: 'FastGPT V4.11.0 Update Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Environment Variables
+
+Commercial edition users can add the following evaluation-related environment variables, then click Save once in the admin panel after updating.
+
+```
+EVAL_CONCURRENCY=3 # Evaluation single-node concurrency
+EVAL_LINE_LIMIT=1000 # Maximum lines per evaluation file
+```
+
+### 2. Update Images:
+
+- Update FastGPT image tag: v4.11.0
+- Update FastGPT commercial edition image tag: v4.11.0
+- Update fastgpt-plugin image tag: v0.1.5
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## Project Changes
+
+1. Removed all restrictions on **open-source features**, including limits on the number of apps and knowledge bases.
+2. Updated the roadmap to include `Context Management`, `AI-Generated Workflows`, `Advanced Orchestration Debug Mode`, and more.
+3. The international domain has been changed from `fastgpt.io` to `fastgpt.io`.
+
+## New Features
+
+1. Commercial edition: added **App Evaluation (Beta)** for supervised scoring of apps.
+2. Workflow nodes now support error-catching branches.
+3. Chat page: independent tab UX.
+4. Support for Signoz traces and logs system monitoring.
+5. Added model configurations for Gemini 2.5, Grok 4, and Kimi.
+6. Model invocation logs now include time-to-first-token and request IP.
+
+## Improvements
+
+1. Optimized code to prevent memory buildup from recursion, significantly reducing memory consumption during high-concurrency knowledge base preprocessing.
+2. Knowledge base training: support for retrying all failed data in a collection at once.
+3. Workflow valueTypeFormat to prevent data type inconsistencies.
+4. Knowledge base list search now properly escapes special characters in regex.
+
+## Bug Fixes
+
+1. Question classification and content extraction nodes: default model failed frontend validation, preventing workflow execution and publishing.
+
+## Tool Updates
+
+1. Markdown text to Docx and Xlsx file conversion.
