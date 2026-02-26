@@ -1,0 +1,195 @@
+---
+title: Application API
+description: FastGPT OpenAPI Application Interface
+---
+
+## Prerequisites
+
+1. Prepare your API key: You can use the global API key directly
+2. Get your application's AppId
+
+![alt text](/imgs/image-120.png)
+
+
+## Log API
+
+### Get Cumulative Run Results
+
+<Tabs items={["Request Example","Response Example","Parameters"]}>
+
+  <Tab value="Request Example">
+
+  ```bash
+ curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
+--header 'Authorization: Bearer apikey'
+  ```
+
+  </Tab>
+
+  <Tab value="Response Example">
+
+  ```bash
+    {
+        "code": 200,
+        "statusText": "",
+        "message": "",
+        "data": {
+            "totalUsers": 0,
+            "totalChats": 0,
+            "totalPoints": 0
+        }
+    }
+  ```
+
+  </Tab>
+
+  <Tab value="Parameters">
+
+  <div>
+  **Request Parameters:**
+  - appId: Application ID
+
+  **Response Parameters:**
+  - totalUsers: Total number of users
+  - totalChats: Total number of conversations
+  - totalPoints: Total points consumed
+  </div>
+
+  </Tab>
+
+</Tabs>
+
+### Get Application Log Dashboard
+
+<Tabs items={["Request Example","Response Example","Parameters"]}>
+
+<Tab value="Request Example">
+
+  ```bash
+curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
+--header 'Authorization: Bearer apikey' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "appId": "68c46a70d950e8850ae564ba",
+    "dateStart": "2025-09-19T16:00:00.000Z",
+    "dateEnd": "2025-09-27T15:59:59.999Z",
+    "offset": 1,
+    "source": [
+        "test",
+        "online",
+        "share",
+        "api",
+        "cronJob",
+        "team",
+        "feishu",
+        "official_account",
+        "wecom",
+        "mcp"
+    ],
+    "userTimespan": "day",
+    "chatTimespan": "day",
+    "appTimespan": "day"
+}'
+  ```
+
+</Tab>
+
+<Tab value="Response Example">
+
+```bash
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": {
+        "userData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "userCount": 1,
+                    "newUserCount": 0,
+                    "retentionUserCount": 0,
+                    "points": 1.1132600000000001,
+                    "sourceCountMap": {
+                        "test": 1,
+                        "online": 0,
+                        "share": 0,
+                        "api": 0,
+                        "cronJob": 0,
+                        "team": 0,
+                        "feishu": 0,
+                        "official_account": 0,
+                        "wecom": 0,
+                        "mcp": 0
+                  }
+                }
+            }
+        ],
+        "chatData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "chatItemCount": 1,
+                    "chatCount": 1,
+                    "errorCount": 0,
+                    "points": 1.1132600000000001
+                }
+            }
+        ],
+        "appData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "goodFeedBackCount": 0,
+                    "badFeedBackCount": 0,
+                    "chatCount": 1,
+                    "totalResponseTime": 22.31
+                }
+            }
+        ]
+    }
+}
+```
+
+</Tab>
+
+<Tab value="Parameters">
+
+**Request Parameters:**
+- appId: Application ID
+- dateStart: Start time
+- dateEnd: End time
+- source: Log source
+- offset: User retention offset
+- userTimespan: User data timespan  //day｜week｜month｜quarter
+- chatTimespan: Chat data timespan  //day｜week｜month｜quarter
+- appTimespan: Application data timespan  //day｜week｜month｜quarter
+
+**Response Parameters:**
+
+- userData: User data array
+  - timestamp: Timestamp
+  - summary: Summary data object
+    - userCount: Active user count
+    - newUserCount: New user count
+    - retentionUserCount: Retained user count
+    - points: Total points consumed
+    - sourceCountMap: User count by source
+- chatData: Chat data array
+  - timestamp: Timestamp
+  - summary: Summary data object
+    - chatItemCount: Chat message count
+    - chatCount: Session count
+    - errorCount: Error count
+    - points: Total points consumed
+- appData: Application data array
+  - timestamp: Timestamp
+  - summary: Summary data object
+    - goodFeedBackCount: Positive feedback count
+    - badFeedBackCount: Negative feedback count
+    - chatCount: Chat count
+    - totalResponseTime: Total response time
+
+</Tab>
+
+</Tabs>

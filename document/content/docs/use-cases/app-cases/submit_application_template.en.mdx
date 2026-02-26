@@ -1,0 +1,82 @@
+---
+title: How to Submit Application Templates
+description: Guide: How to submit application templates to FastGPT
+---
+
+## What Templates Can Be Merged
+
+Currently, application templates merged into the repository are displayed to all users in the「Template Market」.
+
+To control template quality and avoid overwhelming users with too many options, not all templates will be merged into the open-source repository. You can PR in advance to discuss the template content with us.
+
+We estimate the total number won't be very large—around 50 templates, half from the FastGPT Team and half from community users.
+
+## How to Write an Application Template
+
+### 1. Set Up FastGPT and FastGPT-plugin Development Environments
+
+You need to perform the following operations in the dev environment.
+
+Refer to these two documents to run FastGPT and FastGPT-plugin development environments locally:
+- [FastGPT｜Quick Start Local Development](/docs/introduction/development/intro/)
+- [How to Develop System Plugins](/docs/introduction/guide/plugins/dev_system_tool/)
+
+### 2. Create Application Template
+
+In the FastGPT-plugin project, application templates are in the `modules/workflow/templates` directory.
+1. Create a new `.json` file
+2. Copy the following content and paste it into the newly created `.json` file
+
+```json
+{
+  "name": "Template Name",
+  "intro": "Template description, displayed on the template market page",
+  "author": "Your name",
+  "avatar": "Template avatar, you can place the image file in the same folder and fill in the corresponding path",
+
+  "tags": ["Template tags"], // writing(text creation), image-generation(image generation), web-search(web search),
+  // roleplay(role-playing), office-services(office services) - currently 5 categories, choose the appropriate tag
+
+  "type": "Template category", // simple(simple app), advanced(workflow), plugin(plugin)
+
+  "workflow": {
+    // Ignore this object for now, we'll paste the exported workflow later
+    "nodes": [],
+    "edges": [],
+    "chatConfig": {}
+  }
+}
+```
+
+
+### 3. Complete Template Orchestration and Testing
+
+1. Orchestrate the workflow in FastGPT (can be done in the cloud service version or locally deployed version).
+
+### 4. Copy Configuration to template.json
+
+Hover your mouse over the application avatar and name in the top left corner. A dropdown menu will appear where you can export the workflow configuration.
+
+The exported configuration is automatically copied to the clipboard. You can paste it directly into the template.json file, replacing the **workflow** value from step 2.
+
+![](/imgs/template_submission3.png)
+
+### 5. Verify Template Loads Successfully
+
+Refresh the page, open the template market, check if it loads successfully, and click「Use」to test its functionality.
+
+![](/imgs/template_submission4.png)
+
+### 6. Deploy and Use
+
+After completing the above operations, you can package the fastgpt-plugin image for use. Currently, templates don't support hot updates—all templates are packaged in the image.
+
+If you don't want to repackage the fastgpt-plugin image every time you update templates, you can mount the .json file to the `/app/workflows/` directory in the container using Docker volume mounting.
+
+### 7. Submit PR
+
+If you think your template should be submitted to the open-source repository, you can submit it via PR.
+
+- Clearly describe the template's introduction and functionality
+- Include screenshots of the template in action
+- Explain template parameter configuration clearly in the PR. For example, if some templates require applying for a key from a provider, attach the corresponding address and tutorial—we'll add it to the documentation later.

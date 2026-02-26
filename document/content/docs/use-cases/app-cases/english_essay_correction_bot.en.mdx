@@ -1,0 +1,92 @@
+---
+title: English Essay Correction Bot
+description: Use FastGPT to create a bot for correcting English essays, helping users detect and fix language errors
+---
+
+FastGPT provides a simple way to build applications based on LLM Models.
+
+This article introduces how to use **Workflows** by building an English essay correction bot.
+
+## Build Process
+
+### 1. Create Workflow
+
+![](/imgs/spellcheck1.png)
+
+You can start by creating from *Multi-turn Translation Bot*.
+
+> The Multi-turn Translation Bot was created by @米开朗基杨, and it's also a workflow worth learning from.
+
+### 2. Get Input and Analyze with LLM
+
+We want the LLM to process text and return structured data that we can handle ourselves.
+
+![](/imgs/spellcheck2.png)
+
+**Prompt** is the most important parameter. The prompt provided here is for reference only:
+
+~~~markdown
+## Role
+Senior English writing expert
+
+## Task
+Analyze the input text. Find various errors, including but not limited to spelling mistakes, grammar errors, etc.
+Note: Ignore spacing issues around punctuation marks.
+Note: For sentences with errors, the modification suggestion should point out the specific part of the sentence, then propose what to replace that part with.
+
+## Output Format
+Don't use Markdown syntax, output JSON format content.
+Output "reason" content in Chinese.
+Directly output a list whose members are objects of the same type, defined as follows:
+```
+{
+"raw": string; // Represents the original text
+"reason": string; // Represents the reason
+"suggestion": string; // Modification suggestion
+}
+```
+~~~
+
+You can disable AI replies in the model selection window.
+
+This way you won't see the output JSON format content.
+
+![](/imgs/spellcheck3.png)
+
+### 3. Data Processing
+
+The LLM above outputs JSON, which needs data processing here. Data processing can use the code execution component.
+
+![](/imgs/spellcheck4.png)
+
+```javascript
+function main({data}){
+    const array = JSON.parse(data)
+    return {
+        content: array.map(
+            (item, index) => {
+                return `
+## Analysis ${index+1}
+- **Error**: ${item.raw}
+- **Analysis**: ${item.reason}
+- **Modification Suggestion**: ${item.suggestion}
+`
+            }
+        ).join('')
+    }
+}
+```
+
+The code above parses JSON into an Object, then concatenates it into a Markdown syntax string.
+
+FastGPT's specified reply component can parse Markdown into HTML for return.
+
+## Publish
+
+You can publish using publishing channels.
+
+![](/imgs/spellcheck5.png)
+
+You can choose to access via URL or embed it directly into your webpage.
+
+> [Click to use](https://share.fastgpt.in/chat/share?shareId=b4r173wkcjae7wpnexcvmyc3)

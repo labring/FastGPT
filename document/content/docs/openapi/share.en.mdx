@@ -1,0 +1,372 @@
+---
+title: Share Link Authentication
+description: FastGPT Share Link Authentication
+---
+
+## Introduction
+
+In FastGPT V4.6.4, we changed how share links handle data. Each user gets a unique localId to fetch their chat history from the cloud. However, this only works on the same device and browser—switching devices or clearing browser cache loses the history. Due to these limitations, we only allow users to fetch the last `20` records from the past `30 days`.
+
+Share link authentication lets you embed FastGPT chat into your existing system quickly and securely with just 2 API endpoints. This feature is currently available in the commercial version only.
+
+## How It Works
+
+In the share link settings, you can configure an `Authentication` URL. This is the base URL for `POST` requests. Once configured, FastGPT will send requests to specific endpoints under this URL during initialization, chat start, and chat completion. We'll use `host` to represent this base authentication URL. Your server only needs to return whether authentication succeeded—no other data required. Response format:
+
+### Unified Response Format
+
+```jsonc
+{
+  "success": true,
+  "message": "Error message",
+  "msg": "Same as message, error message",
+  "data": {
+    "uid": "Unique user identifier" // Required
+  }
+}
+```
+
+FastGPT checks if `success` is `true` to allow the user to continue. `message` and `msg` are equivalent—return either one. When `success` is not `true`, this error message will be displayed.
+
+`uid` is the user's unique identifier. It must be returned and must be a string ≤ 255 **bytes** without "|", "/", or "\\" characters, or you'll get an `Invalid UID` error. The `uid` is used to fetch and save chat history—see the practical examples below.
+
+### Flow Diagram
+
+![](/imgs/sharelink_process.png)
+
+## Configuration Guide
+
+### 1. Configure Authentication URL
+
+![](/imgs/share-setlink.png)
+
+Once configured, every share link usage will trigger authentication and reporting requests to the specified URL.
+
+Only configure the base URL here—no need for the complete request path.
+
+### 2. Add Query Parameter to Share Link
+
+Add an extra parameter to the share link URL: authToken. For example:
+
+Original link: `https://share.fastgpt.io/chat/share?shareId=648aaf5ae121349a16d62192`
+
+Complete link: `https://share.fastgpt.io/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
+
+This `authToken` is typically a unique user credential (like a Token) from your system. FastGPT will include token=[authToken] in the authentication endpoint's `body`.
+
+### 3. Implement Chat Initialization Endpoint
+
+<Tabs items={['Request Example','Auth Success','Auth Failure']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/init' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "[authToken]"
+}'
+```
+
+  </Tab>
+
+  <Tab value="Auth Success" >
+
+```json
+{
+  "success": true,
+  "data": {
+    "uid": "Unique user identifier"
+  }
+}
+```
+
+The system will fetch chat history for this share link where uid = username123.
+
+  </Tab>
+
+  <Tab value="Auth Failure" >
+
+```json
+{
+  "success": false,
+  "message": "Authentication failed"
+}
+```
+
+  </Tab>
+</Tabs>
+
+### 4. Implement Pre-Chat Validation Endpoint
+
+<Tabs items={['Request Example','Auth Success','Auth Failure']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/start' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "[authToken]",
+    "question": "User question",
+}'
+```
+
+  </Tab>
+
+  <Tab value="Auth Success" >
+
+```json
+{
+  "success": true,
+  "data": {
+    "uid": "Unique user identifier"
+  }
+}
+```
+
+  </Tab>
+
+  <Tab value="Auth Failure" >
+
+```json
+{
+  "success": false,
+  "message": "Authentication failed"
+}
+```
+
+```json
+{
+  "success": false,
+  "message": "Content contains prohibited words"
+}
+```
+
+  </Tab>
+</Tabs>
+
+### 5. Implement Chat Result Reporting Endpoint (Optional)
+
+This endpoint has no required return value.
+
+The response format matches the [chat API format](/docs/openapi/intro/#response), with an additional `token` field.
+
+Key fields: `totalPoints` (total AI points consumed), `token` (total tokens consumed)
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/finish' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "[authToken]",
+    "responseData": [
+        {
+            "moduleName": "core.module.template.Dataset search",
+            "moduleType": "datasetSearchNode",
+            "totalPoints": 1.5278,
+            "query": "Who is the director\n《Suzume》Who is the director?\nWho directed this movie?\nWho is the director of 《Suzume》?",
+            "model": "Embedding-2(Old version, not recommended)",
+            "tokens": 1524,
+            "similarity": 0.83,
+            "limit": 400,
+            "searchMode": "embedding",
+            "searchUsingReRank": false,
+            "extensionModel": "FastAI-4k",
+            "extensionResult": "Who is the director of 《Suzume》?\nWho directed this movie?\nWho is the director of 《Suzume》?",
+            "runningTime": 2.15
+        },
+        {
+            "moduleName": "AI Chat",
+            "moduleType": "chatNode",
+            "totalPoints": 0.593,
+            "model": "FastAI-4k",
+            "tokens": 593,
+            "query": "Who is the director",
+            "maxToken": 2000,
+            "quoteList": [
+                {
+                    "id": "65bb346a53698398479a8854",
+                    "q": "Who is the director?",
+                    "a": "The director of the movie 《Suzume》 is Makoto Shinkai.",
+                    "chunkIndex": 0,
+                    "datasetId": "65af9b947916ae0e47c834d2",
+                    "collectionId": "65bb345c53698398479a868f",
+                    "sourceName": "dataset - 2024-01-23T151114.198.csv",
+                    "sourceId": "65bb345b53698398479a868d",
+                    "score": [
+                        {
+                            "type": "embedding",
+                            "value": 0.9377183318138123,
+                            "index": 0
+                        },
+                        {
+                            "type": "rrf",
+                            "value": 0.06557377049180328,
+                            "index": 0
+                        }
+                    ]
+                }
+            ],
+            "historyPreview": [
+                {
+                    "obj": "Human",
+                    "value": "Use the content in <Data></Data> tags as reference for this conversation:\n\n<Data>\nWho is the director?\nThe director of the movie 《Suzume》 is Makoto Shinkai.\n------\nWho is the screenwriter of 《Suzume》?22\nMakoto Shinkai is the screenwriter.\n------\nWho is the female lead of 《Suzume》?\nThe female lead is Suzume.\n------\nWhich famous person is in the production team of 《Suzume》?2\nKawamura Genki is one of the production team members.\n------\nWho are you?\nI am the 《Suzume》 movie assistant\n------\nWho is the male lead of 《Suzume》?\nThe male lead of 《Suzume》 is Souta Munakata, voiced by Hokuto Matsumura.\n------\nMakoto Shinkai, the author of 《Suzume》, wrote a novel. What's it called?\nThe novel is called 《Suzume》.\n------\nWho is the female lead of 《Suzume》?\nThe female lead of 《Suzume》 is Suzume Iwato, voiced by Nanoka Hara.\n------\nWhat's the story background of 《Suzume》?\nJapan\n------\nWho voices Tamaki Iwato in 《Suzume》?\nEri Fukatsu voices Tamaki Iwato in 《Suzume》.\n</Data>\n\nAnswer requirements:\n- If you don't know the answer, clarify.\n- Avoid mentioning you got the knowledge from <Data></Data>.\n- Keep answers consistent with <Data></Data> descriptions.\n- Use Markdown syntax to optimize answer format.\n- Answer in the same language as the question.\n\nQuestion:\"\"\"Who is the director\"\"\""
+                },
+                {
+                    "obj": "AI",
+                    "value": "The director of the movie 《Suzume》 is Makoto Shinkai."
+                }
+            ],
+            "contextTotalLen": 2,
+            "runningTime": 1.32
+        }
+    ]
+
+
+}'
+```
+
+**Complete responseData Field Descriptions:**
+
+```ts
+type ResponseType = {
+  moduleType: FlowNodeTypeEnum; // Module type
+  moduleName: string; // Module name
+  moduleLogo?: string; // Logo
+  runningTime?: number; // Running time
+  query?: string; // User question/search query
+  textOutput?: string; // Text output
+
+  tokens?: number; // Total context tokens
+  model?: string; // Model used
+  contextTotalLen?: number; // Total context length
+  totalPoints?: number; // Total AI points consumed
+
+  temperature?: number; // Temperature
+  maxToken?: number; // Model's max tokens
+  quoteList?: SearchDataResponseItemType[]; // Quote list
+  historyPreview?: ChatItemType[]; // Context preview (history may be truncated)
+
+  similarity?: number; // Minimum similarity
+  limit?: number; // Quote token limit
+  searchMode?: `${DatasetSearchModeEnum}`; // Search mode
+  searchUsingReRank?: boolean; // Whether using rerank
+  extensionModel?: string; // Question extension model
+  extensionResult?: string; // Question extension result
+  extensionTokens?: number; // Question extension total character length
+
+  cqList?: ClassifyQuestionAgentItemType[]; // Classified question list
+  cqResult?: string; // Classified question result
+
+  extractDescription?: string; // Content extraction description
+  extractResult?: Record<string, any>; // Content extraction result
+
+  params?: Record<string, any>; // HTTP module params
+  body?: Record<string, any>; // HTTP module body
+  headers?: Record<string, any>; // HTTP module headers
+  httpResult?: Record<string, any>; // HTTP module result
+
+  pluginOutput?: Record<string, any>; // Plugin output
+  pluginDetail?: ChatHistoryItemResType[]; // Plugin details
+
+  isElseResult?: boolean; // Conditional result
+};
+```
+
+## Practical Example
+
+We'll use [Laf as the server](https://laf.dev/) to demonstrate how to implement these 3 endpoints.
+
+### 1. Create 3 Laf Endpoints
+
+![](/imgs/share-auth1.png)
+
+<Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
+  <Tab value="/shareAuth/init" >
+
+In this endpoint, we require `token` to equal `fastgpt` to pass authentication. (Not recommended to hardcode in production)
+
+```ts
+import cloud from '@lafjs/cloud';
+
+export default async function (ctx: FunctionContext) {
+  const { token } = ctx.body;
+
+  // Token decoding process omitted here
+  if (token === 'fastgpt') {
+    return { success: true, data: { uid: 'user1' } };
+  }
+
+  return { success: false, message: 'Authentication failed' };
+}
+```
+
+  </Tab>
+
+  <Tab value="/shareAuth/start" >
+
+In this endpoint, we require `token` to equal `fastgpt` to pass authentication. Additionally, if the question contains the character `你`, it will fail—simulating sensitive content validation.
+
+```ts
+import cloud from '@lafjs/cloud';
+
+export default async function (ctx: FunctionContext) {
+  const { token, question } = ctx.body;
+
+  // Token decoding process omitted here
+  if (token !== 'fastgpt') {
+    return { success: false, message: 'Authentication failed' };
+  }
+
+  if (question.includes('你')) {
+    return { success: false, message: 'Content violates policy' };
+  }
+
+  return { success: true, data: { uid: 'user1' } };
+}
+```
+
+  </Tab>
+
+  <Tab value="/shareAuth/finish" >
+
+The result reporting endpoint can implement custom logic.
+
+```ts
+import cloud from '@lafjs/cloud';
+
+export default async function (ctx: FunctionContext) {
+  const { token, responseData } = ctx.body;
+
+  const total = responseData.reduce((sum, item) => sum + item.price, 0);
+  const amount = total / 100000;
+
+  // Database operations omitted
+
+  return {};
+}
+```
+
+  </Tab>
+</Tabs>
+
+### 2. Configure Authentication URL
+
+Copy any of the 3 endpoint URLs: `https://d8dns0.laf.dev/shareAuth/finish`, remove `/shareAuth/finish`, and enter the base URL in `Authentication`: `https://d8dns0.laf.dev`
+
+![](/imgs/share-auth2.jpg)
+
+### 3. Modify Share Link Parameters
+
+Original share link: `https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c`
+
+Modified: `https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
+
+### 4. Test Results
+
+1. Opening the original link or a link with `authToken` not equal to `fastgpt` will show an authentication error.
+2. Sending content containing the character 你 will show a policy violation error.
+
+## Use Cases
+
+This authentication method helps you embed `share links` directly into your application. Before opening the share link in your app, append the `authToken` parameter.
+
+Beyond integrating with existing user systems, you can also implement `balance` functionality—deduct user balance via the `result reporting` endpoint and check user balance via the `pre-chat validation` endpoint.

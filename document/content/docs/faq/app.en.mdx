@@ -1,0 +1,79 @@
+---
+title: App Usage Issues
+description: Common FastGPT app usage issues, including simple apps, workflows, and plugins
+---
+
+## How to Ensure Continuous Questions Are Correctly Classified in Multi-Turn Conversations
+
+The question classification node can access context information. When processing two highly related questions, the model's judgment accuracy often depends on the connection between these questions and the model's capabilities. For example, when a user first asks "How do I use this feature?" and then asks "What are the limitations of this feature?", the model can understand and respond more accurately with context information.
+
+However, when the correlation between consecutive questions is low, the model's judgment accuracy may be limited. In this case, we can introduce global variables to record classification results. In subsequent classification stages, first check if the global variable has a classification result. If yes, use that result directly; if not, let the model judge on its own.
+
+Recommendation: Build batch testing scripts to evaluate question classification accuracy.
+
+## Timing of Scheduled Execution
+
+Regarding scheduled execution in system workflow configuration, if a user opens a shared link and stays on that page, scheduled execution trigger question:
+
+Scheduled execution takes effect after the app is published and runs in the background.
+
+## V4.8.18-FIX2 mentions "1. Fixed HTTP node, `{{}}` format variable reference compatibility issue. Recommend replacing with / pattern for variables, `{{}}` syntax is deprecated." Does replacing `{{}}` reference format only affect HTTP nodes, or all nodes?
+
+Only HTTP nodes use this syntax.
+
+## Workflow-type apps work normally in preview mode but have issues after publishing to no-login window.
+
+Usually caused by incorrect publishing. Click [Save and Publish] in the top right corner of the workflow.
+
+## How to Make Question Suggestions Display in Chinese
+
+Note: Update to V4.8.17 or above and change the question suggestion prompt to Chinese.
+![](/imgs/quizApp2.png)
+
+## Remove Markdown Syntax Requirement from AI Chat Response
+
+Modify the dataset default prompt. The default uses a standard template prompt that requires Markdown output. You can remove this requirement:
+
+| | |
+| --- | --- |
+| ![](/imgs/image-83.png) | ![](/imgs/image-84.png) |
+
+## App Behaves Differently Across Different Sources
+
+Q: App behaves differently between debugging and production; behaves differently when called via API.
+
+A: Usually caused by inconsistent context. You can find the corresponding record in the conversation log and check the run details for comparison.
+
+| | | |
+| --- | --- | --- |
+| ![](/imgs/image-85.png) | ![](/imgs/image-86.png) | ![](/imgs/image-87.png) |
+In the dataset response requirements, you need to configure a prompt. Otherwise, it uses the default, which includes this syntax.
+
+## Workflow Operation: A workflow starts with a question classification node, routes to different branches based on classification, accesses corresponding datasets and AI chat. After AI chat returns content, how to skip the question classification node and instead search the dataset, then use history as context for another AI query?
+
+Use a condition node: if it's the first conversation (history count is 0), go through question classification; if not zero, go directly to dataset and AI.
+
+## Real-time Chat: Set FastGPT to poll, e.g., fetch webhook messages every 3000ms to the AI page
+
+Scheduled execution doesn't support such high-frequency polling. To implement a real-time chat bot in WeCom,
+Currently, building with low-code workflows won't work. You need to write code yourself and call FastGPT's API Key for responses. WeCom doesn't seem to provide an "auto-listen" interface for group chat messages (or trigger message push by @mentioning the bot). You can only send messages to the app and receive message pushes from this document https://developer.work.weixin.qq.com/document/path/90238 to implement real-time chat. Or poll for group chat messages using the interface shown in this document https://developer.work.weixin.qq.com/document/path/98914, then push messages using this interface https://developer.work.weixin.qq.com/document/path/90248.
+
+## Workflow Database Connection
+
+Workflows provide database connection functionality. Using this database connection plugin can implement text2SQL, but it's relatively risky—write operations are not recommended.
+
+![](/imgs/quizApp1.png)
+
+## About Loop Node: Understanding loop conditions, termination conditions, loop methods, and whether parameters called within the loop are local or global scope
+
+Can be understood as a for function—pass an array, and each item executes once.
+
+## Formulas Not Displaying Correctly
+
+Add relevant prompts to guide the model to output formulas in Markdown format
+
+```bash
+Latex inline: \(x^2\) 
+Latex block: $$e=mc^2$$
+```
+

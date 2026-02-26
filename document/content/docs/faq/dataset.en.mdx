@@ -1,0 +1,79 @@
+---
+title: Dataset Usage Issues
+description: Common dataset usage issues
+---
+
+## Uploaded file content shows Chinese garbled text
+
+Save the file as UTF-8 encoding format.
+
+## What is the file processing model in dataset configuration? How is it different from the index model?
+
+* **File Processing Model**: Used for [Enhanced Processing] and [Q&A Splitting] in data processing. In [Enhanced Processing], it generates related questions and summaries. In [Q&A Splitting], it performs Q&A pair generation.
+* **Index Model**: Used for vectorization, which processes and organizes text data to build a quickly queryable data structure.
+
+## Dataset supports importing Excel-type files
+
+xlsx and others can be uploaded, not just CSV.
+
+## How are dataset tokens calculated?
+
+Uniformly calculated according to GPT-3.5 standards.
+
+## After accidentally deleting the rerank model, how to add the rerank model back to FastGPT?
+
+![](/imgs/dataset3.png)
+
+After configuring in the config.json file, you can select the rerank model.
+
+## If I create apps and datasets on the online platform, will the data be cleared if I don't renew shortly after expiration?
+
+The free version clears the dataset after 30 days of no login, but apps won't be affected. Other paid plans automatically switch to the free version after expiration.
+![](/imgs/dataset4.png)
+
+## Based on dataset queries, but there are too many relevant answers. AI stops responding halfway through.
+
+FastGPT response length calculation formula:
+
+Max response = min(configured max response (built-in limit), max context (sum of input and output) - history)
+
+18K model -> sum of input and output
+
+Output increases -> input decreases
+
+So you can:
+
+1. Check the configured max response (response limit)
+2. Reduce input to increase output, i.e., reduce history, which in workflows is "chat history"
+
+Configured max response:
+
+![](/imgs/dataset1.png)
+
+![](/imgs/dataset2.png)
+
+Additionally, when deploying privately, when configuring model parameters in the backend, you can reserve some space when configuring max context. For example, for a 128000 model, you can configure only 120000, and the remaining space will be allocated to output later.
+
+
+## Limited by model context, sometimes can't reach the number of chat history rounds. Too many consecutive conversation words will cause a context insufficient error.
+
+FastGPT response length calculation formula:
+
+Max response = min(configured max response (built-in limit), max context (sum of input and output) - history)
+
+18K model -> sum of input and output
+
+Output increases -> input decreases
+
+So you can:
+
+1. Check the configured max response (response limit)
+2. Reduce input to increase output, i.e., reduce history, which in workflows is "chat history"
+
+Configured max response:
+
+![](/imgs/dataset1.png)
+
+![](/imgs/dataset2.png)
+
+Additionally, when deploying privately, when configuring model parameters in the backend, you can reserve some space when configuring max context. For example, for a 128000 model, you can configure only 120000, and the remaining space will be allocated to output later.
