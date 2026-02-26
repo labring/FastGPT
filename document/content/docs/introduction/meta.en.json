@@ -1,0 +1,14 @@
+{
+  "title": "Documentation",
+  "root": true,
+  "pages": [
+    "---入门---",
+    "index",
+    "cloud",
+    "commercial",
+    "development",
+    "---功能介绍---",
+    "...guide"
+  ],
+  "order": 1
+}

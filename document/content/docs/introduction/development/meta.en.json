@@ -1,0 +1,19 @@
+{
+  "title": "FastGPT Community Edition",
+  "description": "FastGPT Community Edition",
+  "icon": "🔧",
+  "pages": [
+    "sealos",
+    "docker",
+    "faq",
+    "intro",
+    "configuration",
+    "object-storage",
+    "signoz",
+    "modelConfig",
+    "custom-models",
+    "proxy",
+    "migration",
+    "design"
+  ]
+}
