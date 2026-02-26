@@ -1,0 +1,185 @@
+---
+title: Deploy via Sealos
+description: One-click FastGPT deployment using Sealos
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## Deployment Architecture
+
+![](/imgs/sealos-fastgpt.webp)
+
+## Multi-Model Support
+
+FastGPT uses the one-api project to manage model pools, supporting OpenAI, Azure, mainstream Chinese models, and local models.
+
+See: [Quick OneAPI Deployment on Sealos](/docs/introduction/development/modelconfig/one-api)
+
+## One-Click Deployment
+
+Using Sealos, you don't need to purchase servers or domain names. It supports high concurrency & dynamic scaling, and the database uses KubeBlocks, which offers far better I/O performance than simple Docker container deployments. Choose a region below based on your needs.
+
+### Singapore Region
+
+Singapore servers are overseas and can directly access OpenAI, but users in mainland China need a VPN to access the Singapore region. International pricing is slightly higher. Click the button below to deploy 👇
+
+<a
+  href="https://template.cloud.sealos.io/deploy?templateName=fastgpt&uid=fnWRt09fZP"
+  rel="external"
+  target="_blank"
+>
+  <img
+    src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg"
+    alt="Deploy on Sealos"
+  />
+</a>
+
+### Beijing Region
+
+The Beijing region is hosted by Volcano Engine. Users in mainland China can access it stably, but it can't access OpenAI and other overseas services. Pricing is about 1/4 of the Singapore region. Click the button below to deploy 👇
+
+<a
+  href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP"
+  rel="external"
+  target="_blank"
+>
+  <img
+    src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg"
+    alt="Deploy on Sealos"
+  />
+</a>
+
+### 1. Start Deployment
+
+Since databases need to be deployed, wait 2–4 minutes after deployment before accessing. The default configuration uses minimal resources, so the first access may be slow.
+
+Follow the prompts to enter `root_password` and the `openai`/`oneapi` address and key.
+
+![](/imgs/sealos1.png)
+
+After clicking deploy, you'll be redirected to the app management page. Click the details button on the right side of the `fastgpt` main app (named fastgpt-xxxx), as shown below.
+
+![](/imgs/sealos-deploy1.jpg)
+
+After clicking details, you'll go to the fastgpt deployment management page. Click the link in the external access address to open the fastgpt service.
+
+To bind a custom domain or modify deployment parameters, click **Change** in the top right corner and follow Sealos' instructions.
+
+![](/imgs/sealos2.png)
+
+### 2. Log In
+
+Username: `root`
+
+Password: the `root_password` you set during one-click deployment
+
+### 3. Configure Models
+
+You must configure at least one model set, or the system won't work properly.
+
+[View model configuration tutorial](./modelConfig/intro/)
+
+## Pricing
+
+Sealos uses pay-as-you-go billing based on the CPU, memory, and disk you allocate. For specific pricing, open the **Cost Center** in the Sealos control panel.
+
+## Using Sealos
+
+### Overview
+
+FastGPT commercial version includes 2 apps (fastgpt, fastgpt-plus) and 2 databases. When using multiple API keys, you need to install OneAPI (1 app and 1 database), totaling 3 apps and 3 databases.
+
+![](/imgs/onSealos1.png)
+
+Click details on the right to view detailed information for each app.
+
+### Modifying Config Files and Environment Variables
+
+In Sealos, open **App Launchpad** to see deployed FastGPT apps, and open **Database** to see corresponding databases.
+
+In **App Launchpad**, select FastGPT, click **Change**, and you'll see the corresponding environment variables and config files.
+
+![](/imgs/fastgptonsealos1.png)
+
+<Alert icon="🤖" context="success">
+  On Sealos, FastGPT runs 1 service and 2 databases. When pausing or deleting, make sure to handle the databases together. (You can start them during the day and pause them at night to save money.)
+</Alert>
+
+### How to Update/Upgrade FastGPT
+
+[Upgrade script documentation](./upgrading/) — read the docs first to see which version you need to upgrade to. Note: don't skip versions!
+
+For example, if you're on version 4.5 and want to upgrade to 4.5.1, change the image version to v4.5.1, run the upgrade script, wait for completion, then continue upgrading. If the target version doesn't require initialization, you can skip it.
+
+Upgrade steps:
+
+1. Check the [update documentation](./upgrading/index/) to confirm the version you're upgrading to and avoid skipping versions.
+2. Open Sealos app management
+3. There are 2 apps: fastgpt, fastgpt-pro
+4. Click the 3 dots on the right side of the corresponding app, then **Change**. Or click details, then **Change** in the top right.
+5. Modify the image version number
+
+![](/imgs/onsealos2.png)
+
+6. Click **Change/Restart** to automatically pull the latest image and update
+7. Run the initialization script for the corresponding version (if applicable)
+
+### How to Get the FastGPT Access Link
+
+Open the corresponding app and click the external access address.
+
+![](/imgs/onsealos3.png)
+
+### Configure a Custom Domain
+
+Click **Change** on the corresponding app → click **Custom Domain** → enter domain → configure domain CNAME → confirm → confirm change.
+
+![](/imgs/onsealos4.png)
+
+### How to Modify Config Files
+
+Open Sealos app management → find the corresponding app → **Change** → scroll down to advanced configuration, where you'll find config files → add new or click the corresponding config file to edit → click confirm change in the top right.
+
+![](/imgs/onsealos5.png)
+
+[Config file reference](./configuration/)
+
+### Modify Site Name and Favicon
+
+Modify the app's environment variables and add:
+
+```
+SYSTEM_NAME=FastGPT
+SYSTEM_DESCRIPTION=
+SYSTEM_FAVICON=/favicon.ico
+HOME_URL=/dashboard/agent
+```
+
+SYSTEM_FAVICON can be a URL.
+
+![](/imgs/onsealos6.png)
+
+### Mount a Logo
+
+Currently, you can't replace the browser logo. Only SVG is supported. Full replacement will be available after visual customization is implemented.
+
+Add a mounted file with filename: `/app/projects/app/public/icon/logo.svg`, and the value should be the SVG content.
+
+![](/imgs/onsealos7.png)
+
+![](/imgs/onsealos8.png)
+
+### Commercial Version Config File
+
+```
+{
+  "license": "",
+  "system": {
+    "title": "" // System name
+  }
+}
+```
+
+### Using One API
+
+[See OneAPI usage steps](/docs/introduction/development/modelconfig/one-api/)

@@ -1,0 +1,52 @@
+---
+title: Dialog Boxes & HTML Rendering
+description: How to embed HTML code blocks in FastGPT via Markdown, with fullscreen, source code toggle, and other interactive features
+---
+
+| Source Mode | Preview Mode | Fullscreen Mode |
+| --- | --- | --- |
+| ![](/imgs/htmlRendering1.png) | ![](/imgs/htmlRendering2.png) | ![](/imgs/htmlRendering3.png) |
+
+### 1. Design Background
+
+While Markdown natively supports embedded HTML tags, many platforms and environments restrict HTML rendering due to security concerns, especially when rendering dynamic content, interactive elements, and external resources. These restrictions significantly reduce flexibility when writing and displaying complex documents, particularly when embedding external HTML content. To address this, we use `iframe` to embed and render HTML content, combined with the `sandbox` attribute to ensure safe rendering of external HTML.
+
+### 2. Feature Overview
+
+This module's main purpose is to extend FastGPT's Markdown rendering capabilities to support embedding and rendering HTML content. Since it uses iframe rendering, the content height can't be determined, so FastGPT sets a fixed height for the iframe. JavaScript execution within the HTML is not supported.
+
+### 3. Technical Implementation
+
+This module implements HTML rendering and interactive features through:
+
+- **Component Design:** The module renders HTML content by displaying `iframe` type code blocks. It uses a custom `IframeBlock` component combined with the `sandbox` attribute to ensure embedded content security. `sandbox` restricts behaviors in external HTML, such as disabling script execution and limiting form submissions, ensuring HTML content safety. Helper functions integrate with the Markdown rendering section to handle `iframe`-embedded HTML content.
+- **Security Mechanism:** Uses the `iframe`'s `sandbox` attribute and `referrerPolicy` to prevent potential security risks. The `sandbox` attribute provides fine-grained control, allowing specific features (like scripts, forms, popups, etc.) to execute in a restricted environment, ensuring rendered HTML content doesn't threaten the system.
+- **Display & Interactive Features:** Users can freely switch between different display modes (fullscreen, preview, source code mode) for more flexible viewing and control of embedded HTML content. The embedded `iframe` adapts to the parent container's width while ensuring the iframe's embedded content displays appropriately.
+
+### 4. How to Use
+
+Simply use Markdown code block format and mark the language as `html`. Example:
+
+```md
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Welcome to FastGPT</title>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#gallery">Gallery</a></li>
+      </ul>
+    </nav>
+  </body>
+</html>
+```
+```

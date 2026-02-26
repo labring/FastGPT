@@ -1,0 +1,356 @@
+---
+title: How to Develop System Plugins
+description: FastGPT system plugin development guide (Tools)
+---
+
+## Overview
+
+Starting from version 4.10.0, the FastGPT system plugin project moved to the independent `fastgpt-plugin` project, using a pure code approach for tool development.
+After the plugin marketplace update in version 4.14.0, the system tool development process has changed. Please follow the latest documentation to contribute code.
+
+You can develop and debug plugins independently in the `fastgpt-plugin` project, then submit a PR directly to FastGPT official without running the main FastGPT service.
+
+Currently, system plugins only support the "Tool" type.
+
+## Concepts
+
+- **Tool:** The smallest execution unit. Each tool has a unique ID and specific inputs and outputs.
+- **Toolset:** A collection of tools that can contain multiple tools.
+
+In `fastgpt-plugin`, you can create one tool/toolset at a time. Each submission accepts only one tool/toolset. To develop multiple, create multiple PRs.
+
+## 1. Prepare Development Environment
+
+### 1.1 Install Bun
+
+- Install [Bun](https://bun.sh/). FastGPT-plugin uses Bun as the package manager.
+
+### 1.2 Fork FastGPT-plugin Repository
+
+Fork this repository: `https://github.com/labring/fastgpt-plugin`
+
+### 1.3 Set Up Development Scaffold
+
+<Tabs items={['One-click Setup via Bunx','Manual Setup']}>
+<Tab value="One-click Setup via Bunx">
+Note: Due to Bun-specific APIs, you must use bunx for installation. Using npx/pnpm will cause errors.
+
+Create a new directory and execute:
+```bash
+bunx @fastgpt-sdk/plugin-cli
+```
+
+This command creates a fastgpt-plugin directory in the current directory and adds two remotes:
+- upstream pointing to the official repository
+- origin pointing to your own repository
+
+Uses sparse-checkout by default to avoid pulling all official plugin code.
+
+</Tab>
+<Tab value="Manual Setup">
+- Initialize a `git` repository in a new local directory:
+
+```bash
+git init
+```
+
+If you've configured Git SSH Key:
+```bash
+git remote add origin git@github.com:[your-name]/fastgpt-plugin.git
+git remote add upstream git@github.com:labring/fastgpt-plugin.git
+```
+
+Otherwise use https:
+```bash
+git remote add origin https://github.com/[your-name]/fastgpt-plugin.git
+git remote add upstream https://github.com/labring/fastgpt-plugin.git
+```
+
+- (Optional) Use sparse-checkout to avoid pulling all plugin code. If you don't use sparse-checkout, all official plugins will be pulled:
+```bash
+git sparse-checkout init --no-cone
+git sparse-checkout add "/*" "!/modules/tool/packages/*"
+git pull
+```
+
+Create a new tool using the command:
+```bash
+bun i
+bun run new:tool
+```
+
+</Tab>
+</Tabs>
+
+## 2. Write Tool Code
+
+### 2.1 Tool Code Structure
+
+Follow the prompts to select creating a tool/toolset and the directory name (use camelCase naming).
+
+System tool (Tool) file structure:
+
+```plaintext
+src // Source code, processing logic
+└── index.ts
+test // Test cases
+└── index.test.ts
+config.ts // Configuration: tool name, description, type, icon, etc.
+index.ts // Entry point, don't modify this file
+logo.svg // Logo, replace with your tool's logo
+README.md // (Optional) README file for usage instructions and examples
+assets/ // (Optional) assets directory for resource files like images, audio, etc.
+package.json // npm package
+```
+
+Toolset file structure:
+
+```plaintext
+children
+└── tool // Structure same as tool above, but without README and assets directories
+config.ts
+index.ts
+logo.svg
+README.md
+assets/
+package.json
+```
+
+### 2.2 Modify config.ts
+
+- **name** and **description** fields support Chinese and English
+- **courseUrl** (optional) Key acquisition link, official website link, tutorial link, etc. If you provide README.md, you can write it there
+- **author** Developer name
+- **tags** Default tags for the tool, available tags (enum type):
+	- tools: Tools
+	- search: Search
+	- multimodal: Multimodal
+	- communication: Communication
+	- finance: Finance
+	- design: Design
+	- productivity: Productivity
+	- news: News
+	- entertainment: Entertainment
+	- social: Social
+	- scientific: Scientific
+	- other: Other
+- **secretInputList**: Secret input list, used to configure tool `activation information`, typically including `keys`, `Endpoint`, `Port`, etc. (see secretInputList parameter format below)
+- **versionList** (configured in tool) for version management, a list with element format:
+	- value: Version number, recommend using semver
+	- description: Description
+	- inputs: Input parameters (see inputs parameter format below)
+	- outputs: Return values (see outputs parameter format below)
+
+For tools under ToolSet, no need to fill in `type`, `courseUrl`, `author` — these fields inherit from the ToolSet configuration.
+
+#### secretInputList Parameter Format
+
+General format:
+```ts
+{
+  key: 'key', // Unique key
+  label: 'Label displayed on frontend',
+  description: 'Description displayed on frontend', // Optional
+  inputType: 'input' | 'secret' | 'switch' | 'select' | 'numberInput', // Frontend input box type
+  // secret: Secret input box, key will be symmetrically encrypted when saved in node or database
+  // switch: Switch
+  // select: Dropdown select
+  // numberInput: Number input
+  // input: Regular input
+}
+```
+
+Example from dalle3 configuration: see [dalle3's config.ts](https://github.com/labring/fastgpt-plugin/blob/main/modules/tool/packages/dalle3/config.ts)
+
+```ts
+{
+  // Other configuration
+  secretInputConfig: [
+    {
+      key: 'url',
+      label: 'Dalle3 API Base URL',
+      description: 'e.g., https://api.openai.com',
+      inputType: 'input',
+      required: true
+    },
+    {
+      key: 'authorization',
+      label: 'API Credential (no Bearer needed)',
+      description: 'sk-xxxx',
+      required: true,
+      inputType: 'secret'
+    }
+  ]
+}
+```
+
+#### inputs Parameter Format
+
+General format:
+
+```ts
+{
+  key: 'Unique key within this tool, same as InputType definition in src/index.ts',
+  label: 'Label displayed on frontend',
+  renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference], // Frontend input box type
+  valueType: WorkflowIOValueTypeEnum.string, // Data type
+  toolDescription: 'Description used during tool invocation' // If setting as tool call parameter, need to set this field
+}
+```
+
+dalle3's inputs parameter format:
+```ts
+{
+//...
+  versionList: [
+    {
+      // Other configuration
+      inputs: [
+        {
+          key: 'prompt',
+          label: 'Drawing Prompt',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+          toolDescription: 'Drawing prompt'
+        }
+      ],
+    }
+    // ...
+  ]
+}
+```
+
+#### outputs Parameter Format
+```ts
+{
+  key: 'link', // Unique key-value pair
+  valueType: WorkflowIOValueTypeEnum.string, // See this Enum's type definition
+  label: 'Image Access Link', // Name
+  description: 'Image access link' // Description, optional
+}
+```
+
+dalle3's outputs parameter format:
+
+```ts
+{
+  // ...
+  versionList: [
+    {
+      // ...
+      outputs: [
+        {
+          valueType: WorkflowIOValueTypeEnum.string,
+          key: 'link',
+          label: 'Image Access Link',
+          description: 'Image access link'
+        },
+        {
+          type: FlowNodeOutputTypeEnum.error,
+          valueType: WorkflowIOValueTypeEnum.string,
+          key: 'system_error',
+          label: 'Error Message'
+        }
+      ]
+    }
+  ],
+}
+```
+
+### 2.3 Write Processing Logic
+
+Write processing logic in `[your-tool-name]/src/index.ts` as the entry point. Note:
+
+1. Use zod for type definitions, export as InputType and OutputType schemas.
+2. Entry function is `tool`, you can define other functions.
+
+```ts
+import { format } from 'date-fns';
+import { z } from 'zod';
+
+export const InputType = z.object({
+  formatStr: z.string().optional()
+});
+
+export const OutputType = z.object({
+  time: z.string()
+});
+
+export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<typeof OutputType>> {
+  const formatStr = props.formatStr || 'yyyy-MM-dd HH:mm:ss';
+
+  return {
+    time: format(new Date(), formatStr)
+  };
+}
+```
+
+The above example shows a simple case that takes a formatStr (format string) and returns the current time. To install packages, use `bun install PACKAGE` in the `/modules/tools/packages/[your-tool-name]` path.
+
+## 4. Build/Package
+
+After FastGPT v4.14.0, the packaging method changed to packaging system plugins as a `.pkg` file. Use the command:
+```bash
+bun run build:pkg
+```
+This builds and packages all local plugins as `.pkg` files in the `dist/pkgs` directory.
+
+## 5. Unit Testing
+
+FastGPT-plugin uses Vitest as the unit testing framework.
+
+### 5.1 Write Test Cases
+
+Write test cases in `test/index.test.ts`. Use `bun run test index.test.ts full-path` to run tests.
+
+> Note: Don't write your secret keys in test cases
+>
+> When writing test cases with Agent tools, the Agent tool may modify your processing logic or even the entire testing framework logic.
+
+### 5.2 View Test Coverage
+
+Open coverage/index.html in a browser to view coverage for each plugin module.
+
+To submit plugins to the official repository, you must write unit test cases and achieve:
+- 90%+ code coverage
+- 100% function coverage
+- 100% branch condition coverage
+
+## 6. E2E (End-to-End) Testing
+
+For simple tools, E2E testing may not be necessary. If the tool is too complex, official personnel may require you to complete E2E testing.
+
+### 6.1 Deploy E2E Test Environment
+
+1. Refer to [Quick Start Local Development](/docs/introduction/development/intro) to deploy a FastGPT development environment locally
+2. `cd runtime && cp .env.template .env.local` Copy the environment variable template file, connect to Minio, Mongo, Redis deployed in the previous step
+3. `bun run dev` Run the development environment, modify FastGPT's environment variables to connect to the fastgpt-plugin you just started
+
+### 6.2 Test from Scalar
+
+Run the fastgpt-plugin development environment.
+
+Open `http://localhost:PORT/openapi` in a browser to enter the `fastgpt-plugin` OpenAPI page for API debugging.
+PORT is your fastgpt-plugin port.
+
+![](/imgs/plugin-openapi.png)
+
+First use the `/tool/list` interface to get the tool list and find the `toolId` of the tool you need to debug. Then use `/tool/runStream` to run the tool and get actual results.
+
+![](/imgs/plugin-openapi2.png)
+
+### 6.3 E2E Testing in Development Environment (with Hot Reload)
+
+By default, fastgpt-plugin automatically loads all tools under modules/tool/packages/ and automatically monitors file changes for hot reload.
+You can use these tools in FastGPT.
+
+### 6.4 Upload Tools for E2E Testing in Development Environment (without Hot Reload)
+
+Setting the FastGPT-plugin environment variable `DISABLE_DEV_TOOLS=true` disables automatic loading of development environment tools, allowing you to test tool uploads.
+
+## 7. Submit Tool to Official Directory
+
+After completing all the above, submit a PR to the official repository `https://github.com/labring/fastgpt-plugin`.
+After official review and approval, it will be included as an official FastGPT plugin.
+
+If you don't need official inclusion, refer to [Upload System Tool](upload_system_tool) to use it in your own deployed FastGPT.

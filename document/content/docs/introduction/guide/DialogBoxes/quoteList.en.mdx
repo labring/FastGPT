@@ -1,0 +1,82 @@
+---
+title: Knowledge Base Citation Chunk Reader
+description: FastGPT chunk reader feature overview
+---
+
+In enterprise AI deployments, the accuracy and transparency of document knowledge citations have always been a key user concern. FastGPT 4.9.1's knowledge base chunk reader elegantly solves this pain point, making AI citations no longer a "black box."
+
+# Why Do We Need a Chunk Reader?
+
+In traditional AI conversations, when a model cites enterprise knowledge base content, users often only see the cited fragment without the full context, making content verification and deep understanding challenging. The chunk reader allows users to view the complete document of cited content directly in the conversation and precisely locate the citation, achieving "explainability" in citations.
+
+## Limitations of Traditional Citation Experience
+
+Previously, after uploading documents to the knowledge base, when we input questions in workflows, traditional citations only showed the cited chunks without confirming the chunk's context within the article:
+
+| Question | Citation |
+| --- | --- |
+| ![](/imgs/chunkReader1.png) | ![](/imgs/chunkReader2.jpg) |
+
+## FastGPT Chunk Reader: Precise Positioning, Seamless Reading
+
+In FastGPT's new chunk reader, the same knowledge base content and questions are presented in a qualitatively different way:
+
+![](/imgs/chunkReader4.jpg) 
+
+When AI cites knowledge base content, users simply click the citation link to open a popup showing the complete original content, with the cited text fragment clearly highlighted. This ensures answer traceability while providing a convenient original text viewing experience.
+
+# Core Features
+
+## Full Text Display & Positioning
+
+The "chunk reader" lets users intuitively view the knowledge sources cited in AI responses.
+
+In the conversation interface, when AI cites knowledge base content, the system displays source information below the reply. Users just click these citation links to open an elegant popup showing the complete original content, with the AI-cited text fragments clearly highlighted.
+
+This design ensures answer traceability while providing a convenient original text viewing experience, allowing users to easily verify AI answer accuracy and relevant context.
+
+![](/imgs/chunkReader3.webp) 
+
+## Convenient Citation Navigation
+
+The chunk reader's top right corner features simple, practical navigation controls. Users can easily switch between multiple citations using these buttons. The navigation area also intuitively displays the current citation number and total citation count (e.g., "7/10"), helping users track browsing progress and the overall scale of cited content.
+
+![](/imgs/chunkReader5.jpg)
+
+## Citation Quality Scoring
+
+Each citation has an intelligent scoring label that intuitively shows the citation's relevance ranking among all knowledge fragments. Users can hover over the scoring label to view complete scoring details, understanding why this citation was selected by the AI and its specific relevance composition.
+
+![](/imgs/chunkReader6.png)
+
+## One-Click Document Export
+
+The chunk reader thoughtfully includes content export functionality, ensuring valuable information isn't lost. As long as users have read permissions for the corresponding knowledge base, they can save the full text of cited content to their local device with a simple click.
+
+![](/imgs/chunkReader7.jpg)
+
+# Advanced Features
+
+## Flexible Visibility Control
+
+FastGPT provides flexible citation visibility settings, making knowledge sharing both open and secure. Taking anonymous links as an example, administrators can precisely control what information external visitors can see.
+
+When set to "citation content only visible," external users clicking citation links will only see the specific text fragments cited by the AI, not the complete original document. As shown, the chunk reader intelligently adjusts the display mode to show only relevant citation content.
+
+|  |  |
+| --- | --- |
+| ![](/imgs/chunkReader8.png) | ![](/imgs/chunkReader9.jpg) |
+
+## Instant Annotation Optimization
+
+During browsing, authorized users can directly annotate and correct citation content in real-time. The system intelligently processes these updates without interrupting the current conversation experience. All modified content is clearly marked with a prominent "Updated" label, ensuring citation accuracy while maintaining conversation history integrity.
+
+This seamless knowledge optimization workflow is particularly suitable for team collaboration scenarios, allowing the knowledge base to continuously evolve during actual use, ensuring AI responses are always based on the latest, most accurate information sources.
+
+## Intelligent Document Performance Optimization
+
+Facing real-world business scenarios with potentially thousands of chunks in ultra-long documents, FastGPT employs advanced performance optimization strategies to ensure the chunk reader always maintains smooth responsiveness.
+
+The system uses intelligent loading management based on citation relevance sorting and database indexing, implementing an "on-demand rendering" mechanism — based on index sorting and database IDs, only content users actually need to view is loaded into memory. This means whether quickly jumping to a specific citation or naturally scrolling through a document, users get a silky-smooth experience without lag or delay due to large document size.
+
+This technical optimization enables FastGPT to easily handle enterprise-scale large knowledge base scenarios, allowing even professional documents containing massive amounts of information to be efficiently displayed and reviewed.
