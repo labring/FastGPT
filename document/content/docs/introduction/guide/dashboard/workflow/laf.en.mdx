@@ -1,0 +1,93 @@
+---
+title: Laf Function Call
+description: FastGPT Laf function call module guide
+---
+
+![](/imgs/laf1.webp)
+
+## Introduction
+
+The `Laf Function Call` module can invoke cloud functions under your Laf account. It works similarly to the HTTP module with these special features:
+
+- Only supports POST requests
+- Requests automatically include systemParams, no need to pass via variables
+
+## Bind Laf Account
+
+To call Laf cloud functions, first bind your Laf account and application, then create cloud functions in the application.
+
+Laf provides PAT (Personal Access Token) for quick login outside the Laf platform. Visit [Laf documentation](https://doc.Laf.run/zh/cli/#%E7%99%BB%E5%BD%95) to learn how to get a PAT.
+
+After obtaining a PAT, go to FastGPT's `Account page` or the `Laf module` in advanced workflows to bind your Laf account. Laf accounts are team-shared and can only be configured by team administrators.
+
+Enter the PAT for verification, select the application to bind (application must be in Running status), and you can then call cloud functions under that application.
+
+![](/imgs/laf2.webp)
+
+## Write Cloud Functions
+
+Laf cloud functions can automatically generate OpenAPI based on interfaces. Follow the code below to write cloud functions for automatic OpenAPI documentation generation.
+
+The `Laf module` can automatically identify input/output parameters from OpenAPI documentation without manual data type addition. If you don't know TypeScript, you can ignore this and manually add parameters in FastGPT.
+
+```ts
+import cloud from '@lafjs/cloud'
+
+interface IRequestBody { // Custom input parameters, FastGPT sends POST requests
+  data1: string    // Required parameter
+  data2?: string    // Optional parameter
+}
+
+interface RequestProps extends IRequestBody { // Complete input parameters, no need to modify
+  systemParams: { // Parameters FastGPT passes by default
+    appId: string,
+    variables: string,
+    histories: string,
+    cTime: string,
+    chatId: string,
+    responseChatItemId: string
+  }
+}
+
+interface IResponse { // Response content
+  message: string // Required return parameter
+  msg?: string; // Optional return parameter
+}
+
+export default async function (ctx: FunctionContext): Promise<IResponse> {  
+  const {
+    data1,
+    data2,
+    systemParams
+  }: RequestProps = ctx.body;
+  
+  console.log({
+    data1,
+    data2,
+    systemParams
+  });
+
+  return { 
+    message: 'ok',
+    msg: 'msg'
+  };
+}
+```
+
+Alternatively, you can select fastgpt_template on the Laf platform to quickly generate this function template.
+
+To do this, go to Laf's function page, create a new function (note: FastGPT only calls POST request functions), then copy the code above or click "More Templates" and search for "fastgpt" to use the template below.
+
+![](/imgs/laf3.webp)
+
+## Using in FastGPT
+
+After selecting a function, click "Sync Parameters" to automatically sync cloud function parameters to FastGPT. You can also add manually — manually modified parameters won't be changed by "Sync Parameters."
+
+![](/imgs/laf4.png)
+
+## Usage Notes
+
+### Call Errors
+
+First debug the function in Laf to see if it calls normally. Use console.log to print input parameters, then place them in the Body of Laf's test page for testing.

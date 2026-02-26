@@ -1,0 +1,46 @@
+---
+title: Knowledge Base Collection Tags
+description: FastGPT knowledge base collection tags usage guide
+---
+
+Knowledge base collection tags are a FastGPT commercial version exclusive feature. They allow you to add tags to data collections in your knowledge base for classification, managing knowledge base data more efficiently.
+
+Furthermore, you can add collection filtering when searching the knowledge base during Q&A, achieving more precise searches.
+
+|                       |                       | |
+| --------------------- | --------------------- | --------------------- |
+| ![](/imgs/collection-tags-1.png) | ![](/imgs/collection-tags-2.png) | ![](/imgs/collection-tags-3.png) |
+
+## Tag Basic Operations
+
+On the knowledge base details page, you can manage tags with these operations:
+
+- Create tags
+- Modify tag names
+- Delete tags
+- Assign one tag to multiple data collections
+- Add multiple tags to one data collection
+
+You can also use tags to filter data collections
+
+## Knowledge Base Search - Collection Filtering
+
+Using tags, you can achieve more precise searches when searching the knowledge base by filling in the "Collection Filter" field. Specific filling examples are as follows:
+
+```json
+{
+  "tags": {
+    "$and": ["Tag 1","Tag 2"],
+    "$or": ["When $and tags exist, and takes effect, or doesn't"]
+  },
+  "createTime": {
+      "$gte": "YYYY-MM-DD HH:mm format, collection creation time greater than this time",
+      "$lte": "YYYY-MM-DD HH:mm format, collection creation time less than this time, can be used together with $gte"
+  }
+}
+```
+
+Two points to note when filling:
+
+- Tag values can be `string` type tag names or `null`, where `null` represents data collections without tags set
+- Tag filtering has two condition types: `$and` and `$or`. When both `$and` and `$or` are set, only `$and` takes effect

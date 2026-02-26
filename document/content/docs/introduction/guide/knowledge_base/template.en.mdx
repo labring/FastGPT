@@ -1,0 +1,113 @@
+---
+title: Template Import
+description: FastGPT template import feature introduction and usage
+---
+
+## Background
+
+FastGPT provides a template import feature that allows users to batch import Q&A pair data through preset CSV template formats. This method is particularly suitable for users who already have structured Q&A data and can quickly import data into the knowledge base.
+
+## Template Structure Description
+
+The template uses CSV format and includes the following columns:
+
+- q: Question column, stores questions users might ask
+- a: Answer column, stores standard answers to corresponding questions
+- indexes: Index column, stores indexes related to the question
+
+### Sample Data
+
+```csv
+q,a,indexes
+"Who are you?","I'm an AI assistant, always ready to chat with you, answer your questions, whether it's knowledge discussions in learning, small questions in life, or creative inspiration collisions. I can participate and use my 'knowledge brain' to provide help and companionship, hoping to become your good partner for interactive communication and exploring the world.","1. What are you?\n2. What can you do?\n3. What questions can you answer?\n4. What kind of partner do you hope to be?\n5. How do you provide help?"
+"What are you?","I'm an AI assistant, always ready to chat with users, answer questions, participate in knowledge discussions in learning, small questions in life, and creative inspiration collisions, using my 'knowledge brain' to provide help and companionship, hoping to become a good partner for users' interactive communication and exploring the world.","What are you?"
+"What can you do?","I can chat with users, answer questions, participate in knowledge discussions in learning, small questions in life, and creative inspiration collisions, using my 'knowledge brain' to provide help and companionship.","What can you do?"
+```
+
+## Usage Instructions
+
+### 1. Open knowledge base, click import, select template import
+
+![](/imgs/template/import.png)
+
+![](/imgs/template/box.png)
+
+### 2. Download template
+
+Click to download CSV template, which contains two mode contents
+
+#### Regular mode data template
+
+![](/imgs/template/nomal.png)
+
+Corresponding CSV format:
+
+![](/imgs/template/nomal_data.png)
+
+In regular mode, q is content, a is empty, indexes can be multiple
+
+#### Q&A pair data template
+
+![](/imgs/template/Question-answer.png)
+
+Corresponding CSV format:
+
+![](/imgs/template/Question-answer_data.png)
+
+In Q&A pair mode, q is question, a is answer, indexes is the index part
+
+### 3. Fill in data
+
+Fill in your Q&A data according to template format:
+- Each row represents one content or one Q&A pair
+- Question (q) is always non-empty
+- Within a row, index parts can continue to be added
+
+### 4. Import limitations
+
+- Only supports CSV format files
+- Single file size limit is 100MB
+- Must strictly follow template format, otherwise import may fail
+- Only one file can be imported at a time
+
+After successful import:
+
+![](/imgs/template/import_csv.png)
+
+### 4. Notes
+
+- Ensure CSV file uses UTF-8 encoding
+- If content contains commas, wrap entire content in double quotes
+- Content in indexes column will be used as related question indexes, helping improve retrieval accuracy
+- Recommend testing with small amounts of data before importing large amounts
+
+## Best Practices
+
+1. **Data Preparation**
+   - Ensure quality of content or Q&A pairs, answers should be clear and accurate
+   - Add appropriate index keywords for each import
+   - Avoid duplicate content or Q&A pairs
+
+2. **Format Check**
+   - Check CSV file format is correct before import
+   - Ensure no extra blank lines or spaces
+   - Verify special characters are correctly escaped
+
+3. **Batch Import**
+   - If data volume is large, recommend batch import
+   - Verify data correctness after each batch import
+
+## FAQ
+
+Q: Why did my file import fail?
+A: Please check the following:
+- Is file format CSV?
+- Is encoding UTF-8?
+- Did you strictly follow template format?
+- Does file size exceed limit?
+
+Q: How to verify import success?
+A: After successful import, you can:
+- Search for imported questions in knowledge base
+- Test answer accuracy through dialogue
+- Check knowledge base data statistics

@@ -1,0 +1,74 @@
+---
+title: 'Application Evaluation (Beta)'
+description: 'Quick guide to FastGPT application evaluation feature'
+---
+
+Starting from FastGPT v4.11.0, batch application evaluation is supported. By inputting multiple Q&A pairs, the system automatically scores application execution results, enabling quantitative assessment of application performance.
+
+The system supports three evaluation metrics: answer accuracy, question relevance, and semantic accuracy. The current beta version only includes answer accuracy, with remaining metrics to be added in future versions.
+
+## Create Application Evaluation
+
+### Enter Evaluation Page
+
+![Create application evaluation](/imgs/evaluation1.png)
+
+Go to the application evaluation directory in the workspace and click the "Create Task" button in the upper right corner.
+
+### Fill in Evaluation Information
+
+![Create application evaluation](/imgs/evaluation2.png)
+
+On the create task page, fill in the following information:
+
+- **Evaluation Task Name**: Identifier name for the task
+- **Evaluation Model**: Model used for scoring this task
+- **Evaluation Application**: Application to be scored
+
+### Prepare Evaluation Data
+
+![Create application evaluation](/imgs/evaluation2.png)
+
+After selecting the evaluation application, the system displays a button to download the CSV template. The template includes these fields:
+
+- Global variables
+- q (question)
+- a (standard answer)
+- Chat history
+
+**Important Notes:**
+
+- Maximum 1000 Q&A pairs supported
+- Follow the template format when filling in data
+
+After completing the file, upload it and click "Start Evaluation" to create an application evaluation task.
+
+## View Application Evaluation
+
+### Evaluation List
+
+![View application evaluation](/imgs/evaluation4.png)
+
+The evaluation list page displays all evaluation tasks with key information:
+
+- **Progress**: Current execution status of the evaluation task
+- **Executor**: User who created the evaluation task
+- **Evaluation Application**: Name of the evaluated application
+- **Start Time/End Time**: Execution time range of the evaluation task
+- **Overall Score**: Overall score of the evaluation task
+
+This information allows clear comparison of effects after each application improvement.
+
+### Evaluation Details
+
+![View application evaluation](/imgs/evaluation5.png)
+
+Click "View Details" to enter the evaluation task details page:
+
+**Task Overview**: Top of the page shows overall task information, including evaluation configuration and statistical results.
+
+**Detailed Results**: Bottom of the page displays each Q&A pair in the evaluation task and its score, showing:
+
+- User question
+- Standard output
+- Application output

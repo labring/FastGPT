@@ -1,0 +1,24 @@
+---
+title: Knowledge Base Search Merge
+description: FastGPT knowledge base search merge module guide
+---
+
+![](/imgs/knowledge_merge1.png)
+
+## Use Cases
+
+Merges multiple knowledge base search results into a single output, re-ranks them using RRF (based on ranking), and supports max tokens filtering.
+
+## Usage
+
+AI Chat can only receive one knowledge base reference. Therefore, if multiple knowledge bases are called, you can't directly reference all of them (as shown below).
+
+![](/imgs/knowledge_merge2.png)
+
+Using **Knowledge Base Search Merge**, you can combine search results from multiple knowledge bases.
+
+![](/imgs/knowledge_merge3.png)
+
+## Example Use Cases:
+
+1. After question classification, search different knowledge bases, then have a single AI answer. In this case, you can use merge instead of adding an AI Chat node to each branch.

@@ -1,0 +1,34 @@
+---
+title: Question Optimization
+description: Question optimization module introduction and usage
+---
+
+## Features
+
+- Can be added multiple times
+- Has external inputs
+- Trigger-based execution
+
+![](/imgs/coreferenceResolution1.jpg)
+
+## Background
+
+In RAG, we need to perform embedding searches in the database based on input questions to find relevant content (knowledge base search).
+
+During search, especially in continuous conversations, we often find that subsequent questions struggle to find appropriate content. One reason is that knowledge base search only uses the "current" question. Look at this example:
+
+![](/imgs/coreferenceResolution2.webp)
+
+When the user asks "What is the second point?", it only searches the knowledge base for "What is the second point?" and finds nothing. What actually needs to be queried is "What is the QA structure?". Therefore, we need a [Question Optimization] module to complete the user's current question, enabling knowledge base search to find appropriate content. After using completion, the effect is:
+
+![](/imgs/coreferenceResolution3.webp)
+
+## Function
+
+Calls AI to complete the user's current question. Currently focuses on completing "referential" words to make search terms more complete and reliable, enhancing knowledge base search capabilities in continuous conversations.
+
+The biggest challenge: models may not have a clear concept of [completion], and with long contexts often can't accurately determine how to complete questions.
+
+## Examples
+
+- [Google Search Integration](/docs/use-cases/app-cases/google_search/)

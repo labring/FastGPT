@@ -1,0 +1,139 @@
+---
+title: Knowledge Base Fundamentals
+description: This section details the core mechanisms, application scenarios, advantages, and limitations of RAG models in generation tasks.
+---
+
+[RAG Documentation](https://huggingface.co/docs/transformers/model_doc/rag)
+
+# 1. Introduction
+
+As natural language processing (NLP) technology rapidly develops, generative language models (like GPT, BART) excel at text generation tasks, especially in language generation and context understanding. However, pure generative models have inherent limitations when handling factual tasks. Since these models rely on fixed pre-training data, they may "hallucinate" information when answering questions requiring current or real-time information, leading to inaccurate or unfounded results. Additionally, generative models often perform poorly on long-tail questions and complex reasoning tasks due to lack of domain-specific external knowledge support.
+
+Meanwhile, retrieval models (Retrievers) can quickly find relevant information in massive documents, solving factual query problems. However, traditional retrieval models (like BM25) often return isolated results when facing ambiguous queries or cross-domain questions, unable to generate coherent natural language answers.
+
+To address these shortcomings, Retrieval-Augmented Generation (RAG) was developed. RAG combines the advantages of generative and retrieval models, retrieving relevant information from external knowledge bases in real-time and integrating it into generation tasks, ensuring generated text has both contextual coherence and accurate knowledge. This hybrid architecture performs exceptionally well in intelligent Q&A, information retrieval and reasoning, and domain-specific content generation scenarios.
+
+## 1.1 RAG Definition
+
+RAG is a hybrid architecture combining information retrieval with generative models. First, the retriever obtains content fragments related to user queries from external knowledge bases or document collections; then, the generator creates natural language output based on these retrieved contents, ensuring generated content is both information-rich and highly relevant and accurate.
+
+# 2. Core Mechanisms of RAG Models
+
+RAG models consist of two main modules: Retriever and Generator. These modules work together to ensure generated text contains both external relevant knowledge and natural, fluent language expression.
+
+## 2.1 Retriever
+
+The retriever's main task is obtaining the most relevant content from an external knowledge base or document collection for input queries. Common techniques in RAG include:
+
+- Vector retrieval: Such as BERT vectors, which convert documents and queries into vector space representations and use similarity calculations for matching. Vector retrieval's advantage is better capturing semantic similarity, not just relying on lexical matching.
+- Traditional retrieval algorithms: Like BM25, primarily based on term frequency and inverse document frequency (TF-IDF) weighted search models for document ranking and retrieval.
+
+The retriever in RAG provides context background for the generator, enabling it to generate more relevant answers based on retrieved document fragments.
+
+## 2.2 Generator
+
+The generator is responsible for generating final natural language output. Common generators in RAG systems include:
+
+- BART: A sequence-to-sequence generation model focused on text generation tasks
+- GPT series: Typical pre-trained language models excelling at generating fluent natural text
+
+After receiving document fragments from the retriever, the generator uses these fragments as context and combines them with input queries to generate relevant and natural text answers.
+
+## 2.3 RAG Workflow
+
+The RAG model workflow can be summarized in these steps:
+
+1. Input query: User inputs question, system converts it to vector representation
+2. Document retrieval: Retriever extracts most relevant document fragments from knowledge base
+3. Generate answer: Generator receives retriever-provided fragments and generates natural language answer based on them
+4. Output result: Generated answer is returned to user
+
+# 3. RAG Model Working Principles
+
+## 3.1 Retrieval Phase
+
+In RAG models, user queries are first converted to vector representations, then vector retrieval is performed in the knowledge base. Retrievers typically use pre-trained models like BERT to generate vector representations of queries and document fragments, matching the most relevant document fragments through similarity calculations (like cosine similarity).
+
+## 3.2 Generation Phase
+
+The generation phase is the core part of RAG models. The generator generates coherent and natural text answers based on retrieved content. RAG generators like BART or GPT combine user input queries with retrieved document fragments to generate more precise and rich answers.
+
+## 3.3 Multi-turn Interaction & Feedback Mechanism
+
+RAG models effectively support multi-turn interactions in dialogue systems. Each round's query and generation results serve as input for the next round. Through this cyclic feedback mechanism, RAG can better adjust its retrieval and generation strategies.
+
+# 4. Advantages and Limitations of RAG
+
+## 4.1 Advantages
+
+- Information completeness: RAG combines retrieval and generation techniques, making generated text both naturally fluent and accurately utilizing real-time information from external knowledge bases
+- Knowledge reasoning capability: RAG can efficiently retrieve from large-scale external knowledge bases and reason with real data to generate fact-based answers
+- Strong domain adaptability: RAG has good cross-domain adaptability, performing efficient retrieval and generation within specific domains
+
+## 4.2 Limitations
+
+#### 4.2.1 Retriever Dependency & Quality Issues
+
+RAG model performance largely depends on retriever-returned document quality. If retrieved document fragments are irrelevant or inaccurate, generated text may be biased or even misleading.
+
+#### 4.2.2 Generator Computational Complexity & Performance Bottlenecks
+
+RAG models combine retrieval and generation modules, significantly increasing computational complexity. This high computational complexity is a major bottleneck for real-time Q&A systems.
+
+#### 4.2.3 Knowledge Base Updates & Maintenance
+
+RAG models typically rely on pre-established external knowledge bases. Knowledge base content timeliness and accuracy directly affect RAG generation result credibility.
+
+#### 4.2.4 Generated Content Controllability & Transparency
+
+RAG models have certain issues with generated content controllability and transparency. The "black box" nature makes it difficult for users to understand how the generator uses retrieved document information.
+
+# 5. RAG Overall Improvement Directions
+
+## 5.1 Data Collection & Knowledge Base Construction
+
+High-quality knowledge bases should include content from various trusted channels, such as scientific literature databases (like PubMed, IEEE Xplore), authoritative news media, industry standards and reports.
+
+## 5.2 Data Chunking & Content Management
+
+Reasonable chunking strategies help models efficiently locate target information and provide clear context support during answer generation.
+
+## 5.3 Retrieval Optimization
+
+Effective retrieval strategies ensure models obtain the most suitable context fragments, making generated answers more precise and aligned with query needs.
+
+## 5.4 Answer Generation & Optimization
+
+By introducing knowledge graphs and other structured information, generators can more accurately understand and associate context, generating logically coherent and accurate answers.
+
+## 5.5 RAG Process
+
+![](/imgs/RAG1.png)
+
+1. Data loading & query input
+2. Document retrieval
+3. Generator processing & natural language generation
+4. Result output
+5. Feedback & optimization
+
+# 6. RAG Related Case Integration
+
+[RAG in Various Classification Domains](https://github.com/hymie122/RAG-Survey)
+
+# 7. RAG Model Applications
+
+## 7.1 Applications in Intelligent Q&A Systems
+
+RAG generates accurate and detailed answers by retrieving external knowledge bases in real-time, avoiding errors traditional generative models might produce.
+
+## 7.2 Information Retrieval & Text Generation
+
+RAG can not only retrieve relevant documents but also generate summaries, reports, or document abstracts based on these documents, enhancing generated content coherence and accuracy.
+
+## 7.3 Other Application Scenarios
+
+RAG can also be applied to multimodal generation scenarios, such as image, audio, and 3D content generation.
+
+# 8. Summary
+
+This document systematically explains the core mechanisms, advantages, and application scenarios of Retrieval-Augmented Generation (RAG) models. By combining generative and retrieval models, RAG solves traditional generative models' "hallucination" problem in factual tasks and retrieval models' difficulty generating coherent natural language output. RAG models can retrieve information from external knowledge bases in real-time, making generated content both contain accurate knowledge and have fluent language expression, suitable for knowledge-intensive domains like healthcare, law, and intelligent Q&A systems.

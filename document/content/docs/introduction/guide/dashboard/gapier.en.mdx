@@ -1,0 +1,56 @@
+---
+title: Quickly Import Agent Tools Using Gapier
+description: FastGPT quickly import Agent tools using Gapier
+---
+
+FastGPT V4.7 added tool calling, compatible with GPTs Actions. This means you can directly import GPTs-compatible Agent tools.
+
+Gapier is an online GPTs Actions tool offering 50+ ready-made tools with daily free quotas for testing, making it convenient for users to try. Official site: [https://gapier.com/](https://gapier.com/).
+
+![](/imgs/gapierToolResult1.webp)
+
+Now, let's import Gapier tools into FastGPT.
+
+## 1. Create Plugin
+
+| Step1 | Step2 | Step3 |
+| --- | --- | --- |
+| ![](/imgs/gapierTool1.png) | ![](/imgs/gapierTool2.png) | Log in to [Gapier](https://gapier.com/) and copy relevant parameters <br/> ![](/imgs/gapierTool3.png) |
+| Step4 | Step5 | Step6 |
+| Custom request header: Authorization<br/>Request value: Bearer copied_key <br/> ![](/imgs/gapierTool4.png) | ![](/imgs/gapierTool5.png) | ![](/imgs/gapierTool6.png) |
+
+After creation, if you need to make changes, no need to recreate — just modify the corresponding parameters. It will automatically compare and update differences.
+
+![](/imgs/gapierTool7.png)
+
+## 2. Bind Tools to Application
+
+### Simple Mode
+
+| Step1 | Step2 |
+| --- | --- |
+| ![](/imgs/gapierTool8.png) | ![](/imgs/gapierTool9.webp) |
+| Step3 | Step4 |
+| ![](/imgs/gapierTool10.webp) | ![](/imgs/gapierTool11.png) |
+
+### Advanced Workflow
+
+| Step1 | Step2 |
+| --- | --- |
+| ![](/imgs/gapierTool12.webp) | ![](/imgs/gapierTool13.webp) |
+| Step3 | Step4 |
+| ![](/imgs/gapierTool14.webp) | ![](/imgs/gapierTool15.webp) |
+
+![](/imgs/gapierTool16.webp)
+
+## 3. Tool Calling Instructions
+
+### Differences Between Models
+
+Different models use different methods to call tools. Some models support toolChoice and functionCall for better results. Models that don't support these two methods use prompts for calling, but the results aren't great. To ensure smooth calling, FastGPT's built-in prompts only support calling one tool at a time.
+
+Check the official website to see which models support functionCall (OneAPI support is also required), and adjust the corresponding fields in the model configuration file (see configuration field descriptions for details).
+
+Online version users can see whether function calling is supported when selecting models.
+
+![](/imgs/gapierTool17.webp)

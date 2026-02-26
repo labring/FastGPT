@@ -1,0 +1,57 @@
+---
+title: Feishu Knowledge Base
+description: FastGPT Feishu knowledge base feature introduction and usage
+---
+
+| | |
+| --- | --- |
+| ![alt text](/imgs/image-39.png) | ![alt text](/imgs/image-40.png) |
+
+Starting from FastGPT v4.8.16, commercial version users support Feishu knowledge base import. Users can import Feishu knowledge bases by configuring the Feishu app's appId and appSecret, and selecting a **top-level folder in a document space**. Currently in testing phase, some interactions need optimization.
+
+Due to Feishu limitations, all document content cannot be directly obtained. Currently, only content from file directories under shared spaces can be obtained, not from personal spaces and knowledge bases.
+
+Currently only supports importing cloud document type content.
+
+## 1. Create Feishu Application
+
+Open [Feishu Open Platform](https://open.feishu.cn/?lang=zh-CN), click **Create Application**, select **Self-built Application**, then fill in the application name.
+
+## 2. Configure Application Permissions
+
+After creating the application, enter the application to configure related permissions. You need to add **3 permissions**:
+
+1. Get cloud document list under cloud space folder
+2. View new version documents
+3. View, comment, edit, and manage all files in cloud space
+
+![alt text](/imgs/image-41.png)
+
+## 3. Get appId and appSecret
+
+![alt text](/imgs/image-42.png)
+
+## 4. Add Permissions to Folder
+
+Refer to Feishu tutorial: https://open.feishu.cn/document/server-docs/docs/drive-v1/faq#b02e5bfb
+
+Roughly summarized as:
+
+1. Pull the just-created application into a group
+2. Add directory permissions to this group
+
+If your directory already has permissions added for all members group, you can skip the above steps and directly get the Folder Token.
+
+![alt text](/imgs/image-43.png)
+
+## 5. Get Folder Token
+
+You can get the Folder Token from the page path. Be careful not to copy the question mark.
+
+![alt text](/imgs/image-44.png)
+
+## 6. Create Knowledge Base
+
+Based on the 3 parameters obtained from steps 3 and 5, create a knowledge base, select Feishu file library type, then fill in the corresponding parameters and click create.
+
+![alt text](/imgs/image-39.png)
