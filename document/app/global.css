@@ -476,7 +476,7 @@ button[role='tab'] {
   padding-bottom: 16px;
 }
 
-/* 移动端侧边栏 padding 缩小 */
+/* 移动端侧边栏左侧 padding 缩小 */
 @media (max-width: 767px) {
   #nd-sidebar-mobile [data-radix-scroll-area-viewport] {
     padding-left: 8px;
@@ -498,8 +498,12 @@ button[role='tab'] {
 }
 
 /* RootToggle 图标容器：缩小到与图标匹配，修复对齐和间距 */
+#nd-sidebar .size-9,
+#nd-sidebar .size-5,
 #nd-sidebar-mobile .size-9,
-[data-radix-popper-content-wrapper] .size-9 {
+#nd-sidebar-mobile .size-5,
+[data-radix-popper-content-wrapper] .size-9,
+[data-radix-popper-content-wrapper] .size-5 {
   width: 20px !important;
   height: 20px !important;
   flex-shrink: 0;
@@ -517,6 +521,9 @@ button[role='tab'] {
   padding-left: 12px !important;
   padding-right: 12px !important;
   border-radius: 8px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px;
 }
 
 /* 移动端目录下拉框（TOC Popover Trigger）：文本溢出省略号 */
@@ -535,5 +542,13 @@ button[role='tab'] {
   article {
     overflow-wrap: break-word;
     word-break: break-word;
+  }
+
+  /* RootToggle 图标容器：缩小尺寸，对齐文字 */
+  #nd-sidebar-mobile [data-radix-popper-anchor] .size-9,
+  #nd-sidebar-mobile button .size-9 {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0;
   }
 }

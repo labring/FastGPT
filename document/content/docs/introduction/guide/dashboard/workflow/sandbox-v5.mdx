@@ -1,0 +1,391 @@
+---
+title: 代码运行
+description: FastGPT 代码运行节点介绍（适用于 4.14.8 及以上版本）
+---
+
+> 本文档适用于 FastGPT **4.14.8 及以上版本**。4.14.7 及以下版本请参考 [代码运行（弃）](/docs/introduction/guide/dashboard/workflow/sandbox)。
+
+## 功能
+
+代码运行节点支持在安全沙盒中执行 JavaScript 和 Python 代码，用于数据处理、格式转换、逻辑计算等场景。
+
+**支持的语言**
+
+- JavaScript（基于 Bun 运行时）
+- Python 3
+
+**注意事项**
+
+- 私有化用户需要部署 `fastgpt-sandbox` 镜像，并配置 `SANDBOX_URL` 环境变量。
+- 沙盒默认最大运行 60s，可通过配置调整。
+- 代码运行在隔离的进程池中，无法访问文件系统和内网。
+
+## 变量输入
+
+可在自定义输入中添加代码运行需要的变量。
+
+**JavaScript** — 在 main 函数参数中解构：
+
+```js
+async function main({data1, data2}){
+    return {
+        result: data1 + data2
+    }
+}
+```
+
+**Python** — 在 main 函数参数中按变量名接收：
+
+```python
+def main(data1, data2):
+    return {"result": data1 + data2}
+```
+
+## 结果输出
+
+务必返回一个 object 对象（JS）或 dict 字典（Python）。
+
+自定义输出中，可以添加变量名来获取对应 key 下的值。例如返回了：
+
+```json
+{
+  "result": "hello",
+  "count": 42
+}
+```
+
+自定义输出中添加 `result` 和 `count` 两个变量即可获取对应的值。
+
+## 内置函数
+
+### httpRequest 发起 HTTP 请求
+
+在沙盒内发起外部 HTTP 请求。自动拦截内网地址（SSRF 防护）。
+
+**JavaScript 示例：**
+
+```js
+async function main({url}){
+    const res = await SystemHelper.httpRequest(url, {
+        method: 'GET',       // 请求方法，默认 GET
+        headers: {},         // 自定义请求头
+        body: null,          // 请求体（对象会自动 JSON 序列化）
+        timeout: 60          // 超时秒数，最大 60s
+    })
+    return {
+        status: res.status,
+        data: res.data
+    }
+}
+```
+
+**Python 示例：**
+
+```python
+def main(url):
+    res = SystemHelper.httpRequest(url, method="GET", headers={}, timeout=10)
+    return {"status": res["status"], "data": res["data"]}
+```
+
+**限制：**
+- 每次执行最多 30 个请求
+- 单次请求超时 60s
+- 响应体最大 2MB
+- 仅允许 http/https 协议
+- 自动拦截内网 IP（127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 等）
+
+## 可用模块
+
+### JavaScript 白名单模块
+
+以下 npm 模块可通过 `require()` 使用：
+
+| 模块 | 说明 | 示例 |
+|------|------|------|
+| `lodash` | 工具函数库 | `const _ = require('lodash')` |
+| `moment` | 日期处理 | `const moment = require('moment')` |
+| `dayjs` | 轻量日期库 | `const dayjs = require('dayjs')` |
+| `crypto-js` | 加密库 | `const CryptoJS = require('crypto-js')` |
+| `uuid` | UUID 生成 | `const { v4 } = require('uuid')` |
+| `qs` | 查询字符串解析 | `const qs = require('qs')` |
+
+其他模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
+
+### Python 白名单模块
+
+以下 Python 标准库和第三方库可直接 import：
+
+**数学和数值计算**
+
+| 模块 | 说明 |
+|------|------|
+| `math` | 数学函数 |
+| `cmath` | 复数数学 |
+| `decimal` | 十进制浮点运算 |
+| `fractions` | 分数运算 |
+| `random` | 随机数生成 |
+| `statistics` | 统计函数 |
+
+**数据结构和算法**
+
+| 模块 | 说明 |
+|------|------|
+| `collections` | 容器数据类型 |
+| `array` | 数组 |
+| `heapq` | 堆队列 |
+| `bisect` | 数组二分查找 |
+| `queue` | 队列 |
+| `copy` | 浅拷贝和深拷贝 |
+
+**函数式编程**
+
+| 模块 | 说明 |
+|------|------|
+| `itertools` | 迭代器工具 |
+| `functools` | 高阶函数 |
+| `operator` | 标准运算符 |
+
+**字符串和文本处理**
+
+| 模块 | 说明 |
+|------|------|
+| `string` | 字符串常量 |
+| `re` | 正则表达式 |
+| `difflib` | 差异计算 |
+| `textwrap` | 文本包装 |
+| `unicodedata` | Unicode 数据库 |
+| `codecs` | 编解码器 |
+
+**日期和时间**
+
+| 模块 | 说明 |
+|------|------|
+| `datetime` | 日期时间 |
+| `time` | 时间访问 |
+| `calendar` | 日历 |
+
+**数据序列化**
+
+| 模块 | 说明 |
+|------|------|
+| `json` | JSON 编解码 |
+| `csv` | CSV 文件读写 |
+| `base64` | Base64 编解码 |
+| `binascii` | 二进制和 ASCII 转换 |
+| `struct` | 字节串解析 |
+
+**加密和哈希**
+
+| 模块 | 说明 |
+|------|------|
+| `hashlib` | 哈希算法 |
+| `hmac` | HMAC 消息认证 |
+| `secrets` | 安全随机数 |
+| `uuid` | UUID 生成 |
+
+**类型和抽象**
+
+| 模块 | 说明 |
+|------|------|
+| `typing` | 类型提示 |
+| `abc` | 抽象基类 |
+| `enum` | 枚举类型 |
+| `dataclasses` | 数据类 |
+| `contextlib` | 上下文管理器 |
+
+**其他实用工具**
+
+| 模块 | 说明 |
+|------|------|
+| `pprint` | 美化打印 |
+| `weakref` | 弱引用 |
+
+**第三方库**
+
+| 模块 | 说明 |
+|------|------|
+| `numpy` | 数值计算 |
+| `pandas` | 数据分析 |
+| `matplotlib` | 数据可视化 |
+
+**禁止使用的模块：** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块。
+
+## 安全限制
+
+沙盒提供多层安全防护：
+
+- **模块拦截**：JS 和 Python 均只允许使用白名单模块
+- **网络隔离**：自动拦截内网 IP 请求（SSRF 防护）
+- **文件隔离**：无法读写容器文件系统
+- **超时保护**：默认 60s 超时，防止死循环
+- **进程隔离**：每次执行在独立的沙盒进程中运行
+
+## 使用示例
+
+### JavaScript 示例
+
+<details>
+<summary>数据格式转换</summary>
+
+```js
+// 将逗号分隔的字符串转为数组
+function main({input}){
+    const items = input.split(',').map(s => s.trim()).filter(Boolean)
+    return { items, count: items.length }
+}
+```
+
+</details>
+
+<details>
+<summary>日期计算</summary>
+
+```js
+const dayjs = require('dayjs')
+
+function main(){
+    const now = dayjs()
+    return {
+        today: now.format('YYYY-MM-DD'),
+        nextWeek: now.add(7, 'day').format('YYYY-MM-DD'),
+        timestamp: now.valueOf()
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>HTTP 请求 - 获取天气</summary>
+
+```js
+async function main({city}){
+    const res = await SystemHelper.httpRequest(
+        `https://api.example.com/weather?city=${city}`,
+        { method: 'GET', timeout: 10 }
+    )
+    
+    return {
+        temperature: res.data.temp,
+        weather: res.data.condition
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>数据加密</summary>
+
+```js
+const CryptoJS = require('crypto-js')
+
+function main({text, key}){
+    const encrypted = CryptoJS.AES.encrypt(text, key).toString()
+    return { encrypted }
+}
+```
+
+</details>
+
+### Python 示例
+
+<details>
+<summary>数据统计</summary>
+
+```python
+import math
+
+def main(numbers):
+    if not numbers:
+        return {"error": "no data"}
+    
+    mean = sum(numbers) / len(numbers)
+    variance = sum((x - mean)**2 for x in numbers) / len(numbers)
+    
+    return {
+        "mean": mean,
+        "max": max(numbers),
+        "min": min(numbers),
+        "std": math.sqrt(variance)
+    }
+```
+
+</details>
+
+<details>
+<summary>日期处理</summary>
+
+```python
+from datetime import datetime, timedelta
+
+def main(date_str):
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    next_week = dt + timedelta(days=7)
+    
+    return {
+        "input": date_str,
+        "next_week": next_week.strftime("%Y-%m-%d"),
+        "weekday": dt.strftime("%A")
+    }
+```
+
+</details>
+
+<details>
+<summary>HTTP 请求 - API 调用</summary>
+
+```python
+def main(api_url, api_key):
+    res = SystemHelper.httpRequest(
+        api_url,
+        method="GET",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=10
+    )
+    
+    return {
+        "status": res["status"],
+        "data": res["data"]
+    }
+```
+
+</details>
+
+<details>
+<summary>JSON 数据处理</summary>
+
+```python
+import json
+
+def main(json_str):
+    data = json.loads(json_str)
+    
+    # 提取特定字段
+    result = {
+        "names": [item["name"] for item in data if "name" in item],
+        "count": len(data)
+    }
+    
+    return result
+```
+
+</details>
+
+<details>
+<summary>正则表达式匹配</summary>
+
+```python
+import re
+
+def main(text):
+    # 提取所有邮箱地址
+    emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+    
+    return {
+        "emails": emails,
+        "count": len(emails)
+    }
+```
+
+</details>
