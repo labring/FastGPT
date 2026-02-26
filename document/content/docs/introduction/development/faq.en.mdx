@@ -1,0 +1,393 @@
+---
+title: Private Deployment FAQ
+description: FastGPT private deployment common issues
+---
+
+## 1. Error Troubleshooting
+
+Check [Issues](https://github.com/labring/FastGPT/issues) first, or create a new one. For private deployment errors, provide detailed steps, logs, and screenshots—otherwise it's hard to diagnose.
+
+### Get Backend Errors
+
+1. `docker ps -a` shows all container statuses. Check if all are running. If not, try `docker logs container_name` to view logs.
+2. If containers are running normally, use `docker logs container_name` to view error logs.
+
+### Frontend Errors
+
+When the frontend crashes, the page will show an error and prompt you to check console logs. Open browser console and check the `console` logs. Click the log hyperlinks to see the specific error file. Provide these detailed error messages for troubleshooting.
+
+### OneAPI Errors
+
+Errors with `requestId` are from OneAPI, usually caused by model API errors. See [Common OneAPI Errors](/docs/introduction/development/faq/#3-common-oneapi-errors)
+
+## 2. General Issues
+
+### Frontend Page Crash
+
+1. 90% of cases: incorrect model configuration. Ensure each model type has at least one enabled; check if `object` parameters in models are abnormal (arrays and objects)—if empty, try giving an empty array or empty object.
+2. Some cases: browser compatibility issues. The project uses advanced syntax that may not work in older browsers. Provide specific steps and console errors in an issue.
+3. Disable browser translation. If translation is enabled, it may crash the page.
+
+### Does Sealos deployment have fewer limitations than local deployment?
+
+![](/imgs/faq1.png)
+This is the index model's length limit—it's the same regardless of deployment method. Different index models have different configs, which you can modify in the backend.
+
+### How to Mount Mini Program Config Files
+
+Mount the verification file to the specified location: /app/projects/app/public/xxxx.txt
+
+Then restart. For example:
+
+![](/imgs/faq2.png)
+
+### Database Port 3306 Already in Use, Service Fails to Start
+
+![](/imgs/faq3.png)
+
+Change the port mapping to something like 3307, e.g., 3307:3306.
+
+### Local Deployment Limitations
+
+See details at https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg.
+
+### Can It Run Fully Offline?
+
+Yes. You need to prepare vector models and LLM models.
+
+### Other Models Can't Do Question Classification/Content Extraction
+
+1. Check logs. If you see "JSON invalid" or "not support tool", the model doesn't support tool calling or function calling. Set `toolChoice=false` and `functionCall=false` to use prompt mode. Built-in prompts are only tested for commercial model APIs. Question classification mostly works, content extraction doesn't work well.
+2. If configured correctly with no error logs, the prompts may not suit the model. Customize prompts via `customCQPrompt`.
+
+### Page Crash
+
+1. Disable translation
+2. Check if config file loaded properly. If not, system info will be missing, causing null pointer errors in some operations.
+
+- 95% of cases: incorrect config file. Will show "xxx undefined"
+- "URI malformed" error: report the specific operation and page in an issue. This is caused by special character encoding parsing errors.
+
+3. Some API compatibility issues (rare)
+
+### Slow Response After Enabling Content Completion
+
+1. Question completion requires an AI generation round.
+2. Performs 3-5 query rounds. If database performance is insufficient, there will be noticeable impact.
+
+### Page Works Fine, API Errors
+
+The page uses stream=true mode, so the API also needs stream=true for testing. Some model APIs (mostly domestic) have poor non-stream compatibility.
+Same as the previous issue—test with curl.
+
+### Knowledge Base Indexing Has No Progress/Very Slow
+
+Check error logs first. Several scenarios:
+
+1. Can chat but no indexing progress: vector model (vectorModels) not configured
+2. Can't chat or index: API call failed. May not be connected to OneAPI or OpenAI
+3. Has progress but very slow: API key issue. OpenAI free accounts have 3 or 60 requests per minute, 200 per day limit.
+
+### Connection Error
+
+Network issue. Domestic servers can't reach OpenAI—check if AI model connection is normal.
+
+Or FastGPT can't reach OneAPI (not on the same network).
+
+### Modified vectorModels But No Effect
+
+1. Restart container, ensure model config loaded (check logs or when creating new knowledge base)
+2. Refresh browser once
+3. For existing knowledge bases, delete and recreate. Vector model is bound at creation time and won't update dynamically.
+
+## 3. Common OneAPI Errors
+
+Errors with requestId are from OneAPI.
+
+### insufficient_user_quota user quota is not enough
+
+OneAPI account balance insufficient. Default root user only has $200, can be manually modified.
+
+Path: Open OneAPI → Users → Edit root user → Increase remaining balance
+
+### xxx Channel Not Found
+
+The model in FastGPT's config file must match the model in OneAPI channels, or you'll get this error. Check:
+
+1. Model channel not configured in OneAPI, or disabled
+2. FastGPT config has models not configured in OneAPI. If OneAPI doesn't have the model, don't add it to config.
+3. Created knowledge base with old vector model, then updated vector model. Delete old knowledge bases and recreate.
+
+If OneAPI doesn't have the corresponding model, don't configure it in `config.json`, or errors will occur.
+
+### Model Test Click Fails
+
+OneAPI only tests the first model in a channel, and only tests chat models. Vector models can't be auto-tested—manually send requests to test. [View test model command examples](/docs/introduction/development/faq/#how-to-check-model-issues)
+
+### get request url failed: Post `"https://xxx"` dial tcp: xxxx
+
+OneAPI can't reach the model network—check network configuration.
+
+### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
+
+OneAPI API Key configured incorrectly. Modify `OPENAI_API_KEY` environment variable and restart container (first `docker-compose down`, then `docker-compose up -d`).
+
+Use `exec` to enter container, then `env` to check if environment variables took effect.
+
+### bad_response_status_code bad response status code 503
+
+1. Model service unavailable
+2. Model API parameters abnormal (temperature, max token, etc. may not be compatible)
+3. ...
+
+### Tiktoken Download Failed
+
+OneAPI downloads a tiktoken dependency from the network at startup. If the network fails, startup fails. See [OneAPI Offline Deployment](https://blog.csdn.net/wanh/article/details/139039216) for solutions.
+
+## 4. Common Model Issues
+
+### How to Check Model Availability
+
+1. For self-hosted models, first confirm the deployed model is working.
+2. Use CURL to directly test if upstream model is running normally (test both cloud and private models)
+3. Use CURL to request OneAPI to test if model is normal.
+4. Test the model in FastGPT.
+
+Here are some test CURL examples:
+
+<Tabs items={['LLM Model','Embedding Model','Rerank Model','TTS Model','Whisper Model']}>
+  <Tab value="LLM Model">
+```bash
+curl https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      },
+      {
+        "role": "user",
+        "content": "Hello!"
+      }
+    ]
+  }'
+```
+  </Tab>
+  <Tab value="Embedding Model">
+```bash
+curl https://api.openai.com/v1/embeddings \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "The food was delicious and the waiter...",
+    "model": "text-embedding-ada-002",
+    "encoding_format": "float"
+  }'
+```
+  </Tab>
+  <Tab value="Rerank Model">
+```bash
+curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
+--header 'Authorization: Bearer {{ACCESS_TOKEN}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "bge-rerank-m3",
+  "query": "导演是谁",
+  "documents": [
+    "你是谁?\\n我是电影《铃芽之旅》助手"
+  ]
+}'
+```
+  </Tab>
+  <Tab value="TTS Model">
+```bash
+curl https://api.openai.com/v1/audio/speech \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "tts-1",
+    "input": "The quick brown fox jumped over the lazy dog.",
+    "voice": "alloy"
+  }' \
+  --output speech.mp3
+```
+  </Tab>
+  <Tab value="Whisper Model">
+```bash
+curl https://api.openai.com/v1/audio/transcriptions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: multipart/form-data" \
+  -F file="@/path/to/file/audio.mp3" \
+  -F model="whisper-1"
+```
+  </Tab>
+</Tabs>
+
+### Error - Model Response Empty/Model Error
+
+This error occurs when oneapi ends the stream request in stream mode without returning any content.
+
+Version 4.8.10 added error logging—when errors occur, the actual Body parameters sent are printed in logs. Copy these parameters and use curl to send requests to oneapi for testing.
+
+Since oneapi can't properly catch errors in stream mode, sometimes you can set `stream=false` to get precise errors.
+
+Possible error causes:
+
+1. Domestic models hit content moderation
+2. Unsupported model parameters: keep only messages and necessary parameters for testing, remove others
+3. Parameters don't meet model requirements: e.g., some models don't support temperature 0, some don't support two decimal places. max_tokens exceeded, context too long, etc.
+4. Model deployment issues, stream mode incompatible
+
+Test example—copy request body from error logs for testing:
+
+```bash
+curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "xxx",
+  "temperature": 0.01,
+  "max_tokens": 1000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": " 你是饿"
+    }
+  ]
+}'
+```
+
+### How to Test if Model Supports Tool Calling
+
+Both the model provider and oneapi must support tool calling. Test method:
+
+##### 1. Use `curl` to send first round stream mode tool test to `oneapi`
+
+```bash
+curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "几点了"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "获取用户当前时区的时间。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+##### 2. Check Response Parameters
+
+If tool calling works, it returns corresponding `tool_calls` parameters.
+
+```json
+{
+    "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
+    "object": "chat.completion.chunk",
+    "created": 1726412126,
+    "model": "gpt-5",
+    "system_fingerprint": "fp_483d39d857",
+    "choices": [
+        {
+            "index": 0,
+            "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
+            "type": "function",
+            "function": {
+              "name": "mEYIcFl84rYC",
+              "arguments": ""
+            }
+          }
+        ],
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ],
+  "usage": null
+}
+```
+
+##### 3. Use `curl` to send second round stream mode tool test to `oneapi`
+
+The second round sends tool results to the model. After sending, you'll get the model's response.
+
+```bash
+curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "几点了"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kDia9S19c4RO",
+          "type": "function",
+          "function": {
+            "name": "hCVbIY",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "tool_call_id": "kDia9S19c4RO",
+      "role": "tool",
+      "name": "hCVbIY",
+      "content": "{\\n  \\\"time\\\": \\\"2024-09-14 22:59:21 Sunday\\\"\\n}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "获取用户当前时区的时间。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+### Vector Retrieval Score Greater Than 1
+
+Caused by model not being normalized. Currently only normalized models are supported.

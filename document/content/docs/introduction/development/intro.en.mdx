@@ -1,0 +1,224 @@
+---
+title: Start Local Development
+description: Develop and debug FastGPT
+---
+
+import { Alert } from '@/components/docs/Alert';
+import FastGPTLink from '@/components/docs/linkFastGPT';
+
+This guide covers how to set up your development environment to build and test <FastGPTLink>FastGPT</FastGPTLink>.
+
+## Prerequisites
+
+Install and configure these dependencies on your computer to build <FastGPTLink>FastGPT</FastGPTLink>:
+
+- [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Node.js v20.14.0](https://nodejs.org) (match this version if possible; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
+- [pnpm](https://pnpm.io/) recommended version 9.4.0 (current official dev environment)
+
+We recommend developing on *nix environments (Linux, macOS, Windows WSL).
+
+## Start Local Development
+
+### 1. Fork the FastGPT Repository
+
+Fork the [FastGPT repository](https://github.com/labring/FastGPT).
+
+### 2. Clone the Repository
+
+Clone your forked repository from GitHub:
+
+```
+git clone git@github.com:<your_github_username>/FastGPT.git
+```
+
+### 3. Start the Development Environment with Docker
+
+If you're already running FastGPT locally via Docker, stop it first to avoid port conflicts.
+
+Switch to the `FastGPT/deploy/dev` directory and run `docker compose up -d` to start FastGPT's dependencies:
+
+```bash
+cd FastGPT/deploy/dev
+docker compose up -d
+```
+
+<Alert context="warning">
+    1. If you can't pull images, use the China mirror version: `docker compose -f docker-compose.cn.yml up -d`
+    2. For MongoDB, add the `directConnection=true` parameter to your connection string to connect to the replica set.
+</Alert>
+
+### 4. Initial Configuration
+
+All files below are in the `projects/app` directory.
+
+```bash
+# Make sure you're in projects/app
+pwd
+# Should output /xxxx/xxxx/xxx/FastGPT/projects/app
+```
+
+**1. Environment Variables**
+
+Copy `.env.template` to create `.env.local` in the same directory. Only changes in `.env.local` take effect.
+See `.env.template` for variable descriptions.
+If you haven't modified variables in docker-compose.yaml, the defaults in `.env.template` work fine. Otherwise, match the values in your `yml` file.
+
+```bash
+cp .env.template .env.local
+```
+
+**2. config.json Configuration File**
+
+Copy `data/config.json` to create `data/config.local.json`. For detailed configuration parameters, see [config documentation](/docs/introduction/development/configuration).
+
+```bash
+cp data/config.json data/config.local.json
+```
+
+You usually don't need to modify this file. Just pay attention to these `systemEnv` parameters:
+
+- `vectorMaxProcess`: Max vector generation processes. Depends on database and key concurrency. For a single 120-core, 2c4g server, set to 10~15.
+- `qaMaxProcess`: Max QA generation processes
+- `vlmMaxProcess`: Max image understanding model processes
+- `hnswEfSearch`: Vector search parameter (PG and OB only). Higher values = better accuracy but slower speed.
+
+### 5. Run
+
+Refer to `dev.md` in the project root. The first compile and run may take a while—be patient!
+
+```bash
+# Run from the code root directory to install all dependencies in root package, projects, and packages
+# If isolate-vm installation fails, see: https://github.com/laverdet/isolated-vm?tab=readme-ov-file#requirements
+pwd # Should be in the code root directory
+pnpm i
+cd projects/app
+pnpm dev
+```
+
+Next.js will run on port 3000 by default. Visit http://localhost:3000
+
+### 6. Build
+
+We recommend using Docker for builds.
+
+```bash
+# Without proxy
+docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app
+# With Taobao proxy
+docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app --build-arg proxy=taobao
+```
+
+If you don't use Docker, you'll need to manually execute all the run stage commands from the `Dockerfile` (not recommended).
+
+## Submit Code to the Open Source Repository
+
+1. Make sure your code is forked from the [FastGPT](https://github.com/labring/FastGPT) repository
+2. Submit small, focused changes—each commit should solve one problem
+3. Submit a PR to FastGPT's main branch. After submission, the FastGPT team and community will review it with you.
+
+If you run into issues like merge conflicts or don't know how to open a pull request, check out GitHub's [pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) to learn how to resolve merge conflicts and other issues. Once your PR is merged, you'll proudly appear in the [contributors table](https://github.com/labring/FastGPT/graphs/contributors).
+
+## QA
+
+### System Time Exception
+
+If your default timezone is `Asia/Shanghai`, getting system time may fail in non-Linux environments. For local development, change your timezone to UTC (+0).
+
+### Can't Connect to Local Database
+
+1. If connecting to a remote database, check if the port is open.
+2. For local databases, try changing `host` to `localhost` or `127.0.0.1`
+3. For local connections to remote MongoDB, add the `directConnection=true` parameter to connect to replica sets.
+4. Use `mongocompass` client for MongoDB connection testing and visual management.
+5. Use `navicat` for PostgreSQL connection and management.
+
+### sh ./scripts/postinstall.sh Permission Denied
+
+FastGPT runs a `postinstall` script after `pnpm i` to auto-generate `ChakraUI` types. If you get a permission error, run `chmod -R +x ./scripts/` first, then `pnpm i`.
+
+If that doesn't work, manually execute the contents of `./scripts/postinstall.sh`.
+_On Windows, use git bash to add execute permissions and run the sh script._
+
+### TypeError: Cannot read properties of null (reading 'useMemo')
+
+Delete all `node_modules` and reinstall with Node 18—the latest Node version may have issues. Local dev workflow:
+
+1. Root directory: `pnpm i`
+2. Copy `config.json` -> `config.local.json`
+3. Copy `.env.template` -> `.env.local`
+4. `cd projects/app`
+5. `pnpm dev`
+
+### Error response from daemon: error while creating mount source path 'XXX': mkdir XXX: file exists
+
+This error may be caused by leftover files from a previous container stop. First, make sure all related images are stopped, then manually delete the files or restart Docker.
+
+## Join the Community
+
+Having trouble? Questions? Join the Feishu group to stay in touch with developers and users.
+
+<img
+  width="400px"
+  src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
+  className="medium-zoom-image"
+/>
+
+## Code Structure
+
+### Next.js
+
+FastGPT uses Next.js page routing as its framework. To separate frontend and backend code, directories are split into global, service, and web subdirectories for `shared`, `backend-only`, and `frontend-only` code respectively.
+
+### Monorepo
+
+FastGPT uses pnpm workspace to build a monorepo project with two main parts:
+
+- projects/app - FastGPT main project
+- packages/ - Submodules
+  - global - Shared code, usually functions, type declarations, and constants that work on both frontend and backend
+  - service - Server-side code
+  - web - Frontend code
+  - plugin - Custom workflow plugin code
+
+### Domain-Driven Design (DDD)
+
+FastGPT's code modules follow DDD principles, divided into these domains:
+
+- core - Core features (knowledge base, workflow, app, conversation)
+- support - Supporting features (user system, billing, authentication, etc.)
+- common - Basic features (log management, file I/O, etc.)
+
+<details>
+<summary>Code Structure Details</summary>
+
+```
+.
+├── .github                      // GitHub-related config
+├── .husky                       // Formatting config
+├── document                      // Documentation
+├── files                        // External files, e.g., docker-compose, helm
+├── packages                     // Subpackages
+│   ├── global                   // Frontend/backend shared subpackage
+│   ├── plugins                  // Workflow plugins (for custom packages)
+│   ├── service                  // Backend subpackage
+│   └── web                      // Frontend subpackage
+├── projects
+│   └── app                      // FastGPT main project
+├── python                       // Model code storage, unrelated to FastGPT itself
+└── scripts                      // Automation scripts
+    ├── icon                     // Icon preview scripts: pnpm initIcon (write svg to code), pnpm previewIcon (preview icons)
+    └── postinstall.sh           // ChakraUI custom theme TS type initialization
+├── package.json                 // Top-level monorepo
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml          // Monorepo declaration
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── README_en.md
+├── README_ja.md
+├── dev.md
+```
+
+</details>
