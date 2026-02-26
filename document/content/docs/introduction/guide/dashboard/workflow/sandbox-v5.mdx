@@ -17,7 +17,7 @@ description: FastGPT 代码运行节点介绍（适用于 4.14.8 及以上版本
 **注意事项**
 
 - 私有化用户需要部署 `fastgpt-sandbox` 镜像，并配置 `SANDBOX_URL` 环境变量。
-- 沙盒默认最大运行 10s，可通过配置调整。
+- 沙盒默认最大运行 60s，可通过配置调整。
 - 代码运行在隔离的进程池中，无法访问文件系统和内网。
 
 ## 变量输入
@@ -56,96 +56,15 @@ def main(data1, data2):
 
 自定义输出中添加 `result` 和 `count` 两个变量即可获取对应的值。
 
-## 内置函数（SystemHelper）
-
-内置函数统一通过 `SystemHelper` 对象调用，JS 和 Python 使用相同的 API。
-
-> 直接调用 `countToken()` / `count_token()` 等方式已弃用，仅保留向后兼容。新代码请统一使用 `SystemHelper`。
-
-### delay 延迟
-
-延迟指定毫秒后继续执行，最大 10000ms。
-
-```js
-// JavaScript
-async function main({data1, data2}){
-    await SystemHelper.delay(1000) // 延迟 1 秒
-    return { result: "done" }
-}
-```
-
-```python
-# Python
-def main():
-    SystemHelper.delay(1000)  # 延迟 1 秒
-    return {"result": "done"}
-```
-
-### countToken 统计 token
-
-估算文本的 token 数量（按字符数 / 4 计算）。
-
-```js
-// JavaScript
-function main({input}){
-    return { tokens: SystemHelper.countToken(input) }
-}
-```
-
-```python
-# Python
-def main():
-    return {"tokens": SystemHelper.countToken(variables["input"])}
-```
-
-### strToBase64 字符串转 base64
-
-将字符串编码为 base64，可选添加前缀。适用于将 SVG 等内容转为 data URI。
-
-```js
-// JavaScript
-function main({svg}){
-    return {
-        // 参数 1: 要转换的字符串
-        // 参数 2: base64 前缀（可选）
-        image: SystemHelper.strToBase64(svg, 'data:image/svg+xml;base64,')
-    }
-}
-```
-
-```python
-# Python
-def main():
-    return {
-        "image": SystemHelper.strToBase64(variables["svg"], "data:image/svg+xml;base64,")
-    }
-```
-
-### createHmac 签名
-
-生成 HMAC 签名，返回 `{timestamp, sign}`。常用于对接钉钉、飞书等 Webhook。
-
-```js
-// JavaScript
-function main({secret}){
-    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
-    return { sign, timestamp }
-}
-```
-
-```python
-# Python
-def main():
-    result = SystemHelper.createHmac("sha256", variables["secret"])
-    return {"sign": result["sign"], "timestamp": result["timestamp"]}
-```
+## 内置函数
 
 ### httpRequest 发起 HTTP 请求
 
 在沙盒内发起外部 HTTP 请求。自动拦截内网地址（SSRF 防护）。
 
+**JavaScript 示例：**
+
 ```js
-// JavaScript
 async function main({url}){
     const res = await SystemHelper.httpRequest(url, {
         method: 'GET',       // 请求方法，默认 GET
@@ -160,10 +79,11 @@ async function main({url}){
 }
 ```
 
+**Python 示例：**
+
 ```python
-# Python
-def main():
-    res = SystemHelper.httpRequest(variables["url"], method="GET", headers={}, timeout=10)
+def main(url):
+    res = SystemHelper.httpRequest(url, method="GET", headers={}, timeout=10)
     return {"status": res["status"], "data": res["data"]}
 ```
 
@@ -191,22 +111,104 @@ def main():
 
 其他模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
 
-### Python 安全模块
+### Python 白名单模块
 
-以下 Python 标准库模块可直接 import：
+以下 Python 标准库和第三方库可直接 import：
+
+**数学和数值计算**
 
 | 模块 | 说明 |
 |------|------|
-| `json` | JSON 解析 |
 | `math` | 数学函数 |
-| `re` | 正则表达式 |
-| `datetime` | 日期时间 |
-| `hashlib` | 哈希计算 |
-| `base64` | Base64 编解码 |
-| `collections` | 数据结构 |
-| `time` | 时间函数 |
+| `cmath` | 复数数学 |
+| `decimal` | 十进制浮点运算 |
+| `fractions` | 分数运算 |
+| `random` | 随机数生成 |
+| `statistics` | 统计函数 |
 
-危险模块（如 `os`, `subprocess`, `sys`, `socket` 等）被禁止使用。
+**数据结构和算法**
+
+| 模块 | 说明 |
+|------|------|
+| `collections` | 容器数据类型 |
+| `array` | 数组 |
+| `heapq` | 堆队列 |
+| `bisect` | 数组二分查找 |
+| `queue` | 队列 |
+| `copy` | 浅拷贝和深拷贝 |
+
+**函数式编程**
+
+| 模块 | 说明 |
+|------|------|
+| `itertools` | 迭代器工具 |
+| `functools` | 高阶函数 |
+| `operator` | 标准运算符 |
+
+**字符串和文本处理**
+
+| 模块 | 说明 |
+|------|------|
+| `string` | 字符串常量 |
+| `re` | 正则表达式 |
+| `difflib` | 差异计算 |
+| `textwrap` | 文本包装 |
+| `unicodedata` | Unicode 数据库 |
+| `codecs` | 编解码器 |
+
+**日期和时间**
+
+| 模块 | 说明 |
+|------|------|
+| `datetime` | 日期时间 |
+| `time` | 时间访问 |
+| `calendar` | 日历 |
+
+**数据序列化**
+
+| 模块 | 说明 |
+|------|------|
+| `json` | JSON 编解码 |
+| `csv` | CSV 文件读写 |
+| `base64` | Base64 编解码 |
+| `binascii` | 二进制和 ASCII 转换 |
+| `struct` | 字节串解析 |
+
+**加密和哈希**
+
+| 模块 | 说明 |
+|------|------|
+| `hashlib` | 哈希算法 |
+| `hmac` | HMAC 消息认证 |
+| `secrets` | 安全随机数 |
+| `uuid` | UUID 生成 |
+
+**类型和抽象**
+
+| 模块 | 说明 |
+|------|------|
+| `typing` | 类型提示 |
+| `abc` | 抽象基类 |
+| `enum` | 枚举类型 |
+| `dataclasses` | 数据类 |
+| `contextlib` | 上下文管理器 |
+
+**其他实用工具**
+
+| 模块 | 说明 |
+|------|------|
+| `pprint` | 美化打印 |
+| `weakref` | 弱引用 |
+
+**第三方库**
+
+| 模块 | 说明 |
+|------|------|
+| `numpy` | 数值计算 |
+| `pandas` | 数据分析 |
+| `matplotlib` | 数据可视化 |
+
+**禁止使用的模块：** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块。
 
 ## 安全限制
 
@@ -215,12 +217,15 @@ def main():
 - **模块拦截**：JS 和 Python 均只允许使用白名单模块
 - **网络隔离**：自动拦截内网 IP 请求（SSRF 防护）
 - **文件隔离**：无法读写容器文件系统
-- **超时保护**：默认 10s 超时，防止死循环
+- **超时保护**：默认 60s 超时，防止死循环
 - **进程隔离**：每次执行在独立的沙盒进程中运行
 
 ## 使用示例
 
-### 数据格式转换
+### JavaScript 示例
+
+<details>
+<summary>数据格式转换</summary>
 
 ```js
 // 将逗号分隔的字符串转为数组
@@ -230,7 +235,10 @@ function main({input}){
 }
 ```
 
-### 日期计算
+</details>
+
+<details>
+<summary>日期计算</summary>
 
 ```js
 const dayjs = require('dayjs')
@@ -245,53 +253,139 @@ function main(){
 }
 ```
 
-### Python 数据处理
+</details>
 
-```python
-import json
-import math
-
-def main(data):
-    # 计算列表的统计信息
-    numbers = data.get("numbers", [])
-    if not numbers:
-        return {"error": "no data"}
-    
-    return {
-        "mean": sum(numbers) / len(numbers),
-        "max": max(numbers),
-        "min": min(numbers),
-        "std": math.sqrt(sum((x - sum(numbers)/len(numbers))**2 for x in numbers) / len(numbers))
-    }
-```
-
-### 飞书 Webhook 签名
+<details>
+<summary>HTTP 请求 - 获取天气</summary>
 
 ```js
-async function main({secret, url, message}){
-    const {sign, timestamp} = SystemHelper.createHmac('sha256', secret)
+async function main({city}){
+    const res = await SystemHelper.httpRequest(
+        `https://api.example.com/weather?city=${city}`,
+        { method: 'GET', timeout: 10 }
+    )
     
-    const res = await SystemHelper.httpRequest(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: {
-            timestamp,
-            sign,
-            msg_type: 'text',
-            content: { text: message }
-        }
-    })
-    
-    return { success: res.status === 200 }
+    return {
+        temperature: res.data.temp,
+        weather: res.data.condition
+    }
 }
 ```
 
-## JS 与 Python 函数名对照
+</details>
 
-| 功能 | JavaScript (SystemHelper) | Python (system_helper) |
-|------|-----------|--------|
-| 统计 token | `SystemHelper.countToken(text)` | `SystemHelper.countToken(text)` |
-| 字符串转 base64 | `SystemHelper.strToBase64(text, prefix?)` | `SystemHelper.strToBase64(text, prefix?)` |
-| HMAC 签名 | `SystemHelper.createHmac(algo, secret)` | `SystemHelper.createHmac(algo, secret)` |
-| 延迟 | `await SystemHelper.delay(ms)` | `SystemHelper.delay(ms)` |
-| HTTP 请求 | `await SystemHelper.httpRequest(url, opts?)` | `SystemHelper.httpRequest(url, method?, headers?, body?, timeout?)` |
+<details>
+<summary>数据加密</summary>
+
+```js
+const CryptoJS = require('crypto-js')
+
+function main({text, key}){
+    const encrypted = CryptoJS.AES.encrypt(text, key).toString()
+    return { encrypted }
+}
+```
+
+</details>
+
+### Python 示例
+
+<details>
+<summary>数据统计</summary>
+
+```python
+import math
+
+def main(numbers):
+    if not numbers:
+        return {"error": "no data"}
+    
+    mean = sum(numbers) / len(numbers)
+    variance = sum((x - mean)**2 for x in numbers) / len(numbers)
+    
+    return {
+        "mean": mean,
+        "max": max(numbers),
+        "min": min(numbers),
+        "std": math.sqrt(variance)
+    }
+```
+
+</details>
+
+<details>
+<summary>日期处理</summary>
+
+```python
+from datetime import datetime, timedelta
+
+def main(date_str):
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    next_week = dt + timedelta(days=7)
+    
+    return {
+        "input": date_str,
+        "next_week": next_week.strftime("%Y-%m-%d"),
+        "weekday": dt.strftime("%A")
+    }
+```
+
+</details>
+
+<details>
+<summary>HTTP 请求 - API 调用</summary>
+
+```python
+def main(api_url, api_key):
+    res = SystemHelper.httpRequest(
+        api_url,
+        method="GET",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=10
+    )
+    
+    return {
+        "status": res["status"],
+        "data": res["data"]
+    }
+```
+
+</details>
+
+<details>
+<summary>JSON 数据处理</summary>
+
+```python
+import json
+
+def main(json_str):
+    data = json.loads(json_str)
+    
+    # 提取特定字段
+    result = {
+        "names": [item["name"] for item in data if "name" in item],
+        "count": len(data)
+    }
+    
+    return result
+```
+
+</details>
+
+<details>
+<summary>正则表达式匹配</summary>
+
+```python
+import re
+
+def main(text):
+    # 提取所有邮箱地址
+    emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+    
+    return {
+        "emails": emails,
+        "count": len(emails)
+    }
+```
+
+</details>
