@@ -23,11 +23,7 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
         </div>
       )
     },
-    // i18n: {
-    //   languages: ['zh-CN', 'en'],
-    //   defaultLanguage: 'zh-CN',
-    //   hideLocale: 'always'
-    // },
+    i18n: true,
     searchToggle: {
       enabled: true
     }
