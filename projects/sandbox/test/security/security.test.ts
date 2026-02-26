@@ -267,8 +267,11 @@ describe('JS 逃逸攻击', () => {
       }`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
-    else { expect(result.message).toMatch(/not allowed|Function/i); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    } else {
+      expect(result.message).toMatch(/not allowed|Function/i);
+    }
   });
 
   it('constructor 链逃逸到 Function', async () => {
@@ -279,7 +282,9 @@ describe('JS 逃逸攻击', () => {
       }`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
   });
 
   it('__proto__ 访问被阻止', async () => {
@@ -374,7 +379,9 @@ describe('JS 逃逸攻击', () => {
       }`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
   });
 
   it('AsyncFunction 构造器绕过 _SafeFunction（env 已清理）', async () => {
@@ -407,7 +414,9 @@ describe('JS 逃逸攻击', () => {
       variables: {}
     });
     expect(result.success).toBe(true);
-    if (result.data?.codeReturn.escaped) { expect(result.data.codeReturn.val).toBe(42); }
+    if (result.data?.codeReturn.escaped) {
+      expect(result.data.codeReturn.val).toBe(42);
+    }
   });
 });
 
@@ -423,7 +432,9 @@ describe('JS SSRF 防护', () => {
       variables: {}
     });
     expect(result.success).toBe(false);
-    expect(result.data?.codeReturn?.error || result.message).toMatch(/private|internal|not allowed/i);
+    expect(result.data?.codeReturn?.error || result.message).toMatch(
+      /private|internal|not allowed/i
+    );
   });
 
   it('httpRequest 禁止访问 10.x.x.x', async () => {
@@ -522,8 +533,19 @@ describe('Python 模块拦截', () => {
 
   // --- 宿主侧预检拦截 ---
   const precheckModules = [
-    'os', 'subprocess', 'sys', 'shutil', 'pickle', 'multiprocessing',
-    'threading', 'ctypes', 'signal', 'gc', 'tempfile', 'pathlib', 'importlib'
+    'os',
+    'subprocess',
+    'sys',
+    'shutil',
+    'pickle',
+    'multiprocessing',
+    'threading',
+    'ctypes',
+    'signal',
+    'gc',
+    'tempfile',
+    'pathlib',
+    'importlib'
   ];
   for (const mod of precheckModules) {
     it(`阻止 import ${mod}（预检）`, async () => {
@@ -598,7 +620,7 @@ describe('Python 模块拦截', () => {
       variables: {}
     });
     expect(result.success).toBe(false);
-    expect(result.message).toContain('not allowed');
+    expect(result.message).toContain('not in the allowlist');
   });
 
   it('条件块内 import os 被运行时拦截', async () => {
@@ -726,7 +748,9 @@ def main():
         return {'escaped': False}`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
   });
 
   it('__builtins__ 篡改不能恢复危险 import', async () => {
@@ -774,7 +798,9 @@ def main():
         return {'escaped': False}`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
   });
 
   it('eval + __import__ 被拦截', async () => {
@@ -912,7 +938,9 @@ def main():
         return {'escaped': False}`,
       variables: {}
     });
-    if (result.success) { expect(result.data?.codeReturn.escaped).toBe(false); }
+    if (result.success) {
+      expect(result.data?.codeReturn.escaped).toBe(false);
+    }
   });
 });
 
@@ -1083,7 +1111,6 @@ describe('文件系统隔离 - JS', () => {
 // 8. 变量注入攻击
 // ============================================================
 describe('变量注入攻击', () => {
-
   it('[JS] 变量值包含恶意 JSON 不影响解析', async () => {
     const result = await jsPool.execute({
       code: `async function main(v) { return { val: v.data }; }`,
@@ -1116,7 +1143,6 @@ describe('变量注入攻击', () => {
 // 9. API 输入校验
 // ============================================================
 describe('API 输入校验', () => {
-
   it('空代码被拒绝', async () => {
     const result = await jsPool.execute({ code: '', variables: {} });
     expect(result.success).toBe(false);

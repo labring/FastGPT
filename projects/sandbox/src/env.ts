@@ -53,7 +53,7 @@ const envSchema = z.object({
       'collections,array,heapq,bisect,queue,copy,' +
       'itertools,functools,operator,' +
       'string,re,difflib,textwrap,unicodedata,codecs,' +
-      'datetime,time,calendar,' +
+      'datetime,time,calendar,_strptime,' +
       'json,csv,base64,binascii,struct,' +
       'hashlib,hmac,secrets,uuid,' +
       'typing,abc,enum,dataclasses,contextlib,' +

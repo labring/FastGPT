@@ -98,7 +98,7 @@ describe('API Routes', () => {
     });
     const data = await res.json();
     expect(data.success).toBe(false);
-    expect(data.message).toContain('not allowed');
+    expect(data.message).toContain('not in the allowlist');
   });
 
   // ===== Modules =====
