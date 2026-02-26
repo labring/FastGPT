@@ -31,16 +31,27 @@ export function t(key: string, locale?: string) {
 }
 
 /**
- * Get localized URL path
+ * Get localized URL path based on i18n configuration
  * @param path - The base path (e.g., '/docs/introduction')
  * @param lang - The language code
  * @returns Localized path with language prefix if needed
  */
 export function getLocalizedPath(path: string, lang: string): string {
-  // Default language (zh-CN) doesn't need prefix
-  if (lang === i18n.defaultLanguage) {
+  // If hideLocale is 'never', always add language prefix
+  if (i18n.hideLocale === 'never') {
+    return `/${lang}${path}`;
+  }
+
+  // If hideLocale is 'always', never add language prefix
+  if (i18n.hideLocale === 'always') {
     return path;
   }
-  // Other languages need prefix
-  return `/${lang}${path}`;
+
+  // If hideLocale is 'default-locale', only add prefix for non-default languages
+  if (i18n.hideLocale === 'default-locale') {
+    return lang === i18n.defaultLanguage ? path : `/${lang}${path}`;
+  }
+
+  // Fallback: no prefix
+  return path;
 }
