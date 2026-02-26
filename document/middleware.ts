@@ -58,8 +58,10 @@ export default function middleware(request: NextRequest) {
   }
 
   // Continue with i18n middleware
+  // @ts-expect-error - Fumadocs middleware signature mismatch
   return i18nMiddleware(request);
 }
+
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|deploy/.*).*)']
 };
