@@ -176,7 +176,7 @@ export const dispatchTool = async ({
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const [parentId, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version

@@ -206,9 +206,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
-      // pluginId: toolSetAppId/toolsetName/toolName
+      // pluginId: parentId/toolName
       const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const [parentId, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
