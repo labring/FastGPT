@@ -715,8 +715,34 @@ def main():
         return {"escaped": False, "error": str(e)}`,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.escaped).toBe(false);
+      if (result.success) {
+        expect(result.data?.codeReturn.escaped).toBe(false);
+      } else {
+        expect(result.message).toMatch(/__subclasses__|not allowed/i);
+      }
+    });
+
+    it('__class__.__bases__[0].__subclasses__ 链式逃逸被拦截', async () => {
+      const result = await runner.execute({
+        code: `def main(v):
+    base = ().__class__.__bases__[0]
+    return {"count": len(base.__subclasses__())}`,
+        variables: {}
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/__subclasses__|not allowed/i);
+    });
+
+    it("getattr(..., '__subclasses__') 动态逃逸被拦截", async () => {
+      const result = await runner.execute({
+        code: `def main(v):
+    base = ().__class__.__bases__[0]
+    fn = getattr(base, '__subclasses__')
+    return {"count": len(fn())}`,
+        variables: {}
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/__subclasses__|not allowed/i);
     });
 
     it('type() 动态创建类不能绕过安全', async () => {
@@ -1254,11 +1280,14 @@ def main():
         return {'callable': False, 'error': str(e)}`,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      const ret = result.data?.codeReturn;
-      // __subclasses__ 应该被屏蔽：要么不可调用，要么返回空列表
-      if (ret.callable) {
-        expect(ret.count).toBe(0);
+      if (result.success) {
+        const ret = result.data?.codeReturn;
+        // __subclasses__ 应该被屏蔽：要么不可调用，要么返回空列表
+        if (ret.callable) {
+          expect(ret.count).toBe(0);
+        }
+      } else {
+        expect(result.message).toMatch(/__subclasses__|not allowed/i);
       }
     });
 

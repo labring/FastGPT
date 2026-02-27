@@ -59,7 +59,7 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
       [DispatchNodeResponseKeyEnum.toolResponses]: codeReturn
     };
   } catch (error) {
-    const text = getErrText(error);
+    const text = getErrText(error, 'Request code sandbox failed');
 
     // @adapt
     if (catchError === undefined) {

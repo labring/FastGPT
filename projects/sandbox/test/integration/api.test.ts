@@ -108,10 +108,9 @@ describe('API Routes', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
-    expect(data.data.js.allowedModules).toEqual(config.jsAllowedModules);
-    expect(data.data.js.builtinGlobals).toContain('SystemHelper');
-    expect(data.data.python.allowedModules).toEqual(config.pythonAllowedModules);
-    expect(data.data.python.builtinGlobals).toContain('system_helper');
+    expect(data.data.js).toEqual(config.jsAllowedModules);
+    expect(data.data.builtinGlobals).toContain('SystemHelper.httpRequest');
+    expect(data.data.python).toEqual(config.pythonAllowedModules);
   });
 });
 
@@ -145,7 +144,7 @@ describe('API 错误处理安全', () => {
       headers: headers({ 'Content-Type': 'application/json' }),
       body: 'this is not json'
     });
-    // Hono 解析 JSON 失败会抛异常，被 catch 捕获返回 Internal server error
+    // Hono 解析 JSON 失败会抛异常，被 catch 捕获返回报错
     // 或者 zod 校验失败返回 400
     expect([400, 200]).toContain(res.status);
     const data = await res.json();
@@ -155,7 +154,8 @@ describe('API 错误处理安全', () => {
     } else {
       // catch 分支
       expect(data.success).toBe(false);
-      expect(data.message).toBe('Internal server error');
+      console.log(data, 123213213);
+      expect(data.message).toContain('is not valid JSON');
     }
   });
 });

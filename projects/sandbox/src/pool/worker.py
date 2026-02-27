@@ -21,6 +21,7 @@ import ipaddress as _ipaddress
 import time as _time
 import math as _math
 import inspect as _inspect_mod
+import ast as _ast
 import signal
 import traceback as _tb
 import sysconfig as _sysconfig
@@ -371,6 +372,32 @@ _original_open = open
 
 _open_guard = False
 
+def _validate_user_code(code: str):
+    """执行前的静态安全检查，阻断已知高危反射链。"""
+    try:
+        tree = _ast.parse(code)
+    except SyntaxError:
+        # 语法错误交由后续 exec 抛出原始错误信息
+        return
+
+    for node in _ast.walk(tree):
+        # 直接属性访问：obj.__subclasses__
+        if isinstance(node, _ast.Attribute) and node.attr == '__subclasses__':
+            raise RuntimeError("Access to __subclasses__ is not allowed in sandbox")
+
+        # 动态属性访问：getattr(obj, '__subclasses__')
+        if (
+            isinstance(node, _ast.Call)
+            and isinstance(node.func, _ast.Name)
+            and node.func.id == 'getattr'
+            and len(node.args) >= 2
+            and isinstance(node.args[1], _ast.Constant)
+            and node.args[1].value == '__subclasses__'
+        ):
+            raise RuntimeError("Access to __subclasses__ is not allowed in sandbox")
+
+
+
 def _restricted_open(*args, **kwargs):
     """限制 open() — 只允许第三方库内部调用，禁止用户代码直接读写文件"""
     global _open_guard
@@ -570,6 +597,9 @@ def main_loop():
             for k, v in variables.items():
                 if k not in _reserved_keys:
                     exec_globals[k] = v
+
+            # 执行前静态检查：阻断 __subclasses__ 反射链
+            _validate_user_code(code)
 
             # 执行用户代码
             exec(code, exec_globals)

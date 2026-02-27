@@ -41,7 +41,7 @@ describe.skipIf(!isLinux)('内存限制 (Linux only)', () => {
           arr.push(Buffer.alloc(1024 * 1024));
         }
         // 持有内存并等待，让内存轮询检测有机会发现超限
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 5000));
         return { allocated: arr.length };
       }`,
       variables: {}

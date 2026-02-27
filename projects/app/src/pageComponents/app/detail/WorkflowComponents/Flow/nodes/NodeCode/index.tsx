@@ -54,7 +54,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   });
 
   const { data: packages } = useRequest(getSandboxPackages, {
-    manual: false
+    manual: false,
+    errorToast: ''
   });
 
   const packageText = useMemo(() => {
@@ -105,11 +106,14 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   })();
                 }}
               />
-              <MyTooltip label={packageText}>
-                <Box ml={2} fontSize={'sm'} color={'primary.500'}>
-                  {t('workflow:code_allow_packages')}
-                </Box>
-              </MyTooltip>
+
+              {!!packages && (
+                <MyTooltip label={packageText}>
+                  <Box ml={2} fontSize={'sm'} color={'primary.500'}>
+                    {t('workflow:code_allow_packages')}
+                  </Box>
+                </MyTooltip>
+              )}
 
               <PopoverConfirm
                 Trigger={

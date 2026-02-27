@@ -227,7 +227,11 @@ const SystemHelper = {
     if (body && body.length > REQUEST_LIMITS.maxRequestBodySize) {
       throw new Error('Request body too large');
     }
-    const timeout = Math.min(opts.timeout || REQUEST_LIMITS.timeoutMs, REQUEST_LIMITS.timeoutMs);
+    const timeoutSeconds =
+      typeof opts.timeout === 'number' && Number.isFinite(opts.timeout) && opts.timeout > 0
+        ? opts.timeout
+        : REQUEST_LIMITS.timeoutMs / 1000;
+    const timeout = Math.min(Math.ceil(timeoutSeconds * 1000), REQUEST_LIMITS.timeoutMs);
     if (body && !headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json';
     }
