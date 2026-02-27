@@ -8,10 +8,14 @@ import { spawn, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { platform } from 'os';
 import { config } from '../config';
 import type { ExecuteOptions, ExecuteResult } from '../types';
 
 const execAsync = promisify(exec);
+
+// 平台检测：Linux/BSD 支持 prlimit，macOS/Windows 不支持
+const isPrlimitSupported = platform() === 'linux' || platform() === 'freebsd';
 
 export type PoolWorker = {
   proc: ChildProcess;
@@ -146,9 +150,9 @@ export abstract class BaseProcessPool {
         try {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
-            // worker 启动成功，尝试设置操作系统级内存限制
+            // worker 启动成功，设置操作系统级内存限制（仅 Linux/BSD）
             // 实际限制 = 用户配置 + 运行时开销（50MB for Bun/Python + 沙箱代码）
-            if (proc.pid) {
+            if (proc.pid && isPrlimitSupported) {
               const actualLimitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
               this.setMemoryLimit(proc.pid, actualLimitMB).catch((err) => {
                 console.warn(`${this.tag}: memory limit setup failed: ${err.message}`);
