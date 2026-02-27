@@ -24,7 +24,9 @@ import type {
 } from '@fastgpt/global/core/agentSkill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
 export type CreateEditDebugSandboxParams = {
   skillId: string;
@@ -506,7 +508,8 @@ export async function packageSkillInSandbox(params: {
       size: files[0].content.length
     });
 
-    return Buffer.from(files[0].content);
+    const content = files[0].content;
+    return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
   } catch (error) {
     addLog.error('[Sandbox] Failed to package skill', {
       providerSandboxId,

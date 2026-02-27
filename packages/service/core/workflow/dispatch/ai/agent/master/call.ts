@@ -31,6 +31,22 @@ import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
 import { dispatchApp, dispatchPlugin } from '../sub/app';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
+import {
+  SandboxToolIds,
+  SandboxReadFileSchema,
+  SandboxWriteFileSchema,
+  SandboxEditFileSchema,
+  SandboxExecuteSchema,
+  SandboxSearchSchema
+} from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
+import type { AgentSandboxContext } from '../sub/sandbox/types';
+import {
+  dispatchSandboxReadFile,
+  dispatchSandboxWriteFile,
+  dispatchSandboxEditFile,
+  dispatchSandboxExecute,
+  dispatchSandboxSearch
+} from '../sub/sandbox/dispatch';
 
 type Response = {
   stepResponse?: {
@@ -55,6 +71,7 @@ export const masterCall = async ({
   filesMap,
   steps,
   step,
+  sandboxContext,
   ...props
 }: DispatchAgentModuleProps & {
   masterMessages: ChatCompletionMessageParam[];
@@ -69,6 +86,9 @@ export const masterCall = async ({
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
+
+  // Sandbox context
+  sandboxContext?: AgentSandboxContext;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -177,7 +197,7 @@ export const masterCall = async ({
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: getMasterSystemPrompt(systemPrompt, hasUserTools)
+        content: getMasterSystemPrompt(systemPrompt, hasUserTools, !!sandboxContext)
       },
       ...masterMessages
     ];
@@ -403,6 +423,66 @@ export const masterCall = async ({
                 stop: false
               };
             }
+          }
+
+          // Sandbox tools
+          else if (sandboxContext && (Object.values(SandboxToolIds) as string[]).includes(toolId)) {
+            const sandboxToolHandlers: Record<
+              string,
+              () => Promise<{ response: string; usages: [] }>
+            > = {
+              [SandboxToolIds.readFile]: async () => {
+                const params = SandboxReadFileSchema.safeParse(
+                  parseJsonArgs(call.function.arguments)
+                );
+                if (!params.success) return { response: params.error.message, usages: [] };
+                return dispatchSandboxReadFile(sandboxContext, params.data);
+              },
+              [SandboxToolIds.writeFile]: async () => {
+                const params = SandboxWriteFileSchema.safeParse(
+                  parseJsonArgs(call.function.arguments)
+                );
+                if (!params.success) return { response: params.error.message, usages: [] };
+                return dispatchSandboxWriteFile(sandboxContext, params.data);
+              },
+              [SandboxToolIds.editFile]: async () => {
+                const params = SandboxEditFileSchema.safeParse(
+                  parseJsonArgs(call.function.arguments)
+                );
+                if (!params.success) return { response: params.error.message, usages: [] };
+                return dispatchSandboxEditFile(sandboxContext, params.data);
+              },
+              [SandboxToolIds.execute]: async () => {
+                const params = SandboxExecuteSchema.safeParse(
+                  parseJsonArgs(call.function.arguments)
+                );
+                if (!params.success) return { response: params.error.message, usages: [] };
+                return dispatchSandboxExecute(sandboxContext, params.data);
+              },
+              [SandboxToolIds.search]: async () => {
+                const params = SandboxSearchSchema.safeParse(
+                  parseJsonArgs(call.function.arguments)
+                );
+                if (!params.success) return { response: params.error.message, usages: [] };
+                return dispatchSandboxSearch(sandboxContext, params.data);
+              }
+            };
+
+            const result = await sandboxToolHandlers[toolId]();
+            const subInfo = getSubAppInfo(toolId);
+            childrenResponses.push({
+              nodeId: callId,
+              id: callId,
+              moduleType: FlowNodeTypeEnum.tool,
+              moduleName: subInfo.name,
+              moduleLogo: subInfo.avatar,
+              toolInput: parseJsonArgs(call.function.arguments),
+              toolRes: result.response
+            });
+            return {
+              response: result.response,
+              usages: []
+            };
           }
 
           // User Sub App
