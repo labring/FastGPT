@@ -68,6 +68,14 @@ export async function generateStaticParams() {
   return source.generateParams();
 }
 
+// 由 CI/CD 传入: doc.fastgpt.cn 或 doc.fastgpt.io
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_DOC_DOMAIN) {
+    return `https://${process.env.NEXT_PUBLIC_DOC_DOMAIN}`;
+  }
+  return 'https://doc.fastgpt.io';
+};
+
 export async function generateMetadata(props: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
@@ -75,8 +83,36 @@ export async function generateMetadata(props: {
   const page = source.getPage(slug, lang);
   if (!page || !page.data) notFound();
 
+  const baseUrl = getBaseUrl();
+  const slugPath = slug?.join('/') || '';
+  const pageUrl = `${baseUrl}/${lang}/docs/${slugPath}`;
+  const description = page.data.description || `FastGPT 文档 - ${page.data.title}`;
+
+  // hreflang alternates：同一域名下的不同语言版本
+  const languages: Record<string, string> = {};
+  for (const l of i18n.languages) {
+    languages[l] = `${baseUrl}/${l}/docs/${slugPath}`;
+  }
+
   return {
     title: `${page.data.title} | FastGPT`,
-    description: page.data.description
+    description,
+    alternates: {
+      canonical: pageUrl,
+      languages
+    },
+    openGraph: {
+      title: `${page.data.title} | FastGPT`,
+      description,
+      url: pageUrl,
+      siteName: 'FastGPT Docs',
+      locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',
+      type: 'article'
+    },
+    twitter: {
+      card: 'summary',
+      title: `${page.data.title} | FastGPT`,
+      description
+    }
   };
 }

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://doc.fastgpt.cn/sitemap.xml
+Sitemap: https://doc.fastgpt.io/sitemap.xml
