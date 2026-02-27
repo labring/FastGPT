@@ -1,0 +1,80 @@
+projects/sandbox-sync-agent/pool-skill-sandbox.yaml
+  2ef698ad8b1cc11f 1-106
+projects/sandbox-sync-agent/base/settings.json
+  2ef698ad8b1cc11f 1-26
+projects/sandbox-sync-agent/Dockerfile.docker-runtime
+  2ef698ad8b1cc11f 1-6,25,29
+projects/sandbox-sync-agent/supervisord.conf
+  2ef698ad8b1cc11f 6-7,11,16,22
+projects/sandbox-sync-agent/http_server.py
+  2ef698ad8b1cc11f 1-65
+projects/sandbox-sync-agent/sync.sh
+  2ef698ad8b1cc11f 6-9,11-20,23-24,26-30,33-40,42-44,48,50-52,57-60,66,68-73,77-81
+projects/sandbox-sync-agent/base/entrypoint.sh
+  2ef698ad8b1cc11f 1-15
+projects/sandbox-sync-agent/base/Dockerfile
+  2ef698ad8b1cc11f 1-29,31-43
+projects/sandbox-sync-agent/Dockerfile
+  2ef698ad8b1cc11f 7,9-12,15,24,28-29,32
+projects/sandbox-sync-agent/docker-entrypoint.sh
+  2ef698ad8b1cc11f 10-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "0afcc6ecf7c98294c5282fe678919d2d2471a1a6",
+  "prompts": {
+    "0ba017ad7ded5e67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c4da582-4235-4129-a0ec-e1bbe6c87cc0",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 20,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "2ef698ad8b1cc11f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04751b53-6a99-4823-a448-3b917ca0c9da",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 508,
+      "total_deletions": 69,
+      "accepted_lines": 467,
+      "overriden_lines": 1
+    },
+    "4e799e869c3d1f38": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "e123f937-6572-4625-a188-19159ccff40a",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "8049be6972afdd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a10b0cb-4d39-4015-be51-966d44f6df8a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 375,
+      "total_deletions": 76,
+      "accepted_lines": 370,
+      "overriden_lines": 0
+    }
+  }
+}
