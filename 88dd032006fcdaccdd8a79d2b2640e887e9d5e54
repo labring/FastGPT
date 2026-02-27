@@ -1,0 +1,66 @@
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  adb720a96caa12df 105-106
+packages/service/core/agentSkill/sandboxCleanup.ts
+  37910481d960863a 11
+packages/service/core/agentSkill/sandboxController.ts
+  37910481d960863a 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "88dd032006fcdaccdd8a79d2b2640e887e9d5e54",
+  "prompts": {
+    "37910481d960863a": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "4a1f165e-95ad-4123-9e1c-3df352f5c560",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 4,
+      "accepted_lines": 7,
+      "overriden_lines": 1
+    },
+    "4e799e869c3d1f38": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "e123f937-6572-4625-a188-19159ccff40a",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "a15bb066da86d16c": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "56a22080-b278-4ffd-815c-eba6bec6f050",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 316,
+      "total_deletions": 7,
+      "accepted_lines": 309,
+      "overriden_lines": 0
+    },
+    "adb720a96caa12df": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "fe3f6a40-ff0e-4708-a15d-de6179a108a5",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
