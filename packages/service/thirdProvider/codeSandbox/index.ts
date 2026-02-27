@@ -12,8 +12,8 @@ export class CodeSandbox {
   private readonly client: AxiosInstance;
 
   constructor() {
-    const baseUrl = process.env.SANDBOX_URL;
-    const token = process.env.SANDBOX_TOKEN;
+    const baseUrl = process.env.SANDBOX_URL || '';
+    const token = process.env.SANDBOX_TOKEN || '';
 
     this.client = axios.create({
       baseURL: `${baseUrl.replace(/\/$/, '')}/sandbox`,
