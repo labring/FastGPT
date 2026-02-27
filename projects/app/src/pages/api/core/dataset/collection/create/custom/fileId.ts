@@ -142,13 +142,26 @@ async function handler(
   let deletedCollectionId: string | undefined;
   let overwritten = false;
 
-  // Check if file with same name exists
-  // Note: 不检查 parentId，在整个 dataset 范围内检查重名，确保文件名全局唯一
-  const existingCollection = await MongoDatasetCollection.findOne({
+  // Normalize parentId: convert empty string to undefined
+  const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
+
+  // Build query for duplicate check - only check within the same parentId folder
+  const duplicateQuery: Record<string, any> = {
     datasetId,
     name: fileName,
     type: DatasetCollectionTypeEnum.file
-  });
+  };
+
+  // Handle parentId query condition
+  if (normalizedParentId) {
+    duplicateQuery.parentId = normalizedParentId;
+  } else {
+    // Root directory: parentId is null or does not exist
+    duplicateQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+  }
+
+  // Check if file with same name exists in the same folder
+  const existingCollection = await MongoDatasetCollection.findOne(duplicateQuery);
 
   if (existingCollection) {
     if (overwriteDuplicate === true) {
@@ -187,14 +200,23 @@ async function handler(
       const escapedBase = escapeRegex(fileNameWithoutExt);
       const escapedExt = escapeRegex(fileExt);
 
-      // Query all existing files with suffix pattern in one request
-      const existingNames = await MongoDatasetCollection.find({
+      // Build query for suffix pattern - only check within the same parentId folder
+      const suffixQuery: Record<string, any> = {
         datasetId,
         name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
         type: DatasetCollectionTypeEnum.file
-      })
-        .select('name')
-        .lean();
+      };
+
+      // Handle parentId query condition
+      if (normalizedParentId) {
+        suffixQuery.parentId = normalizedParentId;
+      } else {
+        // Root directory: parentId is null or does not exist
+        suffixQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+      }
+
+      // Query all existing files with suffix pattern in the same folder
+      const existingNames = await MongoDatasetCollection.find(suffixQuery).select('name').lean();
 
       // Find max suffix from existing names
       let maxSuffix = 0;
@@ -256,7 +278,7 @@ async function handler(
       teamId,
       tmbId,
       datasetId,
-      parentId,
+      parentId: normalizedParentId,
       name: fileName,
       tags,
       type: DatasetCollectionTypeEnum.file,

@@ -33,6 +33,7 @@ export interface FileUploadModalProps {
 
   // 数据集ID（用于重名检测）
   datasetId: string;
+  parentId?: string; // 父目录ID（用于文件夹级别的重名检测）
 }
 
 const FileUploadModal: React.FC<FileUploadModalProps> = ({
@@ -47,7 +48,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   confirmText,
   maxFileSize,
   cancelText,
-  datasetId
+  datasetId,
+  parentId
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -202,6 +204,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
     const checkResult = await postCheckDuplicateCollection({
       datasetId,
+      parentId: parentId || undefined,
       fileNames
     });
 

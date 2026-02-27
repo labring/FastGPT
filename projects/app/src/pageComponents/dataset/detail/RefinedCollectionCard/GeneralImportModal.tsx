@@ -262,6 +262,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       const fileNames = successFiles.map((file) => file.sourceName);
       const checkResult = await postCheckDuplicateCollection({
         datasetId,
+        parentId: parentId || undefined,
         fileNames
       });
 

@@ -815,6 +815,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           acceptedTypes={['.xlsx', '.xls', '.csv']}
           concurrency={1}
           datasetId={datasetDetail._id}
+          parentId={parentId}
         />
       )}
 
