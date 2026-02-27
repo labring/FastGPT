@@ -8,9 +8,11 @@ import cron from 'node-cron';
 import { findInactiveSandboxes } from './sandboxController';
 import { MongoSkillSandbox } from './sandboxSchema';
 import { getSandboxDefaults, getSandboxProviderConfig } from './sandboxConfig';
-import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../../common/logger';
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
+
+const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
 /**
  * Cleanup a single inactive sandbox

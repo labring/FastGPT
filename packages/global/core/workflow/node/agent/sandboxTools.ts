@@ -1,0 +1,146 @@
+import z from 'zod';
+import type { ChatCompletionTool } from '../../../ai/type';
+
+export enum SandboxToolIds {
+  readFile = 'sandbox_read_file',
+  writeFile = 'sandbox_write_file',
+  editFile = 'sandbox_edit_file',
+  execute = 'sandbox_execute',
+  search = 'sandbox_search'
+}
+
+// Zod parameter schemas (runtime validation)
+export const SandboxReadFileSchema = z.object({
+  paths: z.array(z.string()).describe('Array of absolute file paths')
+});
+export const SandboxWriteFileSchema = z.object({
+  path: z.string().describe('Absolute file path'),
+  content: z.string().describe('File content')
+});
+export const SandboxEditFileSchema = z.object({
+  entries: z.array(
+    z.object({
+      path: z.string().describe('Absolute file path'),
+      oldContent: z.string().describe('Original content to replace'),
+      newContent: z.string().describe('New content after replacement')
+    })
+  )
+});
+export const SandboxExecuteSchema = z.object({
+  command: z.string().describe('Shell command to execute'),
+  workingDirectory: z.string().optional().describe('Working directory (optional)'),
+  timeoutMs: z.number().optional().default(30000).describe('Timeout in milliseconds')
+});
+export const SandboxSearchSchema = z.object({
+  pattern: z.string().describe('Search pattern (filename or glob)'),
+  path: z.string().optional().describe('Starting path for search (optional)')
+});
+
+// ChatCompletionTool definitions (exposed to LLM)
+export const sandboxReadFileTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.readFile,
+    description:
+      'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.',
+    parameters: {
+      type: 'object',
+      properties: {
+        paths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array of absolute file paths'
+        }
+      },
+      required: ['paths']
+    }
+  }
+};
+
+export const sandboxWriteFileTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.writeFile,
+    description:
+      'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute file path' },
+        content: { type: 'string', description: 'File content' }
+      },
+      required: ['path', 'content']
+    }
+  }
+};
+
+export const sandboxEditFileTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.editFile,
+    description:
+      'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.',
+    parameters: {
+      type: 'object',
+      properties: {
+        entries: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'Absolute file path' },
+              oldContent: { type: 'string', description: 'Original content to replace' },
+              newContent: { type: 'string', description: 'New content after replacement' }
+            },
+            required: ['path', 'oldContent', 'newContent']
+          },
+          description: 'Array of edit operations'
+        }
+      },
+      required: ['entries']
+    }
+  }
+};
+
+export const sandboxExecuteTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.execute,
+    description:
+      'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'Shell command to execute' },
+        workingDirectory: { type: 'string', description: 'Working directory (optional)' },
+        timeoutMs: { type: 'number', description: 'Timeout in milliseconds (default 30000)' }
+      },
+      required: ['command']
+    }
+  }
+};
+
+export const sandboxSearchTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.search,
+    description:
+      'Search for files in the sandbox. Find matching file paths by filename pattern (glob).',
+    parameters: {
+      type: 'object',
+      properties: {
+        pattern: { type: 'string', description: 'Search pattern (filename or glob)' },
+        path: { type: 'string', description: 'Starting path for search (optional)' }
+      },
+      required: ['pattern']
+    }
+  }
+};
+
+export const allSandboxTools: ChatCompletionTool[] = [
+  sandboxReadFileTool,
+  sandboxWriteFileTool,
+  sandboxEditFileTool,
+  sandboxExecuteTool,
+  sandboxSearchTool
+];

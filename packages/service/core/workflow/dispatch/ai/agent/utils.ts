@@ -6,6 +6,7 @@ import { getAgentRuntimeTools } from './sub/tool/utils';
 import { readFileTool } from './sub/file/utils';
 import { PlanAgentTool } from './sub/plan/constants';
 import { datasetSearchTool } from './sub/dataset/utils';
+import { allSandboxTools } from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
 
 export const getSubapps = async ({
   tmbId,
@@ -13,7 +14,8 @@ export const getSubapps = async ({
   lang,
   getPlanTool,
   hasDataset,
-  hasFiles
+  hasFiles,
+  hasSandboxSkills
 }: {
   tmbId: string;
   tools: SkillToolType[];
@@ -21,6 +23,7 @@ export const getSubapps = async ({
   getPlanTool?: Boolean;
   hasDataset?: boolean;
   hasFiles: boolean;
+  hasSandboxSkills?: boolean;
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -40,6 +43,11 @@ export const getSubapps = async ({
   /* Dataset Search */
   if (hasDataset) {
     completionTools.push(datasetSearchTool);
+  }
+
+  /* Sandbox Skills */
+  if (hasSandboxSkills) {
+    completionTools.push(...allSandboxTools);
   }
 
   /* System tool */
