@@ -11,7 +11,8 @@ import type {
   TrainingModeEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
-  DatabaseTypeEnum
+  DatabaseTypeEnum,
+  CollectionStatusEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
@@ -23,7 +24,6 @@ import type {
 import type { SourceMemberType } from 'support/user/type';
 import type { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from 'common/parentFolder/type';
-import type { CollectionStatusEnum } from 'core/dataset/collection/schema';
 import type { SplitProps } from '@fastgpt/global/common/string/textSplitter';
 
 export type small2bigConfigType = Omit<SplitProps, 'text'> & {

@@ -154,6 +154,14 @@ export const DatasetStatusMap = {
 };
 
 /* ------------ collection -------------- */
+// 文件训练状态枚举
+export enum CollectionStatusEnum {
+  ready = 'ready', // 已就绪
+  training = 'training', // 处理中
+  error = 'error', // 异常
+  notExist = 'notExist' // 不存在（数据库知识库的表被删除）
+}
+
 export enum DatasetCollectionTypeEnum {
   folder = 'folder',
   virtual = 'virtual',

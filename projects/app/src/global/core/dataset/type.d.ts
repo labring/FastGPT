@@ -2,6 +2,7 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type.d';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* ================= dataset ===================== */
 
@@ -28,6 +29,9 @@ export type DatasetCollectionsListItemType = {
   dataAmount: number;
   trainingAmount: number;
   hasError?: boolean;
+
+  // 计算得出的状态字段
+  status: CollectionStatusEnum;
 
   // For database type datasets, include table schema description
   tableSchemaDescription?: string;

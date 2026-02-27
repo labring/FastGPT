@@ -5,7 +5,8 @@ import {
   type SetStateAction,
   useState,
   useEffect,
-  useMemo
+  useMemo,
+  useCallback
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -102,11 +103,11 @@ export const DatasetPageContextProvider = ({
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
-  const loadDatasetDetail = async (id: string) => {
+  const loadDatasetDetail = useCallback(async (id: string) => {
     const data = await getDatasetById(id);
     setDatasetDetail(data);
     return data;
-  };
+  }, []);
   const isDatabaseType = useMemo(
     () => datasetDetail.type === DatasetTypeEnum.database,
     [datasetDetail]
