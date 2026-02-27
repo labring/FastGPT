@@ -3,9 +3,6 @@ on:
   pull_request:
     paths:
       - 'projects/sandbox/**'
-  push:
-    paths:
-      - 'projects/sandbox/**'
   workflow_dispatch:
 
 permissions:
