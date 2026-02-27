@@ -1,0 +1,71 @@
+---
+title: 通过 Avian 接入模型
+description: 通过 Avian API 接入模型
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+[Avian](https://avian.io) 是一个兼容 OpenAI 的 LLM API 提供商，提供多种领先的开源模型，价格有竞争力。
+
+## 可用模型
+
+| 模型 | 最大上下文 | 最大输出 | 输入价格 | 输出价格 |
+|------|-----------|---------|---------|---------|
+| deepseek/deepseek-v3.2 | 164K | 65K | $0.26/1M tokens | $0.38/1M tokens |
+| moonshotai/kimi-k2.5 | 131K | 8K | $0.45/1M tokens | $2.20/1M tokens |
+| z-ai/glm-5 | 131K | 16K | $0.30/1M tokens | $2.55/1M tokens |
+| minimax/minimax-m2.5 | 1M | 1M | $0.30/1M tokens | $1.10/1M tokens |
+
+## 1. 前置条件
+
+### 获取 API Key
+
+1. 在 [avian.io](https://avian.io) 注册
+2. 在控制台的 API Keys 页面创建新密钥
+3. 安全保存你的 API Key
+
+### API 地址
+
+```
+https://api.avian.io/v1
+```
+
+## 2. 在 FastGPT 中配置
+
+<Alert context="warning">
+  需要 FastGPT v4.8.23 或以上版本，且已启用 AI Proxy。部署参考：[部署 FastGPT](/docs/introduction/development/intro/)
+</Alert>
+
+### 方法一：通过 AI Proxy 接入（推荐）
+
+1. 进入 **账户 > 模型供应商 > 模型渠道**
+2. 点击 **创建渠道**
+3. 配置渠道：
+   - **渠道名称**：Avian
+   - **供应商**：选择 **OpenAI**（Avian 使用 OpenAI 兼容的 API）
+   - **模型**：添加上面列出的模型 ID（如 `deepseek/deepseek-v3.2`）
+   - **代理地址**：`https://api.avian.io/v1`
+   - **API Key**：你的 Avian API Key
+4. 点击 **添加** 保存
+5. 测试渠道验证连接
+
+### 方法二：通过环境变量配置
+
+在 FastGPT 部署中设置以下环境变量：
+
+```
+OPENAI_BASE_URL=https://api.avian.io/v1
+CHAT_API_KEY=your-avian-api-key
+```
+
+重启 FastGPT 后，在 **账户 > 模型供应商 > 模型配置** 中配置模型。
+
+## 3. 功能特性
+
+- **OpenAI 兼容**：标准的聊天补全 API，支持流式输出
+- **函数调用**：所有模型均支持
+- **Bearer Token 认证**：使用标准 `Authorization: Bearer` 请求头
+
+## 4. 验证连接
+
+配置完成后，进入模型渠道页面，使用 **模型测试** 功能验证连接。绿色成功指示符表示配置完成。
