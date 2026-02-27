@@ -22,6 +22,8 @@ type RunCodeResponse = DispatchNodeResultType<
   }
 >;
 
+const token = process.env.SANDBOX_TOKEN;
+
 export const runCode = async ({
   codeType,
   code,
@@ -48,10 +50,18 @@ export const runCode = async ({
       codeReturn: Record<string, any>;
       log: string;
     };
-  }>(url, {
-    code,
-    variables
-  });
+  }>(
+    url,
+    {
+      code,
+      variables
+    },
+    {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined
+      }
+    }
+  );
 
   if (!runResult.success) {
     return Promise.reject('Run code failed');
