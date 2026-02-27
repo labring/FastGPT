@@ -6,8 +6,6 @@ on:
   push:
     paths:
       - 'projects/sandbox/**'
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
