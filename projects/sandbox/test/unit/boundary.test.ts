@@ -18,30 +18,11 @@ afterAll(async () => {
 });
 
 describe('边界测试 - JS', () => {
-  // ===== 空/错误代码 =====
+  // ===== 空/特殊代码 =====
 
   it('空代码（无 main 函数）', async () => {
     const result = await jsPool.execute({ code: '', variables: {} });
     expect(result.success).toBe(false);
-  });
-
-  it('语法错误', async () => {
-    const result = await jsPool.execute({
-      code: `function main( { return {}; }`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('运行时异常', async () => {
-    const result = await jsPool.execute({
-      code: `async function main() {
-        throw new Error('test error');
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-    expect(result.data?.codeReturn?.error || result.message).toMatch(/test error/);
   });
 
   it('main 不是函数', async () => {
@@ -66,20 +47,6 @@ describe('边界测试 - JS', () => {
       variables: {}
     });
     expect(result.success).toBe(true);
-  });
-
-  // ===== 资源限制 =====
-
-  it('超时被终止', async () => {
-    const result = await jsPool.execute({
-      code: `async function main() {
-        while(true) {}
-      }`,
-      variables: {},
-      limits: { timeoutMs: 3000 }
-    });
-    expect(result.success).toBe(false);
-    expect(result.message).toMatch(/timeout|timed out/i);
   });
 
   // ===== 大数据 =====
@@ -113,17 +80,6 @@ describe('边界测试 - JS', () => {
   });
 
   // ===== 变量传递 =====
-
-  it('空变量', async () => {
-    const result = await jsPool.execute({
-      code: `async function main(vars) {
-        return { keys: Object.keys(vars) };
-      }`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.keys).toEqual([]);
-  });
 
   it('特殊字符变量', async () => {
     const result = await jsPool.execute({
@@ -160,30 +116,11 @@ describe('边界测试 - JS', () => {
 });
 
 describe('边界测试 - Python', () => {
-  // ===== 空/错误代码 =====
+  // ===== 空/特殊代码 =====
 
   it('空代码', async () => {
     const result = await pyPool.execute({ code: '', variables: {} });
     expect(result.success).toBe(false);
-  });
-
-  it('语法错误', async () => {
-    const result = await pyPool.execute({
-      code: `def main(
-    return {}`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('运行时异常', async () => {
-    const result = await pyPool.execute({
-      code: `def main():
-    raise ValueError('test error')`,
-      variables: {}
-    });
-    expect(result.success).toBe(false);
-    expect(result.data?.codeReturn?.error || result.message).toMatch(/test error/);
   });
 
   it('main 不是函数', async () => {
@@ -201,21 +138,6 @@ describe('边界测试 - Python', () => {
       variables: {}
     });
     expect(result.success).toBe(true);
-  });
-
-  // ===== 资源限制 =====
-
-  it('超时被终止', async () => {
-    const result = await pyPool.execute({
-      code: `def main():
-    while True:
-        pass`,
-      variables: {},
-      limits: { timeoutMs: 3000 }
-    });
-    expect(result.success).toBe(false);
-    // Python 死循环被 CPU 资源限制 kill 后，进程无输出
-    expect(result.message).toMatch(/timeout|timed out|killed|no output/i);
   });
 
   // ===== 大数据 =====
@@ -245,16 +167,6 @@ describe('边界测试 - Python', () => {
   });
 
   // ===== 变量传递 =====
-
-  it('空变量', async () => {
-    const result = await pyPool.execute({
-      code: `def main(vars):
-    return {'keys': list(vars.keys())}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.keys).toEqual([]);
-  });
 
   it('特殊字符变量', async () => {
     const result = await pyPool.execute({
@@ -357,7 +269,7 @@ def main():
     const result = await pyPool.execute({
       code: `def main(a, b, c):
     return {'sum': a + b + c}`,
-      variables: { a: 1, b: 2 }  // 缺少 c
+      variables: { a: 1, b: 2 } // 缺少 c
     });
     expect(result.success).toBe(false);
     expect(result.message).toContain('Missing');

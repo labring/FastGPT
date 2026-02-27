@@ -25,24 +25,20 @@ const envSchema = z.object({
       message:
         'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
-  LOG_LEVEL: str('info'),
-
-  // ===== 资源限制 =====
-  SANDBOX_MAX_TIMEOUT: int(60000),
-  SANDBOX_MEMORY_MB: int(64),
-  SANDBOX_MAX_MEMORY_MB: int(256),
-
-  // ===== 并发控制 =====
-  SANDBOX_MAX_CONCURRENCY: int(50),
 
   // ===== 进程池 =====
   /** 进程池大小（预热 worker 数量） */
-  SANDBOX_POOL_SIZE: int(20),
+  SANDBOX_POOL_SIZE: int(20).pipe(z.number().min(1).max(100)),
+
+  // ===== 资源限制 =====
+  SANDBOX_MAX_TIMEOUT: int(60000).pipe(z.number().min(1000).max(600000)),
+  SANDBOX_MAX_MEMORY_MB: int(256).pipe(z.number().min(32).max(4096)),
 
   // ===== 网络请求限制 =====
-  SANDBOX_MAX_REQUESTS: int(30),
-  SANDBOX_REQUEST_TIMEOUT: int(10000),
-  SANDBOX_MAX_RESPONSE_SIZE: int(2 * 1024 * 1024),
+  SANDBOX_REQUEST_MAX_COUNT: int(30).pipe(z.number().min(1).max(1000)),
+  SANDBOX_REQUEST_TIMEOUT: int(60000).pipe(z.number().min(1000).max(300000)),
+  SANDBOX_REQUEST_MAX_RESPONSE_MB: int(10).pipe(z.number().min(1).max(100)),
+  SANDBOX_REQUEST_MAX_BODY_MB: int(5).pipe(z.number().min(1).max(100)),
 
   // ===== 模块控制 =====
   /** JS 可用模块白名单，逗号分隔 */
@@ -57,7 +53,7 @@ const envSchema = z.object({
       'json,csv,base64,binascii,struct,' +
       'hashlib,hmac,secrets,uuid,' +
       'typing,abc,enum,dataclasses,contextlib,' +
-      'pprint,weakref,' +
+      'pprint,' +
       'numpy,pandas,matplotlib'
   )
 });
@@ -77,23 +73,19 @@ export const env = {
   // 服务
   port: e.SANDBOX_PORT,
   token: e.SANDBOX_TOKEN,
-  logLevel: e.LOG_LEVEL,
 
   // 资源限制
   maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,
-  defaultMemoryMB: e.SANDBOX_MEMORY_MB,
   maxMemoryMB: e.SANDBOX_MAX_MEMORY_MB,
-
-  // 并发控制
-  maxConcurrency: e.SANDBOX_MAX_CONCURRENCY,
 
   // 进程池
   poolSize: e.SANDBOX_POOL_SIZE,
 
   // 网络请求限制
-  maxRequests: e.SANDBOX_MAX_REQUESTS,
+  maxRequests: e.SANDBOX_REQUEST_MAX_COUNT,
   requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
-  maxResponseSize: e.SANDBOX_MAX_RESPONSE_SIZE,
+  maxResponseSize: e.SANDBOX_REQUEST_MAX_RESPONSE_MB,
+  maxRequestBodySize: e.SANDBOX_REQUEST_MAX_BODY_MB,
 
   // 模块控制
   jsAllowedModules: e.SANDBOX_JS_ALLOWED_MODULES.split(',')

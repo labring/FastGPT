@@ -44,14 +44,13 @@ describe('API Routes', () => {
     expect(data.data.codeReturn.hello).toBe('world');
   });
 
-  it('POST /sandbox/js 带 limits 参数', async () => {
+  it('POST /sandbox/js 忽略额外参数', async () => {
     const res = await app.request('/sandbox/js', {
       method: 'POST',
       headers: headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         code: 'async function main(v) { return { ok: true } }',
-        variables: {},
-        limits: { timeoutMs: 5000, memoryMB: 32 }
+        variables: {}
       })
     });
     const data = await res.json();
@@ -111,8 +110,129 @@ describe('API Routes', () => {
     expect(data.success).toBe(true);
     expect(data.data.js.allowedModules).toEqual(config.jsAllowedModules);
     expect(data.data.js.builtinGlobals).toContain('SystemHelper');
-    expect(data.data.python.blockedModules).toEqual(config.pythonBlockedModules);
+    expect(data.data.python.allowedModules).toEqual(config.pythonAllowedModules);
     expect(data.data.python.builtinGlobals).toContain('system_helper');
+  });
+});
+
+// ===== 错误处理安全 =====
+describe('API 错误处理安全', () => {
+  beforeAll(async () => {
+    await poolReady;
+  }, 30000);
+
+  it('JS 执行异常不泄露堆栈', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        code: 'async function main() { null.x; }',
+        variables: {}
+      })
+    });
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    // 错误信息不应包含宿主进程的真实文件路径（如 node_modules、/src/pool/）
+    const msg = data.message || '';
+    expect(msg).not.toContain('node_modules');
+    expect(msg).not.toContain('/src/pool/');
+    expect(msg).not.toContain('process-pool');
+  });
+
+  it('无效 JSON body 返回 400', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: 'this is not json'
+    });
+    // Hono 解析 JSON 失败会抛异常，被 catch 捕获返回 Internal server error
+    // 或者 zod 校验失败返回 400
+    expect([400, 200]).toContain(res.status);
+    const data = await res.json();
+    if (res.status === 400) {
+      expect(data.success).toBe(false);
+      expect(data.message).toMatch(/invalid|validation/i);
+    } else {
+      // catch 分支
+      expect(data.success).toBe(false);
+      expect(data.message).toBe('Internal server error');
+    }
+  });
+});
+
+// ===== Zod 校验失败（有效 JSON 但 schema 不匹配） =====
+describe('API Zod 校验失败', () => {
+  beforeAll(async () => {
+    await poolReady;
+  }, 30000);
+
+  it('JS: code 为数字返回 400', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code: 123, variables: {} })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/Invalid request/i);
+  });
+
+  it('JS: 缺少 code 字段返回 400', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ variables: {} })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/Invalid request/i);
+  });
+
+  it('JS: code 为空字符串返回 400', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code: '', variables: {} })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+  });
+
+  it('Python: code 为数字返回 400', async () => {
+    const res = await app.request('/sandbox/python', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code: 123, variables: {} })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/Invalid request/i);
+  });
+
+  it('Python: 缺少 code 字段返回 400', async () => {
+    const res = await app.request('/sandbox/python', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ variables: {} })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/Invalid request/i);
+  });
+
+  it('Python: 无效 JSON body 返回错误', async () => {
+    const res = await app.request('/sandbox/python', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: 'this is not json'
+    });
+    const data = await res.json();
+    expect(data.success).toBe(false);
   });
 });
 

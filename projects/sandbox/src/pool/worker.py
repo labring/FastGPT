@@ -26,6 +26,24 @@ import traceback as _tb
 import sysconfig as _sysconfig
 import builtins as _builtins
 import types as _types
+import encodings.idna as _encodings_idna  # 预加载，避免 codec lazy load 被沙盒拦截
+
+# stdlib 模块名集合，用于 _safe_import 快速放行
+_STDLIB_MODULES = sys.stdlib_module_names if hasattr(sys, 'stdlib_module_names') else frozenset()
+
+# 危险的 stdlib 模块，即使是 stdlib 也不允许用户代码直接 import
+_DANGEROUS_STDLIB = frozenset({
+    'os', 'subprocess', 'shutil', 'pathlib', 'glob', 'tempfile',
+    'multiprocessing', 'threading', 'concurrent',
+    'ctypes', 'importlib', 'runpy', 'code', 'codeop', 'compileall',
+    'socket', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'imaplib',
+    'xmlrpc', 'socketserver', 'ssl', 'asyncio', 'selectors', 'select',
+    'signal', 'resource', 'pty', 'termios', 'tty', 'fcntl',
+    'mmap', 'dbm', 'sqlite3', 'shelve',
+    'webbrowser', 'turtle', 'tkinter', 'idlelib',
+    'venv', 'ensurepip', 'pip', 'site',
+    'gc', 'sys', 'builtins', 'marshal', 'pickle',
+})
 
 # ===== 网络安全 =====
 _BLOCKED_CIDRS = [
@@ -43,9 +61,24 @@ _BLOCKED_CIDRS = [
 _REQUEST_LIMITS = {
     'max_requests': 30,
     'timeout': 60,
-    'max_response_size': 2 * 1024 * 1024,
+    'max_response_size': 10 * 1024 * 1024,
+    'max_request_body_size': 5 * 1024 * 1024,
     'allowed_protocols': ['http:', 'https:']
 }
+
+
+def _init_request_limits(limits):
+    """从 init 消息更新请求限制"""
+    if not limits:
+        return
+    if 'maxRequests' in limits:
+        _REQUEST_LIMITS['max_requests'] = limits['maxRequests']
+    if 'timeoutMs' in limits:
+        _REQUEST_LIMITS['timeout'] = max(1, limits['timeoutMs'] // 1000)
+    if 'maxResponseSize' in limits:
+        _REQUEST_LIMITS['max_response_size'] = limits['maxResponseSize']
+    if 'maxRequestBodySize' in limits:
+        _REQUEST_LIMITS['max_request_body_size'] = limits['maxRequestBodySize']
 
 
 def _is_blocked_ip(ip_str):
@@ -59,56 +92,124 @@ def _is_blocked_ip(ip_str):
     return False
 
 
-class _SystemHelper:
-    def __init__(self):
-        self._base64 = _base64
-        self._hmac = _hmac
-        self._time = _time
-        self._math = _math
-        self._urllib_parse = _urllib_parse
-        self._urllib_request = _urllib_request
-        self._socket = _socket
+# ===== DNS-pinned HTTP opener（防止 DNS rebinding）=====
+import http.client as _http_client
 
-    def count_token(self, text):
+class _PinnedHTTPConnection(_http_client.HTTPConnection):
+    """强制连接到预解析的 IP，防止 DNS rebinding TOCTOU"""
+    def __init__(self, *args, pinned_ip=None, pinned_port=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pinned_ip = pinned_ip
+        self._pinned_port = pinned_port
+
+    def connect(self):
+        self.sock = _socket.create_connection(
+            (self._pinned_ip or self.host, self._pinned_port or self.port),
+            self.timeout
+        )
+
+class _PinnedHTTPSConnection(_http_client.HTTPSConnection):
+    def __init__(self, *args, pinned_ip=None, pinned_port=None, original_hostname=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pinned_ip = pinned_ip
+        self._pinned_port = pinned_port
+        self._original_hostname = original_hostname or self.host
+
+    def connect(self):
+        import ssl as _ssl
+        self.sock = _socket.create_connection(
+            (self._pinned_ip or self.host, self._pinned_port or self.port),
+            self.timeout
+        )
+        ctx = _ssl.create_default_context()
+        self.sock = ctx.wrap_socket(self.sock, server_hostname=self._original_hostname)
+
+class _PinnedHTTPHandler(_urllib_request.HTTPHandler):
+    def __init__(self, pinned_ip, pinned_port):
+        super().__init__()
+        self._pinned_ip = pinned_ip
+        self._pinned_port = pinned_port
+
+    def http_open(self, req):
+        return self.do_open(
+            lambda host, **kwargs: _PinnedHTTPConnection(
+                host, pinned_ip=self._pinned_ip, pinned_port=self._pinned_port, **kwargs
+            ),
+            req
+        )
+
+class _PinnedHTTPSHandler(_urllib_request.HTTPSHandler):
+    def __init__(self, pinned_ip, pinned_port, original_hostname):
+        super().__init__()
+        self._pinned_ip = pinned_ip
+        self._pinned_port = pinned_port
+        self._original_hostname = original_hostname
+
+    def https_open(self, req):
+        return self.do_open(
+            lambda host, **kwargs: _PinnedHTTPSConnection(
+                host, pinned_ip=self._pinned_ip, pinned_port=self._pinned_port,
+                original_hostname=self._original_hostname, **kwargs
+            ),
+            req
+        )
+
+def _build_pinned_opener(resolved_ip, port, hostname):
+    return _urllib_request.build_opener(
+        _PinnedHTTPHandler(resolved_ip, port),
+        _PinnedHTTPSHandler(resolved_ip, port, hostname)
+    )
+
+
+class _SystemHelper:
+    """安全的系统辅助类 — 所有模块引用通过闭包捕获，外部无法访问"""
+    __slots__ = ()
+
+    @staticmethod
+    def count_token(text):
         if not isinstance(text, str):
             text = str(text)
-        return self._math.ceil(len(text) / 4)
+        return _math.ceil(len(text) / 4)
 
-    def str_to_base64(self, text, prefix=''):
-        b64 = self._base64.b64encode(text.encode('utf-8')).decode('utf-8')
+    @staticmethod
+    def str_to_base64(text, prefix=''):
+        b64 = _base64.b64encode(text.encode('utf-8')).decode('utf-8')
         return prefix + b64
 
-    def create_hmac(self, algorithm, secret):
-        timestamp = str(int(self._time.time() * 1000))
+    @staticmethod
+    def create_hmac(algorithm, secret):
+        timestamp = str(int(_time.time() * 1000))
         string_to_sign = timestamp + '\n' + secret
-        h = self._hmac.new(secret.encode('utf-8'), string_to_sign.encode('utf-8'), algorithm)
-        sign = self._urllib_parse.quote(self._base64.b64encode(h.digest()).decode('utf-8'))
+        h = _hmac.new(secret.encode('utf-8'), string_to_sign.encode('utf-8'), algorithm)
+        sign = _urllib_parse.quote(_base64.b64encode(h.digest()).decode('utf-8'))
         return {"timestamp": timestamp, "sign": sign}
 
-    def delay(self, ms):
+    @staticmethod
+    def delay(ms):
         if ms > 10000:
             raise ValueError("Delay must be <= 10000ms")
-        self._time.sleep(ms / 1000)
+        _time.sleep(ms / 1000)
 
-    def http_request(self, url, method='GET', headers=None, body=None, timeout=None):
+    @staticmethod
+    def http_request(url, method='GET', headers=None, body=None, timeout=None):
         global _request_count
         _request_count += 1
         if _request_count > _REQUEST_LIMITS['max_requests']:
             raise RuntimeError(f"Request limit exceeded: max {_REQUEST_LIMITS['max_requests']}")
 
-        parsed = self._urllib_parse.urlparse(url)
+        parsed = _urllib_parse.urlparse(url)
         if parsed.scheme + ':' not in _REQUEST_LIMITS['allowed_protocols']:
             raise RuntimeError(f"Protocol {parsed.scheme}: not allowed")
 
         hostname = parsed.hostname
         try:
-            infos = self._socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+            infos = _socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
             for info in infos:
                 ip = info[4][0]
                 if _is_blocked_ip(ip):
                     raise RuntimeError("Request to private/internal network not allowed")
             resolved_ip = infos[0][4][0] if infos else None
-        except self._socket.gaierror as e:
+        except _socket.gaierror as e:
             raise RuntimeError(f"DNS resolution failed: {e}")
 
         if timeout is None:
@@ -130,10 +231,15 @@ class _SystemHelper:
             else:
                 data = body
 
-        # DNS 已验证安全，直接用原始 URL（不替换为 IP，避免 SSL SNI 问题）
-        req = self._urllib_request.Request(url, data=data, headers=headers, method=method.upper())
+        if data is not None and len(data) > _REQUEST_LIMITS['max_request_body_size']:
+            raise RuntimeError("Request body too large")
+
+        # 使用自定义 handler 强制连接到预解析的 IP，防止 DNS rebinding
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        opener = _build_pinned_opener(resolved_ip, port, hostname)
+        req = _urllib_request.Request(url, data=data, headers=headers, method=method.upper())
         try:
-            resp = self._urllib_request.urlopen(req, timeout=timeout)
+            resp = opener.open(req, timeout=timeout)
             resp_data = resp.read(_REQUEST_LIMITS['max_response_size'] + 1)
             if len(resp_data) > _REQUEST_LIMITS['max_response_size']:
                 raise RuntimeError("Response too large")
@@ -142,16 +248,17 @@ class _SystemHelper:
                 'headers': dict(resp.headers),
                 'data': resp_data.decode('utf-8', errors='replace')
             }
-        except self._urllib_request.URLError as e:
+        except _urllib_request.URLError as e:
             raise RuntimeError(f"HTTP request failed: {e}")
+
+    # 驼峰别名，与 JS 端 SystemHelper API 保持一致
+    countToken = count_token
+    strToBase64 = str_to_base64
+    createHmac = create_hmac
+    httpRequest = http_request
 
 
 system_helper = _SystemHelper()
-# 驼峰别名，与 JS 端 SystemHelper API 保持一致
-system_helper.countToken = system_helper.count_token
-system_helper.strToBase64 = system_helper.str_to_base64
-system_helper.createHmac = system_helper.create_hmac
-system_helper.httpRequest = system_helper.http_request
 SystemHelper = system_helper
 count_token = system_helper.count_token
 str_to_base64 = system_helper.str_to_base64
@@ -227,32 +334,53 @@ class _BuiltinsProxy:
 _builtins_proxy = None  # init 后创建
 
 
+_import_guard = False
+
 def _safe_import(name, *args, **kwargs):
+    global _import_guard
+    # 重入保护：避免 extract_stack / _original_import 内部触发 import 时无限递归
+    if _import_guard:
+        return _original_import(name, *args, **kwargs)
     top_level = name.split('.')[0]
     # 拦截 builtins 模块，返回代理
     if top_level == 'builtins' and _builtins_proxy is not None:
         return _builtins_proxy
-    if top_level not in _allowed_modules:
-        # 只检查直接调用者帧（触发 import 的那一帧）
-        # 如果直接调用者是 site-packages 中的第三方库或 stdlib，放行（库内部依赖）
-        # 只有当直接调用者是用户代码时才拦截
+    # 安全的 stdlib 模块直接放行（不含危险模块）
+    if top_level in _STDLIB_MODULES and top_level not in _DANGEROUS_STDLIB:
+        return _original_import(name, *args, **kwargs)
+    # 在白名单中的模块直接放行
+    if top_level in _allowed_modules:
+        return _original_import(name, *args, **kwargs)
+    # 不在白名单中的模块（含危险 stdlib）：检查是否由用户代码直接触发
+    _import_guard = True
+    try:
         stack = _tb.extract_stack()
-        # stack[-1] 是 _safe_import 自身，stack[-2] 是直接调用者
-        if len(stack) >= 2:
-            caller_fn = stack[-2].filename or ''
-            if caller_fn in ('<string>', '<test>', '<module>'):
-                raise ImportError(f"Module '{name}' is not in the allowlist.")
-            if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
-                raise ImportError(f"Module '{name}' is not in the allowlist.")
+    finally:
+        _import_guard = False
+    # 只拦截直接调用者是用户代码的情况（<string>/<test>/<module>）
+    # stdlib 内部的间接 import（如 locale -> os）放行
+    if len(stack) >= 2:
+        caller_fn = stack[-2].filename or ''
+        if caller_fn in ('<string>', '<test>', '<module>'):
+            raise ImportError(f"Module '{name}' is not in the allowlist.")
     return _original_import(name, *args, **kwargs)
 
 
 # ===== 文件系统限制 =====
 _original_open = open
 
+_open_guard = False
+
 def _restricted_open(*args, **kwargs):
     """限制 open() — 只允许第三方库内部调用，禁止用户代码直接读写文件"""
-    stack = _tb.extract_stack()
+    global _open_guard
+    if _open_guard:
+        return _original_open(*args, **kwargs)
+    _open_guard = True
+    try:
+        stack = _tb.extract_stack()
+    finally:
+        _open_guard = False
     if len(stack) >= 2:
         caller_fn = stack[-2].filename or ''
         # 用户代码（<string>）不允许直接 open
@@ -266,11 +394,17 @@ def _restricted_open(*args, **kwargs):
 
 # ===== 日志收集 =====
 _logs = []
+_log_size = 0
+_MAX_LOG_SIZE = 1024 * 1024  # 1MB
 _orig_print = print
 
 
 def _safe_print(*args, **kwargs):
-    _logs.append(' '.join(str(a) for a in args))
+    global _log_size
+    line = ' '.join(str(a) for a in args)
+    if _log_size + len(line) <= _MAX_LOG_SIZE:
+        _logs.append(line)
+        _log_size += len(line)
 
 
 # ===== 输出 =====
@@ -280,14 +414,24 @@ def write_line(obj):
 
 
 # ===== 超时信号处理 =====
+_timeout_stage = 0  # 0=未触发, 1=第一次(可恢复), 2=第二次(强制退出)
+
 def _timeout_handler(signum, frame):
+    global _timeout_stage
+    _timeout_stage += 1
+    if _timeout_stage >= 2:
+        # 第二次 alarm：用户代码 catch 了第一次 TimeoutError，强制写错误并退出当前执行
+        # 通过 SystemExit 强制终止（不可被 except Exception 捕获）
+        raise SystemExit("Script execution timed out (forced)")
+    # 第一次 alarm：设置 1s 后的兜底 alarm
+    signal.alarm(1)
     raise TimeoutError("Script execution timed out")
 
 
 # ===== 模块状态保护 =====
 # 用户代码可能污染共享模块（如 json.dumps = lambda x: "hacked"），
 # 需要在每次执行前快照、执行后恢复。
-_PROTECTED_MODULES = [json, _math, _time]
+_PROTECTED_MODULES = [json, _math, _time, _base64, _hashlib, _hmac, _copy]
 
 
 def _snapshot_modules():
@@ -345,6 +489,7 @@ def main_loop():
         if not initialized:
             if msg.get('type') == 'init':
                 _allowed_modules = set(msg.get('allowedModules', []))
+                _init_request_limits(msg.get('requestLimits'))
                 _builtins.__import__ = _safe_import
                 global _builtins_proxy
                 _builtins_proxy = _BuiltinsProxy(_builtins)
@@ -368,6 +513,8 @@ def main_loop():
 
         _request_count = 0
         _logs = []
+        _log_size = 0
+        _timeout_stage = 0
 
         # 替换 print
         _builtins.print = _safe_print
@@ -379,7 +526,7 @@ def main_loop():
         _mod_snapshots = _snapshot_modules()
 
         try:
-            # 设置超时
+            # 设置超时（双重 alarm：第一次抛 TimeoutError，第二次兜底防止用户 catch）
             signal.signal(signal.SIGALRM, _timeout_handler)
             signal.alarm(timeout_s)
 
@@ -397,6 +544,11 @@ def main_loop():
             # 限制 open() — 禁止用户代码直接读写文件系统
             _safe_builtins['open'] = _restricted_open
 
+            # H3: 屏蔽 object.__subclasses__，防止通过子类树找到已加载的危险模块
+            class _SafeObject(object):
+                __subclasses__ = None
+            _safe_builtins['object'] = _SafeObject
+
             # 构建执行环境
             exec_globals = {
                 '__builtins__': _safe_builtins,
@@ -413,9 +565,11 @@ def main_loop():
                 'math': _math,
                 'time': _time,
             }
-            # 展开 variables 到全局
+            # 展开 variables 到全局（过滤保留关键字，防止覆盖沙箱安全全局变量）
+            _reserved_keys = frozenset(exec_globals.keys())
             for k, v in variables.items():
-                exec_globals[k] = v
+                if k not in _reserved_keys:
+                    exec_globals[k] = v
 
             # 执行用户代码
             exec(code, exec_globals)
@@ -450,7 +604,7 @@ def main_loop():
                 "data": {"codeReturn": result, "log": '\n'.join(_logs)}
             })
 
-        except Exception as e:
+        except (Exception, SystemExit) as e:
             signal.alarm(0)
             write_line({"success": False, "message": str(e)})
 

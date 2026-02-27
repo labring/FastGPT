@@ -23,6 +23,11 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./
 
+# 创建非 root 用户运行沙箱
+RUN addgroup -S sandbox && adduser -S sandbox -G sandbox && \
+    chown -R sandbox:sandbox /app
+USER sandbox
+
 ENV NODE_ENV=production
 ENV SANDBOX_PORT=3000
 

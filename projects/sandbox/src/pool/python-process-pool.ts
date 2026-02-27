@@ -25,13 +25,14 @@ interface PoolWorker {
 export class PythonProcessPool {
   private workers: PoolWorker[] = [];
   private idleWorkers: PoolWorker[] = [];
-  private waitQueue: ((worker: PoolWorker) => void)[] = [];
+  private waitQueue: { resolve: (worker: PoolWorker) => void; reject: (err: Error) => void }[] = [];
   private nextId = 0;
   private poolSize: number;
   private ready = false;
   private healthCheckTimer?: ReturnType<typeof setInterval>;
   private static readonly HEALTH_CHECK_INTERVAL = 30_000;
   private static readonly HEALTH_CHECK_TIMEOUT = 5_000;
+  private static readonly SPAWN_TIMEOUT = 10_000;
 
   constructor(poolSize?: number) {
     this.poolSize = poolSize ?? config.poolSize;
@@ -53,7 +54,13 @@ export class PythonProcessPool {
   private spawnWorker(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const id = this.nextId++;
-      const proc = spawn('python3', ['-u', WORKER_SCRIPT], {
+      const maxMemoryKB = config.maxMemoryMB * 1024;
+      // ulimit -v 仅 Linux 生效，macOS 不支持
+      const useUlimit = process.platform === 'linux';
+      const cmd = useUlimit
+        ? `ulimit -v ${maxMemoryKB} && exec python3 -u ${WORKER_SCRIPT}`
+        : `exec python3 -u ${WORKER_SCRIPT}`;
+      const proc = spawn('sh', ['-c', cmd], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin'
@@ -63,8 +70,23 @@ export class PythonProcessPool {
       const rl = createInterface({ input: proc.stdout!, terminal: false });
       const worker: PoolWorker = { proc, rl, busy: false, id };
 
+      let settled = false;
+      // H6: init 超时保护，防止 worker 启动卡住导致 pool.init() 永远挂起
+      const spawnTimer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        rl.removeAllListeners('line');
+        proc.kill('SIGKILL');
+        reject(
+          new Error(`Python worker ${id} init timeout after ${PythonProcessPool.SPAWN_TIMEOUT}ms`)
+        );
+      }, PythonProcessPool.SPAWN_TIMEOUT);
+
       // 等待 init ready 响应
       const onFirstLine = (line: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(spawnTimer);
         try {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
@@ -74,7 +96,7 @@ export class PythonProcessPool {
             const waiter = this.waitQueue.shift();
             if (waiter) {
               worker.busy = true;
-              waiter(worker);
+              waiter.resolve(worker);
             } else {
               this.idleWorkers.push(worker);
             }
@@ -91,6 +113,9 @@ export class PythonProcessPool {
       proc.stderr?.resume();
 
       proc.on('error', (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(spawnTimer);
         reject(new Error(`Python worker ${id} spawn error: ${err.message}`));
       });
 
@@ -98,7 +123,13 @@ export class PythonProcessPool {
       proc.stdin!.write(
         JSON.stringify({
           type: 'init',
-          allowedModules: config.pythonAllowedModules
+          allowedModules: config.pythonAllowedModules,
+          requestLimits: {
+            maxRequests: config.maxRequests,
+            timeoutMs: config.requestTimeoutMs,
+            maxResponseSize: config.maxResponseSize * 1024 * 1024,
+            maxRequestBodySize: config.maxRequestBodySize * 1024 * 1024
+          }
         }) + '\n'
       );
     });
@@ -131,8 +162,8 @@ export class PythonProcessPool {
       idle.busy = true;
       return Promise.resolve(idle);
     }
-    return new Promise<PoolWorker>((resolve) => {
-      this.waitQueue.push(resolve);
+    return new Promise<PoolWorker>((resolve, reject) => {
+      this.waitQueue.push({ resolve, reject });
     });
   }
 
@@ -143,7 +174,7 @@ export class PythonProcessPool {
     const waiter = this.waitQueue.shift();
     if (waiter) {
       worker.busy = true;
-      waiter(worker);
+      waiter.resolve(worker);
     } else {
       this.idleWorkers.push(worker);
     }
@@ -151,13 +182,13 @@ export class PythonProcessPool {
 
   /** 执行用户代码 */
   async execute(options: ExecuteOptions): Promise<ExecuteResult> {
-    const { code, variables, limits } = options;
+    const { code, variables } = options;
 
     if (!code || typeof code !== 'string' || !code.trim()) {
       return { success: false, message: 'Code cannot be empty' };
     }
 
-    const timeoutMs = Math.min(limits?.timeoutMs ?? config.maxTimeoutMs, config.maxTimeoutMs);
+    const timeoutMs = config.maxTimeoutMs;
 
     const worker = await this.acquire();
 
@@ -244,6 +275,9 @@ export class PythonProcessPool {
   private pingWorker(worker: PoolWorker): void {
     if (worker.busy || !this.idleWorkers.includes(worker)) return;
 
+    // H8: ping 期间从 idle 中移除，防止 acquire 拿到正在 ping 的 worker 导致响应竞争
+    this.idleWorkers = this.idleWorkers.filter((w) => w !== worker);
+
     const replaceWorker = (reason: string) => {
       console.warn(`PythonProcessPool: worker ${worker.id} ${reason}, replacing`);
       this.removeWorker(worker);
@@ -252,6 +286,18 @@ export class PythonProcessPool {
         this.spawnWorker().catch((err) => {
           console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
         });
+      }
+    };
+
+    const returnToIdle = () => {
+      if (!worker.busy && this.workers.includes(worker) && !this.idleWorkers.includes(worker)) {
+        const waiter = this.waitQueue.shift();
+        if (waiter) {
+          worker.busy = true;
+          waiter.resolve(worker);
+        } else {
+          this.idleWorkers.push(worker);
+        }
       }
     };
 
@@ -266,6 +312,8 @@ export class PythonProcessPool {
         const msg = JSON.parse(line);
         if (msg.type !== 'pong') {
           replaceWorker('health check invalid response');
+        } else {
+          returnToIdle();
         }
       } catch {
         replaceWorker('health check parse error');
@@ -291,6 +339,10 @@ export class PythonProcessPool {
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
       this.healthCheckTimer = undefined;
+    }
+    // H7: reject 所有等待中的请求，防止 Promise 永远挂起
+    for (const waiter of this.waitQueue) {
+      waiter.reject(new Error('Pool is shutting down'));
     }
     for (const worker of this.workers) {
       worker.proc.kill('SIGTERM');

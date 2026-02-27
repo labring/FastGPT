@@ -15,7 +15,6 @@ import * as http from 'http';
 import * as https from 'https';
 import * as dns from 'dns';
 import * as net from 'net';
-
 const _OriginalFunction = Function;
 
 // ===== 安全 shim =====
@@ -23,14 +22,14 @@ const _OriginalFunction = Function;
 // 不再全局覆盖 Object.getPrototypeOf，避免破坏 lodash 等合法库
 const _origGetProto = Object.getPrototypeOf;
 const _origReflectGetProto = Reflect.getPrototypeOf;
-const _blockedProtos = new Set([_OriginalFunction.prototype]);
+const _blockedProtos = new Set<any>([_OriginalFunction.prototype]);
 
 Object.getPrototypeOf = function (obj: any) {
   const proto = _origGetProto(obj);
-  if (_blockedProtos.has(proto)) return Object.create(null);
+  if (_blockedProtos.has(proto)) return Object.create(null) as any;
   return proto;
 };
-Reflect.getPrototypeOf = function (obj: any) {
+Reflect.getPrototypeOf = function (obj: any): any {
   const proto = _origReflectGetProto(obj);
   if (_blockedProtos.has(proto)) return Object.create(null);
   return proto;
@@ -43,7 +42,11 @@ if ((Error as any).captureStackTrace) delete (Error as any).captureStackTrace;
 const _SafeFunction = function (..._args: any[]) {
   throw new Error('Function constructor is not allowed in sandbox');
 } as unknown as FunctionConstructor;
-_SafeFunction.prototype = _OriginalFunction.prototype;
+Object.defineProperty(_SafeFunction, 'prototype', {
+  value: _OriginalFunction.prototype,
+  writable: false,
+  configurable: false
+});
 Object.defineProperty(_OriginalFunction.prototype, 'constructor', {
   value: _SafeFunction,
   writable: false,
@@ -65,33 +68,18 @@ for (const FnCtor of [_AsyncFunction, _GeneratorFunction, _AsyncGeneratorFunctio
   });
 }
 
-if (typeof (globalThis as any).Bun !== 'undefined') {
-  const dangerous = [
-    'write',
-    'spawn',
-    'spawnSync',
-    'openInEditor',
-    'serve',
-    'connect',
-    'listen',
-    'udpSocket',
-    'dns',
-    'plugin',
-    'build',
-    'Transpiler'
-  ];
-  for (const api of dangerous) {
-    try {
-      (globalThis as any).Bun[api] = undefined;
-    } catch {}
-  }
-}
+// C2: Bun API 在用户代码中通过函数参数遮蔽来阻止访问（见 userFn 构造处）
+// 不在全局移除，因为 Bun 运行时自身依赖 globalThis.Bun
 
 (globalThis as any).fetch = undefined;
 (globalThis as any).XMLHttpRequest = undefined;
 (globalThis as any).WebSocket = undefined;
 
 // ===== process 对象加固 =====
+// 保存 worker 自身需要的引用
+const _workerStdout = process.stdout;
+const _workerStdin = process.stdin;
+
 if (typeof process !== 'undefined') {
   // 删除危险方法
   const dangerousMethods = [
@@ -100,6 +88,10 @@ if (typeof process !== 'undefined') {
     '_linkedBinding',
     'kill',
     'chdir',
+    'exit',
+    'emitWarning',
+    'send',
+    'disconnect',
     '_debugProcess',
     '_debugEnd',
     '_startProfilerIdleNotifier',
@@ -186,7 +178,8 @@ function dnsResolve(hostname: string): Promise<string[]> {
 const REQUEST_LIMITS = {
   maxRequests: 30,
   timeoutMs: 60000,
-  maxResponseSize: 2 * 1024 * 1024,
+  maxResponseSize: 10 * 1024 * 1024,
+  maxRequestBodySize: 5 * 1024 * 1024,
   allowedProtocols: ['http:', 'https:']
 };
 
@@ -231,6 +224,9 @@ const SystemHelper = {
           ? opts.body
           : JSON.stringify(opts.body)
         : null;
+    if (body && body.length > REQUEST_LIMITS.maxRequestBodySize) {
+      throw new Error('Request body too large');
+    }
     const timeout = Math.min(opts.timeout || REQUEST_LIMITS.timeoutMs, REQUEST_LIMITS.timeoutMs);
     if (body && !headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json';
@@ -304,11 +300,11 @@ const safeRequire = new Proxy(origRequire, {
 
 // ===== 输出辅助 =====
 function writeLine(obj: any): void {
-  process.stdout.write(JSON.stringify(obj) + '\n');
+  _workerStdout.write(JSON.stringify(obj) + '\n');
 }
 
 // ===== 主循环 =====
-const rl = createInterface({ input: process.stdin, terminal: false });
+const rl = createInterface({ input: _workerStdin, terminal: false });
 let initialized = false;
 
 rl.on('line', async (line: string) => {
@@ -324,6 +320,17 @@ rl.on('line', async (line: string) => {
   if (!initialized) {
     if (msg.type === 'init') {
       allowedModules = new Set(msg.allowedModules || []);
+      // 从 init 消息读取请求限制（由 process-pool 从 config 传入）
+      if (msg.requestLimits) {
+        if (msg.requestLimits.maxRequests != null)
+          REQUEST_LIMITS.maxRequests = msg.requestLimits.maxRequests;
+        if (msg.requestLimits.timeoutMs != null)
+          REQUEST_LIMITS.timeoutMs = msg.requestLimits.timeoutMs;
+        if (msg.requestLimits.maxResponseSize != null)
+          REQUEST_LIMITS.maxResponseSize = msg.requestLimits.maxResponseSize;
+        if (msg.requestLimits.maxRequestBodySize != null)
+          REQUEST_LIMITS.maxRequestBodySize = msg.requestLimits.maxRequestBodySize;
+      }
       writeLine({ type: 'ready' });
       initialized = true;
     } else {
@@ -343,9 +350,17 @@ rl.on('line', async (line: string) => {
   requestCount = 0; // 每次任务重置
 
   const logs: string[] = [];
+  let logSize = 0;
+  const MAX_LOG_SIZE = 1024 * 1024; // 1MB
   const safeConsole = {
     log(...args: any[]) {
-      logs.push(args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
+      const line = args
+        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+        .join(' ');
+      if (logSize + line.length <= MAX_LOG_SIZE) {
+        logs.push(line);
+        logSize += line.length;
+      }
     }
   };
 
@@ -362,6 +377,13 @@ rl.on('line', async (line: string) => {
     }
 
     const resultPromise = (async () => {
+      // C2 + #19: 通过函数参数遮蔽危险全局对象，用户代码无法访问 Bun/process/globalThis
+      const _sandboxProcess = Object.freeze({
+        env: Object.freeze({}),
+        cwd: () => '/sandbox',
+        version: process.version,
+        platform: process.platform
+      });
       const userFn = new (_OriginalFunction as any)(
         'require',
         'console',
@@ -372,6 +394,10 @@ rl.on('line', async (line: string) => {
         'delay',
         'httpRequest',
         'variables',
+        'Bun',
+        'process',
+        'globalThis',
+        'global',
         code + '\nreturn main;'
       );
       const main = userFn(
@@ -383,7 +409,11 @@ rl.on('line', async (line: string) => {
         createHmac,
         delay,
         httpRequest,
-        variables || {}
+        variables || {},
+        undefined,
+        _sandboxProcess,
+        undefined,
+        undefined
       );
       return await main(variables || {});
     })();

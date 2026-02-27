@@ -73,7 +73,9 @@ describe('Semaphore', () => {
     order.push(1);
 
     // 第二个 acquire 会排队
-    const p2 = sem.acquire().then(() => { order.push(2); });
+    const p2 = sem.acquire().then(() => {
+      order.push(2);
+    });
     expect(sem.stats.queued).toBe(1);
 
     // release 唤醒排队的
@@ -92,9 +94,15 @@ describe('Semaphore', () => {
 
     await sem.acquire();
 
-    const p1 = sem.acquire().then(() => { order.push(1); });
-    const p2 = sem.acquire().then(() => { order.push(2); });
-    const p3 = sem.acquire().then(() => { order.push(3); });
+    const p1 = sem.acquire().then(() => {
+      order.push(1);
+    });
+    const p2 = sem.acquire().then(() => {
+      order.push(2);
+    });
+    const p3 = sem.acquire().then(() => {
+      order.push(3);
+    });
 
     expect(sem.stats.queued).toBe(3);
 
@@ -120,17 +128,13 @@ describe('Semaphore', () => {
     const task = async (name: string, delayMs: number) => {
       await sem.acquire();
       log.push(`${name}-start`);
-      await new Promise(r => setTimeout(r, delayMs));
+      await new Promise((r) => setTimeout(r, delayMs));
       log.push(`${name}-end`);
       sem.release();
     };
 
     // 同时启动三个任务
-    await Promise.all([
-      task('A', 50),
-      task('B', 50),
-      task('C', 50),
-    ]);
+    await Promise.all([task('A', 50), task('B', 50), task('C', 50)]);
 
     // 串行执行：每个任务的 start 必须在前一个 end 之后
     // A-start, A-end, B-start, B-end, C-start, C-end
@@ -168,7 +172,7 @@ describe('Semaphore', () => {
           maxConcurrent = currentRunning;
         }
         // 模拟异步工作
-        await new Promise(r => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 10));
         currentRunning--;
         completed++;
         sem.release();
@@ -197,7 +201,7 @@ describe('Semaphore', () => {
         await sem.acquire();
         currentRunning++;
         if (currentRunning > maxConcurrent) maxConcurrent = currentRunning;
-        await new Promise(r => setTimeout(r, 5));
+        await new Promise((r) => setTimeout(r, 5));
         currentRunning--;
         sem.release();
       })()
@@ -231,5 +235,100 @@ describe('Semaphore', () => {
     const result = await sem.acquire();
     expect(result).toBeUndefined();
     sem.release();
+  });
+});
+
+// ============================================================
+// 竞态条件补充（原 semaphore-race.test.ts）
+// ============================================================
+describe('Semaphore 竞态条件补充', () => {
+  it('release 过多后 acquire 仍能正常工作', async () => {
+    const sem = new Semaphore(2);
+    sem.release();
+    expect(sem.stats.current).toBe(-1);
+
+    await sem.acquire();
+    expect(sem.stats.current).toBe(0);
+    await sem.acquire();
+    expect(sem.stats.current).toBe(1);
+    await sem.acquire();
+    expect(sem.stats.current).toBe(2);
+
+    const p = sem.acquire();
+    expect(sem.stats.queued).toBe(1);
+    sem.release();
+    await p;
+  });
+
+  it('快速交替 acquire/release 不丢失状态', async () => {
+    const sem = new Semaphore(1);
+    for (let i = 0; i < 100; i++) {
+      await sem.acquire();
+      sem.release();
+    }
+    expect(sem.stats.current).toBe(0);
+    expect(sem.stats.queued).toBe(0);
+  });
+
+  it('异步任务异常后 release 仍被调用（模拟 try/finally）', async () => {
+    const sem = new Semaphore(2);
+    const errors: string[] = [];
+
+    const task = async (shouldFail: boolean) => {
+      await sem.acquire();
+      try {
+        if (shouldFail) throw new Error('task failed');
+        return 'ok';
+      } catch (e: any) {
+        errors.push(e.message);
+        return 'error';
+      } finally {
+        sem.release();
+      }
+    };
+
+    const results = await Promise.all([
+      task(false),
+      task(true),
+      task(false),
+      task(true),
+      task(false)
+    ]);
+
+    expect(results.filter((r) => r === 'ok')).toHaveLength(3);
+    expect(results.filter((r) => r === 'error')).toHaveLength(2);
+    expect(errors).toHaveLength(2);
+    expect(sem.stats.current).toBe(0);
+    expect(sem.stats.queued).toBe(0);
+  });
+
+  it('max=0 时所有 acquire 都排队', async () => {
+    const sem = new Semaphore(0);
+    const p1 = sem.acquire();
+    const p2 = sem.acquire();
+    expect(sem.stats.queued).toBe(2);
+    expect(sem.stats.current).toBe(0);
+
+    sem.release();
+    await p1;
+    sem.release();
+    await p2;
+  });
+
+  it('并发 acquire 后批量 release', async () => {
+    const sem = new Semaphore(2);
+    await sem.acquire();
+    await sem.acquire();
+
+    const waiters = Array.from({ length: 5 }, () => sem.acquire());
+    expect(sem.stats.queued).toBe(5);
+
+    for (let i = 0; i < 7; i++) {
+      sem.release();
+    }
+    await Promise.all(waiters);
+
+    expect(sem.stats.queued).toBe(0);
+    expect(sem.stats.current).toBe(0);
   });
 });

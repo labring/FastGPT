@@ -72,11 +72,7 @@ docker run -p 3000:3000 \
 ```json
 {
   "code": "async function main(variables) {\n  return { result: variables.a + variables.b }\n}",
-  "variables": { "a": 1, "b": 2 },
-  "limits": {
-    "timeoutMs": 10000,
-    "memoryMB": 64
-  }
+  "variables": { "a": 1, "b": 2 }
 }
 ```
 
@@ -87,11 +83,7 @@ docker run -p 3000:3000 \
 ```json
 {
   "code": "def main(variables):\n    return {'result': variables['a'] + variables['b']}",
-  "variables": { "a": 1, "b": 2 },
-  "limits": {
-    "timeoutMs": 10000,
-    "memoryMB": 64
-  }
+  "variables": { "a": 1, "b": 2 }
 }
 ```
 
@@ -139,7 +131,6 @@ docker run -p 3000:3000 \
 |------|------|--------|
 | `SANDBOX_PORT` | 服务端口 | `3000` |
 | `SANDBOX_TOKEN` | Bearer Token 认证密钥 | 空（不鉴权） |
-| `LOG_LEVEL` | 日志级别 | `info` |
 
 ### 进程池
 
@@ -151,18 +142,17 @@ docker run -p 3000:3000 \
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `SANDBOX_TIMEOUT` | 默认执行超时（ms） | `10000` |
 | `SANDBOX_MAX_TIMEOUT` | 超时上限（ms），请求不可超过此值 | `60000` |
-| `SANDBOX_MEMORY_MB` | 默认内存限制（MB） | `64` |
 | `SANDBOX_MAX_MEMORY_MB` | 内存上限（MB） | `256` |
 
 ### 网络请求限制
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `SANDBOX_MAX_REQUESTS` | 单次执行最大 HTTP 请求数 | `30` |
-| `SANDBOX_REQUEST_TIMEOUT` | 单次 HTTP 请求超时（ms） | `10000` |
-| `SANDBOX_MAX_RESPONSE_SIZE` | 最大响应体大小（bytes） | `2097152`（2MB） |
+| `SANDBOX_REQUEST_MAX_COUNT` | 单次执行最大 HTTP 请求数 | `30` |
+| `SANDBOX_REQUEST_TIMEOUT` | 单次 HTTP 请求超时（ms） | `60000` |
+| `SANDBOX_REQUEST_MAX_RESPONSE_MB` | 最大响应体大小（MB） | `10` |
+| `SANDBOX_REQUEST_MAX_BODY_MB` | 最大请求体大小（MB） | `5` |
 
 ## 项目结构
 
@@ -207,16 +197,12 @@ cd projects/sandbox
 bun add <package-name>
 ```
 
-2. **加入 require 白名单**（`src/sandbox/js-template.ts`）：
+2. **加入白名单**（环境变量 `SANDBOX_JS_ALLOWED_MODULES`）：
 
-找到 `ALLOWED_MODULES` 数组，添加包名：
+在逗号分隔列表中添加包名：
 
-```typescript
-const ALLOWED_MODULES = [
-  'lodash', 'dayjs', 'moment', 'uuid',
-  'crypto-js', 'qs', 'url', 'querystring',
-  'your-new-package'  // ← 添加这里
-];
+```bash
+SANDBOX_JS_ALLOWED_MODULES=lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring,your-new-package
 ```
 
 3. **重新构建 Docker 镜像**。
@@ -243,9 +229,9 @@ pandas
 your-new-package
 ```
 
-2. **检查模块黑名单**（`src/sandbox/python-template.ts`）：
+2. **加入白名单**（环境变量 `SANDBOX_PYTHON_ALLOWED_MODULES`）：
 
-确保新包不在 `DANGEROUS_MODULES` 列表中。如果新包依赖了黑名单中的模块（如 `os`），标准库路径的间接导入会自动放行，无需额外配置。
+在逗号分隔列表中添加包名。如果新包依赖了黑名单中的模块（如 `os`），标准库路径的间接导入会自动放行，无需额外配置。
 
 3. **重新构建 Docker 镜像**。
 
@@ -314,7 +300,7 @@ your-new-package
 ## 测试
 
 ```bash
-# 全部测试（318 cases）
+# 全部测试（332 cases）
 bun run test
 
 # 单个文件

@@ -12,14 +12,8 @@ const executeSchema = z.object({
   code: z
     .string()
     .min(1)
-    .max(1024 * 1024), // 最大 1MB 代码
-  variables: z.record(z.string(), z.any()).default({}),
-  limits: z
-    .object({
-      timeoutMs: z.number().int().positive().optional(),
-      memoryMB: z.number().int().positive().optional()
-    })
-    .optional()
+    .max(5 * 1024 * 1024), // 最大 5MB 代码
+  variables: z.record(z.string(), z.any()).default({})
 });
 
 const app = new Hono();
@@ -39,12 +33,18 @@ const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
 
 /** 健康检查（不需要认证） */
 app.get('/health', (c) => {
-  return c.json({
-    status: 'ok',
-    version: '5.0.0',
-    jsPool: jsPool.stats,
-    pythonPool: pythonPool.stats
-  });
+  const jsStats = jsPool.stats;
+  const pyStats = pythonPool.stats;
+  const isReady = jsStats.total > 0 && pyStats.total > 0;
+  return c.json(
+    {
+      status: isReady ? 'ok' : 'degraded',
+      version: '5.0.0',
+      jsPool: jsStats,
+      pythonPool: pyStats
+    },
+    isReady ? 200 : 503
+  );
 });
 
 /** 认证中间件：仅当配置了 token 时启用 */
@@ -73,9 +73,10 @@ app.post('/sandbox/js', async (c) => {
     const result = await jsPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
+    console.error('JS sandbox error:', err);
     return c.json({
       success: false,
-      message: err.message || 'Internal server error'
+      message: 'Internal server error'
     });
   }
 });
@@ -97,9 +98,10 @@ app.post('/sandbox/python', async (c) => {
     const result = await pythonPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
+    console.error('Python sandbox error:', err);
     return c.json({
       success: false,
-      message: err.message || 'Internal server error'
+      message: 'Internal server error'
     });
   }
 });
@@ -123,7 +125,7 @@ app.get('/sandbox/modules', (c) => {
         ]
       },
       python: {
-        blockedModules: config.pythonBlockedModules,
+        allowedModules: config.pythonAllowedModules,
         builtinGlobals: [
           'system_helper',
           'count_token',
