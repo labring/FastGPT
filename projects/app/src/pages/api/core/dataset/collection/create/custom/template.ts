@@ -25,6 +25,7 @@ import fs from 'fs';
 export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
+  parentId?: string; // Optional: Parent directory ID
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
@@ -259,6 +260,7 @@ async function handler(
         teamId,
         tmbId,
         datasetId: dataset._id,
+        parentId: data.parentId,
         name: fileName,
         type: DatasetCollectionTypeEnum.file,
         fileId,
