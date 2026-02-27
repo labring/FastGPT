@@ -33,7 +33,7 @@ export class ProcessPool {
   private healthCheckTimer?: ReturnType<typeof setInterval>;
   private static readonly HEALTH_CHECK_INTERVAL = 30_000; // 30s
   private static readonly HEALTH_CHECK_TIMEOUT = 5_000; // 5s
-  private static readonly SPAWN_TIMEOUT = 10_000; // 10s
+  private static readonly SPAWN_TIMEOUT = 120_000; // 120s
 
   constructor(poolSize?: number) {
     this.poolSize = poolSize ?? config.poolSize;

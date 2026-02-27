@@ -32,7 +32,7 @@ export class PythonProcessPool {
   private healthCheckTimer?: ReturnType<typeof setInterval>;
   private static readonly HEALTH_CHECK_INTERVAL = 30_000;
   private static readonly HEALTH_CHECK_TIMEOUT = 5_000;
-  private static readonly SPAWN_TIMEOUT = 10_000;
+  private static readonly SPAWN_TIMEOUT = 120_000;
 
   constructor(poolSize?: number) {
     this.poolSize = poolSize ?? config.poolSize;
