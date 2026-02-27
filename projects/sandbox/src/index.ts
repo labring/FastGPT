@@ -6,6 +6,7 @@ import { config } from './config';
 import { ProcessPool } from './pool/process-pool';
 import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
+import { getErrText } from './utils';
 
 /** 请求体校验 schema */
 const executeSchema = z.object({
@@ -76,7 +77,7 @@ app.post('/sandbox/js', async (c) => {
     console.error('JS sandbox error:', err);
     return c.json({
       success: false,
-      message: 'Internal server error'
+      message: getErrText(err)
     });
   }
 });
@@ -101,7 +102,7 @@ app.post('/sandbox/python', async (c) => {
     console.error('Python sandbox error:', err);
     return c.json({
       success: false,
-      message: 'Internal server error'
+      message: getErrText(err)
     });
   }
 });
@@ -111,31 +112,9 @@ app.get('/sandbox/modules', (c) => {
   return c.json({
     success: true,
     data: {
-      js: {
-        allowedModules: config.jsAllowedModules,
-        builtinGlobals: [
-          'SystemHelper',
-          'countToken',
-          'strToBase64',
-          'createHmac',
-          'delay',
-          'httpRequest',
-          'variables',
-          'console.log'
-        ]
-      },
-      python: {
-        allowedModules: config.pythonAllowedModules,
-        builtinGlobals: [
-          'system_helper',
-          'count_token',
-          'str_to_base64',
-          'create_hmac',
-          'delay',
-          'http_request',
-          'variables'
-        ]
-      }
+      js: config.jsAllowedModules,
+      python: config.pythonAllowedModules,
+      builtinGlobals: ['SystemHelper.httpRequest']
     }
   });
 });

@@ -14,7 +14,6 @@ import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   JS_TEMPLATE,
   PY_TEMPLATE,
@@ -30,6 +29,9 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getSandboxPackages } from './api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -50,6 +52,21 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
   });
+
+  const { data: packages } = useRequest(getSandboxPackages, {
+    manual: false
+  });
+
+  const packageText = useMemo(() => {
+    const packagesList =
+      codeType.value === SandboxCodeTypeEnum.js
+        ? packages?.js.join(', ')
+        : packages?.python.join(', ');
+    return t('workflow:code_allow_packages_func', {
+      modules: packagesList,
+      globals: packages?.builtinGlobals.join(', ')
+    });
+  }, [packages, codeType.value]);
 
   const CustomComponent = useMemo(() => {
     return {
@@ -88,9 +105,12 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   })();
                 }}
               />
-              {codeType.value === 'py' && (
-                <QuestionTip ml={2} label={t('workflow:support_code_language')} />
-              )}
+              <MyTooltip label={packageText}>
+                <Box ml={2} fontSize={'sm'} color={'primary.500'}>
+                  {t('workflow:code_allow_packages')}
+                </Box>
+              </MyTooltip>
+
               <PopoverConfirm
                 Trigger={
                   <Box cursor={'pointer'} color={'primary.500'} fontSize={'xs'} ml="auto" mr={2}>
@@ -135,7 +155,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [codeType, nodeId, t, presentationMode, onChangeNode]);
+  }, [packageText, codeType, nodeId, t, presentationMode, onChangeNode]);
 
   const { isTool, commonInputs } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),

@@ -15,6 +15,7 @@
     "http",
     "tfswitch",
     "variable_update",
+    "sandbox-v2",
     "sandbox",
     "loop",
     "knowledge_base_search_merge",
