@@ -811,6 +811,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             getData(1);
           }}
           onClose={onCloseFaqImportModal}
+          parentId={parentId}
         />
       )}
       {isOpenGeneralImportModal && (
@@ -818,6 +819,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           isOpen={isOpenGeneralImportModal}
           onClose={onCloseGeneralImportModal}
           datasetId={datasetDetail._id}
+          parentId={parentId}
           onFinish={() => {
             getData(1);
           }}
