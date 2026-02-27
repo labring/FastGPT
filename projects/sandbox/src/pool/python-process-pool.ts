@@ -54,12 +54,9 @@ export class PythonProcessPool {
   private spawnWorker(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const id = this.nextId++;
-      const maxMemoryKB = config.maxMemoryMB * 1024;
-      // ulimit -v 仅 Linux 生效，macOS 不支持
-      const useUlimit = process.platform === 'linux';
-      const cmd = useUlimit
-        ? `ulimit -v ${maxMemoryKB} && exec python3 -u ${WORKER_SCRIPT}`
-        : `exec python3 -u ${WORKER_SCRIPT}`;
+      // 注意：不使用 ulimit -v 限制虚拟内存，Python 运行时同样需要较大虚拟地址空间。
+      // 内存限制应由容器 cgroup 控制。
+      const cmd = `exec python3 -u ${WORKER_SCRIPT}`;
       const proc = spawn('sh', ['-c', cmd], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
@@ -117,6 +114,17 @@ export class PythonProcessPool {
         settled = true;
         clearTimeout(spawnTimer);
         reject(new Error(`Python worker ${id} spawn error: ${err.message}`));
+      });
+
+      // 监听 init 阶段的进程退出，避免 worker 崩溃后傻等超时
+      proc.on('exit', (code, signal) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(spawnTimer);
+        rl.removeAllListeners('line');
+        reject(
+          new Error(`Python worker ${id} exited during init (code: ${code}, signal: ${signal})`)
+        );
       });
 
       // 发送 init 消息
@@ -260,10 +268,39 @@ export class PythonProcessPool {
     });
   }
 
-  /** 定期健康检查：检测僵死的 idle worker */
+  /** 检查 worker RSS 内存，超限则 kill 并 respawn */
+  private checkWorkerMemory(worker: PoolWorker): void {
+    const pid = worker.proc.pid;
+    if (!pid) return;
+    try {
+      const statm = require('fs').readFileSync(`/proc/${pid}/statm`, 'utf-8');
+      const rssPages = parseInt(statm.split(' ')[1], 10);
+      const rssBytes = rssPages * 4096;
+      const limitBytes = config.maxMemoryMB * 1024 * 1024;
+      if (rssBytes > limitBytes) {
+        console.warn(
+          `PythonProcessPool: worker ${worker.id} RSS ${Math.round(rssBytes / 1024 / 1024)}MB exceeds limit ${config.maxMemoryMB}MB, killing`
+        );
+        this.removeWorker(worker);
+        worker.proc.kill('SIGKILL');
+        if (this.ready) {
+          this.spawnWorker().catch((err) => {
+            console.error(`PythonProcessPool: failed to respawn worker ${worker.id}:`, err.message);
+          });
+        }
+      }
+    } catch {
+      // 非 Linux 或读取失败，跳过
+    }
+  }
+
+  /** 定期健康检查：检测僵死的 idle worker + 内存超限 */
   private startHealthCheck(): void {
     this.healthCheckTimer = setInterval(() => {
       if (!this.ready) return;
+      for (const worker of [...this.workers]) {
+        this.checkWorkerMemory(worker);
+      }
       const idleCopy = [...this.idleWorkers];
       for (const worker of idleCopy) {
         this.pingWorker(worker);

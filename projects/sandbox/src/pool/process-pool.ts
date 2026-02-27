@@ -48,19 +48,16 @@ export class ProcessPool {
     await Promise.all(promises);
     this.ready = true;
     this.startHealthCheck();
-    console.log(`ProcessPool: ${this.poolSize} workers preheated`);
+    console.log(`JSProcessPool: ${this.poolSize} workers preheated`);
   }
 
   /** 创建并初始化一个 worker */
   private spawnWorker(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const id = this.nextId++;
-      const maxMemoryKB = config.maxMemoryMB * 1024;
-      // ulimit -v 仅 Linux 生效，macOS 不支持
-      const useUlimit = process.platform === 'linux';
-      const cmd = useUlimit
-        ? `ulimit -v ${maxMemoryKB} && exec bun run ${WORKER_SCRIPT}`
-        : `exec bun run ${WORKER_SCRIPT}`;
+      // 注意：不使用 ulimit -v 限制虚拟内存，因为 Bun/V8 启动时会预留大量虚拟地址空间，
+      // 256MB 的 ulimit -v 会导致进程直接被 kill。内存限制应由容器 cgroup 或 --max-old-space-size 控制。
+      const cmd = `exec bun run ${WORKER_SCRIPT}`;
       const proc = spawn('sh', ['-c', cmd], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
@@ -85,7 +82,11 @@ export class ProcessPool {
         settled = true;
         rl.removeAllListeners('line');
         proc.kill('SIGKILL');
-        reject(new Error(`Worker ${id} init timeout after ${ProcessPool.SPAWN_TIMEOUT}ms`));
+        const stderr =
+          worker.stderrBuf.length > 0 ? ` | stderr: ${worker.stderrBuf.join('\n')}` : '';
+        reject(
+          new Error(`Worker ${id} init timeout after ${ProcessPool.SPAWN_TIMEOUT}ms${stderr}`)
+        );
       }, ProcessPool.SPAWN_TIMEOUT);
 
       const onFirstLine = (line: string) => {
@@ -120,6 +121,19 @@ export class ProcessPool {
         settled = true;
         clearTimeout(spawnTimer);
         reject(new Error(`Worker ${id} spawn error: ${err.message}`));
+      });
+
+      // 监听 init 阶段的进程退出，避免 worker 崩溃后傻等超时
+      proc.on('exit', (code, signal) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(spawnTimer);
+        rl.removeAllListeners('line');
+        const stderr =
+          worker.stderrBuf.length > 0 ? ` | stderr: ${worker.stderrBuf.join('\n')}` : '';
+        reject(
+          new Error(`Worker ${id} exited during init (code: ${code}, signal: ${signal})${stderr}`)
+        );
       });
 
       // 发送 init 消息
@@ -269,10 +283,42 @@ export class ProcessPool {
     });
   }
 
-  /** 定期健康检查：检测僵死的 idle worker */
+  /** 检查 worker RSS 内存，超限则 kill 并 respawn */
+  private checkWorkerMemory(worker: PoolWorker): void {
+    const pid = worker.proc.pid;
+    if (!pid) return;
+    try {
+      // Linux: 读取 /proc/pid/statm，第二个字段是 RSS（单位：页，通常 4KB）
+      const statm = require('fs').readFileSync(`/proc/${pid}/statm`, 'utf-8');
+      const rssPages = parseInt(statm.split(' ')[1], 10);
+      const rssBytes = rssPages * 4096;
+      const limitBytes = config.maxMemoryMB * 1024 * 1024;
+      if (rssBytes > limitBytes) {
+        console.warn(
+          `ProcessPool: worker ${worker.id} RSS ${Math.round(rssBytes / 1024 / 1024)}MB exceeds limit ${config.maxMemoryMB}MB, killing`
+        );
+        this.removeWorker(worker);
+        worker.proc.kill('SIGKILL');
+        if (this.ready) {
+          this.spawnWorker().catch((err) => {
+            console.error(`ProcessPool: failed to respawn worker ${worker.id}:`, err.message);
+          });
+        }
+      }
+    } catch {
+      // 非 Linux 或读取失败，跳过
+    }
+  }
+
+  /** 定期健康检查：检测僵死的 idle worker + 内存超限 */
   private startHealthCheck(): void {
     this.healthCheckTimer = setInterval(() => {
       if (!this.ready) return;
+      // 检查所有 worker 的内存使用
+      for (const worker of [...this.workers]) {
+        this.checkWorkerMemory(worker);
+      }
+      // ping idle worker
       const idleCopy = [...this.idleWorkers];
       for (const worker of idleCopy) {
         this.pingWorker(worker);
