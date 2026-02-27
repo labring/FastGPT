@@ -272,30 +272,12 @@ your-new-package
 | 函数 | 说明 |
 |------|------|
 | `SystemHelper.httpRequest(url, opts?)` | HTTP 请求（opts: `{method, headers, body, timeout}`） |
-| `SystemHelper.countToken(text)` | 估算 token 数（`≈ len/4`） |
-| `SystemHelper.strToBase64(text, prefix?)` | 字符串转 Base64 |
-| `SystemHelper.createHmac(algorithm, secret)` | HMAC 签名，返回 `{timestamp, sign}` |
-| `SystemHelper.delay(ms)` | 延迟（最大 10s） |
-| `countToken(text)` | 同 `SystemHelper.countToken` |
-| `strToBase64(text, prefix?)` | 同 `SystemHelper.strToBase64` |
-| `createHmac(algorithm, secret)` | 同 `SystemHelper.createHmac` |
-| `delay(ms)` | 同 `SystemHelper.delay` |
-| `httpRequest(url, opts?)` | 同 `SystemHelper.httpRequest` |
 
 ### Python（全局可用）
 
 | 函数 | 说明 |
 |------|------|
-| `system_helper.http_request(url, method, headers, body, timeout)` | HTTP 请求 |
-| `system_helper.count_token(text)` | 估算 token 数（`≈ len/4`） |
-| `system_helper.str_to_base64(text, prefix?)` | 字符串转 Base64 |
-| `system_helper.create_hmac(algorithm, secret)` | HMAC 签名，返回 `{timestamp, sign}` |
-| `system_helper.delay(ms)` | 延迟（最大 10s） |
-| `count_token(text)` | 同 `system_helper.count_token` |
-| `str_to_base64(text, prefix?)` | 同 `system_helper.str_to_base64` |
-| `create_hmac(algorithm, secret)` | 同 `system_helper.create_hmac` |
-| `delay(ms)` | 同 `system_helper.delay` |
-| `http_request(...)` | 同 `system_helper.http_request` |
+| `SystemHelper.httpRequest(url, opts?)` | HTTP 请求（opts: `{method, headers, body, timeout}`） |
 
 ## 测试
 

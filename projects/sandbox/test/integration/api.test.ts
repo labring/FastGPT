@@ -26,7 +26,6 @@ describe('API Routes', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe('ok');
-    expect(data.version).toBe('5.0.0');
   });
 
   // ===== JS =====

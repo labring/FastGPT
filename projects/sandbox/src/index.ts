@@ -28,7 +28,7 @@ const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
     console.log(`Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`);
   })
   .catch((err) => {
-    console.error('Failed to init process pool:', err.message);
+    console.log('Failed to init process pool:', err.message);
     process.exit(1);
   });
 
@@ -37,15 +37,7 @@ app.get('/health', (c) => {
   const jsStats = jsPool.stats;
   const pyStats = pythonPool.stats;
   const isReady = jsStats.total > 0 && pyStats.total > 0;
-  return c.json(
-    {
-      status: isReady ? 'ok' : 'degraded',
-      version: '5.0.0',
-      jsPool: jsStats,
-      pythonPool: pyStats
-    },
-    isReady ? 200 : 503
-  );
+  return c.json({ status: isReady ? 'ok' : 'degraded' }, isReady ? 200 : 503);
 });
 
 /** 认证中间件：仅当配置了 token 时启用 */
@@ -74,7 +66,7 @@ app.post('/sandbox/js', async (c) => {
     const result = await jsPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
-    console.error('JS sandbox error:', err);
+    console.log('JS sandbox error:', err);
     return c.json({
       success: false,
       message: getErrText(err)
@@ -99,7 +91,7 @@ app.post('/sandbox/python', async (c) => {
     const result = await pythonPool.execute(parsed.data as ExecuteOptions);
     return c.json(result);
   } catch (err: any) {
-    console.error('Python sandbox error:', err);
+    console.log('Python sandbox error:', err);
     return c.json({
       success: false,
       message: getErrText(err)

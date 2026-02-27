@@ -2,23 +2,49 @@
  * 资源限制测试
  *
  * 覆盖：
- * - 内存限制 ulimit（仅 Linux 生效，macOS 跳过）
+ * - 内存限制 ulimit（prlimit Linux）
  * - CPU 密集型超时（JS / Python）
  * - 运行时长限制（wall-clock timeout 验证）
  * - 网络请求限制（次数、请求体大小、响应大小）
+
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
 import { PythonProcessPool } from '../../src/pool/python-process-pool';
 import { config } from '../../src/config';
 import { platform } from 'os';
+import { checkPrlimitAvailable } from '../../src/utils/prlimit';
 
-const isLinux = platform() === 'linux';
+// 内存限制测试条件：Linux/BSD 且有 prlimit
+const canTestMemoryLimit =
+  (platform() === 'linux' || platform() === 'freebsd') && checkPrlimitAvailable();
+
+beforeAll(async () => {
+  const hasPrlimit = await checkPrlimitAvailable();
+  const isSupportedPlatform = platform() === 'linux' || platform() === 'freebsd';
+
+  console.log(`\n=== Memory Limit Test Status ===`);
+  console.log(`Platform: ${platform()}`);
+  if (isSupportedPlatform && !hasPrlimit) {
+    console.log(`prlimit available: ✗`);
+    console.log(`⚠️  Install: sudo apt-get install util-linux (Linux)`);
+  } else if (!isSupportedPlatform) {
+    console.log(`prlimit available: N/A (Use Docker for testing: scripts/test-memory-docker.sh)`);
+  } else {
+    console.log(`prlimit available: ✓`);
+  }
+  console.log(`Can test memory limit: ${isSupportedPlatform && hasPrlimit ? '✓' : '✗'}`);
+  console.log(`User configured memory: ${config.maxMemoryMB}MB`);
+  console.log(
+    `Actual process limit: ${config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB}MB (${config.maxMemoryMB}MB user + ${config.RUNTIME_MEMORY_OVERHEAD_MB}MB runtime)`
+  );
+  console.log(`=============================\n`);
+});
 
 // ============================================================
-// 1. 内存限制（仅 Linux）
+// 1. 内存限制（prlimit，Linux/BSD）
 // ============================================================
-describe.skipIf(!isLinux)('内存限制 (Linux only)', () => {
+describe.skipIf(!canTestMemoryLimit)('内存限制', () => {
   let pool: ProcessPool;
 
   afterEach(async () => {
@@ -32,15 +58,20 @@ describe.skipIf(!isLinux)('内存限制 (Linux only)', () => {
     await pool.init();
     expect(pool.stats.total).toBe(1);
 
-    // 尝试分配超过 maxMemoryMB 的内存
-    const allocMB = config.maxMemoryMB + 100;
+    // 尝试分配超过实际进程限制的内存
+    // 实际进程限制 = 用户配置 + 运行时开销(50MB)
+    // 分配大小 = 用户配置 + 150MB，确保超过实际限制
+    const allocMB = config.maxMemoryMB + 150;
+    const actualLimitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
+
     const result = await pool.execute({
       code: `async function main() {
         const arr = [];
+        // 尝试分配 ${allocMB}MB（实际限制是 ${actualLimitMB}MB）
         for (let i = 0; i < ${allocMB}; i++) {
           arr.push(Buffer.alloc(1024 * 1024));
         }
-        // 持有内存并等待，让内存轮询检测有机会发现超限
+        // 持有内存并等待，让操作系统检测到超限并 kill 进程
         await new Promise(r => setTimeout(r, 5000));
         return { allocated: arr.length };
       }`,
@@ -59,9 +90,36 @@ describe.skipIf(!isLinux)('内存限制 (Linux only)', () => {
     expect(result2.success).toBe(true);
     expect(result2.data?.codeReturn.recovered).toBe(true);
   }, 30000);
+
+  it('JS 分配配置范围内的内存正常工作', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    expect(pool.stats.total).toBe(1);
+
+    // 分配用户配置范围内的内存（应成功）
+    // 实际进程限制 = 用户配置 + 运行时开销(50MB)
+    // 所以分配用户配置大小的内存应该不会超限
+    const allocMB = Math.floor(config.maxMemoryMB * 0.8); // 分配 80% 的用户配置
+
+    const result = await pool.execute({
+      code: `async function main() {
+        const arr = [];
+        // 分配 ${allocMB}MB（用户配置 ${config.maxMemoryMB}MB 的 80%）
+        for (let i = 0; i < ${allocMB}; i++) {
+          arr.push(Buffer.alloc(1024 * 1024));
+        }
+        return { allocated: arr.length, totalMB: arr.length };
+      }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.allocated).toBe(allocMB);
+    expect(result.data?.codeReturn.totalMB).toBe(allocMB);
+  }, 30000);
 });
 
-describe.skipIf(!isLinux)('Python 内存限制 (Linux only)', () => {
+describe.skipIf(!canTestMemoryLimit)('Python 内存限制', () => {
   let pool: PythonProcessPool;
 
   afterEach(async () => {
@@ -75,9 +133,14 @@ describe.skipIf(!isLinux)('Python 内存限制 (Linux only)', () => {
     await pool.init();
     expect(pool.stats.total).toBe(1);
 
-    const allocMB = config.maxMemoryMB + 100;
+    // 尝试分配超过实际进程限制的内存
+    // 实际进程限制 = 用户配置 + 运行时开销(50MB)
+    // 分配大小 = 用户配置 + 150MB，确保超过实际限制
+    const allocMB = config.maxMemoryMB + 150;
+    const actualLimitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
+
     const result = await pool.execute({
-      code: `def main():\n    data = bytearray(${allocMB} * 1024 * 1024)\n    return {'size': len(data)}`,
+      code: `import time\ndef main():\n    # 尝试分配 ${allocMB}MB（实际限制是 ${actualLimitMB}MB）\n    data = bytearray(${allocMB} * 1024 * 1024)\n    # 持有内存并等待，让操作系统检测到超限并 kill 进程\n    time.sleep(5)\n    return {'size': len(data)}`,
       variables: {}
     });
     expect(result.success).toBe(false);
@@ -91,6 +154,26 @@ describe.skipIf(!isLinux)('Python 内存限制 (Linux only)', () => {
     });
     expect(result2.success).toBe(true);
     expect(result2.data?.codeReturn.recovered).toBe(true);
+  }, 30000);
+
+  it('Python 分配配置范围内的内存正常工作', async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+    expect(pool.stats.total).toBe(1);
+
+    // 分配用户配置范围内的内存（应成功）
+    // 实际进程限制 = 用户配置 + 运行时开销(50MB)
+    // 所以分配用户配置大小的内存应该不会超限
+    const allocMB = Math.floor(config.maxMemoryMB * 0.8); // 分配 80% 的用户配置
+
+    const result = await pool.execute({
+      code: `def main():\n    # 分配 ${allocMB}MB（用户配置 ${config.maxMemoryMB}MB 的 80%）\n    data = bytearray(${allocMB} * 1024 * 1024)\n    return {'allocated': len(data), 'totalMB': len(data) // (1024 * 1024)}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.allocated).toBe(allocMB * 1024 * 1024);
+    expect(result.data?.codeReturn.totalMB).toBe(allocMB);
   }, 30000);
 });
 

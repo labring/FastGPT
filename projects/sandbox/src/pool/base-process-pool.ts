@@ -6,8 +6,12 @@
  */
 import { spawn, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { config } from '../config';
 import type { ExecuteOptions, ExecuteResult } from '../types';
+
+const execAsync = promisify(exec);
 
 export type PoolWorker = {
   proc: ChildProcess;
@@ -36,6 +40,7 @@ export abstract class BaseProcessPool {
   protected poolSize: number;
   protected ready = false;
   protected healthCheckTimer?: ReturnType<typeof setInterval>;
+  protected usePollingFallback = false; // prlimit 不可用时降级到轮询
 
   protected static readonly HEALTH_CHECK_INTERVAL = 30_000;
   protected static readonly HEALTH_CHECK_TIMEOUT = 5_000;
@@ -141,6 +146,14 @@ export abstract class BaseProcessPool {
         try {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
+            // worker 启动成功，尝试设置操作系统级内存限制
+            // 实际限制 = 用户配置 + 运行时开销（50MB for Bun/Python + 沙箱代码）
+            if (proc.pid) {
+              const actualLimitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
+              this.setMemoryLimit(proc.pid, actualLimitMB).catch((err) => {
+                console.warn(`${this.tag}: memory limit setup failed: ${err.message}`);
+              });
+            }
             this.workers.push(worker);
             this.setupWorkerEvents(worker);
             const waiter = this.waitQueue.shift();
@@ -275,39 +288,15 @@ export abstract class BaseProcessPool {
     return new Promise<ExecuteResult>((resolve) => {
       let settled = false;
       let timer: ReturnType<typeof setTimeout>;
-      let memTimer: ReturnType<typeof setInterval> | undefined;
 
       const settle = (result: ExecuteResult) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        if (memTimer) clearInterval(memTimer);
         worker.rl.removeListener('line', onLine);
         worker.proc.removeListener('exit', onExit);
         resolve(result);
       };
-
-      // 执行期间高频内存监控（仅 Linux），超限立即 kill → 触发 onExit
-      const pid = worker.proc.pid;
-      if (pid) {
-        memTimer = setInterval(() => {
-          try {
-            const statm = require('fs').readFileSync(`/proc/${pid}/statm`, 'utf-8');
-            const rssPages = parseInt(statm.split(' ')[1], 10);
-            const rssBytes = rssPages * 4096;
-            const limitBytes = config.maxMemoryMB * 1024 * 1024;
-            if (rssBytes > limitBytes) {
-              console.warn(
-                `${this.tag}: worker ${worker.id} RSS ${Math.round(rssBytes / 1024 / 1024)}MB exceeds limit ${config.maxMemoryMB}MB during execution, killing`
-              );
-              this.killAndRespawn(worker);
-            }
-          } catch {
-            // 非 Linux 或读取失败，跳过
-          }
-        }, 200);
-        if (memTimer.unref) memTimer.unref();
-      }
 
       const onLine = (line: string) => {
         try {
@@ -346,31 +335,9 @@ export abstract class BaseProcessPool {
   // 健康检查
   // ============================================================
 
-  protected checkWorkerMemory(worker: PoolWorker): void {
-    const pid = worker.proc.pid;
-    if (!pid) return;
-    try {
-      const statm = require('fs').readFileSync(`/proc/${pid}/statm`, 'utf-8');
-      const rssPages = parseInt(statm.split(' ')[1], 10);
-      const rssBytes = rssPages * 4096;
-      const limitBytes = config.maxMemoryMB * 1024 * 1024;
-      if (rssBytes > limitBytes) {
-        console.warn(
-          `${this.tag}: worker ${worker.id} RSS ${Math.round(rssBytes / 1024 / 1024)}MB exceeds limit ${config.maxMemoryMB}MB, killing`
-        );
-        this.killAndRespawn(worker);
-      }
-    } catch {
-      // 非 Linux 或读取失败，跳过
-    }
-  }
-
   protected startHealthCheck(): void {
     this.healthCheckTimer = setInterval(() => {
       if (!this.ready) return;
-      for (const worker of [...this.workers]) {
-        this.checkWorkerMemory(worker);
-      }
       const idleCopy = [...this.idleWorkers];
       for (const worker of idleCopy) {
         this.pingWorker(worker);
@@ -437,6 +404,33 @@ export abstract class BaseProcessPool {
   // ============================================================
   // 工具方法
   // ============================================================
+
+  /**
+   * 使用 prlimit 设置操作系统级内存限制
+   * @param pid 进程 ID
+   * @param actualLimitMB 实际进程内存限制（MB）= 用户可用 + 运行时开销
+   * @returns 是否成功设置
+   */
+  protected async setMemoryLimit(pid: number, actualLimitMB: number): Promise<boolean> {
+    try {
+      const limitBytes = actualLimitMB * 1024 * 1024;
+      // prlimit 设置 RLIMIT_AS（地址空间限制）
+      // 格式：prlimit --as=soft:hard pid
+      // Linux/macOS/BSD 支持，需要 util-linux 或 linux-prlimit
+      await execAsync(`prlimit --as=${limitBytes}:${limitBytes} ${pid}`);
+      const userAvailable = actualLimitMB - config.RUNTIME_MEMORY_OVERHEAD_MB;
+      console.log(
+        `${this.tag}: worker ${pid} memory limit set to ${actualLimitMB}MB ` +
+          `(user available: ${userAvailable}MB, runtime overhead: ${config.RUNTIME_MEMORY_OVERHEAD_MB}MB)`
+      );
+      return true;
+    } catch (e: any) {
+      console.warn(
+        `${this.tag}: failed to set memory limit via prlimit for worker ${pid}: ${e.message || e}`
+      );
+      return false;
+    }
+  }
 
   /** 从池中移除 worker，kill 进程，并在 ready 时 respawn */
   protected killAndRespawn(worker: PoolWorker): void {

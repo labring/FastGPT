@@ -4,6 +4,7 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { getWebReqUrl } from '../../../../common/system/utils';
 import usePythonCompletion from './usePythonCompletion';
+import useJSCompletion from './useJSCompletion';
 import useSystemHelperCompletion from './useSystemHelperCompletion';
 
 loader.config({
@@ -47,12 +48,10 @@ const defaultOptions = {
   folding: true,
   overviewRulerBorder: false,
   tabSize: 2,
-  // Disable unrelated completions — only keep language-service suggestions
   wordBasedSuggestions: 'off',
+  quickSuggestions: { other: 'on', comments: false, strings: false },
   suggest: {
-    showWords: false,
-    showSnippets: false,
-    matchOnWordStartOnly: true
+    showWords: false
   }
 };
 
@@ -80,6 +79,7 @@ const MyEditor = ({
   );
 
   const registerPythonCompletion = usePythonCompletion();
+  const registerJSCompletion = useJSCompletion();
   const registerSystemHelperCompletion = useSystemHelperCompletion();
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -106,13 +106,6 @@ const MyEditor = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: Monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-
-    // Force-disable word/snippet completions on the instance level
-    // (options prop may not take effect before first mount)
-    editor.updateOptions({
-      wordBasedSuggestions: 'off',
-      suggest: { showWords: false, showSnippets: false, matchOnWordStartOnly: true }
-    });
 
     // Prevent browser autofill from causing getModifierState errors
     const editorDom = editor.getDomNode();
@@ -156,9 +149,10 @@ const MyEditor = ({
         }
       });
       registerPythonCompletion(monaco);
+      registerJSCompletion(monaco);
       registerSystemHelperCompletion(monaco);
     },
-    [registerPythonCompletion, registerSystemHelperCompletion]
+    [registerPythonCompletion, registerJSCompletion, registerSystemHelperCompletion]
   );
 
   return (

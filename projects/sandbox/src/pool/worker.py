@@ -167,31 +167,6 @@ class _SystemHelper:
     __slots__ = ()
 
     @staticmethod
-    def count_token(text):
-        if not isinstance(text, str):
-            text = str(text)
-        return _math.ceil(len(text) / 4)
-
-    @staticmethod
-    def str_to_base64(text, prefix=''):
-        b64 = _base64.b64encode(text.encode('utf-8')).decode('utf-8')
-        return prefix + b64
-
-    @staticmethod
-    def create_hmac(algorithm, secret):
-        timestamp = str(int(_time.time() * 1000))
-        string_to_sign = timestamp + '\n' + secret
-        h = _hmac.new(secret.encode('utf-8'), string_to_sign.encode('utf-8'), algorithm)
-        sign = _urllib_parse.quote(_base64.b64encode(h.digest()).decode('utf-8'))
-        return {"timestamp": timestamp, "sign": sign}
-
-    @staticmethod
-    def delay(ms):
-        if ms > 10000:
-            raise ValueError("Delay must be <= 10000ms")
-        _time.sleep(ms / 1000)
-
-    @staticmethod
     def http_request(url, method='GET', headers=None, body=None, timeout=None):
         global _request_count
         _request_count += 1
@@ -253,19 +228,33 @@ class _SystemHelper:
             raise RuntimeError(f"HTTP request failed: {e}")
 
     # 驼峰别名，与 JS 端 SystemHelper API 保持一致
-    countToken = count_token
-    strToBase64 = str_to_base64
-    createHmac = create_hmac
     httpRequest = http_request
 
 
 system_helper = _SystemHelper()
 SystemHelper = system_helper
-count_token = system_helper.count_token
-str_to_base64 = system_helper.str_to_base64
-create_hmac = system_helper.create_hmac
-delay = system_helper.delay
-http_request = system_helper.http_request
+
+# Legacy global functions (backward compatibility, not on SystemHelper)
+def count_token(text):
+    if not isinstance(text, str):
+        text = str(text)
+    return _math.ceil(len(text) / 4)
+
+def str_to_base64(text, prefix=''):
+    b64 = _base64.b64encode(text.encode('utf-8')).decode('utf-8')
+    return prefix + b64
+
+def create_hmac(algorithm, secret):
+    timestamp = str(int(_time.time() * 1000))
+    string_to_sign = timestamp + '\n' + secret
+    h = _hmac.new(secret.encode('utf-8'), string_to_sign.encode('utf-8'), algorithm)
+    sign = _urllib_parse.quote(_base64.b64encode(h.digest()).decode('utf-8'))
+    return {"timestamp": timestamp, "sign": sign}
+
+def delay(ms):
+    if ms > 10000:
+        raise ValueError("Delay must be <= 10000ms")
+    _time.sleep(ms / 1000)
 
 _request_count = 0
 
@@ -586,7 +575,7 @@ def main_loop():
                 'str_to_base64': str_to_base64,
                 'create_hmac': create_hmac,
                 'delay': delay,
-                'http_request': http_request,
+                'http_request': system_helper.http_request,
                 'print': _safe_print,
                 'json': json,
                 'math': _math,

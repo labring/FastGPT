@@ -185,25 +185,27 @@ const REQUEST_LIMITS = {
 
 let requestCount = 0;
 
-// ===== SystemHelper =====
+// ===== Legacy global functions (backward compatibility, not on SystemHelper) =====
+function countToken(text: any): number {
+  return Math.ceil(String(text).length / 4);
+}
+function strToBase64(str: string, prefix = ''): string {
+  return prefix + Buffer.from(str, 'utf-8').toString('base64');
+}
+function createHmac(algorithm: string, secret: string) {
+  const timestamp = Date.now().toString();
+  const stringToSign = timestamp + '\n' + secret;
+  const hmac = crypto.createHmac(algorithm, secret);
+  hmac.update(stringToSign, 'utf8');
+  return { timestamp, sign: encodeURIComponent(hmac.digest('base64')) };
+}
+function delay(ms: number): Promise<void> {
+  if (ms > 10000) throw new Error('Delay must be <= 10000ms');
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ===== SystemHelper (only httpRequest) =====
 const SystemHelper = {
-  countToken(text: any): number {
-    return Math.ceil(String(text).length / 4);
-  },
-  strToBase64(str: string, prefix = ''): string {
-    return prefix + Buffer.from(str, 'utf-8').toString('base64');
-  },
-  createHmac(algorithm: string, secret: string) {
-    const timestamp = Date.now().toString();
-    const stringToSign = timestamp + '\n' + secret;
-    const hmac = crypto.createHmac(algorithm, secret);
-    hmac.update(stringToSign, 'utf8');
-    return { timestamp, sign: encodeURIComponent(hmac.digest('base64')) };
-  },
-  delay(ms: number): Promise<void> {
-    if (ms > 10000) throw new Error('Delay must be <= 10000ms');
-    return new Promise((r) => setTimeout(r, ms));
-  },
   async httpRequest(url: string, opts: any = {}): Promise<any> {
     if (++requestCount > REQUEST_LIMITS.maxRequests) {
       throw new Error('Request limit exceeded');
@@ -283,11 +285,6 @@ const SystemHelper = {
   }
 };
 
-// 向后兼容全局函数
-const countToken = SystemHelper.countToken;
-const strToBase64 = SystemHelper.strToBase64;
-const createHmac = SystemHelper.createHmac;
-const delay = SystemHelper.delay;
 const httpRequest = SystemHelper.httpRequest;
 
 // ===== 模块白名单（启动后由 init 消息设置）=====

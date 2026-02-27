@@ -77,6 +77,8 @@ export const env = {
   // 资源限制
   maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,
   maxMemoryMB: e.SANDBOX_MAX_MEMORY_MB,
+  /** 运行时内存开销（运行时 + 沙箱代码） */
+  RUNTIME_MEMORY_OVERHEAD_MB: 50,
 
   // 进程池
   poolSize: e.SANDBOX_POOL_SIZE,
