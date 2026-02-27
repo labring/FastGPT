@@ -31,6 +31,8 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
+import { createAgentSandbox, destroyAgentSandbox, buildSkillsContextPrompt } from './sub/sandbox';
+import type { AgentSandboxContext } from './sub/sandbox';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
@@ -46,6 +48,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+  [NodeInputKeyEnum.skills]?: string[]; // skill ID 数组
 
   // Knowledge base search configuration
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
@@ -87,6 +90,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
+      skills: skillIds,
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
@@ -111,6 +115,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
+  let sandboxContext: AgentSandboxContext | undefined;
 
   try {
     // Get files
@@ -159,6 +164,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     })();
 
+    // Initialize sandbox for skills
+    let skillsPrompt = '';
+
+    if (skillIds && skillIds.length > 0) {
+      sandboxContext = await createAgentSandbox({
+        skillIds,
+        teamId: runningAppInfo.teamId,
+        tmbId: runningAppInfo.tmbId
+      });
+      skillsPrompt = buildSkillsContextPrompt(sandboxContext.skills, sandboxContext.workDirectory);
+    }
+
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
@@ -168,7 +185,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox
+        useAgentSandbox,
+        hasSandboxSkills: !!sandboxContext
       }
     );
 
@@ -200,7 +218,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
 
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: systemPrompt,
+      userSystemPrompt: skillsPrompt ? `${systemPrompt || ''}\n\n${skillsPrompt}` : systemPrompt,
       selectedDataset: datasetParams?.datasets
     });
 
@@ -385,7 +403,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               completionTools: agentCompletionTools,
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
-              filesMap
+              filesMap,
+              sandboxContext
             });
             nodeResponses.push(result.nodeResponse);
 
@@ -461,7 +480,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           getSubAppInfo,
           getSubApp,
           completionTools: agentCompletionTools,
-          filesMap
+          filesMap,
+          sandboxContext
         });
         nodeResponses.push(result.nodeResponse);
         masterMessages = result.masterMessages;
@@ -523,5 +543,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   } catch (error) {
     return getNodeErrResponse({ error });
+  } finally {
+    if (sandboxContext) {
+      destroyAgentSandbox(sandboxContext).catch((err) => {
+        getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Sandbox] Cleanup failed', {
+          error: err
+        });
+      });
+    }
   }
 };
