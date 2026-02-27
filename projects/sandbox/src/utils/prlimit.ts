@@ -29,7 +29,8 @@ export async function checkPrlimitAvailable(): Promise<boolean> {
  */
 export async function getMemoryLimit(pid: number): Promise<number | null> {
   try {
-    const { stdout } = await execAsync(`prlimit --as ${pid}`, { timeout: 5000 });
+    // 使用 --pid 参数指定进程 ID
+    const { stdout } = await execAsync(`prlimit --pid ${pid} --as`, { timeout: 5000 });
     // 解析输出: "RESOURCE DESCRIPTION     LIMIT      SOFT      UNITS
     //          AS     address space     268435456 268435456 bytes"
     const match = stdout.match(/AS\s+address\s+space\s+(\d+)\s+(\d+)\s+bytes/);
@@ -51,7 +52,8 @@ export async function getMemoryLimit(pid: number): Promise<number | null> {
 export async function setMemoryLimit(pid: number, limitMB: number): Promise<boolean> {
   try {
     const limitBytes = limitMB * 1024 * 1024;
-    await execAsync(`prlimit --as=${limitBytes}:${limitBytes} ${pid}`, { timeout: 5000 });
+    // 使用 --pid 参数指定进程 ID
+    await execAsync(`prlimit --pid ${pid} --as=${limitBytes}:${limitBytes}`, { timeout: 5000 });
     return true;
   } catch {
     return false;

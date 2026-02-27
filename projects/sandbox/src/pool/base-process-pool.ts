@@ -419,9 +419,9 @@ export abstract class BaseProcessPool {
     try {
       const limitBytes = actualLimitMB * 1024 * 1024;
       // prlimit 设置 RLIMIT_AS（地址空间限制）
-      // 格式：prlimit --as=soft:hard pid
-      // Linux/macOS/BSD 支持，需要 util-linux 或 linux-prlimit
-      await execAsync(`prlimit --as=${limitBytes}:${limitBytes} ${pid}`);
+      // 格式：prlimit --pid <pid> --as=soft:hard
+      // Linux/BSD 支持，需要 util-linux
+      await execAsync(`prlimit --pid ${pid} --as=${limitBytes}:${limitBytes}`);
       const userAvailable = actualLimitMB - config.RUNTIME_MEMORY_OVERHEAD_MB;
       console.log(
         `${this.tag}: worker ${pid} memory limit set to ${actualLimitMB}MB ` +
