@@ -1,0 +1,106 @@
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: skill-sandbox-with-sync
+  namespace: opensandbox
+  labels:
+    app: skill-sandbox
+    component: sync-enabled
+spec:
+  # 预热池大小
+  minReady: 2
+  maxSize: 20
+
+  template:
+    metadata:
+      labels:
+        app: skill-sandbox
+    spec:
+      volumes:
+        - name: workspace
+          emptyDir:
+            sizeLimit: 1Gi
+
+      containers:
+        # 主容器：Skill Sandbox（code-server 开发环境）
+        - name: sandbox
+          image: skill-agent/sandbox:v1
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace/projects
+          ports:
+            - containerPort: 8080
+              name: code-server
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+        # Sidecar：Sync Agent（MinIO 文件同步）
+        - name: sync-agent
+          image: fastgpt/sandbox-sync-agent:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: endpoint
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: accessKey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secretKey
+            - name: MINIO_BUCKET
+              value: "skill-artifacts"
+            - name: SESSION_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['session-id']
+            - name: SYNC_PATH
+              value: "/workspace/projects"
+            - name: SYNC_INTERVAL
+              value: "60"
+            - name: HTTP_PORT
+              value: "8081"
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace/projects
+          ports:
+            - containerPort: 8081
+              name: sync-api
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
