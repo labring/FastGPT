@@ -1402,6 +1402,7 @@
   "comma_symbol": "，",
   "reply_mode_checker_node_name": "回复模式判断",
   "execute_different_branches_based_on_conditions": "根据一定的条件，执行不同的分支。",
+  "fallback_reply_switch_checker": "兜底回复开关判断",
   "faq_checker_node_name": "是否命中faq数据",
   "use_faq_data_reply": "使用faq数据回复",
   "faq_reply_node_intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
