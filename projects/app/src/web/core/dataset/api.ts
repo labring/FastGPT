@@ -218,18 +218,23 @@ export const postImportFaqByTemplate = ({
   file,
   percentListen,
   datasetId,
+  parentId,
   overwriteDuplicate,
   enableEnhance
 }: {
   file: File;
   percentListen: (percent: number) => void;
   datasetId: string;
+  parentId?: string;
   overwriteDuplicate?: boolean;
   enableEnhance?: boolean;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify({ datasetId, overwriteDuplicate, enableEnhance }));
+  formData.append(
+    'data',
+    JSON.stringify({ datasetId, parentId, overwriteDuplicate, enableEnhance })
+  );
 
   return POST<{ collectionId: string }>(
     `/core/dataset/collection/create/custom/template`,

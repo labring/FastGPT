@@ -25,7 +25,15 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
 import ExcelJS from 'exceljs';
 
-const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: () => void }) => {
+const FaqImportModal = ({
+  onFinish,
+  onClose,
+  parentId
+}: {
+  onFinish: () => void;
+  onClose: () => void;
+  parentId?: string;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
@@ -60,6 +68,7 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
 
         await postImportFaqByTemplate({
           datasetId,
+          parentId,
           file: filesToUpload[i].file,
           overwriteDuplicate,
           enableEnhance,
