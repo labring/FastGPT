@@ -1,0 +1,36 @@
+# Docker 双进程模式镜像
+# 基于 base/ 目录构建的 skill-agent/sandbox:v1，在其基础上注入 Sync Agent
+#
+# 构建顺序：
+#   1. cd base && docker build -t skill-agent/sandbox:v1 .
+#   2. docker build -f Dockerfile.docker-runtime -t skill-agent/sandbox:with-sync .
+FROM skill-agent/sandbox:v1
+
+USER root
+
+# 安装 Sync Agent 依赖
+RUN apt-get update && apt-get install -y \
+    inotify-tools \
+    curl \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 MinIO Client
+RUN curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && \
+    chmod +x mc && \
+    mv mc /usr/local/bin/
+
+# 复制 Sync Agent 脚本
+COPY sync.sh /opt/sync-agent/sync.sh
+COPY http_server.py /opt/sync-agent/http_server.py
+COPY docker-entrypoint.sh /opt/sync-agent/docker-entrypoint.sh
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+RUN chmod +x /opt/sync-agent/sync.sh \
+             /opt/sync-agent/docker-entrypoint.sh && \
+    mkdir -p /var/log/supervisor && \
+    chown -R coder:coder /var/log/supervisor
+
+USER coder
+
+ENTRYPOINT ["/opt/sync-agent/docker-entrypoint.sh"]
