@@ -5,7 +5,10 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  NodeLogItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -360,6 +363,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     debugNextStepRunNodes: RuntimeNodeItemType[] = []; // 记录 Debug 模式下，下一个阶段需要执行的节点。
     debugNodeResponses: WorkflowDebugResponse['nodeResponses'] = {};
 
+    // Node logs
+    nodeLogsMap = new Map<string, NodeLogItemType[]>();
+
     // Queue variables
     private activeRunQueue = new Set<string>();
     private skipNodeQueue = new Map<
@@ -482,6 +488,22 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.chatNodeUsages = this.chatNodeUsages.concat(usages);
     }
 
+    private pushNodeLog(
+      nodeId: string,
+      level: NodeLogItemType['level'],
+      message: string,
+      data?: Record<string, any>
+    ) {
+      const logs = this.nodeLogsMap.get(nodeId) || [];
+      logs.push({
+        time: new Date().toISOString(),
+        level,
+        message,
+        ...(data ? { data } : {})
+      });
+      this.nodeLogsMap.set(nodeId, logs);
+    }
+
     async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
       node: RuntimeNodeItemType;
       runStatus: 'run';
@@ -556,9 +578,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         });
       }
       const startTime = Date.now();
+      this.pushNodeLog(node.nodeId, 'info', 'Node execution started', {
+        nodeName: node.name,
+        nodeType: node.flowNodeType
+      });
 
       // get node running params
       const params = getNodeRunParams(node);
+      this.pushNodeLog(node.nodeId, 'debug', 'Node params resolved', {
+        keys: Object.keys(params)
+      });
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...data,
@@ -581,6 +610,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
+
+          this.pushNodeLog(node.nodeId, 'debug', 'Dispatch callback matched', {
+            hasCatchError: !!node.catchError,
+            targetEdgeCount: targetEdges.length
+          });
 
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
@@ -645,6 +679,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       })();
 
       const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
+      const durationSeconds = +((Date.now() - startTime) / 1000).toFixed(2);
+      this.pushNodeLog(node.nodeId, 'info', 'Node execution finished', {
+        runningTime: durationSeconds,
+        hasError: !!dispatchRes?.responseData?.error
+      });
+      const nodeLogs = this.nodeLogsMap.get(node.nodeId) || [];
+
       // format response data. Add modulename and module type
       const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
@@ -654,9 +695,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           moduleType: node.flowNodeType,
           moduleLogo: node.avatar,
           ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
+          nodeLogs,
           id: getNanoid(),
           nodeId: node.nodeId,
-          runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+          runningTime: durationSeconds
         };
         nodeResponses.push(val);
         return val;
@@ -698,6 +740,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       // Error
       if (dispatchRes?.responseData?.error) {
         logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
+        this.pushNodeLog(node.nodeId, 'warn', 'Node returned error response', {
+          error: dispatchRes.responseData.error
+        });
       }
 
       return {
@@ -957,13 +1002,15 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             nodeId: node.nodeId,
             type: 'run',
             interactiveResponse: nodeRunResult.result[DispatchNodeResponseKeyEnum.interactive],
-            response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse]
+            response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse],
+            nodeLogs: this.nodeLogsMap.get(node.nodeId) || []
           };
         } else if (status === 'skip') {
           this.debugNodeResponses[node.nodeId] = {
             nodeId: node.nodeId,
             type: 'skip',
-            response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse]
+            response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse],
+            nodeLogs: this.nodeLogsMap.get(node.nodeId) || []
           };
         }
       }
