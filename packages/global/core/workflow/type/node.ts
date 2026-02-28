@@ -188,7 +188,17 @@ export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
       showResult: z.boolean().optional(),
       response: z.any().optional(),
       isExpired: z.boolean().optional(),
-      interactiveResponse: InteractiveNodeResponseTypeSchema.optional()
+      interactiveResponse: InteractiveNodeResponseTypeSchema.optional(),
+      nodeLogs: z
+        .array(
+          z.object({
+            time: z.string(),
+            level: z.enum(['debug', 'info', 'warn', 'error']),
+            message: z.string(),
+            data: z.record(z.string(), z.any()).optional()
+          })
+        )
+        .optional()
     })
     .optional(),
   isFolded: z.boolean().optional()
