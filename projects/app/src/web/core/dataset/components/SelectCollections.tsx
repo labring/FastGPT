@@ -24,7 +24,8 @@ const SelectCollections = ({
   title,
   tip,
   max = 1,
-  CustomFooter
+  CustomFooter,
+  confirmLoading = false
 }: {
   datasetId: string;
   type: 'folder' | 'collection';
@@ -36,6 +37,7 @@ const SelectCollections = ({
   tip?: string;
   max?: number;
   CustomFooter?: React.ReactNode;
+  confirmLoading?: boolean;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -206,7 +208,7 @@ const SelectCollections = ({
       ) : (
         <ModalFooter>
           <Button
-            isLoading={isResponding}
+            isLoading={isResponding || confirmLoading}
             isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
             onClick={mutate}
           >
