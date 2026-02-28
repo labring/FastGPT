@@ -786,6 +786,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           concurrency={1}
           confirmText={t('common:Confirm')}
           datasetId={datasetDetail._id}
+          parentId={parentId}
         />
       )}
 

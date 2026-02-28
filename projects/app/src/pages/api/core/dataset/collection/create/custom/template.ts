@@ -116,86 +116,114 @@ async function handler(
     // 2. 验证模板格式
     validateTemplateFormat(rawText);
 
-    // 3. 处理重名检查（在上传文件之前）
+    // 3. Handle duplicate file name (within transaction to avoid TOCTOU)
     let fileName = file.originalname;
     let deletedCollectionId: string | undefined;
     let overwritten = false;
 
-    // Check if file with same name exists
-    // Note: 不检查 parentId，在整个 dataset 范围内检查重名，确保文件名全局唯一
-    const existingCollection = await MongoDatasetCollection.findOne({
-      datasetId: dataset._id,
-      name: fileName,
-      type: DatasetCollectionTypeEnum.file
-    });
+    // Normalize parentId: convert empty string to undefined
+    const normalizedParentId =
+      data.parentId && data.parentId.trim() !== '' ? data.parentId : undefined;
 
-    if (existingCollection) {
-      if (data.overwriteDuplicate === true) {
-        // 3.1 Overwrite: delete old collection first
-        deletedCollectionId = String(existingCollection._id);
+    await mongoSessionRun(async (session) => {
+      // Build query for duplicate check - only check within the same parentId folder
+      const duplicateQuery: Record<string, any> = {
+        datasetId: dataset._id,
+        name: fileName,
+        type: DatasetCollectionTypeEnum.file
+      };
 
-        // Find all child collections
-        const collections = await findCollectionAndChild({
-          teamId,
-          datasetId: dataset._id,
-          collectionId: deletedCollectionId,
-          fields: '_id teamId datasetId fileId metadata'
-        });
+      // Handle parentId query condition
+      if (normalizedParentId) {
+        // Valid parentId - search in specific folder
+        duplicateQuery.parentId = normalizedParentId;
+      } else {
+        // Root directory: parentId is null or does not exist
+        duplicateQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+      }
 
-        // Delete collection and related data (data and training records)
-        await mongoSessionRun((session) =>
-          delCollection({
+      // Check if file with same name exists in the same folder (within transaction)
+      const existingCollection = await MongoDatasetCollection.findOne(duplicateQuery, '_id', {
+        session
+      });
+
+      if (existingCollection) {
+        if (data.overwriteDuplicate === true) {
+          // 3.1 Overwrite: delete old collection within the same transaction
+          deletedCollectionId = String(existingCollection._id);
+
+          // Find all child collections
+          const collections = await findCollectionAndChild({
+            teamId,
+            datasetId: dataset._id,
+            collectionId: deletedCollectionId,
+            fields: '_id teamId datasetId fileId metadata'
+          });
+
+          // Delete collection and related data (data and training records)
+          await delCollection({
             collections,
             delImg: true,
             delFile: true,
             session
-          })
-        );
+          });
 
-        overwritten = true;
+          overwritten = true;
 
-        addLog.info(
-          `[TemplateImport] Overwritten collection: ${deletedCollectionId}, name: ${fileName}`
-        );
-      } else {
-        // 3.2 No overwrite: add suffix to new file name
-        const lastDotIndex = fileName.lastIndexOf('.');
-        const fileNameWithoutExt =
-          lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
-        const fileExt = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
+          addLog.info(
+            `[TemplateImport] Overwritten collection: ${deletedCollectionId}, name: ${fileName}`
+          );
+        } else {
+          // 3.2 No overwrite: add suffix to new file name
+          const lastDotIndex = fileName.lastIndexOf('.');
+          const fileNameWithoutExt =
+            lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+          const fileExt = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
 
-        // Escape special regex characters
-        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const escapedBase = escapeRegex(fileNameWithoutExt);
-        const escapedExt = escapeRegex(fileExt);
+          // Escape special regex characters
+          const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const escapedBase = escapeRegex(fileNameWithoutExt);
+          const escapedExt = escapeRegex(fileExt);
 
-        // Query all existing files with suffix pattern in one request
-        const existingNames = await MongoDatasetCollection.find({
-          datasetId: dataset._id,
-          name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
-          type: DatasetCollectionTypeEnum.file
-        })
-          .select('name')
-          .lean();
+          // Build query for suffix pattern - only check within the same parentId folder
+          const suffixQuery: Record<string, any> = {
+            datasetId: dataset._id,
+            name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
+            type: DatasetCollectionTypeEnum.file
+          };
 
-        // Find max suffix from existing names
-        let maxSuffix = 0;
-        const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
-        for (const doc of existingNames) {
-          const match = doc.name.match(suffixRegex);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (num > maxSuffix) maxSuffix = num;
+          // Handle parentId query condition
+          if (normalizedParentId) {
+            suffixQuery.parentId = normalizedParentId;
+          } else {
+            // Root directory: parentId is null or does not exist
+            suffixQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
           }
+
+          // Query all existing files with suffix pattern in the same folder (within transaction)
+          const existingNames = await MongoDatasetCollection.find(suffixQuery, 'name', {
+            session
+          }).lean();
+
+          // Find max suffix from existing names
+          let maxSuffix = 0;
+          const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
+          for (const doc of existingNames) {
+            const match = doc.name.match(suffixRegex);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > maxSuffix) maxSuffix = num;
+            }
+          }
+
+          fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
+
+          addLog.info(
+            `[TemplateImport] Renamed duplicate file from '${file.originalname}' to '${fileName}'`
+          );
         }
-
-        fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
-
-        addLog.info(
-          `[TemplateImport] Renamed duplicate file from '${file.originalname}' to '${fileName}'`
-        );
       }
-    }
+    });
 
     // 4. 上传文件到GridFS（使用处理后的文件名）
     const fileId = await uploadFile({
@@ -260,7 +288,7 @@ async function handler(
         teamId,
         tmbId,
         datasetId: dataset._id,
-        parentId: data.parentId,
+        parentId: normalizedParentId,
         name: fileName,
         type: DatasetCollectionTypeEnum.file,
         fileId,
@@ -279,7 +307,7 @@ async function handler(
     return {
       collectionId,
       results: insertResults,
-      ...(overwritten && { overwritten, deletedCollectionId })
+      ...(overwritten ? { overwritten, deletedCollectionId } : {})
     };
   } catch (error) {
     addLog.error(`Custom template import error: ${error}`);

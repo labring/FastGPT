@@ -105,6 +105,7 @@ const FaqImportModal = ({
     const fileNames = selectFiles.map((file) => file.file.name);
     const checkResult = await postCheckDuplicateCollection({
       datasetId,
+      parentId: parentId || undefined,
       fileNames
     });
 
