@@ -204,7 +204,7 @@ function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// ===== SystemHelper (only httpRequest) =====
+// ===== SystemHelper =====
 const SystemHelper = {
   async httpRequest(url: string, opts: any = {}): Promise<any> {
     if (++requestCount > REQUEST_LIMITS.maxRequests) {

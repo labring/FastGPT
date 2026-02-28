@@ -334,8 +334,8 @@ async function main() { return recurse(); }`,
     );
   });
 
-  // --- SystemHelper ---
-  describe('SystemHelper', () => {
+  // --- 内置工具函数 ---
+  describe('内置工具函数', () => {
     runMatrix(
       () => pool,
       [
@@ -343,7 +343,7 @@ async function main() { return recurse(); }`,
           name: 'delay 正常延迟',
           code: `async function main() {
           const start = Date.now();
-          await SystemHelper.delay(500);
+          await delay(500);
           const elapsed = Date.now() - start;
           return { elapsed: elapsed >= 400 };
         }`,
@@ -352,7 +352,7 @@ async function main() { return recurse(); }`,
         {
           name: 'strToBase64 编码',
           code: `async function main() {
-          const encoded = SystemHelper.strToBase64('Hello, World!');
+          const encoded = strToBase64('Hello, World!');
           return { encoded };
         }`,
           expect: { success: true, codeReturn: { encoded: 'SGVsbG8sIFdvcmxkIQ==' } }
@@ -360,7 +360,7 @@ async function main() { return recurse(); }`,
         {
           name: 'countToken 计算',
           code: `async function main({ text }) {
-          return { tokens: SystemHelper.countToken(text) };
+          return { tokens: countToken(text) };
         }`,
           variables: { text: 'Hello, this is a test sentence.' },
           expect: { success: true }
@@ -559,24 +559,24 @@ describe('Python 功能测试', () => {
     );
   });
 
-  // --- system_helper ---
-  describe('system_helper', () => {
+  // --- 内置工具函数 ---
+  describe('内置工具函数', () => {
     runMatrix(
       () => pool,
       [
         {
           name: 'str_to_base64 编码',
-          code: `def main():\n    encoded = system_helper.str_to_base64('Hello, World!')\n    return {'encoded': encoded}`,
+          code: `def main():\n    encoded = str_to_base64('Hello, World!')\n    return {'encoded': encoded}`,
           expect: { success: true, codeReturn: { encoded: 'SGVsbG8sIFdvcmxkIQ==' } }
         },
         {
           name: 'delay 正常延迟',
-          code: `import time\ndef main():\n    start = time.time()\n    system_helper.delay(500)\n    elapsed = time.time() - start\n    return {'elapsed_ok': elapsed >= 0.4}`,
+          code: `import time\ndef main():\n    start = time.time()\n    delay(500)\n    elapsed = time.time() - start\n    return {'elapsed_ok': elapsed >= 0.4}`,
           expect: { success: true, codeReturn: { elapsed_ok: true } }
         },
         {
           name: 'count_token 计算',
-          code: `def main(v):\n    return {'tokens': system_helper.count_token(v['text'])}`,
+          code: `def main(v):\n    return {'tokens': count_token(v['text'])}`,
           variables: { text: 'Hello, this is a test sentence.' },
           expect: { success: true }
         }

@@ -7,6 +7,7 @@
 import { spawn, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
 import { exec } from 'child_process';
+import { readFile } from 'fs/promises';
 import { promisify } from 'util';
 import { platform } from 'os';
 import { config } from '../config';
@@ -14,8 +15,8 @@ import type { ExecuteOptions, ExecuteResult } from '../types';
 
 const execAsync = promisify(exec);
 
-// 平台检测：Linux/BSD 支持 prlimit，macOS/Windows 不支持
-const isPrlimitSupported = platform() === 'linux' || platform() === 'freebsd';
+/** RSS 轮询间隔（毫秒） */
+const RSS_POLL_INTERVAL = 500;
 
 export type PoolWorker = {
   proc: ChildProcess;
@@ -44,7 +45,6 @@ export abstract class BaseProcessPool {
   protected poolSize: number;
   protected ready = false;
   protected healthCheckTimer?: ReturnType<typeof setInterval>;
-  protected usePollingFallback = false; // prlimit 不可用时降级到轮询
 
   protected static readonly HEALTH_CHECK_INTERVAL = 30_000;
   protected static readonly HEALTH_CHECK_TIMEOUT = 5_000;
@@ -150,14 +150,6 @@ export abstract class BaseProcessPool {
         try {
           const msg = JSON.parse(line);
           if (msg.type === 'ready') {
-            // worker 启动成功，设置操作系统级内存限制（仅 Linux/BSD）
-            // 实际限制 = 用户配置 + 运行时开销（50MB for Bun/Python + 沙箱代码）
-            if (proc.pid && isPrlimitSupported) {
-              const actualLimitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
-              this.setMemoryLimit(proc.pid, actualLimitMB).catch((err) => {
-                console.warn(`${this.tag}: memory limit setup failed: ${err.message}`);
-              });
-            }
             this.workers.push(worker);
             this.setupWorkerEvents(worker);
             const waiter = this.waitQueue.shift();
@@ -292,11 +284,13 @@ export abstract class BaseProcessPool {
     return new Promise<ExecuteResult>((resolve) => {
       let settled = false;
       let timer: ReturnType<typeof setTimeout>;
+      let rssTimer: ReturnType<typeof setInterval> | undefined;
 
       const settle = (result: ExecuteResult) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        if (rssTimer) clearInterval(rssTimer);
         worker.rl.removeListener('line', onLine);
         worker.proc.removeListener('exit', onExit);
         resolve(result);
@@ -323,6 +317,22 @@ export abstract class BaseProcessPool {
         this.killAndRespawn(worker);
         settle({ success: false, message: `Script execution timed out after ${timeoutMs}ms` });
       }, timeoutMs + 2000);
+
+      // RSS 内存监控（任务执行期间轮询子进程物理内存）
+      if (config.maxMemoryMB > 0 && worker.proc.pid) {
+        const limitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
+        rssTimer = setInterval(async () => {
+          if (settled) return;
+          const rss = await this.getWorkerRSSMB(worker.proc.pid!);
+          if (rss !== null && rss > limitMB) {
+            this.killAndRespawn(worker);
+            settle({
+              success: false,
+              message: `Memory limit exceeded (RSS: ${Math.round(rss)}MB, limit: ${limitMB}MB)`
+            });
+          }
+        }, RSS_POLL_INTERVAL);
+      }
 
       worker.rl.once('line', onLine);
       worker.proc.once('exit', onExit);
@@ -410,30 +420,28 @@ export abstract class BaseProcessPool {
   // ============================================================
 
   /**
-   * 使用 prlimit 设置操作系统级内存限制
+   * 读取子进程的物理内存（RSS）
    * @param pid 进程 ID
-   * @param actualLimitMB 实际进程内存限制（MB）= 用户可用 + 运行时开销
-   * @returns 是否成功设置
+   * @returns RSS（MB），失败返回 null
    */
-  protected async setMemoryLimit(pid: number, actualLimitMB: number): Promise<boolean> {
+  protected async getWorkerRSSMB(pid: number): Promise<number | null> {
     try {
-      const limitBytes = actualLimitMB * 1024 * 1024;
-      // prlimit 设置 RLIMIT_AS（地址空间限制）
-      // 格式：prlimit --pid <pid> --as=soft:hard
-      // Linux/BSD 支持，需要 util-linux
-      await execAsync(`prlimit --pid ${pid} --as=${limitBytes}:${limitBytes}`);
-      const userAvailable = actualLimitMB - config.RUNTIME_MEMORY_OVERHEAD_MB;
-      console.log(
-        `${this.tag}: worker ${pid} memory limit set to ${actualLimitMB}MB ` +
-          `(user available: ${userAvailable}MB, runtime overhead: ${config.RUNTIME_MEMORY_OVERHEAD_MB}MB)`
-      );
-      return true;
-    } catch (e: any) {
-      console.warn(
-        `${this.tag}: failed to set memory limit via prlimit for worker ${pid}: ${e.message || e}`
-      );
-      return false;
+      const plat = platform();
+      if (plat === 'linux' || plat === 'freebsd') {
+        // Linux/BSD: 读取 /proc/{pid}/status 中的 VmRSS（单位 kB）
+        const status = await readFile(`/proc/${pid}/status`, 'utf-8');
+        const match = status.match(/VmRSS:\s+(\d+)\s+kB/);
+        if (match) return parseInt(match[1], 10) / 1024;
+      } else {
+        // macOS/other: 使用 ps 命令获取 RSS（单位 kB）
+        const { stdout } = await execAsync(`ps -o rss= -p ${pid}`, { timeout: 2000 });
+        const rssKB = parseInt(stdout.trim(), 10);
+        if (!isNaN(rssKB)) return rssKB / 1024;
+      }
+    } catch {
+      // 进程可能已退出，忽略错误
     }
+    return null;
   }
 
   /** 从池中移除 worker，kill 进程，并在 ready 时 respawn */

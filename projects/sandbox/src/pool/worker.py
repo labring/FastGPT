@@ -234,7 +234,7 @@ class _SystemHelper:
 system_helper = _SystemHelper()
 SystemHelper = system_helper
 
-# Legacy global functions (backward compatibility, not on SystemHelper)
+# Legacy global functions (backward compatibility, standalone)
 def count_token(text):
     if not isinstance(text, str):
         text = str(text)

@@ -1059,7 +1059,7 @@ describe('文件系统隔离', () => {
 
     it('delay 超过 10s 报错', async () => {
       const result = await runner.execute({
-        code: `def main(v):\n    system_helper.delay(20000)\n    return {}`,
+        code: `def main(v):\n    delay(20000)\n    return {}`,
         variables: {}
       });
       expect(result.success).toBe(false);
