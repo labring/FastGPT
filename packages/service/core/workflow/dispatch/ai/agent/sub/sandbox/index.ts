@@ -1,5 +1,10 @@
 export type { AgentSandboxContext } from './types';
-export { createAgentSandbox, destroyAgentSandbox } from './lifecycle';
+export {
+  createAgentSandbox,
+  releaseAgentSandbox,
+  connectEditDebugSandbox,
+  disconnectEditDebugSandbox
+} from './lifecycle';
 export {
   dispatchSandboxReadFile,
   dispatchSandboxWriteFile,

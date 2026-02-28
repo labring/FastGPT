@@ -62,6 +62,7 @@ export type SkillVersionSchemaType = {
   version: number;
   versionName?: string;
   // Snapshot of skill data
+  name: string;
   markdown: string;
   config: Record<string, any>;
   description: string;
@@ -143,6 +144,9 @@ export type SkillSandboxSchemaType = {
   sandboxType: `${SandboxTypeEnum}`;
   teamId: string;
   tmbId: string;
+
+  sessionId?: string;
+  skillIds?: string[];
 
   sandbox: {
     provider: string;
