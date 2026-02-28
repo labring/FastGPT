@@ -13,6 +13,7 @@ export type CreateVersionData = {
   tmbId: string;
   version: number;
   versionName?: string;
+  name: string;
   markdown: string;
   config: Record<string, any>;
   description: string;
@@ -202,6 +203,7 @@ export async function updateVersion(
   version: number,
   data: Partial<{
     versionName: string;
+    name: string;
     markdown: string;
     config: Record<string, any>;
     description: string;

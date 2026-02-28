@@ -187,6 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tmbId,
         version: nextVersion,
         versionName: versionName || `v${nextVersion}`,
+        name: skillMetadata.name || skill.name,
         markdown: extractResult.skillMd || '',
         config: skillMetadata.config || skill.config,
         description: description || skillMetadata.description || skill.description,

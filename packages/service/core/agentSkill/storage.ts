@@ -204,3 +204,67 @@ export async function copySkillPackage(
     zipBuffer
   });
 }
+
+/**
+ * 获取会话制品列表
+ */
+export async function listSessionArtifacts(sessionId: string): Promise<string[]> {
+  const prefix = `sessions/${sessionId}/projects/`;
+  const bucket = new S3PrivateBucket();
+
+  const { keys } = await bucket.client.listObjects({ prefix });
+  return keys.map((key) => key.replace(prefix, ''));
+}
+
+/**
+ * 下载制品
+ */
+export async function downloadSessionArtifact(
+  sessionId: string,
+  filePath: string
+): Promise<Buffer> {
+  const key = `sessions/${sessionId}/projects/${filePath}`;
+  const bucket = new S3PrivateBucket();
+
+  const response = await bucket.client.downloadObject({ key });
+
+  if (!response.body) {
+    throw new Error(`Failed to download artifact: ${key}`);
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of response.body) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+}
+
+/**
+ * 清理单个会话的所有制品
+ */
+export async function cleanSessionArtifacts(sessionId: string): Promise<{ deletedCount: number }> {
+  const prefix = `sessions/${sessionId}/`;
+  const bucket = new S3PrivateBucket();
+
+  const { keys: failedKeys } = await bucket.client.deleteObjectsByPrefix({ prefix });
+
+  // deleteObjectsByPrefix 不返回实际删除数量，以 0 失败 key 数为成功标志
+  return { deletedCount: failedKeys.length === 0 ? 1 : 0 };
+}
+
+/**
+ * 批量清理多个会话的制品
+ */
+export async function cleanExpiredSessionArtifacts(
+  sessionIds: string[]
+): Promise<{ deletedCount: number }> {
+  let totalDeleted = 0;
+
+  for (const sessionId of sessionIds) {
+    const { deletedCount } = await cleanSessionArtifacts(sessionId);
+    totalDeleted += deletedCount;
+  }
+
+  return { deletedCount: totalDeleted };
+}

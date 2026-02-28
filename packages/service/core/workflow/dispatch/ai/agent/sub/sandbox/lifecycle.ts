@@ -2,21 +2,38 @@
  * Agent Sandbox Lifecycle Management
  *
  * Manages sandbox creation/destruction for agent skill execution.
- * Unlike edit-debug sandboxes, these are session-runtime sandboxes
- * that are not persisted to MongoDB.
+ *
+ * session-runtime 沙箱的数据持久化依赖 sync agent 与 MinIO 的联动：
+ * - SESSION_ID 决定 MinIO 存储路径：sessions/{SESSION_ID}/projects/
+ * - 沙箱启动时，sync agent 从 MinIO 恢复历史数据
+ * - 运行时，文件变更实时同步到 MinIO
+ * - 容器销毁后，数据仍保留在 MinIO，下次以相同 SESSION_ID 启动可恢复
+ *
+ * 沙箱容器生命周期：
+ * - createAgentSandbox：优先复用已有容器（查 MongoDB），否则创建新容器并持久化到 MongoDB
+ * - releaseAgentSandbox：断开 SDK 连接，更新 lastActivityTime，不销毁容器
+ * - 实际容器销毁由 cleanup job 负责（基于 lastActivityTime 超过 inactiveThreshold）
  */
 
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
+import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkill } from '../../../../../../agentSkill/schema';
+import { MongoSkillSandbox } from '../../../../../../agentSkill/sandboxSchema';
 import { MongoSkillVersion } from '../../../../../../agentSkill/versionSchema';
 import { downloadSkillPackage } from '../../../../../../agentSkill/storage';
 import { standardizeSkillPackage } from '../../../../../../agentSkill/zipBuilder';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
-  validateSandboxConfig
+  validateSandboxConfig,
+  buildDockerSyncEnv
 } from '../../../../../../agentSkill/sandboxConfig';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
+import type {
+  AgentSkillSchemaType,
+  SkillVersionSchemaType
+} from '@fastgpt/global/core/agentSkill/type';
 import type { AgentSandboxContext } from './types';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
@@ -24,158 +41,265 @@ type CreateAgentSandboxParams = {
   skillIds: string[];
   teamId: string;
   tmbId: string;
+  sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key，决定 MinIO 数据路径
 };
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
-/**
- * Create a session-runtime sandbox for agent skill execution.
- *
- * Process:
- * 1. Batch query skills from MongoDB
- * 2. Get active versions for each skill
- * 3. Create sandbox via sandbox_provider
- * 4. Download, standardize, and deploy each skill package
- * 5. Return AgentSandboxContext
- */
-export async function createAgentSandbox(
-  params: CreateAgentSandboxParams
-): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId } = params;
+// --- Private helpers ---
 
-  const providerConfig = getSandboxProviderConfig();
-  const defaults = getSandboxDefaults();
-  validateSandboxConfig(providerConfig);
+type SkillDoc = HydratedDocument<AgentSkillSchemaType>;
+type VersionDoc = HydratedDocument<SkillVersionSchemaType>;
+type ProviderConfig = ReturnType<typeof getSandboxProviderConfig>;
 
-  logger.info('[Agent Sandbox] Creating session-runtime sandbox', {
-    skillIds,
-    teamId
+/** Build a sandbox SDK instance from the resolved provider config. */
+function buildSandboxInstance(providerConfig: ProviderConfig): ISandbox {
+  return createSandbox({
+    provider: providerConfig.provider,
+    connection: {
+      apiKey: providerConfig.apiKey,
+      baseUrl: providerConfig.baseUrl,
+      runtime: providerConfig.runtime
+    }
   });
+}
 
-  // Step 1: Batch query skills
+/** Query skills and their active versions, returning a map keyed by skillId string. */
+async function fetchSkillsWithVersionMap(
+  skillIds: string[],
+  teamId: string
+): Promise<{ skills: SkillDoc[]; versionMap: Map<string, VersionDoc> }> {
   const skills = await MongoAgentSkill.find({
     _id: { $in: skillIds },
     teamId,
     deleteTime: null
   });
-
-  if (skills.length === 0) {
-    throw new Error('No valid skills found');
-  }
-
-  // Step 2: Get active versions for each skill
   const activeVersions = await MongoSkillVersion.find({
     skillId: { $in: skills.map((s) => s._id) },
     isActive: true,
     isDeleted: false
   });
-
   const versionMap = new Map(activeVersions.map((v) => [String(v.skillId), v]));
+  return { skills, versionMap };
+}
 
-  // Filter skills that have active versions with storage
-  const deployableSkills = skills.filter((skill) => {
-    const version = versionMap.get(String(skill._id));
-    return version && skill.currentStorage;
+/** Merge an active version snapshot into a skill POJO. Returns skill unchanged when version is absent. */
+function mergeSkillWithVersion(
+  skill: AgentSkillSchemaType,
+  version: VersionDoc | null | undefined
+): AgentSkillSchemaType {
+  if (!version) return skill;
+  return {
+    ...skill,
+    name: version.name,
+    description: version.description,
+    markdown: version.markdown,
+    config: version.config,
+    category: version.category as AgentSkillSchemaType['category']
+  };
+}
+
+/** Download and extract each skill package into the sandbox work directory. */
+async function deploySkillsToSandbox(
+  sandbox: ISandbox,
+  deployableSkills: SkillDoc[],
+  versionMap: Map<string, VersionDoc>,
+  workDirectory: string
+): Promise<void> {
+  for (const skill of deployableSkills) {
+    const version = versionMap.get(String(skill._id))!;
+    try {
+      const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
+      const { buffer: standardizedBuffer } = await standardizeSkillPackage(
+        packageBuffer,
+        skill.name
+      );
+
+      const zipPath = `${workDirectory}/package_${skill.name}.zip`;
+      await sandbox.writeFiles([{ path: zipPath, data: standardizedBuffer }]);
+
+      const extractResult = await sandbox.execute(
+        `cd ${workDirectory} && unzip -o package_${skill.name}.zip && rm package_${skill.name}.zip`
+      );
+
+      if (extractResult.exitCode !== 0) {
+        logger.error('[Agent Sandbox] Failed to extract skill package', {
+          skillName: skill.name,
+          stderr: extractResult.stderr
+        });
+        continue;
+      }
+
+      logger.info('[Agent Sandbox] Skill deployed', {
+        skillName: skill.name,
+        directory: `${workDirectory}/${skill.name}`
+      });
+    } catch (error) {
+      logger.error('[Agent Sandbox] Failed to deploy skill', { skillName: skill.name, error });
+    }
+  }
+}
+
+// --- Exported lifecycle functions ---
+
+/**
+ * 创建或复用 session-runtime 沙箱。
+ *
+ * 优先查询 MongoDB 中是否有相同 sessionId 的活跃容器：
+ * - 有 → connect 复用，更新 lastActivityTime，无冷启动
+ * - 无 → 创建新容器（注入 SESSION_ID），sync agent 从 MinIO 恢复历史数据，持久化到 MongoDB
+ */
+export async function createAgentSandbox(
+  params: CreateAgentSandboxParams
+): Promise<AgentSandboxContext> {
+  const { skillIds, teamId, tmbId, sessionId } = params;
+
+  const providerConfig = getSandboxProviderConfig();
+  const defaults = getSandboxDefaults();
+  validateSandboxConfig(providerConfig);
+
+  // Step 1: Try to reuse an existing session-runtime sandbox
+  const existingDoc = await MongoSkillSandbox.findOne({
+    sessionId,
+    sandboxType: SandboxTypeEnum.sessionRuntime,
+    deleteTime: null
   });
+
+  if (existingDoc) {
+    logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
+      sessionId,
+      providerSandboxId: existingDoc.sandbox.sandboxId
+    });
+
+    const sandbox = buildSandboxInstance(providerConfig);
+    await sandbox.connect(existingDoc.sandbox.sandboxId);
+
+    existingDoc.lastActivityTime = new Date();
+    await existingDoc.save();
+
+    const reusedSkillIds = existingDoc.skillIds ? existingDoc.skillIds.map(String) : skillIds;
+    const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
+
+    return {
+      sandbox,
+      providerSandboxId: existingDoc.sandbox.sandboxId,
+      sessionId,
+      skills: skills.map((skill) =>
+        mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id)))
+      ),
+      workDirectory: defaults.workDirectory,
+      isReady: true
+    };
+  }
+
+  // Step 2: Fetch skills and filter deployable ones
+  logger.info('[Agent Sandbox] Creating new session-runtime sandbox', {
+    skillIds,
+    teamId,
+    sessionId
+  });
+
+  const { skills, versionMap } = await fetchSkillsWithVersionMap(skillIds, teamId);
+
+  if (skills.length === 0) {
+    throw new Error('No valid skills found');
+  }
+
+  const deployableSkills = skills.filter(
+    (skill) => versionMap.get(String(skill._id)) && skill.currentStorage
+  );
 
   if (deployableSkills.length === 0) {
     throw new Error('No deployable skills found (missing active versions)');
   }
 
-  // Step 3: Create sandbox
+  // Step 3: Create sandbox container, inject SESSION_ID
   let sandbox: ISandbox | null = null;
 
   try {
-    sandbox = createSandbox({
-      provider: 'opensandbox',
-      connection: {
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
-        runtime: providerConfig.runtime
-      }
-    });
+    sandbox = buildSandboxInstance(providerConfig);
 
-    await sandbox.create({
-      image: defaults.defaultImage,
-      timeout: defaults.timeout,
-      metadata: {
-        teamId,
-        tmbId,
-        sandboxType: 'agent-runtime',
-        skillIds: skillIds.join('--')
-      }
-    });
+    if (providerConfig.runtime === 'kubernetes') {
+      // K8s 模式：SESSION_ID 由 Sync Agent Sidecar 从 Pod label/metadata 读取
+      await sandbox.create({
+        image: defaults.defaultImage,
+        timeout: defaults.timeout,
+        // entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        // env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
+        metadata: {
+          teamId,
+          tmbId,
+          sandboxType: SandboxTypeEnum.sessionRuntime,
+          skillIds: skillIds.join('-'),
+          sessionId
+        }
+      });
+    } else {
+      // Docker 模式：通过环境变量注入 SESSION_ID，sync agent 据此确定 MinIO 数据路径
+      await sandbox.create({
+        image: { repository: 'skill-agent/sandbox', tag: 'with-sync' },
+        timeout: defaults.timeout,
+        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
+        metadata: {
+          teamId,
+          tmbId,
+          sandboxType: SandboxTypeEnum.sessionRuntime,
+          skillIds: skillIds.join('-'),
+          sessionId
+        }
+      });
+    }
 
     await sandbox.waitUntilReady(60000);
 
     const sandboxInfo = await sandbox.getInfo();
 
     logger.info('[Agent Sandbox] Sandbox created', {
-      providerSandboxId: sandboxInfo.id
+      providerSandboxId: sandboxInfo.id,
+      sessionId
     });
 
-    // Step 4: Deploy each skill
-    for (const skill of deployableSkills) {
-      const version = versionMap.get(String(skill._id))!;
+    // Step 4: Deploy skill packages
+    await deploySkillsToSandbox(sandbox, deployableSkills, versionMap, defaults.workDirectory);
 
-      try {
-        // Download package from storage
-        const packageBuffer = await downloadSkillPackage({
-          storageInfo: version.storage
-        });
-
-        // Standardize ZIP structure
-        const { buffer: standardizedBuffer } = await standardizeSkillPackage(
-          packageBuffer,
-          skill.name
-        );
-
-        // Upload and extract to sandbox
-        const zipPath = `${defaults.workDirectory}/package_${skill.name}.zip`;
-        await sandbox.writeFiles([
-          {
-            path: zipPath,
-            data: standardizedBuffer
-          }
-        ]);
-
-        // Extract to skill-specific directory
-        const extractResult = await sandbox.execute(
-          `cd ${defaults.workDirectory} && unzip -o package_${skill.name}.zip && rm package_${skill.name}.zip`
-        );
-
-        if (extractResult.exitCode !== 0) {
-          logger.error('[Agent Sandbox] Failed to extract skill package', {
-            skillName: skill.name,
-            stderr: extractResult.stderr
-          });
-          continue;
-        }
-
-        logger.info('[Agent Sandbox] Skill deployed', {
-          skillName: skill.name,
-          directory: `${defaults.workDirectory}/${skill.name}`
-        });
-      } catch (error) {
-        logger.error('[Agent Sandbox] Failed to deploy skill', {
-          skillName: skill.name,
-          error
-        });
-        // Continue deploying other skills
+    // Step 5: Persist to MongoDB
+    await MongoSkillSandbox.create({
+      skillId: deployableSkills[0]._id, // 保留 required 字段兼容性
+      skillIds: deployableSkills.map((s) => s._id),
+      sessionId,
+      sandboxType: SandboxTypeEnum.sessionRuntime,
+      teamId,
+      tmbId,
+      sandbox: {
+        provider: providerConfig.provider,
+        sandboxId: sandboxInfo.id,
+        image: sandboxInfo.image,
+        status: {
+          state: sandboxInfo.status.state,
+          message: sandboxInfo.status.message,
+          reason: sandboxInfo.status.reason
+        },
+        createdAt: sandboxInfo.createdAt,
+        expiresAt: sandboxInfo.expiresAt
       }
-    }
+    });
+
+    logger.info('[Agent Sandbox] Sandbox info saved to MongoDB', { sessionId });
 
     return {
       sandbox,
       providerSandboxId: sandboxInfo.id,
-      skills: deployableSkills.map((s) => s.toJSON()),
+      sessionId,
+      skills: deployableSkills.map((skill) =>
+        mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id))!)
+      ),
       workDirectory: defaults.workDirectory,
       isReady: true
     };
   } catch (error) {
     logger.error('[Agent Sandbox] Failed to create sandbox', { error });
 
-    // Cleanup on failure
     if (sandbox) {
       try {
         await sandbox.delete();
@@ -190,26 +314,100 @@ export async function createAgentSandbox(
 }
 
 /**
- * Destroy an agent session-runtime sandbox.
- * Fire-and-forget mode - does not persist to MongoDB.
+ * 结束本次 sandbox 使用。
+ *
+ * 只断开 SDK 连接并更新 lastActivityTime，不销毁容器。
+ * 容器保持存活，供同会话的下一次 agent 调用复用。
+ * 实际容器销毁由 cleanup job 在超过 inactiveThreshold 后执行。
  */
-export async function destroyAgentSandbox(ctx: AgentSandboxContext): Promise<void> {
+export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
-    logger.info('[Agent Sandbox] Destroying sandbox', {
+    await ctx.sandbox.close();
+    logger.info('[Agent Sandbox] Released sandbox connection', {
+      sessionId: ctx.sessionId,
       providerSandboxId: ctx.providerSandboxId
     });
-
-    await ctx.sandbox.delete();
-    await ctx.sandbox.close();
-
-    logger.info('[Agent Sandbox] Sandbox destroyed');
   } catch (error) {
-    logger.error('[Agent Sandbox] Failed to destroy sandbox', { error });
-    // Best-effort close
-    try {
-      await ctx.sandbox.close();
-    } catch {
-      // Ignore close errors
-    }
+    logger.error('[Agent Sandbox] Failed to close sandbox connection', { error });
+  }
+
+  // 更新 lastActivityTime，cleanup job 据此判断是否超时
+  try {
+    await MongoSkillSandbox.updateOne(
+      { sessionId: ctx.sessionId, sandboxType: SandboxTypeEnum.sessionRuntime, deleteTime: null },
+      { $set: { lastActivityTime: new Date() } }
+    );
+  } catch (error) {
+    logger.error('[Agent Sandbox] Failed to update lastActivityTime', { error });
+  }
+}
+
+type ConnectEditDebugSandboxParams = {
+  skillId: string;
+  teamId: string;
+};
+
+/**
+ * 连接已有的 editDebug 沙箱，构建 AgentSandboxContext。
+ * 用于 test 模式下，复用编辑中的沙箱进行调试。
+ */
+export async function connectEditDebugSandbox(
+  params: ConnectEditDebugSandboxParams
+): Promise<AgentSandboxContext> {
+  const { skillId, teamId } = params;
+  const providerConfig = getSandboxProviderConfig();
+  const defaults = getSandboxDefaults();
+  validateSandboxConfig(providerConfig);
+
+  const sandboxDoc = await MongoSkillSandbox.findOne({
+    skillId,
+    sandboxType: SandboxTypeEnum.editDebug,
+    deleteTime: null
+  });
+  if (!sandboxDoc) {
+    throw new Error('No active edit-debug sandbox found for this skill');
+  }
+
+  const skill = await MongoAgentSkill.findOne({
+    _id: skillId,
+    teamId,
+    deleteTime: null
+  });
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+
+  const sandbox = buildSandboxInstance(providerConfig);
+  await sandbox.connect(sandboxDoc.sandbox.sandboxId);
+
+  sandboxDoc.lastActivityTime = new Date();
+  await sandboxDoc.save();
+
+  logger.info('[Agent Sandbox] Connected to edit-debug sandbox', {
+    skillId,
+    providerSandboxId: sandboxDoc.sandbox.sandboxId
+  });
+
+  return {
+    sandbox,
+    providerSandboxId: sandboxDoc.sandbox.sandboxId,
+    sessionId: String(sandboxDoc._id), // editDebug 沙箱用自身 _id 作为 sessionId
+    skills: [skill.toJSON()],
+    workDirectory: defaults.workDirectory,
+    isReady: true
+  };
+}
+
+/**
+ * 只断开连接，不销毁沙箱。
+ */
+export async function disconnectEditDebugSandbox(ctx: AgentSandboxContext): Promise<void> {
+  try {
+    await ctx.sandbox.close();
+    logger.info('[Agent Sandbox] Disconnected from edit-debug sandbox', {
+      providerSandboxId: ctx.providerSandboxId
+    });
+  } catch (error) {
+    logger.error('[Agent Sandbox] Failed to disconnect from edit-debug sandbox', { error });
   }
 }

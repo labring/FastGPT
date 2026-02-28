@@ -7,6 +7,7 @@
 import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkill/type';
 
 export type SandboxProviderConfig = {
+  provider: string;
   baseUrl: string;
   apiKey?: string;
   runtime: 'kubernetes' | 'docker';
@@ -26,11 +27,13 @@ export type SandboxDefaults = {
  * Get sandbox provider configuration from environment variables
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
+  const provider = process.env.SANDBOX_PROVIDER_NAME || 'opensandbox';
   const baseUrl = process.env.SANDBOX_PROVIDER_BASE_URL || 'http://127.0.0.1:8080';
   const apiKey = process.env.SANDBOX_PROVIDER_API_KEY;
   const runtime = (process.env.SANDBOX_PROVIDER_RUNTIME || 'kubernetes') as 'kubernetes' | 'docker';
 
   return {
+    provider,
     baseUrl,
     apiKey,
     runtime
@@ -66,4 +69,40 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
   if (!['kubernetes', 'docker'].includes(config.runtime)) {
     throw new Error(`Invalid runtime: ${config.runtime}`);
   }
+}
+
+/**
+ * Docker 运行时下注入 Sync Agent 所需的环境变量
+ *
+ * K8s 运行时不需要此函数：SESSION_ID 由 Sync Agent Sidecar 从 Pod label 读取，
+ * MinIO 凭证通过 K8s Secret 挂载到 Sidecar 容器，FastGPT 侧只需在 metadata 传 sessionId。
+ *
+ * @param sessionId  会话唯一 ID，作为 MinIO 存储路径前缀（sessions/{sessionId}/）
+ * @param syncPath   沙箱内需要同步的目录，通常为 workDirectory
+ * @param enableCodeServer 是否启动 code-server，editDebug 模式为 true，session-runtime 为 false
+ */
+export function buildDockerSyncEnv(
+  sessionId: string,
+  syncPath: string,
+  enableCodeServer: boolean
+): Record<string, string> {
+  const minioEndpoint = process.env.MINIO_ENDPOINT;
+  const minioAccessKey = process.env.MINIO_ACCESS_KEY;
+  const minioSecretKey = process.env.MINIO_SECRET_KEY;
+
+  if (!minioEndpoint || !minioAccessKey || !minioSecretKey) {
+    throw new Error(
+      'Missing required MinIO configuration: MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY must be set'
+    );
+  }
+
+  return {
+    SESSION_ID: sessionId,
+    MINIO_ENDPOINT: minioEndpoint,
+    MINIO_ACCESS_KEY: minioAccessKey,
+    MINIO_SECRET_KEY: minioSecretKey,
+    MINIO_BUCKET: process.env.MINIO_BUCKET || 'skill-artifacts',
+    SYNC_PATH: syncPath,
+    ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
+  };
 }
