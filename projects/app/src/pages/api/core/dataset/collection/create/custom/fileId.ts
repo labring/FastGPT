@@ -138,110 +138,119 @@ async function handler(
   // 3. Validate file type
   validateFileExtension(extension);
 
-  // 4. Handle duplicate file name
+  // 4. Handle duplicate file name (within transaction to avoid TOCTOU)
   let deletedCollectionId: string | undefined;
   let overwritten = false;
 
   // Normalize parentId: convert empty string to undefined
   const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
 
-  // Build query for duplicate check - only check within the same parentId folder
-  const duplicateQuery: Record<string, any> = {
-    datasetId,
-    name: fileName,
-    type: DatasetCollectionTypeEnum.file
-  };
+  await mongoSessionRun(async (session) => {
+    // Build query for duplicate check - only check within the same parentId folder
+    const duplicateQuery: Record<string, any> = {
+      datasetId,
+      name: fileName,
+      type: DatasetCollectionTypeEnum.file
+    };
 
-  // Handle parentId query condition
-  if (normalizedParentId) {
-    duplicateQuery.parentId = normalizedParentId;
-  } else {
-    // Root directory: parentId is null or does not exist
-    duplicateQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
-  }
+    // Handle parentId query condition
+    if (normalizedParentId) {
+      duplicateQuery.parentId = normalizedParentId;
+    } else {
+      // Root directory: parentId is null or does not exist
+      duplicateQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+    }
 
-  // Check if file with same name exists in the same folder
-  const existingCollection = await MongoDatasetCollection.findOne(duplicateQuery);
+    // Check if file with same name exists in the same folder (within transaction)
+    const existingCollection = await MongoDatasetCollection.findOne(duplicateQuery, '_id', {
+      session
+    });
 
-  if (existingCollection) {
-    if (overwriteDuplicate === true) {
-      // 4.1 Overwrite: delete old collection
-      deletedCollectionId = String(existingCollection._id);
+    if (existingCollection) {
+      if (overwriteDuplicate === true) {
+        // 4.1 Overwrite: delete old collection within the same transaction
+        deletedCollectionId = String(existingCollection._id);
 
-      // Find all child collections
-      const collections = await findCollectionAndChild({
-        teamId,
-        datasetId,
-        collectionId: deletedCollectionId,
-        fields: '_id teamId datasetId fileId metadata'
-      });
+        // Find all child collections
+        const collections = await findCollectionAndChild({
+          teamId,
+          datasetId,
+          collectionId: deletedCollectionId,
+          fields: '_id teamId datasetId fileId metadata'
+        });
 
-      // Delete collection and related data (data and training records)
-      await mongoSessionRun((session) =>
-        delCollection({
+        // Delete collection and related data (data and training records)
+        await delCollection({
           collections,
           delImg: true,
           delFile: true,
           session
-        })
-      );
+        });
 
-      overwritten = true;
+        overwritten = true;
 
-      addLog.info(`[FileImport] Overwritten collection: ${deletedCollectionId}, name: ${fileName}`);
-    } else {
-      // 4.2 No overwrite: add suffix to new file name
-      const lastDotIndex = fileName.lastIndexOf('.');
-      const fileNameWithoutExt = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
-      const fileExt = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
-
-      // Escape special regex characters
-      const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const escapedBase = escapeRegex(fileNameWithoutExt);
-      const escapedExt = escapeRegex(fileExt);
-
-      // Build query for suffix pattern - only check within the same parentId folder
-      const suffixQuery: Record<string, any> = {
-        datasetId,
-        name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
-        type: DatasetCollectionTypeEnum.file
-      };
-
-      // Handle parentId query condition
-      if (normalizedParentId) {
-        suffixQuery.parentId = normalizedParentId;
+        addLog.info(
+          `[FileImport] Overwritten collection: ${deletedCollectionId}, name: ${fileName}`
+        );
       } else {
-        // Root directory: parentId is null or does not exist
-        suffixQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
-      }
+        // 4.2 No overwrite: add suffix to new file name
+        const lastDotIndex = fileName.lastIndexOf('.');
+        const fileNameWithoutExt =
+          lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+        const fileExt = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
 
-      // Query all existing files with suffix pattern in the same folder
-      const existingNames = await MongoDatasetCollection.find(suffixQuery).select('name').lean();
+        // Escape special regex characters
+        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedBase = escapeRegex(fileNameWithoutExt);
+        const escapedExt = escapeRegex(fileExt);
 
-      // Find max suffix from existing names
-      let maxSuffix = 0;
-      const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
-      for (const doc of existingNames) {
-        const match = doc.name.match(suffixRegex);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxSuffix) maxSuffix = num;
+        // Build query for suffix pattern - only check within the same parentId folder
+        const suffixQuery: Record<string, any> = {
+          datasetId,
+          name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
+          type: DatasetCollectionTypeEnum.file
+        };
+
+        // Handle parentId query condition
+        if (normalizedParentId) {
+          suffixQuery.parentId = normalizedParentId;
+        } else {
+          // Root directory: parentId is null or does not exist
+          suffixQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
         }
+
+        // Query all existing files with suffix pattern in the same folder (within transaction)
+        const existingNames = await MongoDatasetCollection.find(suffixQuery, 'name', {
+          session
+        }).lean();
+
+        // Find max suffix from existing names
+        let maxSuffix = 0;
+        const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
+        for (const doc of existingNames) {
+          const match = doc.name.match(suffixRegex);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxSuffix) maxSuffix = num;
+          }
+        }
+
+        fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
+
+        addLog.info(
+          `[FileImport] Renamed duplicate file from '${name || filename}' to '${fileName}'`
+        );
       }
-
-      fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
-
-      // Update GridFS filename to match the renamed collection name
-      await updateGridFSFilename({
-        bucketName: BucketNameEnum.dataset,
-        fileId,
-        newFilename: fileName
-      });
-
-      addLog.info(
-        `[FileImport] Renamed duplicate file from '${name || filename}' to '${fileName}'`
-      );
     }
+  });
+
+  // Update GridFS filename if name was changed (outside transaction as it's a separate operation)
+  if (fileName !== (name || filename)) {
+    await updateGridFSFilename({
+      bucketName: BucketNameEnum.dataset,
+      fileId,
+      newFilename: fileName
+    });
   }
 
   // 5. Get configuration mode (use default mode from config)
@@ -339,7 +348,7 @@ async function handler(
   return {
     collectionId,
     insertLen: insertResults?.insertLen ?? 0,
-    ...(overwritten && { overwritten, deletedCollectionId }),
+    ...(overwritten ? { overwritten, deletedCollectionId } : {}),
     configAdjustments: adjustments.length > 0 ? adjustments : undefined
   };
 }

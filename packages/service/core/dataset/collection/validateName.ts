@@ -1,23 +1,20 @@
-import { MongoDatasetCollection } from './schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 /**
  * Validate collection name when updating
  * Checks for:
- * 1. Duplicate names in the same dataset
- * 2. File extension removal (not allowed)
- * 3. File extension mismatch with original
+ * 1. File extension removal (not allowed)
+ * 2. File extension mismatch with original
+ * Note: Duplicate name checking is handled separately at the folder level
  */
 export const validateCollectionNameUpdate = async ({
-  collectionId,
-  datasetId,
   newName,
   originalName,
   collectionType
 }: {
-  collectionId: string;
-  datasetId: string;
+  collectionId?: string; // Kept for backward compatibility, not used internally
+  datasetId?: string; // Kept for backward compatibility, not used internally
   newName: string;
   originalName: string;
   collectionType: DatasetCollectionTypeEnum;
@@ -44,18 +41,5 @@ export const validateCollectionNameUpdate = async ({
   // Check 2: File extension must match original
   if (originalExt && newExt && originalExt !== newExt) {
     return Promise.reject(DatasetErrEnum.collectionNameExtensionMismatch);
-  }
-
-  // Check 3: No duplicate names in the same dataset
-  // Note: 不检查 parentId，在整个 dataset 范围内检查重名，确保文件名全局唯一
-  const existingCollection = await MongoDatasetCollection.findOne({
-    datasetId,
-    name: newName,
-    type: DatasetCollectionTypeEnum.file,
-    _id: { $ne: collectionId } // Exclude current collection
-  });
-
-  if (existingCollection) {
-    return Promise.reject(DatasetErrEnum.collectionNameDuplicate);
   }
 };
