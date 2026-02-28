@@ -30,6 +30,10 @@ const SkillVersionSchema = new Schema({
     default: ''
   },
   // Snapshot of skill data
+  name: {
+    type: String,
+    required: true
+  },
   markdown: {
     type: String,
     required: true

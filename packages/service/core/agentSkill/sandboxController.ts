@@ -7,6 +7,7 @@
 
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
+import mongoose from 'mongoose';
 import { MongoSkillSandbox } from './sandboxSchema';
 import { MongoAgentSkill } from './schema';
 import { MongoSkillVersion } from './versionSchema';
@@ -15,7 +16,8 @@ import { standardizeSkillPackage } from './zipBuilder';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
-  validateSandboxConfig
+  validateSandboxConfig,
+  buildDockerSyncEnv
 } from './sandboxConfig';
 import type {
   SkillSandboxSchemaType,
@@ -67,20 +69,16 @@ export type RenewSandboxParams = {
  * Create an edit-debug sandbox for a skill
  *
  * Process:
- * 1. Verify skillId exists and user has permission
- * 2. Check for existing edit-debug sandbox and soft delete it
- * 3. Create sandbox using sandbox_provider
- * 4. Download package.zip from MinIO
- * 5. Upload and extract to sandbox
- * 6. Get endpoint information
- * 7. Save to MongoDB
+ * Phase 1 - Resolve and validate configuration
+ * Phase 2 - Pre-flight checks and resource preparation (auth, package download)
+ * Phase 3 - Sandbox operations (create, upload, extract, persist)
  */
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
   const { skillId, teamId, tmbId, image, timeout } = params;
 
-  // Get configuration
+  // === Phase 1: Resolve and validate configuration ===
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
@@ -94,7 +92,9 @@ export async function createEditDebugSandbox(
     image: sandboxImage
   });
 
-  // Step 1: Verify skill exists and get its version info
+  // === Phase 2: Pre-flight checks and resource preparation ===
+
+  // Verify skill exists and user has permission
   const skill = await MongoAgentSkill.findOne({
     _id: skillId,
     teamId,
@@ -109,7 +109,7 @@ export async function createEditDebugSandbox(
     throw new Error('Skill package not found - no current version available');
   }
 
-  // Get active version to ensure we have package.zip
+  // Verify active version exists
   const activeVersion = await MongoSkillVersion.findOne({
     skillId,
     isActive: true,
@@ -120,7 +120,7 @@ export async function createEditDebugSandbox(
     throw new Error('No active version found for skill');
   }
 
-  // Step 2: Check for existing edit-debug sandbox and soft delete
+  // Check for existing edit-debug sandbox and soft delete it
   const existingSandbox = await MongoSkillSandbox.findOne({
     skillId,
     sandboxType: SandboxTypeEnum.editDebug,
@@ -132,11 +132,10 @@ export async function createEditDebugSandbox(
       sandboxId: existingSandbox._id
     });
 
-    // Soft delete
     existingSandbox.deleteTime = new Date();
     await existingSandbox.save();
 
-    // Async cleanup of provider sandbox (don't wait)
+    // Async cleanup of provider sandbox (fire and forget)
     cleanupProviderSandbox(existingSandbox.sandbox.sandboxId, providerConfig).catch((err) => {
       addLog.error('[Sandbox] Failed to cleanup old provider sandbox', {
         sandboxId: existingSandbox.sandbox.sandboxId,
@@ -145,13 +144,25 @@ export async function createEditDebugSandbox(
     });
   }
 
-  // Step 3: Create sandbox using sandbox_provider
+  // Download package.zip from MinIO and standardize it
+  addLog.info('[Sandbox] Downloading package from storage', {
+    key: activeVersion.storage.key
+  });
+
+  const packageBuffer = await downloadSkillPackage({
+    storageInfo: activeVersion.storage
+  });
+
+  addLog.info('[Sandbox] Package downloaded', { size: packageBuffer.length });
+
+  const { buffer: standardizedBuffer } = await standardizeSkillPackage(packageBuffer, skill.name);
+
+  // === Phase 3: Sandbox operations ===
   let sandbox: ISandbox | null = null;
-  let newSandboxDoc: SkillSandboxSchemaType | null = null;
 
   try {
     sandbox = createSandbox({
-      provider: 'opensandbox',
+      provider: providerConfig.provider,
       connection: {
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
@@ -164,22 +175,38 @@ export async function createEditDebugSandbox(
       timeout: sandboxTimeout
     });
 
-    await sandbox.create({
-      image: sandboxImage,
-      timeout: sandboxTimeout,
-      entrypoint: ['/home/coder/entrypoint.sh'],
-      metadata: {
-        skillId,
-        teamId,
-        sandboxType: SandboxTypeEnum.editDebug
-      }
-    });
+    const sessionId = new mongoose.Types.ObjectId().toHexString();
 
-    // Step 4: Wait for sandbox to be ready
+    if (providerConfig.runtime === 'kubernetes') {
+      await sandbox.create({
+        image: sandboxImage,
+        timeout: sandboxTimeout,
+        entrypoint: ['/home/coder/entrypoint.sh'],
+        metadata: {
+          skillId,
+          teamId,
+          sandboxType: SandboxTypeEnum.editDebug,
+          sessionId
+        }
+      });
+    } else {
+      await sandbox.create({
+        image: { repository: 'skill-agent/sandbox', tag: 'with-sync' },
+        timeout: sandboxTimeout,
+        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
+        metadata: {
+          skillId,
+          teamId,
+          sandboxType: SandboxTypeEnum.editDebug,
+          sessionId
+        }
+      });
+    }
+
     addLog.info('[Sandbox] Waiting for sandbox to be ready');
-    await sandbox.waitUntilReady(60000); // 60 second timeout
+    await sandbox.waitUntilReady(60000);
 
-    // Get sandbox info
     const sandboxInfo = await sandbox.getInfo();
 
     addLog.info('[Sandbox] Sandbox created successfully', {
@@ -187,21 +214,7 @@ export async function createEditDebugSandbox(
       status: sandboxInfo.status.state
     });
 
-    // Step 5: Download package.zip from MinIO
-    addLog.info('[Sandbox] Downloading package from storage', {
-      key: activeVersion.storage.key
-    });
-
-    const packageBuffer = await downloadSkillPackage({
-      storageInfo: activeVersion.storage
-    });
-
-    addLog.info('[Sandbox] Package downloaded', { size: packageBuffer.length });
-
-    // Standardize the ZIP package (ensure root folder named after skill)
-    const { buffer: standardizedBuffer } = await standardizeSkillPackage(packageBuffer, skill.name);
-
-    // Step 6: Upload to sandbox and extract
+    // Upload package to sandbox and extract
     const zipPath = `${defaults.workDirectory}/package.zip`;
 
     addLog.info('[Sandbox] Uploading package to sandbox', { path: zipPath });
@@ -213,7 +226,6 @@ export async function createEditDebugSandbox(
       }
     ]);
 
-    // Extract the package
     addLog.info('[Sandbox] Extracting package');
     const extractResult = await sandbox.execute(
       `mkdir -p ${defaults.workDirectory} && cd ${defaults.workDirectory} && unzip -o package.zip && rm package.zip`
@@ -225,7 +237,7 @@ export async function createEditDebugSandbox(
 
     addLog.info('[Sandbox] Package extracted successfully');
 
-    // Step 7: Get endpoint information
+    // Get endpoint
     addLog.info('[Sandbox] Getting endpoint', { port: defaults.targetPort });
     const endpoint = await sandbox.getEndpoint(defaults.targetPort);
 
@@ -238,17 +250,18 @@ export async function createEditDebugSandbox(
 
     addLog.info('[Sandbox] Endpoint obtained', endpointInfo);
 
-    // Step 8: Save to MongoDB
-    newSandboxDoc = await mongoSessionRun(async (session) => {
+    // Persist to MongoDB
+    const newSandboxDoc = await mongoSessionRun(async (session) => {
       const doc = await MongoSkillSandbox.create(
         [
           {
+            _id: sessionId,
             skillId,
             sandboxType: SandboxTypeEnum.editDebug,
             teamId,
             tmbId,
             sandbox: {
-              provider: 'opensandbox',
+              provider: providerConfig.provider,
               sandboxId: sandboxInfo.id,
               image: sandboxInfo.image,
               status: {
@@ -295,7 +308,7 @@ export async function createEditDebugSandbox(
   } catch (error) {
     addLog.error('[Sandbox] Failed to create sandbox', { error });
 
-    // Cleanup: delete provider sandbox if created
+    // Cleanup provider sandbox if it was created
     if (sandbox) {
       try {
         await sandbox.delete();
@@ -306,7 +319,6 @@ export async function createEditDebugSandbox(
 
     throw error;
   } finally {
-    // Close connection
     if (sandbox) {
       await sandbox.close();
     }
@@ -396,7 +408,7 @@ export async function renewSandboxExpiration(
 
   try {
     sandbox = createSandbox({
-      provider: 'opensandbox',
+      provider: providerConfig.provider,
       connection: {
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
@@ -466,7 +478,7 @@ export async function packageSkillInSandbox(params: {
   try {
     // Create sandbox instance
     sandbox = createSandbox({
-      provider: 'opensandbox',
+      provider: providerConfig.provider,
       connection: {
         apiKey: providerConfig.apiKey,
         baseUrl: providerConfig.baseUrl,
@@ -534,7 +546,7 @@ async function cleanupProviderSandbox(
 
   try {
     sandbox = createSandbox({
-      provider: 'opensandbox',
+      provider: config.provider,
       connection: {
         apiKey: config.apiKey,
         baseUrl: config.baseUrl,

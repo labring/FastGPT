@@ -248,6 +248,7 @@ export async function importSkill(
       tmbId,
       version: 0,
       versionName: 'Initial import',
+      name: skill.name,
       markdown,
       config: skill.config || {},
       description: skill.description,

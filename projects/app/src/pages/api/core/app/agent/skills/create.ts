@@ -130,6 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           tmbId,
           version: 0,
           versionName: 'Initial creation',
+          name: name.trim(),
           markdown: markdown.trim(),
           config: config || {},
           description: description?.trim() || '',

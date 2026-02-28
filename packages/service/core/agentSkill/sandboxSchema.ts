@@ -33,6 +33,15 @@ const SkillSandboxSchema = new Schema({
     required: true
   },
 
+  sessionId: {
+    type: String,
+    default: null
+  },
+  skillIds: {
+    type: [Schema.Types.ObjectId],
+    default: []
+  },
+
   // Sandbox provider information
   sandbox: {
     provider: {
@@ -131,6 +140,18 @@ try {
       unique: true,
       partialFilterExpression: {
         sandboxType: 'edit-debug',
+        deleteTime: null
+      }
+    }
+  );
+
+  // Unique index: only one active session-runtime sandbox per sessionId
+  SkillSandboxSchema.index(
+    { sessionId: 1, sandboxType: 1, deleteTime: 1 },
+    {
+      unique: true,
+      partialFilterExpression: {
+        sandboxType: 'session-runtime',
         deleteTime: null
       }
     }
