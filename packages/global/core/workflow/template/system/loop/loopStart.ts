@@ -43,6 +43,13 @@ export const LoopStartNode: FlowNodeTemplateType = {
   ],
   outputs: [
     {
+      id: NodeOutputKeyEnum.loopStartInput,
+      key: NodeOutputKeyEnum.loopStartInput,
+      label: i18nT('workflow:Array_element'),
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.any
+    },
+    {
       id: NodeOutputKeyEnum.loopStartIndex,
       key: NodeOutputKeyEnum.loopStartIndex,
       label: i18nT('workflow:Array_element_index'),
