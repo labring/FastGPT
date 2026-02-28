@@ -268,6 +268,15 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
             }
           ]);
         }
+      } else if (groupedValues.length === 0) {
+        // 对于非最后一条的空 AI 消息，也补充一个空节点，避免消息"消失"
+        groupedValues.push([
+          {
+            text: {
+              content: ''
+            }
+          }
+        ]);
       }
 
       return groupedValues;

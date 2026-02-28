@@ -2,7 +2,7 @@ import { Box, ModalBody, useDisclosure } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { getDocPath } from '@/web/common/system/doc';
-import React from 'react';
+import React, { useCallback } from 'react';
 
 const UseGuideModal = ({
   children,
@@ -18,14 +18,14 @@ const UseGuideModal = ({
   link?: string;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const onClick = () => {
+  const onClick = useCallback(() => {
     if (link) {
       return window.open(getDocPath(link), '_blank');
     }
     if (text) {
       return onOpen();
     }
-  };
+  }, [link, text, onOpen]);
 
   return (
     <>
