@@ -3,6 +3,34 @@
 # - FastGPT-mcp-server 端口映射 3005:3000
 # - 建议修改账密后再运行
 
+# opensandbox config
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6"
+
+      [egress]
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
+
+      [docker]
+      network_mode = "bridge"
+      # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable (e.g. host.docker.internal or the host LAN IP).
+      # It's required when server deployed with docker container under host.
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"
+
 # plugin auth token
 x-plugin-auth-token: &x-plugin-auth-token 'token'
 # aiproxy token
@@ -125,6 +153,29 @@ services:
       timeout: 20s
       retries: 3
 
+  opensandbox-server:
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.4
+    container_name: opensandbox-server
+    restart: always
+    networks:
+      - fastgpt
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Enable access to host machine
+    ports:
+      - "8090:8090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   fastgpt:
     container_name: fastgpt
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.7.2 # git
@@ -132,10 +183,13 @@ services:
       - 3000:3000
     networks:
       - fastgpt
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Enable access to host machine
     depends_on:
       - mongo
       - sandbox
       - vectorDB
+      - opensandbox-server
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
@@ -157,6 +211,8 @@ services:
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
       SANDBOX_URL: http://sandbox:3000
+      # opensandbox server 地址
+      OPENSANDBOX_SERVER_URL: http://opensandbox-server:8090
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -179,7 +235,7 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7.2
     networks:
       - fastgpt
     restart: always

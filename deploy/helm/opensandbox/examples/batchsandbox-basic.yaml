@@ -1,0 +1,55 @@
+# ==============================================================================
+# BatchSandbox - Non-pooled 模式（直接创建 Pod）
+# ==============================================================================
+#
+# 用途：演示不使用 Pool 直接创建 BatchSandbox
+#
+# 使用场景：
+#   - 需要使用特定镜像或资源配置（Pool 无法满足）
+#   - 一次性任务，不需要预热优化
+#   - 测试和开发环境
+#
+# 特点：
+#   - 可自由指定镜像、资源、配置
+#   - 创建速度较慢（需要拉取镜像、启动 Pod）
+#   - 不复用预热资源
+#
+# 注意：
+#   - SDK 使用场景通常不需要预创建 BatchSandbox（动态创建即可）
+#   - 此示例主要用于演示 kubectl 直接创建
+#
+# ==============================================================================
+
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: BatchSandbox
+metadata:
+  name: basic-batch-sandbox
+  namespace: default
+  labels:
+    mode: non-pooled
+  annotations:
+    description: "Non-pooled 模式示例"
+spec:
+  # 创建3个沙箱副本
+  replicas: 3
+
+  # 不使用资源池，直接创建Pod
+  # poolRef: ""  # 留空表示 non-pooled 模式
+
+  # TTL：3600秒（1小时）后自动清理
+  ttlSecondsAfterFinished: 3600
+
+  # 沙箱模板
+  template:
+    spec:
+      containers:
+      - name: sandbox-container
+        image: ubuntu:22.04
+        command: ["sleep", "infinity"]
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
