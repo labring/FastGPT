@@ -39,7 +39,7 @@ async function cleanupSandbox(sandbox: any): Promise<void> {
         }
       });
 
-      await sandboxInstance.connect({ id: sandbox.sandbox.sandboxId });
+      await sandboxInstance.connect(sandbox.sandbox.sandboxId);
       await sandboxInstance.delete();
 
       addLog.info('[Cleanup] Successfully deleted provider sandbox', {

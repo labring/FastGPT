@@ -27,6 +27,7 @@ import type {
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
+import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -36,6 +37,7 @@ export type CreateEditDebugSandboxParams = {
   tmbId: string;
   image?: SandboxImageConfigType;
   timeout?: number;
+  onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
 
 export type CreateEditDebugSandboxResult = {
@@ -76,7 +78,7 @@ export type RenewSandboxParams = {
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
-  const { skillId, teamId, tmbId, image, timeout } = params;
+  const { skillId, teamId, tmbId, image, timeout, onProgress } = params;
 
   // === Phase 1: Resolve and validate configuration ===
   const providerConfig = getSandboxProviderConfig();
@@ -149,6 +151,7 @@ export async function createEditDebugSandbox(
     key: activeVersion.storage.key
   });
 
+  onProgress?.({ sandboxId: skillId, phase: 'downloadingPackage' });
   const packageBuffer = await downloadSkillPackage({
     storageInfo: activeVersion.storage
   });
@@ -175,6 +178,7 @@ export async function createEditDebugSandbox(
       timeout: sandboxTimeout
     });
 
+    onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
     const sessionId = new mongoose.Types.ObjectId().toHexString();
 
     if (providerConfig.runtime === 'kubernetes') {
@@ -219,6 +223,7 @@ export async function createEditDebugSandbox(
 
     addLog.info('[Sandbox] Uploading package to sandbox', { path: zipPath });
 
+    onProgress?.({ sandboxId: skillId, phase: 'uploadingPackage' });
     await sandbox.writeFiles([
       {
         path: zipPath,
@@ -227,6 +232,7 @@ export async function createEditDebugSandbox(
     ]);
 
     addLog.info('[Sandbox] Extracting package');
+    onProgress?.({ sandboxId: skillId, phase: 'extractingPackage' });
     const extractResult = await sandbox.execute(
       `mkdir -p ${defaults.workDirectory} && cd ${defaults.workDirectory} && unzip -o package.zip && rm package.zip`
     );
@@ -293,6 +299,14 @@ export async function createEditDebugSandbox(
 
     addLog.info('[Sandbox] Sandbox info saved to database', {
       sandboxId: newSandboxDoc._id
+    });
+
+    onProgress?.({
+      sandboxId: skillId,
+      phase: 'ready',
+      endpoint: endpointInfo,
+      providerSandboxId: sandboxInfo.id,
+      expiresAt: sandboxInfo.expiresAt?.toISOString()
     });
 
     return {

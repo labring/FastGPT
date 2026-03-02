@@ -1,27 +1,32 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
+import { sseErrRes } from '@fastgpt/service/common/response';
+import { responseWrite } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { createEditDebugSandbox } from '@fastgpt/service/core/agentSkill/sandboxController';
-import type {
-  CreateEditDebugSandboxBody,
-  CreateEditDebugSandboxResponse
-} from '@fastgpt/global/core/agentSkill/api';
+import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkill/api';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 /**
  * POST /api/core/app/agent/skills/sandbox/edit
  *
- * Create an edit-debug sandbox for a skill
+ * Create an edit-debug sandbox for a skill.
+ * Returns an SSE stream with sandboxStatus events; the final 'ready' event contains endpoint info.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    // Only POST method allowed
-    if (req.method !== 'POST') {
-      return jsonRes(res, {
-        code: 405,
-        error: 'Method not allowed'
-      });
-    }
+  // Only POST method allowed
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
 
+  // Set SSE headers before any response is written
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  try {
     // Authenticate user
     const { teamId, tmbId } = await authUserPer({
       req,
@@ -34,72 +39,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate required parameters
     if (!skillId) {
-      return jsonRes(res, {
-        code: 400,
-        error: 'skillId is required'
-      });
+      sseErrRes(res, new Error('skillId is required'));
+      res.end();
+      return;
     }
 
     // Validate optional parameters
-    if (image) {
-      if (!image.repository) {
-        return jsonRes(res, {
-          code: 400,
-          error: 'image.repository is required when image is provided'
-        });
-      }
+    if (image && !image.repository) {
+      sseErrRes(res, new Error('image.repository is required when image is provided'));
+      res.end();
+      return;
     }
 
     if (timeout !== undefined && (typeof timeout !== 'number' || timeout <= 0)) {
-      return jsonRes(res, {
-        code: 400,
-        error: 'timeout must be a positive number'
-      });
+      sseErrRes(res, new Error('timeout must be a positive number'));
+      res.end();
+      return;
     }
 
-    // Create sandbox
-    const result = await createEditDebugSandbox({
+    // Build onProgress callback: each phase emits a sandboxStatus SSE event
+    const onProgress = (status: SandboxStatusItemType) => {
+      responseWrite({
+        res,
+        event: SseResponseEventEnum.sandboxStatus,
+        data: JSON.stringify(status)
+      });
+    };
+
+    // Create sandbox; 'ready' phase in onProgress carries the endpoint result
+    await createEditDebugSandbox({
       skillId,
       teamId,
       tmbId,
       image,
-      timeout
+      timeout,
+      onProgress
     });
 
-    // Format response
-    const response: CreateEditDebugSandboxResponse = {
-      sandboxId: result.sandboxId,
-      providerSandboxId: result.providerSandboxId,
-      endpoint: result.endpoint,
-      status: result.status,
-      expiresAt: result.expiresAt?.toISOString()
-    };
-
-    jsonRes<CreateEditDebugSandboxResponse>(res, {
-      data: response
-    });
+    res.end();
   } catch (err: any) {
     console.error('[API] Create edit-debug sandbox error:', err);
-
-    // Handle specific error types
-    if (err.message?.includes('not found')) {
-      return jsonRes(res, {
-        code: 404,
-        error: err.message || 'Resource not found'
-      });
-    }
-
-    if (err.message?.includes('access denied') || err.message?.includes('permission')) {
-      return jsonRes(res, {
-        code: 403,
-        error: err.message || 'Access denied'
-      });
-    }
-
-    // Generic error
-    jsonRes(res, {
-      code: 500,
-      error: err.message || 'Failed to create sandbox'
-    });
+    sseErrRes(res, err);
+    res.end();
   }
 }

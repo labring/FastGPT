@@ -45,7 +45,7 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
  */
 export function getSandboxDefaults(): SandboxDefaults {
   return {
-    timeout: parseInt(process.env.SANDBOX_DEFAULT_TIMEOUT || '3600', 10),
+    timeout: parseInt(process.env.SANDBOX_DEFAULT_TIMEOUT || '600', 10), // 10 minutes, Automatic termination timeout (server-side TTL)
     cleanupInterval: parseInt(process.env.SANDBOX_CLEANUP_INTERVAL || '3600000', 10),
     inactiveThreshold: parseInt(process.env.SANDBOX_INACTIVE_THRESHOLD || '7200', 10),
     defaultImage: {

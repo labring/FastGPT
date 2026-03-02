@@ -179,7 +179,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         teamId: runningAppInfo.teamId,
         tmbId: runningAppInfo.tmbId,
         sessionId: sandboxSessionId,
-        mode: sandboxMode
+        mode: sandboxMode,
+        workflowStreamResponse
       });
       capabilities.push(sandboxCap);
     }
