@@ -21,7 +21,8 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync,
-  getCollectionSource
+  getCollectionSource,
+  postCheckDuplicateCollection
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -55,6 +56,7 @@ import TagsPopOver from '../CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExceptionInfoModal from './ExceptionInfoModal';
 import DatabaseExceptionModal from './DatabaseExceptionModal';
+import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 
 const Header = dynamic(() => import('./Header'));
@@ -160,7 +162,16 @@ const CollectionCard = () => {
     getItemId: (e) => e._id
   });
 
-  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+  const [moveCollectionData, setMoveCollectionData] = useState<{
+    collectionId: string;
+    collectionName: string;
+  }>();
+  const [moveDuplicateData, setMoveDuplicateData] = useState<{
+    duplicateFiles: string[];
+    parentId: string;
+    collectionId: string;
+  }>();
+  const [isMoveLoading, setIsMoveLoading] = useState(false);
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:Rename')
@@ -585,7 +596,10 @@ const CollectionCard = () => {
                                           </Flex>
                                         ),
                                         onClick: () =>
-                                          setMoveCollectionData({ collectionId: collection._id })
+                                          setMoveCollectionData({
+                                            collectionId: collection._id,
+                                            collectionName: collection.name
+                                          })
                                       }
                                     ]),
                                 ...(isStructureDocument
@@ -709,18 +723,82 @@ const CollectionCard = () => {
             datasetId={datasetDetail._id}
             type="folder"
             defaultSelectedId={[moveCollectionData.collectionId]}
-            onClose={() => setMoveCollectionData(undefined)}
-            onSuccess={async ({ parentId }) => {
-              await putDatasetCollectionById({
-                id: moveCollectionData.collectionId,
-                parentId
-              });
-              getData(pageNum);
+            confirmLoading={isMoveLoading}
+            onClose={() => {
               setMoveCollectionData(undefined);
-              toast({
-                status: 'success',
-                title: t('common:move_success')
+              setMoveDuplicateData(undefined);
+            }}
+            onSuccess={async ({ parentId }) => {
+              const checkResult = await postCheckDuplicateCollection({
+                datasetId: datasetDetail._id,
+                parentId: parentId || undefined,
+                fileNames: [moveCollectionData.collectionName]
               });
+
+              if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+                setMoveDuplicateData({
+                  duplicateFiles: checkResult.duplicateFileNames,
+                  parentId: parentId ?? '',
+                  collectionId: moveCollectionData.collectionId
+                });
+              } else {
+                await putDatasetCollectionById({
+                  id: moveCollectionData.collectionId,
+                  parentId
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              }
+            }}
+          />
+        )}
+
+        {!!moveDuplicateData && (
+          <MoveCollectionDuplicateModal
+            isOpen={true}
+            onClose={() => setMoveDuplicateData(undefined)}
+            duplicateFiles={moveDuplicateData.duplicateFiles}
+            onSkip={() => setMoveDuplicateData(undefined)}
+            onContinueMove={async () => {
+              setMoveDuplicateData(undefined);
+              setIsMoveLoading(true);
+              try {
+                await putDatasetCollectionById({
+                  id: moveDuplicateData.collectionId,
+                  parentId: moveDuplicateData.parentId
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              } finally {
+                setIsMoveLoading(false);
+              }
+            }}
+            onReplaceFiles={async () => {
+              setMoveDuplicateData(undefined);
+              setIsMoveLoading(true);
+              try {
+                await putDatasetCollectionById({
+                  id: moveDuplicateData.collectionId,
+                  parentId: moveDuplicateData.parentId,
+                  overwriteDuplicate: true
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              } finally {
+                setIsMoveLoading(false);
+              }
             }}
           />
         )}
