@@ -36,12 +36,14 @@ import type {
 } from '@fastgpt/global/core/agentSkill/type';
 import type { AgentSandboxContext } from './types';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 type CreateAgentSandboxParams = {
   skillIds: string[];
   teamId: string;
   tmbId: string;
   sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key，决定 MinIO 数据路径
+  onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -104,10 +106,17 @@ async function deploySkillsToSandbox(
   sandbox: ISandbox,
   deployableSkills: SkillDoc[],
   versionMap: Map<string, VersionDoc>,
-  workDirectory: string
+  workDirectory: string,
+  onProgress?: (status: SandboxStatusItemType) => void,
+  sessionId?: string
 ): Promise<void> {
   for (const skill of deployableSkills) {
     const version = versionMap.get(String(skill._id))!;
+    onProgress?.({
+      sandboxId: sessionId ?? skill._id.toString(),
+      phase: 'deployingSkills',
+      skillName: skill.name
+    });
     try {
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
       const { buffer: standardizedBuffer } = await standardizeSkillPackage(
@@ -152,13 +161,14 @@ async function deploySkillsToSandbox(
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
 ): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId, sessionId } = params;
+  const { skillIds, teamId, tmbId, sessionId, onProgress } = params;
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
   // Step 1: Try to reuse an existing session-runtime sandbox
+  onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const existingDoc = await MongoSkillSandbox.findOne({
     sessionId,
     sandboxType: SandboxTypeEnum.sessionRuntime,
@@ -171,8 +181,18 @@ export async function createAgentSandbox(
       providerSandboxId: existingDoc.sandbox.sandboxId
     });
 
+    onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
     const sandbox = buildSandboxInstance(providerConfig);
     await sandbox.connect(existingDoc.sandbox.sandboxId);
+
+    // Refresh the sandbox TTL to prevent expiration mid-session
+    if (sandbox.capabilities.supportsRenews) {
+      await sandbox.renewExpiration(defaults.timeout);
+      const updatedInfo = await sandbox.getInfo();
+      if (updatedInfo.expiresAt) {
+        existingDoc.sandbox.expiresAt = updatedInfo.expiresAt;
+      }
+    }
 
     existingDoc.lastActivityTime = new Date();
     await existingDoc.save();
@@ -180,6 +200,7 @@ export async function createAgentSandbox(
     const reusedSkillIds = existingDoc.skillIds ? existingDoc.skillIds.map(String) : skillIds;
     const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
 
+    onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: true });
     return {
       sandbox,
       providerSandboxId: existingDoc.sandbox.sandboxId,
@@ -199,6 +220,7 @@ export async function createAgentSandbox(
     sessionId
   });
 
+  onProgress?.({ sandboxId: sessionId, phase: 'fetchSkills', isWarmStart: false });
   const { skills, versionMap } = await fetchSkillsWithVersionMap(skillIds, teamId);
 
   if (skills.length === 0) {
@@ -219,13 +241,14 @@ export async function createAgentSandbox(
   try {
     sandbox = buildSandboxInstance(providerConfig);
 
+    onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer', isWarmStart: false });
     if (providerConfig.runtime === 'kubernetes') {
       // K8s 模式：SESSION_ID 由 Sync Agent Sidecar 从 Pod label/metadata 读取
       await sandbox.create({
         image: defaults.defaultImage,
         timeout: defaults.timeout,
-        // entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
-        // env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
+        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
         metadata: {
           teamId,
           tmbId,
@@ -261,7 +284,14 @@ export async function createAgentSandbox(
     });
 
     // Step 4: Deploy skill packages
-    await deploySkillsToSandbox(sandbox, deployableSkills, versionMap, defaults.workDirectory);
+    await deploySkillsToSandbox(
+      sandbox,
+      deployableSkills,
+      versionMap,
+      defaults.workDirectory,
+      onProgress,
+      sessionId
+    );
 
     // Step 5: Persist to MongoDB
     await MongoSkillSandbox.create({
@@ -287,6 +317,7 @@ export async function createAgentSandbox(
 
     logger.info('[Agent Sandbox] Sandbox info saved to MongoDB', { sessionId });
 
+    onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: false });
     return {
       sandbox,
       providerSandboxId: sandboxInfo.id,

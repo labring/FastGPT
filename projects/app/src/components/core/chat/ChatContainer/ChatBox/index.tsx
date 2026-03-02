@@ -254,6 +254,8 @@ const ChatBox = ({
       plan,
       stepId,
       stepTitle,
+      sandboxStatus,
+      skill,
       variables,
       nodeResponse,
       durationSeconds,
@@ -292,6 +294,40 @@ const ChatBox = ({
               ...item,
               status,
               moduleName: name
+            };
+          }
+          if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
+            const getSandboxPhaseLabel = (): string => {
+              const { phase, isWarmStart, skillName } = sandboxStatus;
+              if (phase === 'deployingSkills') {
+                return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
+              }
+              if (phase === 'ready') {
+                return t(
+                  isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
+                );
+              }
+              return t(`chat:sandbox_status_${phase}` as any);
+            };
+            return {
+              ...item,
+              status: 'loading' as const,
+              moduleName: getSandboxPhaseLabel()
+            };
+          }
+          if (event === SseResponseEventEnum.skillCall && skill) {
+            const val: AIChatItemValueItemType = {
+              id: responseValueId,
+              stepId,
+              stepTitle: {
+                stepId: responseValueId || '',
+                title: t('chat:skill_calling', { name: skill.name }),
+                folded: false
+              }
+            };
+            return {
+              ...item,
+              value: [...item.value, val]
             };
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
