@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     sudo \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install code-server using the official script

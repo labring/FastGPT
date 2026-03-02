@@ -24,6 +24,9 @@ import {
   dispatchSandboxSearch
 } from '../sub/sandbox/dispatch';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { WorkflowResponseType } from '../../../type';
+import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 type SandboxSkillsCapabilityParams = {
   skillIds: string[];
@@ -31,12 +34,13 @@ type SandboxSkillsCapabilityParams = {
   tmbId: string;
   sessionId: string;
   mode: 'sessionRuntime' | 'editDebug';
+  workflowStreamResponse?: WorkflowResponseType; // SSE stream for lifecycle and skill events
 };
 
 export async function createSandboxSkillsCapability(
   params: SandboxSkillsCapabilityParams
 ): Promise<AgentCapability> {
-  const { skillIds, teamId, tmbId, sessionId, mode } = params;
+  const { skillIds, teamId, tmbId, sessionId, mode, workflowStreamResponse } = params;
   const isEditDebug = mode === 'editDebug';
 
   let sandboxContext;
@@ -50,11 +54,18 @@ export async function createSandboxSkillsCapability(
       teamId
     });
   } else {
+    // Build onProgress callback for session-runtime sandbox lifecycle events
+    const onProgress = workflowStreamResponse
+      ? (status: SandboxStatusItemType) =>
+          workflowStreamResponse({ event: SseResponseEventEnum.sandboxStatus, data: status })
+      : undefined;
+
     sandboxContext = await createAgentSandbox({
       skillIds,
       teamId,
       tmbId,
-      sessionId
+      sessionId,
+      onProgress
     });
   }
 
@@ -76,6 +87,31 @@ export async function createSandboxSkillsCapability(
         [SandboxToolIds.readFile]: async () => {
           const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
           if (!parsed.success) return { response: parsed.error.message, usages: [] };
+
+          // Detect SKILL.md reads and emit skillCall event
+          if (workflowStreamResponse) {
+            for (const path of parsed.data.paths) {
+              if (path.endsWith('/SKILL.md')) {
+                const segments = path.split('/');
+                const skillName = segments[segments.length - 2];
+                const skill = sandboxContext.skills.find((s) => s.name === skillName);
+                if (skill) {
+                  workflowStreamResponse({
+                    event: SseResponseEventEnum.skillCall,
+                    data: {
+                      skill: {
+                        name: skill.name,
+                        description: skill.description,
+                        avatar: skill.avatar || '',
+                        skillMdPath: path
+                      }
+                    }
+                  });
+                }
+              }
+            }
+          }
+
           return dispatchSandboxReadFile(sandboxContext, parsed.data);
         },
         [SandboxToolIds.writeFile]: async () => {
