@@ -21,14 +21,13 @@ const exactMap: Record<string, string> = {
   '/docs/introduction/development/docker': '/docs/self-host/deploy/docker',
   '/docs/introduction/development/sealos': '/docs/self-host/deploy/sealos',
   '/docs/introduction/development/intro': '/docs/self-host/dev',
-  '/docs/self-host/config/object-storage': '/docs/self-host/config/object-storage'
+  '/docs/introduction/development/object-storage': '/docs/self-host/config/object-storage'
 };
 
 const prefixMap: Record<string, string> = {
   '/docs/FAQ': '/docs/faq',
   '/docs/guide': '/docs/introduction/guide',
   '/docs/shopping_cart': '/docs/introduction/shopping_cart',
-
   '/docs/upgrading': '/docs/self-host/upgrading',
   '/docs/development': '/docs/self-host',
   '/docs/introduction/development/openapi': '/docs/openapi',
@@ -52,7 +51,6 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  console.log(pathWithoutLang, 1111111);
   // Check exact match redirects
   if (exactMap[pathWithoutLang]) {
     const newUrl = new URL(`/${lang}${exactMap[pathWithoutLang]}`, request.url);

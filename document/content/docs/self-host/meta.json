@@ -14,7 +14,6 @@
     "config/signoz",
     "---故障排查---",
     "faq",
-    "troubleshooting/object-storage",
     "---版本升级---",
     "upgrading/upgrade-intruction",
     "...upgrading",

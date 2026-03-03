@@ -12,7 +12,7 @@ import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
 import GithubLogoDark from '@/components/docs/githubLogoDark';
-import { BookOpen, Code, Lightbulb, CircleHelp, Scale, History } from 'lucide-react';
+import { BookOpen, Code, Lightbulb, CircleHelp, Scale, History, Server } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -31,7 +31,12 @@ export default async function Layout({
       url: getLocalizedPath('/docs/introduction', lang)
     },
     {
-      icon: <BookOpen className={iconClass} />,
+      icon: <Lightbulb className={iconClass} />,
+      title: t('common:use-cases', lang),
+      url: getLocalizedPath('/docs/use-cases', lang)
+    },
+    {
+      icon: <Server className={iconClass} />,
       title: t('common:selfHost', lang),
       url: getLocalizedPath('/docs/self-host', lang)
     },
@@ -39,11 +44,6 @@ export default async function Layout({
       icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
       url: getLocalizedPath('/docs/openapi', lang)
-    },
-    {
-      icon: <Lightbulb className={iconClass} />,
-      title: t('common:use-cases', lang),
-      url: getLocalizedPath('/docs/use-cases', lang)
     },
     {
       icon: <CircleHelp className={iconClass} />,
@@ -111,7 +111,7 @@ export default async function Layout({
         collapsible: false,
         components: CustomSidebarComponents
       }}
-      tabMode="navbar"
+      tabMode="sidebar"
     >
       <SidebarKeepOpen tabUrls={tabUrls} />
       {children}

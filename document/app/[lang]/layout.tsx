@@ -14,12 +14,23 @@ const zh_CN: Partial<Translations> = {
   search: '搜索',
   nextPage: '下一页',
   previousPage: '上一页',
-  lastUpdate: '最后更新于',
+  lastUpdate: '文件更新时间',
   editOnGithub: '在 GitHub 上编辑',
   searchNoResult: '没有找到相关内容',
   toc: '本页导航',
   tocNoHeadings: '本页没有导航',
   chooseLanguage: '选择语言'
+};
+const en: Partial<Translations> = {
+  search: 'Search',
+  nextPage: 'Next Page',
+  previousPage: 'Previous Page',
+  lastUpdate: 'File Updated',
+  editOnGithub: 'Edit on GitHub',
+  searchNoResult: 'No results found',
+  toc: 'On this page',
+  tocNoHeadings: 'No headings',
+  chooseLanguage: 'Choose Language'
 };
 
 const locales = [
@@ -50,12 +61,7 @@ export default async function Layout({
     <html lang={lang} className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         {trackSrc && siteId && (
-          <Script
-            src={trackSrc}
-            data-site-id={siteId}
-            defer
-            strategy="afterInteractive"
-          />
+          <Script src={trackSrc} data-site-id={siteId} defer strategy="afterInteractive" />
         )}
         <RootProvider
           i18n={{
@@ -63,17 +69,7 @@ export default async function Layout({
             locales,
             translations: {
               'zh-CN': zh_CN,
-              en: {
-                search: 'Search',
-                nextPage: 'Next Page',
-                previousPage: 'Previous Page',
-                lastUpdate: 'Last Updated',
-                editOnGithub: 'Edit on GitHub',
-                searchNoResult: 'No results found',
-                toc: 'On this page',
-                tocNoHeadings: 'No headings',
-                chooseLanguage: 'Choose Language'
-              }
+              en
             }[lang]
           }}
           search={{

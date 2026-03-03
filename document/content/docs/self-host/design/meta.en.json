@@ -1,7 +1,4 @@
 {
-  "title": "Design Solutions",
-  "pages": [
-    "dataset",
-    "design_plugin"
-  ]
+  "title": "Design Documentation",
+  "pages": ["dataset","design_plugin"]
 }

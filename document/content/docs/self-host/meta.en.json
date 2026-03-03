@@ -1,13 +1,26 @@
 {
-  "title": "自部署",
-  "description": "FastGPT 自部署使用案例",
+  "title": "Self-Hosting",
+  "description": "FastGPT self-hosting guide",
   "root": true,
   "pages": [
-    "---版本升级---",
-    "upgrading",
-    "---部署方式---",
-    "---配置说明---",
-    "---本地开发指南---",
-    "---故障排查---"
+    "---Getting Started---",
+    "deploy/docker",
+    "deploy/sealos",
+    "dev",
+    "---Configuration---",
+    "config/model",
+    "config/object-storage",
+    "config/json",
+    "config/signoz",
+    "---Troubleshooting---",
+    "faq",
+    "troubleshooting/object-storage",
+    "---Version Upgrades---",
+    "upgrading/upgrade-intruction",
+    "...upgrading",
+    "---Other---",
+    "migration",
+    "custom-models",
+    "design"
   ]
 }

@@ -1,14 +1,14 @@
 {
-  "title": "Documentation",
+  "title": "User Guide",
   "root": true,
   "pages": [
-    "---Getting Started---",
+    "---Tutorials---",
     "index",
+    "...guide",
+    "---Editions---",
     "cloud",
     "commercial",
-    "opensource",
-    "---Features---",
-    "...guide"
+    "opensource"
   ],
   "order": 1
 }
