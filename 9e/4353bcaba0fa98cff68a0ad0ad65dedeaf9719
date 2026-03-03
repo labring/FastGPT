@@ -1,0 +1,38 @@
+projects/app/src/pages/api/core/app/agent/skills/import.ts
+  c73f93cbfdee9476 10-17,59-60,63,74,79-81,120-121,124,126,129,131,135-140,142,144-145,148,152-153,155,157-166,169-173,176-185,189-191
+packages/service/core/agentSkill/archiveUtils.ts
+  c73f93cbfdee9476 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "9e4353bcaba0fa98cff68a0ad0ad65dedeaf9719",
+  "prompts": {
+    "c73f93cbfdee9476": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fef8aad5-c7ae-40e8-a944-c7cac9ecb026",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 126,
+      "total_deletions": 71,
+      "accepted_lines": 123,
+      "overriden_lines": 0
+    },
+    "cec93af5e53d3c47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "999b390c-dd88-4de7-b39c-68341ce0c5c3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 2,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
