@@ -64,6 +64,9 @@ app.post('/sandbox/js', async (c) => {
       );
     }
     const result = await jsPool.execute(parsed.data as ExecuteOptions);
+    if (!result.success) {
+      console.log(`JS sandbox error: ${result.message}`);
+    }
     return c.json(result);
   } catch (err: any) {
     console.log('JS sandbox error:', err);
@@ -89,6 +92,9 @@ app.post('/sandbox/python', async (c) => {
       );
     }
     const result = await pythonPool.execute(parsed.data as ExecuteOptions);
+    if (!result.success) {
+      console.log(`Python sandbox error: ${result.message}`);
+    }
     return c.json(result);
   } catch (err: any) {
     console.log('Python sandbox error:', err);
@@ -113,11 +119,6 @@ app.get('/sandbox/modules', (c) => {
 
 /** 启动服务 */
 console.log(`Sandbox server starting on port ${config.port}...`);
-
-export default {
-  port: config.port,
-  fetch: app.fetch
-};
 
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };
