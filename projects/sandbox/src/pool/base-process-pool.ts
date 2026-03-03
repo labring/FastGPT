@@ -21,6 +21,7 @@ const RSS_POLL_INTERVAL = 500;
 export type PoolWorker = {
   proc: ChildProcess;
   rl: Interface;
+  stderrRl: Interface;
   busy: boolean;
   id: number;
   stderrBuf: string[];
@@ -86,12 +87,12 @@ export abstract class BaseProcessPool {
     for (const waiter of this.waitQueue) {
       waiter.reject(new Error('Pool is shutting down'));
     }
+    this.waitQueue = [];
     for (const worker of this.workers) {
-      worker.proc.kill('SIGTERM');
+      this.cleanupWorker(worker);
     }
     this.workers = [];
     this.idleWorkers = [];
-    this.waitQueue = [];
   }
 
   get stats() {
@@ -120,10 +121,10 @@ export abstract class BaseProcessPool {
       });
 
       const rl = createInterface({ input: proc.stdout!, terminal: false });
-      const worker: PoolWorker = { proc, rl, busy: false, id, stderrBuf: [] };
+      const stderrRl = createInterface({ input: proc.stderr!, terminal: false });
+      const worker: PoolWorker = { proc, rl, stderrRl, busy: false, id, stderrBuf: [] };
 
       // 收集 stderr 用于调试（保留最近 20 行）
-      const stderrRl = createInterface({ input: proc.stderr!, terminal: false });
       stderrRl.on('line', (line: string) => {
         worker.stderrBuf.push(line);
         if (worker.stderrBuf.length > 20) worker.stderrBuf.shift();
@@ -219,6 +220,7 @@ export abstract class BaseProcessPool {
   protected removeWorker(worker: PoolWorker): boolean {
     const idx = this.workers.indexOf(worker);
     if (idx === -1) return false;
+    this.cleanupWorker(worker);
     this.workers.splice(idx, 1);
     this.idleWorkers = this.idleWorkers.filter((w) => w !== worker);
     return true;
@@ -447,11 +449,37 @@ export abstract class BaseProcessPool {
   /** 从池中移除 worker，kill 进程，并在 ready 时 respawn */
   protected killAndRespawn(worker: PoolWorker): void {
     this.removeWorker(worker);
-    worker.proc.kill('SIGKILL');
     if (this.ready) {
       this.spawnWorker().catch((err) => {
         console.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
       });
+    }
+  }
+
+  /**
+   * 彻底清理 worker 资源
+   * 关闭 readline 接口、移除事件监听器、清空缓冲区、kill 进程
+   */
+  protected cleanupWorker(worker: PoolWorker): void {
+    try {
+      // 关闭 readline 接口
+      worker.rl.close();
+      worker.stderrRl.close();
+
+      // 移除所有事件监听器
+      worker.rl.removeAllListeners();
+      worker.stderrRl.removeAllListeners();
+      worker.proc.removeAllListeners();
+
+      // 清空缓冲区
+      worker.stderrBuf = [];
+
+      // Kill 进程
+      if (!worker.proc.killed) {
+        worker.proc.kill('SIGKILL');
+      }
+    } catch (err) {
+      // 忽略清理错误
     }
   }
 
