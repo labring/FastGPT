@@ -1,0 +1,26 @@
+{
+  "title": "Self-Hosting",
+  "description": "FastGPT self-hosting guide",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "deploy/docker",
+    "deploy/sealos",
+    "dev",
+    "---Configuration---",
+    "config/model",
+    "config/object-storage",
+    "config/json",
+    "config/signoz",
+    "---Troubleshooting---",
+    "faq",
+    "troubleshooting/object-storage",
+    "---Version Upgrades---",
+    "upgrading/upgrade-intruction",
+    "...upgrading",
+    "---Other---",
+    "migration",
+    "custom-models",
+    "design"
+  ]
+}

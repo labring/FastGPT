@@ -24,14 +24,14 @@ const PolicyTip = ({ isCenter }: { isCenter: boolean }) => {
               div: <Flex justifyContent={'center'} />,
               termsLink: (
                 <Link
-                  href={getDocPath('/docs/protocol/terms/')}
+                  href={getDocPath('/docs/introduction/cloud/terms/')}
                   target={'_blank'}
                   color={'primary.700'}
                 />
               ),
               privacyLink: (
                 <Link
-                  href={getDocPath('/docs/protocol/privacy/')}
+                  href={getDocPath('/docs/introduction/cloud/privacy/')}
                   target={'_blank'}
                   color={'primary.700'}
                 />

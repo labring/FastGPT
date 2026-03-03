@@ -38,7 +38,7 @@ import { Alert } from '@/components/docs/Alert'; #高亮块组件
 
 import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你希望用户点击这个文件跳转到别的文件的话，详情参考 `FAQ`的`Docker 部署问题`文档。
 
-<Redirect to="/docs/introduction/development/docker/#faq" />
+<Redirect to="/docs/self-host/deploy/docker/#faq" />
 
 <Tabs items={['Javascript', 'Rust']}> #tabs组件用法，渲染效果参考`introduction`下`development`的`faq`文档
   <Tab value="Javascript">Javascript is weird</Tab>

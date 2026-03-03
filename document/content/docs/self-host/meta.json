@@ -1,0 +1,25 @@
+{
+  "title": "自部署",
+  "description": "FastGPT 自部署使用案例",
+  "root": true,
+  "pages": [
+    "---开始---",
+    "deploy/docker",
+    "deploy/sealos",
+    "dev",
+    "---配置说明---",
+    "config/model",
+    "config/object-storage",
+    "config/json",
+    "config/signoz",
+    "---故障排查---",
+    "faq",
+    "---版本升级---",
+    "upgrading/upgrade-intruction",
+    "...upgrading",
+    "---其他---",
+    "migration",
+    "custom-models",
+    "design"
+  ]
+}

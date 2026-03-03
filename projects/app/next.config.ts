@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   // 开发环境关闭 strict mode，避免第三方库的双重渲染问题
   reactStrictMode: !isDev,
   productionBrowserSourceMaps: false,
+  // 启用 SWC 压缩
+  swcMinify: true,
   async headers() {
     return [
       {
@@ -99,7 +101,19 @@ const nextConfig: NextConfig = {
     if (isDev && !isServer) {
       config.watchOptions = {
         ...config.watchOptions,
-        ignored: ['**/node_modules', '**/.git', '**/dist', '**/coverage']
+        ignored: [
+          '**/node_modules',
+          '**/.git',
+          '**/dist',
+          '**/coverage',
+          '../../packages/**/node_modules',
+          '../../packages/**/dist',
+          '**/.next',
+          '**/out'
+        ],
+        // 减少轮询频率，降低 CPU 和内存占用
+        poll: 1000,
+        aggregateTimeout: 300
       };
     }
 
@@ -127,7 +141,9 @@ const nextConfig: NextConfig = {
       '@emotion/styled'
     ],
     // 按页面拆分 CSS chunk，减少首屏 CSS 体积
-    cssChunking: 'strict'
+    cssChunking: 'strict',
+    // 减少内存占用
+    memoryBasedWorkersCount: true
   },
   outputFileTracingRoot: path.join(__dirname, '../../')
 };

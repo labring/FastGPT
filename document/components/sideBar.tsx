@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect, type FC, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type FC, type ReactNode } from 'react';
 import {
   SidebarItem,
   SidebarFolder,
@@ -10,6 +10,8 @@ import {
 } from 'fumadocs-ui/components/layout/sidebar';
 import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
+
+const NestingLevelContext = createContext(0);
 
 const isInFolder = (folder: PageTree.Folder, pathname: string): boolean => {
   const check = (item: PageTree.Item | PageTree.Folder): boolean => {
@@ -61,18 +63,27 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
   const shouldExpand = isInFolder(item, pathname);
 
   return (
-    <SidebarFolder defaultOpen={shouldExpand} className="bg-blue hover:cursor-pointer">
-      <SidebarFolderTrigger className="hover:cursor-pointer">{item.name}</SidebarFolderTrigger>
-      <SidebarFolderContent className="bg-blue hover:cursor-pointer">
-        {children}
-      </SidebarFolderContent>
-    </SidebarFolder>
+    <NestingLevelContext.Provider value={level + 1}>
+      <SidebarFolder defaultOpen={shouldExpand} className="bg-blue hover:cursor-pointer">
+        <SidebarFolderTrigger className="hover:cursor-pointer">{item.name}</SidebarFolderTrigger>
+        <SidebarFolderContent className="bg-blue hover:cursor-pointer">
+          {children}
+        </SidebarFolderContent>
+      </SidebarFolder>
+    </NestingLevelContext.Provider>
   );
 };
 
-const CustomSeparator: FC<{ item: PageTree.Separator }> = ({ item }) => (
-  <div className="text-sm font-semibold px-2 py-1.5 mt-1 mb-1 first:mt-0">{item.name}</div>
-);
+const CustomSeparator: FC<{ item: PageTree.Separator }> = ({ item }) => {
+  const level = useContext(NestingLevelContext);
+  return (
+    <div
+      className={`text-sm font-semibold ${level > 0 ? 'pl-6' : 'px-2'} pr-2 py-1.5 mt-1 mb-1 first:mt-0`}
+    >
+      {item.name}
+    </div>
+  );
+};
 
 export const CustomSidebarComponents: SidebarComponents = {
   Item: CustomItem,
