@@ -162,7 +162,7 @@ services:
       - fastgpt
     environment:
       - AUTH_TOKEN=token
-      # @see https://fastgpt.cn/docs/introduction/development/object-storage
+      # @see https://fastgpt.cn/docs/self-host/config/object-storage
       - STORAGE_VENDOR=minio # minio | aws-s3 | cos | oss
       - STORAGE_REGION=us-east-1
       - STORAGE_ACCESS_KEY_ID=minioadmin

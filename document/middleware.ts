@@ -11,20 +11,28 @@ const exactMap: Record<string, string> = {
   '/docs/guide/admin/sso_dingtalk':
     '/docs/introduction/guide/admin/sso#/docs/introduction/guide/admin/sso#钉钉',
   '/docs/guide/knowledge_base/rag': '/docs/introduction/guide/knowledge_base/RAG',
-  '/docs/commercial/intro/': '/docs/introduction/commercial',
-  '/docs/upgrading/intro/': '/docs/upgrading',
+  '/docs/commercial/intro': '/docs/introduction/commercial',
+  '/docs/upgrading/intro': '/docs/self-host/upgrading/upgrade-intruction',
+  '/docs/upgrading': '/docs/self-host/upgrading/upgrade-intruction',
   '/docs/introduction/shopping_cart/intro/': '/docs/introduction/commercial',
   '/docs/introduction/cloud': '/docs/introduction/cloud/intro',
   '/docs/protocol/terms': '/docs/introduction/cloud/terms',
-  '/docs/protocol/privacy': '/docs/introduction/cloud/privacy'
+  '/docs/protocol/privacy': '/docs/introduction/cloud/privacy',
+  '/docs/introduction/development/docker': '/docs/self-host/deploy/docker',
+  '/docs/introduction/development/sealos': '/docs/self-host/deploy/sealos',
+  '/docs/introduction/development/intro': '/docs/self-host/dev',
+  '/docs/self-host/config/object-storage': '/docs/self-host/config/object-storage'
 };
 
 const prefixMap: Record<string, string> = {
-  '/docs/development': '/docs/introduction/development',
   '/docs/FAQ': '/docs/faq',
   '/docs/guide': '/docs/introduction/guide',
   '/docs/shopping_cart': '/docs/introduction/shopping_cart',
-  '/docs/introduction/development/openapi': '/docs/openapi'
+
+  '/docs/upgrading': '/docs/self-host/upgrading',
+  '/docs/development': '/docs/self-host',
+  '/docs/introduction/development/openapi': '/docs/openapi',
+  '/docs/introduction/development': '/docs/self-host'
 };
 
 const i18nMiddleware = createI18nMiddleware(i18n);
@@ -44,6 +52,7 @@ export default function middleware(request: NextRequest) {
     }
   }
 
+  console.log(pathWithoutLang, 1111111);
   // Check exact match redirects
   if (exactMap[pathWithoutLang]) {
     const newUrl = new URL(`/${lang}${exactMap[pathWithoutLang]}`, request.url);

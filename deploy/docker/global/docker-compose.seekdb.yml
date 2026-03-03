@@ -12,7 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  # @see https://doc.fastgpt.cn/docs/introduction/development/object-storage
+  # @see https://doc.fastgpt.cn/docs/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -35,12 +35,11 @@ x-log-config: &x-log-config
 x-vec-config: &x-vec-config
   SEEKDB_URL: mysql://root:seekdbpassword@seekdb:2881/mysql
 
-
 version: '3.3'
 services:
   # Vector DB
   vectorDB:
-    image:  oceanbase/seekdb:1.0.1.0-100000392025122619
+    image: oceanbase/seekdb:1.0.1.0-100000392025122619
     container_name: seekdb
     restart: always
     # ports: # 生产环境建议不要暴露
@@ -75,7 +74,19 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -285,4 +296,3 @@ networks:
   fastgpt:
   aiproxy:
   vector:
-

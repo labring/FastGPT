@@ -31,6 +31,11 @@ export default async function Layout({
       url: getLocalizedPath('/docs/introduction', lang)
     },
     {
+      icon: <BookOpen className={iconClass} />,
+      title: t('common:selfHost', lang),
+      url: getLocalizedPath('/docs/self-host', lang)
+    },
+    {
       icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
       url: getLocalizedPath('/docs/openapi', lang)
@@ -44,16 +49,6 @@ export default async function Layout({
       icon: <CircleHelp className={iconClass} />,
       title: t('common:faq', lang),
       url: getLocalizedPath('/docs/faq', lang)
-    },
-    {
-      icon: <Scale className={iconClass} />,
-      title: t('common:protocol', lang),
-      url: getLocalizedPath('/docs/protocol', lang)
-    },
-    {
-      icon: <History className={iconClass} />,
-      title: t('common:upgrading', lang),
-      url: getLocalizedPath('/docs/upgrading', lang)
     }
   ];
 

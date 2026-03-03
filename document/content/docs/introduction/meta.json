@@ -2,13 +2,13 @@
   "title": "使用文档",
   "root": true,
   "pages": [
-    "---入门---",
+    "---使用教程---",
     "index",
+    "...guide",
+    "---版本介绍---",
     "cloud",
     "commercial",
-    "development",
-    "---使用教程---",
-    "...guide"
+    "opensource"
   ],
   "order": 1
 }
