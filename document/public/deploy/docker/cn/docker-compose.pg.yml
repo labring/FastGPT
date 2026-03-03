@@ -69,19 +69,7 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test:
-        [
-          'CMD',
-          'mongo',
-          '-u',
-          'myusername',
-          '-p',
-          'mypassword',
-          '--authenticationDatabase',
-          'admin',
-          '--eval',
-          "db.adminCommand('ping')"
-        ]
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -291,3 +279,4 @@ networks:
   fastgpt:
   aiproxy:
   vector:
+
