@@ -20,6 +20,9 @@ import type {
 } from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 import { getNanoid } from '../../common/string/tools';
+import { buildPlanAgentResponseTextFromAssistantResponses, getPlanAsksByPlanId } from './utils';
+export { buildPlanAgentResponseTextFromAssistantResponses, getPlanAsksByPlanId } from './utils';
+export type { PlanAskInfo, BuildPlanAgentResponseTextParams } from './utils';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
@@ -107,7 +110,10 @@ export const chats2GPTMessages = ({
         if (value.stepId) return;
 
         if ((value.tools || value.tool) && reserveTool) {
-          const tools = value.tools || [value.tool!];
+          const tools = value.tools?.length ? value.tools : value.tool ? [value.tool] : [];
+          if (tools.length === 0) {
+            return;
+          }
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
           tools.forEach((tool) => {
@@ -155,20 +161,19 @@ export const chats2GPTMessages = ({
             return;
           }
           existsPlanId.add(planId);
-          const steps = item.value
+          const mergedPlanSteps = item.value
             .filter((item) => item.plan?.planId === planId)
-            .flatMap((item) => item.plan?.steps || [])
-            .map((step) => {
-              const stepResponse = item.value
-                .filter((item) => item.stepId === step.id)
-                ?.map((item) => item.text?.content)
-                .join('\n');
-
-              return {
-                title: step.title,
-                response: stepResponse
-              };
-            });
+            .flatMap((item) => item.plan?.steps || []);
+          const asks = getPlanAsksByPlanId({
+            planId,
+            assistantResponses: item.value
+          });
+          const planResponseText = buildPlanAgentResponseTextFromAssistantResponses({
+            planId,
+            steps: mergedPlanSteps,
+            assistantResponses: item.value,
+            asks
+          });
           const toolId = getNanoid(6);
           aiResults.push({
             dataId,
@@ -192,7 +197,7 @@ export const chats2GPTMessages = ({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: toolId,
-            content: JSON.stringify(steps)
+            content: planResponseText
           });
         } else if (value.interactive) {
           if (value.interactive.type === 'agentPlanAskQuery') {

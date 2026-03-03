@@ -400,6 +400,10 @@ export type DispatchNodeResponseType = {
   extensionTokens?: number;
 };
 
+export type DispatchInteractiveNodeResponseType = InteractiveNodeResponseType & {
+  planId?: string;
+};
+
 export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]?: string }> = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
@@ -414,7 +418,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
-  [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
+  [DispatchNodeResponseKeyEnum.interactive]?: DispatchInteractiveNodeResponseType;
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
 
   data?: T;

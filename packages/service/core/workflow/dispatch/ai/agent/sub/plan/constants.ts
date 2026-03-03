@@ -16,6 +16,10 @@ export const PlanAgentParamsSchema = z.object({
   background: z.string().nullish()
 });
 export type PlanAgentParamsType = z.infer<typeof PlanAgentParamsSchema>;
+export const PlanAgentRuntimeParamsSchema = PlanAgentParamsSchema.extend({
+  planId: z.string()
+});
+export type PlanAgentRuntimeParamsType = z.infer<typeof PlanAgentRuntimeParamsSchema>;
 export const PlanAgentTool: ChatCompletionTool = {
   type: 'function',
   function: {

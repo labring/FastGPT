@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   ChatDispatchProps,
+  DispatchInteractiveNodeResponseType,
   DispatchNodeResultType,
   ModuleDispatchProps,
   SystemVariablesType
@@ -33,10 +34,7 @@ import {
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type {
-  InteractiveNodeResponseType,
-  WorkflowInteractiveResponseType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -350,7 +348,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     nodeInteractiveResponse:
       | {
           entryNodeIds: string[];
-          interactiveResponse: InteractiveNodeResponseType;
+          interactiveResponse: DispatchInteractiveNodeResponseType;
         }
       | undefined;
     system_memories: Record<string, any> = {}; // Workflow node memories
@@ -1033,7 +1031,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       interactiveResponse
     }: {
       entryNodeIds: string[];
-      interactiveResponse: InteractiveNodeResponseType;
+      interactiveResponse: DispatchInteractiveNodeResponseType;
     }): AIChatItemValueItemType {
       // Get node outputs
       const nodeOutputs: NodeOutputItemType[] = [];
@@ -1049,8 +1047,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         });
       });
 
+      const { planId, ...interactiveData } = interactiveResponse;
       const interactiveResult: WorkflowInteractiveResponseType = {
-        ...interactiveResponse,
+        ...interactiveData,
         skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({
           id: item.node.nodeId,
           skippedNodeIdList: Array.from(item.skippedNodeIdList)
@@ -1073,9 +1072,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         });
       }
 
-      return {
+      const interactiveAssistant: AIChatItemValueItemType = {
         interactive: interactiveResult
       };
+      if (planId) {
+        interactiveAssistant.planId = planId;
+      }
+
+      return interactiveAssistant;
     }
     getDebugResponse(): WorkflowDebugResponse {
       const entryNodeIds = this.debugNextStepRunNodes.map((item) => item.nodeId);
