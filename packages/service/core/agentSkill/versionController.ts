@@ -4,9 +4,9 @@
  * Provides CRUD operations for skill version management.
  */
 
-import { MongoSkillVersion } from './versionSchema';
+import { MongoAgentSkillsVersion } from './versionSchema';
 import type { ClientSession } from '../../common/mongo';
-import type { SkillVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
+import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
 
 export type CreateVersionData = {
   skillId: string;
@@ -39,7 +39,7 @@ export async function createVersion(
   data: CreateVersionData,
   session?: ClientSession
 ): Promise<string> {
-  const version = new MongoSkillVersion({
+  const version = new MongoAgentSkillsVersion({
     ...data,
     isActive: true,
     isDeleted: false,
@@ -54,7 +54,7 @@ export async function createVersion(
  * Get the next version number for a skill
  */
 export async function getNextVersionNumber(skillId: string): Promise<number> {
-  const lastVersion = await MongoSkillVersion.findOne(
+  const lastVersion = await MongoAgentSkillsVersion.findOne(
     { skillId, isDeleted: false },
     { version: 1 },
     { sort: { version: -1 } }
@@ -69,27 +69,29 @@ export async function getNextVersionNumber(skillId: string): Promise<number> {
 export async function getVersionBySkillIdAndVersion(
   skillId: string,
   version: number
-): Promise<SkillVersionSchemaType | null> {
-  const versionDoc = await MongoSkillVersion.findOne({
+): Promise<AgentSkillsVersionSchemaType | null> {
+  const versionDoc = await MongoAgentSkillsVersion.findOne({
     skillId,
     version,
     isDeleted: false
   }).lean();
 
-  return versionDoc as SkillVersionSchemaType | null;
+  return versionDoc as AgentSkillsVersionSchemaType | null;
 }
 
 /**
  * Get the active version for a skill
  */
-export async function getActiveVersion(skillId: string): Promise<SkillVersionSchemaType | null> {
-  const version = await MongoSkillVersion.findOne({
+export async function getActiveVersion(
+  skillId: string
+): Promise<AgentSkillsVersionSchemaType | null> {
+  const version = await MongoAgentSkillsVersion.findOne({
     skillId,
     isActive: true,
     isDeleted: false
   }).lean();
 
-  return version as SkillVersionSchemaType | null;
+  return version as AgentSkillsVersionSchemaType | null;
 }
 
 /**
@@ -101,7 +103,7 @@ export async function listVersions(
     includeDeleted?: boolean;
     sort?: 'asc' | 'desc';
   }
-): Promise<SkillVersionSchemaType[]> {
+): Promise<AgentSkillsVersionSchemaType[]> {
   const query: Record<string, any> = { skillId };
 
   if (!options?.includeDeleted) {
@@ -110,9 +112,9 @@ export async function listVersions(
 
   const sortOrder = options?.sort === 'asc' ? 1 : -1;
 
-  const versions = await MongoSkillVersion.find(query).sort({ version: sortOrder }).lean();
+  const versions = await MongoAgentSkillsVersion.find(query).sort({ version: sortOrder }).lean();
 
-  return versions as SkillVersionSchemaType[];
+  return versions as AgentSkillsVersionSchemaType[];
 }
 
 /**
@@ -124,14 +126,14 @@ export async function setActiveVersion(
   session?: ClientSession
 ): Promise<void> {
   // First, deactivate all versions for this skill
-  await MongoSkillVersion.updateMany(
+  await MongoAgentSkillsVersion.updateMany(
     { skillId, isDeleted: false },
     { $set: { isActive: false } },
     { session }
   );
 
   // Then, activate the specified version
-  const result = await MongoSkillVersion.updateOne(
+  const result = await MongoAgentSkillsVersion.updateOne(
     { skillId, version, isDeleted: false },
     { $set: { isActive: true } },
     { session }
@@ -150,7 +152,7 @@ export async function deleteVersion(
   version: number,
   session?: ClientSession
 ): Promise<void> {
-  const versionDoc = await MongoSkillVersion.findOne({
+  const versionDoc = await MongoAgentSkillsVersion.findOne({
     skillId,
     version,
     isDeleted: false
@@ -167,7 +169,7 @@ export async function deleteVersion(
     isActive: false
   };
 
-  await MongoSkillVersion.updateOne({ skillId, version }, { $set: updateData }, { session });
+  await MongoAgentSkillsVersion.updateOne({ skillId, version }, { $set: updateData }, { session });
 }
 
 /**
@@ -178,7 +180,7 @@ export async function restoreVersion(
   version: number,
   session?: ClientSession
 ): Promise<void> {
-  const versionDoc = await MongoSkillVersion.findOne({
+  const versionDoc = await MongoAgentSkillsVersion.findOne({
     skillId,
     version,
     isDeleted: true
@@ -188,7 +190,7 @@ export async function restoreVersion(
     throw new Error(`Deleted version ${version} not found for skill ${skillId}`);
   }
 
-  await MongoSkillVersion.updateOne(
+  await MongoAgentSkillsVersion.updateOne(
     { skillId, version },
     { $set: { isDeleted: false } },
     { session }
@@ -211,7 +213,7 @@ export async function updateVersion(
   }>,
   session?: ClientSession
 ): Promise<void> {
-  const result = await MongoSkillVersion.updateOne(
+  const result = await MongoAgentSkillsVersion.updateOne(
     { skillId, version, isDeleted: false },
     { $set: data },
     { session }
@@ -235,5 +237,5 @@ export async function countVersions(
     query.isDeleted = false;
   }
 
-  return MongoSkillVersion.countDocuments(query);
+  return MongoAgentSkillsVersion.countDocuments(query);
 }

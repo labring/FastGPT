@@ -54,8 +54,8 @@ export type AgentSkillListItemType = {
 // Detail view (full)
 export type AgentSkillDetailType = AgentSkillSchemaType;
 
-// Skill Version Schema
-export type SkillVersionSchemaType = {
+// Agent Skills Version Schema
+export type AgentSkillsVersionSchemaType = {
   _id: string;
   skillId: string;
   tmbId: string;

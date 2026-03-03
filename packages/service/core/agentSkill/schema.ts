@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 import {
-  skillCollectionName,
+  agentSkillsCollectionName as agentSkillsCollectionName,
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
 } from '@fastgpt/global/core/agentSkill/constants';
@@ -8,7 +8,7 @@ import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkill/type'
 
 const { Schema } = connectionMongo;
 
-const AgentSkillSchema = new Schema({
+const AgentSkillsSchema = new Schema({
   source: {
     type: String,
     enum: Object.values(AgentSkillSourceEnum),
@@ -81,11 +81,11 @@ const AgentSkillSchema = new Schema({
 // Create indexes
 try {
   // Text index for search
-  AgentSkillSchema.index({ name: 'text', description: 'text' });
+  AgentSkillsSchema.index({ name: 'text', description: 'text' });
   // Compound index for list queries
-  AgentSkillSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
+  AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
   // Category index
-  AgentSkillSchema.index({ category: 1 });
+  AgentSkillsSchema.index({ category: 1 });
   // Removed unique index on name to allow duplicate skill names
   // AgentSkillSchema.index(
   //   { name: 1, teamId: 1, deleteTime: 1 },
@@ -95,7 +95,7 @@ try {
   console.log('AgentSkill index error:', error);
 }
 
-export const MongoAgentSkill = getMongoModel<AgentSkillSchemaType>(
-  skillCollectionName,
-  AgentSkillSchema
+export const MongoAgentSkills = getMongoModel<AgentSkillSchemaType>(
+  agentSkillsCollectionName,
+  AgentSkillsSchema
 );

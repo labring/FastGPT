@@ -9,8 +9,8 @@ import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
 import mongoose from 'mongoose';
 import { MongoSkillSandbox } from './sandboxSchema';
-import { MongoAgentSkill } from './schema';
-import { MongoSkillVersion } from './versionSchema';
+import { MongoAgentSkills } from './schema';
+import { MongoAgentSkillsVersion } from './versionSchema';
 import { downloadSkillPackage } from './storage';
 import { standardizeSkillPackage } from './zipBuilder';
 import {
@@ -97,7 +97,7 @@ export async function createEditDebugSandbox(
   // === Phase 2: Pre-flight checks and resource preparation ===
 
   // Verify skill exists and user has permission
-  const skill = await MongoAgentSkill.findOne({
+  const skill = await MongoAgentSkills.findOne({
     _id: skillId,
     teamId,
     deleteTime: null
@@ -112,7 +112,7 @@ export async function createEditDebugSandbox(
   }
 
   // Verify active version exists
-  const activeVersion = await MongoSkillVersion.findOne({
+  const activeVersion = await MongoAgentSkillsVersion.findOne({
     skillId,
     isActive: true,
     isDeleted: false
