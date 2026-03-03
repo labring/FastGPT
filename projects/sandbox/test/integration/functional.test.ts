@@ -21,6 +21,7 @@ interface TestCase {
     codeReturnMatch?: Record<string, any>; // 部分匹配
     errorMatch?: RegExp; // 错误信息匹配
     hasLog?: boolean; // 是否有日志输出
+    logMatch?: RegExp; // 日志内容匹配
   };
 }
 
@@ -48,6 +49,9 @@ function runMatrix(getPool: () => ProcessPool | PythonProcessPool, cases: TestCa
       if (tc.expect.hasLog) {
         expect(result.data?.log).toBeTruthy();
         expect(result.data!.log!.length).toBeGreaterThan(0);
+      }
+      if (tc.expect.logMatch) {
+        expect(result.data?.log).toMatch(tc.expect.logMatch);
       }
     });
   }
@@ -195,7 +199,7 @@ describe('JS 功能测试', () => {
     );
   });
 
-  // --- console.log 日志 ---
+  // --- console 日志 ---
   describe('日志输出', () => {
     runMatrix(
       () => pool,
@@ -203,7 +207,32 @@ describe('JS 功能测试', () => {
         {
           name: 'console.log 被捕获',
           code: `async function main() { console.log('debug info'); return { done: true }; }`,
-          expect: { success: true, codeReturn: { done: true }, hasLog: true }
+          expect: { success: true, codeReturn: { done: true }, logMatch: /debug info/ }
+        },
+        {
+          name: 'console.error 不报错，内容被捕获',
+          code: `async function main() { console.error('err msg'); return { done: true }; }`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /err msg/ }
+        },
+        {
+          name: 'console.warn 不报错，内容被捕获',
+          code: `async function main() { console.warn('warn msg'); return { done: true }; }`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /warn msg/ }
+        },
+        {
+          name: 'console.info 不报错，内容被捕获',
+          code: `async function main() { console.info('info msg'); return { done: true }; }`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /info msg/ }
+        },
+        {
+          name: 'console.debug 不报错，内容被捕获',
+          code: `async function main() { console.debug('debug msg'); return { done: true }; }`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /debug msg/ }
+        },
+        {
+          name: '多次 console 调用均被捕获',
+          code: `async function main() { console.log('a'); console.warn('b'); console.error('c'); return { done: true }; }`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /a/ }
         }
       ]
     );
@@ -597,6 +626,25 @@ describe('Python 功能测试', () => {
           code: `def main(v):\n    return {'tokens': count_token(v['text'])}`,
           variables: { text: 'Hello, this is a test sentence.' },
           expect: { success: true }
+        }
+      ]
+    );
+  });
+
+  // --- print 日志 ---
+  describe('日志输出', () => {
+    runMatrix(
+      () => pool,
+      [
+        {
+          name: 'print 被捕获',
+          code: `def main():\n    print('hello log')\n    return {'done': True}`,
+          expect: { success: true, codeReturn: { done: true }, logMatch: /hello log/ }
+        },
+        {
+          name: '多次 print 均被捕获',
+          code: `def main():\n    print('line1')\n    print('line2')\n    return {'done': True}`,
+          expect: { success: true, logMatch: /line1/ }
         }
       ]
     );
