@@ -1,4 +1,4 @@
-import { MongoAgentSkill } from './schema';
+import { MongoAgentSkills } from './schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkill/constants';
 import type {
   AgentSkillSchemaType,
@@ -6,7 +6,8 @@ import type {
   SkillPackageType
 } from '@fastgpt/global/core/agentSkill/type';
 import type { ClientSession } from '../../common/mongo';
-import { MongoUser } from '../../support/user/schema';
+import { uploadSkillPackage } from './storage';
+import { createVersion } from './versionController';
 
 // Types for service operations
 type CreateSkillData = {
@@ -42,7 +43,7 @@ type ListSkillsParams = {
  * Create a new skill
  */
 export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
-  const skill = new MongoAgentSkill({
+  const skill = new MongoAgentSkills({
     ...data,
     source: AgentSkillSourceEnum.personal,
     currentVersion: 0,
@@ -72,7 +73,7 @@ export async function updateSkill(
     updateTime: new Date()
   };
 
-  await MongoAgentSkill.updateOne(
+  await MongoAgentSkills.updateOne(
     { _id: skillId, deleteTime: null },
     { $set: updateData },
     { session }
@@ -91,7 +92,7 @@ export async function updateCurrentStorage(
   },
   session?: ClientSession
 ): Promise<void> {
-  await MongoAgentSkill.updateOne(
+  await MongoAgentSkills.updateOne(
     { _id: skillId, deleteTime: null },
     { $set: { currentStorage: storageInfo, updateTime: new Date() } },
     { session }
@@ -102,7 +103,7 @@ export async function updateCurrentStorage(
  * Soft delete a skill (only personal skills can be deleted)
  */
 export async function deleteSkill(skillId: string, session?: ClientSession): Promise<void> {
-  const skill = await MongoAgentSkill.findOne({
+  const skill = await MongoAgentSkills.findOne({
     _id: skillId,
     deleteTime: null
   });
@@ -115,7 +116,7 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
     throw new Error('Cannot delete system skill');
   }
 
-  await MongoAgentSkill.updateOne(
+  await MongoAgentSkills.updateOne(
     { _id: skillId },
     { $set: { deleteTime: new Date() } },
     { session }
@@ -126,7 +127,7 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
  * Get skill by ID
  */
 export async function getSkillById(skillId: string): Promise<AgentSkillSchemaType | null> {
-  const skill = await MongoAgentSkill.findOne({
+  const skill = await MongoAgentSkills.findOne({
     _id: skillId,
     deleteTime: null
   }).lean();
@@ -174,13 +175,13 @@ export async function listSkills(
   const skip = (page - 1) * pageSize;
 
   const [skills, total] = await Promise.all([
-    MongoAgentSkill.find(query)
+    MongoAgentSkills.find(query)
       .select('_id source name description author category avatar createTime updateTime')
       .sort({ createTime: -1 })
       .skip(skip)
       .limit(pageSize)
       .lean(),
-    MongoAgentSkill.countDocuments(query)
+    MongoAgentSkills.countDocuments(query)
   ]);
 
   return {
@@ -205,12 +206,8 @@ export async function importSkill(
 ): Promise<string> {
   const { skill, markdown } = packageData;
 
-  // Import storage services
-  const { uploadSkillPackage } = await import('./storage');
-  const { createVersion } = await import('./versionController');
-
   // Create skill record first
-  const newSkill = new MongoAgentSkill({
+  const newSkill = new MongoAgentSkills({
     source: AgentSkillSourceEnum.personal,
     name: skill.name,
     description: skill.description,
@@ -267,7 +264,7 @@ export async function importSkill(
  * Check if user can modify/delete a skill
  */
 export async function canModifySkill(skillId: string, tmbId: string): Promise<boolean> {
-  const skill = await MongoAgentSkill.findOne({
+  const skill = await MongoAgentSkills.findOne({
     _id: skillId,
     deleteTime: null
   });
@@ -303,6 +300,6 @@ export async function checkSkillNameExists(
     query._id = { $ne: excludeId };
   }
 
-  const count = await MongoAgentSkill.countDocuments(query);
+  const count = await MongoAgentSkills.countDocuments(query);
   return count > 0;
 }

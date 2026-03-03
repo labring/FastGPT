@@ -85,7 +85,8 @@ export type GetSkillDetailResponse = {
 
 // ==================== Import Skill ====================
 export type ImportSkillBody = {
-  // FormData with file and optional data
+  name?: string;
+  description?: string;
 };
 
 export type ImportSkillResponse = string; // skillId

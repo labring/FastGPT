@@ -47,9 +47,9 @@ export const AgentSkillCategoryMap: Record<
   }
 };
 
-export const skillCollectionName = 'agent_skills';
+export const agentSkillsCollectionName = 'agent_skills';
 
-export const skillVersionCollectionName = 'skill_versions';
+export const agentSkillsVersionCollectionName = 'agent_skills_versions';
 
 export const skillSandboxCollectionName = 'skill_sandbox_info';
 

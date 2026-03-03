@@ -1,12 +1,15 @@
 /**
- * Skill Sandbox Schema
+ * Agent Sandbox Schema
  *
  * Defines the database schema for skill sandbox instances.
  * Supports both edit-debug and session-runtime sandbox types.
  */
 
 import { connectionMongo, getMongoModel } from '../../common/mongo';
-import { skillSandboxCollectionName } from '@fastgpt/global/core/agentSkill/constants';
+import {
+  agentSkillsCollectionName,
+  skillSandboxCollectionName
+} from '@fastgpt/global/core/agentSkill/constants';
 import type { SkillSandboxSchemaType } from '@fastgpt/global/core/agentSkill/type';
 
 const { Schema } = connectionMongo;
@@ -14,7 +17,7 @@ const { Schema } = connectionMongo;
 const SkillSandboxSchema = new Schema({
   skillId: {
     type: Schema.Types.ObjectId,
-    ref: 'agent_skills',
+    ref: agentSkillsCollectionName,
     required: true
   },
   sandboxType: {
