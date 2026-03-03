@@ -228,7 +228,6 @@ export const readFileContentByBuffer = async ({
         }
       })();
       rawText = rawText.replace(item.uuid, src);
-      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
       }

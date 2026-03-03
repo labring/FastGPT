@@ -13,7 +13,7 @@ import {
   CreateGetPresignedUrlParamsSchema
 } from '../type';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { getSystemMaxFileSize, Mimes } from '../constants';
+import { storageTransferMode, getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
@@ -22,6 +22,7 @@ import { addS3DelJob } from '../mq';
 import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { jwtSignS3DownloadToken, jwtSignS3UploadToken } from '../token';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -139,18 +140,12 @@ export class S3BaseBucket {
       const ext = path.extname(filename).toLowerCase();
       const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
       const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
-
-      const { metadata, url } = await this.externalClient.generatePresignedPutUrl({
-        key: params.rawKey,
-        expiredSeconds,
-        contentType,
-        metadata: {
-          contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
-          originFilename: encodeURIComponent(filename),
-          uploadTime: new Date().toISOString(),
-          ...params.metadata
-        }
-      });
+      const metadata = {
+        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
+        originFilename: encodeURIComponent(filename),
+        uploadTime: new Date().toISOString(),
+        ...params.metadata
+      };
 
       if (expiredHours) {
         await MongoS3TTL.create({
@@ -160,11 +155,36 @@ export class S3BaseBucket {
         });
       }
 
+      if (storageTransferMode === 'proxy') {
+        return {
+          url: jwtSignS3UploadToken({
+            objectKey: params.rawKey,
+            bucketName: this.bucketName,
+            expiredTime: addMinutes(new Date(), Math.ceil(expiredSeconds / 60)),
+            maxSize: formatMaxFileSize,
+            contentType,
+            metadata
+          }),
+          key: params.rawKey,
+          headers: {
+            'content-type': contentType
+          },
+          maxSize: formatMaxFileSize
+        };
+      }
+
+      const { metadata: uploadHeaders, url } = await this.externalClient.generatePresignedPutUrl({
+        key: params.rawKey,
+        expiredSeconds,
+        contentType,
+        metadata
+      });
+
       return {
         url: url,
         key: params.rawKey,
         headers: {
-          ...metadata
+          ...uploadHeaders
         },
         maxSize: formatMaxFileSize
       };
@@ -183,6 +203,19 @@ export class S3BaseBucket {
 
     const { key, expiredHours } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    if (storageTransferMode === 'proxy') {
+      return {
+        bucket: this.bucketName,
+        key,
+        url: jwtSignS3DownloadToken({
+          objectKey: key,
+          bucketName: this.bucketName,
+          expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
+          filename: path.basename(key)
+        })
+      };
+    }
 
     return await this.externalClient.generatePresignedGetUrl({ key, expiredSeconds: expires });
   }
