@@ -44,7 +44,8 @@ export const LogCategories = {
       INTERACTIVE: ['workflow', 'interactive'],
       OPTIMIZE_CODE: ['workflow', 'optimize-code'],
       STATUS: ['workflow', 'status'],
-      TOOLS: ['workflow', 'tools']
+      TOOLS: ['workflow', 'tools'],
+      CODE_SANDBOX: ['workflow', 'code-sandbox']
     }),
     APP: Object.assign(['app'], {
       EVALUATION: ['app', 'evaluation'],
