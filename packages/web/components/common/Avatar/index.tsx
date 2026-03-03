@@ -6,14 +6,24 @@ import MyIcon from '../Icon';
 import { iconPaths } from '../Icon/constants';
 import MyImage from '../Image/MyImage';
 
-const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
+const Avatar = ({
+  w = '30px',
+  src,
+  fill,
+  ...props
+}: Omit<ImageProps, 'src'> & { src?: string | null }) => {
   // @ts-ignore
   const isIcon = !!iconPaths[src as any];
   const isAicp = src?.toLowerCase()?.includes('aicp');
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>
-      <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
+      <MyIcon
+        name={src as any}
+        w={w}
+        borderRadius={props.borderRadius}
+        {...(fill ? { fill } : {})}
+      />
     </Box>
   ) : (
     <MyImage

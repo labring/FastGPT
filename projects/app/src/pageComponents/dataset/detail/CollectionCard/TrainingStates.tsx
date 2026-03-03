@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteTrainingData,
   getDatasetCollectionTrainingDetail,
@@ -107,11 +107,10 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
         ? [
             {
               label: t(TrainingProcess.parsing.label),
-              status: (() => {
-                if (trainingDetail.errorCounts.parse > 0) return TrainingStatus.Error;
-                if (isContentParsing) return TrainingStatus.Running;
-                return TrainingStatus.Ready;
-              })(),
+              statusText: getStatusText(TrainingModeEnum.parse),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.parse
+              }),
               errorCount: trainingDetail.errorCounts.parse
             }
           ]
@@ -355,7 +354,7 @@ const ErrorView = ({
     EmptyTip: <EmptyTip />
   });
 
-  const { runAsync: getData, loading: getDataLoading } = useRequest2(
+  const { runAsync: getData, loading: getDataLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return getTrainingDataDetail(data);
     },
@@ -366,7 +365,7 @@ const ErrorView = ({
       }
     }
   );
-  const { runAsync: deleteData, loading: deleteLoading } = useRequest2(
+  const { runAsync: deleteData, loading: deleteLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return deleteTrainingData(data);
     },
@@ -377,7 +376,7 @@ const ErrorView = ({
       }
     }
   );
-  const { runAsync: updateData, loading: updateLoading } = useRequest2(
+  const { runAsync: updateData, loading: updateLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string; q?: string; a?: string }) => {
       return updateTrainingData(data);
     },
@@ -561,14 +560,14 @@ const TrainingStates = ({
     data: trainingDetail,
     loading,
     runAsync: refreshTrainingDetail
-  } = useRequest2(() => getDatasetCollectionTrainingDetail(collectionId), {
+  } = useRequest(() => getDatasetCollectionTrainingDetail(collectionId), {
     pollingInterval: 5000,
     pollingWhenHidden: false,
     manual: false
   });
 
   // All retry logic
-  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest(
     () => updateTrainingData({ datasetId, collectionId }),
     {
       manual: true,
@@ -579,7 +578,7 @@ const TrainingStates = ({
     }
   );
 
-  const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
+  const errorCounts = Object.values(trainingDetail?.errorCounts || {}).reduce(
     (acc, count) => acc + count,
     0
   );
@@ -594,7 +593,7 @@ const TrainingStates = ({
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={2}>
+        <Flex align="center" justify="space-between" mb={4}>
           <FillRowTabs
             py={1}
             value={tab}

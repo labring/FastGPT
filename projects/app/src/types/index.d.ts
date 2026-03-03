@@ -14,6 +14,7 @@ declare global {
   var parseQueueLen: number;
   var qaQueueLen: number;
   var vectorQueueLen: number;
+  var datasetParseQueueLen: number;
   var small2bigQueueLen: number;
   var synthesisQueueLen: number;
 

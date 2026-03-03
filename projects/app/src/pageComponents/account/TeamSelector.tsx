@@ -4,17 +4,19 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 
 const TeamSelector = ({
   showManage,
+  showAvatar = true,
   onChange,
   ...props
 }: Omit<ButtonProps, 'onChange'> & {
   showManage?: boolean;
+  showAvatar?: boolean;
   onChange?: () => void;
 }) => {
   const { t } = useTranslation();
@@ -22,12 +24,12 @@ const TeamSelector = ({
   const { userInfo } = useUserStore();
   const { setLoading } = useSystemStore();
 
-  const { data: myTeams = [] } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
+  const { data: myTeams = [] } = useRequest(() => getTeamList(TeamMemberStatusEnum.active), {
     manual: false,
     refreshDeps: [userInfo]
   });
 
-  const { runAsync: onSwitchTeam } = useRequest2(
+  const { runAsync: onSwitchTeam } = useRequest(
     async (teamId: string) => {
       setLoading(true);
       await putSwitchTeam(teamId);
@@ -43,7 +45,7 @@ const TeamSelector = ({
 
   const teamList = useMemo(() => {
     return myTeams.map((team) => ({
-      icon: team.avatar,
+      ...(showAvatar ? { icon: team.avatar } : {}),
       iconSize: '1.25rem',
       label: team.teamName,
       value: team.teamId

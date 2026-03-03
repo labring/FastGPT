@@ -12,7 +12,7 @@ import {
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
@@ -44,7 +44,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { runAsync: onSubmit, loading: isLoading } = useRequest2(updatePasswordByOld, {
+  const { runAsync: onSubmit, loading: isLoading } = useRequest(updatePasswordByOld, {
     onSuccess() {
       onClose();
     },

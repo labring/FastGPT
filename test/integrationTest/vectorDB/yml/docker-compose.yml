@@ -1,0 +1,159 @@
+# 用于部署的 docker-compose 文件:
+# - FastGPT 端口映射为 3000:3000
+# - FastGPT-mcp-server 端口映射 3005:3000
+# - 建议修改账密后再运行
+
+version: '3.3'
+services:
+  # pg DB
+  pgTest:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15
+    container_name: pgTest
+    restart: always
+    ports:
+      - 6001:5432
+    networks:
+      - test
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./local/pg/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Vector DB
+  milvus-test-minio:
+    container_name: milvus-test-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    networks:
+      - testVector
+    volumes:
+      - ./local/milvus-minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  # milvus
+  milvus-test-etcd:
+    container_name: milvus-test-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    networks:
+      - testVector
+    volumes:
+      - ./local/milvus/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  milvus-test:
+    container_name: milvus-test-standalone
+    image: milvusdb/milvus:v2.4.3
+    command: ['milvus', 'run', 'standalone']
+    ports:
+      - 6002:19530
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvus-test-etcd:2379
+      MINIO_ADDRESS: milvus-test-minio:9000
+    networks:
+      - test
+      - testVector
+    volumes:
+      - ./local/milvus/data:/var/lib/milvus
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - 'milvus-test-etcd'
+      - 'milvus-test-minio'
+  # Ob
+  ob-test:
+    image: oceanbase/oceanbase-ce:4.3.5-lts
+    container_name: ob-test
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 6005:2881
+    networks:
+      - test
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - OB_SYS_PASSWORD=obsyspassword
+      # 不同于传统数据库，OceanBase 数据库的账号包含更多字段，包括用户名、租户名和集群名。经典格式为"用户名@租户名#集群名"
+      # 比如用mysql客户端连接时，根据本文件的默认配置，应该指定 "-uroot@tenantname"
+      - OB_TENANT_NAME=tenantname
+      - OB_TENANT_PASSWORD=tenantpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+      - OB_SERVER_IP=127.0.0.1
+      # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
+    volumes:
+      - ./local/ob/data:/root/ob
+      - ./local/ob/config:/root/.obd/cluster
+    configs:
+      - source: init_sql
+        target: /root/boot/init.d/init.sql
+    healthcheck:
+      # Use sys tenant for health check as tenantname may take long to initialize
+      # obclient -h127.0.0.1 -P2881 -uroot@sys -pobsyspassword -e "SELECT 1;"
+      test:
+        [
+          'CMD-SHELL',
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 60s
+  # Seekdb
+  seekdb-test:
+    image: oceanbase/seekdb:1.0.1.0-100000392025122619
+    container_name: seekdb-test
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 6003:2881
+      - 6004:2886
+    networks:
+      - test
+    environment:
+      # SeekDB 连接配置（兼容 MySQL 协议）
+      - ROOT_PASSWORD=seekdbpassword
+      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
+      - MODE=MINI
+    volumes:
+      - ./local/seekdb/data:/var/lib/mysql
+      - ./local/seekdb/config:/etc/mysql/conf.d
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-P2881', '-uroot', '-pseekdbpassword']
+      interval: 30s
+      timeout: 10s
+      retries: 1000
+      start_period: 10s
+networks:
+  test:
+  testVector:
+configs:
+  init_sql:
+    name: init_sql
+    content: |
+      ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;

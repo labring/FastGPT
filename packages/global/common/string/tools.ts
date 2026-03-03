@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
+import path from 'path';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -143,10 +144,7 @@ export const getRegQueryStr = (text: string, flags = 'i') => {
 
 /* slice json str */
 export const sliceJsonStr = (str: string) => {
-  str = str
-    .trim()
-    .replace(/(\\n|\\)/g, '')
-    .replace(/  /g, '');
+  str = str.trim();
 
   // Find first opening bracket
   let start = -1;
@@ -187,7 +185,7 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/* 
+/*
   Parse file extension from url
   Test：
   1. https://xxx.com/file.pdf?token=123
@@ -196,11 +194,41 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
     => pdf
 */
 export const parseFileExtensionFromUrl = (url = '') => {
-  // Remove query params
-  const urlWithoutQuery = url.split('?')[0];
-  // Get file name
-  const fileName = urlWithoutQuery.split('/').pop() || '';
-  // Get file extension
-  const extension = fileName.split('.').pop();
-  return (extension || '').toLowerCase();
+  // Remove query params and hash first
+  const urlWithoutQuery = url.split('?')[0].split('#')[0];
+  const extension = path.extname(urlWithoutQuery);
+  // path.extname returns '.ext' or ''
+  if (extension.startsWith('.')) {
+    return extension.slice(1).toLowerCase();
+  }
+  return '';
+};
+
+export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
+  if (num === 0) return '0';
+  if (!num || isNaN(num)) return '-';
+  const absNum = Math.abs(num);
+  const isNegative = num < 0;
+  const prefix = isNegative ? '-' : '';
+
+  if (locale === 'zh-CN') {
+    if (absNum >= 10000) {
+      const value = absNum / 10000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}万`;
+    }
+    return num.toLocaleString(locale);
+  } else {
+    if (absNum >= 1000000) {
+      const value = absNum / 1000000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}M`;
+    }
+    if (absNum >= 1000) {
+      const value = absNum / 1000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}K`;
+    }
+    return num.toLocaleString(locale);
+  }
 };

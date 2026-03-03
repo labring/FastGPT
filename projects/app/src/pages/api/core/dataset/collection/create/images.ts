@@ -9,39 +9,27 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { CreateCollectionResponse } from '@/global/core/dataset/api';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
-import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
-import type { NextApiResponse } from 'next';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
-import { addSeconds } from 'date-fns';
-import { createDatasetImage } from '@fastgpt/service/core/dataset/image/controller';
-
-const authUploadLimit = (tmbId: string, num: number) => {
-  if (!global.feConfigs.uploadFileMaxAmount) return;
-  return authFrequencyLimit({
-    eventId: `${tmbId}-uploadfile`,
-    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
-    expiredTime: addSeconds(new Date(), 30), // 30s
-    num
-  });
-};
+import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
+import { addDays, addSeconds } from 'date-fns';
+import fs from 'node:fs';
+import path from 'node:path';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
+import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 async function handler(
-  req: ApiRequestProps<ImageCreateDatasetCollectionParams>,
-  res: NextApiResponse<any>
+  req: ApiRequestProps<ImageCreateDatasetCollectionParams>
 ): CreateCollectionResponse {
-  const filePaths: string[] = [];
+  const filepaths: string[] = [];
 
   try {
-    const upload = getUploadModel({
-      maxSize: global.feConfigs?.uploadFileMaxSize
+    const result = await multer.resolveMultipleFormData({
+      request: req,
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
-    const {
-      files,
-      data: { parentId, datasetId, collectionName }
-    } = await upload.getUploadFiles<ImageCreateDatasetCollectionParams>(req, res);
-    filePaths.push(...files.map((item) => item.path));
+    filepaths.push(...result.fileMetadata.map((item) => item.path));
+    const { parentId, datasetId, collectionName } = result.data;
 
     const { dataset, teamId, tmbId } = await authDataset({
       datasetId,
@@ -50,26 +38,34 @@ async function handler(
       authToken: true,
       authApiKey: true
     });
-    await authUploadLimit(tmbId, files.length);
+
+    const planStatus = await getTeamPlanStatus({ teamId });
+    await authFrequencyLimit({
+      eventId: `${tmbId}-uploadfile`,
+      maxAmount:
+        planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      expiredTime: addSeconds(new Date(), 30), // 30s
+      num: result.fileMetadata.length
+    });
 
     if (!dataset.vlmModel) {
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
     }
 
-    // 1. Save image to db
     const imageIds = await Promise.all(
-      files.map(async (file) => {
-        return (
-          await createDatasetImage({
-            teamId,
-            datasetId,
-            file
-          })
-        ).imageId;
+      result.fileMetadata.map(async (file) => {
+        const filename = path.basename(file.filename);
+        const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
+        return uploadImage2S3Bucket('private', {
+          base64Img: (await fs.promises.readFile(file.path)).toString('base64'),
+          uploadKey: fileKey,
+          mimetype: file.mimetype,
+          filename,
+          expiredTime: addDays(new Date(), 7)
+        });
       })
     );
 
-    // 2. Create collection
     const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
       imageIds,
@@ -91,7 +87,7 @@ async function handler(
   } catch (error) {
     return Promise.reject(error);
   } finally {
-    removeFilesByPaths(filePaths);
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

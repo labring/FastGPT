@@ -9,7 +9,7 @@ import {
 } from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
-import { removeDatasetCiteText } from '../../../service/core/ai/utils';
+import { removeDatasetCiteText } from '../ai/llm/utils';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -59,7 +59,6 @@ export const getHistoryPreview = (
                 return `![Input an image](${item.file.url.slice(0, 100)}...)`;
               return '';
             })
-            .filter(Boolean)
             .join('\n') || ''
         );
       } else if (item.obj === ChatRoleEnum.AI) {
@@ -70,7 +69,8 @@ export const getHistoryPreview = (
                 item.text?.content || item?.tools?.map((item) => item.toolName).join(',') || ''
               );
             })
-            .join('') || ''
+            .join('')
+            .trim() || ''
         );
       }
       return '';
@@ -85,32 +85,44 @@ export const getHistoryPreview = (
 
 // Filter workflow public response
 export const filterPublicNodeResponseData = ({
-  flowResponses = [],
+  nodeRespones = [],
   responseDetail = false
 }: {
-  flowResponses?: ChatHistoryItemResType[];
+  nodeRespones?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
   const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.appModule]: true,
     [FlowNodeTypeEnum.pluginModule]: true,
     [FlowNodeTypeEnum.datasetSearchNode]: true,
     [FlowNodeTypeEnum.agent]: true,
-    [FlowNodeTypeEnum.pluginOutput]: true
+    [FlowNodeTypeEnum.pluginOutput]: true,
+
+    [FlowNodeTypeEnum.runApp]: true
   };
 
-  const filedList = responseDetail
-    ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
-    : ['moduleType', 'pluginOutput', 'runningTime'];
+  const filedMap: Record<string, boolean> = responseDetail
+    ? {
+        quoteList: true,
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      }
+    : {
+        moduleType: true,
+        pluginOutput: true,
+        runningTime: true
+      };
 
-  return flowResponses
+  return nodeRespones
     .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
         if (key === 'toolDetail' || key === 'pluginDetail') {
           // @ts-ignore
-          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key], responseDetail });
-        } else if (filedList.includes(key)) {
+          obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
+        } else if (filedMap[key]) {
           // @ts-ignore
           obj[key] = item[key];
         }
@@ -159,7 +171,8 @@ export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
       if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
         return false;
       }
-      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+      // type 为 'file' 时 key 和 url 不能同时为空
+      if (item.type === ChatItemValueTypeEnum.file && !item.file?.key && !item.file?.url) {
         return false;
       }
       return true;
@@ -192,7 +205,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
-/* 
+/*
   Merge chat responseData
   1. Same tool mergeSignId (Interactive tool node)
   2. Recursively merge plugin details with same mergeSignId
@@ -200,49 +213,41 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
-  // Merge children reponse data(Children has interactive response)
-  const responseWithMergedPlugins = responseDataList.map((item) => {
-    if (item.pluginDetail && item.pluginDetail.length > 1) {
-      return {
+  const result: ChatHistoryItemResType[] = [];
+  const mergeMap = new Map<string, number>(); // mergeSignId -> result index
+
+  for (const item of responseDataList) {
+    if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
+      // Merge with existing item
+      const existingIndex = mergeMap.get(item.mergeSignId)!;
+      const existing = result[existingIndex];
+
+      result[existingIndex] = {
         ...item,
-        pluginDetail: mergeChatResponseData(item.pluginDetail)
+        runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
+        totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
+        childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
+        toolDetail: mergeChatResponseData([
+          ...(existing.toolDetail || []),
+          ...(item.toolDetail || [])
+        ]),
+        loopDetail: mergeChatResponseData([
+          ...(existing.loopDetail || []),
+          ...(item.loopDetail || [])
+        ]),
+        pluginDetail: mergeChatResponseData([
+          ...(existing.pluginDetail || []),
+          ...(item.pluginDetail || [])
+        ])
       };
-    }
-    return item;
-  });
-
-  let lastResponse: ChatHistoryItemResType | undefined = undefined;
-  let hasMerged = false;
-
-  const firstPassResult = responseWithMergedPlugins.reduce<ChatHistoryItemResType[]>(
-    (acc, curr) => {
-      if (
-        lastResponse &&
-        lastResponse.mergeSignId &&
-        curr.mergeSignId === lastResponse.mergeSignId
-      ) {
-        const concatResponse: ChatHistoryItemResType = {
-          ...curr,
-          runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
-          totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
-          childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-          toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])],
-          loopDetail: [...(lastResponse.loopDetail || []), ...(curr.loopDetail || [])],
-          pluginDetail: [...(lastResponse.pluginDetail || []), ...(curr.pluginDetail || [])]
-        };
-        hasMerged = true;
-        return [...acc.slice(0, -1), concatResponse];
-      } else {
-        lastResponse = curr;
-        return [...acc, curr];
+    } else {
+      // Add new item
+      result.push(item);
+      if (item.mergeSignId) {
+        mergeMap.set(item.mergeSignId, result.length - 1);
       }
-    },
-    []
-  );
-
-  if (hasMerged && firstPassResult.length > 1) {
-    return mergeChatResponseData(firstPassResult);
+    }
   }
 
-  return firstPassResult;
+  return result;
 };

@@ -7,8 +7,8 @@ import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
+  NodeInputKeyEnum,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 
@@ -19,6 +19,8 @@ export const TextEditorNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/textConcat',
+  avatarLinear: 'core/workflow/template/textConcatLinear',
+  colorSchema: 'orange',
   name: i18nT('workflow:text_concatenation'),
   intro: i18nT('workflow:intro_text_concatenation'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/text_editor/',

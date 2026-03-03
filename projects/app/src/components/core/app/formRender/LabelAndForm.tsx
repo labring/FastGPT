@@ -1,5 +1,5 @@
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import React from 'react';
@@ -7,7 +7,8 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import InputRender from '.';
 import type { SpecificProps } from './type';
-import { useTranslation } from 'next-i18next';
+import { InputTypeEnum } from './constant';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 // Helper function to flatten error object keys
 const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
@@ -29,25 +30,28 @@ const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
 };
 
 const LabelAndFormRender = ({
-  formKey,
   label,
   required,
   placeholder,
   inputType,
-  variablesForm,
   showValueType,
+  isUnChange,
   ...props
 }: {
-  formKey: string;
   label: string | React.ReactNode;
   required?: boolean;
   placeholder?: string;
-  variablesForm: UseFormReturn<any>;
   showValueType?: boolean;
+  form: UseFormReturn<any>;
+  fieldName: string;
+
+  isDisabled?: boolean;
+  isUnChange?: boolean;
+  minLength?: number;
 } & SpecificProps &
   BoxProps) => {
-  const { t } = useTranslation();
-  const { control } = variablesForm;
+  const { t } = useSafeTranslation();
+  const { control } = props.form;
 
   return (
     <Box _notLast={{ mb: 4 }}>
@@ -58,20 +62,54 @@ const LabelAndFormRender = ({
 
       <Controller
         control={control}
-        name={formKey}
+        name={props.fieldName}
         rules={{
-          required
+          validate: (value) => {
+            if (typeof value === 'number' || typeof value === 'boolean') return true;
+            if (!required) return true;
+            // 密码类型特殊处理：已加密的密码格式为 { value: '', secret: 'xxx' }
+            if (inputType === InputTypeEnum.password) {
+              const hasValue = value && typeof value === 'object' && (value.value || value.secret);
+              if (!hasValue) return false;
+              // 有 minLength 要求且正在输入新值时，检查长度
+              if (props.minLength && value.value && value.value.length < props.minLength) {
+                return t(`common:min_length`, { minLenth: props.minLength });
+              }
+              return true;
+            }
+
+            if (inputType === InputTypeEnum.fileSelect) {
+              if (!value || !Array.isArray(value) || value.length === 0) {
+                return t('common:required');
+              }
+              return true;
+            }
+
+            return !!value;
+          },
+          ...(!!props?.minLength
+            ? {
+                minLength: {
+                  value: props.minLength,
+                  message: t(`common:min_length`, { minLenth: props.minLength })
+                }
+              }
+            : {})
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (
-            <InputRender
-              inputType={inputType}
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              isInvalid={!!error}
-              {...props}
-            />
+            <FormControl isInvalid={!!error}>
+              <InputRender
+                inputType={inputType}
+                isRichText={false}
+                value={value}
+                onChange={isUnChange ? undefined : onChange}
+                placeholder={placeholder}
+                isInvalid={!!error}
+                {...props}
+              />
+              {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+            </FormControl>
           );
         }}
       />

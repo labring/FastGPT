@@ -6,7 +6,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useTranslation } from 'next-i18next';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useMount } from 'ahooks';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
@@ -111,9 +111,11 @@ export const useAudioPlay = (
   /* Perform a voice playback */
   const playAudioByText = useCallback(
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
-      const playAudioBuffer = (buffer: Uint8Array) => {
+      const playAudioBuffer = (audioBuffer: Uint8Array) => {
         if (!audioRef.current) return;
-        const audioUrl = URL.createObjectURL(new Blob([buffer], { type: contentType }));
+        const audioUrl = URL.createObjectURL(
+          new Blob([audioBuffer as Uint8Array<ArrayBuffer>], { type: contentType })
+        );
         audioRef.current.src = audioUrl;
         audioRef.current.play();
       };
@@ -178,7 +180,7 @@ export const useAudioPlay = (
 
               await new Promise((resolve) => {
                 sourceBuffer.onupdateend = resolve;
-                sourceBuffer.appendBuffer(value.buffer as any);
+                sourceBuffer.appendBuffer(value.buffer as ArrayBuffer);
               });
             }
           } catch (error) {
@@ -311,7 +313,7 @@ export const useAudioPlay = (
 
             await new Promise((resolve) => {
               buffer.onupdateend = resolve;
-              buffer.appendBuffer(value.buffer as any);
+              buffer.appendBuffer(value.buffer as ArrayBuffer);
             });
           }
         } catch (error) {

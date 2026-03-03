@@ -21,7 +21,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import format from 'date-fns/format';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -41,7 +41,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { runAsync: fetchAllDimensions, loading: isLoading } = useRequest2(
+  const { runAsync: fetchAllDimensions, loading: isLoading } = useRequest(
     async () => {
       const result = await getMetricList({});
       return result;
@@ -90,7 +90,7 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
     type: 'delete'
   });
 
-  const { runAsync: onDeleteMetric } = useRequest2(deleteMetric, {
+  const { runAsync: onDeleteMetric } = useRequest(deleteMetric, {
     onSuccess: () => {
       fetchAllDimensions();
     },

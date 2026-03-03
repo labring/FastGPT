@@ -2,7 +2,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '../../type/next';
 import type { SortOrder } from '@fastgpt/global/core/train/rerank/api';
 
-export function parsePaginationRequest(req: ApiRequestProps) {
+export const parsePaginationRequest = (req: ApiRequestProps) => {
   const {
     pageSize = 10,
     pageNum = 1,

@@ -1,4 +1,5 @@
 import { PermissionValueType } from '../../permission/type';
+import type { TeamMetaType } from '../type';
 import type { TeamMemberRoleEnum } from './constant';
 import type { TeamMemberSchema, ThirdPartyAccountType } from './type';
 import { LafAccountType } from './type';
@@ -14,6 +15,7 @@ export type CreateTeamProps = {
   memberName?: string;
   memberAvatar?: string;
   notificationAccount?: string;
+  meta?: TeamMetaType;
 };
 export type UpdateTeamProps = Omit<ThirdPartyAccountType, 'externalWorkflowVariable'> & {
   name?: string;

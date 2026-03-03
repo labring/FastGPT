@@ -3,18 +3,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
-import { llmCompletionsBodyFormat, parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
-import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
 type OptimizePromptBody = {
   originalPrompt: string;
@@ -100,67 +97,17 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       }
     ];
 
-    const requestMessages = await loadRequestMessages({
-      messages,
-      useVision: false
-    });
-
-    const { response, isStreamResponse } = await createChatCompletion({
-      body: llmCompletionsBodyFormat(
-        {
-          model,
-          messages: requestMessages,
-          temperature: 0.1,
-          max_tokens: 2000,
-          stream: true
-        },
-        model
-      )
-    });
-
-    const { inputTokens, outputTokens } = await (async () => {
-      if (isStreamResponse) {
-        const { parsePart, getResponseData } = parseLLMStreamResponse();
-
-        let optimizedText = '';
-
-        for await (const part of response) {
-          const { responseContent } = parsePart({
-            part,
-            parseThinkTag: true,
-            retainDatasetCite: false
-          });
-
-          if (responseContent) {
-            optimizedText += responseContent;
-            responseWrite({
-              res,
-              event: SseResponseEventEnum.answer,
-              data: JSON.stringify({
-                choices: [
-                  {
-                    delta: {
-                      content: responseContent
-                    }
-                  }
-                ]
-              })
-            });
-          }
-        }
-
-        const { content: answer, usage } = getResponseData();
-        return {
-          content: answer,
-          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
-          outputTokens:
-            usage?.completion_tokens ||
-            (await countGptMessagesTokens([{ role: 'assistant', content: optimizedText }]))
-        };
-      } else {
-        const usage = response.usage;
-        const content = response.choices?.[0]?.message?.content || '';
-
+    const {
+      usage: { inputTokens, outputTokens }
+    } = await createLLMResponse({
+      body: {
+        model,
+        messages,
+        temperature: 0.1,
+        max_tokens: 2000,
+        stream: true
+      },
+      onStreaming: ({ text }) => {
         responseWrite({
           res,
           event: SseResponseEventEnum.answer,
@@ -168,22 +115,15 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
             choices: [
               {
                 delta: {
-                  content
+                  content: text
                 }
               }
             ]
           })
         });
-
-        return {
-          content,
-          inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
-          outputTokens:
-            usage?.completion_tokens ||
-            (await countGptMessagesTokens([{ role: 'assistant', content: content }]))
-        };
       }
-    })();
+    });
+
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
@@ -193,8 +133,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     const { totalPoints, modelName } = formatModelChars2Points({
       model,
       inputTokens,
-      outputTokens,
-      modelType: ModelTypeEnum.llm
+      outputTokens
     });
 
     createUsage({

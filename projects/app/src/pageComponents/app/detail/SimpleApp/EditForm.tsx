@@ -31,10 +31,10 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -69,11 +69,11 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { defaultModels } = useSystemStore();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const { llmModelList, defaultModels } = useSystemStore();
 
   const knowledgeTypeConfig = useMemo(() => {
     return {
@@ -107,8 +107,8 @@ const EditForm = ({
 
   const {
     isOpen: isOpenDatasetSelect,
-    onOpen: onOpenKbSelect,
-    onClose: onCloseKbSelect
+    onOpen: onOpenDatasetSelect,
+    onClose: onCloseDatasetSelect
   } = useDisclosure();
   const {
     isOpen: isOpenDatasetParams,
@@ -160,6 +160,26 @@ const EditForm = ({
       }));
     }
   }, [selectedModel, setAppForm]);
+
+  useEffect(() => {
+    if (
+      appForm.dataset.datasetSearchUsingExtensionQuery &&
+      !appForm.dataset.datasetSearchExtensionModel
+    ) {
+      setAppForm((state) => ({
+        ...state,
+        dataset: {
+          ...state.dataset,
+          datasetSearchExtensionModel: defaultModels.llm?.model
+        }
+      }));
+    }
+  }, [
+    appForm.dataset.datasetSearchUsingExtensionQuery,
+    appForm.dataset.datasetSearchExtensionModel,
+    defaultModels.llm?.model,
+    setAppForm
+  ]);
 
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
@@ -253,6 +273,7 @@ const EditForm = ({
                 placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
                 ExtensionPopover={[OptimizerPopverComponent]}
+                isRichText={true}
               />
             </Box>
           </Box>
@@ -271,7 +292,7 @@ const EditForm = ({
               iconSpacing={1}
               size={'sm'}
               fontSize={'sm'}
-              onClick={onOpenKbSelect}
+              onClick={onOpenDatasetSelect}
             >
               {t('common:Choose')}
             </Button>
@@ -293,7 +314,7 @@ const EditForm = ({
                 similarity={appForm.dataset.similarity}
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
-                datasetSearchUsingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
+                usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
                 queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
                 generateSqlModel={appForm.dataset.generateSqlModel}
                 {...knowledgeTypeConfig}
@@ -461,7 +482,6 @@ const EditForm = ({
 
       {isOpenDatasetSelect && (
         <DatasetSelectModal
-          isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,
@@ -469,7 +489,7 @@ const EditForm = ({
             avatar: item.avatar,
             datasetType: item.datasetType
           }))}
-          onClose={onCloseKbSelect}
+          onClose={onCloseDatasetSelect}
           onChange={(e) => {
             setAppForm((state) => ({
               ...state,

@@ -4,25 +4,9 @@ import { notFound } from 'next/navigation';
 import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
-import fs from 'fs';
-import path from 'path';
 
-// 读取文档修改时间数据
-function getDocLastModifiedData(): Record<string, string> {
-  try {
-    const dataPath = path.join(process.cwd(), 'data', 'doc-last-modified.json');
-
-    if (!fs.existsSync(dataPath)) {
-      return {};
-    }
-
-    const data = fs.readFileSync(dataPath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('读取文档修改时间数据失败:', error);
-    return {};
-  }
-}
+// 在构建时导入静态数据
+import docLastModifiedData from '@/data/doc-last-modified.json';
 
 export default async function Page({
   params
@@ -32,16 +16,15 @@ export default async function Page({
   const { lang, slug } = await params;
   const page = source.getPage(slug, lang);
 
-  // 如果页面不存在，调用 notFound()
   if (!page || !page.data || !page.file) {
     return <NotFound />;
   }
 
   const MDXContent = page.data.body;
 
-  // 获取文档的最后修改时间
-  const docLastModifiedData = getDocLastModifiedData();
-  const filePath = `content/docs/${page.file.path}`;
+  // 使用构建时导入的静态数据
+  const filePath = `document/content/docs/${page.file.path}`;
+  // @ts-ignore
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 
   return (

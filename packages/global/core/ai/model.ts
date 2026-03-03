@@ -1,6 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
 import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
-import { getModelProvider, type ModelProviderIdType } from './provider';
 
 export enum ModelTypeEnum {
   llm = 'llm',
@@ -53,28 +52,6 @@ export const defaultSTTModels: STTModelType[] = [
     charsPointsPrice: 0
   }
 ];
-
-export const getModelFromList = (
-  modelList: { provider: ModelProviderIdType; name: string; model: string }[],
-  model: string
-):
-  | {
-      avatar: string;
-      provider: ModelProviderIdType;
-      name: string;
-      model: string;
-    }
-  | undefined => {
-  const modelData = modelList.find((item) => item.model === model) ?? modelList[0];
-  if (!modelData) {
-    return;
-  }
-  const provider = getModelProvider(modelData.provider);
-  return {
-    ...modelData,
-    avatar: provider.avatar
-  };
-};
 
 export const modelTypeList = [
   { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.llm },

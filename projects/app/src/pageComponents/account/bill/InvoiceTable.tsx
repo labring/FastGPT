@@ -22,7 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceTable = () => {
@@ -46,8 +46,8 @@ const InvoiceTable = () => {
             <Tr>
               <Th w={'20%'}>#</Th>
               <Th w={'20%'}>{t('account_bill:time')}</Th>
-              <Th w={'20%'}>{t('account_bill:support_wallet_amount')}</Th>
-              <Th w={'20%'}>{t('account_bill:status')}</Th>
+              <Th w={'20%'}>{t('account:support_wallet_amount')}</Th>
+              <Th w={'20%'}>{t('account:status')}</Th>
               <Th w={'20%'}></Th>
             </Tr>
           </Thead>
@@ -58,7 +58,7 @@ const InvoiceTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
+                <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
                 <Td>
                   <Flex
                     px={'0.75rem'}
@@ -139,7 +139,7 @@ function InvoiceDetailModal({
 }) {
   const { t } = useTranslation();
 
-  const { runAsync: handleDownloadInvoice } = useRequest2(async (id: string) => {
+  const { runAsync: handleDownloadInvoice } = useRequest(async (id: string) => {
     await downloadFetch({
       url: `/api/proApi/support/wallet/bill/invoice/downloadFile?id=${id}`,
       filename: `${invoice.teamName}.pdf`
@@ -162,7 +162,7 @@ function InvoiceDetailModal({
         <Flex w={'100%'} h={'100%'} flexDir={'column'} gap={'1rem'}>
           <LabelItem
             label={t('account_bill:invoice_amount')}
-            value={t('account_bill:yuan', { amount: formatStorePrice2Read(invoice.amount) })}
+            value={t('account:yuan', { amount: formatStorePrice2Read(invoice.amount) })}
           />
           <LabelItem label={t('account_bill:organization_name')} value={invoice.teamName} />
           <LabelItem label={t('account_bill:unit_code')} value={invoice.unifiedCreditCode} />
@@ -172,7 +172,7 @@ function InvoiceDetailModal({
           <LabelItem label={t('account_bill:bank_account')} value={invoice.bankAccount} />
           <LabelItem
             label={t('account_bill:need_special_invoice')}
-            value={invoice.needSpecialInvoice ? t('account_bill:yes') : t('account_bill:no')}
+            value={invoice.needSpecialInvoice ? t('account:yes') : t('account:no')}
           />
           <LabelItem label={t('account_bill:contact_phone')} value={invoice.contactPhone} />
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />

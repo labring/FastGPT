@@ -7,6 +7,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 vi.mock(import('@fastgpt/service/common/string/tiktoken'), async (importOriginal) => {
   const mod = await importOriginal();
@@ -38,17 +39,21 @@ const testWorkflow = async (path: string) => {
   const variables = {};
   const { assistantResponses, flowResponses } = await dispatchWorkFlow({
     mode: 'test',
+    usageSource: UsageSourceEnum.fastgpt,
     runningAppInfo: {
       id: 'test',
+      name: 'test',
       teamId: 'test',
       tmbId: 'test'
     },
     runningUserInfo: {
       tmbId: 'test',
-      teamId: 'test'
+      teamId: 'test',
+      username: 'test',
+      teamName: 'test',
+      memberName: 'test',
+      contact: 'test'
     },
-    timezone: 'Asia/Shanghai',
-    externalProvider: {},
     uid: 'test',
     runtimeNodes,
     runtimeEdges: edges,

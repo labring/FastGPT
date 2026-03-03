@@ -5,10 +5,13 @@ export enum InputTypeEnum {
   switch = 'switch',
   select = 'select',
   multipleSelect = 'multipleSelect',
-
+  password = 'password',
+  timePointSelect = 'timePointSelect',
+  timeRangeSelect = 'timeRangeSelect',
   JSONEditor = 'JSONEditor',
 
   selectLLMModel = 'selectLLMModel',
+  selectDataset = 'selectDataset',
 
   fileSelect = 'fileSelect'
 }

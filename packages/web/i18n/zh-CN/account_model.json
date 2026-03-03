@@ -92,5 +92,6 @@
   "volunme_of_failed_calls": "调用失败量",
   "waiting_test": "等待测试",
   "evaluation_model": "评测模型",
-  "evaluation_model_tip": "用于应用评测，及评测数据集中针对数据质量的评测。"
+  "evaluation_model_tip": "用于应用评测，及评测数据集中针对数据质量的评测。",
+  "model_permission_config_hint": "若无协作者，默认全部成员可用"
 }

@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 export type checkUsageQuery = { key: string };

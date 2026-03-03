@@ -38,7 +38,7 @@ const options = {
     horizontalScrollbarSize: 8,
     alwaysConsumeMouseWheel: false
   },
-  lineNumbersMinChars: 0,
+  lineNumbersMinChars: 4,
   fontSize: 14,
   scrollBeyondLastLine: false,
   folding: true,
@@ -86,6 +86,18 @@ const MyEditor = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: Monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Prevent browser autofill from causing getModifierState errors
+    const editorDom = editor.getDomNode();
+    if (editorDom) {
+      const textarea = editorDom.querySelector('textarea');
+      if (textarea) {
+        textarea.setAttribute('autocomplete', 'off');
+        textarea.setAttribute('autocorrect', 'off');
+        textarea.setAttribute('autocapitalize', 'off');
+        textarea.setAttribute('spellcheck', 'false');
+      }
+    }
   }, []);
 
   const beforeMount = useCallback(
@@ -129,7 +141,6 @@ const MyEditor = ({
       py={1}
       height={height}
       position={'relative'}
-      pl={2}
       {...props}
     >
       <Editor

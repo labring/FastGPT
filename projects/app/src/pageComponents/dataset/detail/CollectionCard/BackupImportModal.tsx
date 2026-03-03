@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, HStack, ModalBody, ModalFooter, VStack } from '@chakra-ui/react';
-import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { postBackupDatasetCollection } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
 import LightTip from '@fastgpt/web/components/common/LightTip';
+import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 
 const BackupImportModal = ({
   onFinish,
@@ -24,7 +24,7 @@ const BackupImportModal = ({
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [percent, setPercent] = useState(0);
 
-  const { runAsync: onBackupImport, loading: isBackupLoading } = useRequest2(
+  const { runAsync: onBackupImport, loading: isBackupLoading } = useRequest(
     async () => {
       await postBackupDatasetCollection({
         datasetId,
@@ -46,7 +46,7 @@ const BackupImportModal = ({
       <ModalBody>
         <LightTip mb={3} icon="common/info" text={t('dataset:backup_dataset_tip')} />
 
-        <FileSelector
+        <FileSelectorBox
           maxCount={1}
           fileType=".csv"
           selectFiles={selectFiles}

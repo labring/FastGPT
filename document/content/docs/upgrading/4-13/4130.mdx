@@ -1,0 +1,83 @@
+---
+title: 'V4.13.0(包含环境变量变更)'
+description: 'FastGPT V4.13.0 更新说明'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.13.0-fix
+- 更新 FastGPT 商业版镜像tag: v4.13.0-fix
+- 更新 fastgpt-plugin 镜像 tag: v0.2.0-fix2
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+
+### 2. 更新环境变量
+
+1. 更新 `fastgpt-plugin` 环境变量名字，并新增`S3_PLUGIN_BUCKET`、`MONGODB_URI`、`REDIS_URL`值。
+
+```
+
+S3_EXTERNAL_BASE_URL=https://xxx.com # S3 外网地址
+S3_ENDPOINT=localhost
+S3_PORT=9000
+S3_USE_SSL=false
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_TOOL_BUCKET=fastgpt-tool # 系统工具，创建的临时文件，存储的桶，要求公开读私有写。
+S3_PLUGIN_BUCKET=fastgpt-plugin # 系统插件热安装文件的桶，私有读写。
+RETENTION_DAYS=15 # 系统工具临时文件保存天数
+MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin # MongoDB 链接参数
+REDIS_URL=redis://default:mypassword@redis:6379 # Redis 链接参数
+```
+
+2. 增加`fastgpt`和`fastgpt-pro(商业版)` s3 相关环境变量。
+
+```
+# S3 外网地址
+S3_EXTERNAL_BASE_URL= 
+S3_ENDPOINT=localhost
+S3_PORT=9000
+S3_USE_SSL=false
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_PLUGIN_BUCKET=fastgpt-plugin # 系统插件热安装文件的桶，私有读写。
+```
+
+## 🚀 新增内容
+
+1. 应用新增 HTTP 工具集类型，取代原 HTTP 插件。
+2. 支持系统管理员通过文件形式快速安装系统工具。
+3. 团队管理员支持分配模型权限。
+4. 代码运行节点支持 AI 辅助生成。
+5. 知识库文件解析支持配置最大并发数。(开源版通过 config.json 文件中`systemEnv.datasetParseMaxProcess`属性配置，商业版通过 admin 后台配置。)
+
+## ⚙️ 优化
+
+1. 系统工具增加对应 author 名字显示。同时使用安全的 I18n 翻译。
+2. 计量计费账单推送和合并逻辑。
+3. 对话记录中，节点详情单独分表存储。
+4. 删除 chat_items 中无效的 dataId 索引。
+5. 工作流UI性能优化，减少 UI 重绘。
+6. 对话中，知识库引用鉴权采用整个对话框鉴权，而不是单条记录。
+7. 工作流动态输入输出变量交互优化。
+
+## 🐛 修复
+
+1. debug 模式下，全局变量未传递。
+2. debug 模式下，前方节点参数无法传递至后方节点。
+3. 调试模式下，开启“自动执行”，会跳过外部变量的填写。
+4. 自动语音回复未生效。
+5. 节点复制，报错捕获配置丢失。
+6. “猜你想问”的自定义提示词，保存时，上一次的值会被置空。
+7. 配置了二级路由的情况下，知识库检索出来的图片地址拼接异常。
+8. Prompt 编辑器，键盘输入时会清除掉 Markdown 标记。
+9. 知识库集合页面，有训练数据时候无法自动刷新页面。
+10. 工作流快速添加节点弹窗，工具箱页面二次打开时为空。
+11. PPTX 文件解析顺序错误。
+
+## 🔨 插件更新
+
+1. 新增火山引擎融合信息搜索工具。

@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   pluginNodes2InputSchema,
   workflow2InputSchema,
-  getMcpServerTools,
-  callMcpServerTool
+  getMcpServerTools
 } from '@/service/support/mcp/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
@@ -12,11 +11,6 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import {
-  getUserChatInfoAndAuthTeamPoints,
-  getRunningUserInfoByTmbId
-} from '@fastgpt/service/support/permission/auth/team';
-import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -43,7 +37,7 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/team', () => ({
-  getUserChatInfoAndAuthTeamPoints: vi.fn(),
+  getUserChatInfo: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn()
 }));
 
@@ -53,10 +47,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   saveChat: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
-  createChatUsage: vi.fn()
 }));
 
 describe('pluginNodes2InputSchema', () => {
@@ -176,7 +166,7 @@ describe('getMcpServerTools', () => {
         {
           _id: 'test-app',
           name: 'Test App',
-          type: AppTypeEnum.plugin
+          type: AppTypeEnum.workflowTool
         }
       ]
     });

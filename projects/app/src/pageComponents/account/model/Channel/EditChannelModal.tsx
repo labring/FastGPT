@@ -1,4 +1,3 @@
-import { aiproxyIdMap } from '@/global/aiproxy/constants';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import {
   Box,
@@ -29,8 +28,7 @@ import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -39,6 +37,9 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { defaultProvider } from '@fastgpt/global/core/ai/provider';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -56,8 +57,8 @@ const EditChannelModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
+  const { t, i18n } = useTranslation();
+  const { defaultModels, aiproxyIdMap, getModelProvider } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -65,22 +66,23 @@ const EditChannelModal = ({
   });
 
   const providerType = watch('type');
-  const { data: providerList = [] } = useRequest2(
+  const { data: providerList = [] } = useRequest(
     () =>
       getChannelProviders().then((res) => {
         return Object.entries(res)
           .map(([key, value]) => {
             const mapData = aiproxyIdMap[key as any] ?? {
-              label: value.name,
+              name: value.name,
               provider: 'Other'
             };
-            const provider = getModelProvider(mapData.provider);
+            const provider = getModelProvider(mapData.provider, i18n.language);
+
             return {
               order: provider.order,
               defaultBaseUrl: value.defaultBaseUrl,
               keyHelp: value.keyHelp,
               icon: mapData?.avatar ?? provider.avatar,
-              label: t(mapData.label as any),
+              label: parseI18nString(mapData.name, i18n.language as localeType),
               value: Number(key)
             };
           })
@@ -120,33 +122,35 @@ const EditChannelModal = ({
     data: systemModelList = [],
     runAsync: refreshSystemModelList,
     loading: loadingModels
-  } = useRequest2(getSystemModelList, {
+  } = useRequest(getSystemModelList, {
     manual: false
   });
   const modelList = useMemo(() => {
-    const currentProvider = aiproxyIdMap[providerType]?.provider;
+    const currentProvider = aiproxyIdMap[providerType] ?? defaultProvider;
     return systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, i18n.language);
 
         return {
           provider: item.provider,
-          icon: provider.avatar,
+          icon: provider?.avatar,
           label: item.model,
           value: item.model
         };
       })
       .sort((a, b) => {
         // sort by provider, same provider first
-        if (a.provider === currentProvider && b.provider !== currentProvider) return -1;
-        if (a.provider !== currentProvider && b.provider === currentProvider) return 1;
+        if (a.provider === currentProvider.provider && b.provider !== currentProvider.provider)
+          return -1;
+        if (a.provider !== currentProvider.provider && b.provider === currentProvider.provider)
+          return 1;
         return 0;
       });
-  }, [providerType, systemModelList]);
+  }, [aiproxyIdMap, getModelProvider, i18n.language, providerType, systemModelList]);
 
   const modelMapping = watch('model_mapping');
 
-  const { runAsync: onSubmit, loading: loadingCreate } = useRequest2(
+  const { runAsync: onSubmit, loading: loadingCreate } = useRequest(
     (data: ChannelInfoType) => {
       if (data.models.length === 0) {
         return Promise.reject(t('account_model:selected_model_empty'));

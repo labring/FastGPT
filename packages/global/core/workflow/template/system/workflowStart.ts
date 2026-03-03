@@ -25,6 +25,8 @@ export const WorkflowStart: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: false,
   avatar: 'core/workflow/template/workflowStart',
+  avatarLinear: 'core/workflow/template/workflowStartLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:template.workflow_start'),
   intro: '',
   forbidDelete: true,

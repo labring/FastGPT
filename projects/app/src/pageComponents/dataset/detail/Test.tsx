@@ -15,11 +15,9 @@ import {
 } from '@/web/core/dataset/store/searchTest';
 import { postSearchText, postDatasetCollectionSearchTest } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { customAlphabet } from 'nanoid';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { type SearchTestResponse } from '@/global/core/dataset/api';
@@ -110,7 +108,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     onClose: onCloseSelectMode
   } = useDisclosure();
 
-  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest2(
+  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
     {
@@ -141,7 +139,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const { runAsync: onDatabaseTest, loading: databaseTestIsLoading } = useRequest2(
+  const { runAsync: onDatabaseTest, loading: databaseTestIsLoading } = useRequest(
     ({ inputText }: { inputText: string }) =>
       postDatasetCollectionSearchTest({
         datasetId,
@@ -512,22 +510,20 @@ const TestResults = React.memo(function TestResults({
         <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
-          <>
-            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-              <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
-              {t('common:core.dataset.test.Test params')}
-            </Flex>
-            <Box mt={3}>
-              <SearchParamsTip
-                searchMode={datasetTestItem.searchMode}
-                similarity={datasetTestItem.similarity}
-                limit={datasetTestItem.limit}
-                usingReRank={datasetTestItem.usingReRank}
-                datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
-                queryExtensionModel={datasetTestItem.queryExtensionModel}
-              />
-            </Box>
-          </>
+          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
+            <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
+            {t('common:core.dataset.test.Test params')}
+          </Flex>
+          <Box mt={3}>
+            <SearchParamsTip
+              searchMode={datasetTestItem.searchMode}
+              similarity={datasetTestItem.similarity}
+              limit={datasetTestItem.limit}
+              usingReRank={datasetTestItem.usingReRank}
+              usingExtensionQuery={!!datasetTestItem.queryExtensionModel}
+              queryExtensionModel={datasetTestItem.queryExtensionModel}
+            />
+          </Box>
 
           <Flex mt={5} mb={3} alignItems={'center'}>
             <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
@@ -540,7 +536,7 @@ const TestResults = React.memo(function TestResults({
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
-                <QuoteItem quoteItem={item} canViewSource canEditData />
+                <QuoteItem quoteItem={item} canDownloadSource canEditData />
               </Box>
             ))}
           </Box>

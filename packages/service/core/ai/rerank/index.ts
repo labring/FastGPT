@@ -35,7 +35,7 @@ export function reRankRecall({
   headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
   if (!model) {
-    return Promise.reject('no rerank model');
+    return Promise.reject('No rerank model');
   }
   if (documents.length === 0) {
     return Promise.resolve({
@@ -67,7 +67,7 @@ export function reRankRecall({
       addLog.info('ReRank finish:', { time: Date.now() - start });
 
       if (!data?.results || data?.results?.length === 0) {
-        addLog.error('ReRank error, empty result', data);
+        addLog.error('[Rerank Error]', { message: 'Empty result', data });
       }
 
       return {
@@ -81,7 +81,7 @@ export function reRankRecall({
       };
     })
     .catch((err) => {
-      addLog.error('rerank error', err);
+      addLog.error('[Rerank Error]', err);
 
       return Promise.reject(err);
     });

@@ -30,7 +30,7 @@ import {
   postEvaluationDatasetQualityAssessment,
   getEvaluationDatasetDataDetail
 } from '@/web/core/evaluation/dataset';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { listEvalDatasetDataResponse } from '@fastgpt/global/core/evaluation/dataset/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { updateEvaluationDatasetData } from '@/web/core/evaluation/dataset';
@@ -151,7 +151,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     );
   };
 
-  const { runAsync: simulateEvaluation, loading: isEvaluating } = useRequest2(
+  const { runAsync: simulateEvaluation, loading: isEvaluating } = useRequest(
     postEvaluationDatasetQualityAssessment,
     {
       onError() {
@@ -163,7 +163,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   );
 
   // 新增保存请求，用于重测前的数据保存
-  const { runAsync: saveBeforeRetest, loading: isSavingBeforeRetest } = useRequest2(
+  const { runAsync: saveBeforeRetest, loading: isSavingBeforeRetest } = useRequest(
     async (data: EditDataFormData) => {
       const result = await updateEvaluationDatasetData({
         dataId: formData._id,
@@ -189,7 +189,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
   }, [isEvaluating, isSavingBeforeRetest]);
 
   // 轮询获取数据详情 - 在评测中或排队中时才轮询
-  const { runAsync: getDetail, cancel } = useRequest2(
+  const { runAsync: getDetail, cancel } = useRequest(
     () => getEvaluationDatasetDataDetail(formData._id),
     {
       pollingInterval: 3000,

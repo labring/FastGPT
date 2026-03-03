@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-
-import { request } from 'https';
+import { Readable } from 'stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -22,35 +21,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('lafEnv is empty');
     }
 
-    const parsedUrl = new URL(lafEnv);
-    delete req.headers?.cookie;
-    delete req.headers?.host;
-    delete req.headers?.origin;
+    const targetUrl = new URL(requestPath, lafEnv);
 
-    const requestResult = request({
-      protocol: parsedUrl.protocol,
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port,
-      path: requestPath,
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (key === 'cookie' || key === 'host' || key === 'origin' || key === 'connection') continue;
+      if (value) {
+        headers[key] = Array.isArray(value) ? value.join(', ') : value;
+      }
+    }
+
+    const request = new Request(targetUrl, {
+      // @ts-ignore
+      duplex: 'half',
       method: req.method,
-      headers: req.headers,
-      timeout: 30000
+      headers,
+      body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 
-    req.pipe(requestResult);
+    const response = await fetch(request);
 
-    requestResult.on('response', (response) => {
-      Object.keys(response.headers).forEach((key) => {
-        // @ts-ignore
-        res.setHeader(key, response.headers[key]);
-      });
-      response.statusCode && res.writeHead(response.statusCode);
-      response.pipe(res);
+    response.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
+      res.setHeader(key, value);
     });
-    requestResult.on('error', (e) => {
-      res.send(e);
+
+    res.status(response.status);
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body as any);
+      nodeStream.pipe(res);
+    } else {
       res.end();
-    });
+    }
   } catch (error) {
     jsonRes(res, {
       code: 500,

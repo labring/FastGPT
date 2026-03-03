@@ -9,7 +9,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
 
   const map = useRef({
     [AppTypeEnum.simple]: {
-      label: t('app:type.Simple bot'),
+      label: t('app:type.Chat_Agent'),
       icon: 'core/app/type/simple',
       bg: '#DBF3FF',
       color: '#0884DD'
@@ -20,20 +20,26 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       bg: '#E4E1FC',
       color: '#6F5DD7'
     },
-    [AppTypeEnum.plugin]: {
-      label: t('app:type.Plugin'),
+    [AppTypeEnum.workflowTool]: {
+      label: t('app:toolType_workflow'),
       icon: 'core/app/type/plugin',
       bg: '#D0F5EE',
       color: '#007E7C'
     },
     [AppTypeEnum.httpPlugin]: {
-      label: t('app:type.Http plugin'),
+      label: t('account_team:type.Http plugin'),
       icon: 'core/app/type/httpPlugin',
       bg: '#FFE4EE',
       color: '#E82F72'
     },
-    [AppTypeEnum.toolSet]: {
-      label: t('app:type.MCP tools'),
+    [AppTypeEnum.httpToolSet]: {
+      label: t('app:toolType_http'),
+      icon: 'core/app/type/httpPlugin',
+      bg: '#FFE4EE',
+      color: '#E82F72'
+    },
+    [AppTypeEnum.mcpToolSet]: {
+      label: t('app:toolType_mcp'),
       icon: 'core/app/type/mcpTools',
       bg: '',
       color: ''
@@ -49,7 +55,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     [AppTypeEnum.hidden]: undefined
   });
 
-  const data = map.current[type];
+  const data = map.current[type as keyof typeof map.current];
 
   return data ? (
     <Flex

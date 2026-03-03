@@ -4,16 +4,16 @@ import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postFindPassword } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: ResLogin) => void;
+  loginSuccess: (e: LoginSuccessResponse) => void;
 }
 
 interface RegisterType {
@@ -53,7 +53,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     })
     .join('/');
 
-  const { runAsync: onclickFindPassword, loading: requesting } = useRequest2(
+  const { runAsync: onclickFindPassword, loading: requesting } = useRequest(
     async ({ username, code, password }: RegisterType) => {
       loginSuccess(
         await postFindPassword({

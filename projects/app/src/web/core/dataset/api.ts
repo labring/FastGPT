@@ -2,7 +2,7 @@ import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
   ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type.d';
+} from '@fastgpt/global/common/parentFolder/type';
 import type {
   DatasetItemType,
   DatasetListItemType,
@@ -62,7 +62,6 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
-import type { GetQueueLenResponse } from '@/pages/api/core/dataset/training/getQueueLen';
 import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
 import type {
   getTrainingDataDetailBody,
@@ -111,6 +110,10 @@ import type {
   CheckDuplicateFileNamesBody,
   CheckDuplicateFileNamesResponse
 } from '@/pages/api/core/dataset/collection/check/duplicate';
+import type {
+  DatasetCreateWithFilesBody,
+  DatasetCreateWithFilesResponse
+} from '@/pages/api/core/dataset/createWithFiles';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -131,6 +134,9 @@ export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/datase
 
 export const postCreateDataset = (data: CreateDatasetParams) =>
   POST<string>(`/core/dataset/create`, data);
+
+export const postCreateDatasetWithFiles = (data: DatasetCreateWithFilesBody) =>
+  POST<DatasetCreateWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
 export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
 
@@ -170,9 +176,6 @@ export const postBackupDatasetCollection = ({
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
 };
@@ -204,9 +207,6 @@ export const postTemplateDatasetCollection = ({
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
 };
@@ -398,9 +398,6 @@ export const getDatasetDataIndex = (data: {
 export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
   POST(`/core/dataset/training/rebuildEmbedding`, data);
 
-/* get length of system training queue */
-export const getTrainingQueueLen = () =>
-  GET<GetQueueLenResponse>(`/core/dataset/training/getQueueLen`);
 export const getDatasetTrainingQueue = (datasetId: string) =>
   GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
     datasetId

@@ -33,7 +33,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import InputFormEditModal, { defaultFormInput } from './InputFormEditModal';
 import RenderOutput from '../render/RenderOutput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -43,11 +42,12 @@ import DndDrag, {
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { zoom } = useViewport();
 
   const [editField, setEditField] = useState<UserInputFormItemType>();

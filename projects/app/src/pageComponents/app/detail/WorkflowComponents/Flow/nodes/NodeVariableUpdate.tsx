@@ -3,12 +3,15 @@ import NodeCard from './render/NodeCard';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum
@@ -24,23 +27,29 @@ import {
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
-import { isArray } from 'lodash';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import InputRender from '@/components/core/app/formRender';
-import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
-import { isValidReferenceValueFormat } from '@fastgpt/global/core/workflow/utils';
+import {
+  valueTypeToInputType,
+  variableInputTypeToInputType
+} from '@/components/core/app/formRender/utils';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useMemoizedFn } from 'ahooks';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
 
   const menuList = useRef([
     {
@@ -55,15 +64,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     }
   ]);
 
-  const variables = useCreation(() => {
+  const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      nodeList,
+      systemConfigNode,
+      getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, nodeList, edges, appDetail, t]);
+  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -102,26 +112,80 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const ValueRender = useMemoizedFn(
     ({ updateItem, index }: { updateItem: TUpdateListItem; index: number }) => {
+      const { inputType, formParams = {} } = (() => {
+        const value = updateItem.variable;
+        if (!value) {
+          return {
+            inputType: InputTypeEnum.input
+          };
+        }
+        // Global variables: 根据变量的 inputType 决定
+        if (value[0] === VARIABLE_NODE_ID) {
+          const variableList = appDetail.chatConfig.variables || [];
+          const variable = variableList.find((item) => item.key === value[1]);
+          if (variable) {
+            // 文件类型在变量更新节点中使用文本框,因为不在运行时上下文中,无法使用文件选择器
+            const inputType =
+              variable.type === VariableInputEnum.file
+                ? InputTypeEnum.textarea
+                : variableInputTypeToInputType(variable.type);
+
+            return {
+              inputType,
+              formParams: {
+                // 获取变量中一些表单配置
+                maxLength: variable.maxLength,
+                minLength: variable.minLength,
+                min: variable.min,
+                max: variable.max,
+                list: variable.list,
+                timeGranularity: variable.timeGranularity,
+                timeRangeStart: variable.timeRangeStart,
+                timeRangeEnd: variable.timeRangeEnd,
+                maxFiles: variable.maxFiles,
+                canSelectFile: variable.canSelectFile,
+                canSelectImg: variable.canSelectImg,
+                canSelectVideo: variable.canSelectVideo,
+                canSelectAudio: variable.canSelectAudio,
+                canSelectCustomFileExtension: variable.canSelectCustomFileExtension,
+                customFileExtensionList: variable.customFileExtensionList
+              }
+            };
+          }
+        }
+        // Node output: 根据数据类型决定
+        else if (value[0] && value[1]) {
+          const output = getNodeById(value[0])?.outputs.find((output) => output.id === value[1]);
+          if (output) {
+            return {
+              inputType: valueTypeToInputType(output.valueType)
+            };
+          }
+        }
+
+        return {
+          inputType: InputTypeEnum.input
+        };
+      })();
       const { valueType } = getRefData({
         variable: updateItem.variable,
-        nodeList,
+        getNodeById,
+        systemConfigNode,
         chatConfig: appDetail.chatConfig
       });
       const renderTypeData = menuList.current.find(
         (item) => item.renderType === updateItem.renderType
       );
 
-      const onUpdateNewValue = (newValue: any) => {
-        if (isValidReferenceValueFormat(newValue)) {
+      const onUpdateNewValue = (value: any) => {
+        if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
           onUpdateList(
-            updateList.map((update, i) =>
-              i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
-            )
+            updateList.map((update, i) => (i === index ? { ...update, value: value } : update))
           );
         } else {
           onUpdateList(
             updateList.map((update, i) =>
-              i === index ? { ...update, value: ['', newValue] } : update
+              i === index ? { ...update, value: ['', value] } : update
             )
           );
         }
@@ -143,7 +207,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         value: ['', ''],
                         valueType: getRefData({
                           variable: value as ReferenceItemValueType,
-                          nodeList,
+                          getNodeById,
+                          systemConfigNode,
                           chatConfig: appDetail.chatConfig
                         }).valueType,
                         variable: value as ReferenceItemValueType
@@ -222,16 +287,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 );
               }
 
-              const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
-
               return (
-                <Box w={'300px'} borderRadius={'sm'}>
+                <Box minW={'250px'} maxW={'400px'} borderRadius={'sm'}>
                   <InputRender
-                    inputType={valueTypeToInputType(valueType)}
-                    value={inputValue || ''}
-                    onChange={onUpdateNewValue}
+                    inputType={inputType}
+                    {...formParams}
+                    isRichText={false}
                     variables={[...variables, ...externalProviderWorkflowVariables]}
                     variableLabels={variables}
+                    value={updateItem.value?.[1]}
+                    onChange={onUpdateNewValue}
                   />
                 </Box>
               );

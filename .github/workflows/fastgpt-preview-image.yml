@@ -73,7 +73,6 @@ jobs:
           --label "org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache \
           -t ${{ steps.config.outputs.DOCKER_REPO_TAGGED }} \
           .
 

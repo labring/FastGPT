@@ -31,7 +31,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import {
@@ -39,7 +39,7 @@ import {
   postUploadSynonymFile,
   deleteSynonymFile
 } from '@/web/core/dataset/api';
-import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { downloadFetch } from '@/web/common/system/utils';
 import type { ListSynonymFilesResponse } from '@/pages/api/core/dataset/synonym/list';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -280,12 +280,12 @@ const SynonymTab = () => {
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<boolean>(false);
 
   // 删除同义词文件的请求
-  const { runAsync: onDeleteSynonymFile, loading: isDeleting } = useRequest2(deleteSynonymFile, {
+  const { runAsync: onDeleteSynonymFile, loading: isDeleting } = useRequest(deleteSynonymFile, {
     successToast: t('dataset:synonym_delete_success')
   });
 
   // 获取同义词文件列表
-  const { runAsync: fetchSynonymFiles, loading: isLoading } = useRequest2(
+  const { runAsync: fetchSynonymFiles, loading: isLoading } = useRequest(
     async () => {
       const response = datasetDetail._id && (await getSynonymFileList(datasetDetail._id));
       return response && response.files && response.files.length > 0 ? response.files[0] : null;

@@ -3,7 +3,6 @@ import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../../context';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -12,21 +11,18 @@ import {
   SelectOptionsComponent
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import {
-  getLastInteractiveValue,
-  storeEdges2RuntimeEdges
-} from '@fastgpt/global/core/workflow/runtime/utils';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
 
 type NodeDebugResponseProps = {
   nodeId: string;
   debugResult: FlowNodeItemType['debugResult'];
 };
 
-const RenderUserFormInteractive = React.memo(function RenderFormInput({
+const RenderUserFormInteractive = function RenderFormInput({
   interactive,
   onNext
 }: {
@@ -37,13 +33,13 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
-      acc[item.label] = !!item.value ? item.value : item.defaultValue;
+      acc[item.key] = item.value !== undefined ? item.value : item.defaultValue;
       return acc;
     }, {});
   }, [interactive.params.inputForm]);
 
   return (
-    <Box px={4} py={4} bg="white" borderRadius="md">
+    <Box className="nodrag" px={4} py={4} bg="white" borderRadius="md">
       <FormInputComponent
         defaultValues={defaultValues}
         interactiveParams={interactive.params}
@@ -62,15 +58,16 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       />
     </Box>
   );
-});
+};
 
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
 
-  const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowContext,
+  const { onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
+    WorkflowDebugContext,
     (v) => v
   );
+  const { onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
 
   const statusMap = useRef({
     running: {
@@ -118,8 +115,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
               type: ChatItemValueTypeEnum.interactive,
               interactive: {
                 ...interactive,
+                entryNodeIds: workflowDebugData.entryNodeIds || [],
                 memoryEdges: interactive.memoryEdges || [],
-                entryNodeIds: interactive.entryNodeIds || [],
                 nodeOutputs: interactive.nodeOutputs || []
               }
             }
@@ -127,11 +124,9 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         }
       ];
 
-      const lastInteractive = getLastInteractiveValue(mockHistory);
       onNextNodeDebug({
         ...workflowDebugData,
-        // Rewrite runtimeEdges
-        runtimeEdges: storeEdges2RuntimeEdges(workflowDebugData.runtimeEdges, lastInteractive),
+        runtimeEdges: workflowDebugData.runtimeEdges,
         query: updatedQuery,
         history: mockHistory
       });
@@ -189,7 +184,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             <Box fontWeight={'bold'} flex={'1'}>
               {t('common:core.workflow.debug.Run result')}
             </Box>
-            {workflowDebugData?.nextRunNodes.length !== 0 && (
+            {workflowDebugData?.entryNodeIds.length !== 0 && (
               <PopoverConfirm
                 Trigger={
                   <Button
@@ -209,8 +204,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
               <>
                 {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
                   !debugResult.isExpired &&
-                  workflowDebugData?.nextRunNodes &&
-                  workflowDebugData.nextRunNodes.length > 0 && (
+                  workflowDebugData?.entryNodeIds &&
+                  workflowDebugData.entryNodeIds.length > 0 && (
                     <Button
                       ml={2}
                       size={'sm'}
@@ -221,8 +216,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                       {t('common:next_step')}
                     </Button>
                   )}
-                {workflowDebugData?.nextRunNodes &&
-                  workflowDebugData?.nextRunNodes.length === 0 && (
+                {workflowDebugData?.entryNodeIds &&
+                  workflowDebugData?.entryNodeIds.length === 0 && (
                     <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
                       {t('common:core.workflow.debug.Done')}
                     </Button>

@@ -12,7 +12,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -89,8 +89,8 @@ const CorrectionModal = ({
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [correctionDataLoading, setCorrectionDataLoading] = useState(false);
 
-  // 使用 useRequest2 获取应用数据集集合
-  const { runAsync: fetchAppDatasets } = useRequest2(
+  // 使用 useRequest 获取应用数据集集合
+  const { runAsync: fetchAppDatasets } = useRequest(
     async (appId: string) => {
       const response = await getAppDatasetCollection({ appId });
       const ids = response.datasets.map((dataset) => dataset.datasetId);
@@ -103,8 +103,8 @@ const CorrectionModal = ({
     }
   );
 
-  // 使用 useRequest2 获取已存在的纠错数据
-  const { runAsync: fetchCorrectionData } = useRequest2(
+  // 使用 useRequest 获取已存在的纠错数据
+  const { runAsync: fetchCorrectionData } = useRequest(
     async (correctionId: string) => {
       const params: ListChatCorrectionParams = {
         appId,
@@ -182,8 +182,8 @@ const CorrectionModal = ({
     onClose();
   }, [onClose]);
 
-  // 使用 useRequest2 处理提交纠错
-  const { runAsync: submitCorrection, loading: isSubmitting } = useRequest2(
+  // 使用 useRequest 处理提交纠错
+  const { runAsync: submitCorrection, loading: isSubmitting } = useRequest(
     async () => {
       if (!question.trim()) {
         return;

@@ -26,7 +26,7 @@ import {
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -191,7 +191,7 @@ const CollectionCard = () => {
     [t, toast]
   );
 
-  const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
     {
       onSuccess() {
@@ -213,7 +213,7 @@ const CollectionCard = () => {
         }
       : {})
   });
-  const { runAsync: onDelCollection } = useRequest2(
+  const { runAsync: onDelCollection } = useRequest(
     (collectionIds: string[]) => {
       return delDatasetCollectionById({
         collectionIds
@@ -231,7 +231,7 @@ const CollectionCard = () => {
   const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('dataset:collection_sync_confirm_tip')
   });
-  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest2(postLinkCollectionSync, {
+  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
       toast({
@@ -254,7 +254,7 @@ const CollectionCard = () => {
   );
 
   // Silent polling for processing collections (10s interval) - doesn't show loading
-  useRequest2(
+  useRequest(
     async () => {
       if (!hasProcessingCollections) return;
       isPollingRef.current = true;
@@ -271,7 +271,7 @@ const CollectionCard = () => {
   );
 
   // Original polling for training data and dataset status (6s interval)
-  useRequest2(
+  useRequest(
     async () => {
       if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
       getData(pageNum);

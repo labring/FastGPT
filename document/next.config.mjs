@@ -1,20 +1,25 @@
 import { createMDX } from 'fumadocs-mdx/next';
 
-const withMDX = createMDX({
-  mdxOptions: {
-    remarkPlugins: {
-      image: {
-        checkImageSize: false
-      }
-    }
-  }
-});
+const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
   output: 'standalone',
   reactStrictMode: true,
   compress: true,
+  async headers() {
+    return [
+      {
+        source: '/deploy/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: true,

@@ -13,19 +13,31 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
+export type WorkflowDebugResponse = {
+  memoryEdges: RuntimeEdgeItemType[];
+  memoryNodes: RuntimeNodeItemType[];
+  entryNodeIds: string[]; // Next step entry nodes
+  nodeResponses: Record<
+    string,
+    {
+      nodeId: string;
+      type: 'skip' | 'run';
+      response?: ChatHistoryItemResType;
+      interactiveResponse?: InteractiveNodeResponseType;
+    }
+  >;
+  skipNodeQueue?: { id: string; skippedNodeIdList: string[] }[]; // Cache
+};
 export type DispatchFlowResponse = {
   flowResponses: ChatHistoryItemResType[];
   flowUsages: ChatNodeUsageType[];
-  debugResponse: {
-    finishedNodes: RuntimeNodeItemType[];
-    finishedEdges: RuntimeEdgeItemType[];
-    nextStepRunNodes: RuntimeNodeItemType[];
-  };
+  debugResponse: WorkflowDebugResponse;
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType;
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]: number;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
   [DispatchNodeResponseKeyEnum.newVariables]: Record<string, string>;
   durationSeconds: number;
 };

@@ -4,7 +4,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import Icon from '@fastgpt/web/components/common/Icon';
 import Tag from '@fastgpt/web/components/common/Tag';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { balanceConversion } from '@/web/support/wallet/bill/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -29,7 +29,7 @@ const ConversionModal = ({
     return Math.ceil((balance / 15) * SUB_EXTRA_POINT_RATE);
   }, []);
 
-  const { runAsync: onConvert, loading } = useRequest2(balanceConversion, {
+  const { runAsync: onConvert, loading } = useRequest(balanceConversion, {
     onSuccess() {
       router.reload();
     },

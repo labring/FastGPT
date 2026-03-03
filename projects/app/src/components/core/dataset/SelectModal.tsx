@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 
 type PathItemType = {
@@ -81,8 +81,9 @@ export function useDatasetSelect(
       datasets: [],
       paths: []
     },
-    loading: isFetching
-  } = useRequest2(
+    loading: isFetching,
+    runAsync: loadDatasets
+  } = useRequest(
     async () => {
       const result = await Promise.all([
         getDatasets({ parentId, searchKey, ...(scene ? { scene } : {}) }),
@@ -109,7 +110,8 @@ export function useDatasetSelect(
     setSearchKey,
     datasets: data.datasets,
     paths: data.paths,
-    isFetching
+    isFetching,
+    loadDatasets
   };
 }
 

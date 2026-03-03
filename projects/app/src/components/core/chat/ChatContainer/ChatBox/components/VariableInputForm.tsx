@@ -1,68 +1,89 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
+import { ChatTypeEnum } from '../constants';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ChatBoxInputFormType } from '../type';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { ChatBoxContext } from '../Provider';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
-const VariableInput = ({
+const VariableInputForm = ({
   chatForm,
   chatStarted,
-  showExternalVariables = false
+  chatType
 }: {
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   chatStarted: boolean;
-  showExternalVariables?: boolean;
+  chatType: ChatTypeEnum;
 }) => {
   const { t } = useTranslation();
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
-  const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
-  const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
+  const variables = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
+  );
+  const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const isAssistantType = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
   );
 
-  const externalVariableList = useMemo(
-    () =>
-      allVariableList.filter((item) =>
-        showExternalVariables ? item.type === VariableInputEnum.custom : false
-      ),
-    [allVariableList, showExternalVariables]
+  const showExternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test, ChatTypeEnum.chat].includes(
+    chatType
   );
-
-  const { getValues, setValue, reset } = variablesForm;
-
-  // Init variables and add default values
-  useEffect(() => {
-    if (isAssistantType) return;
-    const values = getValues();
-
-    allVariableList.forEach((item) => {
-      const val = getValues(`variables.${item.key}`);
-      if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
-        values.variables[item.key] = item.defaultValue;
+  const showInternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test].includes(chatType);
+  const { commonVariableList, externalVariableList, internalVariableList } = useMemo(() => {
+    const {
+      commonVariableList,
+      externalVariableList,
+      internalVariableList
+    }: {
+      commonVariableList: VariableItemType[];
+      externalVariableList: VariableItemType[];
+      internalVariableList: VariableItemType[];
+    } = {
+      commonVariableList: [],
+      externalVariableList: [],
+      internalVariableList: []
+    };
+    variables.forEach((item) => {
+      if (item.type === VariableInputEnum.custom) {
+        externalVariableList.push(item);
+      } else if (item.type === VariableInputEnum.internal) {
+        internalVariableList.push(item);
+      } else {
+        commonVariableList.push(item);
       }
     });
+    return {
+      externalVariableList: showExternalVariables ? externalVariableList : [],
+      internalVariableList: showInternalVariables ? internalVariableList : [],
+      commonVariableList
+    };
+  }, [showExternalVariables, showInternalVariables, variables]);
 
-    reset(values);
-  }, [allVariableList, getValues, reset, setValue, variableList, isAssistantType]);
+  const hasVariables =
+    commonVariableList.length > 0 ||
+    internalVariableList.length > 0 ||
+    externalVariableList.length > 0;
 
-  return isAssistantType ? null : (
+  const isUnChange = chatType === ChatTypeEnum.log;
+
+  return !hasVariables || isAssistantType ? null : (
     <Box py={3}>
       <ChatAvatar src={appAvatar} type={'AI'} />
-      {externalVariableList.length > 0 && (
+      {internalVariableList.length > 0 && (
         <Box textAlign={'left'}>
           <Card
             order={2}
@@ -83,27 +104,72 @@ const VariableInput = ({
               rounded={'sm'}
             >
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('chat:variable_invisable_in_share')}
+              {t('chat:internal_variables_tip')}
             </Flex>
-            {externalVariableList.map((item) => {
+            {internalVariableList.map((item) => {
               return (
                 <LabelAndFormRender
                   {...item}
+                  isUnChange={isUnChange}
                   key={item.key}
-                  formKey={`variables.${item.key}`}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  variablesForm={variablesForm}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
                 />
               );
             })}
-            {variableList.length === 0 && !chatStarted && (
+          </Card>
+        </Box>
+      )}
+
+      {externalVariableList.length > 0 && (
+        <Box textAlign={'left'}>
+          <Card
+            order={2}
+            mt={2}
+            w={'400px'}
+            {...MessageCardStyle}
+            bg={'white'}
+            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+          >
+            {chatType !== ChatTypeEnum.chat && (
+              <Flex
+                color={'primary.600'}
+                bg={'primary.100'}
+                mb={3}
+                px={3}
+                py={1.5}
+                gap={1}
+                fontSize={'mini'}
+                rounded={'sm'}
+              >
+                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+                {t('chat:variable_invisable_in_share')}
+              </Flex>
+            )}
+            {externalVariableList.map((item) => {
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  isUnChange={isUnChange}
+                  key={item.key}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
+                  bg={'myGray.50'}
+                />
+              );
+            })}
+            {!chatStarted && commonVariableList.length === 0 && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -115,7 +181,7 @@ const VariableInput = ({
         </Box>
       )}
 
-      {variableList.length > 0 && (
+      {commonVariableList.length > 0 && (
         <Box textAlign={'left'}>
           <Card
             order={2}
@@ -125,23 +191,27 @@ const VariableInput = ({
             bg={'white'}
             boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
           >
-            {variableList.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                formKey={`variables.${item.key}`}
-                placeholder={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
-                variablesForm={variablesForm}
-                bg={'myGray.50'}
-              />
-            ))}
+            {commonVariableList.map((item) => {
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  isUnChange={isUnChange}
+                  key={item.key}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type)}
+                  bg={'myGray.50'}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
+                />
+              );
+            })}
             {!chatStarted && (
               <Button
                 leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                 size={'sm'}
                 maxW={'100px'}
                 mt={4}
+                isDisabled={fileUploading}
                 onClick={variablesForm.handleSubmit(() => {
                   chatForm.setValue('chatStarted', true);
                 })}
@@ -156,4 +226,4 @@ const VariableInput = ({
   );
 };
 
-export default VariableInput;
+export default VariableInputForm;

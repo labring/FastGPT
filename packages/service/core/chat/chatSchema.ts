@@ -7,17 +7,13 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../app/schema';
-
-export const chatCollectionName = 'chat';
+import { chatCollectionName } from './constants';
+import { AppVersionCollectionName } from '../app/version/schema';
 
 const ChatSchema = new Schema({
   chatId: {
     type: String,
     require: true
-  },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -33,6 +29,10 @@ const ChatSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: AppCollectionName,
     required: true
+  },
+  appVersionId: {
+    type: Schema.Types.ObjectId,
+    ref: AppVersionCollectionName
   },
   createTime: {
     type: Date,
@@ -85,26 +85,116 @@ const ChatSchema = new Schema({
     default: {}
   },
 
-  initStatistics: Boolean
+  // Feedback count statistics (redundant fields for performance)
+
+  // Boolean flags for efficient filtering
+  hasGoodFeedback: Boolean,
+  hasBadFeedback: Boolean,
+  hasUnreadGoodFeedback: Boolean,
+  hasUnreadBadFeedback: Boolean,
+
+  searchKey: String,
+  deleteTime: {
+    type: Date,
+    default: null,
+    select: false
+  },
+
+  // @deprecated
+  userId: Schema.Types.ObjectId
 });
 
 try {
-  // Tmp
-  ChatSchema.index({ initStatistics: 1, _id: -1 });
-  ChatSchema.index({ appId: 1, tmbId: 1, outLinkUid: 1 });
-
   ChatSchema.index({ chatId: 1 });
-  // get user history
-  ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 });
-  // delete by appid; clear history; init chat; update chat; auth chat; get chat;
+  // Delete by appid; init chat; update chat; auth chat;
   ChatSchema.index({ appId: 1, chatId: 1 });
 
-  // get chat logs;
-  ChatSchema.index({ teamId: 1, appId: 1, sources: 1, tmbId: 1, updateTime: -1 });
+  // Clear history(share),Init 4121
+  ChatSchema.index(
+    { appId: 1, outLinkUid: 1, tmbId: 1 },
+    {
+      partialFilterExpression: {
+        outLinkUid: { $exists: true }
+      }
+    }
+  );
+
+  // get user history
+  ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
   // get share chat history
-  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
+  ChatSchema.index(
+    { shareId: 1, outLinkUid: 1, updateTime: -1 },
+    {
+      partialFilterExpression: {
+        shareId: { $exists: true }
+      }
+    }
+  );
+
+  /* get chat logs */
+  // 1. Common get
+  ChatSchema.index({ appId: 1, updateTime: -1 });
+  // Get history(tmbId)
+  ChatSchema.index({ appId: 1, tmbId: 1, updateTime: -1 });
+  // clearHistory(API)
+  ChatSchema.index({ appId: 1, source: 1, tmbId: 1, updateTime: -1 });
+
+  /* 反馈过滤的索引 */
+  // 2. Has good feedback filter
+  ChatSchema.index(
+    {
+      appId: 1,
+      hasGoodFeedback: 1,
+      updateTime: -1
+    },
+    {
+      partialFilterExpression: {
+        hasGoodFeedback: true
+      }
+    }
+  );
+  // Has bad feedback filter
+  ChatSchema.index(
+    {
+      appId: 1,
+      hasBadFeedback: 1,
+      updateTime: -1
+    },
+    {
+      partialFilterExpression: {
+        hasBadFeedback: true
+      }
+    }
+  );
+  // 3. Has unread good feedback filter
+  ChatSchema.index(
+    {
+      appId: 1,
+      hasUnreadGoodFeedback: 1,
+      updateTime: -1
+    },
+    {
+      partialFilterExpression: {
+        hasUnreadGoodFeedback: true
+      }
+    }
+  );
+  // Has unread bad feedback filter
+  ChatSchema.index(
+    {
+      appId: 1,
+      hasUnreadBadFeedback: 1,
+      updateTime: -1
+    },
+    {
+      partialFilterExpression: {
+        hasUnreadBadFeedback: true
+      }
+    }
+  );
 
   // timer, clear history
+  ChatSchema.index({ updateTime: -1, teamId: 1 });
   ChatSchema.index({ teamId: 1, updateTime: -1 });
 } catch (error) {
   console.log(error);

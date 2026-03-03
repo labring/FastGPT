@@ -30,7 +30,7 @@ import {
 } from '@/web/core/evaluation/context/taskPageContext';
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useInterval } from 'ahooks';
 import NavBar, {
@@ -145,7 +145,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
   }, [evaluationDetail, isAllDataFailed]);
 
   // 初始化数据加载
-  useRequest2(
+  useRequest(
     async () => {
       const taskDetailData = await loadTaskDetail(taskId);
       await loadAllData(taskDetailData);

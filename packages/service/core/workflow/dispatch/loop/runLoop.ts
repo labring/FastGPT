@@ -4,7 +4,7 @@ import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { dispatchWorkFlow } from '..';
+import { runWorkflow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type AIChatItemValueItemType,
@@ -44,19 +44,20 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const interactiveData =
+  let interactiveData =
     lastInteractive?.type === 'loopInteractive' ? lastInteractive?.params : undefined;
-  const lastIndex = interactiveData?.currentIndex;
+  let lastIndex = interactiveData?.currentIndex;
 
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
   const loopResponseDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
+  const customFeedbacks: string[] = [];
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
   let index = 0;
 
-  for await (const item of loopInputArray.filter(Boolean)) {
+  for await (const item of loopInputArray) {
     // Skip already looped
     if (lastIndex && index < lastIndex) {
       index++;
@@ -93,8 +94,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     index++;
 
-    const response = await dispatchWorkFlow({
+    const response = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
@@ -115,6 +117,11 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     assistantResponses.push(...response.assistantResponses);
     totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
 
+    // Collect custom feedbacks
+    if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
+      customFeedbacks.push(...response[DispatchNodeResponseKeyEnum.customFeedbacks]);
+    }
+
     // Concat new variables
     newVariables = {
       ...newVariables,
@@ -126,6 +133,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       interactiveResponse = response.workflowInteractiveResponse;
       break;
     }
+
+    // Clear last interactive data, avoid being influenced by the previous round of interaction
+    interactiveData = undefined;
+    lastIndex = undefined;
   }
 
   return {
@@ -150,12 +161,16 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        totalPoints,
-        moduleName: name
-      }
-    ],
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
+      ? [
+          {
+            totalPoints,
+            moduleName: name
+          }
+        ]
+      : [],
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      customFeedbacks.length > 0 ? customFeedbacks : undefined
   };
 };

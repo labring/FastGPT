@@ -4,31 +4,31 @@ import {
   DBDatasetVectorTableName,
   DBDatasetValueVectorTableName,
   HNSW_EF_CONSTRUCTION,
-  HNSW_M
+  HNSW_M,
+  VectorVQ
 } from '../constants';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type {
-  DelDatasetVectorCtrlProps,
-  EmbeddingRecallCtrlProps,
-  EmbeddingRecallResponse,
-  InsertVectorControllerProps,
+  VectorControllerType,
   DatabaseEmbeddingRecallCtrlProps,
   DatabaseEmbeddingRecallResponse
-} from '../controller.d';
+} from '../type';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
 
-export class PgVectorCtrl {
+export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
   init = async () => {
+    const isHalfVec = VectorVQ === 16;
+
     try {
       await connectPg();
       await PgClient.query(`
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGSERIAL PRIMARY KEY,
-            vector VECTOR(1536) NOT NULL,
+            vector ${isHalfVec ? 'HALFVEC(1536)' : 'VECTOR(1536)'} NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
@@ -63,7 +63,7 @@ export class PgVectorCtrl {
       `);
 
       await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = ${HNSW_M}, ef_construction = ${HNSW_EF_CONSTRUCTION});`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector ${isHalfVec ? 'halfvec_ip_ops' : 'vector_ip_ops'}) WITH (m = ${HNSW_M}, ef_construction = ${HNSW_EF_CONSTRUCTION});`
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
@@ -120,7 +120,7 @@ export class PgVectorCtrl {
       addLog.error('init pg error', error);
     }
   };
-  insert = async (props: InsertVectorControllerProps): Promise<{ insertIds: string[] }> => {
+  insert: VectorControllerType['insert'] = async (props) => {
     const {
       teamId,
       datasetId,
@@ -157,7 +157,7 @@ export class PgVectorCtrl {
       insertIds: rows.map((row: any) => row.id)
     };
   };
-  delete = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
+  delete: VectorControllerType['delete'] = async (props) => {
     const { teamId, tableName = DatasetVectorTableName } = props;
 
     const teamIdWhere = `team_id='${String(teamId)}' AND`;
@@ -188,11 +188,11 @@ export class PgVectorCtrl {
 
     if (!where) return;
 
-    await PgClient.delete(tableName || DatasetVectorTableName, {
+    await PgClient.delete(tableName, {
       where: [where]
     });
   };
-  embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
+  embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
 
@@ -256,7 +256,7 @@ export class PgVectorCtrl {
       }))
     };
   };
-  databaseEmbRecall = async (
+  databaseEmbRecall: VectorControllerType['databaseEmbRecall'] = async (
     props: DatabaseEmbeddingRecallCtrlProps
   ): Promise<DatabaseEmbeddingRecallResponse> => {
     const {
@@ -317,7 +317,8 @@ export class PgVectorCtrl {
       });
     }
   };
-  getVectorDataByTime = async (start: Date, end: Date) => {
+
+  getVectorDataByTime: VectorControllerType['getVectorDataByTime'] = async (start, end) => {
     const { rows } = await PgClient.query<{
       id: string;
       team_id: string;
@@ -335,33 +336,29 @@ export class PgVectorCtrl {
       datasetId: item.dataset_id
     }));
   };
-  getVectorCountByTeamId = async (teamId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)]]
-    });
+  getVectorCount: VectorControllerType['getVectorCount'] = async (props) => {
+    const { teamId, datasetId, collectionId } = props;
 
-    return total;
-  };
-  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
-    });
+    // Build where conditions dynamically
+    const whereConditions: any[] = [];
 
-    return total;
-  };
-  getVectorCountByCollectionId = async (
-    teamId: string,
-    datasetId: string,
-    collectionId: string
-  ) => {
+    if (teamId) {
+      whereConditions.push(['team_id', String(teamId)]);
+    }
+
+    if (datasetId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['dataset_id', String(datasetId)]);
+    }
+
+    if (collectionId) {
+      if (whereConditions.length > 0) whereConditions.push('and');
+      whereConditions.push(['collection_id', String(collectionId)]);
+    }
+
+    // If no conditions provided, count all
     const total = await PgClient.count(DatasetVectorTableName, {
-      where: [
-        ['team_id', String(teamId)],
-        'and',
-        ['dataset_id', String(datasetId)],
-        'and',
-        ['collection_id', String(collectionId)]
-      ]
+      where: whereConditions.length > 0 ? whereConditions : undefined
     });
 
     return total;

@@ -1,12 +1,14 @@
 import openai from 'openai';
 import type {
+  ChatCompletion as SdkChatCompletion,
   ChatCompletionMessageToolCall,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
   ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam
+  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam,
+  ChatCompletionTool
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
@@ -18,10 +20,11 @@ export type ChatCompletionContentPartFile = {
   type: 'file_url';
   name: string;
   url: string;
+  key?: string;
 };
 // Rewrite ChatCompletionContentPart, Add file type
 export type ChatCompletionContentPart =
-  | SdkChatCompletionContentPart
+  | (SdkChatCompletionContentPart & { key?: string })
   | ChatCompletionContentPartFile;
 type CustomChatCompletionUserMessageParam = Omit<ChatCompletionUserMessageParam, 'content'> & {
   role: 'user';
@@ -59,11 +62,7 @@ export type ChatCompletionAssistantToolParam = {
   role: 'assistant';
   tool_calls: ChatCompletionMessageToolCall[];
 };
-export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
-  index?: number;
-  toolName?: string;
-  toolAvatar?: string;
-};
+
 export type ChatCompletionMessageFunctionCall =
   SdkChatCompletionAssistantMessageParam.FunctionCall & {
     id?: string;
@@ -72,17 +71,24 @@ export type ChatCompletionMessageFunctionCall =
   };
 
 // Stream response
-export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk>;
+export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk & { error?: any }>;
 export type UnStreamChatType = openai.Chat.Completions.ChatCompletion;
 
+// UnStream response
+export type ChatCompletion = SdkChatCompletion & {
+  error?: any;
+};
+
 export type CompletionFinishReason =
+  | 'error'
   | 'close'
   | 'stop'
   | 'length'
   | 'tool_calls'
   | 'content_filter'
   | 'function_call'
-  | null;
+  | null
+  | undefined;
 
 export default openai;
 export * from 'openai';

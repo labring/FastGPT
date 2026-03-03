@@ -17,7 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
@@ -53,6 +53,7 @@ export type HeaderControlProps = {
   setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
+  px?: [number, number];
 };
 
 const chartBoxStyles = {
@@ -138,7 +139,8 @@ const LogChart = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
-  showSourceSelector = true
+  showSourceSelector = true,
+  px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
@@ -150,7 +152,7 @@ const LogChart = ({
 
   const [offset, setOffset] = useState<string>(offsetOptions[0].value);
 
-  const { data: chartData, loading } = useRequest2(
+  const { data: chartData, loading } = useRequest(
     async () => {
       return getAppChartData({
         appId,
@@ -334,6 +336,7 @@ const LogChart = ({
   return (
     <MyBox isLoading={loading} display={'flex'} flexDir={'column'} h={'full'}>
       <HeaderControl
+        px={px}
         appId={appId}
         chatSources={chatSources}
         setChatSources={setChatSources}
@@ -343,7 +346,7 @@ const LogChart = ({
         setDateRange={setDateRange}
         showSourceSelector={showSourceSelector}
       />
-      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={[4, 8]}>
+      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={px}>
         <TotalData appId={appId} />
         <Accordion defaultIndex={[0, 1, 2]} allowMultiple reduceMotion>
           <AccordionItem border={'none'}>
@@ -771,7 +774,8 @@ const HeaderControl = ({
   setIsSelectAllSource,
   dateRange,
   setDateRange,
-  showSourceSelector = true
+  showSourceSelector = true,
+  px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
 
@@ -785,13 +789,7 @@ const HeaderControl = ({
   );
 
   return (
-    <Flex
-      flexDir={['column', 'row']}
-      alignItems={['flex-start', 'center']}
-      gap={3}
-      pb={2}
-      px={[4, 8]}
-    >
+    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
       {showSourceSelector && (
         <Flex>
           <MultipleSelect<ChatSourceEnum>
@@ -848,7 +846,7 @@ const TotalData = ({ appId }: { appId: string }) => {
       totalChats: 0,
       totalPoints: 0
     }
-  } = useRequest2(
+  } = useRequest(
     async () => {
       if (feConfigs?.isPlus) {
         return await getAppTotalData({ appId });

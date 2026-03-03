@@ -46,7 +46,7 @@ const UserAvatarPopover = ({
         {({ onClose }) => {
           const onLogout = useCallback(() => {
             onClose();
-            openConfirm(handleLogout)();
+            openConfirm({ onConfirm: handleLogout })();
           }, [onClose]);
 
           return (
@@ -63,8 +63,8 @@ const UserAvatarPopover = ({
                   gap={2}
                 >
                   <Avatar src={userInfo?.avatar} bg="myGray.200" borderRadius="50%" w={5} h={5} />
-                  <Box w="full" className="textEllipsis">
-                    {userInfo?.username ?? '-'}
+                  <Box flex="1 1 0" minW="0" whiteSpace="pre-wrap">
+                    {userInfo?.team.memberName ?? '-'}
                   </Box>
                 </Flex>
               )}

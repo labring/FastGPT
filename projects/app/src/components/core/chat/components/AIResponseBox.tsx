@@ -21,6 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
+  PaymentPauseInteractive,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -30,9 +31,13 @@ import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
-import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import {
+  type OnOpenCiteModalProps,
+  ChatItemContext
+} from '@/web/core/chat/context/chatItemContext';
+import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useCreation } from 'ahooks';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -100,16 +105,19 @@ const RenderText = React.memo(function RenderText({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
 }) {
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
   const source = useMemo(() => {
     if (!text) return '';
 
-    // Remove quote references if not showing response detail
-    return text;
-  }, [text]);
+    if (isShowCite) {
+      return text;
+    }
+    return removeDatasetCiteText(text, isShowCite);
+  }, [text, isShowCite]);
 
   const chatAuthData = useCreation(() => {
     return { appId, chatId, chatItemDataId, ...outLinkAuthData };
@@ -221,30 +229,73 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
-        acc[item.label] = !!item.value ? item.value : item.defaultValue;
+        // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
+        acc[item.key] = item.value ?? item.defaultValue;
         return acc;
       }, {});
     }
     return {};
   }, [interactive]);
 
-  const handleFormSubmit = useCallback((data: Record<string, any>) => {
-    onSendPrompt({
-      text: JSON.stringify(data),
-      isInteractivePrompt: true
-    });
-  }, []);
+  const handleFormSubmit = useCallback(
+    (data: Record<string, any>) => {
+      const finalData: Record<string, any> = {};
+      interactive.params.inputForm?.forEach((item) => {
+        if (item.key in data) {
+          finalData[item.key] = data[item.key];
+        }
+      });
+
+      onSendPrompt({
+        text: JSON.stringify(finalData),
+        isInteractivePrompt: true
+      });
+    },
+    [interactive.params.inputForm]
+  );
 
   return (
-    <Flex flexDirection={'column'} gap={2} w={'250px'}>
+    <Flex flexDirection={'column'} gap={2} minW={'250px'}>
       <FormInputComponent
         interactiveParams={interactive.params}
         defaultValues={defaultValues}
-        SubmitButton={({ onSubmit }) => (
-          <Button onClick={() => onSubmit(handleFormSubmit)()}>{t('common:Submit')}</Button>
+        SubmitButton={({ onSubmit, isFileUploading }) => (
+          <Button
+            onClick={() => onSubmit(handleFormSubmit)()}
+            isDisabled={isFileUploading}
+            isLoading={isFileUploading}
+          >
+            {t('common:Submit')}
+          </Button>
         )}
       />
     </Flex>
+  );
+});
+const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInteractive({
+  interactive
+}: {
+  interactive: InteractiveBasicType & PaymentPauseInteractive;
+}) {
+  const { t } = useTranslation();
+
+  return interactive.params.continue ? (
+    <Box>{t('chat:task_has_continued')}</Box>
+  ) : (
+    <>
+      <Box color={'myGray.500'}>{t(interactive.params.description)}</Box>
+      <Button
+        maxW={'250px'}
+        onClick={() => {
+          onSendPrompt({
+            text: 'Continue',
+            isInteractivePrompt: true
+          });
+        }}
+      >
+        {t('chat:continue_run')}
+      </Button>
+    </>
   );
 });
 
@@ -263,6 +314,8 @@ const AIResponseBox = ({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
 }) => {
+  const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
       <RenderText
@@ -283,7 +336,7 @@ const AIResponseBox = ({
       />
     );
   }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools && showRunningStatus) {
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
@@ -293,6 +346,9 @@ const AIResponseBox = ({
     }
     if (finalInteractive.type === 'userInput') {
       return <RenderUserFormInteractive interactive={finalInteractive} />;
+    }
+    if (finalInteractive.type === 'paymentPause') {
+      return <RenderPaymentPauseInteractive interactive={finalInteractive} />;
     }
   }
   return null;

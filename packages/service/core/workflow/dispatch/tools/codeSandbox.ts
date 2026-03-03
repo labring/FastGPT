@@ -1,11 +1,10 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import axios from 'axios';
+import { axios } from '../../../../common/api/axios';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getNodeErrResponse } from '../utils';
 
 type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeType]: string;

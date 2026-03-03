@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
-import { type ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemSchemaType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
@@ -11,8 +11,7 @@ import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatCorrectionCollectionName } from './correction/schema';
-
-export const ChatItemCollectionName = 'chatitems';
+import { ChatItemCollectionName } from './constants';
 
 const ChatItemSchema = new Schema({
   teamId: {
@@ -36,7 +35,7 @@ const ChatItemSchema = new Schema({
   dataId: {
     type: String,
     require: true,
-    default: () => getNanoid(22)
+    default: () => getNanoid(24)
   },
   appId: {
     type: Schema.Types.ObjectId,
@@ -62,8 +61,14 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
+
+  // Field memory
   memories: Object,
   errorMsg: String,
+  durationSeconds: Number,
+  citeCollectionIds: [String],
+
+  // Feedback
   userGoodFeedback: String,
   userBadFeedback: String,
   customFeedbacks: [String],
@@ -76,34 +81,35 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-    type: Array,
-    default: []
+  isFeedbackRead: Boolean,
+  deleteTime: {
+    type: Date,
+    default: null
   },
-  durationSeconds: Number,
+
+  // @deprecated
+  [DispatchNodeResponseKeyEnum.nodeResponse]: Array,
   correctionId: {
     type: Schema.Types.ObjectId,
     ref: ChatCorrectionCollectionName
   }
 });
 
-try {
-  ChatItemSchema.index({ dataId: 1 });
-  ChatItemSchema.index({ correctionId: 1 });
-  /* delete by app; 
-     delete by chat id;
-     get chat list; 
-     get chat logs; 
-     close custom feedback; 
-  */
-  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-  // timer, clear history
-  ChatItemSchema.index({ teamId: 1, time: -1 });
+/*
+  delete by app;
+  delete by chat id;
+  close custom feedback;
+*/
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+ChatItemSchema.index({ correctionId: 1 });
+// Get histories
+ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
+// get chatitem list,Anchor filter
+ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
+// Query by role (AI/Human), get latest chat item, permission check
+ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
 
-  // Admin charts
-  ChatItemSchema.index({ obj: 1, time: -1 }, { partialFilterExpression: { obj: 'Human' } });
-} catch (error) {
-  console.log(error);
-}
-
-export const MongoChatItem = getMongoModel<ChatItemType>(ChatItemCollectionName, ChatItemSchema);
+export const MongoChatItem = getMongoModel<ChatItemSchemaType>(
+  ChatItemCollectionName,
+  ChatItemSchema
+);

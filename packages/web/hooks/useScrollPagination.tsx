@@ -14,7 +14,7 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from './useRequest';
+import type { PaginationType, PaginationResponseType } from '../../global/openapi/api';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -179,8 +179,8 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationProps,
-  TData extends PaginationResponse
+  TParams extends PaginationType,
+  TData extends PaginationResponseType<any>
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -203,7 +203,7 @@ export function useScrollPagination<
     showErrorToast?: boolean;
     disabled?: boolean;
     pollingInterval?: number;
-  } & Parameters<typeof useRequest2>[1]
+  } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -278,7 +278,7 @@ export function useScrollPagination<
         // 静默加载时不显示错误提示
         if (showErrorToast && !silent) {
           toast({
-            title: getErrText(error, t('common:core.chat.error.data_error')),
+            title: t(getErrText(error, t('common:core.chat.error.data_error'))),
             status: 'error'
           });
         }
@@ -367,7 +367,7 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest2(
+  useRequest(
     async () => {
       if (disabled) return;
       // 有轮询间隔且已有数据时，使用静默加载

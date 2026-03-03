@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -22,7 +22,8 @@ export enum TabEnum {
   'apikey' = 'apikey',
   'loginout' = 'loginout',
   'team' = 'team',
-  'model' = 'model'
+  'model' = 'model',
+  'customDomain' = 'customDomain'
 }
 
 const AccountContainer = ({
@@ -78,6 +79,15 @@ const AccountContainer = ({
         label: t('account:third_party'),
         value: TabEnum.thirdParty
       },
+      ...(feConfigs.isPlus && feConfigs.customDomain?.enable
+        ? [
+            {
+              icon: 'common/globalLine',
+              label: t('account:custom_domain'),
+              value: TabEnum.customDomain
+            }
+          ]
+        : []),
       {
         icon: 'common/model',
         label: t('account:model_provider'),
@@ -112,8 +122,8 @@ const AccountContainer = ({
           ]
         : []),
       {
-        icon: 'common/settingLight',
-        label: t('common:Setting'),
+        icon: 'support/usage/usageRecordLight',
+        label: t('account:language'),
         value: TabEnum.setting
       },
       {
@@ -132,9 +142,11 @@ const AccountContainer = ({
   const setCurrentTab = useCallback(
     (tab: string) => {
       if (tab === TabEnum.loginout) {
-        openConfirm(() => {
-          setUserInfo(null);
-          router.replace('/login');
+        openConfirm({
+          onConfirm: () => {
+            setUserInfo(null);
+            router.replace('/login');
+          }
         })();
       } else {
         router.replace('/account/' + tab);

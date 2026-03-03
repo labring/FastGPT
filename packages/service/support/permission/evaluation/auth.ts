@@ -1,6 +1,6 @@
 /* Auth evaluation permission */
-import { parseHeaderCert } from '../controller';
-import { getResourcePermission } from '../controller';
+import { parseHeaderCert } from '../auth/common';
+import { getTmbPermission } from '../controller';
 import {
   OwnerPermissionVal,
   PerResourceTypeEnum,
@@ -13,12 +13,11 @@ import type { AuthModeType, AuthResponseType } from '../type';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { MongoEvaluation } from '../../../core/evaluation/task';
 import { EvaluationPermission } from '@fastgpt/global/support/permission/evaluation/controller';
-import type { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { getFileById } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 // ================ Authentication and Authorization for eval task ================
 export const authEvaluationByTmbId = async ({
@@ -64,7 +63,7 @@ export const authEvaluationByTmbId = async ({
     }
 
     // 获取评估资源的权限
-    const role = await getResourcePermission({
+    const role = await getTmbPermission({
       teamId,
       tmbId,
       resourceId: evaluationId,
@@ -170,7 +169,7 @@ export const authEvalDatasetByTmbId = async ({
     }
 
     // 获取evaluation资源的权限（evalDataset复用evaluation权限）
-    const role = await getResourcePermission({
+    const role = await getTmbPermission({
       teamId,
       tmbId,
       resourceId: datasetId,
@@ -235,28 +234,26 @@ export const authEvalDatasetCollectionFile = async ({
   ...props
 }: AuthModeType & {
   fileId: string;
-}): Promise<
-  AuthResponseType & {
-    file: DatasetFileSchema;
-  }
-> => {
+}): Promise<AuthResponseType> => {
   const authRes = await parseHeaderCert(props);
-  const { teamId, tmbId } = authRes;
+  const { teamId } = authRes;
 
-  const file = await getFileById({ bucketName: BucketNameEnum.evaluation, fileId });
-
-  if (!file) {
+  if (!isS3ObjectKey(fileId, 'temp')) {
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
 
-  if (file.metadata?.teamId !== teamId) {
+  // temp key 格式: temp/{teamId}/{filename}，从路径提取 teamId 校验归属
+  const keyTeamId = fileId.split('/')[1];
+  if (keyTeamId !== teamId) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
 
-  const permission = new Permission({
-    role: ReadRoleVal,
-    isOwner: file.metadata?.uid === tmbId || file.metadata?.tmbId === tmbId
-  });
+  const exists = await getS3DatasetSource().isObjectExists(fileId);
+  if (!exists) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
+
+  const permission = new Permission({ role: ReadRoleVal, isOwner: true });
 
   if (!permission.checkPer(per)) {
     return Promise.reject(CommonErrEnum.unAuthFile);
@@ -264,8 +261,7 @@ export const authEvalDatasetCollectionFile = async ({
 
   return {
     ...authRes,
-    permission,
-    file
+    permission
   };
 };
 
@@ -314,7 +310,7 @@ export const authEvalMetricByTmbId = async ({
     }
 
     // 获取evaluation资源的权限（evalMetric复用evaluation权限）
-    const role = await getResourcePermission({
+    const role = await getTmbPermission({
       teamId,
       tmbId,
       resourceId: metricId,

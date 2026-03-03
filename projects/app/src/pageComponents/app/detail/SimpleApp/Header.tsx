@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
@@ -64,7 +64,7 @@ const Header = ({
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
     {
       manual: false,
@@ -74,7 +74,7 @@ const Header = ({
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/dashboard/apps',
+        pathname: '/dashboard/agent',
         query: {
           parentId,
           type: lastAppListRouteType
@@ -84,7 +84,7 @@ const Header = ({
     [router, lastAppListRouteType]
   );
 
-  const { runAsync: onClickSave, loading } = useRequest2(
+  const { runAsync: onClickSave, loading } = useRequest(
     async ({
       isPublish,
       versionName = formatTime2YMDHMS(new Date()),
@@ -202,7 +202,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('app:all_apps')}
+            rootName={t('common:All')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
@@ -242,11 +242,13 @@ const Header = ({
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
-                  w={'30px'}
+                  w={'34px'}
+                  h={'34px'}
                   variant={'whitePrimary'}
                   onClick={setIsShowHistories}
                 />
                 <SaveButton
+                  colorSchema="primary"
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => {

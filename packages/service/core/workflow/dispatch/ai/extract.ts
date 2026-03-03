@@ -1,13 +1,7 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat/utils';
+import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import {
-  countMessagesTokens,
-  countGptMessagesTokens,
-  countPromptTokens
-} from '../../../../common/string/tiktoken/index';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -29,12 +23,12 @@ import {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
   getExtractJsonToolPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
+import { createLLMResponse } from '../../../ai/llm/request';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -128,8 +122,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     const { totalPoints, modelName } = formatModelChars2Points({
       model: extractModel.model,
       inputTokens: inputTokens,
-      outputTokens: outputTokens,
-      modelType: ModelTypeEnum.llm
+      outputTokens: outputTokens
     });
 
     return {
@@ -231,10 +224,6 @@ const toolChoice = async (props: ActionProps) => {
     messages: adaptMessages,
     maxContext: extractModel.maxContext
   });
-  const requestMessages = await loadRequestMessages({
-    messages: filterMessages,
-    useVision: false
-  });
 
   const schema = getJsonSchema(props);
 
@@ -253,23 +242,24 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const body = llmCompletionsBodyFormat(
-    {
-      stream: true,
-      model: extractModel.model,
-      temperature: 0.01,
-      messages: requestMessages,
-      tools,
-      tool_choice: { type: 'function', function: { name: agentFunName } }
-    },
-    extractModel
-  );
+  const body = {
+    stream: true,
+    model: extractModel.model,
+    temperature: 0.01,
+    messages: filterMessages,
+    tools,
+    tool_choice: { type: 'function', function: { name: agentFunName } },
+    toolCallMode: 'toolChoice'
+  } as const;
 
-  const { response } = await createChatCompletion({
+  const {
+    answerText: text,
+    toolCalls,
+    usage: { inputTokens, outputTokens }
+  } = await createLLMResponse({
     body,
     userKey: externalProvider.openaiAccount
   });
-  const { text, toolCalls, usage } = await formatLLMResponse(response);
 
   const arg: Record<string, any> = (() => {
     try {
@@ -289,8 +279,6 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(filterMessages, tools));
-  const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(AIMessages));
   return {
     inputTokens,
     outputTokens,
@@ -336,26 +324,19 @@ const completions = async (props: ActionProps) => {
       ]
     }
   ];
-  const requestMessages = await loadRequestMessages({
-    messages: chats2GPTMessages({ messages, reserveId: false }),
-    useVision: false
-  });
 
-  const { response } = await createChatCompletion({
-    body: llmCompletionsBodyFormat(
-      {
-        model: extractModel.model,
-        temperature: 0.01,
-        messages: requestMessages,
-        stream: true
-      },
-      extractModel
-    ),
+  const {
+    answerText: answer,
+    usage: { inputTokens, outputTokens }
+  } = await createLLMResponse({
+    body: {
+      model: extractModel.model,
+      temperature: 0.01,
+      messages: chats2GPTMessages({ messages, reserveId: false }),
+      stream: true
+    },
     userKey: externalProvider.openaiAccount
   });
-  const { text: answer, usage } = await formatLLMResponse(response);
-  const inputTokens = usage?.prompt_tokens || (await countMessagesTokens(messages));
-  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
   // parse response
   const jsonStr = sliceJsonStr(answer);

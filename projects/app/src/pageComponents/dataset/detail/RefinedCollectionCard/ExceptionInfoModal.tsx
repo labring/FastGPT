@@ -19,7 +19,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getTrainingError, updateTrainingData } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const ExceptionInfoModal = ({
   datasetId,
@@ -47,7 +47,7 @@ const ExceptionInfoModal = ({
     EmptyTip: <EmptyTip />
   });
 
-  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest(
     () => updateTrainingData({ datasetId, collectionId }),
     {
       manual: true,
@@ -60,7 +60,7 @@ const ExceptionInfoModal = ({
     }
   );
 
-  const { runAsync: updateData, loading: updateLoading } = useRequest2(
+  const { runAsync: updateData, loading: updateLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string }) => {
       return updateTrainingData(data);
     },

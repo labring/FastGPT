@@ -2,12 +2,13 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export class MCPClient {
   private client: Client;
@@ -40,14 +41,23 @@ export class MCPClient {
           },
           eventSourceInit: {
             fetch: (url, init) => {
-              const headers = new Headers({
-                ...init?.headers,
+              const mergedHeaders: Record<string, string> = {
                 ...this.headers
-              });
+              };
+
+              if (init?.headers) {
+                if (init.headers instanceof Headers) {
+                  init.headers.forEach((value, key) => {
+                    mergedHeaders[key] = value;
+                  });
+                } else if (typeof init.headers === 'object') {
+                  Object.assign(mergedHeaders, init.headers);
+                }
+              }
 
               return fetch(url, {
                 ...init,
-                headers
+                headers: mergedHeaders
               });
             }
           }
@@ -58,9 +68,10 @@ export class MCPClient {
   }
 
   // 内部方法：关闭连接
-  private async closeConnection() {
+  async closeConnection() {
     try {
       await retryFn(() => this.client.close(), 3);
+      addLog.debug(`[MCP Client] Closed connection：${this.url}`);
     } catch (error) {
       addLog.error('[MCP Client] Failed to close connection:', error);
     }
@@ -76,7 +87,7 @@ export class MCPClient {
       const response = await client.listTools();
 
       if (!Array.isArray(response.tools)) {
-        return Promise.reject('[MCP Client] Get tools response is not an array');
+        return Promise.reject(new UserError('[MCP Client] Get tools response is not an array'));
       }
 
       const tools = response.tools.map((tool) => ({
@@ -109,7 +120,15 @@ export class MCPClient {
    * @param params Parameters
    * @returns Tool execution result
    */
-  public async toolCall(toolName: string, params: Record<string, any>): Promise<any> {
+  public async toolCall({
+    toolName,
+    params,
+    closeConnection = true
+  }: {
+    toolName: string;
+    params: Record<string, any>;
+    closeConnection?: boolean;
+  }): Promise<any> {
     try {
       const client = await this.getConnection();
       addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
@@ -128,7 +147,9 @@ export class MCPClient {
       addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
       return Promise.reject(error);
     } finally {
-      await this.closeConnection();
+      if (closeConnection) {
+        await this.closeConnection();
+      }
     }
   }
 }
@@ -141,7 +162,7 @@ export const getMCPChildren = async (app: AppSchema) => {
     return (
       app.modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,
-        id: `${PluginSourceEnum.mcp}-${id}/${item.name}`,
+        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar
       })) ?? []
     );
@@ -158,7 +179,7 @@ export const getMCPChildren = async (app: AppSchema) => {
 
       return {
         avatar: app.avatar,
-        id: `${PluginSourceEnum.mcp}-${id}/${item.name}`,
+        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         ...toolData
       };
     });

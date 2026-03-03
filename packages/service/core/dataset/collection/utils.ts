@@ -164,6 +164,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const { title, rawText } = await readDatasetSourceRawText({
     teamId: collection.teamId,
     tmbId: collection.tmbId,
+    datasetId: collection.datasetId,
     ...sourceReadType
   });
 

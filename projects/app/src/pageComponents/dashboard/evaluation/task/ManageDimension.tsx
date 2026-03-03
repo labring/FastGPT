@@ -27,7 +27,7 @@ import {
 } from '@/web/common/system/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getBuiltinDimensionInfo,
   getBuiltinDimensionNameFromId
@@ -249,7 +249,7 @@ const ManageDimension = ({
     data: metricListData,
     loading: isLoading,
     runAsync: fetchMetricList
-  } = useRequest2(
+  } = useRequest(
     async () => {
       const result = await getMetricList({});
       return result;

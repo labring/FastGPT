@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { OperationListItemType } from '@fastgpt/global/support/user/audit/type';
+import type { TeamAuditListItemType } from '@fastgpt/global/support/user/audit/type';
 import type { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export const getOperationLogs = (
@@ -8,4 +8,4 @@ export const getOperationLogs = (
     tmbIds?: string[];
     events?: AuditEventEnum[];
   }
-) => POST<PaginationResponse<OperationListItemType>>(`/proApi/support/user/audit/list`, props);
+) => POST<PaginationResponse<TeamAuditListItemType>>(`/proApi/support/user/audit/list`, props);

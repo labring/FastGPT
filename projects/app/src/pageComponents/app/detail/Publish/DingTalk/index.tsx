@@ -27,7 +27,7 @@ import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 
 const DingTalkEditModal = dynamic(() => import('./DingTalkEditModal'));
@@ -50,7 +50,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetchShareChatList
-  } = useRequest2(
+  } = useRequest(
     () => getShareChatList<DingtalkAppType>({ appId, type: PublishChannelEnum.dingtalk }),
     {
       manual: false
@@ -74,10 +74,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={
-                feConfigs.openAPIDocUrl ||
-                getDocPath('/docs/use-cases/external-integration/dingtalk/')
-              }
+              href={getDocPath('/docs/use-cases/external-integration/dingtalk/')}
               target={'_blank'}
               color={'primary.500'}
               fontSize={'sm'}
@@ -189,7 +186,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                                 name: item.name,
                                 limit: item.limit,
                                 app: item.app,
-                                responseDetail: item.responseDetail,
+                                showCite: item.showCite,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });

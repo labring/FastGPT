@@ -106,6 +106,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       const data = {
         ...datasetPerQuery,
         teamId,
+        deleteTime: null, // 搜索时也要过滤已删除数据
         ...searchMatch
       };
       // @ts-ignore
@@ -116,6 +117,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     return {
       ...datasetPerQuery,
       teamId,
+      deleteTime: null, // 关键：只返回未删除的数据
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...parseParentIdInMongo(parentId)
     };
@@ -153,7 +155,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           const tmbRole = myRoles.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
-          const groupRole = sumPer(
+          const groupAndOrgRole = sumPer(
             ...myRoles
               .filter(
                 (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
@@ -161,7 +163,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               .map((item) => item.permission)
           );
           return new DatasetPermission({
-            role: tmbRole ?? groupRole,
+            role: tmbRole ?? groupAndOrgRole,
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
@@ -176,16 +178,13 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           dataset.type !== DatasetTypeEnum.folder
         ) {
           return {
-            Per: getPer(String(dataset.parentId)),
+            Per: getPer(String(dataset.parentId)).addRole(getPer(String(dataset._id)).role),
             privateDataset: getClbCount(String(dataset.parentId)) <= 1
           };
         }
         return {
           Per: getPer(String(dataset._id)),
-          privateDataset:
-            dataset.type === DatasetTypeEnum.folder
-              ? getClbCount(String(dataset._id)) <= 1
-              : getClbCount(String(dataset._id)) === 0
+          privateDataset: getClbCount(String(dataset._id)) <= 1
         };
       })();
 

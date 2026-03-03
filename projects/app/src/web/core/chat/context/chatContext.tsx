@@ -1,4 +1,4 @@
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
@@ -7,19 +7,15 @@ import {
   delChatHistoryById,
   putChatHistory,
   getChatHistories
-} from '../api';
+} from '../history/api';
 import { type ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
-import { type UpdateHistoryProps } from '@/global/core/chat/api';
 import { type BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 
-type UpdateHistoryParams = {
-  chatId: UpdateHistoryProps['chatId'];
-  customTitle?: UpdateHistoryProps['customTitle'];
-  top?: UpdateHistoryProps['top'];
-};
+type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
 type ChatContextValueType = {
   params: Record<string, string | number | boolean>;
@@ -144,7 +140,7 @@ const ChatContextProvider = ({
     [onCloseSlider, router]
   );
 
-  const { runAsync: onUpdateHistory } = useRequest2(
+  const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
         appId,
@@ -177,7 +173,7 @@ const ChatContextProvider = ({
     }
   );
 
-  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(
+  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
         appId: appId,
@@ -193,7 +189,7 @@ const ChatContextProvider = ({
     }
   );
 
-  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest2(
+  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
         appId: appId,

@@ -5,7 +5,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useEffect, useState } from 'react';
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
@@ -69,7 +69,7 @@ function OrgMemberManageModal({
     );
   }, [orgMembers]);
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { run: onUpdate, loading: isLoadingUpdate } = useRequest(
     () => {
       return putUpdateOrgMembers({
         orgId: currentOrg._id,
@@ -160,8 +160,8 @@ function OrgMemberManageModal({
             </MemberScrollData>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
-            <OrgMemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
-              <Box mt={2}>{`${t('common:chosen')}:${selected.length}`}</Box>
+            <OrgMemberScrollData flexGrow="1" overflow={'auto'}>
+              <Box mt={2} mb={3}>{`${t('common:chosen')}:${selected.length}`}</Box>
               {selected.map((member) => {
                 return (
                   <HStack

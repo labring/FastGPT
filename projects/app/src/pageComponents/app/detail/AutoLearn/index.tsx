@@ -13,7 +13,7 @@ import MyTag from '@fastgpt/web/components/common/Tag';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { AppContext } from '../context';
 import {
@@ -107,7 +107,7 @@ const AutoLearn = () => {
   );
 
   // 静默轮询正在运行的任务（15s 间隔）- 不显示 loading
-  useRequest2(
+  useRequest(
     async () => {
       if (!hasRunningTasks) return;
       isPollingRef.current = true;
@@ -123,8 +123,8 @@ const AutoLearn = () => {
     }
   );
 
-  // 使用 useRequest2 处理开始学习
-  const { runAsync: onStartLearn, loading: isStartLearning } = useRequest2(
+  // 使用 useRequest 处理开始学习
+  const { runAsync: onStartLearn, loading: isStartLearning } = useRequest(
     async () => {
       if (!appId) throw new Error('App ID is required');
 
@@ -145,8 +145,8 @@ const AutoLearn = () => {
     }
   );
 
-  // 使用 useRequest2 处理重试训练任务
-  const { runAsync: onRetryTask } = useRequest2(
+  // 使用 useRequest 处理重试训练任务
+  const { runAsync: onRetryTask } = useRequest(
     async (taskId: string) => {
       if (!taskId) throw new Error('Task ID is required');
 
@@ -174,8 +174,8 @@ const AutoLearn = () => {
     }
   );
 
-  // 使用 useRequest2 处理删除训练任务
-  const { runAsync: onDeleteTask } = useRequest2(
+  // 使用 useRequest 处理删除训练任务
+  const { runAsync: onDeleteTask } = useRequest(
     async (taskId: string) => {
       if (!taskId) throw new Error('Task ID is required');
 
@@ -203,8 +203,8 @@ const AutoLearn = () => {
     }
   );
 
-  // 使用 useRequest2 处理恢复（删除所有训练任务）
-  const { runAsync: onRestoreAllTasks, loading: isRestoring } = useRequest2(
+  // 使用 useRequest 处理恢复（删除所有训练任务）
+  const { runAsync: onRestoreAllTasks, loading: isRestoring } = useRequest(
     async () => {
       if (!appId) throw new Error('App ID is required');
 
@@ -220,8 +220,8 @@ const AutoLearn = () => {
     }
   );
 
-  // 使用 useRequest2 处理下载评测数据
-  const { runAsync: onDownloadData } = useRequest2(
+  // 使用 useRequest 处理下载评测数据
+  const { runAsync: onDownloadData } = useRequest(
     async (taskId: string) => {
       if (!taskId) throw new Error('Task ID is required');
 

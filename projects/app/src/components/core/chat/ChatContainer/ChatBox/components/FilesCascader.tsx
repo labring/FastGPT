@@ -17,7 +17,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { getDatasets } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollections } from '@/web/core/dataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { GetResourceListItemResponse } from '@fastgpt/global/common/parentFolder/type';
@@ -89,7 +89,7 @@ const FilesCascader: React.FC<FilesCascaderProps> = ({
   /**
    * 请求服务器获取数据
    */
-  const { runAsync: requestServer } = useRequest2((e: { parentId: string | null }) => {
+  const { runAsync: requestServer } = useRequest((e: { parentId: string | null }) => {
     if (requestingIdList.includes(e.parentId || '')) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId || '']);
@@ -101,7 +101,7 @@ const FilesCascader: React.FC<FilesCascaderProps> = ({
   /**
    * 初始化加载知识库列表
    */
-  const { loading } = useRequest2(() => requestServer({ parentId: null }), {
+  const { loading } = useRequest(() => requestServer({ parentId: null }), {
     manual: false,
     onSuccess: (data) => {
       setDatasetList(data);
@@ -115,7 +115,7 @@ const FilesCascader: React.FC<FilesCascaderProps> = ({
     data: collections = [],
     runAsync: loadCollections,
     loading: loadingCollections
-  } = useRequest2(
+  } = useRequest(
     (datasetId: string) =>
       getDatasetCollections({
         datasetId: datasetId,

@@ -15,14 +15,14 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { useTranslation } from 'next-i18next';
 import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import { cloneDeep } from 'lodash';
+import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -31,16 +31,15 @@ type PluginRunContextType = PluginRunBoxProps & {
   fileSelectConfig: AppFileSelectConfigType;
 };
 
-export const PluginRunContext = createContext<PluginRunContextType>({
+export const PluginRunContext = createContext<
+  Omit<PluginRunContextType, 'appId' | 'chatId' | 'outLinkAuthData'>
+>({
   isChatting: false,
   onSubmit: function (e: FieldValues): Promise<any> {
     throw new Error('Function not implemented.');
   },
   instruction: '',
-  fileSelectConfig: defaultAppSelectFileConfig,
-  appId: '',
-  chatId: '',
-  outLinkAuthData: {}
+  fileSelectConfig: defaultAppSelectFileConfig
 });
 
 const PluginRunContextProvider = ({
@@ -51,7 +50,7 @@ const PluginRunContextProvider = ({
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -158,14 +157,14 @@ const PluginRunContextProvider = ({
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            variablesForm.setValue('variables', variables);
+            resetVariables({ variables });
           }
 
           return item;
         })
       );
     },
-    [setChatRecords, variablesForm]
+    [setChatRecords, resetVariables]
   );
 
   const isChatting = useMemo(
@@ -190,18 +189,23 @@ const PluginRunContextProvider = ({
       abortRequest();
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
+      const humanChatItemId = getNanoid(24);
+      const responseChatItemId = getNanoid(24);
 
       setChatRecords([
         {
-          ...getPluginRunUserQuery({
+          ...clientGetWorkflowToolRunUserQuery({
             pluginInputs,
             variables,
             files: files as RuntimeUserPromptType['files']
           }),
+          id: humanChatItemId,
+          dataId: humanChatItemId,
           status: 'finish'
         },
         {
-          dataId: getNanoid(24),
+          id: responseChatItemId,
+          dataId: responseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [
             {
@@ -229,25 +233,14 @@ const PluginRunContextProvider = ({
       });
 
       try {
-        // Remove files icon
-        const formatVariables = cloneDeep(variables);
-        for (const key in formatVariables) {
-          if (Array.isArray(formatVariables[key])) {
-            formatVariables[key].forEach((item) => {
-              if (item.url && item.icon) {
-                delete item.icon;
-              }
-            });
-          }
-        }
-
         await onStartChat({
           messages,
+          responseChatItemId,
           controller: chatController.current,
           generatingMessage,
           variables: {
             files,
-            ...formatVariables
+            ...variables
           }
         });
 
@@ -304,7 +297,15 @@ const PluginRunContextProvider = ({
     instruction,
     fileSelectConfig
   };
-  return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
+  return (
+    <WorkflowRuntimeContextProvider
+      appId={props.appId}
+      chatId={props.chatId}
+      outLinkAuthData={props.outLinkAuthData || {}}
+    >
+      <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>
+    </WorkflowRuntimeContextProvider>
+  );
 };
 
 export default PluginRunContextProvider;

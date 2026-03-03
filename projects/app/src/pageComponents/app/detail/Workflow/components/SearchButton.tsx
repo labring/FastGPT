@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowNodeEdgeContext } from '../../WorkflowComponents/context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../WorkflowComponents/context/workflowInitContext';
 import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,7 +11,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (state) => state.setNodes);
   const { fitView } = useReactFlow();
   const { isMac } = useSystem();
 
@@ -64,7 +64,7 @@ const SearchButton = (props: ButtonProps) => {
       const searchedNode = searchResult[searchIndex] ?? searchResult[0];
 
       if (searchedNode) {
-        fitView({ nodes: [searchedNode], padding: 0.4 });
+        fitView({ nodes: [searchedNode], padding: 0.6 });
       }
 
       return nodes.map((node) => ({
@@ -112,19 +112,23 @@ const SearchButton = (props: ButtonProps) => {
 
   if (keyword === undefined) {
     return (
-      <Box position={'absolute'} top={'72px'} left={6} zIndex={1}>
-        <MyTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
+      <Box position={'absolute'} top={32} left={6} zIndex={1}>
+        <MyTooltip
+          shouldWrapChildren={false}
+          label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}
+        >
           <IconButton
-            icon={<MyIcon name="common/searchLight" w="20px" color={'#8A95A7'} />}
-            aria-label=""
-            variant="whitePrimary"
-            size={'mdSquare'}
+            icon={<MyIcon name="common/searchLight" w={5} color={'myGray.400'} />}
+            w={9}
+            h={9}
             borderRadius={'50%'}
-            bg={'white'}
-            _hover={{ bg: 'white', borderColor: 'primary.300' }}
-            boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.20)'}
-            {...props}
+            aria-label={''}
+            variant="whitePrimary"
+            _hover={{ bg: 'myGray.50' }}
+            border={'none'}
+            boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
             onClick={() => setKeyword('')}
+            {...props}
           />
         </MyTooltip>
       </Box>
@@ -134,7 +138,7 @@ const SearchButton = (props: ButtonProps) => {
   return (
     <Flex
       position="absolute"
-      top={3}
+      top={20}
       left="50%"
       transform="translateX(-50%)"
       pl={5}

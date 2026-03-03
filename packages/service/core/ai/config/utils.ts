@@ -1,5 +1,4 @@
-import type { SystemModelItemType } from '../type';
-import { type SystemDefaultModelType } from '../type';
+import type { SystemDefaultModelType, SystemModelItemType } from '../type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoSystemModel } from './schema';
 import {
@@ -10,7 +9,7 @@ import {
   type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
 import {
   reloadFastGPTConfigBuffer,
@@ -23,9 +22,19 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { addLog } from '../../../common/system/log';
 import { FastGPTProUrl } from '../../../common/system/constants';
 import { GET } from '../../../common/api/plusRequest';
+import { preloadModelProviders } from '../../../core/app/provider/controller';
+import { refreshVersionKey } from '../../../common/cache';
+import { SystemCacheKeyEnum } from '../../../common/cache/type';
 
-export const loadSystemModels = async (init = false) => {
+export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
+
+  try {
+    await preloadModelProviders();
+  } catch (error) {
+    console.log('Load systen model error, please check fastgpt-plugin', error);
+    return Promise.reject(error);
+  }
 
   let _systemModelList: SystemModelItemType[] = [];
   let _systemActiveModelList: SystemModelItemType[] = [];
@@ -110,11 +119,10 @@ export const loadSystemModels = async (init = false) => {
     // Get model from db and plugin
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
-      pluginClient.model.list().then((res) => {
-        if (res.status === 200) return res.body;
-        console.error('Get fastGPT plugin model error');
-        return [];
-      })
+      pluginClient
+        .listModels()
+        .then((res) => res)
+        .catch(() => [])
     ]);
 
     // Load system model from local
@@ -127,7 +135,7 @@ export const loadSystemModels = async (init = false) => {
       };
 
       const dbModel = dbModels.find((item) => item.model === model.model);
-      const provider = getModelProvider(dbModel?.metadata?.provider || (model.provider as any));
+      const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
       const modelData: any = {
         ...model,
@@ -199,8 +207,8 @@ export const loadSystemModels = async (init = false) => {
 
     // Sort model list
     _systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider);
-      const providerB = getModelProvider(b.provider);
+      const providerA = getModelProvider(a.provider, language);
+      const providerB = getModelProvider(b.provider, language);
       return providerA.order - providerB.order;
     });
 
@@ -252,13 +260,9 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
   if (modelData.isCustom) return Promise.reject('Custom model not data');
 
   // Read file
-  const modelDefaulConfig = await pluginClient.model.list().then((res) => {
-    if (res.status === 200) {
-      return res.body.find((item) => item.model === model) as SystemModelItemType;
-    }
-
-    return Promise.reject('Can not get model config from plugin');
-  });
+  const modelDefaulConfig = await pluginClient
+    .listModels()
+    .then((models) => models.find((item) => item.model === model) as SystemModelItemType);
 
   return {
     ...modelDefaulConfig,
@@ -270,7 +274,7 @@ export const getSystemModelConfig = async (model: string): Promise<SystemModelIt
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async () => {
       try {
@@ -289,6 +293,7 @@ export const updatedReloadSystemModel = async () => {
   await loadSystemModels(true);
   // 2. 更新缓存（仅主节点触发）
   await updateFastGPTConfigBuffer();
+  await refreshVersionKey(SystemCacheKeyEnum.modelPermission, '*');
   // 3. 延迟1秒，等待其他节点刷新
   await delay(1000);
 };

@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import EditForm from '@/pageComponents/dashboard/evaluation/dimension/EditForm';
 import TestRun from '@/pageComponents/dashboard/evaluation/dimension/TestRun';
@@ -31,7 +31,7 @@ const DimensionEdit = () => {
   const dimensionId = router.query.id as string;
 
   // 获取维度数据的请求
-  const { runAsync: fetchDimensionData, loading: isFetching } = useRequest2(
+  const { runAsync: fetchDimensionData, loading: isFetching } = useRequest(
     async (id: string) => {
       const response = await getMetricDetail(id);
       return response;
@@ -91,7 +91,7 @@ const DimensionEdit = () => {
   }, []);
 
   // 更新维度的请求
-  const { runAsync: updateDimension, loading: isUpdating } = useRequest2(
+  const { runAsync: updateDimension, loading: isUpdating } = useRequest(
     async (data: EvaluationDimensionForm) => {
       if (!dimensionId) throw new Error('dimensionId is required');
 

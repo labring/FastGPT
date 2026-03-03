@@ -5,7 +5,6 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -13,30 +12,36 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
-import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
   intro?: string;
+  type: AppTypeEnum.folder | AppTypeEnum.toolFolder;
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId } = req.body;
+  const { name, intro, parentId, type } = req.body;
 
-  if (!name) {
-    Promise.reject(CommonErrEnum.missingParams);
+  if (!name || !type) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  if (type !== AppTypeEnum.folder && type !== AppTypeEnum.toolFolder) {
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // 凭证校验
   const { teamId, tmbId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  await checkTeamAppTypeLimit({ teamId, appCheckType: 'folder' });
 
   // Create app
   await mongoSessionRun(async (session) => {
@@ -47,42 +52,15 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       intro,
       teamId,
       tmbId,
-      type: AppTypeEnum.folder
+      type
     });
 
-    if (parentId) {
-      const parentClbsAndGroups = await getResourceClbsAndGroups({
-        teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-
-      await syncCollaborators({
-        resourceType: PerResourceTypeEnum.app,
-        teamId,
-        resourceId: app._id,
-        collaborators: parentClbsAndGroups,
-        session
-      });
-    } else {
-      // Create default permission
-      await MongoResourcePermission.create(
-        [
-          {
-            resourceType: PerResourceTypeEnum.app,
-            teamId,
-            resourceId: app._id,
-            tmbId,
-            permission: OwnerPermissionVal
-          }
-        ],
-        {
-          session,
-          ordered: true
-        }
-      );
-    }
+    await createResourceDefaultCollaborators({
+      tmbId,
+      session,
+      resource: app,
+      resourceType: PerResourceTypeEnum.app
+    });
   });
   (async () => {
     addAuditLog({

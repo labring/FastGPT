@@ -2,20 +2,20 @@ import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  WorkflowNodeEdgeContext,
-  WorkflowInitContext
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
 } from '../../../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
+import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 
-const handleSizeConnected = 16;
-const handleSizeConnecting = 30;
-const handleAddIconSize = 22;
+const handleSizeConnected = 24;
+const handleSizeConnecting = 32;
+const handleAddIconSize = 24;
 
 const sourceCommonStyle = {
   backgroundColor: 'white',
@@ -27,7 +27,8 @@ const handleConnectedStyle = {
   borderWidth: '3px',
   borderColor: '#94B5FF',
   width: handleSizeConnected,
-  height: handleSizeConnected
+  height: handleSizeConnected,
+  zIndex: 15
 };
 
 const handleHighLightStyle = {
@@ -38,7 +39,8 @@ const handleHighLightStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   width: handleSizeConnecting,
-  height: handleSizeConnecting
+  height: handleSizeConnecting,
+  zIndex: 15
 };
 
 type Props = {
@@ -56,25 +58,29 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 }: Props) {
   const { t } = useTranslation();
 
-  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const node = useContextSelector(WorkflowInitContext, (v) =>
-    v.nodes.find((node) => node.data.nodeId === nodeId)
-  );
-  const hoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
 
-  const connected = edges.some((edge) => edge.sourceHandle === handleId);
-  const nodeFolded = node?.data.isFolded && edges.some((edge) => edge.source === nodeId);
+  const edgesData = useContextSelector(WorkflowBufferDataContext, (v) => {
+    return {
+      connected: v.edges.some((edge) => edge.sourceHandle === handleId)
+    };
+  });
+  const connected = edgesData.connected;
+
   const nodeIsHover = hoverNodeId === nodeId;
   const active = useMemo(
-    () => nodeIsHover || node?.selected || connectingEdge?.handleId === handleId,
-    [nodeIsHover, node?.selected, connectingEdge, handleId]
+    () => nodeIsHover || selected || connectingEdge?.handleId === handleId,
+    [nodeIsHover, selected, connectingEdge, handleId]
   );
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
     if (position === Position.Right) {
-      return `${active ? translate[0] + 6 : translate[0]}px, -50%`;
+      const offset = active ? 8 : 5;
+      return `${translate[0] + offset}px, -50%`;
     }
   }, [active, position, translate]);
 
@@ -89,7 +95,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       };
     }
 
-    if (connected || nodeFolded) {
+    if (connected) {
       return {
         styles: {
           ...handleConnectedStyle,
@@ -105,7 +111,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       },
       showAddIcon: false
     };
-  }, [active, connected, nodeFolded, translateStr]);
+  }, [active, connected, translateStr]);
 
   if (!node) return null;
   if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
@@ -148,7 +154,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 });
 
 export const MyTargetHandle = React.memo(function MyTargetHandle({
-  nodeId,
+  nodeId: _nodeId,
   handleId,
   position,
   translate,
@@ -156,16 +162,17 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
-  const connected = useContextSelector(WorkflowNodeEdgeContext, (v) =>
+  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
 
     if (position === Position.Left) {
-      return `${connectingEdge ? translate[0] - 6 : translate[0]}px, -50%`;
+      const offset = connectingEdge ? -8 : -5;
+      return `${translate[0] + offset}px, -50%`;
     }
   }, [connectingEdge, position, translate]);
 
@@ -190,7 +197,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
       };
     }
     return {
-      visibility: 'hidden' as const
+      visibility: 'hidden' as const,
+      zIndex: 15
     };
   }, [connected, connectingEdge, showHandle, translateStr]);
 

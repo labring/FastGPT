@@ -28,7 +28,7 @@ import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/datas
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import ContentIndexCard from './ContentIndexCard';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
   DatasetDataItemType,
   DatasetDataIndexItemType
@@ -127,7 +127,7 @@ const RefinedDataCard = () => {
   }, [activeDataDetail?.indexes]);
 
   // Get collection info
-  const { data: collection, runAsync: reloadCollection } = useRequest2(
+  const { data: collection, runAsync: reloadCollection } = useRequest(
     () => getDatasetCollectionById(collectionId),
     {
       refreshDeps: [collectionId],
@@ -143,7 +143,7 @@ const RefinedDataCard = () => {
   );
 
   // Fetch active card detail
-  const { runAsync: fetchActiveDataDetail, loading: isLoadingDetail } = useRequest2(
+  const { runAsync: fetchActiveDataDetail, loading: isLoadingDetail } = useRequest(
     async (dataId: string) => {
       const detail = await getDatasetDataItemById(dataId);
       setActiveDataDetail(detail);
@@ -188,7 +188,7 @@ const RefinedDataCard = () => {
   });
 
   // Handle save new index
-  const { runAsync: saveNewIndex, loading: isSavingNewIndex } = useRequest2(
+  const { runAsync: saveNewIndex, loading: isSavingNewIndex } = useRequest(
     async (content: string) => {
       if (!activeDataDetail || !content.trim()) return;
 
@@ -373,7 +373,7 @@ const RefinedDataCard = () => {
   });
 
   // Handle edit index
-  const { runAsync: editIndex, loading: isEditingIndex } = useRequest2(
+  const { runAsync: editIndex, loading: isEditingIndex } = useRequest(
     async (index: DatasetDataIndexItemType, newContent: string) => {
       if (!activeDataDetail || !newContent.trim()) return;
 
@@ -407,7 +407,7 @@ const RefinedDataCard = () => {
   });
 
   // Handle delete index
-  const { runAsync: deleteIndex, loading: isDeletingIndex } = useRequest2(
+  const { runAsync: deleteIndex, loading: isDeletingIndex } = useRequest(
     async (index: DatasetDataIndexItemType) => {
       if (!activeDataDetail) return;
 

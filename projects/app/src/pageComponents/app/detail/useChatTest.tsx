@@ -15,7 +15,7 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -25,7 +25,7 @@ const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/
 export const useChatTest = ({
   nodes,
   edges,
-  chatConfig,
+  chatConfig = {},
   isReady
 }: {
   nodes: StoreNodeItemType[];
@@ -72,8 +72,11 @@ export const useChatTest = ({
   );
 
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
+
+  const variableList = useMemo(() => chatConfig.variables, [chatConfig.variables]);
 
   const pluginInputs = useMemo(() => {
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
@@ -104,14 +107,13 @@ export const useChatTest = ({
   ]);
 
   // init chat data
-  const { loading } = useRequest2(
+  const { loading } = useRequest(
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });
-
       resetVariables({
         variables: res.variables,
-        variableList: res.app?.chatConfig?.variables
+        variableList: variableList ?? res.app?.chatConfig?.variables
       });
     },
     {
@@ -125,26 +127,41 @@ export const useChatTest = ({
     setChatId();
   }, [clearChatRecords, setChatId]);
 
-  const CustomChatContainer = useMemoizedFn(() =>
-    appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5} pb={16}>
-        <PluginRunBox
+  // 新增变量时候，自动加入默认值
+  useEffect(() => {
+    if (variableList) {
+      variableList.forEach((item) => {
+        const val = variablesForm.getValues(`variables.${item.key}`);
+        if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
+          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variableList]);
+
+  const CustomChatContainer = useCallback(
+    () =>
+      appDetail.type === AppTypeEnum.workflowTool ? (
+        <Box p={5} pb={16}>
+          <PluginRunBox
+            appId={appId}
+            chatId={chatId}
+            onNewChat={restartChat}
+            onStartChat={startChat}
+          />
+        </Box>
+      ) : (
+        <ChatBox
+          isReady={isReady}
           appId={appId}
           chatId={chatId}
-          onNewChat={restartChat}
+          showMarkIcon
+          chatType={ChatTypeEnum.test}
           onStartChat={startChat}
         />
-      </Box>
-    ) : (
-      <ChatBox
-        isReady={isReady}
-        appId={appId}
-        chatId={chatId}
-        showMarkIcon
-        chatType={ChatTypeEnum.chat}
-        onStartChat={startChat}
-      />
-    )
+      ),
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
   );
 
   return {

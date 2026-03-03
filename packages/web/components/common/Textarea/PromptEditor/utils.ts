@@ -6,12 +6,21 @@
  *
  */
 
-import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
-import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
+import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
+import type {
+  ListItemEditorNode,
+  ListEditorNode,
+  ParagraphEditorNode,
+  EditorState,
+  ListItemInfo,
+  ChildEditorNode
+} from './type';
+import { TabStr } from './constants';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
   editor: LexicalEditor,
@@ -175,31 +184,182 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
   return [removePlainTextTransform, removeReverseNodeTransform];
 }
 
-export function textToEditorState(text = '') {
-  const paragraph = typeof text === 'string' ? text?.split('\n') : [''];
+// text to editor state
+const parseTextLine = (line: string) => {
+  const trimmed = line.trimStart();
+  const leadingSpaces = line.length - trimmed.length;
+  const indentLevel = Math.floor(leadingSpaces / TabStr.length);
+
+  const bulletMatch = trimmed.match(/^- (.*)$/);
+  if (bulletMatch) {
+    return { type: 'bullet', text: bulletMatch[1], indent: indentLevel };
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)\. (.*)$/);
+  if (numberMatch) {
+    return {
+      type: 'number',
+      text: numberMatch[2],
+      indent: indentLevel,
+      numberValue: parseInt(numberMatch[1])
+    };
+  }
+
+  // For paragraphs, preserve original leading spaces in text (don't use indent)
+  return { type: 'paragraph', text: line, indent: 0 };
+};
+
+const buildListStructure = (items: ListItemInfo[]) => {
+  const result: ListEditorNode[] = [];
+
+  let i = 0;
+  while (i < items.length) {
+    const currentListType = items[i].type;
+    const currentIndent = items[i].indent;
+    const currentListItems: ListItemEditorNode[] = [];
+
+    // Collect consecutive items of the same type
+    while (i < items.length && items[i].type === currentListType) {
+      const listItem: ListItemEditorNode = {
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: items[i].text,
+            type: 'text' as const,
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'listitem' as const,
+        version: 1,
+        value: items[i].numberValue || 1
+      };
+
+      // Collect nested items
+      const nestedItems: ListItemInfo[] = [];
+      let j = i + 1;
+      while (j < items.length && items[j].indent > currentIndent) {
+        nestedItems.push(items[j]);
+        j++;
+      }
+
+      // recursively build nested lists and add them to the current item's children
+      if (nestedItems.length > 0) {
+        const nestedLists = buildListStructure(nestedItems);
+        listItem.children.push(...nestedLists);
+      }
+
+      currentListItems.push(listItem);
+      i = j;
+    }
+
+    result.push({
+      children: currentListItems,
+      direction: 'ltr',
+      format: '',
+      indent: 0,
+      type: 'list' as const,
+      version: 1,
+      listType: currentListType,
+      start: 1,
+      tag: currentListType === 'bullet' ? 'ul' : ('ol' as const)
+    });
+  }
+
+  return result;
+};
+
+export const textToEditorState = (text = '', isRichText = false) => {
+  const lines = text.split('\n');
+  const children: Array<ParagraphEditorNode | ListEditorNode> = [];
+
+  if (!isRichText) {
+    return JSON.stringify({
+      root: {
+        children: lines.map((p) => {
+          return {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: 'normal',
+                style: '',
+                text: p,
+                type: 'text',
+                version: 1
+              }
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1
+          };
+        }),
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1
+      }
+    });
+  }
+
+  let i = 0;
+  while (i < lines.length) {
+    const parsed = parseTextLine(lines[i]);
+
+    if (parsed.type === 'paragraph') {
+      children.push({
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: parsed.text,
+            type: 'text',
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0, // Always use 0 for paragraphs, spaces are in text content
+        type: 'paragraph',
+        version: 1
+      });
+      i++;
+    } else {
+      const listItems: ListItemInfo[] = [];
+
+      while (i < lines.length) {
+        const currentParsed = parseTextLine(lines[i]);
+        if (currentParsed.type === 'paragraph') {
+          break;
+        }
+        listItems.push({
+          type: currentParsed.type as 'bullet' | 'number',
+          text: currentParsed.text,
+          indent: currentParsed.indent,
+          numberValue: currentParsed.numberValue
+        });
+        i++;
+      }
+
+      // build nested lists and add to children
+      const lists = buildListStructure(listItems) as ListEditorNode[];
+      children.push(...lists);
+    }
+  }
 
   return JSON.stringify({
     root: {
-      children: paragraph.map((p) => {
-        return {
-          children: [
-            {
-              detail: 0,
-              format: 0,
-              mode: 'normal',
-              style: '',
-              text: p,
-              type: 'text',
-              version: 1
-            }
-          ],
-          direction: 'ltr',
-          format: '',
-          indent: 0,
-          type: 'paragraph',
-          version: 1
-        };
-      }),
+      children: children,
       direction: 'ltr',
       format: '',
       indent: 0,
@@ -207,57 +367,9 @@ export function textToEditorState(text = '') {
       version: 1
     }
   });
-}
-
-export function editorStateToText(editor: LexicalEditor) {
-  const editorStateTextString: string[] = [];
-  const paragraphs = editor.getEditorState().toJSON().root.children;
-  paragraphs.forEach((paragraph: any) => {
-    const children = paragraph.children;
-    const paragraphText: string[] = [];
-    children.forEach((child: any) => {
-      if (child.type === 'linebreak') {
-        paragraphText.push(`
-`);
-      } else if (child.text) {
-        paragraphText.push(child.text);
-      } else if (child.type === 'variableLabel') {
-        paragraphText.push(child.variableKey);
-      } else if (child.type === 'Variable') {
-        paragraphText.push(child.variableKey);
-      }
-    });
-    editorStateTextString.push(paragraphText.join(''));
-  });
-  return editorStateTextString.join(`
-`);
-}
-
-const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
-export const getVars = (value: string) => {
-  if (!value) return [];
-  // .filter((item) => {
-  //   return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
-  // })
-  const keys =
-    value
-      .match(varRegex)
-      ?.map((item) => {
-        return item.replace('{{', '').replace('}}', '');
-      })
-      .filter((key) => key.length <= 10) || [];
-  const keyObj: Record<string, boolean> = {};
-  // remove duplicate keys
-  const res: string[] = [];
-  keys.forEach((key) => {
-    if (keyObj[key]) return;
-
-    keyObj[key] = true;
-    res.push(key);
-  });
-  return res;
 };
 
+// menu text match
 export type MenuTextMatch = {
   leadOffset: number;
   matchingString: string;
@@ -292,3 +404,166 @@ export function useBasicTypeaheadTriggerMatch(
     [maxLength, minLength, trigger]
   );
 }
+
+// editor state to text
+const processListItem = ({
+  listItem,
+  listType,
+  index,
+  indentLevel
+}: {
+  listItem: ListItemEditorNode;
+  listType: 'bullet' | 'number';
+  index: number;
+  indentLevel: number;
+}) => {
+  const results = [];
+
+  const itemText: string[] = [];
+  const nestedLists: ListEditorNode[] = [];
+
+  // Separate text and nested lists
+  listItem.children.forEach((child) => {
+    if (child.type === 'linebreak') {
+      itemText.push('\n');
+    } else if (child.type === 'text') {
+      itemText.push(child.text);
+    } else if (child.type === 'tab') {
+      itemText.push(TabStr);
+    } else if (child.type === 'variableLabel' || child.type === 'Variable') {
+      itemText.push(child.variableKey);
+    } else if (child.type === 'list') {
+      nestedLists.push(child);
+    }
+  });
+
+  // Add prefix and indent (using TabStr for consistency)
+  const itemTextString = itemText.join('');
+  const indent = TabStr.repeat(indentLevel);
+  const prefix = listType === 'bullet' ? '- ' : `${index + 1}. `;
+  results.push(indent + prefix + itemTextString);
+
+  // Handle nested lists
+  nestedLists.forEach((nestedList) => {
+    const nestedResults = processList({
+      list: nestedList,
+      indentLevel: indentLevel + 1
+    });
+    results.push(...nestedResults);
+  });
+
+  return results;
+};
+const processList = ({ list, indentLevel = 0 }: { list: ListEditorNode; indentLevel?: number }) => {
+  const results: string[] = [];
+
+  list.children.forEach((listItem, index: number) => {
+    if (listItem.type === 'listitem') {
+      const itemResults = processListItem({
+        listItem,
+        listType: list.listType,
+        index,
+        indentLevel
+      });
+      results.push(...itemResults);
+    }
+  });
+
+  return results;
+};
+export const editorStateToText = (editor: LexicalEditor) => {
+  const editorStateTextString: string[] = [];
+  const editorState = editor.getEditorState().toJSON() as EditorState;
+  const paragraphs = editorState.root.children;
+
+  const extractText = (node: ChildEditorNode): string => {
+    if (!node) return '';
+
+    // Handle line break nodes
+    if (node.type === 'linebreak') {
+      return '\n';
+    }
+
+    // Handle tab nodes
+    if (node.type === 'tab') {
+      return TabStr;
+    }
+
+    // Handle text nodes
+    if (node.type === 'text') {
+      return node.text || '';
+    }
+
+    // Handle custom variable nodes
+    if (node.type === 'variableLabel' || node.type === 'Variable') {
+      return node.variableKey || '';
+    }
+
+    // Handle paragraph nodes - recursively process children
+    if (node.type === 'paragraph') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Handle list item nodes - recursively process children (excluding nested lists)
+    if (node.type === 'listitem') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      // Filter out nested list nodes as they are handled separately
+      return node.children
+        .filter((child) => child.type !== 'list')
+        .map(extractText)
+        .join('');
+    }
+
+    // Handle list nodes - recursively process children
+    if (node.type === 'list') {
+      if (!node.children || node.children.length === 0) {
+        return '';
+      }
+      return node.children.map(extractText).join('');
+    }
+
+    // Unknown node type - return the raw text content if available
+    console.warn('Unknown node type in extractText:', (node as any).type, node);
+
+    // Try to extract text content from unknown node types
+    if ('text' in node && typeof (node as any).text === 'string') {
+      return (node as any).text;
+    }
+
+    // Try to recursively extract from children if present
+    if ('children' in node && Array.isArray((node as any).children)) {
+      return (node as any).children.map(extractText).join('');
+    }
+
+    // Fallback to stringifying the node content
+    return JSON.stringify(node);
+  };
+
+  paragraphs.forEach((paragraph) => {
+    if (paragraph.type === 'list') {
+      const listResults = processList({ list: paragraph });
+      editorStateTextString.push(...listResults);
+    } else if (paragraph.type === 'paragraph') {
+      const children = paragraph.children;
+      const paragraphText: string[] = [];
+
+      // Don't add indent prefix for paragraphs, spaces are already in text content
+      children.forEach((child) => {
+        const val = extractText(child);
+        paragraphText.push(val);
+      });
+
+      const finalText = paragraphText.join('');
+      editorStateTextString.push(finalText);
+    } else {
+      const text = extractText(paragraph);
+      editorStateTextString.push(text);
+    }
+  });
+  return editorStateTextString.join('\n');
+};

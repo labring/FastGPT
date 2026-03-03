@@ -21,7 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import ManageDimension, { type Dimension } from './ManageDimension';
@@ -195,7 +195,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   );
 
   // 获取应用最近使用的数据集
-  const { runAsync: getLastUsedDataset } = useRequest2(
+  const { runAsync: getLastUsedDataset } = useRequest(
     async (appId: string) => {
       if (!appId) return null;
       const result = await getEvaluationList({
@@ -211,7 +211,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   );
 
   // 获取应用版本详情并分析节点类型
-  const { runAsync: getAppVersionDetailInfo } = useRequest2(
+  const { runAsync: getAppVersionDetailInfo } = useRequest(
     async ({ appId, versionId }: { appId: string; versionId: string }) => {
       if (!appId || !versionId) return null;
       return await getAppVersionDetail(versionId, appId);
@@ -273,7 +273,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     setIsManageDimensionOpen(true);
   }, []);
 
-  const { runAsync: createTask, loading: isCreating } = useRequest2(
+  const { runAsync: createTask, loading: isCreating } = useRequest(
     async (data: TaskFormData) => {
       const target: EvalTarget = {
         type: 'workflow',
@@ -394,7 +394,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
     data: evaluationDatasetList,
     loading: isLoadingDatasets,
     runAsync: fetchDatasets
-  } = useRequest2(getEvaluationDatasetListV2);
+  } = useRequest(getEvaluationDatasetListV2);
 
   React.useEffect(() => {
     fetchDatasets({});

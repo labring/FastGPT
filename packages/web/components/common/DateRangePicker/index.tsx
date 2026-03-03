@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Card, Flex, useOutsideClick, Button } from '@chakra-ui/react';
+import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { putDatasetDataById, getDatasetDataItemById } from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -40,7 +40,7 @@ const EditContentModal = ({
   const isFAQ = trainingType === DatasetCollectionDataProcessModeEnum.template;
 
   // Fetch current data detail to get indexes
-  const { data: currentData, runAsync: fetchCurrentData } = useRequest2(
+  const { data: currentData, runAsync: fetchCurrentData } = useRequest(
     async () => {
       return await getDatasetDataItemById(dataId);
     },
@@ -51,7 +51,7 @@ const EditContentModal = ({
   );
 
   // Update data
-  const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
+  const { runAsync: onUpdateData, loading: isUpdating } = useRequest(
     async (e: EditDataType) => {
       if (!currentData) {
         throw new Error(t('common:error.unKnow'));

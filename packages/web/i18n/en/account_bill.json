@@ -58,6 +58,7 @@
   "unit_code": "Unified social credit code",
   "unit_code_void": "Invalid unified social credit code.",
   "update": "Update",
+  "wecom_not_pay_tip": "Not paid, payment address will be redirected soon",
   "yes": "Yes",
   "yuan": "{{amount}} CNY"
 }

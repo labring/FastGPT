@@ -1,5 +1,5 @@
 import LogChart from '@/pageComponents/app/detail/Logs/LogChart';
-import { ChatSettingContext } from '@/web/core/chat/context/chatSettingContext';
+import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { Flex } from '@chakra-ui/react';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
@@ -13,7 +13,7 @@ type Props = {
 };
 
 const LogDetails = ({ Header }: Props) => {
-  const appId = useContextSelector(ChatSettingContext, (v) => v.chatSettings?.appId || '');
+  const appId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: new Date(addDays(new Date(), -6).setHours(0, 0, 0, 0)),
@@ -28,18 +28,11 @@ const LogDetails = ({ Header }: Props) => {
   } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
 
   return (
-    <Flex
-      py={5}
-      pl={6}
-      pr={[0, 6]}
-      gap={'13px'}
-      flexDir="column"
-      mt={['46px', 0]}
-      h={['calc(100vh - 46px)', 'full']}
-    >
+    <Flex gap={'13px'} flexDir="column" h={['calc(100vh - 69px)', 'full']}>
       <Header />
 
       <LogChart
+        px={[2, 0]}
         showSourceSelector={false}
         appId={appId}
         chatSources={chatSources}

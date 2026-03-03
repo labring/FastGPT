@@ -7,10 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import FolderPath from '@/components/common/folder/Path';
-import { getTrainingQueueLen } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
@@ -34,64 +31,6 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     DatasetPageContext,
     (v) => v
   );
-
-  // global queue
-  const {
-    data: {
-      vectorTrainingCount = 0,
-      qaTrainingCount = 0,
-      autoTrainingCount = 0,
-      imageTrainingCount = 0
-    } = {}
-  } = useRequest2(getTrainingQueueLen, {
-    manual: false,
-    retryInterval: 10000
-  });
-  const { vectorTrainingMap, qaTrainingMap, autoTrainingMap, imageTrainingMap } = useMemo(() => {
-    const vectorTrainingMap = (() => {
-      if (vectorTrainingCount < 1000)
-        return {
-          colorSchema: 'green',
-          tip: t('common:core.dataset.training.Leisure')
-        };
-      if (vectorTrainingCount < 20000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('common:core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('common:core.dataset.training.Full')
-      };
-    })();
-
-    const countLLMMap = (count: number) => {
-      if (count < 100)
-        return {
-          colorSchema: 'green',
-          tip: t('common:core.dataset.training.Leisure')
-        };
-      if (count < 1000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('common:core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('common:core.dataset.training.Full')
-      };
-    };
-    const qaTrainingMap = countLLMMap(qaTrainingCount);
-    const autoTrainingMap = countLLMMap(autoTrainingCount);
-    const imageTrainingMap = countLLMMap(imageTrainingCount);
-
-    return {
-      vectorTrainingMap,
-      qaTrainingMap,
-      autoTrainingMap,
-      imageTrainingMap
-    };
-  }, [qaTrainingCount, autoTrainingCount, imageTrainingCount, vectorTrainingCount, t]);
 
   const tabList = [
     {
@@ -138,7 +77,41 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           borderColor={'myGray.200'}
           position={'relative'}
         >
-          {showNavTab && (
+          {currentTab === TabEnum.dataCard ? (
+            <>
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                py={'0.38rem'}
+                px={2}
+                ml={0}
+                borderRadius={'md'}
+                _hover={{ bg: 'myGray.05' }}
+                fontSize={'sm'}
+                fontWeight={500}
+                onClick={() => {
+                  router.back();
+                }}
+              >
+                <IconButton
+                  p={2}
+                  mr={2}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  boxShadow={'1'}
+                  icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
+                  bg={'white'}
+                  size={'xsSquare'}
+                  borderRadius={'50%'}
+                  aria-label={''}
+                  _hover={'none'}
+                />
+                <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
+                  {datasetDetail.name}
+                </Box>
+              </Flex>
+            </>
+          ) : (
             <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
               <FolderPath
                 paths={paths}

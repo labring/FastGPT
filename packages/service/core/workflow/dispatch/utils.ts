@@ -1,7 +1,11 @@
+import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type.d';
+import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { encryptSecret } from '../../../common/secret/aes256gcm';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
 import {
   type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
@@ -15,13 +19,16 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { addLog } from '../../../common/system/log';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -137,11 +144,18 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (
-  variables: Record<string, any>,
-  removeObj: Record<string, string> = {}
-) => {
+export const runtimeSystemVar2StoreType = ({
+  variables,
+  removeObj = {},
+  userVariablesConfigs = []
+}: {
+  variables: Record<string, any>;
+  removeObj?: Record<string, string>;
+  userVariablesConfigs?: VariableItemType[];
+}) => {
   const copyVariables = { ...variables };
+
+  // Delete system variables
   delete copyVariables.userId;
   delete copyVariables.appId;
   delete copyVariables.chatId;
@@ -149,13 +163,55 @@ export const removeSystemVariable = (
   delete copyVariables.histories;
   delete copyVariables.cTime;
 
-  // delete external provider workflow variables
+  // Delete special variables
   Object.keys(removeObj).forEach((key) => {
     delete copyVariables[key];
   });
 
+  // Encrypt password variables
+  userVariablesConfigs.forEach((item) => {
+    const val = copyVariables[item.key];
+    if (item.type === VariableInputEnum.password) {
+      if (typeof val === 'string') {
+        copyVariables[item.key] = {
+          value: '',
+          secret: encryptSecret(val)
+        };
+      }
+    }
+    // Handle file variables
+    else if (item.type === VariableInputEnum.file) {
+      const currentValue = copyVariables[item.key];
+
+      copyVariables[item.key] = currentValue
+        .map((url: string) => {
+          try {
+            const urlObj = new URL(url);
+            // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
+            const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
+            const filename = path.basename(key) || 'file';
+            const extname = path.extname(key).toLowerCase(); // includes the dot, e.g., ".jpg"
+
+            // Check if it's an image type
+            const isImage = extname && imageFileType.includes(extname);
+
+            return {
+              id: path.basename(key, path.extname(key)), // filename without extension
+              key,
+              name: filename,
+              type: isImage ? ChatFileTypeEnum.image : ChatFileTypeEnum.file
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((file: any) => file !== null);
+    }
+  });
+
   return copyVariables;
 };
+
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
     userId: variables.userId,
@@ -204,7 +260,8 @@ export const rewriteRuntimeWorkFlow = async ({
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs[0].value;
+    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
     const pushEdges = (nodeId: string) => {
@@ -234,17 +291,38 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      for (const tool of toolList) {
+      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
           avatar: toolSetNode.avatar,
           tool,
           // New ?? Old
-          parentId: mcpToolsetVal.toolId ?? toolSetNode.pluginId
+          parentId
+        });
+        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
+
+        nodes.push({
+          ...newToolNode,
+          name: `${toolSetNode.name}/${tool.name}`
+        });
+        pushEdges(newToolNode.nodeId);
+      });
+    } else if (httpToolsetVal) {
+      const parentId = toolSetNode.pluginId || '';
+      httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
+        const newToolNode = getHTTPToolRuntimeNode({
+          tool: {
+            ...tool,
+            name: `${toolSetNode.name}/${tool.name}`
+          },
+          nodeId: `${parentId}${index}`,
+          avatar: toolSetNode.avatar,
+          parentId
         });
 
-        nodes.push({ ...newToolNode, name: `${toolSetNode.name}/${tool.name}` });
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
-      }
+      });
     }
   }
 
@@ -264,22 +342,34 @@ export const rewriteRuntimeWorkFlow = async ({
 export const getNodeErrResponse = ({
   error,
   customErr,
-  customNodeResponse
+  responseData,
+  nodeDispatchUsages,
+  runTimes,
+  newVariables,
+  system_memories
 }: {
   error: any;
   customErr?: Record<string, any>;
-  customNodeResponse?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
+  [DispatchNodeResponseKeyEnum.runTimes]?: number;
+  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
+  [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
   const errorText = getErrText(error);
 
   return {
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: nodeDispatchUsages,
+    [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.memories]: system_memories,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,
       ...(typeof customErr === 'object' ? customErr : {})
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       errorText,
-      ...(typeof customNodeResponse === 'object' ? customNodeResponse : {})
+      ...(typeof responseData === 'object' ? responseData : {})
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
       error: errorText,

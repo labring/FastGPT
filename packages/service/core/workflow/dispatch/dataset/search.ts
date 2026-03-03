@@ -1,7 +1,4 @@
-import {
-  type DispatchNodeResponseType,
-  type DispatchNodeResultType
-} from '@fastgpt/global/core/workflow/runtime/type.d';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -45,7 +42,6 @@ import { MongoDatasetCollection } from '../../../dataset/collection/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { addLog } from '../../../../common/system/log';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
@@ -74,7 +70,7 @@ function getFaqAnswerMode(
 }
 
 type DatasetSearchProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.userChatInput]?: string;
@@ -191,7 +187,7 @@ export async function dispatchDatasetSearch(
     const useVectorModelDataset = datasets.find(
       (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
-    // get vector
+    // Get vector model
     const vectorModel = useVectorModelDataset
       ? getEmbeddingModel(
           (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
@@ -511,13 +507,12 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
-    // vector
+    // 1. Search vector
     if (vectorModel) {
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
           model: vectorModel!.name,
           inputTokens: embeddingTokens,
-          modelType: ModelTypeEnum.embedding
         });
       nodeDispatchUsages.push({
         totalPoints: embeddingTotalPoints,
@@ -526,99 +521,80 @@ export async function dispatchDatasetSearch(
         inputTokens: embeddingTokens
       });
     }
-    // Rerank
-    const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
-      model: rerankModelData?.model,
-      inputTokens: reRankInputTokens,
-      modelType: ModelTypeEnum.rerank
-    });
+    // 2. Rerank
     if (usingReRank) {
+      const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
+        formatModelChars2Points({
+          model: rerankModelData?.model,
+          inputTokens: reRankInputTokens
+        });
       nodeDispatchUsages.push({
         totalPoints: reRankTotalPoints,
-        moduleName: node.name,
+        moduleName: i18nT('account_usage:rerank'),
         model: reRankModelName,
         inputTokens: reRankInputTokens
       });
     }
-    // Query extension
-    (() => {
-      if (queryExtensionResult) {
+    // 3. Query extension
+    if (queryExtensionResult) {
+      const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+        model: queryExtensionResult.llmModel,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens
+      });
+      nodeDispatchUsages.push({
+        totalPoints: llmPoints,
+        moduleName: i18nT('common:core.module.template.Query extension'),
+        model: llmModelName,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens
+      });
+
+      const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
+        formatModelChars2Points({
+          model: queryExtensionResult.embeddingModel,
+          inputTokens: queryExtensionResult.embeddingTokens
+        });
+      nodeDispatchUsages.push({
+        totalPoints: embeddingPoints,
+        moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+        model: embeddingModelName,
+        inputTokens: queryExtensionResult.embeddingTokens,
+        outputTokens: 0
+      });
+    }
+    // 4. Deep search
+    if (deepSearchResult) {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: deepSearchResult.model,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens
+      });
+      nodeDispatchUsages.push({
+        totalPoints,
+        moduleName: i18nT('common:deep_rag_search'),
+        model: modelName,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens
+      });
+    }
+    // 5. SQL Generation (for database datasets)
+    if (sqlResult.length > 0) {
+      sqlResult.forEach((result) => {
         const { totalPoints, modelName } = formatModelChars2Points({
-          model: queryExtensionResult.model,
-          inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens,
-          modelType: ModelTypeEnum.llm
+          model: generateSqlModel!,
+          inputTokens: result.input_tokens,
+          outputTokens: result.output_tokens
         });
         nodeDispatchUsages.push({
           totalPoints,
-          moduleName: i18nT('common:core.module.template.Query extension'),
+          moduleName: i18nT('common:database_search'),
           model: modelName,
-          inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          inputTokens: result.input_tokens,
+          outputTokens: result.output_tokens
         });
-        return {
-          totalPoints
-        };
-      }
-      return {
-        totalPoints: 0
-      };
-    })();
-    // Deep search
-    (() => {
-      if (deepSearchResult) {
-        const { totalPoints, modelName } = formatModelChars2Points({
-          model: deepSearchResult.model,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens,
-          modelType: ModelTypeEnum.llm
-        });
-        nodeDispatchUsages.push({
-          totalPoints,
-          moduleName: i18nT('common:deep_rag_search'),
-          model: modelName,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens
-        });
-        return {
-          totalPoints
-        };
-      }
-      return {
-        totalPoints: 0
-      };
-    })();
-
-    // SQL Generation (for database datasets)
-    (() => {
-      if (sqlResult.length > 0) {
-        let totalSqlPoints = 0;
-        sqlResult.forEach((result) => {
-          const { totalPoints, modelName } = formatModelChars2Points({
-            model: generateSqlModel!,
-            inputTokens: result.input_tokens,
-            outputTokens: result.output_tokens,
-            modelType: ModelTypeEnum.llm
-          });
-          nodeDispatchUsages.push({
-            totalPoints,
-            moduleName: i18nT('common:database_search'),
-            model: modelName,
-            inputTokens: result.input_tokens,
-            outputTokens: result.output_tokens
-          });
-          totalSqlPoints += totalPoints;
-        });
-        return {
-          totalPoints: totalSqlPoints
-        };
-      }
-      return {
-        totalPoints: 0
-      };
-    })();
-    // 校正数据处理已移到 defaultSearchDatasetData 中，在问题优化之后执行
-
+      });
+    }
     const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
 
     addLog.debug('Dataset Search - Final Statistics', {
@@ -653,80 +629,81 @@ export async function dispatchDatasetSearch(
       }))
     });
 
-    const responseData: DispatchNodeResponseType & { totalPoints: number } = {
-      totalPoints,
-      query: userChatInput,
-      embeddingModel: vectorModel?.name,
-      embeddingTokens,
-      similarity: usingSimilarityFilter ? similarity : undefined,
-      limit,
-      searchMode,
-      embeddingWeight:
-        searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
-      // Rerank
-      ...(searchUsingReRank && {
-        rerankModel: rerankModelData?.name,
-        rerankMethod: rerankMethod,
-        rerankWeight: rerankWeight,
-        reRankInputTokens
-      }),
-      // SQL Result (for database datasets) - use first result or create summary
-      sqlResult: sqlResult,
-      searchUsingReRank,
-      // Results
-      quoteList: searchRes,
-      queryExtensionResult,
-      deepSearchResult,
-      // 新增：重排耗时（仅assistant场景）
-      ...(rerankTime !== undefined && { rerankTime }),
-      // 新增：检索总耗时（仅assistant场景）
-      ...(retrievalTime !== undefined && { retrievalTime }),
-      // 新增：SQL数据库检索耗时（仅assistant场景）
-      ...(sqlRetrievalTime !== undefined && { sqlRetrievalTime }),
-      // 新增：检索结果（仅assistant场景）
-      ...(isAssistant && retrievalResults && { retrievalResults }),
-      // 新增：检索类型（仅correction/faq命中时有值）
-      ...(retrievalType && { retrievalType }),
-      // 校正数据搜索结果
-      ...(correctionData && {
-        correctSearchResult: [
-          {
-            correctionId: correctionData.correctionId,
-            question: correctionData.question,
-            correctedAnswer: correctionData.correctedAnswer,
-            similarity: correctionData.similarity
-          }
-        ]
-      }),
-      // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
-      ...(rerankError && { rerankError })
-    };
-
     return {
       data: {
         quoteQA: searchRes
       },
-      [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
-      ...((correctionData || faqAnswer) && {
-        [DispatchNodeResponseKeyEnum.newVariables]: {
-          // 设置全局变量 correct_mapping_answer
-          ...(correctionData && { hTRJXdb1: correctionData.correctedAnswer }),
-          // 设置全局变量 faqAnswer
-          ...(faqAnswer && { udQRlgfO: faqAnswer })
-        }
-      }),
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints,
+        query: userChatInput,
+        embeddingModel: vectorModel?.name,
+        embeddingTokens,
+        similarity: usingSimilarityFilter ? similarity : undefined,
+        limit,
+        searchMode,
+        embeddingWeight:
+          searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
+        // Rerank
+        ...(searchUsingReRank && {
+          rerankModel: rerankModelData?.name,
+          rerankMethod: rerankMethod,
+          rerankWeight: rerankWeight,
+          reRankInputTokens
+        }),
+        // SQL Result (for database datasets) - use first result or create summary
+        sqlResult: sqlResult,
+        searchUsingReRank,
+        queryExtensionResult: queryExtensionResult
+          ? {
+              model: queryExtensionResult.llmModel,
+              inputTokens: queryExtensionResult.inputTokens,
+              outputTokens: queryExtensionResult.outputTokens,
+              query: queryExtensionResult.query
+            }
+          : undefined,
+        deepSearchResult,
+        // Results
+        quoteList: searchRes,
+        // 新增：重排耗时（仅assistant场景）
+        ...(rerankTime !== undefined && { rerankTime }),
+        // 新增：检索总耗时（仅assistant场景）
+        ...(retrievalTime !== undefined && { retrievalTime }),
+        // 新增：SQL数据库检索耗时（仅assistant场景）
+        ...(sqlRetrievalTime !== undefined && { sqlRetrievalTime }),
+        // 新增：检索结果（仅assistant场景）
+        ...(isAssistant && retrievalResults && { retrievalResults }),
+        // 新增：检索类型（仅correction/faq命中时有值）
+        ...(retrievalType && { retrievalType }),
+        // 校正数据搜索结果
+        ...(correctionData && {
+          correctSearchResult: [
+            {
+              correctionId: correctionData.correctionId,
+              question: correctionData.question,
+              correctedAnswer: correctionData.correctedAnswer,
+              similarity: correctionData.similarity
+            }
+          ]
+        }),
+        // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
+        ...(rerankError && { rerankError })
+      },
       nodeDispatchUsages,
-      [DispatchNodeResponseKeyEnum.toolResponses]: {
-        prompt: getDatasetSearchToolResponsePrompt(),
-        cites: searchRes.map((item: SearchDataResponseItemType) => ({
-          id: item.id,
-          sourceName: item.sourceName,
-          updateTime: item.updateTime,
-          content: `${item.q}\n${item.a}`.trim()
-        }))
-      }
+      [DispatchNodeResponseKeyEnum.toolResponses]:
+        searchRes.length > 0
+          ? {
+              prompt: getDatasetSearchToolResponsePrompt(),
+              cites: searchRes.map((item: SearchDataResponseItemType) => ({
+                id: item.id,
+                sourceName: item.sourceName,
+                updateTime: item.updateTime,
+                content: `${item.q}\n${item.a}`.trim()
+              }))
+            }
+          : 'No results'
     };
   } catch (error) {
+    addLog.error(`[Dataset search] error`, error);
     return getNodeErrResponse({ error });
   }
 }

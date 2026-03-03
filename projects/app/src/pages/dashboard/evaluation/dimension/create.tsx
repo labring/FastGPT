@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EditForm from '@/pageComponents/dashboard/evaluation/dimension/EditForm';
 import TestRun from '@/pageComponents/dashboard/evaluation/dimension/TestRun';
 import type { EvaluationDimensionForm } from '@/pageComponents/dashboard/evaluation/dimension/EditForm';
@@ -43,7 +43,7 @@ const DimensionCreate = () => {
     setIsTestRunOpen(false);
   }, []);
 
-  const { runAsync: createMetric, loading: isCreating } = useRequest2(
+  const { runAsync: createMetric, loading: isCreating } = useRequest(
     async (data: EvaluationDimensionForm) => {
       await postCreateMetric({
         name: data.name,

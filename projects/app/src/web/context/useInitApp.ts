@@ -5,7 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
 import {
   setBdVId,
@@ -17,6 +17,7 @@ import {
   setUtmWorkflow
 } from '../support/marketing/utils';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import { setCouponCode } from '@/web/support/marketing/utils';
 
 type MarketingQueryParams = {
   hiId?: string;
@@ -29,6 +30,7 @@ type MarketingQueryParams = {
   utm_medium?: string;
   utm_content?: string;
   utm_workflow?: string;
+  couponCode?: string;
 };
 
 const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
@@ -40,7 +42,8 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'utm_source',
   'utm_medium',
   'utm_content',
-  'utm_workflow'
+  'utm_workflow',
+  'couponCode'
 ];
 
 export const useInitApp = () => {
@@ -55,7 +58,8 @@ export const useInitApp = () => {
     utm_source,
     utm_medium,
     utm_content,
-    utm_workflow
+    utm_workflow,
+    couponCode
   } = router.query as MarketingQueryParams;
 
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
@@ -125,7 +129,7 @@ export const useInitApp = () => {
     };
   });
 
-  useRequest2(initFetch, {
+  useRequest(initFetch, {
     refreshDeps: [userInfo?.username],
     manual: false,
     pollingInterval: 300000 // 5 minutes refresh
@@ -148,6 +152,10 @@ export const useInitApp = () => {
       setUtmParams(utmParams);
     }
     setFastGPTSem({ keyword: k, search, ...utmParams });
+
+    if (couponCode) {
+      setCouponCode(couponCode);
+    }
 
     const newPath = getPathWithoutMarketingParams();
     router.replace(newPath);

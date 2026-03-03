@@ -18,14 +18,13 @@ import {
   GridItem,
   type BoxProps
 } from '@chakra-ui/react';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { addDays } from 'date-fns';
 import { useTranslation } from 'next-i18next';
@@ -36,6 +35,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -49,8 +49,9 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
+  const { getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
@@ -76,7 +77,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const { data: channelList = [] } = useRequest2(
+  const { data: channelList = [] } = useRequest(
     async () => {
       const res = await getChannelList().then((res) =>
         res.map((item) => ({
@@ -97,13 +98,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
+  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
     manual: false
   });
   const modelList = useMemo(() => {
     const res = systemModelList
       .map((item) => {
-        const provider = getModelProvider(item.provider);
+        const provider = getModelProvider(item.provider, i18n.language);
 
         return {
           order: provider.order,
@@ -120,7 +121,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       },
       ...res
     ];
-  }, [systemModelList, t]);
+  }, [getModelProvider, i18n.language, systemModelList, t]);
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
@@ -143,7 +144,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
 
       const model = systemModelList.find((model) => model.model === item.model);
-      const provider = getModelProvider(model?.provider);
+      const provider = getModelProvider(model?.provider, i18n.language);
 
       return {
         ...item,
@@ -159,7 +160,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, systemModelList]);
+  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 
@@ -287,7 +288,7 @@ export default ChannelLog;
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
   const { t } = useTranslation();
-  const { data: detailData } = useRequest2(
+  const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
       try {

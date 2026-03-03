@@ -1,0 +1,147 @@
+name: Build fastgpt-marketplace images
+on:
+  workflow_dispatch:
+jobs:
+  build-fastgpt-marketplace-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+    steps:
+      # install env
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-marketplace-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-marketplace-buildx-
+
+      # login docker
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/marketplace/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=fastgpt-marketplace image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace,${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-marketplace-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs: build-fastgpt-marketplace-images
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-marketplace-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate random tag
+        id: tag
+        run: |
+          # Generate random hash tag (8 characters)
+          TAG=$(echo $RANDOM | md5sum | head -c 8)
+          echo "RANDOM_TAG=$TAG" >> $GITHUB_ENV
+          echo "Generated tag: $TAG"
+
+      - name: Set image name and tag
+        run: |
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace:${{ env.RANDOM_TAG }}" >> $GITHUB_ENV
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          echo "Pushing image with tag: ${{ env.RANDOM_TAG }}"
+          echo "Available digests:"
+          ls -la
+          echo ""
+
+          # Create manifest for GitHub Container Registry
+          echo "Creating manifest for GitHub: ${Git_Tag}"
+          docker buildx imagetools create -t ${Git_Tag} \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s ' *)
+          echo "✅ GitHub manifest created"
+          sleep 5
+
+          # Create manifest for Ali Cloud
+          echo "Creating manifest for Ali Cloud: ${Ali_Tag}"
+          docker buildx imagetools create -t ${Ali_Tag} \
+            $(printf '${{ secrets.ALI_IMAGE_NAME }}/fastgpt-marketplace@sha256:%s ' *)
+          echo "✅ Ali Cloud manifest created"
+
+          echo ""
+          echo "✅ All images pushed successfully:"
+          echo "  - ${{ env.Git_Tag }}"
+          echo "  - ${{ env.Ali_Tag }}"

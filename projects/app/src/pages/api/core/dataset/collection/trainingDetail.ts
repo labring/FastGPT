@@ -9,6 +9,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { Types } from '@fastgpt/service/common/mongo';
 
 type getTrainingDetailParams = {
   collectionId: string;
@@ -58,82 +59,65 @@ async function handler(
   });
 
   const match = {
-    teamId: collection.teamId,
-    datasetId: collection.datasetId,
-    collectionId: collection._id
+    teamId: new Types.ObjectId(collection.teamId),
+    datasetId: new Types.ObjectId(collection.datasetId),
+    collectionId: new Types.ObjectId(collection._id)
   };
 
   // Computed global queue
   const minId = (
-    await MongoDatasetTraining.findOne(
-      {
-        teamId: collection.teamId,
-        datasetId: collection.datasetId,
-        collectionId: collection._id
-      },
-      { sort: { _id: 1 }, select: '_id' },
-      readFromSecondary
-    ).lean()
+    await MongoDatasetTraining.findOne(match, { sort: { _id: 1 }, select: '_id' }).lean()
   )?._id;
 
   const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
     minId
-      ? MongoDatasetTraining.aggregate(
-          [
-            {
-              $match: {
-                _id: { $lt: minId },
-                retryCount: { $gt: 0 },
-                lockTime: { $lt: new Date('2050/1/1') }
-              }
-            },
-            {
-              $group: {
-                _id: '$mode',
-                count: { $sum: 1 }
-              }
+      ? MongoDatasetTraining.aggregate([
+          {
+            $match: {
+              _id: { $lt: new Types.ObjectId(minId) },
+              retryCount: { $gt: 0 },
+              lockTime: { $lt: new Date('2050/1/1') }
             }
-          ],
-          readFromSecondary
-        )
+          },
+          {
+            $group: {
+              _id: '$mode',
+              count: { $sum: 1 }
+            }
+          }
+        ])
       : Promise.resolve([]),
-    MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
-            ...match,
-            retryCount: { $gt: 0 },
-            lockTime: { $lt: new Date('2050/1/1') }
-          }
-        },
-        {
-          $group: {
-            _id: '$mode',
-            count: { $sum: 1 }
-          }
+    MongoDatasetTraining.aggregate([
+      {
+        $match: {
+          ...match,
+          retryCount: { $gt: 0 },
+          lockTime: { $lt: new Date('2050/1/1') }
         }
-      ],
-      readFromSecondary
-    ),
-    MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
-            ...match,
-            retryCount: { $lte: 0 },
-            errorMsg: { $exists: true }
-          }
-        },
-        {
-          $group: {
-            _id: '$mode',
-            count: { $sum: 1 }
-          }
+      },
+      {
+        $group: {
+          _id: '$mode',
+          count: { $sum: 1 }
         }
-      ],
-      readFromSecondary
-    ),
-    MongoDatasetData.countDocuments(match, readFromSecondary)
+      }
+    ]),
+    MongoDatasetTraining.aggregate([
+      {
+        $match: {
+          ...match,
+          // retryCount: { $lte: 0 },
+          errorMsg: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$mode',
+          count: { $sum: 1 }
+        }
+      }
+    ]),
+    MongoDatasetData.countDocuments(match)
   ])) as [
     { _id: TrainingModeEnum; count: number }[],
     { _id: TrainingModeEnum; count: number }[],

@@ -1,0 +1,66 @@
+{
+  "name": "@fastgpt-sdk/storage",
+  "private": false,
+  "version": "0.6.15",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "packageManager": "pnpm@9.15.9",
+  "description": "FastGPT SDK for object storage",
+  "author": "FastGPT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/labring/FastGPT.git",
+    "directory": "FastGPT/packages/storage"
+  },
+  "homepage": "https://github.com/labring/FastGPT",
+  "bugs": {
+    "url": "https://github.com/labring/FastGPT/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "keywords": [
+    "object-storage",
+    "storage",
+    "aws-s3",
+    "cos",
+    "minio",
+    "oss"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.948.0",
+    "@aws-sdk/lib-storage": "^3.948.0",
+    "@aws-sdk/s3-request-presigner": "^3.952.0",
+    "ali-oss": "^6.23.0",
+    "cos-nodejs-sdk-v5": "^2.15.4",
+    "es-toolkit": "^1.43.0",
+    "minio": "^8.0.5",
+    "vitest": "^4.0.16"
+  },
+  "devDependencies": {
+    "@types/ali-oss": "^6.16.13",
+    "@types/node": "^20",
+    "tsdown": "^0.18.2",
+    "typescript": "^5.9.3"
+  }
+}

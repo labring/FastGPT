@@ -27,7 +27,7 @@ import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 
 const OffiAccountEditModal = dynamic(() => import('./OffiAccountEditModal'));
@@ -50,7 +50,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetchShareChatList
-  } = useRequest2(
+  } = useRequest(
     () => getShareChatList<OffiAccountAppType>({ appId, type: PublishChannelEnum.officialAccount }),
     {
       manual: false
@@ -75,10 +75,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
 
           {feConfigs?.docUrl && (
             <Link
-              href={
-                feConfigs.openAPIDocUrl ||
-                getDocPath('/docs/use-cases/external-integration/official_account/')
-              }
+              href={getDocPath('/docs/use-cases/external-integration/official_account')}
               target={'_blank'}
               ml={2}
               color={'primary.500'}
@@ -191,7 +188,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
                                 name: item.name,
                                 limit: item.limit,
                                 app: item.app,
-                                responseDetail: item.responseDetail,
+                                showCite: item.showCite,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });
@@ -240,7 +237,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}
           onClose={closeShowShareLinkModal}
-          img="/imgs/outlink/offiaccount-copylink-instruction.png"
+          img="/imgs/outlink/offiaccount-copylink-instruction.jpg"
         />
       )}
     </Box>

@@ -13,6 +13,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -28,13 +29,42 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   beforeUpdateAppFormat({
     nodes
   });
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
+  });
 
   if (autoSave) {
-    await MongoApp.findByIdAndUpdate(appId, {
-      modules: nodes,
-      edges,
-      chatConfig,
-      updateTime: new Date()
+    await mongoSessionRun(async (session) => {
+      await MongoAppVersion.updateOne(
+        {
+          appId,
+          isAutoSave: true
+        },
+        {
+          tmbId,
+          appId,
+          nodes,
+          edges,
+          chatConfig,
+          versionName: i18nT('app:auto_save'),
+          time: new Date()
+        },
+
+        { session, upsert: true }
+      );
+
+      await MongoApp.updateOne(
+        { _id: appId },
+        {
+          modules: nodes,
+          edges,
+          chatConfig,
+          updateTime: new Date()
+        },
+        {
+          session
+        }
+      );
     });
 
     addAuditLog({
@@ -70,8 +100,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     );
 
     // update app
-    await MongoApp.findByIdAndUpdate(
-      appId,
+    await MongoApp.updateOne(
+      { _id: appId },
       {
         modules: nodes,
         edges,
@@ -116,3 +146,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
 }
 
 export default NextAPI(handler);
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb'
+    }
+  }
+};

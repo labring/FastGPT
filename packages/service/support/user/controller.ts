@@ -45,8 +45,9 @@ export async function getUserDetail({
     timezone: user.timezone,
     promotionRate: user.promotionRate,
     team: tmb,
-    notificationAccount: tmb.notificationAccount,
     permission: tmb.permission,
-    contact: user.contact
+    contact: user.contact,
+    language: user.language,
+    tags: user.tags
   };
 }

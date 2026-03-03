@@ -16,7 +16,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import type { SubmitChatCorrectionResponse } from '@fastgpt/global/core/chat/correction/api';
 import type { CorrectionDataType } from '@fastgpt/global/core/chat/correction/type';
 import { formatChatValue2InputType } from '../../utils';
-import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 const CorrectionModal = dynamic(
   () => import('@/pageComponents/app/detail/ConversationLogs/CorrectionModal')

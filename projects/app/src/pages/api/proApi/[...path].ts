@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-
-import { request } from 'http';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import { Readable } from 'stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -16,32 +15,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error(`未配置商业版链接: ${path}`);
     }
 
-    const parsedUrl = new URL(FastGPTProUrl);
-    delete req.headers?.rootkey;
+    const targetUrl = new URL(requestPath, FastGPTProUrl);
 
-    const requestResult = request({
-      protocol: parsedUrl.protocol,
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port,
-      path: requestPath,
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (key === 'rootkey' || key === 'host' || key === 'connection') continue;
+      if (value) {
+        headers[key] = Array.isArray(value) ? value.join(', ') : value;
+      }
+    }
+
+    const request = new Request(targetUrl, {
+      // @ts-ignore
+      duplex: 'half',
       method: req.method,
-      headers: req.headers
-    });
-    req.pipe(requestResult);
-
-    requestResult.on('response', (response) => {
-      Object.keys(response.headers).forEach((key) => {
-        // @ts-ignore
-        res.setHeader(key, response.headers[key]);
-      });
-      response.statusCode && res.writeHead(response.statusCode);
-      response.pipe(res);
+      headers,
+      body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 
-    requestResult.on('error', (e) => {
-      res.send(e);
+    const response = await fetch(request);
+
+    response.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
+      res.setHeader(key, value);
+    });
+
+    res.status(response.status);
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body as any);
+      nodeStream.pipe(res);
+    } else {
       res.end();
-    });
+    }
   } catch (error) {
     jsonRes(res, {
       code: 500,

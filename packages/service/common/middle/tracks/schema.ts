@@ -11,10 +11,24 @@ const TrackSchema = new Schema({
   data: Object
 });
 
-try {
-  TrackSchema.index({ event: 1 });
-} catch (error) {
-  console.log(error);
-}
+TrackSchema.index({ event: 1 });
+// Dataset search index
+TrackSchema.index(
+  { event: 1, teamId: 1, 'data.datasetId': 1, createTime: -1 },
+  {
+    partialFilterExpression: {
+      event: TrackEnum.datasetSearch
+    }
+  }
+);
+// QPM index
+TrackSchema.index(
+  { event: 1, createTime: -1, 'data.requestCount': 1 },
+  {
+    partialFilterExpression: {
+      event: TrackEnum.teamChatQPM
+    }
+  }
+);
 
-export const TrackModel = getMongoModel<TrackSchemaType>('track', TrackSchema);
+export const TrackModel = getMongoModel<TrackSchemaType>('tracks', TrackSchema);

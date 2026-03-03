@@ -4,30 +4,33 @@ import { useContextSelector } from 'use-context-selector';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node } from 'reactflow';
-import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
-import { WorkflowEventContext } from '../context/workflowEventContext';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
+import { WorkflowModalContext } from '../context/workflowModalContext';
 
 const NodeTemplatesPopover = () => {
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
-  const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
+  const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const { setNodes, setEdges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   const {
     templateType,
     parentId,
+    searchKey,
+    setSearchKey,
     templatesIsLoading,
     templates,
-    loadNodeTemplates,
-    onUpdateParentId
+    onUpdateTemplateType,
+    onUpdateParentId,
+    toolTags,
+    selectedTagIds,
+    setSelectedTagIds
   } = useNodeTemplates();
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
@@ -116,9 +119,14 @@ const NodeTemplatesPopover = () => {
             <NodeTemplateListHeader
               isPopover={true}
               templateType={templateType}
-              loadNodeTemplates={loadNodeTemplates}
-              parentId={parentId || ''}
+              onUpdateTemplateType={onUpdateTemplateType}
+              parentId={parentId}
               onUpdateParentId={onUpdateParentId}
+              searchKey={searchKey}
+              setSearchKey={setSearchKey}
+              toolTags={toolTags}
+              selectedTagIds={selectedTagIds}
+              setSelectedTagIds={setSelectedTagIds}
             />
             <NodeTemplateList
               onAddNode={onAddNode}

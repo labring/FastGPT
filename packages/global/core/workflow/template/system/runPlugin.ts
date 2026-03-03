@@ -8,6 +8,7 @@ export const RunPluginModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.pluginModule,
   showSourceHandle: true,
   showTargetHandle: true,
+  colorSchema: 'salmon',
   intro: '',
   name: '',
   showStatus: false,

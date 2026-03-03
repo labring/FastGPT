@@ -1,3 +1,8 @@
+import type {
+  PlaygroundVisibilityConfigQuery,
+  PlaygroundVisibilityConfigResponse,
+  UpdatePlaygroundVisibilityConfigBody
+} from '@fastgpt/global/support/outLink/api';
 import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   OutlinkAppType,
@@ -34,6 +39,14 @@ export function delShareChatById(id: string) {
 // update a shareChat
 export function updateShareChat<T extends OutlinkAppType>(data: OutLinkEditType<T>) {
   return POST<string>(`/support/outLink/update`, data);
+}
+
+export function getPlaygroundVisibilityConfig(data: PlaygroundVisibilityConfigQuery) {
+  return GET<PlaygroundVisibilityConfigResponse>('/support/outLink/playground/config', data);
+}
+
+export function updatePlaygroundVisibilityConfig(data: UpdatePlaygroundVisibilityConfigBody) {
+  return POST<string>(`/support/outLink/playground/update`, data);
 }
 
 // /**

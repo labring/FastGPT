@@ -1,19 +1,24 @@
-import React, { type Dispatch } from 'react';
+import React, { useEffect, type Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin, getPreLogin } from '@/web/support/user/api';
-import type { ResLogin } from '@/global/support/api/userRes';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './FormLayout';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import PolicyTip from './PolicyTip';
+import { useSearchParams } from 'next/navigation';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { useRouter } from 'next/router';
+import { useMount } from 'ahooks';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: ResLogin) => void | Promise<boolean>;
+  loginSuccess: (e: LoginSuccessResponse) => void | Promise<boolean>;
 }
 
 interface LoginFormType {
@@ -22,22 +27,26 @@ interface LoginFormType {
 }
 
 const LoginForm = ({ setPageType, loginSuccess }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
+  const query = useSearchParams();
+  const router = useRouter();
+
   const {
     register,
     handleSubmit,
     formState: { errors }
   } = useForm<LoginFormType>();
 
-  const { runAsync: onclickLogin, loading: requesting } = useRequest2(
+  const { runAsync: onclickLogin, loading: requesting } = useRequest(
     async ({ username, password }: LoginFormType) => {
       const { code } = await getPreLogin(username);
       const res = await postLogin({
         username,
         password,
-        code
+        code,
+        language: i18n.language as LangEnum
       });
 
       // 等待 loginSuccess 执行完成
@@ -51,7 +60,26 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       }
     },
     {
-      refreshDeps: [loginSuccess]
+      refreshDeps: [loginSuccess],
+      successToast: t('login:login_success'),
+      onError: (error: any) => {
+        // 密码错误，需要清空 query 参数
+        if (error.statusText === UserErrEnum.account_psw_error) {
+          router.replace(
+            router.pathname,
+            {
+              query: {
+                ...router.query,
+                u: '',
+                p: ''
+              }
+            },
+            {
+              shallow: false
+            }
+          );
+        }
+      }
     }
   );
 
@@ -74,6 +102,17 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       )
       .join('/');
   })();
+
+  useMount(() => {
+    const username = query.get('u');
+    const password = query.get('p');
+    if (username && password) {
+      onclickLogin({
+        username,
+        password
+      });
+    }
+  });
 
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>

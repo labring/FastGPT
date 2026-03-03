@@ -10,6 +10,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 export type GetQuoteDataResponse = {
   collection: DatasetCollectionSchemaType;
@@ -46,12 +47,12 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
         teamToken
       });
 
-      const datasetData = await MongoDatasetData.findById(dataId);
+      const datasetData = await MongoDatasetData.findById(dataId).lean();
       if (!datasetData) {
-        return Promise.reject(i18nT('common:data_not_found'));
+        return Promise.reject(new UserError(i18nT('common:data_not_found')));
       }
 
-      const [collection, { responseDetail }] = await Promise.all([
+      const [collection, { showCite }] = await Promise.all([
         MongoDatasetCollection.findById(datasetData.collectionId).lean(),
         authChatCrud({
           req,
@@ -67,21 +68,19 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
           appId,
           chatId,
           chatItemDataId,
-          collectionIds: [String(datasetData.collectionId)]
+          collectionIds: [datasetData.collectionId]
         })
       ]);
       if (!collection) {
-        return Promise.reject('Can not find the collection');
+        return Promise.reject(new UserError('Can not find the collection'));
       }
-      if (!responseDetail) {
-        return Promise.reject(ChatErrEnum.unAuthChat);
+      if (!showCite) {
+        return Promise.reject(new UserError(ChatErrEnum.unAuthChat));
       }
 
       return {
         collection,
         ...formatDatasetDataValue({
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId
@@ -98,8 +97,6 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
       return {
         collection,
         ...formatDatasetDataValue({
-          teamId: datasetData.teamId,
-          datasetId: datasetData.datasetId,
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId

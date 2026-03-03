@@ -7,7 +7,6 @@ import { type NodeProps, Position } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
 import { MySourceHandle } from '../render/Handle';
@@ -15,11 +14,12 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
   const ifElseList = useMemo(

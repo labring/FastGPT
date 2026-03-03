@@ -3,15 +3,18 @@ import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '../../../useUserStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '../../api';
 import _ from 'lodash';
+import { useDebounce } from 'ahooks';
 
 function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
   const [orgStack, setOrgStack] = useState<OrgListItemType[]>([]);
   const [searchKey, setSearchKey] = useState('');
+  // 使用防抖确保搜索使用最新的关键词，避免中文输入法导致的状态不一致
+  const debouncedSearchKey = useDebounce(searchKey, { wait: 300 });
 
   const { userInfo } = useUserStore();
 
@@ -37,13 +40,16 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     data: orgs = [],
     loading: isLoadingOrgs,
     refresh: refetchOrgs
-  } = useRequest2(
-    () => getOrgList({ orgId: currentOrg._id, withPermission: withPermission, searchKey }),
+  } = useRequest(
+    () =>
+      getOrgList({
+        orgId: currentOrg._id,
+        withPermission: withPermission,
+        searchKey: debouncedSearchKey
+      }),
     {
       manual: false,
-      refreshDeps: [userInfo?.team?.teamId, path, currentOrg._id, searchKey],
-      debounceWait: 200,
-      throttleWait: 500
+      refreshDeps: [userInfo?.team?.teamId, path, currentOrg._id, debouncedSearchKey]
     }
   );
 
@@ -123,7 +129,8 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     refresh,
     updateCurrentOrg,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    debouncedSearchKey
   };
 }
 

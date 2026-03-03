@@ -1,25 +1,26 @@
 import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { editorStateToText } from './utils';
 import type { EditorProps } from './Editor';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
-import type { EditorState, LexicalEditor } from 'lexical';
-import type { FormPropsType } from './type.d';
-import { useCallback } from 'react';
+import type { LexicalEditor } from 'lexical';
+import type { FormPropsType } from './type';
 
 const PromptEditor = ({
   showOpenModal = true,
   value,
   onChange,
   onBlur,
+  onKeyDown,
   title,
   isDisabled,
   resizable = false,
   ...props
 }: FormPropsType &
-  EditorProps & {
+  Omit<EditorProps, 'value'> & {
+    value?: string;
     title?: string;
     isDisabled?: boolean;
     onChange?: (text: string) => void;
@@ -30,12 +31,13 @@ const PromptEditor = ({
   const { t } = useTranslation();
 
   const onChangeInput = useCallback(
-    (editorState: EditorState, editor: LexicalEditor) => {
+    (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
       onChange?.(text);
     },
     [onChange]
   );
+
   const onBlurInput = useCallback(
     (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
@@ -43,11 +45,17 @@ const PromptEditor = ({
     },
     [onBlur]
   );
+
   const formattedValue = useMemo(() => {
     if (typeof value === 'object') {
       return JSON.stringify(value);
     }
-    return value;
+
+    if (value === undefined || value === null) {
+      return '';
+    }
+
+    return String(value || '');
   }, [value]);
 
   return (
@@ -62,6 +70,8 @@ const PromptEditor = ({
           onChangeText={onChange}
           onBlur={onBlurInput}
           resizable={resizable}
+          onKeyDown={onKeyDown}
+          isDisabled={isDisabled}
         />
         {isDisabled && (
           <Box
@@ -70,13 +80,15 @@ const PromptEditor = ({
             left={0}
             right={0}
             bottom={0}
-            bg="rgba(255, 255, 255, 0.4)"
+            bg="rgba(255, 255, 255, 0.5)"
             borderRadius="md"
             zIndex={1}
             cursor="not-allowed"
+            pointerEvents="none"
           />
         )}
       </Box>
+
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
@@ -85,17 +97,35 @@ const PromptEditor = ({
         w={'full'}
       >
         <ModalBody>
-          <Editor
-            {...props}
-            minH={400}
-            maxH={400}
-            showOpenModal={false}
-            value={value}
-            onChange={onChangeInput}
-            onChangeText={onChange}
-            onBlur={onBlurInput}
-            resizable={false}
-          />
+          <Box position="relative">
+            <Editor
+              {...props}
+              minH={400}
+              maxH={400}
+              showOpenModal={false}
+              value={formattedValue}
+              onChange={onChangeInput}
+              onChangeText={onChange}
+              onBlur={onBlurInput}
+              resizable={false}
+              onKeyDown={onKeyDown}
+              isDisabled={isDisabled}
+            />
+            {isDisabled && (
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                bg="rgba(255, 255, 255, 0.5)"
+                borderRadius="md"
+                zIndex={1}
+                cursor="not-allowed"
+                pointerEvents="none"
+              />
+            )}
+          </Box>
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>
@@ -106,4 +136,5 @@ const PromptEditor = ({
     </>
   );
 };
+
 export default React.memo(PromptEditor);

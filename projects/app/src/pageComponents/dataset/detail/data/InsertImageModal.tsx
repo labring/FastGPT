@@ -2,10 +2,10 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
-import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyImage from '@/components/MyImage';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { insertImagesToCollection } from '@/web/core/dataset/image/api';
 
 const fileType = '.jpg, .jpeg, .png';
@@ -43,7 +43,7 @@ const InsertImageModal = ({
   };
 
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { runAsync: onInsertImages, loading: inserting } = useRequest2(
+  const { runAsync: onInsertImages, loading: inserting } = useRequest(
     async () => {
       return await insertImagesToCollection({
         collectionId,

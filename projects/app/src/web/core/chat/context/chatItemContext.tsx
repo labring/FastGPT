@@ -13,10 +13,11 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
-  isShowReadRawSource: boolean;
-  isResponseDetail: boolean;
-  // isShowFullText: boolean;
-  showNodeStatus: boolean;
+  canDownloadSource: boolean;
+  isShowCite: boolean;
+  isShowFullText: boolean;
+  showRunningStatus: boolean;
+  showWholeResponse: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -72,7 +73,7 @@ type ChatItemContextType = {
   pluginRunTab: PluginRunBoxTabEnum;
   setPluginRunTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
   resetVariables: (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }) => void;
   clearChatRecords: () => void;
@@ -95,7 +96,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
     throw new Error('Function not implemented.');
   },
   resetVariables: function (props?: {
-    variables?: Record<string, any>;
+    variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }): void {
     throw new Error('Function not implemented.');
@@ -120,10 +121,11 @@ export const ChatItemContext = createContext<ChatItemContextType>({
 const ChatItemContextProvider = ({
   children,
   showRouteToDatasetDetail,
-  isShowReadRawSource,
-  isResponseDetail,
-  // isShowFullText,
-  showNodeStatus
+  canDownloadSource,
+  isShowCite,
+  isShowFullText,
+  showRunningStatus,
+  showWholeResponse
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -135,22 +137,31 @@ const ChatItemContextProvider = ({
     ...defaultChatData
   });
 
-  const isPlugin = chatBoxData.app.type === AppTypeEnum.plugin;
+  const isPlugin = chatBoxData.app.type === AppTypeEnum.workflowTool;
 
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
   const resetVariables = useCallback(
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
-      const { variables, variableList = [] } = props || {};
+      const { variables = {}, variableList = [] } = props || {};
 
-      if (variables) {
+      const values = variablesForm.getValues();
+
+      if (variableList.length) {
+        const varValues: Record<string, any> = {};
         variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, variables[item.key]);
+          varValues[item.key] = variables[item.key] ?? variables[item.label] ?? item.defaultValue;
+        });
+
+        variablesForm.reset({
+          ...values,
+          variables: varValues
         });
       } else {
-        variableList.forEach((item) => {
-          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
+        variablesForm.reset({
+          ...values,
+          variables
         });
       }
     },
@@ -158,13 +169,20 @@ const ChatItemContextProvider = ({
   );
 
   const clearChatRecords = useCallback(() => {
-    const data = variablesForm.getValues();
-    for (const key in data.variables) {
-      variablesForm.setValue(`variables.${key}`, '');
-    }
+    const variables = chatBoxData?.app?.chatConfig?.variables || [];
+    const values = variablesForm.getValues();
+
+    variables.forEach((item) => {
+      if (item.defaultValue !== undefined) {
+        values.variables[item.key] = item.defaultValue;
+      } else {
+        values.variables[item.key] = '';
+      }
+    });
+    variablesForm.reset(values);
 
     ChatBoxRef.current?.restartChat?.();
-  }, [variablesForm]);
+  }, [chatBoxData?.app?.chatConfig?.variables, variablesForm]);
 
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 
@@ -180,10 +198,11 @@ const ChatItemContextProvider = ({
       resetVariables,
       clearChatRecords,
       showRouteToDatasetDetail,
-      isShowReadRawSource,
-      isResponseDetail,
-      // isShowFullText,
-      showNodeStatus,
+      canDownloadSource,
+      isShowCite,
+      isShowFullText,
+      showRunningStatus,
+      showWholeResponse,
 
       datasetCiteData,
       setCiteModalData,
@@ -198,10 +217,11 @@ const ChatItemContextProvider = ({
     resetVariables,
     clearChatRecords,
     showRouteToDatasetDetail,
-    isShowReadRawSource,
-    isResponseDetail,
-    // isShowFullText,
-    showNodeStatus,
+    canDownloadSource,
+    isShowCite,
+    showRunningStatus,
+    isShowFullText,
+    showWholeResponse,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

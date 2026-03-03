@@ -18,7 +18,7 @@ import ManualAddDataModal from './ManuallyAddModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useDataListContext } from './DataListContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   postEvaluationDatasetQualityAssessmentBatch,
   updateEvaluationDatasetData,
@@ -67,7 +67,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   } = useDataListContext();
 
   // 批量质量评估请求
-  const { runAsync: runQualityAssessmentBatch, loading: isQualityAssessmentLoading } = useRequest2(
+  const { runAsync: runQualityAssessmentBatch, loading: isQualityAssessmentLoading } = useRequest(
     postEvaluationDatasetQualityAssessmentBatch,
     {
       successToast: t('common:submit_success')
@@ -75,12 +75,12 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   );
 
   // 修改测评数据
-  const { runAsync: updateDataFn } = useRequest2(updateEvaluationDatasetData, {
+  const { runAsync: updateDataFn } = useRequest(updateEvaluationDatasetData, {
     successToast: t('common:update_success')
   });
 
   // 修改评估模型
-  const { runAsync: updateModelSettingFn, loading: isUpdating } = useRequest2(
+  const { runAsync: updateModelSettingFn, loading: isUpdating } = useRequest(
     updateEvaluationDataset,
     {
       successToast: t('common:update_success')
@@ -93,7 +93,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   const [evaluationModel, setEvaluationModel] = useState<string>('');
 
   // 获取数据集详情
-  const { runAsync: getCollectionDetail } = useRequest2(getEvaluationDatasetCollectionDetail);
+  const { runAsync: getCollectionDetail } = useRequest(getEvaluationDatasetCollectionDetail);
 
   // 初始化评测模型
   useEffect(() => {

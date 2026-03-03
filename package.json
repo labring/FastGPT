@@ -9,14 +9,14 @@
     "initDocTime": "node ./document/script/initDocTime.js",
     "initDocToc": "node ./document/lib/generateToc.js",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
+    "gen:deploy": "node deploy/init.mjs",
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
-    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "vitest run",
-    "test:workflow": "vitest run workflow"
+    "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
@@ -27,13 +27,14 @@
     "eslint-config-next": "^14.1.0",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
+    "js-yaml": "^4.1.1",
     "lint-staged": "^13.3.0",
+    "mongodb-memory-server": "^10.1.4",
     "next-i18next": "15.4.2",
     "prettier": "3.2.4",
     "react-i18next": "14.1.2",
+    "typescript": "^5.1.3",
     "vitest": "^3.0.9",
-    "js-yaml": "^4.1.0",
-    "mongodb-memory-server": "^10.1.4",
     "zhlint": "^0.7.4"
   },
   "lint-staged": {

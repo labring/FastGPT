@@ -4,12 +4,12 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getChildAppPreviewNode } from './plugin/controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/app/plugin/constants';
+import { getChildAppPreviewNode } from './tool/controller';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
@@ -51,7 +51,7 @@ export async function rewriteAppWorkflowToDetail({
   await Promise.all(
     nodes.map(async (node) => {
       if (!node.pluginId) return;
-      const { source, pluginId } = splitCombinePluginId(node.pluginId);
+      const { source, pluginId } = splitCombineToolId(node.pluginId);
 
       try {
         const [preview] = await Promise.all([
@@ -60,7 +60,7 @@ export async function rewriteAppWorkflowToDetail({
             versionId: node.version,
             lang
           }),
-          ...(source === PluginSourceEnum.personal
+          ...(source === AppToolSourceEnum.personal
             ? [
                 authAppByTmbId({
                   tmbId: ownerTmbId,
@@ -72,11 +72,12 @@ export async function rewriteAppWorkflowToDetail({
         ]);
 
         node.pluginData = {
+          name: preview.name,
+          avatar: preview.avatar,
+          status: preview.status,
           diagram: preview.diagram,
           userGuide: preview.userGuide,
-          courseUrl: preview.courseUrl,
-          name: preview.name,
-          avatar: preview.avatar
+          courseUrl: preview.courseUrl
         };
         node.versionLabel = preview.versionLabel;
         node.isLatestVersion = preview.isLatestVersion;

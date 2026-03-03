@@ -7,8 +7,8 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 import { parseCurl } from '@fastgpt/global/common/string/http';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const CurlImportModal = ({
   nodeId,
@@ -20,7 +20,7 @@ const CurlImportModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { register, handleSubmit } = useForm({
     defaultValues: {

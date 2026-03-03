@@ -4,9 +4,10 @@ import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 
 type LoginModalProps = {
-  onSuccess?: () => void;
+  onSuccess: (e: LoginSuccessResponse) => any;
 };
 
 const LoginModal = ({ onSuccess }: LoginModalProps) => {

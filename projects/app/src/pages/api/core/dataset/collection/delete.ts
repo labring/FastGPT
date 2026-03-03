@@ -14,15 +14,18 @@ export type DelCollectionBody = {
   collectionIds: string[];
 };
 
-async function handler(req: ApiRequestProps<DelCollectionBody>) {
+async function handler(req: ApiRequestProps<DelCollectionBody, { id?: string }>) {
+  const id = req.query.id;
   const { collectionIds } = req.body;
 
-  if (!collectionIds) {
+  const deletedIds = id ? [id] : collectionIds;
+
+  if (!Array.isArray(deletedIds)) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const [{ teamId, collection, tmbId }] = await Promise.all(
-    collectionIds.map(async (collectionId) => {
+    deletedIds.map(async (collectionId) => {
       return await authDatasetCollection({
         req,
         authToken: true,
@@ -35,17 +38,16 @@ async function handler(req: ApiRequestProps<DelCollectionBody>) {
 
   // find all delete id
   const collections = await Promise.all(
-    collectionIds.map(async (collectionId) => {
+    deletedIds.map(async (collectionId) => {
       return await findCollectionAndChild({
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId datasetId fileId metadata'
+        fields: '_id teamId type datasetId fileId metadata'
       });
     })
   ).then((res) => {
     const flattened = res.flat();
-    console.log(flattened.length, 22);
     // Remove duplicates based on _id
     const uniqueCollections = flattened.filter(
       (collection, index, arr) =>

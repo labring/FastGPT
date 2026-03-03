@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -20,6 +19,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -68,17 +69,15 @@ const CreateModal = ({
   const agentModel = watch('agentModel');
   const vlmModel = watch('vlmModel');
 
-  const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
-  } = useSelectFile({
-    fileType: 'image/*',
-    multiple: false
-  });
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess: (avatar: string) => {
+        setValue('avatar', avatar);
+      }
+    });
 
   /* create a new kb and router to it */
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (data: CreateDatasetParams) => {
       // 对于文件数据库类型，移除不需要的参数
       const submitData = { ...data };
@@ -156,7 +155,7 @@ const CreateModal = ({
                 h={['28px', '32px']}
                 cursor={'pointer'}
                 borderRadius={'md'}
-                onClick={onOpenSelectFile}
+                onClick={handleAvatarSelectorOpen}
               />
             </MyTooltip>
             <Input
@@ -297,15 +296,7 @@ const CreateModal = ({
 
       <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
 
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
-            maxH: 300,
-            maxW: 300,
-            callback: (e) => setValue('avatar', e)
-          })
-        }
-      />
+      <AvatarUploader />
     </MyModal>
   );
 };

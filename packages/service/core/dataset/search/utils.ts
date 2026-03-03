@@ -1,12 +1,13 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { queryExtension, queryExtensionForAssistant } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../../ai/model';
 
 export const datasetSearchQueryExtension = async ({
   query,
-  extensionModel,
+  llmModel,
+  embeddingModel,
   extensionBg = '',
   histories = [],
   isAssistant = false,
@@ -14,7 +15,8 @@ export const datasetSearchQueryExtension = async ({
   datasetIds
 }: {
   query: string;
-  extensionModel?: LLMModelItemType;
+  llmModel?: string;
+  embeddingModel?: string;
   extensionBg?: string;
   histories?: ChatItemType[];
   isAssistant?: boolean;
@@ -22,7 +24,7 @@ export const datasetSearchQueryExtension = async ({
   datasetIds?: string[];
 }) => {
   // 仅assistant场景下统计整个问题改写流程的耗时
-  const startTime = isAssistant && extensionModel ? Date.now() : undefined;
+  const startTime = isAssistant ? Date.now() : undefined;
 
   const filterSamQuery = (queries: string[]) => {
     const set = new Set<string>();
@@ -37,7 +39,7 @@ export const datasetSearchQueryExtension = async ({
     return filterSameQueries;
   };
 
-  let { queries, rewriteQuery, alreadyExtension } = (() => {
+  let { queries, reRankQuery, alreadyExtension } = (() => {
     /* if query already extension, direct parse */
     try {
       const jsonParse = JSON.parse(query);
@@ -45,28 +47,28 @@ export const datasetSearchQueryExtension = async ({
       const alreadyExtension = Array.isArray(jsonParse);
       return {
         queries,
-        rewriteQuery: alreadyExtension ? queries.join('\n') : query,
+        reRankQuery: alreadyExtension ? queries.join('\n') : query,
         alreadyExtension: alreadyExtension
       };
     } catch (error) {
       return {
         queries: [query],
-        rewriteQuery: query,
+        reRankQuery: query,
         alreadyExtension: false
       };
     }
   })();
 
-  // ai extension
+  // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!extensionModel || alreadyExtension) return;
+    if (!llmModel || !embeddingModel || alreadyExtension) return;
 
     // 如果是 assistant 类型且有 teamId 和 datasetIds，使用新逻辑
     if (isAssistant && teamId && datasetIds && datasetIds.length > 0) {
       const result = await queryExtensionForAssistant({
         query,
         histories,
-        model: extensionModel.model,
+        model: llmModel,
         teamId,
         datasetIds
       });
@@ -74,26 +76,26 @@ export const datasetSearchQueryExtension = async ({
       return result;
     }
 
-    // 否则使用原有逻辑
+
     const result = await queryExtension({
       chatBg: extensionBg,
       query,
       histories,
-      model: extensionModel.model
+      llmModel,
+      embeddingModel
     });
     if (result.extensionQueries?.length === 0) return;
     return result;
   })();
 
-  const extensionQueries = filterSamQuery(aiExtensionResult?.extensionQueries || []);
   if (aiExtensionResult) {
-    queries = filterSamQuery(queries.concat(extensionQueries));
-    rewriteQuery = queries.join('\n');
+    queries = queries.concat(aiExtensionResult.extensionQueries);
+    reRankQuery = queries.join('\n');
   }
 
   //参考客服跑验证集逻辑，不开问题优化，传入的query是原始query+问题改写+指代消除的标准化后的；拼接在一起
   if (isAssistant) {
-    rewriteQuery = queries.join('\n'); // 先计算 reranker 使用的换行符拼接
+    reRankQuery = queries.join('\n'); // 先计算 reranker 使用的换行符拼接
     queries = [queries.join(';')]; // 检索使用分号拼接
   }
 
@@ -102,12 +104,10 @@ export const datasetSearchQueryExtension = async ({
     startTime !== undefined ? +((Date.now() - startTime) / 1000).toFixed(2) : undefined;
 
   return {
-    // 知识库检索的问题优化处回显
-    extensionQueries,
-    concatQueries: queries,
-    rewriteQuery,
+    searchQueries: queries,
+    reRankQuery,
     aiExtensionResult,
-    rewriteTime // 新增：问题改写耗时（s），仅assistant场景
+    rewriteTime
   };
 };
 

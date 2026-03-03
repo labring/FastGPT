@@ -29,7 +29,7 @@ import {
 import EvaluationStatusSelect from './StatusSelect';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import DataListModals from './DataListModals';
 import { DataListProvider, useDataListContext } from './DataListContext';
 import {
@@ -89,7 +89,7 @@ const DataListContent = () => {
   }, [searchKey]);
 
   // 删除数据的请求
-  const { runAsync: onDeleteData, loading: isDeleting } = useRequest2(deleteEvaluationDatasetData, {
+  const { runAsync: onDeleteData, loading: isDeleting } = useRequest(deleteEvaluationDatasetData, {
     successToast: t('common:delete_success')
   });
 

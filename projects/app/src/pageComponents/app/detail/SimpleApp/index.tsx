@@ -11,6 +11,7 @@ import { type SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshot
 import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
 const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../Logs/index'));
@@ -79,7 +80,13 @@ const SimpleEdit = () => {
     if (past.length === 0) {
       const appForm = appWorkflow2Form({
         nodes: appDetail.modules,
-        chatConfig: appDetail.chatConfig
+        chatConfig: {
+          ...appDetail.chatConfig,
+          fileSelectConfig: appDetail.chatConfig?.fileSelectConfig || {
+            ...defaultAppSelectFileConfig,
+            canSelectFile: true
+          }
+        }
       });
       saveSnapshot({
         appForm,
@@ -116,7 +123,7 @@ const SimpleEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
+        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]} bg={'white'} borderRadius={'lg'}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>

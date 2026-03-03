@@ -3,23 +3,25 @@ import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
+import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
-import { refetchSystemPlugins } from '@fastgpt/service/core/app/plugin/controller';
+
+let changeStreams: any[] = [];
 
 export const startMongoWatch = async () => {
-  reloadConfigWatch();
-  createDatasetTrainingMongoWatch();
-  refetchAppTemplates();
-  watchSystemModelUpdate();
-  refetchSystemPlugins();
+  cleanupMongoWatch();
+  console.log('Watch mongo db start');
+  changeStreams.push(reloadConfigWatch());
+  changeStreams.push(createDatasetTrainingMongoWatch());
+  changeStreams.push(refetchAppTemplates());
+  changeStreams.push(watchSystemModelUpdate());
 };
 
 const reloadConfigWatch = () => {
   const changeStream = MongoSystemConfigs.watch();
 
-  changeStream.on('change', async (change) => {
+  return changeStream.on('change', async (change) => {
     try {
       if (
         change.operationType === 'update' ||
@@ -38,7 +40,7 @@ const reloadConfigWatch = () => {
 const refetchAppTemplates = () => {
   const changeStream = MongoAppTemplate.watch();
 
-  changeStream.on(
+  return changeStream.on(
     'change',
     debounce(async (change) => {
       setTimeout(() => {
@@ -48,4 +50,11 @@ const refetchAppTemplates = () => {
       }, 5000);
     }, 500)
   );
+};
+
+const cleanupMongoWatch = () => {
+  changeStreams.forEach((changeStream) => {
+    changeStream?.close();
+  });
+  changeStreams = [];
 };

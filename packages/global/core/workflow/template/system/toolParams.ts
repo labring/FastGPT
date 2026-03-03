@@ -10,6 +10,8 @@ export const ToolParamsNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/toolParams',
+  avatarLinear: 'core/workflow/template/toolParamsLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:tool_custom_field'),
   intro: i18nT('workflow:intro_tool_params_config'),
   isTool: true,

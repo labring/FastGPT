@@ -3,7 +3,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import React from 'react';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 
@@ -41,7 +41,7 @@ const DefaultPermissionList = ({
     { label: t('user:permission.team_write'), value: writePer }
   ];
 
-  const { runAsync: onRequestChange } = useRequest2((v: PermissionValueType) => onChange(v));
+  const { runAsync: onRequestChange } = useRequest((v: PermissionValueType) => onChange(v));
 
   return (
     <>
@@ -51,11 +51,10 @@ const DefaultPermissionList = ({
           value={per}
           onChange={(per) => {
             if (isInheritPermission && hasParent) {
-              openConfirm(
-                () => onRequestChange(per),
-                undefined,
-                t('common:permission.Remove InheritPermission Confirm')
-              )();
+              openConfirm({
+                onConfirm: () => onRequestChange(per),
+                customContent: t('common:permission.Remove InheritPermission Confirm')
+              })();
             } else {
               return onRequestChange(per);
             }

@@ -2,7 +2,15 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { useEffect } from 'react';
 import { BLUR_COMMAND, COMMAND_PRIORITY_LOW, FOCUS_COMMAND } from 'lexical';
 
-export default function FocusPlugin({ focus, setFocus }: { focus: Boolean; setFocus: any }) {
+export default function FocusPlugin({
+  focus,
+  setFocus,
+  isDisabled
+}: {
+  focus: Boolean;
+  setFocus: any;
+  isDisabled?: boolean;
+}) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(
@@ -10,12 +18,14 @@ export default function FocusPlugin({ focus, setFocus }: { focus: Boolean; setFo
       editor.registerCommand(
         BLUR_COMMAND,
         () => {
-          setFocus(false);
+          if (!isDisabled) {
+            setFocus(false);
+          }
           return false;
         },
         COMMAND_PRIORITY_LOW
       ),
-    []
+    [isDisabled]
   );
 
   useEffect(
@@ -23,12 +33,14 @@ export default function FocusPlugin({ focus, setFocus }: { focus: Boolean; setFo
       editor.registerCommand(
         FOCUS_COMMAND,
         () => {
-          setFocus(true);
+          if (!isDisabled) {
+            setFocus(true);
+          }
           return false;
         },
         COMMAND_PRIORITY_LOW
       ),
-    []
+    [isDisabled]
   );
 
   // useEffect(() => {

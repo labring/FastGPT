@@ -11,7 +11,7 @@ import { generateSynthesis } from '../queues/generateSynthesis';
 export const createDatasetTrainingMongoWatch = () => {
   const changeStream = MongoDatasetTraining.watch();
 
-  changeStream.on('change', async (change) => {
+  return changeStream.on('change', async (change) => {
     try {
       if (change.operationType === 'insert') {
         const fullDocument = change.fullDocument as DatasetTrainingSchemaType;

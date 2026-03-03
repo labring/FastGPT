@@ -1,25 +1,9 @@
-import { i18nT } from '../../../web/i18n/utils';
-
 /* mongo fs bucket */
 export enum BucketNameEnum {
   dataset = 'dataset',
   chat = 'chat',
   evaluation = 'evaluation'
 }
-export const bucketNameMap = {
-  [BucketNameEnum.dataset]: {
-    label: i18nT('file:bucket_file'),
-    previewExpireMinutes: 30 // 30 minutes
-  },
-  [BucketNameEnum.chat]: {
-    label: i18nT('file:bucket_chat'),
-    previewExpireMinutes: 7 * 24 * 60 // 7 days
-  },
-  [BucketNameEnum.evaluation]: {
-    label: i18nT('file:eval_file'),
-    previewExpireMinutes: 30 // 30 minutes
-  }
-};
 
 export const EndpointUrl = `${process.env.FILE_DOMAIN || process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}`;
 export const ReadFileBaseUrl = `${EndpointUrl}/api/common/file/read`;

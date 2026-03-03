@@ -6,6 +6,8 @@ import { exit } from 'process';
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+      await import('@fastgpt/service/common/proxy');
+
       // 基础系统初始化
       const [
         { connectMongo },
@@ -14,7 +16,7 @@ export async function register() {
         {
           initGlobalVariables,
           getInitConfig,
-          initSystemPluginGroups,
+          initSystemPluginTags,
           initAppTemplateTypes,
           initProPromptLoader
         },
@@ -26,7 +28,12 @@ export async function register() {
         { preLoadWorker },
         { loadSystemModels },
         { loadSystemBuiltinMetrics },
-        { connectSignoz }
+        { connectSignoz },
+        { getSystemTools },
+        { trackTimerProcess },
+        { initBullMQWorkers },
+        { initS3Buckets },
+        { initGeo }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
@@ -40,7 +47,12 @@ export async function register() {
         import('@fastgpt/service/worker/preload'),
         import('@fastgpt/service/core/ai/config/utils'),
         import('@fastgpt/service/core/evaluation/metric/provider'),
-        import('@fastgpt/service/common/otel/trace/register')
+        import('@fastgpt/service/common/otel/trace/register'),
+        import('@fastgpt/service/core/app/tool/controller'),
+        import('@fastgpt/service/common/middle/tracks/processor'),
+        import('@/service/common/bullmq'),
+        import('@fastgpt/service/common/s3'),
+        import('@fastgpt/service/common/geo')
       ]);
 
       // connect to signoz
@@ -50,9 +62,25 @@ export async function register() {
       systemStartCb();
       initGlobalVariables();
 
+      // init s3 buckets
+      initS3Buckets();
+
+      // init geo
+      initGeo();
+
       // Connect to MongoDB
-      await connectMongo(connectionMongo, MONGO_URL);
-      connectMongo(connectionLogMongo, MONGO_LOG_URL);
+      await Promise.all([
+        connectMongo({
+          db: connectionMongo,
+          url: MONGO_URL,
+          connectedCb: () => startMongoWatch()
+        }),
+        initBullMQWorkers()
+      ]);
+      connectMongo({
+        db: connectionLogMongo,
+        url: MONGO_LOG_URL
+      });
 
       //init system config；init vector database；init root user；init models；init builtin metrics
       await Promise.all([
@@ -64,17 +92,13 @@ export async function register() {
         initProPromptLoader() // Initialize remote prompt loader
       ]);
 
-      try {
-        await preLoadWorker();
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
+      await Promise.all([
+        preLoadWorker().catch(),
+        getSystemTools(),
+        initSystemPluginTags(),
+        initAppTemplateTypes()
+      ]);
 
-      // 异步加载
-      initSystemPluginGroups();
-      initAppTemplateTypes();
-      // getSystemPlugins(true);
-      startMongoWatch();
 
       // 动态导入评估模块并初始化（确保在系统配置加载后）
       const { initEvaluationWorkers } = await import('@fastgpt/service/core/evaluation');
@@ -86,6 +110,7 @@ export async function register() {
 
       startCron();
       startTrainingQueue(true);
+      trackTimerProcess();
 
       console.log('Init system success');
     }

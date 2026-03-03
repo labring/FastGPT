@@ -3,14 +3,17 @@ import type {
   EditorVariablePickerType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { InputTypeEnum } from './constant';
+import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type CommonRenderProps = {
   placeholder?: string;
   value: any;
-  onChange: (value: any) => void;
+  onChange?: (value: any) => void;
 
   isDisabled?: boolean;
   isInvalid?: boolean;
@@ -18,54 +21,56 @@ type CommonRenderProps = {
   customRender?: (props: any) => React.ReactNode;
 } & Omit<BoxProps, 'onChange' | 'list' | 'value'>;
 
-type SpecificProps =
-  | ({
-      // input & textarea
-      inputType: InputTypeEnum.input | InputTypeEnum.textarea;
-      variables?: EditorVariablePickerType[];
-      variableLabels?: EditorVariableLabelPickerType[];
-      title?: string;
-      maxLength?: number;
-    } & {
-      ExtensionPopover?: EditorProps['ExtensionPopover'];
-    })
-  | {
-      // numberInput
-      inputType: InputTypeEnum.numberInput;
-      min?: number;
-      max?: number;
-    }
-  | {
-      // switch
-      inputType: InputTypeEnum.switch;
-    }
-  | {
-      // select & multipleSelect
-      inputType: InputTypeEnum.select | InputTypeEnum.multipleSelect;
-      list?: { label: string; value: string }[];
+type SpecificProps = {
+  inputType: InputTypeEnum;
 
-      // old version
-      enums?: { value: string }[];
-    }
-  | {
-      // JSONEditor
-      inputType: InputTypeEnum.JSONEditor;
-    }
-  | {
-      // selectLLMModel
-      inputType: InputTypeEnum.selectLLMModel;
-      modelList?: { model: string; name: string }[];
-    }
-  | {
-      // fileSelect
-      inputType: InputTypeEnum.fileSelect;
-      canSelectFile?: boolean;
-      canSelectImg?: boolean;
-      maxFiles?: number;
-      setUploading?: React.Dispatch<React.SetStateAction<boolean>>;
+  // input & textarea
+  variables?: EditorVariablePickerType[];
+  variableLabels?: EditorVariableLabelPickerType[];
+  title?: string;
+  maxLength?: number;
+  isRichText?: boolean;
+  ExtensionPopover?: EditorProps['ExtensionPopover'];
 
-      form?: UseFormReturn<any>;
-      fieldName?: string;
-    };
+  // password
+  minLength?: number;
+
+  // numberInput
+  min?: number;
+  max?: number;
+
+  // switch - no extra props
+
+  // select & multipleSelect
+  list?: { label: string; value: string }[];
+  enums?: { value: string }[]; // old version
+
+  // selectDataset
+  datasetOptions?: SelectedDatasetType[];
+
+  // JSONEditor - no extra props
+
+  // selectLLMModel
+  modelList?: { model: string; name: string }[];
+
+  // fileSelect
+  form?: UseFormReturn<any>;
+  fieldName?: string;
+  canLocalUpload?: boolean;
+  canUrlUpload?: boolean;
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  canSelectVideo?: boolean;
+  canSelectAudio?: boolean;
+  canSelectCustomFileExtension?: boolean;
+  customFileExtensionList?: string[];
+  maxFiles?: number;
+
+  // timePointSelect & timeRangeSelect
+  timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
+  defaultValue?: string | [string?, string?];
+};
 
 export type InputRenderProps = CommonRenderProps & SpecificProps;

@@ -8,6 +8,9 @@ import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type copyAppQuery = {};
 
@@ -32,19 +35,35 @@ async function handler(
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  const appId = await onCreateApp({
-    parentId: app.parentId,
-    name: app.name + ' Copy',
-    intro: app.intro,
-    avatar: app.avatar,
-    type: app.type,
-    modules: app.modules,
-    edges: app.edges,
-    chatConfig: app.chatConfig,
-    teamId: app.teamId,
-    tmbId,
-    pluginData: app.pluginData
+  // Copy avatar
+  const { appId } = await mongoSessionRun(async (session) => {
+    const avatar = await copyAvatarImage({
+      teamId,
+      imageUrl: app.avatar,
+      temporary: true,
+      session
+    });
+
+    const appId = await onCreateApp({
+      parentId: app.parentId,
+      name: app.name + ' Copy',
+      intro: app.intro,
+      avatar,
+      type: app.type,
+      modules: app.modules,
+      edges: app.edges,
+      chatConfig: app.chatConfig,
+      teamId: app.teamId,
+      tmbId,
+      pluginData: app.pluginData,
+      session
+    });
+
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+
+    return { appId };
   });
+
   (async () => {
     addAuditLog({
       tmbId,

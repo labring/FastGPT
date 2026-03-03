@@ -2,8 +2,8 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
+  NodeInputKeyEnum,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 
@@ -14,6 +14,8 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/customFeedback',
+  avatarLinear: 'core/workflow/template/customFeedbackLinear',
+  colorSchema: 'yellowGreen',
   name: i18nT('workflow:custom_feedback'),
   intro: i18nT('workflow:intro_custom_feedback'),
   courseUrl: '/docs/introduction/guide/dashboard/workflow/custom_feedback/',

@@ -8,10 +8,10 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -21,7 +21,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -37,8 +37,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(item.value)) return item.value as SelectedDatasetType;
-    return [] as SelectedDatasetType;
+    if (Array.isArray(item.value)) return item.value as SelectedDatasetType[];
+    return [] as SelectedDatasetType[];
   }, [item.value]);
 
   useEffect(() => {
@@ -96,7 +96,6 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
         </Grid>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
-            isOpen={isOpenDatasetSelect}
             defaultSelectedDatasets={selectedDatasets.map((item) => ({
               datasetId: item.datasetId,
               vectorModel: item.vectorModel,
@@ -178,7 +177,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const authTmbIdInput = useMemo(
     () => inputs.find((v) => v.key === NodeInputKeyEnum.authTmbId),

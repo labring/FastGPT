@@ -7,7 +7,7 @@ import type {
   UseFormWatch,
   UseFormReset
 } from 'react-hook-form';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   postGetDatabaseConfiguration,
   postDetectDatabaseChanges,
@@ -73,16 +73,16 @@ export const useDataBaseConfig = (
   }, [uiTables, currentTableIndex]);
 
   // 获取数据配置
-  const { runAsync: getConfiguration, loading: getConfigLoading } = useRequest2(
+  const { runAsync: getConfiguration, loading: getConfigLoading } = useRequest(
     postGetDatabaseConfiguration
   );
 
   // 检测变更
   const { runAsync: detectChanges, loading: detectChangesLoading } =
-    useRequest2(postDetectDatabaseChanges);
+    useRequest(postDetectDatabaseChanges);
 
   // 创建数据库知识库数据集
-  const { runAsync: createCollections, loading: isCreating } = useRequest2(
+  const { runAsync: createCollections, loading: isCreating } = useRequest(
     postCreateDatabaseCollections,
     {
       onSuccess: () => {
@@ -92,7 +92,7 @@ export const useDataBaseConfig = (
   );
 
   // 更新数据库配置
-  const { runAsync: updateDatabaseConfig, loading: isUpdating } = useRequest2(
+  const { runAsync: updateDatabaseConfig, loading: isUpdating } = useRequest(
     postUpdateDatasetCollectionConfigByDatabase,
     {
       onSuccess: () => {

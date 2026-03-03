@@ -22,7 +22,7 @@ import {
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { changeOwner, resumeInheritPer } from '@/web/core/app/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -42,7 +42,7 @@ const AssistantCard = () => {
     [editPerAppId, appDetail]
   );
 
-  const { runAsync: onResumeInheritPermission } = useRequest2(
+  const { runAsync: onResumeInheritPermission } = useRequest(
     () => {
       return resumeInheritPer(editPerApp!._id);
     },

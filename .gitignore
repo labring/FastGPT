@@ -39,3 +39,4 @@ tmp/
 coverage
 document/.source
 AGENTS.md
+projects/app/worker/

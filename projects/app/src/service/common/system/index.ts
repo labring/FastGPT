@@ -3,12 +3,11 @@ import fs, { existsSync } from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
-import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
-import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
+import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
+import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
@@ -16,11 +15,13 @@ import {
   type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search/controller';
 import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
-import {
-  type ConcatUsageProps,
-  type CreateUsageProps
+import type {
+  PushUsageItemsProps,
+  ConcatUsageProps,
+  CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { isProVersion } from './constants';
+import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import {
   setPromptLoader,
   DefaultPromptLoader,
@@ -69,16 +70,19 @@ export function initGlobalVariables() {
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/createUsage', data);
+      return POST<string>('/support/wallet/usage/createUsage', data);
     };
-
     global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
       if (!isProVersion()) return;
       return POST('/support/wallet/usage/concatUsage', data);
     };
+    global.pushUsageItemsHandler = function pushUsageItemsHandler(data: PushUsageItemsProps) {
+      if (!isProVersion()) return;
+      return POST('/support/wallet/usage/pushUsageItems', data);
+    };
   }
 
-  global.parseQueueLen = global.parseQueueLen ?? 0;
+  global.datasetParseQueueLen = global.datasetParseQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   global.small2bigQueueLen = global.small2bigQueueLen ?? 0;
@@ -138,8 +142,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi',
-  systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
+  openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi/intro',
+  submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   systemTitle: 'FastGPT',
@@ -151,8 +155,9 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   },
   scripts: [],
   favicon: '/favicon.ico',
-  uploadFileMaxSize: 500,
-  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || ''
+  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
+  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
+  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
 };
 
 export async function initSystemConfig() {
@@ -175,8 +180,10 @@ export async function initSystemConfig() {
       hideChatCopyrightSetting: process.env.HIDE_CHAT_COPYRIGHT_SETTING === 'true',
       show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
       show_coupon: process.env.SHOW_COUPON === 'true',
+      show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
-      show_batch_eval: licenseData?.functions?.batchEval
+      show_batch_eval: licenseData?.functions?.batchEval,
+      payFormUrl: process.env.PAY_FORM_URL || ''
     },
     systemEnv: {
       ...fileRes.systemEnv,
@@ -196,22 +203,30 @@ export async function initSystemConfig() {
   });
 }
 
-export async function initSystemPluginGroups() {
+export async function initSystemPluginTags() {
   try {
-    const { groupOrder, ...restDefaultGroup } = defaultGroup;
-    await MongoPluginGroups.updateOne(
-      {
-        groupId: defaultGroup.groupId
-      },
-      {
-        $set: restDefaultGroup
-      },
-      {
-        upsert: true
-      }
-    );
+    const tags = await getSystemToolTags();
+
+    if (tags.length > 0) {
+      const bulkOps = tags.map((tag, index) => ({
+        updateOne: {
+          filter: { tagId: tag.id },
+          update: {
+            $set: {
+              tagId: tag.id,
+              tagName: tag.name,
+              tagOrder: index,
+              isSystem: true
+            }
+          },
+          upsert: true
+        }
+      }));
+
+      await MongoPluginToolTag.bulkWrite(bulkOps);
+    }
   } catch (error) {
-    console.error('Error initializing system plugins:', error);
+    console.error('Error initializing system plugin tags:', error);
   }
 }
 

@@ -23,7 +23,7 @@ import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import dynamic from 'next/dynamic';
 import type { smartGenerateEvalDatasetBody } from '@fastgpt/global/core/evaluation/dataset/api';
 import { postSmartGenerateEvaluationDataset } from '@/web/core/evaluation/dataset';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
@@ -131,7 +131,7 @@ const IntelligentGeneration = ({
   const dataAmountValue = watch('dataAmount');
   const selectedDatasets = watch('selectedDatasets');
 
-  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+  const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (data: IntelligentGenerationForm) => {
       const params = formatSubmitData({
         ...data,

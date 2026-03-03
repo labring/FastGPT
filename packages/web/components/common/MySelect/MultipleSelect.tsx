@@ -1,7 +1,6 @@
 import type { FlexProps } from '@chakra-ui/react';
 import {
   Box,
-  Button,
   type ButtonProps,
   Checkbox,
   Flex,
@@ -22,6 +21,7 @@ import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
 import { isArray } from 'lodash';
+import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -43,7 +43,7 @@ export type SelectProps<T = any> = {
     value: T;
   }[];
   value: T[];
-  isSelectAll: boolean;
+  isSelectAll?: boolean;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
@@ -62,8 +62,14 @@ export type SelectProps<T = any> = {
   tagStyle?: FlexProps;
 } & Omit<ButtonProps, 'onSelect'>;
 
+type SelectedItemType<T> = {
+  icon?: string;
+  label: string | React.ReactNode;
+  value: T;
+};
+
 const MultipleSelect = <T = any,>({
-  value = [],
+  value: initialValue = [],
   placeholder,
   list = [],
   onSelect,
@@ -83,7 +89,6 @@ const MultipleSelect = <T = any,>({
   tagStyle,
   ...props
 }: SelectProps<T>) => {
-  const ref = useRef<HTMLButtonElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -91,72 +96,35 @@ const MultipleSelect = <T = any,>({
   const { isOpen, onOpen, onClose } = useDisclosure();
   const canInput = setInputValue !== undefined;
 
-  type SelectedItemType = {
-    icon?: string;
-    label: string | React.ReactNode;
-    value: T;
-  };
+  const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
+  const [overflowItems, setOverflowItems] = useState<SelectedItemType<T>[]>([]);
 
-  const [visibleItems, setVisibleItems] = useState<SelectedItemType[]>([]);
-  const [overflowItems, setOverflowItems] = useState<SelectedItemType[]>([]);
+  const formatValue = useMemoEnhance(() => {
+    return Array.isArray(initialValue) ? initialValue : [];
+  }, [initialValue]);
 
   const selectedItems = useMemo(() => {
-    if (!value || !isArray(value)) return [];
-    return value.map((val) => {
+    return formatValue.map((val) => {
       const listItem = list.find((item) => item.value === val);
       return listItem || { value: val, label: String(val) };
     });
-  }, [value, list]);
+  }, [formatValue, list]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Backspace' && (!inputValue || inputValue === '')) {
-        const newValue = [...value];
+        const newValue = [...formatValue];
         newValue.pop();
         onSelect(newValue);
       }
     },
-    [inputValue, value, isSelectAll, onSelect]
+    [inputValue, formatValue, onSelect]
   );
   useEffect(() => {
     if (!isOpen) {
       setInputValue?.('');
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    const getWidth = (w: any) =>
-      typeof w === 'number' ? w : typeof w === 'string' ? parseInt(w) : 0;
-
-    const totalWidth = getWidth(props.w) || 200;
-    const tagWidth = getWidth(tagStyle?.w) || 60;
-    const formLabelWidth = formLabel ? formLabel.length * 8 + 20 : 0;
-    const availableWidth = totalWidth - formLabelWidth - 40;
-    const overflowWidth = 30;
-
-    if (availableWidth <= 0) {
-      setVisibleItems(selectedItems.length > 0 ? [selectedItems[0]] : []);
-      setOverflowItems(selectedItems.slice(1));
-      return;
-    }
-
-    const { count } = selectedItems.reduce(
-      (acc, item, i) => {
-        const remain = selectedItems.length - i - 1;
-        const needOverflow = remain > 0 ? overflowWidth : 0;
-        if (acc.used + tagWidth + needOverflow <= availableWidth) {
-          return {
-            used: acc.used + tagWidth,
-            count: i + 1
-          };
-        }
-        return acc;
-      },
-      { used: 0, count: 0 }
-    );
-    setVisibleItems(selectedItems.slice(0, count));
-    setOverflowItems(selectedItems.slice(count));
-  }, [selectedItems, isOpen, props.w, tagStyle, formLabel]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -166,27 +134,140 @@ const MultipleSelect = <T = any,>({
         return;
       }
 
-      if (value.includes(val)) {
-        onSelect(value.filter((i) => i !== val));
+      if (formatValue.includes(val)) {
+        onSelect(formatValue.filter((i) => i !== val));
       } else {
-        onSelect([...value, val]);
+        onSelect([...formatValue, val]);
       }
     },
-    [value, isSelectAll, onSelect, setIsSelectAll]
+    [isSelectAll, formatValue, onSelect, list, setIsSelectAll]
   );
 
   const onSelectAll = useCallback(() => {
-    const hasSelected = isSelectAll || value.length > 0;
-    onSelect(hasSelected ? [] : list.map((item) => item.value));
+    onSelect(isSelectAll ? [] : list.map((item) => item.value));
 
     setIsSelectAll?.((state) => !state);
-  }, [value, list, setIsSelectAll, onSelect]);
+  }, [isSelectAll, onSelect, list, setIsSelectAll]);
+
+  // 动态长度计算器 - 计算一行能展示多少个tag，剩余用+n表示
+  const calculateLayout = useCallback(() => {
+    if (!tagsContainerRef.current || selectedItems.length === 0) {
+      setVisibleItems(selectedItems);
+      setOverflowItems([]);
+      return;
+    }
+
+    const containerWidth = tagsContainerRef.current.offsetWidth;
+    const tagGap = 4; // tag之间的gap
+    const overflowIndicatorWidth = 30; // "+n" 宽度
+    const formLabelWidth = formLabel ? formLabel.length * 8 + 20 : 0;
+
+    // 实际可用宽度
+    const availableWidth = containerWidth - formLabelWidth - 10;
+
+    // 如果只有一个项目，直接显示
+    if (selectedItems.length === 1) {
+      setVisibleItems(selectedItems);
+      setOverflowItems([]);
+      return;
+    }
+
+    // 创建临时元素来测量每个tag的实际宽度
+    const measureTagWidth = (item: any): number => {
+      // 如果有tagStyle.w，优先使用
+      if (tagStyle?.w) {
+        return typeof tagStyle.w === 'number' ? tagStyle.w : parseInt(String(tagStyle.w)) || 60;
+      }
+
+      // 否则根据文本长度估算（更精确）
+      const text = String(item.label || item.value);
+      const baseWidth = 16; // 基础padding
+      const charWidth = 8; // 每个字符约8px
+      const closeIconWidth = closeable ? 20 : 0; // 关闭按钮宽度
+
+      return baseWidth + text.length * charWidth + closeIconWidth;
+    };
+
+    // 确保至少显示1个tag
+    const firstTagWidth = measureTagWidth(selectedItems[0]);
+
+    // 如果连第一个tag都放不下，也要强制显示
+    if (availableWidth < firstTagWidth) {
+      setVisibleItems([selectedItems[0]]);
+      setOverflowItems(selectedItems.slice(1));
+      return;
+    }
+
+    // 精确计算每个tag的宽度
+    let usedWidth = 0;
+    let visibleCount = 0;
+
+    for (let i = 0; i < selectedItems.length; i++) {
+      const currentTagWidth = measureTagWidth(selectedItems[i]);
+      const currentGap = i > 0 ? tagGap : 0;
+      const remainingItems = selectedItems.length - i - 1;
+      const needsOverflow = remainingItems > 0;
+      const overflowSpace = needsOverflow ? overflowIndicatorWidth + tagGap : 0;
+
+      const totalNeeded = usedWidth + currentTagWidth + currentGap + overflowSpace;
+
+      if (totalNeeded <= availableWidth) {
+        usedWidth += currentTagWidth + currentGap;
+        visibleCount = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    // 保证至少显示1个tag
+    if (visibleCount === 0) {
+      visibleCount = 1;
+    }
+
+    setVisibleItems(selectedItems.slice(0, visibleCount));
+    setOverflowItems(selectedItems.slice(visibleCount));
+  }, [closeable, formLabel, selectedItems, tagStyle?.w]);
+
+  // 动态监听容器宽度变化并重新计算布局
+  useEffect(() => {
+    if (!tagsContainerRef.current) return;
+
+    // 创建 ResizeObserver 监听容器宽度变化
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // 当容器宽度发生变化时，触发重新计算
+        requestAnimationFrame(() => {
+          calculateLayout();
+        });
+      }
+    });
+
+    // 开始监听容器
+    resizeObserver.observe(tagsContainerRef.current);
+
+    // 初始计算
+    requestAnimationFrame(() => {
+      calculateLayout();
+    });
+
+    // 清理监听器
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [calculateLayout]);
+
+  // 当选中项目、样式等发生变化时重新计算
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      calculateLayout();
+    });
+  }, [calculateLayout]);
 
   const ListRender = useMemo(() => {
     return (
       <>
         {list.map((item, i) => {
-          const isSelected = isSelectAll || value.includes(item.value);
+          const isSelected = isSelectAll || formatValue.includes(item.value);
           return (
             <MenuItem
               key={i}
@@ -215,7 +296,7 @@ const MultipleSelect = <T = any,>({
         })}
       </>
     );
-  }, [value, list, isSelectAll]);
+  }, [list, isSelectAll, formatValue, onclickItem]);
 
   return (
     <Box h={'100%'} w={'100%'}>
@@ -230,7 +311,6 @@ const MultipleSelect = <T = any,>({
       >
         <MenuButton
           as={Flex}
-          ref={ref}
           px={3}
           alignItems={'center'}
           borderRadius={'md'}
@@ -262,7 +342,7 @@ const MultipleSelect = <T = any,>({
                 <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
               </Flex>
             )}
-            {value.length === 0 && placeholder ? (
+            {formatValue.length === 0 && placeholder ? (
               <Box color={'myGray.500'} fontSize={formLabelFontSize} flex={1}>
                 {placeholder}
               </Box>
@@ -363,24 +443,28 @@ const MultipleSelect = <T = any,>({
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          <MenuItem
-            color={isSelectAll ? 'primary.600' : 'myGray.900'}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onSelectAll();
-            }}
-            whiteSpace={'pre-wrap'}
-            fontSize={'sm'}
-            gap={2}
-            mb={1}
-            {...menuItemStyles}
-          >
-            <Checkbox isChecked={isSelectAll} />
-            <Box flex={'1 0 0'}>{t('common:All')}</Box>
-          </MenuItem>
+          {setIsSelectAll && (
+            <>
+              <MenuItem
+                color={isSelectAll ? 'primary.600' : 'myGray.900'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onSelectAll();
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                gap={2}
+                mb={1}
+                {...menuItemStyles}
+              >
+                <Checkbox isChecked={isSelectAll} />
+                <Box flex={'1 0 0'}>{t('common:All')}</Box>
+              </MenuItem>
 
-          <MyDivider my={1} />
+              <MyDivider my={1} />
+            </>
+          )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
         </MenuList>

@@ -3,7 +3,7 @@ import { Box, Button, Flex, HStack, ModalBody, VStack, Text, Spinner } from '@ch
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   updateDatasetConfig,
   postCheckDatabaseConnection,
@@ -119,7 +119,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   }, [formDataString]);
 
   // 连接测试请求
-  const { runAsync: testConnection, loading: isConnecting } = useRequest2(
+  const { runAsync: testConnection, loading: isConnecting } = useRequest(
     async () => {
       const databaseConfig: DatabaseConfig = {
         clientType: formData.clientType,
@@ -166,7 +166,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
   );
 
   // 提交表单请求
-  const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest2(
+  const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest(
     async (data: any) => {
       const databaseConfig: DatabaseConfig = {
         clientType: data.clientType,

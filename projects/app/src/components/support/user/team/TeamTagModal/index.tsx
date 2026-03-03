@@ -55,23 +55,27 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
   const linkUrl = `${baseUrl}/chat/team?teamId=${teamInfo.teamId}&teamToken=`;
 
   // tags Async
-  const { mutate: onclickUpdate, isLoading: isUpdating } = useRequest({
-    mutationFn: async (data: FormType) => {
+  const { runAsync: onclickUpdate, loading: isUpdating } = useRequest(
+    async (data: FormType) => {
       return putUpdateTeam({ teamDomain: data.teamDomain });
     },
-    onSuccess() {
-      initUserInfo();
-      onClose();
-    },
-    errorToast: t('common:create_failed')
-  });
-  const { mutate: onclickTagAsync, isLoading: isSyncing } = useRequest({
-    mutationFn: (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
-    onSuccess(res) {
-      replaceTeamTags(res);
-    },
-    successToast: t('common:support.user.team.Team Tags Async Success')
-  });
+    {
+      onSuccess() {
+        initUserInfo();
+        onClose();
+      },
+      errorToast: t('common:create_failed')
+    }
+  );
+  const { runAsync: onclickTagAsync, loading: isSyncing } = useRequest(
+    (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
+    {
+      onSuccess(res) {
+        replaceTeamTags(res);
+      },
+      successToast: t('common:support.user.team.Team Tags Async Success')
+    }
+  );
 
   useQuery(['getTeamsTags'], getTeamsTags, {
     onSuccess: (data) => {

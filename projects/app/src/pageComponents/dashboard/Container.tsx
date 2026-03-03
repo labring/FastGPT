@@ -1,4 +1,4 @@
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Divider, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { useMemo } from 'react';
@@ -9,18 +9,16 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
-import {
-  type AppTemplateSchemaType,
-  type TemplateTypeSchemaType
-} from '@fastgpt/global/core/app/type';
-import { getPluginGroups } from '@/web/core/app/api/plugin';
-import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import TeamPlanStatusCard from './TeamPlanStatusCard';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
-  apps = 'apps',
+  agent = 'agent',
+  tool = 'tool',
+  system_tool = 'systemTool',
   app_templates = 'templateMarket',
   mcp_server = 'mcpServer',
   evaluation = 'evaluation'
@@ -33,12 +31,11 @@ const DashboardContainer = ({
   children: (e: {
     templateTags: TemplateTypeSchemaType[];
     templateList: AppTemplateSchemaType[];
-    pluginGroups: PluginGroupSchemaType[];
     MenuIcon: JSX.Element;
   }) => React.ReactNode;
 }) => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
@@ -49,7 +46,7 @@ const DashboardContainer = ({
     const path = router.asPath.split('?')[0]; // 移除查询参数
     const segments = path.split('/').filter(Boolean); // 过滤空字符串
 
-    return (segments.pop() as TabEnumType) || TabEnum.apps;
+    return (segments.pop() as TabEnumType) || TabEnum.agent;
   }, [router.asPath]);
 
   // Sub tab
@@ -59,13 +56,15 @@ const DashboardContainer = ({
   };
 
   // Template market
-  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest2(
+  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateTagList().then((res) => [
             {
               typeId: AppTemplateTypeEnum.recommendation,
-              typeName: t('app:templateMarket.templateTags.Recommendation'),
+              typeName: userInfo?.team.isWecomTeam
+                ? t('app:templateMarket.templateTags.WecomZone')
+                : t('app:templateMarket.templateTags.Recommendation'),
               typeOrder: 0
             },
             ...res
@@ -76,36 +75,17 @@ const DashboardContainer = ({
       refreshDeps: [currentTab]
     }
   );
-  const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
+  const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () =>
       currentTab === TabEnum.app_templates
         ? getTemplateMarketItemList({ type: appType })
-        : Promise.resolve([]),
+        : Promise.resolve({ list: [], total: 0 }),
     {
       manual: false,
       refreshDeps: [currentTab, appType]
     }
   );
-
-  // System tools
-  const { data: pluginGroups = [], loading: isLoadingToolGroups } = useRequest2(
-    () =>
-      getPluginGroups().then((res) =>
-        res.map((item) => ({
-          ...item,
-          groupTypes: [
-            {
-              typeId: 'all',
-              typeName: t('app:type.All')
-            },
-            ...item.groupTypes
-          ]
-        }))
-      ),
-    {
-      manual: false
-    }
-  );
+  const templateList = templateData?.list || [];
 
   const groupList = useMemo<
     {
@@ -122,9 +102,9 @@ const DashboardContainer = ({
   >(() => {
     const groups = [
       {
-        groupId: TabEnum.apps,
-        groupAvatar: 'common/app',
-        groupName: t('common:core.module.template.Team app'),
+        groupId: TabEnum.agent,
+        groupAvatar: 'core/chat/sidebar/star',
+        groupName: 'Agent',
         children: [
           {
             isActive: !currentType,
@@ -137,28 +117,44 @@ const DashboardContainer = ({
           },
           {
             typeId: AppTypeEnum.simple,
-            typeName: t('app:team.menu.app')
+            typeName: t('app:type.Chat_Agent')
           },
           {
             typeId: AppTypeEnum.workflow,
-            typeName: t('app:team.menu.workflow')
-          },
-          {
-            typeId: AppTypeEnum.plugin,
-            typeName: t('app:team.menu.plugin')
+            typeName: t('app:type.Workflow bot')
           }
         ]
       },
-      ...pluginGroups.map((group) => ({
-        groupId: group.groupId,
-        groupAvatar: group.groupAvatar,
-        groupName: t(group.groupName as any),
-        children: group.groupTypes.map((type, index) => ({
-          typeId: type.typeId,
-          typeName: t(type.typeName as any),
-          isActive: index === 0 && !currentType
-        }))
-      })),
+      {
+        groupId: TabEnum.tool,
+        groupAvatar: 'core/app/type/plugin',
+        groupName: t('common:navbar.Tools'),
+        children: [
+          {
+            isActive: !currentType,
+            typeId: 'all',
+            typeName: t('app:type.All')
+          },
+          {
+            typeId: 'plugin',
+            typeName: t('app:toolType_workflow')
+          },
+          {
+            typeId: 'httpToolSet',
+            typeName: t('app:toolType_http')
+          },
+          {
+            typeId: 'toolSet',
+            typeName: t('app:toolType_mcp')
+          }
+        ]
+      },
+      {
+        groupId: TabEnum.system_tool,
+        groupAvatar: 'common/app',
+        groupName: t('app:core.module.template.System Tools'),
+        children: []
+      },
       {
         groupId: TabEnum.app_templates,
         groupAvatar: 'common/templateMarket',
@@ -214,7 +210,6 @@ const DashboardContainer = ({
   }, [
     currentType,
     feConfigs.appTemplateCourse,
-    pluginGroups,
     t,
     templateList,
     templateTags,
@@ -242,7 +237,7 @@ const DashboardContainer = ({
     [isOpenSidebar, onCloseSidebar, onOpenSidebar]
   );
 
-  const isLoading = isLoadingTemplatesTags || isLoadingTemplates || isLoadingToolGroups;
+  const isLoading = isLoadingTemplatesTags || isLoadingTemplates;
 
   return (
     <Box h={'100%'}>
@@ -253,106 +248,123 @@ const DashboardContainer = ({
           position={'fixed'}
           left={isPc ? navbarWidth : 0}
           top={0}
-          bg={'myGray.25'}
+          bg={'white'}
           w={`220px`}
           h={'full'}
           borderLeft={'1px solid'}
           borderRight={'1px solid'}
           borderColor={'myGray.200'}
           pt={4}
-          px={2.5}
           pb={2.5}
           zIndex={100}
           userSelect={'none'}
+          display={'flex'}
+          flexDirection={'column'}
+          justifyContent={'space-between'}
         >
-          {groupList.map((group) => {
-            const selected = currentTab === group.groupId;
+          <Box
+            flex={1}
+            overflowY={'auto'}
+            px={2.5}
+            sx={{ '&::-webkit-scrollbar': { width: '4px' } }}
+          >
+            {groupList.map((group) => {
+              const selected = currentTab === group.groupId;
 
-            return (
-              <Box key={group.groupId}>
-                <Flex
-                  p={2}
-                  fontSize={'sm'}
-                  rounded={'md'}
-                  color={'myGray.700'}
-                  cursor={'pointer'}
-                  _hover={{
-                    bg: 'primary.50'
-                  }}
-                  mb={0.5}
-                  onClick={() => {
-                    router.push(`/dashboard/${group.groupId}`);
-                    onCloseSidebar();
-                  }}
-                  {...(group.children.length === 0 &&
-                    selected && { bg: 'primary.100', color: 'primary.600' })}
-                >
-                  <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} />
-                  <Box fontWeight={'medium'}>{group.groupName}</Box>
-                  <Box flex={1} />
-                  {group.children.length > 0 && (
-                    <MyIcon
-                      name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                      w={'1rem'}
-                    />
-                  )}
-                </Flex>
-                {selected && (
-                  <Box>
-                    {group.children.map((child) => {
-                      const isActive = child.isActive || child.typeId === currentType;
+              return (
+                <Box key={group.groupId}>
+                  <Flex
+                    p={2}
+                    fontSize={'sm'}
+                    rounded={'md'}
+                    color={'myGray.700'}
+                    cursor={'pointer'}
+                    _hover={{
+                      bg: 'primary.50'
+                    }}
+                    mb={0.5}
+                    onClick={() => {
+                      router.push(`/dashboard/${group.groupId}`);
+                      onCloseSidebar();
+                    }}
+                    {...(group.children.length === 0 &&
+                      selected && { bg: 'primary.100', color: 'primary.600' })}
+                  >
+                    <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} />
+                    <Box fontWeight={'medium'}>{group.groupName}</Box>
+                    <Box flex={1} />
+                    {group.children.length > 0 && (
+                      <MyIcon
+                        name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                        w={'1rem'}
+                      />
+                    )}
+                  </Flex>
+                  {selected && (
+                    <Box>
+                      {group.children.map((child) => {
+                        const isActive = child.isActive || child.typeId === currentType;
 
-                      return (
-                        <Flex
-                          key={child.typeId}
-                          fontSize={'sm'}
-                          fontWeight={500}
-                          rounded={'md'}
-                          py={2}
-                          pl={'30px'}
-                          cursor={'pointer'}
-                          mb={0.5}
-                          _hover={{ bg: 'primary.50' }}
-                          {...(isActive
-                            ? {
-                                bg: 'primary.50',
-                                color: 'primary.600'
-                              }
-                            : {
-                                bg: 'transparent',
-                                color: 'myGray.500'
-                              })}
-                          onClick={() => {
-                            if (child.onClick) {
-                              child.onClick();
-                            } else {
-                              router.push({
-                                query: {
-                                  ...router.query,
-                                  type: child.typeId
+                        const childContent = (
+                          <Flex
+                            key={child.typeId}
+                            fontSize={'sm'}
+                            fontWeight={500}
+                            rounded={'md'}
+                            py={2}
+                            pl={'30px'}
+                            cursor={'pointer'}
+                            mb={0.5}
+                            _hover={{ bg: 'primary.50' }}
+                            {...(isActive
+                              ? {
+                                  bg: 'primary.50',
+                                  color: 'primary.600'
                                 }
-                              });
-                              onCloseSidebar();
-                            }
-                          }}
-                        >
-                          {child.typeName}
-                        </Flex>
-                      );
-                    })}
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
+                              : {
+                                  bg: 'transparent',
+                                  color: 'myGray.500'
+                                })}
+                            onClick={() => {
+                              if (child.onClick) {
+                                child.onClick();
+                              } else {
+                                router.push({
+                                  query: {
+                                    ...router.query,
+                                    type: child.typeId
+                                  }
+                                });
+                                onCloseSidebar();
+                              }
+                            }}
+                            alignItems={'center'}
+                          >
+                            {child.typeName}
+                          </Flex>
+                        );
+
+                        return childContent;
+                      })}
+                    </Box>
+                  )}
+                  {group.groupId === TabEnum.system_tool && (
+                    <Divider my={1} borderColor={'myGray.200'} />
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+          <Box px={2.5}>
+            <TeamPlanStatusCard />
+          </Box>
         </MyBox>
       )}
 
-      <Box h={'100%'} pl={isPc ? `220px` : 0} position={'relative'}>
+      <Box h={'100%'} pl={isPc ? `220px` : 0} position={'relative'} bg={'white'}>
         {children({
           templateTags,
           templateList,
-          pluginGroups,
           MenuIcon
         })}
       </Box>

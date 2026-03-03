@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { type SetStateAction, useMemo, useState } from 'react';
+import { type SetStateAction, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {
@@ -21,6 +21,7 @@ import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { chunkAutoChunkSize, getAutoIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { useLocalStorageState } from 'ahooks';
 
 export type ImportFormType = {
   customPdfParse: boolean;
@@ -43,7 +44,7 @@ type DatasetImportContextType = {
 };
 
 export const defaultFormData: ImportFormType = {
-  customPdfParse: false,
+  customPdfParse: true,
 
   trainingType: DatasetCollectionDataProcessModeEnum.chunk,
 
@@ -226,12 +227,23 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   const vectorModel = datasetDetail.vectorModel;
 
+  const [localCustomPdfParse, setLocalCustomPdfParse] = useLocalStorageState(
+    'dataset_customPdfParse',
+    {
+      defaultValue: true
+    }
+  );
   const processParamsForm = useForm<ImportFormType>({
     defaultValues: (() => ({
       ...defaultFormData,
+      customPdfParse: localCustomPdfParse,
       indexSize: getAutoIndexSize(vectorModel)
     }))()
   });
+  const customPdfParse = processParamsForm.watch('customPdfParse');
+  useEffect(() => {
+    setLocalCustomPdfParse(customPdfParse);
+  }, [customPdfParse, setLocalCustomPdfParse]);
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
 

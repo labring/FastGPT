@@ -22,7 +22,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import format from 'date-fns/format';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -119,7 +119,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     title: t('common:Rename')
   });
 
-  const { runAsync: onUpdateTaskName } = useRequest2(
+  const { runAsync: onUpdateTaskName } = useRequest(
     (evalId: string, newName: string) => {
       return putUpdateEvaluation({
         evalId,
@@ -135,7 +135,7 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
-  const { runAsync: onDeleteEvaluation } = useRequest2(deleteEvaluation, {
+  const { runAsync: onDeleteEvaluation } = useRequest(deleteEvaluation, {
     onSuccess: () => {
       fetchData();
     },

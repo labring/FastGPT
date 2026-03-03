@@ -1,7 +1,7 @@
 import { type ReactNode, useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getAppDetailById } from '@/web/core/app/api';
 import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
@@ -227,8 +227,8 @@ export const TaskPageContextProvider = ({
     setErrors((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // 使用 useRequest2 优化各种请求
-  const { runAsync: runLoadStats, cancel: cancelStatsPolling } = useRequest2(
+  // 使用 useRequest 优化各种请求
+  const { runAsync: runLoadStats, cancel: cancelStatsPolling } = useRequest(
     () => getEvaluationStats(taskId),
     {
       manual: true,
@@ -256,7 +256,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runLoadSummary, cancel: cancelSummaryPolling } = useRequest2(
+  const { runAsync: runLoadSummary, cancel: cancelSummaryPolling } = useRequest(
     () => getEvaluationSummary(taskId),
     {
       manual: true,
@@ -284,7 +284,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runLoadEvaluationDetail, cancel: cancelDetailPolling } = useRequest2(
+  const { runAsync: runLoadEvaluationDetail, cancel: cancelDetailPolling } = useRequest(
     () => getEvaluationDetail(taskId),
     {
       manual: true,
@@ -311,7 +311,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runDeleteItem } = useRequest2(
+  const { runAsync: runDeleteItem } = useRequest(
     (itemId: string) => deleteEvaluationItem(itemId),
     {
       manual: true,
@@ -320,7 +320,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runRetryItem } = useRequest2(
+  const { runAsync: runRetryItem } = useRequest(
     (itemId: string) => postRetryEvaluationItem({ evalItemId: itemId }),
     {
       manual: true,
@@ -329,7 +329,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runUpdateItem } = useRequest2(
+  const { runAsync: runUpdateItem } = useRequest(
     (data: UpdateEvaluationItemRequest) => putUpdateEvaluationItem(data),
     {
       manual: true,
@@ -338,7 +338,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runRetryFailedItems } = useRequest2(
+  const { runAsync: runRetryFailedItems } = useRequest(
     () => postRetryFailedEvaluationItems({ evalId: taskId }),
     {
       manual: true,
@@ -346,7 +346,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runGenerateSummary } = useRequest2(
+  const { runAsync: runGenerateSummary } = useRequest(
     (params: { evalId: string; metricIds: string[] }) => postGenerateSummary(params),
     {
       manual: true,
@@ -355,7 +355,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runExportItems } = useRequest2(
+  const { runAsync: runExportItems } = useRequest(
     async (filters: Record<string, any> = {}) => {
       const metricNameSet = new Set<string>();
       (evaluationDetail?.metricNames || []).forEach((name) => name && metricNameSet.add(name));
@@ -415,7 +415,7 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runLoadAppDetail } = useRequest2((appId: string) => getAppDetailById(appId), {
+  const { runAsync: runLoadAppDetail } = useRequest((appId: string) => getAppDetailById(appId), {
     manual: true,
     onSuccess: (data) => {
       setAppDetail(data);

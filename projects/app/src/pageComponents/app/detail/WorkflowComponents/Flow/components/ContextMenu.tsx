@@ -1,38 +1,35 @@
 import { Box, HStack, type StackProps } from '@chakra-ui/react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { useContextSelector } from 'use-context-selector';
 import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
-import { WorkflowEventContext } from '../../context/workflowEventContext';
-import { WorkflowContext } from '../../context';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowStatusContext } from '../../context/workflowStatusContext';
 import { cloneDeep } from 'lodash';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { getHandleIndex } from '../utils/edge';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
-  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu!);
-  const setMenu = useContextSelector(WorkflowEventContext, (ctx) => ctx.setMenu);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
+  const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
+  const { setNodes, setEdges, allNodeFolded } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const getParentNodeSizeAndPosition = useContextSelector(
-    WorkflowStatusContext,
+    WorkflowLayoutContext,
     (v) => v.getParentNodeSizeAndPosition
   );
 
-  const { fitView, screenToFlowPosition } = useReactFlow();
-
-  const allUnFolded = useMemo(() => {
-    return !!menu ? nodeList.some((node) => node.isFolded) : false;
-  }, [nodeList, menu]);
+  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -49,8 +46,8 @@ const ContextMenu = () => {
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
         rankdir: 'LR',
-        nodesep: 80, // Horizontal space
-        ranksep: 120 // Vertical space
+        nodesep: 80,
+        ranksep: 200
       });
 
       nodes.forEach((node) => {
@@ -71,17 +68,72 @@ const ContextMenu = () => {
       const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
       const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
 
+      // Group nodes by rank (horizontal position in LR layout)
+      const nodesByRank: Map<
+        number,
+        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+      > = new Map();
+
       nodes.forEach((node) => {
         if (!connectedNodeIds.has(node.id)) {
           return;
         }
 
         const nodeWithPosition = dagreGraph.node(node.id);
+        const rank = Math.round(nodeWithPosition.x); // Group by x coordinate (same column)
 
-        node.position = {
-          x: nodeWithPosition.x - node.width! / 2 + offsetX,
-          y: nodeWithPosition.y - node.height! / 2 + offsetY
-        };
+        if (!nodesByRank.has(rank)) {
+          nodesByRank.set(rank, []);
+        }
+        nodesByRank.get(rank)!.push({ node, dagreNode: nodeWithPosition });
+      });
+
+      // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
+      nodesByRank.forEach((nodesInRank) => {
+        // Find the minimum left position (for left alignment)
+        let minLeft = Infinity;
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          const left = dagreNode.x - node.width! / 2;
+          minLeft = Math.min(minLeft, left);
+        });
+
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
+        nodesInRank.sort((a, b) => {
+          const edgeA = edges.find((e) => e.target === a.node.id);
+          const edgeB = edges.find((e) => e.target === b.node.id);
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+          }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
+        });
+
+        // Assign Y positions in sorted order
+        let currentY =
+          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
+          offsetY;
+        nodesInRank.forEach(({ node }) => {
+          node.position = { x: minLeft + offsetX, y: currentY };
+          currentY += node.height! + 80;
+        });
       });
     };
     const updateParentNodesPosition = ({
@@ -102,8 +154,8 @@ const ContextMenu = () => {
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
         rankdir: 'LR',
-        nodesep: 80, // Horizontal space
-        ranksep: 120 // Vertical space
+        nodesep: 80,
+        ranksep: 200
       });
 
       nodes.forEach((node) => {
@@ -112,14 +164,13 @@ const ContextMenu = () => {
       });
 
       // Find connected nodes
+      const filteredEdges = edges.filter(
+        (edge) => !childNodeIdsSet.has(edge.source) && !childNodeIdsSet.has(edge.target)
+      );
       const connectedNodeIds = new Set<string>();
-      edges.forEach((edge) => {
-        if (childNodeIdsSet.has(edge.source)) return;
-        if (childNodeIdsSet.has(edge.target)) return;
-
+      filteredEdges.forEach((edge) => {
         connectedNodeIds.add(edge.source);
         connectedNodeIds.add(edge.target);
-
         dagreGraph.setEdge(edge.source, edge.target);
       });
 
@@ -128,29 +179,85 @@ const ContextMenu = () => {
       const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
       const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
 
+      // Group nodes by rank (horizontal position in LR layout)
+      const nodesByRank: Map<
+        number,
+        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+      > = new Map();
+
       nodes.forEach((node) => {
         if (!connectedNodeIds.has(node.id) || childNodeIdsSet.has(node.data.nodeId)) {
           return;
         }
 
         const nodeWithPosition = dagreGraph.node(node.id);
-        const targetX = nodeWithPosition.x - node.width! / 2 + offsetX;
-        const targetY = nodeWithPosition.y - node.height! / 2 + offsetY;
-        const diffX = targetX - node.position.x;
-        const diffY = targetY - node.position.y;
-        node.position = {
-          x: targetX,
-          y: targetY
-        };
+        const rank = Math.round(nodeWithPosition.x); // Group by x coordinate (same column)
 
-        // Update child nodes position
-        nodes.forEach((childNode) => {
-          if (childNode.data.parentNodeId === node.data.nodeId) {
-            childNode.position = {
-              x: childNode.position.x + diffX,
-              y: childNode.position.y + diffY
-            };
+        if (!nodesByRank.has(rank)) {
+          nodesByRank.set(rank, []);
+        }
+        nodesByRank.get(rank)!.push({ node, dagreNode: nodeWithPosition });
+      });
+
+      // Apply left-aligned positioning for nodes in same column (vertical stacking)
+      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
+      nodesByRank.forEach((nodesInRank) => {
+        // Find the minimum left position (for left alignment)
+        let minLeft = Infinity;
+        nodesInRank.forEach(({ node, dagreNode }) => {
+          const left = dagreNode.x - node.width! / 2;
+          minLeft = Math.min(minLeft, left);
+        });
+
+        // Sort nodes: use handle index for special nodes, otherwise maintain original Y position
+        nodesInRank.sort((a, b) => {
+          const edgeA = filteredEdges.find((e) => e.target === a.node.id);
+          const edgeB = filteredEdges.find((e) => e.target === b.node.id);
+          const sourceA = nodesMap.get(edgeA?.source);
+          const sourceB = nodesMap.get(edgeB?.source);
+
+          // Check if sources are special nodes (ifElse, userSelect, classifyQuestion)
+          const specialNodeTypes = [
+            FlowNodeTypeEnum.ifElseNode,
+            FlowNodeTypeEnum.userSelect,
+            FlowNodeTypeEnum.classifyQuestion
+          ];
+          const isSourceASpecial = sourceA && specialNodeTypes.includes(sourceA.data.flowNodeType);
+          const isSourceBSpecial = sourceB && specialNodeTypes.includes(sourceB.data.flowNodeType);
+
+          // If both from special nodes or both from regular nodes with same source, use handle index
+          if (
+            edgeA?.source === edgeB?.source &&
+            (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
+          ) {
+            return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
           }
+
+          // Otherwise, maintain original Y position order
+          return a.dagreNode.y - b.dagreNode.y;
+        });
+
+        // Assign Y positions in sorted order
+        let currentY =
+          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
+          offsetY;
+        nodesInRank.forEach(({ node }) => {
+          const targetX = minLeft + offsetX;
+          const diffX = targetX - node.position.x;
+          const diffY = currentY - node.position.y;
+
+          node.position = { x: targetX, y: currentY };
+          currentY += node.height! + 80;
+
+          // Sync child nodes position
+          nodes.forEach((childNode) => {
+            if (childNode.data.parentNodeId === node.data.nodeId) {
+              childNode.position = {
+                x: childNode.position.x + diffX,
+                y: childNode.position.y + diffY
+              };
+            }
+          });
         });
       });
     };
@@ -166,6 +273,9 @@ const ContextMenu = () => {
         newNodes.forEach((node) => {
           const parentId = node.data.parentNodeId;
           if (parentId) {
+            // Skip children without valid dimensions (not yet rendered)
+            if (!node.width || !node.height) return;
+
             childNodesIdSet.add(parentId);
             if (!childNodesMap[parentId]) {
               childNodesMap[parentId] = [];
@@ -230,14 +340,20 @@ const ContextMenu = () => {
     });
 
     setTimeout(() => {
-      fitView();
+      const validNodes = getNodes().filter((node) => node.width && node.height);
+      fitView({ nodes: validNodes, padding: 0.3 });
     });
-  }, []);
+  }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
   const onAddComment = useCallback(() => {
+    // Compensate for menu position offset (set in onPaneContextMenu)
+    // menu.left = e.clientX - 12, menu.top = e.clientY + 6
+    const mouseX = (menu?.left ?? 0) + 12;
+    const mouseY = (menu?.top ?? 0) - 6;
+
     const newNode = nodeTemplate2FlowNode({
       template: CommentNode,
-      position: screenToFlowPosition({ x: menu?.left ?? 0, y: (menu?.top ?? 0) + 100 }),
+      position: screenToFlowPosition({ x: mouseX, y: mouseY }),
       t
     });
 
@@ -251,19 +367,25 @@ const ContextMenu = () => {
         .concat(newNode);
       return newState;
     });
-  }, [menu]);
+  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
 
   const onFold = useCallback(() => {
     setNodes((state) => {
-      return state.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          isFolded: !allUnFolded
+      return state.map((node) => {
+        // Skip comment nodes
+        if (node.data.flowNodeType === FlowNodeTypeEnum.comment) {
+          return node;
         }
-      }));
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isFolded: !allNodeFolded
+          }
+        };
+      });
     });
-  }, [allUnFolded]);
+  }, [allNodeFolded, setNodes]);
 
   const ContextMenuItem = useCallback(
     ({
@@ -300,9 +422,9 @@ const ContextMenu = () => {
   );
 
   return (
-    <Box position="relative">
+    <Box>
       <Box
-        position="absolute"
+        position={'fixed'}
         top={`${menu.top - 6}px`}
         left={`${menu.left + 10}px`}
         width={0}
@@ -310,18 +432,17 @@ const ContextMenu = () => {
         borderLeft="6px solid transparent"
         borderRight="6px solid transparent"
         borderBottom="6px solid white"
-        zIndex={2}
+        zIndex={10}
         filter="drop-shadow(0px -1px 2px rgba(0, 0, 0, 0.1))"
       />
       <Box
-        position={'absolute'}
+        position={'fixed'}
         top={menu.top}
         left={menu.left}
         bg={'white'}
         w={'120px'}
         rounded={'md'}
         boxShadow={'0px 2px 4px 0px #A1A7B340'}
-        className="context-menu"
         color={'myGray.600'}
         p={1}
         zIndex={10}
@@ -340,7 +461,7 @@ const ContextMenu = () => {
         />
         <ContextMenuItem
           icon="common/select"
-          label={allUnFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
+          label={allNodeFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
           onClick={onFold}
         />
       </Box>

@@ -3,7 +3,7 @@ import { type SearchDataResponseItemType } from '../type';
 
 /* dataset search result concat */
 export const datasetSearchResultConcat = (
-  arr: { k: number; list: SearchDataResponseItemType[] }[]
+  arr: { weight: number; list: SearchDataResponseItemType[] }[]
 ): SearchDataResponseItemType[] => {
   arr = arr.filter((item) => item.list.length > 0);
 
@@ -14,12 +14,11 @@ export const datasetSearchResultConcat = (
 
   // rrf
   arr.forEach((item) => {
-    const k = item.k;
+    const weight = item.weight;
 
     item.list.forEach((data, index) => {
       const rank = index + 1;
-      const score = 1 / (k + rank);
-
+      const score = weight * (1 / (60 + rank));
       const record = map.get(data.id);
       if (record) {
         // 合并两个score,有相同type的score,取最大值
@@ -65,8 +64,7 @@ export const datasetSearchResultConcat = (
       });
     }
 
-    // @ts-ignore
-    delete item.rrfScore;
-    return item;
+    const { rrfScore: _, ...result } = item;
+    return result;
   });
 };

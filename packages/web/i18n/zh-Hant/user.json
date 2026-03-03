@@ -17,11 +17,11 @@
   "bill.valid_time": "生效時間",
   "bill.you_can_convert": "您可兌換",
   "bill.yuan": "元",
+  "current_package": "當前套餐：",
   "delete.admin_failed": "刪除管理員失敗",
   "delete.admin_success": "刪除管理員成功",
   "delete.failed": "刪除失敗",
   "delete.success": "刪除成功",
-  "has_chosen": "已選擇",
   "login.Dingtalk": "釘釘登入",
   "login.error": "登入失敗",
   "login.password_condition": "密碼最多可輸入 60 個字元",
@@ -88,6 +88,7 @@
   "team.add_writer": "新增可寫入成員",
   "team.avatar_and_name": "頭像與名稱",
   "team.belong_to_group": "所屬成員群組",
+  "team.collaborator.added": "已新增",
   "team.group.avatar": "群組頭像",
   "team.group.create": "建立群組",
   "team.group.create_failed": "建立群組失敗",
@@ -111,6 +112,5 @@
   "team.manage_collaborators": "管理協作者",
   "team.no_collaborators": "目前沒有協作者",
   "team.org.org": "組織",
-  "team.write_role_member": "可寫入權限",
-  "team.collaborator.added": "已新增"
+  "team.write_role_member": "可寫入權限"
 }

@@ -32,9 +32,6 @@ export const postCreateEvaluation = ({
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
 };

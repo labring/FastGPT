@@ -29,6 +29,8 @@ export const AgentNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/toolCall',
+  avatarLinear: 'core/workflow/template/toolCallLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:template.agent'),
   intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,
@@ -51,6 +53,13 @@ export const AgentNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       valueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      key: NodeInputKeyEnum.aiChatIsResponseText,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: true,
+      valueType: WorkflowIOValueTypeEnum.boolean
     },
     {
       key: NodeInputKeyEnum.aiChatVision,

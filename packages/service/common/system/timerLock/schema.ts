@@ -2,7 +2,7 @@ import { connectionMongo, getMongoModel } from '../../mongo';
 const { Schema } = connectionMongo;
 import { type TimerLockSchemaType } from './type.d';
 
-export const collectionName = 'systemtimerlocks';
+export const collectionName = 'system_timer_locks';
 
 const TimerLockSchema = new Schema({
   timerId: {

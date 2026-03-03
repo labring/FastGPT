@@ -1,9 +1,16 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+  useMemo,
+  useCallback
+} from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
@@ -85,14 +92,30 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     (v) => v
   );
 
-  // dataset sync confirm
-  const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
-    {
-      content: t('dataset:start_sync_dataset_tip')
-    }
-  );
+  // collection list
+  const [searchText, setSearchText] = useState('');
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const {
+    data: collections,
+    Pagination,
+    total,
+    getData,
+    isLoading: isGetting,
+    pageNum,
+    pageSize
+  } = usePagination(getDatasetCollections, {
+    defaultPageSize: 20,
+    storeToQuery: true,
+    params: {
+      datasetId,
+      parentId,
+      searchText,
+      filterTags
+    },
+    refreshDeps: [parentId, searchText, filterTags]
+  });
 
-  const syncDataset = async () => {
+  const syncDataset = useCallback(async () => {
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
       await checkTeamWebSyncLimit();
     }
@@ -100,12 +123,21 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     await postDatasetSync({ datasetId: datasetId });
     loadDatasetDetail(datasetId);
 
+    getData(pageNum);
+
     // Show success message
     toast({
       status: 'success',
       title: t('dataset:collection.sync.submit')
     });
-  };
+  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum, t, toast]);
+
+  // dataset sync confirm
+  const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
+    {
+      content: t('dataset:start_sync_dataset_tip')
+    }
+  );
 
   const {
     isOpen: isOpenWebsiteModal,
@@ -113,7 +145,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     onClose: onCloseWebsiteModal
   } = useDisclosure();
 
-  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
+  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest(
     async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
         id: datasetId,
@@ -129,70 +161,70 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     }
   );
 
-  // collection list
-  const [searchText, setSearchText] = useState('');
-  const [filterTags, setFilterTags] = useState<string[]>([]);
-  const {
-    data: collections,
-    Pagination,
-    total,
-    getData,
-    isLoading: isGetting,
-    pageNum,
-    pageSize
-  } = usePagination(getDatasetCollections, {
-    defaultPageSize: 20,
-    params: {
-      datasetId,
-      parentId,
-      searchText,
-      filterTags
-    },
-    // defaultRequest: false,
-    refreshDeps: [parentId, searchText, filterTags]
-  });
-
   // database
   const hasDatabaseConfig = useMemo(() => !isEmpty(datasetDetail.databaseConfig), [datasetDetail]);
-  const handleOpenConfigPage = (
-    mode: 'edit' | 'create' = 'create',
-    databaseName?: string,
-    activeStep = 0
-  ) => {
-    router.replace({
-      query: {
-        ...omit(router.query, ['databaseName']),
-        currentTab: TabEnum.import,
-        source: ImportDataSourceEnum.database,
-        mode,
-        activeStep,
-        ...(databaseName
-          ? {
-              databaseName
-            }
-          : {})
-      }
-    });
-  };
+  const handleOpenConfigPage = useCallback(
+    (
+      mode: 'edit' | 'create' = 'create',
+      databaseName?: string,
+      activeStep = 0
+    ) => {
+      router.replace({
+        query: {
+          ...omit(router.query, ['databaseName']),
+          currentTab: TabEnum.import,
+          source: ImportDataSourceEnum.database,
+          mode,
+          activeStep,
+          ...(databaseName
+            ? {
+                databaseName
+              }
+            : {})
+        }
+      });
+    },
+    [router]
+  );
 
-  const contextValue: CollectionPageContextType = {
-    openDatasetSyncConfirm: openDatasetSyncConfirm(syncDataset),
-    onOpenWebsiteModal,
+  const contextValue: CollectionPageContextType = useMemo(
+    () => ({
+      openDatasetSyncConfirm: openDatasetSyncConfirm({ onConfirm: syncDataset }),
+      onOpenWebsiteModal,
 
-    searchText,
-    setSearchText,
-    filterTags,
-    setFilterTags,
-    collections,
-    Pagination,
-    total,
-    getData,
-    isGetting,
-    pageNum,
-    pageSize,
-    hasDatabaseConfig,
-    handleOpenConfigPage
-  };
+      searchText,
+      setSearchText,
+      filterTags,
+      setFilterTags,
+      collections,
+      Pagination,
+      total,
+      getData,
+      isGetting,
+      pageNum,
+      pageSize,
+      hasDatabaseConfig,
+      handleOpenConfigPage
+    }),
+    [
+      Pagination,
+      collections,
+      filterTags,
+      getData,
+      hasDatabaseConfig,
+      handleOpenConfigPage,
+      isGetting,
+      onOpenWebsiteModal,
+      openDatasetSyncConfirm,
+      pageNum,
+      pageSize,
+      searchText,
+      setFilterTags,
+      setSearchText,
+      syncDataset,
+      total
+    ]
+  );
 
   return (
     <CollectionPageContext.Provider value={contextValue}>

@@ -55,14 +55,19 @@ import type {
   SqlGenerationRequest,
   SqlGenerationResponse
 } from '@fastgpt/global/core/dataset/database/api';
-import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/controller.d';
+import type { DatabaseEmbeddingRecallItemType } from '../../../common/vectorDB/type';
 import { queryByNL } from '../database/dative/client/dativeApiServer';
 import { searchCorrectionData } from '../../workflow/dispatch/dataset/search';
 import { searchDatasetDataForAssistant } from './customController';
+import { pushTrack } from '../../../common/middle/tracks/utils';
+import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
+import { addDays, addHours } from 'date-fns';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
   teamId: string;
+  uid?: string;
+  tmbId?: string;
   model: string;
   datasetIds: string[];
   reRankQuery: string;
@@ -126,9 +131,11 @@ export type SearchDatasetDataResponse = {
   };
 
   queryExtensionResult?: {
-    model: string;
+    llmModel: string;
+    embeddingModel: string;
     inputTokens: number;
     outputTokens: number;
+    embeddingTokens: number;
     query: string;
     synonymRewriteResult?: {
       standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
@@ -323,7 +330,7 @@ export async function searchDatasetData(
     };
   };
 
-  /* 
+  /*
     Collection metadata filter
     标签过滤：
     1. and 先生效
@@ -646,8 +653,6 @@ export async function searchDatasetData(
               id: String(data._id),
               updateTime: data.updateTime,
               ...formatDatasetDataValue({
-                teamId,
-                datasetId: data.datasetId,
                 q: data.q,
                 a: data.a,
                 imageId: data.imageId,
@@ -819,8 +824,6 @@ export async function searchDatasetData(
             collectionId: String(data.collectionId),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,
@@ -883,10 +886,10 @@ export async function searchDatasetData(
 
     // rrf concat
     const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResults.map((list) => ({ k: 60, list }))
+      embeddingRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, embeddingLimit);
     const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResults.map((list) => ({ k: 60, list }))
+      fullTextRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, fullTextLimit);
 
     return {
@@ -954,26 +957,18 @@ export async function searchDatasetData(
     }
   })();
 
-  // embedding recall and fullText recall rrf concat
-  const baseK = 120;
-  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
-  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
-
   const rrfSearchResult = datasetSearchResultConcat([
-    { k: embK, list: embeddingRecallResults },
-    { k: fullTextK, list: fullTextRecallResults }
+    { weight: embeddingWeight, list: embeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
   ]);
 
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
-    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
-
     return datasetSearchResultConcat([
-      { k: searchK, list: rrfSearchResult },
-      { k: rerankK, list: reRankResults }
+      { weight: 1 - rerankWeight, list: rrfSearchResult },
+      { weight: rerankWeight, list: reRankResults }
     ]);
   })();
 
@@ -1014,8 +1009,15 @@ export async function searchDatasetData(
   // token filter
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
+  const finalResult = filterMaxTokensResult.map((item) => {
+    item.q = replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
+    return item;
+  });
+
+  pushTrack.datasetSearch({ datasetIds, teamId });
+
   return {
-    searchRes: filterMaxTokensResult,
+    searchRes: finalResult,
     embeddingTokens,
     reRankInputTokens,
     searchMode,
@@ -1048,20 +1050,17 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-  const extensionModel = datasetSearchUsingExtensionQuery
-    ? getLLMModel(datasetSearchExtensionModel)
-    : undefined;
 
-  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult, rewriteTime } =
-    await datasetSearchQueryExtension({
-      query,
-      extensionModel,
-      extensionBg: datasetSearchExtensionBg,
-      histories,
-      isAssistant,
-      teamId: props.teamId,
-      datasetIds
-    });
+
+  const { searchQueries, reRankQuery, aiExtensionResult, rewriteTime } = await datasetSearchQueryExtension({
+    query,
+    llmModel: datasetSearchUsingExtensionQuery
+      ? getLLMModel(datasetSearchExtensionModel).model
+      : undefined,
+    embeddingModel: props.model,
+    extensionBg: datasetSearchExtensionBg,
+    histories
+  });
 
   // 新增：检索开始计时（问题改写之后）
   const retrievalStartTime = Date.now();
@@ -1150,10 +1149,12 @@ export const defaultSearchDatasetData = async ({
         retrievalType: 'correction' as const, // 新增：标记为 correction 命中
         queryExtensionResult: aiExtensionResult
           ? {
-              model: aiExtensionResult.model,
+              llmModel: aiExtensionResult.llmModel,
+              embeddingModel: aiExtensionResult.embeddingModel,
               inputTokens: aiExtensionResult.inputTokens,
               outputTokens: aiExtensionResult.outputTokens,
-              query: extensionQueries.join('\n'),
+              embeddingTokens: aiExtensionResult.embeddingTokens,
+              query: searchQueries.join('\n'),
               synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
               rewriteTime // 新增：问题改写耗时（仅assistant场景）
             }
@@ -1210,10 +1211,12 @@ export const defaultSearchDatasetData = async ({
         retrievalType: 'faq' as const, // 新增：标记为 FAQ 命中
         queryExtensionResult: aiExtensionResult
           ? {
-              model: aiExtensionResult.model,
+              llmModel: aiExtensionResult.llmModel,
+              embeddingModel: aiExtensionResult.embeddingModel,
               inputTokens: aiExtensionResult.inputTokens,
               outputTokens: aiExtensionResult.outputTokens,
-              query: extensionQueries.join('\n'),
+              embeddingTokens: aiExtensionResult.embeddingTokens,
+              query: searchQueries.join('\n'),
               synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
               rewriteTime // 新增：问题改写耗时（仅assistant场景）
             }
@@ -1227,29 +1230,29 @@ export const defaultSearchDatasetData = async ({
   const result = isAssistant
     ? await searchDatasetDataForAssistant({
         ...props,
-        reRankQuery: rewriteQuery,
-        queries: concatQueries,
+        reRankQuery: reRankQuery,
+        queries: searchQueries,
         datasetIds,
         retrievalStartTime // 传递检索开始时间，确保 correction 和 FAQ 检索时间被计入
       })
     : await searchDatasetData({
         ...props,
-        reRankQuery: rewriteQuery,
-        queries: concatQueries,
+        reRankQuery: reRankQuery,
+        queries: searchQueries,
         datasetIds
       });
 
-  // 注意：retrievalTime 已在 searchDatasetData 中计算（统计到进入reranker前）
+
   return {
     ...result,
     queryExtensionResult: aiExtensionResult
       ? {
-          model: aiExtensionResult.model,
+          llmModel: aiExtensionResult.llmModel,
+          embeddingModel: aiExtensionResult.embeddingModel,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: extensionQueries.join('\n'),
-          synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
-          rewriteTime // 新增：问题改写耗时（仅assistant场景）
+          embeddingTokens: aiExtensionResult.embeddingTokens,
+          query: searchQueries.join('\n')
         }
       : undefined
   };

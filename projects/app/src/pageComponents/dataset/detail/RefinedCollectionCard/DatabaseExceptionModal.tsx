@@ -1,7 +1,7 @@
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTrainingError, updateTrainingData } from '@/web/core/dataset/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -32,7 +32,7 @@ const DatabaseExceptionModal = ({
     EmptyTip: <EmptyTip />
   });
 
-  const { runAsync: handleRetryAll, loading: retrying } = useRequest2(
+  const { runAsync: handleRetryAll, loading: retrying } = useRequest(
     () => updateTrainingData({ datasetId, collectionId }),
     {
       manual: true,

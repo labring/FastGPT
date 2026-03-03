@@ -2,9 +2,12 @@ import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
@@ -21,6 +24,8 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -75,7 +80,7 @@ async function handler(
   await checkTeamDatasetLimit(teamId);
 
   const datasetId = await mongoSessionRun(async (session) => {
-    const [{ _id }] = await MongoDataset.create(
+    const [dataset] = await MongoDataset.create(
       [
         {
           ...parseParentIdInMongo(parentId),
@@ -93,9 +98,18 @@ async function handler(
       ],
       { session, ordered: true }
     );
-    await refreshSourceAvatar(avatar, undefined, session);
 
-    return _id;
+    await MongoResourcePermission.insertOne({
+      teamId,
+      tmbId,
+      resourceId: dataset._id,
+      permission: OwnerRoleVal,
+      resourceType: PerResourceTypeEnum.dataset
+    });
+
+    await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+
+    return dataset._id;
   });
 
   pushTrack.createDataset({

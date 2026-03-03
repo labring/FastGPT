@@ -1,6 +1,6 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { dispatchWorkFlow } from '../index';
+import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -20,7 +20,7 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '../../../../support/permission/auth/team';
+import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
@@ -99,7 +99,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     // Rewrite children app variables
     const systemVariables = filterSystemVariables(variables);
-    const { externalProvider } = await getUserChatInfoAndAuthTeamPoints(appData.tmbId);
+    const { externalProvider } = await getUserChatInfo(appData.tmbId);
     const childrenRunVariables = {
       ...systemVariables,
       ...childrenAppVariables,
@@ -131,9 +131,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       assistantResponses,
       runTimes,
       workflowInteractiveResponse,
-      system_memories
-    } = await dispatchWorkFlow({
+      system_memories,
+      customFeedbacks
+    } = await runWorkflow({
       ...props,
+      usageId: undefined,
       lastInteractive: childrenInteractive,
       // Rewrite stream mode
       ...(system_forbid_stream
@@ -144,6 +146,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         : {}),
       runningAppInfo: {
         id: String(appData._id),
+        name: appData.name,
         teamId: String(appData.teamId),
         tmbId: String(appData.tmbId),
         isChildApp: true
@@ -203,7 +206,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           totalPoints: usagePoints
         }
       ],
-      [DispatchNodeResponseKeyEnum.toolResponses]: text
+      [DispatchNodeResponseKeyEnum.toolResponses]: text,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {
     return getNodeErrResponse({ error });

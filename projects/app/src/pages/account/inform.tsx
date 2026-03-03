@@ -125,6 +125,9 @@ const InformTable = () => {
                   },
                   '& p': {
                     my: 0
+                  },
+                  '& ol, & ul': {
+                    paddingInlineStart: '1.25em'
                   }
                 }}
                 noOfLines={6}

@@ -32,10 +32,10 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FileSelector, {
   type SelectFileItemType
-} from '@/pageComponents/dataset/detail/components/FileSelector';
+} from '@/components/Select/FileSelectorBox';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   postCreateEvaluationDataset,
   generateDataByUploadFile
@@ -121,7 +121,7 @@ const FileImport = () => {
     return '/dashboard/evaluation?evaluationTab=datasets';
   };
 
-  const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest2(
+  const { runAsync: onSubmitForm, loading: isSubmitting } = useRequest(
     async (data: FileImportFormType) => {
       let currentCollectionId = collectionId;
 

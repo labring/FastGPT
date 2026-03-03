@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getChatResData } from '@/web/core/chat/api';
 import { ResponseBox } from './WholeResponseModal';
 
@@ -32,7 +32,7 @@ const StandaloneResponseModal = ({
     appId,
     ...outLinkAuthData
   });
-  const { loading: isLoading, data: response } = useRequest2(
+  const { loading: isLoading, data: response } = useRequest(
     () =>
       getChatResData({
         chatId,

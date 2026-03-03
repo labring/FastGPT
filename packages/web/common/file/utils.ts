@@ -1,5 +1,8 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import Papa from 'papaparse';
+import { type AxiosProgressEvent } from 'axios';
+import axios from 'axios';
+import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
 export const loadFile2Buffer = ({ file, onError }: { file: File; onError?: (err: any) => void }) =>
   new Promise<ArrayBuffer>((resolve, reject) => {
@@ -99,3 +102,58 @@ async function detectFileEncoding(file: File): Promise<string> {
 
   return encoding || 'utf-8';
 }
+
+export const fileToBase64 = (file: File) => {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+export const base64ToFile = (base64: string, filename: string) => {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
+export const putFileToS3 = async ({
+  headers,
+  url,
+  file,
+  onSuccess,
+  onUploadProgress,
+  maxSize,
+  t
+}: {
+  headers?: Record<string, string>;
+  url: string;
+  file: File;
+  onSuccess?: () => void;
+  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
+  maxSize?: number;
+  t: any;
+}) => {
+  console.log(headers);
+  try {
+    const res = await axios.put(url, file, {
+      headers: {
+        ...headers
+      },
+      onUploadProgress,
+      timeout: 5 * 60 * 1000
+    });
+    if (res.status === 200) {
+      onSuccess?.();
+    }
+  } catch (error) {
+    return Promise.reject(parseS3UploadError({ t, error, maxSize }));
+  }
+};

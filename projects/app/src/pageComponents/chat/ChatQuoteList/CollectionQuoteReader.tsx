@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import DownloadButton from './DownloadButton';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
 import { getDatasetDataPermission } from '@/web/core/dataset/api';
@@ -23,6 +23,8 @@ import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
+import { useContextSelector } from 'use-context-selector';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const CollectionReader = ({
   rawSearch,
@@ -37,11 +39,13 @@ const CollectionReader = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
 
+  const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
+
   const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData } = useRequest2(async () => await getDatasetDataPermission(datasetId), {
+  const { data: datasetData } = useRequest(async () => await getDatasetDataPermission(datasetId), {
     manual: !userInfo || !datasetId,
     refreshDeps: [datasetId, userInfo]
   });
@@ -49,7 +53,12 @@ const CollectionReader = ({
   const filterResults = useMemo(() => {
     const res = rawSearch
       .filter((item) => item.collectionId === collectionId)
-      .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+      .sort((a, b) => {
+        const chunkDiff = (a.chunkIndex || 0) - (b.chunkIndex || 0);
+        if (chunkDiff !== 0) return chunkDiff;
+
+        return a.id.localeCompare(b.id);
+      });
 
     if (quoteId) {
       setQuoteIndex(res.findIndex((item) => item.id === quoteId));
@@ -65,7 +74,7 @@ const CollectionReader = ({
     if (item) {
       return {
         id: item.id,
-        index: item.chunkIndex,
+        anchor: item.chunkIndex,
         score: item.score
       };
     }
@@ -114,7 +123,7 @@ const CollectionReader = ({
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
 
-  const { runAsync: handleDownload } = useRequest2(async () => {
+  const { runAsync: handleDownload } = useRequest(async () => {
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',
@@ -170,11 +179,13 @@ const CollectionReader = ({
               {sourceName || t('common:unknow_source')}
             </Box>
             <Box ml={3}>
-              <DownloadButton
-                canAccessRawData={true}
-                onDownload={handleDownload}
-                onRead={handleRead}
-              />
+              {canDownloadSource && (
+                <DownloadButton
+                  canAccessRawData={true}
+                  onDownload={handleDownload}
+                  onRead={handleRead}
+                />
+              )}
             </Box>
           </Flex>
           <MyIconButton

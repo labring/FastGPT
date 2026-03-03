@@ -1,21 +1,21 @@
-/* 
+/*
     Get one dataset collection detail
 */
 import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorDB/controller';
+import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -55,12 +55,18 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
       `[DatasetCollectionDetail] load default prompt success,${JSON.stringify(default_prompt)}`
     );
   }
-  // get file
+  const fileId = collection?.fileId;
+  if (fileId && !isS3ObjectKey(fileId, 'dataset')) {
+    return Promise.reject('Invalid dataset file key');
+  }
+
   const [file, indexAmount, errorCount] = await Promise.all([
-    collection?.fileId
-      ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
-      : undefined,
-    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
+    fileId ? getS3DatasetSource().getFileMetadata(fileId) : undefined,
+    getVectorCount({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      collectionId: collection._id
+    }),
     MongoDatasetTraining.countDocuments(
       {
         teamId: collection.teamId,

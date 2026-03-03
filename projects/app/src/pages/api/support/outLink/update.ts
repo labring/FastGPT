@@ -21,12 +21,13 @@ export type OutLinkUpdateQuery = {};
 // }
 export type OutLinkUpdateBody = OutLinkEditType;
 
-export type OutLinkUpdateResponse = {};
+export type OutLinkUpdateResponse = string;
 
 async function handler(
   req: ApiRequestProps<OutLinkUpdateBody, OutLinkUpdateQuery>
 ): Promise<OutLinkUpdateResponse> {
-  const { _id, name, responseDetail, limit, app, showRawSource, showNodeStatus, allowAnonymous } =
+  const { _id, name, showCite, limit, app, canDownloadSource, showRunningStatus, showFullText, allowAnonymous } =
+   
     req.body;
 
   if (!_id) {
@@ -45,12 +46,12 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  await MongoOutLink.findByIdAndUpdate(_id, {
+  const doc = await MongoOutLink.findByIdAndUpdate(_id, {
     name,
-    responseDetail,
-    showRawSource,
-    showNodeStatus,
-    // showFullText,
+    showCite,
+    canDownloadSource,
+    showRunningStatus,
+    showFullText,
     allowAnonymous,
     limit,
     app
@@ -68,6 +69,6 @@ async function handler(
       }
     });
   })();
-  return {};
+  return doc?.shareId!;
 }
 export default NextAPI(handler);

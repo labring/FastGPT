@@ -1,15 +1,15 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
-import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import { postUpdateMCPTools } from '@/web/core/app/api/tool';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 
 const Header = ({
@@ -27,7 +27,7 @@ const Header = ({
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { data: paths = [] } = useRequest2(
+  const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
     {
       manual: false,
@@ -38,7 +38,7 @@ const Header = ({
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/dashboard/apps',
+        pathname: '/dashboard/tool',
         query: {
           parentId,
           type: lastAppListRouteType
@@ -48,7 +48,7 @@ const Header = ({
     [router, lastAppListRouteType]
   );
 
-  const { runAsync: saveMCPTools, loading: isSavingMCPTools } = useRequest2(
+  const { runAsync: saveMCPTools, loading: isSavingMCPTools } = useRequest(
     async () => {
       return await postUpdateMCPTools({ appId, url, toolList, headerSecret });
     },
@@ -67,7 +67,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('app:all_apps')}
+            rootName={t('common:All')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}

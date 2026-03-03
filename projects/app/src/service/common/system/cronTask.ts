@@ -1,9 +1,4 @@
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  delFileByFileIdList,
-  getGFSCollection
-} from '@fastgpt/service/common/file/gridfs/controller';
 import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,

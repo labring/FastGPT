@@ -47,7 +47,8 @@ export enum BillPayWayEnum {
   wx = 'wx',
   alipay = 'alipay',
   bank = 'bank',
-  coupon = 'coupon'
+  coupon = 'coupon',
+  wecom = 'wecom'
 }
 
 export const billPayWayMap = {
@@ -65,6 +66,9 @@ export const billPayWayMap = {
   },
   [BillPayWayEnum.coupon]: {
     label: i18nT('account_bill:payway_coupon')
+  },
+  [BillPayWayEnum.wecom]: {
+    label: i18nT('common:support.wallet.bill.payWay.wecom')
   }
 };
 

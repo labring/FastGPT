@@ -1,7 +1,5 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
-import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -12,7 +10,9 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { isCSVFile } from '@fastgpt/global/common/file/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
 import type { CreateCollectionResponse } from '@/global/core/dataset/api';
 
@@ -30,21 +30,23 @@ export type TemplateImportBody = { datasetId: string; enhanceConfig: EnhanceConf
 
 export type TemplateImportResponse = CreateCollectionResponse;
 
-async function handler(
-  req: ApiRequestProps<TemplateImportBody, TemplateImportQuery>,
-  res: ApiResponseType<any>
-) {
-  const filePaths: string[] = [];
+async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQuery>) {
+  const filepaths: string[] = [];
 
   try {
-    const upload = getUploadModel({
-      maxSize: global.feConfigs?.uploadFileMaxSize
+    const result = await multer.resolveFormData({
+      request: req,
+      maxFileSize: global.feConfigs.uploadFileMaxSize
     });
-    const { file, data } = await upload.getUploadFile<TemplateImportBody>(req, res);
-    filePaths.push(file.path);
+    filepaths.push(result.fileMetadata.path);
+    const filename = decodeURIComponent(result.fileMetadata.originalname);
+    const enhanceConfig: EnhanceConfig = 
+      typeof req.body?.enhanceConfig === 'string'
+        ? JSON.parse(req.body.enhanceConfig)
+        : req.body?.enhanceConfig || {};
 
-    if (file.mimetype !== 'text/csv') {
-      throw new Error('File must be a CSV file');
+    if (!isCSVFile(filename)) {
+      return Promise.reject('File must be a CSV file');
     }
 
     const { teamId, tmbId, dataset } = await authDataset({
@@ -52,15 +54,14 @@ async function handler(
       authToken: true,
       authApiKey: true,
       per: WritePermissionVal,
-      datasetId: data.datasetId
+      datasetId: result.data.datasetId
     });
 
-    // 1. Read
     const { rawText } = await readRawTextByLocalFile({
       teamId,
       tmbId,
-      path: file.path,
-      encoding: file.encoding,
+      path: result.fileMetadata.path,
+      encoding: result.fileMetadata.encoding,
       getFormatText: false
     });
     const headerLine = rawText.trim().split('\n')[0];
@@ -83,20 +84,15 @@ async function handler(
     }
 
     // 2. Upload file
-    const fileId = await uploadFile({
-      teamId,
-      uid: tmbId,
-      bucketName: 'dataset',
-      path: file.path,
-      filename: file.originalname,
-      contentType: file.mimetype
+    const fileId = await getS3DatasetSource().upload({
+      datasetId: dataset._id,
+      stream: result.getReadStream(),
+      size: result.fileMetadata.size,
+      filename: filename
     });
 
-    // 3. delete tmp file
-    removeFilesByPaths(filePaths);
-
-    // 4. Create collection
-    const { collectionId, insertResults } = await createCollectionAndInsertData({
+    // 3. Create collection
+    await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,
@@ -104,19 +100,19 @@ async function handler(
         teamId,
         tmbId,
         datasetId: dataset._id,
-        name: file.originalname,
+        name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
-        ...data.enhanceConfig
+        ...enhanceConfig
       }
     });
 
-    return { collectionId, results: insertResults };
   } catch (error) {
     addLog.error(`Backup dataset collection create error: ${error}`);
-    removeFilesByPaths(filePaths);
     return Promise.reject(error);
+  } finally {
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 

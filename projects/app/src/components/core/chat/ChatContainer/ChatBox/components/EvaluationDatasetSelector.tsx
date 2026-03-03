@@ -5,7 +5,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getEvaluationDatasetListV2 } from '@/web/core/evaluation/dataset';
 
 const IntelligentGeneration = dynamic(
@@ -34,7 +34,7 @@ const EvaluationDatasetSelector: React.FC<EvaluationDatasetSelectorProps> = ({
     data: evaluationDatasetList,
     loading: isLoadingDatasets,
     runAsync: fetchDatasets
-  } = useRequest2(getEvaluationDatasetListV2);
+  } = useRequest(getEvaluationDatasetListV2);
 
   useEffect(() => {
     fetchDatasets({});

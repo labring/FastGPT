@@ -5,7 +5,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useFileUpload, FileStatus } from './useFileUpload';
 import FileList from './FileList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import FileSelector, { type SelectFileItemType } from '../FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { Trans } from 'next-i18next';
 import { postCheckDuplicateCollection } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';

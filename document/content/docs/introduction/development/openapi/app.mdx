@@ -1,0 +1,195 @@
+---
+title: 应用接口
+description: FastGPT OpenAPI 应用接口
+---
+
+## 前置准备
+
+1. 准备 API key: 可用直接使用全局 apikey
+2. 准备应用的 AppId
+
+![alt text](/imgs/image-120.png)
+
+
+## 日志接口
+
+### 获取累积运行结果
+
+<Tabs items={["请求示例","响应示例","参数说明"]}>
+
+  <Tab value="请求示例">
+
+  ```bash
+ curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
+--header 'Authorization: Bearer apikey'
+  ```
+
+  </Tab>
+
+  <Tab value="响应示例">
+
+  ```bash
+    {
+        "code": 200,
+        "statusText": "",
+        "message": "",
+        "data": {
+            "totalUsers": 0,
+            "totalChats": 0,
+            "totalPoints": 0
+        }
+    }
+  ```
+
+  </Tab>
+
+  <Tab value="参数说明">
+
+  <div>
+  **入参：**
+  - appId: 应用Id
+
+  **出参：**
+  - totalUsers: 累积使用用户数量
+  - totalChats: 累积对话数量
+  - totalPoints: 累积积分消耗
+  </div>
+
+  </Tab>
+
+</Tabs>
+
+### 获取应用日志看板
+
+<Tabs items={["请求示例","响应示例","参数说明"]}>
+
+<Tab value="请求示例">
+
+  ```bash
+curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
+--header 'Authorization: Bearer apikey' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "appId": "68c46a70d950e8850ae564ba",
+    "dateStart": "2025-09-19T16:00:00.000Z",
+    "dateEnd": "2025-09-27T15:59:59.999Z",
+    "offset": 1,
+    "source": [
+        "test",
+        "online",
+        "share",
+        "api",
+        "cronJob",
+        "team",
+        "feishu",
+        "official_account",
+        "wecom",
+        "mcp"
+    ],
+    "userTimespan": "day",
+    "chatTimespan": "day",
+    "appTimespan": "day"
+}'
+  ```
+
+</Tab>
+
+<Tab value="响应示例">
+
+```bash
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": {
+        "userData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "userCount": 1,
+                    "newUserCount": 0,
+                    "retentionUserCount": 0,
+                    "points": 1.1132600000000001,
+                    "sourceCountMap": {
+                        "test": 1,
+                        "online": 0,
+                        "share": 0,
+                        "api": 0,
+                        "cronJob": 0,
+                        "team": 0,
+                        "feishu": 0,
+                        "official_account": 0,
+                        "wecom": 0,
+                        "mcp": 0
+                  }
+                }
+            }
+        ],
+        "chatData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "chatItemCount": 1,
+                    "chatCount": 1,
+                    "errorCount": 0,
+                    "points": 1.1132600000000001
+                }
+            }
+        ],
+        "appData": [
+            {
+                "timestamp": 1758585600000,
+                "summary": {
+                    "goodFeedBackCount": 0,
+                    "badFeedBackCount": 0,
+                    "chatCount": 1,
+                    "totalResponseTime": 22.31
+                }
+            }
+        ]
+    }
+}
+```
+
+</Tab>
+
+<Tab value="参数说明">
+
+**入参：**
+- appId: 应用Id
+- dateStart: 开始时间
+- dateEnd: 结束时间
+- source: 日志来源
+- offset: 用户留存偏移量
+- userTimespan: 用户数据时间跨度  //day｜week｜month｜quarter
+- chatTimespan: 对话数据时间跨度  //day｜week｜month｜quarter
+- appTimespan: 应用数据时间跨度  //day｜week｜month｜quarter
+
+**出参：**
+
+- userData: 用户数据数组
+  - timestamp: 时间戳
+  - summary: 汇总数据对象
+    - userCount: 活跃用户数量
+    - newUserCount: 新用户数量
+    - retentionUserCount: 留存用户数量
+    - points: 总积分消耗
+    - sourceCountMap: 各来源用户数量
+- chatData: 对话数据数组
+  - timestamp: 时间戳
+  - summary: 汇总数据对象
+    - chatItemCount: 对话次数
+    - chatCount - 会话次数
+    - errorCount - 错误对话次数
+    - points - 总积分消耗
+- appData: 应用数据数组
+  - timestamp - 时间戳
+  - summary - 汇总数据对象
+    - goodFeedBackCount - 好评反馈数量
+    - badFeedBackCount - 差评反馈数量
+    - chatCount - 对话次数
+    - totalResponseTime - 总响应时间
+
+</Tab>
+
+</Tabs>

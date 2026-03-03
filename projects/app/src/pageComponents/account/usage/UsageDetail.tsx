@@ -11,7 +11,7 @@ import {
   Td,
   TableContainer
 } from '@chakra-ui/react';
-import { type UsageItemType } from '@fastgpt/global/support/wallet/usage/type.d';
+import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type.d';
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -19,7 +19,7 @@ import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
-const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => void }) => {
+const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: () => void }) => {
   const { t } = useSafeTranslation();
   const filterBillList = useMemo(
     () => usage.list.filter((item) => item && item.moduleName),

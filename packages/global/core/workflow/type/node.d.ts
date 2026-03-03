@@ -1,4 +1,5 @@
-import type { FlowNodeTypeEnum } from '../node/constant';
+import type { NodeGradients } from '../node/constant';
+import { type FlowNodeTypeEnum } from '../node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -19,11 +20,13 @@ import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type';
-import type { ParentIdType } from 'common/parentFolder/type';
+import type { AppDetailType, AppSchema, HttpToolConfigType } from '../../app/type';
+import type { McpToolConfigType } from '../../app/tool/mcpTool/type';
+import type { ParentIdType } from '../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import type { StoreSecretValueType } from '../../../common/secret/type';
+import type { PluginStatusType } from '../../plugin/type';
 
 export type NodeToolConfigType = {
   mcpToolSet?: {
@@ -46,6 +49,16 @@ export type NodeToolConfigType = {
       description: string;
     }[];
   };
+  httpToolSet?: {
+    toolList: HttpToolConfigType[];
+    baseUrl?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string;
+    headerSecret?: StoreSecretValueType;
+  };
+  httpTool?: {
+    toolId: string;
+  };
 };
 
 export type FlowNodeCommonType = {
@@ -54,6 +67,8 @@ export type FlowNodeCommonType = {
   abandon?: boolean; // abandon node
 
   avatar?: string;
+  avatarLinear?: string; // Linear icon for gradient masks
+  colorSchema?: keyof typeof NodeGradients; // Node color schema
   name: string;
   intro?: string; // template list intro
   toolDescription?: string;
@@ -90,6 +105,7 @@ export type PluginDataType = {
   name?: string;
   avatar?: string;
   error?: string;
+  status?: PluginStatusType;
 };
 
 type HandleType = {
@@ -102,6 +118,7 @@ type HandleType = {
 export type FlowNodeTemplateType = FlowNodeCommonType & {
   id: string; // node id, unique
   templateType: string;
+  status?: PluginStatusType;
 
   showSourceHandle?: boolean;
   showTargetHandle?: boolean;
@@ -116,9 +133,9 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   diagram?: string; // diagram url
   courseUrl?: string; // course url
   userGuide?: string; // user guide
+  tags?: string[] | null;
 
   // @deprecated
-  // show handle
   sourceHandle?: HandleType;
   targetHandle?: HandleType;
 };
@@ -128,7 +145,8 @@ export type NodeTemplateListItemType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: ParentIdType;
   isFolder?: boolean;
-  templateType: string;
+  templateType?: string;
+  tags?: string[] | null;
   avatar?: string;
   name: string;
   intro?: string; // template list intro
@@ -142,6 +160,7 @@ export type NodeTemplateListItemType = {
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接
   sourceMember?: SourceMember;
+  toolSource?: 'uploaded' | 'built-in'; // Plugin source type
 };
 
 export type NodeTemplateListType = {

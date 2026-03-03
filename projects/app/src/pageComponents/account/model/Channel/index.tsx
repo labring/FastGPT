@@ -5,7 +5,7 @@ import {
   putChannel,
   putChannelStatus
 } from '@/web/core/ai/channel';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useState } from 'react';
 import {
   Table,
@@ -26,19 +26,16 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import {
-  aiproxyIdMap,
-  ChannelStatusEnum,
-  ChannelStautsMap,
-  defaultChannel
-} from '@/global/aiproxy/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ChannelStatusEnum, ChannelStautsMap, defaultChannel } from '@/global/aiproxy/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { SANGFOR_LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
@@ -46,8 +43,10 @@ const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: fals
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
+  const { aiproxyIdMap, getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -55,23 +54,23 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     data: channelList = [],
     runAsync: refreshChannelList,
     loading: loadingChannelList
-  } = useRequest2(getChannelList, {
+  } = useRequest(getChannelList, {
     manual: false
   });
 
-  const { data: channelProviders = {} } = useRequest2(getChannelProviders, {
+  const { data: channelProviders = {} } = useRequest(getChannelProviders, {
     manual: false
   });
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
 
-  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest2(putChannel, {
+  const { runAsync: updateChannel, loading: loadingUpdateChannel } = useRequest(putChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
     }
   });
-  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest2(
+  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest(
     putChannelStatus,
     {
       onSuccess: () => {
@@ -83,7 +82,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
-  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest2(deleteChannel, {
+  const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest(deleteChannel, {
     manual: true,
     onSuccess: () => {
       refreshChannelList();
@@ -128,14 +127,13 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             <Tbody>
               {channelList.map((item) => {
                 const providerData = aiproxyIdMap[item.type] || {
-                  label: channelProviders[item.type]?.name || 'Invalid provider',
+                  name: channelProviders[item.type]?.name || 'Invalid provider',
                   provider: 'Other'
                 };
-                const provider = getModelProvider(providerData?.provider);
+                const provider = getModelProvider(providerData?.provider, i18n.language);
                 const isAicp = (providerData?.avatar || provider?.avatar)
                   ?.toLowerCase()
                   ?.includes('aicp');
-
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                     <Td>{item.id}</Td>
@@ -143,10 +141,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>
                       <HStack>
                         {!isAicp ? (
-                          <MyIcon
-                            name={(providerData?.avatar || provider?.avatar) as any}
-                            w={'1rem'}
-                          />
+                          <Avatar src={provider?.avatar} w={'1rem'} />
                         ) : (
                           <MyImage
                             fallbackStrategy={'onError'}
@@ -156,7 +151,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             src={SANGFOR_LOGO_ICON}
                           />
                         )}
-                        <Box>{t(providerData?.label as any)}</Box>
+                        <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
                       </HStack>
                     </Td>
                     <Td>
@@ -235,13 +230,12 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                 icon: 'delete',
                                 label: t('common:Delete'),
                                 onClick: () =>
-                                  openConfirm(
-                                    () => onDeleteChannel(item.id),
-                                    undefined,
-                                    t('account_model:confirm_delete_channel', {
+                                  openConfirm({
+                                    onConfirm: () => onDeleteChannel(item.id),
+                                    customContent: t('account_model:confirm_delete_channel', {
                                       name: item.name
                                     })
-                                  )()
+                                  })()
                               }
                             ]
                           }

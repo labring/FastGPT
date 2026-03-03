@@ -26,18 +26,15 @@ const Auth = ({ children }: { children: JSX.Element | React.ReactNode }) => {
   useQuery(
     [router.pathname],
     () => {
-      if (unAuthPage[router.pathname] === true || userInfo) {
+      if (unAuthPage[router.pathname] === true) {
         return null;
       } else {
         return initUserInfo();
       }
     },
     {
+      refetchInterval: 10 * 60 * 1000,
       onError(error) {
-        console.log('error->', error);
-        router.replace(
-          `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
-        );
         toast({
           status: 'warning',
           title: t('common:support.user.Need to login')

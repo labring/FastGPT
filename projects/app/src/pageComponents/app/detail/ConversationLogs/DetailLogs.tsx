@@ -18,7 +18,7 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
@@ -53,7 +53,7 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
   const notFoundTotal = useContextSelector(ChatRecordContext, (v) => v.notFoundTotal || 0);
   const setChatLogsFilter = useContextSelector(ChatRecordContext, (v) => v.setChatLogsFilter);
 
-  const { data: chat } = useRequest2(
+  const { data: chat } = useRequest(
     async () => {
       const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
       res.userAvatar = HUMAN_ICON;

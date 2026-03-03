@@ -17,5 +17,29 @@ export const webPushTrack = {
       event: TrackEnum.useAppTemplate,
       data
     });
+  },
+  readSystemAnnouncement: (data: { announcementId: string }) => {
+    return createTrack({
+      event: TrackEnum.readSystemAnnouncement,
+      data
+    });
+  },
+  clickOperationalAd: (data: { adId: string; adLink: string }) => {
+    return createTrack({
+      event: TrackEnum.clickOperationalAd,
+      data
+    });
+  },
+  closeOperationalAd: (data: { adId: string }) => {
+    return createTrack({
+      event: TrackEnum.closeOperationalAd,
+      data
+    });
+  },
+  clientError: (data: { route: string; log: string }) => {
+    return createTrack({
+      event: TrackEnum.clientError,
+      data
+    });
   }
 };

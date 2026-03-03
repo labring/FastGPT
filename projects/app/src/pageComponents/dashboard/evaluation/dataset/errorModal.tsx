@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
   getEvaluationDatasetFailedTasks,
@@ -46,7 +46,7 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
     loading: isLoading,
     runAsync: fetchFailedTasks,
     mutate: setErrorList
-  } = useRequest2(() => getEvaluationDatasetFailedTasks({ collectionId }), {
+  } = useRequest(() => getEvaluationDatasetFailedTasks({ collectionId }), {
     manual: true
   });
 
@@ -76,7 +76,7 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
   };
 
   // 重试单个任务
-  const { runAsync: onRetryTask, loading: retryLoading } = useRequest2(
+  const { runAsync: onRetryTask, loading: retryLoading } = useRequest(
     postRetryEvaluationDatasetTask,
     {
       successToast: t('dashboard_evaluation:retry_success'),
@@ -87,7 +87,7 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
   );
 
   // 删除单个任务
-  const { runAsync: onDeleteTask, loading: deleteLoading } = useRequest2(
+  const { runAsync: onDeleteTask, loading: deleteLoading } = useRequest(
     deleteEvaluationDatasetTask,
     {
       successToast: t('dashboard_evaluation:delete_success'),
@@ -98,7 +98,7 @@ const ErrorModal = ({ isOpen, onClose, collectionId }: ErrorModalProps) => {
   );
 
   // 批量重试所有任务
-  const { runAsync: onRetryAll, loading: retryAllLoading } = useRequest2(
+  const { runAsync: onRetryAll, loading: retryAllLoading } = useRequest(
     () => postRetryAllEvaluationDatasetTasks({ collectionId }),
     {
       successToast: t('dashboard_evaluation:retry_success'),

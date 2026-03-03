@@ -24,7 +24,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import format from 'date-fns/format';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -133,7 +133,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   // 更新数据集名称的请求
-  const { runAsync: onUpdateDatasetName } = useRequest2(
+  const { runAsync: onUpdateDatasetName } = useRequest(
     (collectionId: string, name: string) => {
       return updateEvaluationDataset({ collectionId, name });
     },
@@ -182,7 +182,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
     );
   };
 
-  const { runAsync: onDelDataset } = useRequest2(deleteEvaluationDataset, {
+  const { runAsync: onDelDataset } = useRequest(deleteEvaluationDataset, {
     successToast: t('common:delete_success'),
     errorToast: t('dashboard_evaluation:delete_dataset_error')
   });

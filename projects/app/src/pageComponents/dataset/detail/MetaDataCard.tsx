@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import { useRouter } from 'next/router';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -26,7 +26,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const readSource = getCollectionSourceAndOpen({
     collectionId
   });
-  const { data: collection, loading: isLoading } = useRequest2(
+  const { data: collection, loading: isLoading } = useRequest(
     () => getDatasetCollectionById(collectionId),
     {
       onError: () => {
@@ -56,13 +56,15 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       },
       {
         label: t('dataset:collection_name'),
-        value: collection.file?.filename || collection?.rawLink || collection?.name
+        value: decodeURIComponent(
+          collection.file?.filename || collection?.rawLink || collection?.name
+        )
       },
       ...(collection.file
         ? [
             {
               label: t('common:core.dataset.collection.metadata.source size'),
-              value: formatFileSize(collection.file.length)
+              value: formatFileSize(collection.file.contentLength || 0)
             }
           ]
         : []),

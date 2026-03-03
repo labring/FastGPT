@@ -27,7 +27,7 @@ async function handler(
     })
   });
 
-  return mcpClient.toolCall(toolName, params);
+  return mcpClient.toolCall({ toolName, params });
 }
 
 export default NextAPI(handler);

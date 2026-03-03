@@ -14,14 +14,14 @@ import {
   Grid,
   useDisclosure
 } from '@chakra-ui/react';
-import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import {
   postTemplateDatasetCollection,
   getDatasetEnhanceDefaultPrompts
 } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
 import { getDocPath } from '@/web/common/system/doc';
@@ -65,7 +65,7 @@ const TemplateImportModal = ({
   const [currentPromptType, setCurrentPromptType] = useState<string>('');
 
   // 获取默认提示词
-  const { runAsync: fetchDefaultPrompts } = useRequest2(
+  const { runAsync: fetchDefaultPrompts } = useRequest(
     async () => {
       const prompts = await getDatasetEnhanceDefaultPrompts();
       setEnhanceConfig((prev) => ({
@@ -102,7 +102,7 @@ const TemplateImportModal = ({
     }));
   };
 
-  const { runAsync: onImport, loading: isImporting } = useRequest2(
+  const { runAsync: onImport, loading: isImporting } = useRequest(
     async () => {
       await postTemplateDatasetCollection({
         datasetId,
@@ -179,7 +179,6 @@ const TemplateImportModal = ({
 
           <FileSelector
             maxCount={1}
-            maxSize={100 * 1024 * 1024}
             fileType=".csv"
             selectFiles={selectFiles}
             setSelectFiles={setSelectFiles}
@@ -187,7 +186,7 @@ const TemplateImportModal = ({
             FileTypeNode={
               <Box fontSize={'xs'}>
                 <Trans
-                  i18nKey={'file:template_csv_file_select_tip'}
+                  i18nKey="file:template_csv_file_select_tip"
                   values={{
                     fileType: '.csv'
                   }}

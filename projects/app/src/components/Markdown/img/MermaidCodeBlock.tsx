@@ -1,25 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Box } from '@chakra-ui/react';
-import mermaid from 'mermaid';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-
-const mermaidAPI = mermaid.mermaidAPI;
-mermaidAPI.initialize({
-  startOnLoad: true,
-  theme: 'base',
-  flowchart: {
-    useMaxWidth: false
-  },
-  themeVariables: {
-    fontSize: '14px',
-    primaryColor: '#d6e8ff',
-    primaryTextColor: '#485058',
-    primaryBorderColor: '#fff',
-    lineColor: '#5A646E',
-    secondaryColor: '#B5E9E5',
-    tertiaryColor: '#485058'
-  }
-});
 
 const punctuationMap: Record<string, string> = {
   '，': ',',
@@ -44,10 +25,52 @@ const punctuationMap: Record<string, string> = {
 const MermaidBlock = ({ code }: { code: string }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState('');
+  const [mermaid, setMermaid] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    import('mermaid')
+      .then((module) => {
+        if (!mounted) return;
+
+        const mermaidInstance = module.default;
+        mermaidInstance.mermaidAPI.initialize({
+          startOnLoad: true,
+          theme: 'base',
+          flowchart: {
+            useMaxWidth: false
+          },
+          themeVariables: {
+            fontSize: '14px',
+            primaryColor: '#d6e8ff',
+            primaryTextColor: '#485058',
+            primaryBorderColor: '#fff',
+            lineColor: '#5A646E',
+            secondaryColor: '#B5E9E5',
+            tertiaryColor: '#485058'
+          }
+        });
+
+        setMermaid(mermaidInstance);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to load mermaid:', error);
+        setIsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
-      if (!code) return;
+      if (!code || !mermaid || isLoading) return;
+
       try {
         const formatCode = code.replace(
           new RegExp(`[${Object.keys(punctuationMap).join('')}]`, 'g'),
@@ -56,16 +79,16 @@ const MermaidBlock = ({ code }: { code: string }) => {
         const { svg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
         setSvg(svg);
       } catch (e: any) {
-        // console.log('[Mermaid] ', e?.message);
+        console.log('[Mermaid] ', e?.message);
       }
     })();
-  }, [code]);
+  }, [code, isLoading, mermaid]);
 
   const onclickExport = useCallback(() => {
-    const svg = ref.current?.children[0];
-    if (!svg) return;
+    const svgElement = ref.current?.children[0];
+    if (!svgElement) return;
 
-    const rate = svg.clientHeight / svg.clientWidth;
+    const rate = svgElement.clientHeight / svgElement.clientWidth;
     const w = 3000;
     const h = rate * w;
 
@@ -74,12 +97,13 @@ const MermaidBlock = ({ code }: { code: string }) => {
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // 绘制白色背景
+
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, w, h);
 
     const img = new Image();
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ref.current?.innerHTML)}`;
+    const innerHTML = ref.current?.innerHTML || '';
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(innerHTML);
 
     img.onload = () => {
       ctx.drawImage(img, 0, 0, w, h);
@@ -96,6 +120,31 @@ const MermaidBlock = ({ code }: { code: string }) => {
       console.log(e);
     };
   }, []);
+
+  if (isLoading) {
+    return (
+      <Box
+        minW={'100px'}
+        minH={'50px'}
+        py={4}
+        bg={'gray.50'}
+        borderRadius={'md'}
+        textAlign={'center'}
+      >
+        Loading...
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box minW={'100px'} minH={'50px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
+        <Box color={'red.600'} fontSize={'sm'}>
+          {error}
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box

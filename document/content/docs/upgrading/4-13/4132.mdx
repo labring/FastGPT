@@ -1,0 +1,77 @@
+---
+title: 'V4.13.2（包含升级脚本）'
+description: 'FastGPT V4.13.2 更新说明'
+---
+
+## 更新指南
+
+### 1. 更新镜像：
+
+- 更新 FastGPT 镜像tag: v4.13.2
+- 更新 FastGPT 商业版镜像tag: v4.13.2
+- 更新 fastgpt-plugin 镜像 tag: v0.2.4
+- mcp_server 无需更新
+- Sandbox 无需更新
+- AIProxy 无需更新
+
+### 2. 增加 FastGPT/FastGPT-pro 环境变量
+
+```
+S3_PUBLIC_BUCKET=fastgpt-public #（公开读公开桶名称，对应原来 plugin 项目的S3_TOOL_BUCKET）
+S3_PRIVATE_BUCKET=fastgpt-private #（私有读私有写桶名称，对应原来 plugin 项目的S3_PLUGIN_BUCKET）
+```
+
+### 3. 修复 fastgpt-plugin 环境变量
+
+- S3_TOOL_BUCKET 改名成 S3_PUBLIC_BUCKET
+- S3_PLUGIN_BUCKET 改名成 S3_PRIVATE_BUCKET
+
+### 4. 执行升级脚本
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+会删除原先 S3 的 circleLife 策略。如果使用的是外部 S3，可能会因为不支持 circleLife 操作导致该脚本错误，可以忽略（因为设置策略也会失败）。
+
+
+## 🚀 新增内容
+
+1. HTTP 工具集支持手动创建模式。
+2. 项目 OpenAPI 框架引入。
+3. APIKey 有效性检测接口。
+4. 导出对话日志，末尾跟随当前版本全局变量。
+
+## ⚙️ 优化
+
+1. 非管理员无法看到团队审计日志。
+2. 引入 S3 用于存储应用头像。
+3. 工作流画布性能。
+
+## 🐛 修复
+
+1. LLM 模型默认支持图片，导致请求错误。
+2. Mongo 多副本切换时候，watch 未重新触发。
+3. 文本分块，所有策略用完后，未处理 LastText 数据。
+4. 变量输入框，number=0 时，无法通过校验。
+5. 工作流复杂循环并行判断异常。
+
+## 🔨 插件更新
+
+1. 新增：Perplexity search 工具。
+2. 新增：Base64转文件工具。
+3. 新增：MiniMax TTS 文件生成工具。
+4. 新增：Openrouter nano banana 绘图工具。
+5. 新增：Redis 缓存操作工具。
+6. 新增：Tavily search 工具。
+7. 新增：硅基流动 qwen-image 和 qwen-image-edit 工具。
+8. 新增：飞书多维表格操作套件。
+9. 新增：Youtube 字幕提取。
+10. 新增：阿里百炼 qwen image edit。
+11. 新增：Markdown 转 PPT 工具。
+12. 新增：whisper 语音转文字工具。
+13. 系统工具支持配置是否需要在 Worker 中运行。

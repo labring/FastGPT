@@ -6,7 +6,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -96,7 +96,7 @@ function GroupEditModal({
 
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
-  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest(
     async () => {
       if (!group._id || !groupMembers.length) return;
 
@@ -216,8 +216,10 @@ function GroupEditModal({
             </MemberScrollData>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
-            <Box mt={2}>{t('common:chosen') + ': ' + selected.length}</Box>
-            <GroupScrollData mt={3} flex={'1 0 0'} h={0}>
+            <Box mt={2} mb={3}>
+              {t('common:chosen') + ': ' + selected.length}
+            </Box>
+            <GroupScrollData flex={'1 0 0'} h={0}>
               {selected.map((member) => {
                 return (
                   <HStack

@@ -3,9 +3,10 @@ import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import type { UserUpdateParams } from '@/types/user';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserType } from '@fastgpt/global/support/user/type';
 import type { ClientTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { getTeamPlanStatus } from './team/api';
+import { setLangToStorage, getLangMapping } from '@fastgpt/web/i18n/utils';
 
 type State = {
   systemMsgReadId: string;
@@ -16,7 +17,7 @@ type State = {
 
   userInfo: UserType | null;
   isTeamAdmin: boolean;
-  initUserInfo: () => Promise<UserType>;
+  initUserInfo: () => Promise<any>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
@@ -49,21 +50,30 @@ export const useUserStore = create<State>()(
         async initUserInfo() {
           get().initTeamPlanStatus();
 
-          const res = await getTokenLogin();
-          get().setUserInfo(res);
+          try {
+            const res = await getTokenLogin();
+            get().setUserInfo(res);
 
-          //设置html的fontsize
-          const html = document?.querySelector('html');
-          if (html) {
-            // html.style.fontSize = '16px';
+            //设置html的fontsize
+            const html = document?.querySelector('html');
+            if (html) {
+              // html.style.fontSize = '16px';
+            }
+
+            return res;
+          } catch (error) {
+            console.log('[Init user] error', error);
           }
-
-          return res;
         },
         setUserInfo(user: UserType | null) {
           set((state) => {
             state.userInfo = user ? user : null;
             state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
+            const lang = user?.language;
+            if (lang) {
+              const mappedLang = getLangMapping(lang);
+              setLangToStorage(mappedLang);
+            }
           });
         },
         async updateUserInfo(user: UserUpdateParams) {

@@ -18,7 +18,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup, getGroupList } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
@@ -40,7 +40,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     data: groups = [],
     loading: isLoadingGroups,
     refresh: refetchGroups
-  } = useRequest2(() => getGroupList<true>({ withMembers: true }), {
+  } = useRequest(() => getGroupList<true>({ withMembers: true }), {
     manual: false,
     refreshDeps: [userInfo?.team?.teamId]
   });
@@ -61,7 +61,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     type: 'delete',
     content: t('account_team:confirm_delete_group')
   });
-  const { runAsync: delDeleteGroup } = useRequest2(deleteGroup, {
+  const { runAsync: delDeleteGroup } = useRequest(deleteGroup, {
     onSuccess: () => {
       refetchGroups();
     }
@@ -188,7 +188,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                       label: t('common:Delete'),
                                       icon: 'delete',
                                       onClick: () => {
-                                        openDeleteGroupModal(() => delDeleteGroup(group._id))();
+                                        openDeleteGroupModal({
+                                          onConfirm: () => delDeleteGroup(group._id)
+                                        })();
                                       },
                                       type: 'danger' as MenuItemType
                                     }

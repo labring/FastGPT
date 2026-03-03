@@ -8,8 +8,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getApiSchemaByUrl } from '@/web/core/app/api/plugin';
-import { getType, str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
+import { getApiSchemaByUrl } from '@/web/core/app/api/tool';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';
@@ -24,7 +23,7 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
@@ -32,9 +31,12 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { nodeLafCustomInputConfig } from '@fastgpt/global/core/workflow/template/system/laf';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { getSchemaValueType, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -45,7 +47,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
   const { data, selected } = props;
   const { nodeId, inputs, outputs } = data;
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const requestUrl = useMemo(
     () => inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl) as FlowNodeInputItemType,
@@ -126,7 +128,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     [lafFunctionSelectList, requestUrl?.value]
   );
 
-  const { run: onSyncParams, loading: isSyncing } = useRequest2(
+  const { run: onSyncParams, loading: isSyncing } = useRequest(
     async () => {
       await refetchFunction();
       const lafFunction = lafData?.lafFunctions.find(
@@ -158,7 +160,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           desc: bodyParams[key].description,
           required: requiredParams?.includes(key) || false,
           value: `{{${key}}}`,
-          type: getType(bodyParams[key])
+          type: getSchemaValueType(bodyParams[key])
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
@@ -190,7 +192,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
       const allResponseParams = [
         ...Object.keys(responseParams).map((key) => ({
-          valueType: getType(responseParams[key]),
+          valueType: getSchemaValueType(responseParams[key]),
           name: key,
           desc: responseParams[key].description,
           required: requiredResponseParams?.includes(key) || false
@@ -333,8 +335,11 @@ const ConfigLaf = () => {
 const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
+  const { commonInputs, isTool } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
 
   return (
     <>

@@ -24,6 +24,8 @@ export const AiQueryExtension: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/queryExtension',
+  avatarLinear: 'core/workflow/template/queryExtensionLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:question_optimization'),
   intro: i18nT('workflow:intro_question_optimization'),
   showStatus: true,

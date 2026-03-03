@@ -23,7 +23,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSummaryConfigDetail, postUpdateSummaryConfig } from '@/web/core/evaluation/task';
 import { CalculateMethodEnum, CaculateMethodMap } from '@fastgpt/global/core/evaluation/constants';
 import { getBuiltinDimensionInfo } from '@/web/core/evaluation/utils';
@@ -83,7 +83,7 @@ const ConfigParamsModal = ({
   const watchedDimensions = watch('dimensions');
 
   // 加载配置数据
-  const { run: loadConfigData, loading: loadingData } = useRequest2(
+  const { run: loadConfigData, loading: loadingData } = useRequest(
     async () => {
       if (!evalTaskId) return;
 
@@ -195,7 +195,7 @@ const ConfigParamsModal = ({
   );
 
   // 处理表单提交
-  const { run: handleFormSubmit, loading: submitting } = useRequest2(
+  const { run: handleFormSubmit, loading: submitting } = useRequest(
     async (data: ConfigParamsForm) => {
       // 转换数据格式
       const metricsConfig: UpdateMetricConfigItem[] = data.dimensions.map((dimension) => ({

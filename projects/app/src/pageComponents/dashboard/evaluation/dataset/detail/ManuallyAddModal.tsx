@@ -17,7 +17,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateEvaluationDatasetData } from '@/web/core/evaluation/dataset';
 
 /**
@@ -80,7 +80,7 @@ const ManuallyAddModal = ({
   const autoEvaluationValue = watch('autoEvaluation');
   const evaluationModelValue = watch('evaluationModel');
 
-  const { runAsync: handleAddData, loading } = useRequest2(postCreateEvaluationDatasetData, {
+  const { runAsync: handleAddData, loading } = useRequest(postCreateEvaluationDatasetData, {
     successToast: t('common:add_success')
   });
 

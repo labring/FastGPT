@@ -1,5 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  contentTypeMap,
   ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -7,7 +8,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import axios from 'axios';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
@@ -27,6 +27,8 @@ import { addLog } from '../../../../common/system/log';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress } from '../../../../common/system/utils';
+import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
+import { axios } from '../../../../common/api/axios';
 
 type PropsArrType = {
   key: string;
@@ -58,25 +60,15 @@ type HttpResponse = DispatchNodeResultType<
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
-const contentTypeMap = {
-  [ContentTypes.none]: '',
-  [ContentTypes.formData]: '',
-  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
-  [ContentTypes.json]: 'application/json',
-  [ContentTypes.xml]: 'application/xml',
-  [ContentTypes.raw]: 'text/plain'
-};
-
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
-    runningAppInfo: { id: appId, teamId, tmbId },
+    runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
     variables,
     node,
     runtimeNodes,
     histories,
-    workflowStreamResponse,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
@@ -339,8 +331,10 @@ export const replaceJsonBodyString = (
   };
 
   const valToStr = (val: any, isQuoted = false) => {
-    if (val === undefined) return 'null';
-    if (val === null) return 'null';
+    if (val === undefined || val === null) {
+      if (isQuoted) return '';
+      return 'null';
+    }
 
     if (typeof val === 'object') {
       const jsonStr = JSON.stringify(val);
@@ -505,6 +499,7 @@ async function fetchData({
 
   const { data: response } = await axios({
     method,
+    maxContentLength: serviceRequestMaxContentLength,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {

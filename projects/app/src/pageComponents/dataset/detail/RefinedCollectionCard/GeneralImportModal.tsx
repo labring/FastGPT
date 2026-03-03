@@ -18,7 +18,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FileSelector, { type SelectFileItemType } from '../Import/components/FileSelector';
 import type { ImportSourceItemType } from '@/web/core/dataset/type.d';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -100,7 +100,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
     };
   }, [parsedLinks, isValidUrl]);
 
-  const { runAsync: onSelectFiles, loading: uploading } = useRequest2(
+  const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
       await Promise.all(
         files.map(async ({ fileId, file }) => {

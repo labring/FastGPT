@@ -8,8 +8,8 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  ContentTypes
+  ContentTypes,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
@@ -22,6 +22,8 @@ export const HttpNode468: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/httpRequest',
+  avatarLinear: 'core/workflow/template/httpRequestLinear',
+  colorSchema: 'indigo',
   name: i18nT('workflow:http_request'),
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,
@@ -36,7 +38,8 @@ export const HttpNode468: FlowNodeTemplateType = {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
         showDefaultValue: true
-      }
+      },
+      deprecated: false
     },
     {
       key: NodeInputKeyEnum.httpMethod,

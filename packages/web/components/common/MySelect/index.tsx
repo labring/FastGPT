@@ -20,7 +20,7 @@ import {
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
-import { useRequest2 } from '../../../hooks/useRequest';
+import { useRequest } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
@@ -143,7 +143,7 @@ const MySelect = <T = any,>(
     }
   }, [isSearch, isOpen]);
 
-  const { runAsync: onClickChange, loading } = useRequest2((val: T) => onChange?.(val));
+  const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
 
   const ListRender = useMemo(() => {
     return (
@@ -274,7 +274,11 @@ const MySelect = <T = any,>(
                           w={selectItem.iconSize ?? '1rem'}
                         />
                       )}
-                      {selectItem?.alias || selectItem?.label || placeholder}
+                      {
+                        <Box noOfLines={1}>
+                          {selectItem?.alias || selectItem?.label || placeholder}
+                        </Box>
+                      }
                     </>
                   )}
                 </>

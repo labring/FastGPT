@@ -6,7 +6,8 @@ import { useTranslation } from 'next-i18next';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { getSystemMsgModalData } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const SystemMsgModal = ({}: {}) => {
@@ -15,7 +16,7 @@ const SystemMsgModal = ({}: {}) => {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const { data } = useRequest2(
+  const { data } = useRequest(
     async () => {
       if (!userInfo?._id) {
         return;
@@ -36,6 +37,11 @@ const SystemMsgModal = ({}: {}) => {
   const onclickRead = useCallback(() => {
     if (!data) return;
     setSysMsgReadId(data.id);
+
+    webPushTrack.readSystemAnnouncement({
+      announcementId: data.id
+    });
+
     onClose();
   }, [data, onClose, setSysMsgReadId]);
 

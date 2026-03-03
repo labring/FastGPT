@@ -2,8 +2,10 @@ import { decryptSecret, encryptSecret } from './aes256gcm';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+import { isSecretValue } from '../../../global/common/secret/utils';
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
+  if (typeof value !== 'object' || value === null) return value;
   if (!value.value) {
     return value;
   }
@@ -37,6 +39,11 @@ export const getSecretValue = ({
     const { secret, value } = val;
     const actualValue = value || decryptSecret(secret);
 
+    // Filter out empty values to avoid invalid headers
+    if (!actualValue || !key) {
+      return acc;
+    }
+
     if (key === HeaderSecretTypeEnum.Bearer) {
       acc['Authorization'] = `Bearer ${actualValue}`;
     } else if (key === HeaderSecretTypeEnum.Basic) {
@@ -47,4 +54,22 @@ export const getSecretValue = ({
 
     return acc;
   }, {});
+};
+
+export const anyValueDecrypt = (value: any) => {
+  const val = (() => {
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return value;
+    }
+  })();
+
+  if (typeof val === 'object' && val !== null && val.value) {
+    return val.value;
+  }
+
+  if (!isSecretValue(val)) return val;
+
+  return decryptSecret(val.secret);
 };

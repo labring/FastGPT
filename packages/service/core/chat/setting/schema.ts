@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { type ChatSettingSchema as ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { type ChatSettingModelType } from '@fastgpt/global/core/chat/setting/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
 
@@ -18,6 +18,10 @@ const ChatSettingSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
+  enableHome: {
+    type: Boolean,
+    default: true
+  },
   slogan: String,
   dialogTips: String,
   selectedTools: {
@@ -26,12 +30,32 @@ const ChatSettingSchema = new Schema({
   },
   homeTabTitle: String,
   wideLogoUrl: String,
-  squareLogoUrl: String
+  squareLogoUrl: String,
+  quickAppIds: {
+    type: [String],
+    default: []
+  },
+  favouriteTags: {
+    type: [
+      {
+        id: String,
+        name: String
+      }
+    ],
+    default: [],
+    _id: false
+  }
+});
+
+ChatSettingSchema.virtual('quickAppList', {
+  ref: AppCollectionName,
+  localField: 'quickAppIds',
+  foreignField: '_id'
 });
 
 ChatSettingSchema.index({ teamId: 1 });
 
-export const MongoChatSetting = getMongoModel<ChatSettingType>(
+export const MongoChatSetting = getMongoModel<ChatSettingModelType>(
   ChatSettingCollectionName,
   ChatSettingSchema
 );

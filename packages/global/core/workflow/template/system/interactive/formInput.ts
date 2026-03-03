@@ -19,6 +19,8 @@ export const FormInputNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/formInput',
+  avatarLinear: 'core/workflow/template/formInputLinear',
+  colorSchema: 'violetDeep',
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,

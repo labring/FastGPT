@@ -14,6 +14,7 @@ import { MongoEvaluation } from '@fastgpt/service/core/evaluation/task/schema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
+import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
 
 async function handler(
   req: NextApiRequest,
@@ -34,7 +35,8 @@ async function handler(
       usedEvaluationTaskAmount,
       usedEvalDatasetAmount,
       usedEvalDatasetDataAmount,
-      usedEvalMetricAmount
+      usedEvalMetricAmount,
+      usedRegistrationCount
     ] = await Promise.all([
       getTeamPlanStatus({
         teamId
@@ -46,7 +48,7 @@ async function handler(
       MongoApp.countDocuments({
         teamId,
         type: {
-          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.toolSet]
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
         }
       }),
       MongoDataset.countDocuments({
@@ -57,7 +59,10 @@ async function handler(
       MongoEvaluation.countDocuments({ teamId }),
       MongoEvalDatasetCollection.countDocuments({ teamId }),
       MongoEvalDatasetData.countDocuments({ teamId }),
-      MongoEvalMetric.countDocuments({ teamId })
+      MongoEvalMetric.countDocuments({ teamId }),
+      MongoAppRegistration.countDocuments({
+        teamId
+      })
     ]);
 
     return {
@@ -66,6 +71,7 @@ async function handler(
       usedAppAmount,
       usedDatasetSize,
       usedDatasetIndexSize,
+      usedRegistrationCount,
       usedEvaluationTaskAmount,
       usedEvalDatasetAmount,
       usedEvalDatasetDataAmount,

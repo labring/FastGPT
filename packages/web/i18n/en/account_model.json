@@ -91,6 +91,7 @@
   "vlm_model_tip": "Generates additional indexes for images in documents within the knowledge base.",
   "volunme_of_failed_calls": "Failed calls",
   "waiting_test": "Waiting for test",
+  "model_permission_config_hint": "If no collaborators are added, all members are available by default",
   "evaluation_model": "Evaluation model",
   "evaluation_model_tip": "Used to evaluate apps and quality of data in datasets."
 }

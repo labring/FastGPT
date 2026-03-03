@@ -1,0 +1,32 @@
+services:
+  mineru-saas-wrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mineru-saas-wrapper
+    restart: unless-stopped
+    ports:
+      - "1234:1234"
+    environment:
+      # 你的 MinerU SaaS API Token（必须）
+      - MINERU_TOKEN=eyJ0eXBlIjoiSldUIiwiYWxnIjoiSFM1MTIifQ.eyJqdGkiOiIzODcwOTM0MyIsInJvbCI6IlJPTEVfUkVHSVNURVIiLCJpc3MiOiJPcGVuWExhYiIsImlhdCI6MTc2Mjc2MTEzMywiY2xpZW50SWQiOiJsa3pkeDU3bnZ5MjJqa3BxOXgydyIsInBob25lIjoiMTg1MjEzMzQ1MDEiLCJvcGVuSWQiOm51bGwsInV1aWQiOiI4OTI5YjgzNC05ZTY4LTRhOTctOTNiMi1hMGVkNDk5N2YzYmYiLCJlbWFpbCI6IiIsImV4cCI6MTc2Mzk3MDczM30.CadUrEtAc_B_04opSk4b5ykK60m-CbrXArZuhNGV35MKsX_SaWTbrMHd3ND309f9fgM10QTWHAszjP2Duamzwg
+      
+      # 可选：自定义轮询间隔（秒）
+      - POLL_INTERVAL=3
+      
+      # 可选：最大等待时间（秒）
+      - POLL_TIMEOUT=600
+      
+      # 可选：如果你的网络在国外，可改为国内加速镜像源（可选）
+      # - MINERU_BASE=https://mineru.net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1234/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

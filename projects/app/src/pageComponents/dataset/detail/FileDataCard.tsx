@@ -22,7 +22,7 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { TabEnum } from './NavBar';
 
@@ -37,7 +37,7 @@ const FileDataCard = () => {
   const { t } = useTranslation();
 
   // Get collection info
-  const { data: collection } = useRequest2(() => getDatasetCollectionById(collectionId), {
+  const { data: collection } = useRequest(() => getDatasetCollectionById(collectionId), {
     refreshDeps: [collectionId],
     manual: false,
     onError: () => {
@@ -50,7 +50,7 @@ const FileDataCard = () => {
   });
 
   // 获取预览数据
-  const { data: previewData, loading: isLoading } = useRequest2(
+  const { data: previewData, loading: isLoading } = useRequest(
     () => getStructureCollectionPreview({ collectionId }),
     {
       refreshDeps: [collectionId],

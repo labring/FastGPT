@@ -16,7 +16,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postImportFaqByTemplate, postCheckDuplicateCollection } from '@/web/core/dataset/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -44,7 +44,7 @@ const FaqImportModal = ({ onFinish, onClose }: { onFinish: () => void; onClose: 
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [enableEnhance, setEnableEnhance] = useState(true);
 
-  const { runAsync: uploadFiles, loading: isImporting } = useRequest2(
+  const { runAsync: uploadFiles, loading: isImporting } = useRequest(
     async (filesToUpload: SelectFileItemType[], replaceFiles: string[] = []) => {
       const totalFiles = filesToUpload.length;
 

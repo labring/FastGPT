@@ -15,13 +15,13 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ChunkInfoCard from './ChunkInfoCard';
 import FaqContentCard from './FaqContentCard';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
   SearchDataResponseItemType,
   AssistantDatasetCiteItemType
 } from '@fastgpt/global/core/dataset/type';
 import Markdown from '@/components/Markdown';
-import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
@@ -768,7 +768,7 @@ const ChatDetailModal = ({
   }, [workflowNodes]);
 
   // 通过 API 获取知识召回的完整数据（包含 q、a 等字段）
-  const { data: retrievalResultsList = [], loading: retrievalLoading } = useRequest2(
+  const { data: retrievalResultsList = [], loading: retrievalLoading } = useRequest(
     async () =>
       !!chatItemDataId && !!chatId && retrievalDatasetDataIdList.length > 0
         ? await getAssistantRetrievalResults({
@@ -791,7 +791,7 @@ const ChatDetailModal = ({
   ) as { data: AssistantDatasetCiteItemType[]; loading: boolean };
 
   // 通过 API 获取知识重排的完整数据（包含 q、a 等字段）
-  const { data: rerankQuoteList = [], loading: rerankLoading } = useRequest2(
+  const { data: rerankQuoteList = [], loading: rerankLoading } = useRequest(
     async () =>
       !!chatItemDataId && !!chatId && quoteDatasetDataIdList.length > 0
         ? await getAssistantQuoteList({

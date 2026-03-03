@@ -10,15 +10,16 @@ import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const getNodeList = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeList);
+  const nodeAmount = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeAmount);
   const { t } = useTranslation();
   const { defaultModels } = useSystemStore();
 
@@ -38,6 +39,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   });
 
   const knowledgeTypeConfig = useMemo(() => {
+    const nodeList = getNodeList();
     const datasetList = (nodeList.find((node) => node.nodeId === nodeId)?.inputs || []).filter(
       (input) => input.key === NodeInputKeyEnum.datasetSelectList
     );
@@ -71,12 +73,12 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
         ) || knowledgeInfoList.length === 0
     };
-  }, [nodeList, nodeId]);
+  }, [getNodeList, nodeAmount, nodeId]);
 
   const tokenLimit = useMemo(() => {
     let maxTokens = 0;
 
-    nodeList.forEach((item) => {
+    getNodeList().forEach((item) => {
       if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.agent].includes(item.flowNodeType)) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
@@ -87,7 +89,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     });
 
     return maxTokens ? maxTokens : undefined;
-  }, [nodeList]);
+  }, [getNodeList, nodeAmount]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -127,7 +129,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           limit={data.limit}
           generateSqlModel={data.generateSqlModel}
           usingReRank={data.usingReRank}
-          datasetSearchUsingExtensionQuery={data.datasetSearchUsingExtensionQuery}
+          usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
           queryExtensionModel={data.datasetSearchExtensionModel}
           {...knowledgeTypeConfig}
         />

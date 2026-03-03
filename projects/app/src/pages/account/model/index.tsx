@@ -61,7 +61,7 @@ const ModelProvider = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_model']))
+      ...(await serviceSideProps(content, ['account', 'account_model', 'user']))
     }
   };
 }
@@ -75,7 +75,7 @@ const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     <>
       {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
       <Box flex={'1 0 0'}>
-        <ModelTable />
+        <ModelTable permissionConfig={true} />
       </Box>
     </>
   );

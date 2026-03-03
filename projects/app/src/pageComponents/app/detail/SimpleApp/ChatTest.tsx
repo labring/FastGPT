@@ -17,7 +17,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
+import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type Props = {
   appForm: AppSimpleEditFormType;
@@ -46,7 +47,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
-  const { ChatContainer, restartChat, loading } = useChatTest({
+  const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
     isReady: true
@@ -76,7 +77,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
               {t('app:chat_debug')}
             </Box>
           )}
-          {!isVariableVisible && !isAssistantType && <VariablePopover showExternalVariables />}
+          {!isVariableVisible && !isAssistantType && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
@@ -125,10 +126,11 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
-      // isShowFullText={true}
-      showNodeStatus
+      canDownloadSource={true}
+      isShowCite={true}
+      isShowFullText={true}
+      showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />

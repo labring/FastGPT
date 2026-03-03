@@ -41,6 +41,7 @@ export enum EmbeddingTypeEnm {
 }
 
 export const completionFinishReasonMap = {
+  error: i18nT('chat:completion_finish_error'),
   close: i18nT('chat:completion_finish_close'),
   stop: i18nT('chat:completion_finish_stop'),
   length: i18nT('chat:completion_finish_length'),

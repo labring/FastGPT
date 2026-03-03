@@ -11,6 +11,7 @@ import type {
   TrainingModeEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
+  ParagraphChunkAIModeEnum,
   DatabaseTypeEnum
 } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
@@ -158,6 +159,10 @@ export type DatasetSchemaType = {
   apiDatasetServer?: ApiDatasetServerType;
 
   databaseConfig?: DatabaseConfig;
+
+  // 软删除字段
+  deleteTime?: Date | null;
+
   // abandon
   autoSync?: boolean;
   externalReadUrl?: string;
@@ -193,6 +198,7 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   rawTextLength?: number;
   hashRawText?: string;
+
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections
@@ -343,7 +349,10 @@ export type TagUsageType = {
 export type DatasetCollectionItemType = CollectionWithDatasetType & {
   sourceName: string;
   sourceId?: string;
-  file?: DatasetFileSchema;
+  file?: {
+    filename?: string;
+    contentLength?: number;
+  };
   permission: DatasetPermission;
   indexAmount: number;
   errorCount?: number;

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import type { ResLogin } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
@@ -9,6 +9,8 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
+import { validateRedirectUrl } from '@/web/common/utils/uri';
+
 const FastLogin = ({
   code,
   token,
@@ -23,11 +25,11 @@ const FastLogin = ({
   const { toast } = useToast();
   const { t } = useTranslation();
   const loginSuccess = useCallback(
-    (res: ResLogin) => {
+    (res: LoginSuccessResponse) => {
       setUserInfo(res.user);
 
       setTimeout(() => {
-        router.push(decodeURIComponent(callbackUrl));
+        router.push(validateRedirectUrl(callbackUrl));
       }, 100);
     },
     [setUserInfo, router, callbackUrl]
@@ -65,7 +67,8 @@ const FastLogin = ({
 
   useEffect(() => {
     clearToken();
-    router.prefetch(callbackUrl);
+    const safeCallbackUrl = validateRedirectUrl(callbackUrl);
+    router.prefetch(safeCallbackUrl);
     authCode(code, token);
   }, [authCode, callbackUrl, code, router, token]);
 
@@ -77,7 +80,7 @@ export async function getServerSideProps(content: any) {
     props: {
       code: content?.query?.code || '',
       token: content?.query?.token || '',
-      callbackUrl: content?.query?.callbackUrl || '/dashboard/apps',
+      callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
       ...(await serviceSideProps(content))
     }
   };

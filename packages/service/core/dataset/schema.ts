@@ -242,6 +242,12 @@ const DatasetSchema = new Schema({
 
   apiDatasetServer: Object,
 
+  // 软删除标记字段
+  deleteTime: {
+    type: Date,
+    default: null // null表示未删除，有值表示删除时间
+  },
+
   // abandoned
   autoSync: Boolean,
   externalReadUrl: String,
@@ -253,7 +259,8 @@ const DatasetSchema = new Schema({
 
 try {
   DatasetSchema.index({ teamId: 1 });
-  DatasetSchema.index({ type: 1 });
+  DatasetSchema.index({ type: 1 }); // Admin count
+  DatasetSchema.index({ deleteTime: 1 }); // 添加软删除字段索引
 } catch (error) {
   console.log(error);
 }

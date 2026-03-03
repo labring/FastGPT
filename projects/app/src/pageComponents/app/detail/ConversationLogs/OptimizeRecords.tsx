@@ -25,7 +25,7 @@ import type {
 import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { AppContext } from '../context';
 import { getChatCorrectionList, deleteChatCorrection } from '@/web/core/app/api/log';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import CorrectionModal from './CorrectionModal';
 
 interface OptimizeRecordsProps {
@@ -92,7 +92,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   }, [handleEditClose, refreshList]);
 
   // 确认删除
-  const { runAsync: onDeleteRecord } = useRequest2(
+  const { runAsync: onDeleteRecord } = useRequest(
     async (record: ChatCorrectionListItem) => {
       if (!appId) return;
 

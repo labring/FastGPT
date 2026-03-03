@@ -19,6 +19,8 @@ export const LoopStartNode: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: false,
   avatar: 'core/workflow/template/loopStart',
+  avatarLinear: 'core/workflow/template/loopStartLinear',
+  colorSchema: 'violetDeep',
   name: i18nT('workflow:loop_start'),
   unique: true,
   forbidDelete: true,

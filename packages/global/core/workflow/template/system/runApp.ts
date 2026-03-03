@@ -8,6 +8,7 @@ export const RunAppNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.appModule,
   showSourceHandle: true,
   showTargetHandle: true,
+  colorSchema: 'skyBlue',
   intro: '',
   name: '',
   showStatus: false,

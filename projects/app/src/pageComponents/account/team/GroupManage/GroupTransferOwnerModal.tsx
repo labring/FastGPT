@@ -13,7 +13,7 @@ import {
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useState } from 'react';
 import { TeamContext } from '../context';
@@ -69,7 +69,7 @@ export function ChangeOwnerModal({
 
   const [keepAdmin, setKeepAdmin] = useState(true);
 
-  const { runAsync: onTransfer, loading } = useRequest2(
+  const { runAsync: onTransfer, loading } = useRequest(
     (tmbId: string) => putGroupChangeOwner(group._id, tmbId),
     {
       onSuccess: () => Promise.all([onClose(), onSuccess()]),

@@ -17,8 +17,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import SecretInputModal, {
   type ToolParamsFormType
-} from '@/pageComponents/app/plugin/SecretInputModal';
-import { SystemToolInputTypeMap } from '@fastgpt/global/core/app/systemTool/constants';
+} from '@/pageComponents/app/tool/SecretInputModal';
+import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { useBoolean } from 'ahooks';
 
 const ConfigToolModal = ({
@@ -94,13 +94,19 @@ const ConfigToolModal = ({
                   <Controller
                     control={control}
                     name={input.key}
-                    render={({ field: { onChange, value } }) => (
+                    rules={{
+                      required: true
+                    }}
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
                       <Box>
-                        <FormLabel mb={1}>{t('common:secret_key')}</FormLabel>
+                        <FormLabel mb={1} required>
+                          {t('common:secret_key')}
+                        </FormLabel>
                         <Button
                           variant={'whiteBase'}
                           border={'base'}
                           borderRadius={'md'}
+                          borderColor={error ? 'red.500' : 'borderColor.low'}
                           leftIcon={
                             <Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />
                           }
@@ -113,7 +119,7 @@ const ConfigToolModal = ({
                             }
 
                             return t('workflow:tool_active_config_type', {
-                              type: t(SystemToolInputTypeMap[val.type]?.text as any)
+                              type: t(SystemToolSecretInputTypeMap[val.type]?.text as any)
                             });
                           })()}
                         </Button>
@@ -145,19 +151,22 @@ const ConfigToolModal = ({
                     name={input.key}
                     rules={{
                       validate: (value) => {
-                        if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                          return value !== undefined;
+                        if (
+                          input.valueType === WorkflowIOValueTypeEnum.boolean ||
+                          input.valueType === WorkflowIOValueTypeEnum.number
+                        ) {
+                          return true;
                         }
-                        if (input.required) {
-                          return !!value;
-                        }
-                        return true;
+                        if (!input.required) return true;
+
+                        return !!value;
                       }
                     }}
                     render={({ field: { onChange, value }, fieldState: { error } }) => {
                       return (
                         <InputRender
                           {...input}
+                          isRichText={false}
                           isInvalid={!!error}
                           inputType={nodeInputTypeToInputType(input.renderTypeList)}
                           value={value}

@@ -1,0 +1,4 @@
+*
+!.gitignore
+!docker-compose.yml
+!docker-compose.cn.yml

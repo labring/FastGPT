@@ -9,17 +9,17 @@ export enum SubTypeEnum {
 
 export const subTypeMap = {
   [SubTypeEnum.standard]: {
-    label: 'support.wallet.subscription.type.standard',
+    label: i18nT('common:support.wallet.subscription.type.standard'),
     icon: 'support/account/plans',
     orderType: BillTypeEnum.standSubPlan
   },
   [SubTypeEnum.extraDatasetSize]: {
-    label: 'support.wallet.subscription.type.extraDatasetSize',
+    label: i18nT('common:support.wallet.subscription.type.extraDatasetSize'),
     icon: 'core/dataset/datasetLight',
     orderType: BillTypeEnum.extraDatasetSub
   },
   [SubTypeEnum.extraPoints]: {
-    label: 'support.wallet.subscription.type.extraPoints',
+    label: i18nT('common:support.wallet.subscription.type.extraPoints'),
     icon: 'core/chat/chatLight',
     orderType: BillTypeEnum.extraPoints
   }
@@ -31,12 +31,12 @@ export enum SubModeEnum {
 }
 export const subModeMap = {
   [SubModeEnum.month]: {
-    label: 'support.wallet.subscription.mode.Month',
+    label: i18nT('common:support.wallet.subscription.mode.Month'),
     durationMonth: 1,
     payMonth: 1
   },
   [SubModeEnum.year]: {
-    label: 'support.wallet.subscription.mode.Year',
+    label: i18nT('common:support.wallet.subscription.mode.Year'),
     durationMonth: 12,
     payMonth: 10
   }
@@ -44,17 +44,39 @@ export const subModeMap = {
 
 export enum StandardSubLevelEnum {
   free = 'free',
+  basic = 'basic',
+  advanced = 'advanced',
+  custom = 'custom',
+
+  // @deprecated
   experience = 'experience',
   team = 'team',
-  enterprise = 'enterprise',
-  custom = 'custom'
+  enterprise = 'enterprise'
 }
+
 export const standardSubLevelMap = {
   [StandardSubLevelEnum.free]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.free'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.free desc'),
     weight: 1
   },
+  [StandardSubLevelEnum.basic]: {
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.basic'),
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.basic_desc'),
+    weight: 4
+  },
+  [StandardSubLevelEnum.advanced]: {
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.advanced'),
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.advanced_desc'),
+    weight: 5
+  },
+  [StandardSubLevelEnum.custom]: {
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.custom'),
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.custom_desc'),
+    weight: 7
+  },
+
+  // deprecated
   [StandardSubLevelEnum.experience]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.experience'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.experience_desc'),
@@ -68,11 +90,6 @@ export const standardSubLevelMap = {
   [StandardSubLevelEnum.enterprise]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise'),
     desc: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise_desc'),
-    weight: 4
-  },
-  [StandardSubLevelEnum.custom]: {
-    label: i18nT('common:support.wallet.subscription.standardSubLevel.custom'),
-    desc: '',
-    weight: 5
+    weight: 6
   }
 };

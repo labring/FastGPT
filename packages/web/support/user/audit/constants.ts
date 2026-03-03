@@ -7,16 +7,6 @@ export const adminAuditLogMap = {
     typeLabel: i18nT('account_team:admin_login'),
     params: {} as { name?: string }
   },
-  [AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_MODAL]: {
-    content: i18nT('account_team:log_admin_update_system_modal'),
-    typeLabel: i18nT('account_team:admin_update_system_modal'),
-    params: {} as { name?: string }
-  },
-  [AdminAuditEventEnum.ADMIN_SEND_SYSTEM_INFORM]: {
-    content: i18nT('account_team:log_admin_send_system_inform'),
-    typeLabel: i18nT('account_team:admin_send_system_inform'),
-    params: {} as { name?: string; informTitle?: string; level?: string }
-  },
   [AdminAuditEventEnum.ADMIN_ADD_USER]: {
     content: i18nT('account_team:log_admin_add_user'),
     typeLabel: i18nT('account_team:admin_add_user'),
@@ -108,6 +98,28 @@ export const adminAuditLogMap = {
     content: i18nT('account_team:log_admin_delete_plugin_group'),
     typeLabel: i18nT('account_team:admin_delete_plugin_group'),
     params: {} as { name?: string; groupName: string }
+  },
+
+  // Inform
+  [AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_MODAL]: {
+    content: i18nT('account_team:log_admin_update_system_modal'),
+    typeLabel: i18nT('account_team:admin_update_system_modal'),
+    params: {} as { name?: string }
+  },
+  [AdminAuditEventEnum.ADMIN_SEND_SYSTEM_INFORM]: {
+    content: i18nT('account_team:log_admin_send_system_inform'),
+    typeLabel: i18nT('account_team:admin_send_system_inform'),
+    params: {} as { name?: string; informTitle?: string; level?: string }
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_ACTIVITY_AD]: {
+    content: i18nT('account_team:log_admin_update_activity_ad'),
+    typeLabel: i18nT('account_team:admin_update_activity_ad'),
+    params: {}
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_OPERATIONAL_AD]: {
+    content: i18nT('account_team:log_admin_update_operational_ad'),
+    typeLabel: i18nT('account_team:admin_update_operational_ad'),
+    params: {}
   }
 };
 

@@ -1,12 +1,12 @@
 import React from 'react';
 import type { EditorState, LexicalEditor } from 'lexical';
 import { useCallback } from 'react';
-import { editorStateToText } from '../../Textarea/PromptEditor/utils';
 import {
   type EditorVariableLabelPickerType,
   type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import Editor from './Editor';
+import { editorStateToText } from '../../Textarea/PromptEditor/utils';
 
 const HttpInput = ({
   variables = [],
@@ -30,7 +30,7 @@ const HttpInput = ({
   const [currentValue, setCurrentValue] = React.useState(value);
 
   const onChangeInput = useCallback(
-    (editorState: EditorState, editor: LexicalEditor) => {
+    (editor: LexicalEditor) => {
       const text = editorStateToText(editor);
       setCurrentValue(text);
       onChange?.(text);

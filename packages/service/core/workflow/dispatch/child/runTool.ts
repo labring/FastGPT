@@ -9,20 +9,23 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
-import type { McpToolDataType } from '@fastgpt/global/core/app/mcpTools/type';
+import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import { APIRunSystemTool } from '../../../app/tool/api';
-import { MongoSystemPlugin } from '../../../app/plugin/systemPluginSchema';
-import { SystemToolInputTypeEnum } from '@fastgpt/global/core/app/systemTool/constants';
+import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSystemToolById } from '../../../app/plugin/controller';
+import { getSystemToolById } from '../../../app/tool/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
-import { splitCombinePluginId } from '@fastgpt/global/core/app/plugin/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
+import { runHTTPTool } from '../../../app/http';
+import { getS3ChatSource } from '../../../../common/s3/sources/chat';
 
 type SystemInputConfigType = {
-  type: SystemToolInputTypeEnum;
+  type: SystemToolSecretInputTypeEnum;
   value: StoreSecretValueType;
 };
 
@@ -34,7 +37,7 @@ type RunToolProps = ModuleDispatchProps<{
 
 type RunToolResponse = DispatchNodeResultType<
   {
-    [NodeOutputKeyEnum.rawResponse]?: any; // MCP Tool
+    [NodeOutputKeyEnum.rawResponse]?: any;
     [key: string]: any;
   },
   Record<string, any>
@@ -47,10 +50,18 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
+
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
+  const {
+    uid: uId,
+    chatId = '',
+    runningAppInfo: { id: appId }
+  } = props;
+
   const systemToolId = toolConfig?.systemTool?.toolId;
+  let toolInput: Record<string, any> = {};
 
   try {
     // run system tool
@@ -59,26 +70,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
-          case SystemToolInputTypeEnum.team:
+          case SystemToolSecretInputTypeEnum.team:
             return Promise.reject(new Error('This is not supported yet'));
-          case SystemToolInputTypeEnum.manual:
+          case SystemToolSecretInputTypeEnum.manual:
             const val = params.system_input_config.value || {};
             return getSecretValue({
               storeSecret: val
             });
-          case SystemToolInputTypeEnum.system:
+          case SystemToolSecretInputTypeEnum.system:
           default:
             // read from mongo
-            const dbPlugin = await MongoSystemPlugin.findOne({
+            const dbPlugin = await MongoSystemTool.findOne({
               pluginId: toolConfig.systemTool?.toolId
             }).lean();
             return dbPlugin?.inputListVal || {};
         }
       })();
+      toolInput = Object.fromEntries(
+        Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
+      );
       const inputs = {
-        ...Object.fromEntries(
-          Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
-        ),
+        ...toolInput,
         ...inputConfigParams
       };
 
@@ -104,7 +116,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           },
           tool: {
             id: formatToolId,
-            version: version || tool.versionList?.[0]?.value || ''
+            version: version || tool.versionList?.[0]?.value || '',
+            prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
           },
           time: variables.cTime
         },
@@ -129,6 +142,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           return {
             data: res.error,
             [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolInput,
               toolRes: res.error,
               moduleLogo: avatar
             },
@@ -145,6 +159,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         return {
           error: res.error,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            toolInput,
             error: res.error,
             moduleLogo: avatar
           },
@@ -153,7 +168,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       const usagePoints = (() => {
-        if (params.system_input_config?.type !== SystemToolInputTypeEnum.system) {
+        if (
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
+          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
+        ) {
           return 0;
         }
         return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
@@ -173,6 +191,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         data: result,
         [DispatchNodeResponseKeyEnum.answerText]: answerText,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
           toolRes: result,
           moduleLogo: avatar,
           totalPoints: usagePoints
@@ -186,7 +205,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
-      const { pluginId } = splitCombinePluginId(toolConfig.mcpTool.toolId);
+      const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
       const [parentId, toolName] = pluginId.split('/');
       const tool = await getAppVersionById({
         appId: parentId,
@@ -195,21 +214,88 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
-      const mcpClient = new MCPClient({
-        url,
-        headers: getSecretValue({
-          storeSecret: headerSecret
-        })
-      });
 
-      const result = await mcpClient.toolCall(toolName, params);
+      // Buffer mcpClient in this workflow
+      const mcpClient =
+        props.mcpClientMemory?.[url] ??
+        new MCPClient({
+          url,
+          headers: getSecretValue({
+            storeSecret: headerSecret
+          })
+        });
+      props.mcpClientMemory[url] = mcpClient;
+
+      toolInput = params;
+      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
           toolRes: result,
           moduleLogo: avatar
         },
         [DispatchNodeResponseKeyEnum.toolResponses]: result
+      };
+    } else if (toolConfig?.httpTool?.toolId) {
+      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
+      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const toolset = await getAppVersionById({
+        appId: parentId,
+        versionId: version
+      });
+      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
+      if (!toolSetData || typeof toolSetData !== 'object') {
+        throw new Error('HTTP tool set not found');
+      }
+
+      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+
+      const httpTool = toolList?.find((tool: HttpToolConfigType) => tool.name === toolName);
+      if (!httpTool) {
+        throw new Error(`HTTP tool ${toolName} not found`);
+      }
+
+      toolInput = params;
+      const { data, errorMsg } = await runHTTPTool({
+        baseUrl: baseUrl || '',
+        toolPath: httpTool.path,
+        method: httpTool.method,
+        params,
+        headerSecret: httpTool.headerSecret || headerSecret,
+        customHeaders: customHeaders
+          ? typeof customHeaders === 'string'
+            ? JSON.parse(customHeaders)
+            : customHeaders
+          : undefined,
+        staticParams: httpTool.staticParams,
+        staticHeaders: httpTool.staticHeaders,
+        staticBody: httpTool.staticBody
+      });
+
+      if (errorMsg) {
+        if (catchError) {
+          return {
+            error: { [NodeOutputKeyEnum.errorText]: errorMsg },
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              toolInput,
+              toolRes: errorMsg,
+              moduleLogo: avatar
+            },
+            [DispatchNodeResponseKeyEnum.toolResponses]: errorMsg
+          };
+        }
+        throw new Error(errorMsg);
+      }
+
+      return {
+        data: { [NodeOutputKeyEnum.rawResponse]: data, ...(typeof data === 'object' ? data : {}) },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
+          toolRes: data,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: data
       };
     } else {
       // mcp tool (old version compatible)
@@ -222,13 +308,15 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           storeSecret: headerSecret
         })
       });
-      const result = await mcpClient.toolCall(toolName, restParams);
+      toolInput = restParams;
+      const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {
         data: {
           [NodeOutputKeyEnum.rawResponse]: result
         },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
           toolRes: result,
           moduleLogo: avatar
         },
@@ -249,7 +337,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     return getNodeErrResponse({
       error,
-      customNodeResponse: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        toolInput,
         moduleLogo: avatar
       }
     });

@@ -10,6 +10,9 @@ import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { isDatabaseSource, isCorrectionSource } from '@fastgpt/global/core/dataset/utils';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+
 export type GetQuoteProps = {
   datasetDataIdList: string[];
 
@@ -45,7 +48,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
   let filterdatasetDataIdList = datasetDataIdList.filter(
     (id) => !isDatabaseSource(id) && !isCorrectionSource(id)
   );
-  const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
+  const [{ chat, showCite }, chatItem] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -56,9 +59,10 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
       teamId,
       teamToken
     }),
+    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'responseData time').lean() as Promise<{ time: Date; responseData?: ChatHistoryItemResType[] } | null>,
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
   ]);
-  if (!chat || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);
+  if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const list = await MongoDatasetData.find(
     { _id: { $in: filterdatasetDataIdList }, collectionId: { $in: filterCollectionIdList } },
@@ -66,7 +70,7 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
   ).lean();
 
   // Get image preview url
-  let formatPreviewUrlList = getFormatDatasetCiteList(list);
+  let formatPreviewUrlList: DatasetCiteItemType[] = getFormatDatasetCiteList(list);
 
   // Get sql Quote DatasetIds
   const Items = chatItem.responseData?.filter(

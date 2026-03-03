@@ -37,6 +37,8 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/datasetConcat',
+  avatarLinear: 'core/workflow/template/datasetConcatLinear',
+  colorSchema: 'blue',
   name: i18nT('workflow:knowledge_base_search_merge'),
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),
 

@@ -25,7 +25,7 @@ const MyIconButton = ({
   ...props
 }: Props) => {
   return (
-    <MyTooltip label={tip}>
+    <MyTooltip label={tip} shouldWrapChildren={false}>
       <Flex
         position={'relative'}
         p={1}

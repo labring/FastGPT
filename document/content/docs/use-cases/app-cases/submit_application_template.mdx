@@ -13,26 +13,19 @@ description: 指南：如何向 FastGPT 提交应用模板
 
 ## 如何写一个应用模板
 
-1. ### 跑通 FastGPT dev 环境
+### 1. 跑通 FastGPT 开发环境和 FastGPT-plugin 开发环境
 
 需要在 dev 环境下执行下面的操作。
 
-> 可参照 [FastGPT｜快速开始本地开发](/docs/introduction/development/intro/)
+可参照下面两篇文档在本地运行 FastGPT 开发环境和 FastGPT-plugin 开发环境
+- [FastGPT｜快速开始本地开发](/docs/introduction/development/intro/)
+- [如何开发系统插件](/docs/introduction/guide/plugins/dev_system_tool/)
 
-1. ### 在 FastGPT 工作台中，创建一个应用
+### 2. 创建应用模版
 
-创建空白工作流即可。
-
-![](/imgs/template_submission1.png)
-
-1. ### 创建应用模板
-
-应用模板配置以及相关资源，都会在 **packages/templates/src** 目录下。
-
-![](/imgs/template_submission2.png)
-
-1. 在**packages/templates/src** 目录下，创建一个文件夹，名称为模板对应的 id。
-2. 在刚刚创建的文件夹中，再创建一个 **template.json** 文件，复制粘贴并填写如下配置：
+在 FastGPT-plugin 项目中，应用模版都在 `modules/workflow/templates` 目录下。
+1. 创建一个新的 `.json` 文件
+2. 复制如下内容并粘贴在刚刚创建的 `.json` 文件中
 
 ```json
 {
@@ -55,11 +48,12 @@ description: 指南：如何向 FastGPT 提交应用模板
 }
 ```
 
-1. ### 完成应用编排并测试
 
-完成应用编排后，可以点击右上角的发布。
+### 3. 完成模版的编排和测试
 
-1. ### 复制配置到 template.json
+1. 在 FastGPT 中（可以在云服务版或本地部署的版本中进行）编排工作流。
+
+### 4. 复制配置到 template.json
 
 鼠标放置在左上角应用的头像和名称上，会出现对于下拉框操作，可以导出工作流配置。
 
@@ -67,13 +61,19 @@ description: 指南：如何向 FastGPT 提交应用模板
 
 ![](/imgs/template_submission3.png)
 
-1. ### 验证模板是否加载成功
+### 5. 验证模板是否加载成功
 
 刷新页面，打开模板市场，看其是否成功加载，并点击「使用」测试其功能。
 
 ![](/imgs/template_submission4.png)
 
-1. ### 提交 PR
+### 6. 部署使用
+
+完成上述操作后，可以打包 fastgpt-plugin 镜像使用 目前模版不支持热更新机制，所有模版都会打包在镜像内。
+
+如果您不希望每次更新模版都要重新打包 fastgpt-plugin 镜像，可以选择通过 docker 存储卷挂载的方式将 .json 文件挂载到容器内的 `/app/workflows/` 目录下。
+
+### 7. 提交 PR
 
 如果你觉得你的模板需要提交到开源仓库，可以通过 PR 形式向我们提交。
 

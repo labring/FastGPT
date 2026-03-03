@@ -15,7 +15,7 @@ import { addDays } from 'date-fns';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SyncLogKeysPopover from '../Logs/SyncLogKeysPopover';
@@ -172,7 +172,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
     `app_assistant_log_keys_${appId}`,
     { defaultValue: initialFilters?.logKeys || DefaultAssistantLogKey }
   );
-  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest2(
+  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
     async () => {
       return getLogKeys({ appId });
     },
