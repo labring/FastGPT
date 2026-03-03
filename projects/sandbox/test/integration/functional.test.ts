@@ -493,6 +493,24 @@ describe('Python 功能测试', () => {
           code: `def main(name, age):\n    return {'name': name, 'age': age}`,
           variables: { name: 'test', age: 25 },
           expect: { success: true, codeReturn: { name: 'test', age: 25 } }
+        },
+        {
+          name: 'main(content) 单参数按名取字符串值，可调用 split',
+          code: `def main(content):\n    parts = content.split(',')\n    return {'parts': parts, 'count': len(parts)}`,
+          variables: { content: 'a,b,c' },
+          expect: { success: true, codeReturn: { parts: ['a', 'b', 'c'], count: 3 } }
+        },
+        {
+          name: 'main(items) 单参数按名取列表值',
+          code: `def main(items):\n    return {'sum': sum(items), 'len': len(items)}`,
+          variables: { items: [1, 2, 3, 4, 5] },
+          expect: { success: true, codeReturn: { sum: 15, len: 5 } }
+        },
+        {
+          name: 'main(v) 单参数名不在 variables 时回退传整个 dict',
+          code: `def main(v):\n    return {'a': v['x'], 'b': v['y']}`,
+          variables: { x: 10, y: 20 },
+          expect: { success: true, codeReturn: { a: 10, b: 20 } }
         }
       ]
     );

@@ -605,7 +605,13 @@ def main_loop():
             if len(params) == 0:
                 result = user_main()
             elif len(params) == 1:
-                result = user_main(variables)
+                p = params[0]
+                # If param name matches a variable key, pass that value directly.
+                # Otherwise fall back to passing the entire variables dict.
+                if p in variables:
+                    result = user_main(variables[p])
+                else:
+                    result = user_main(variables)
             else:
                 call_args = []
                 for p in params:

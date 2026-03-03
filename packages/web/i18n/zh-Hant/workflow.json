@@ -33,7 +33,7 @@
   "code_allow_packages": "可用依賴",
   "code_allow_packages_func": "可用依賴: {{modules}}\n全域函數: {{globals}}",
   "code_execution": "程式碼執行",
-  "code_sandbox_intro": "執行一段腳本程式碼，通常用於進行複雜的資料處理。",
+  "code_sandbox_intro": "在沙盒裡執行一段腳本程式碼，可用於進行複雜的資料處理，語法和可用依賴會受到限制。",
   "collection_metadata_filter": "資料集詮釋資料篩選器",
   "complete_extraction_result": "完整擷取結果",
   "complete_extraction_result_description": "一個 JSON 字串，例如：{\"name\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",

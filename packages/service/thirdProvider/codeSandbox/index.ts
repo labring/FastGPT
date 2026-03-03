@@ -1,6 +1,8 @@
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
+import { getLogger, LogCategories } from '../../common/logger';
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.CODE_SANDBOX);
 
 export type SanndboxPackagesResponse = {
   js: string[];
@@ -28,6 +30,7 @@ export class CodeSandbox {
       (response) => {
         const data = response.data;
         if (!data.success) {
+          logger.warn('Request code sandbox failed', { data });
           return Promise.reject(new Error(data.message || 'Request code sandbox failed'));
         }
         return response.data;
