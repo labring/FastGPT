@@ -7,14 +7,20 @@ import {
   parseSkillPackage,
   extractSkillFromMarkdown
 } from '@fastgpt/service/core/agentSkill/utils';
-import { standardizeSkillPackage } from '@fastgpt/service/core/agentSkill/zipBuilder';
+import { createSkillPackage } from '@fastgpt/service/core/agentSkill/zipBuilder';
+import {
+  getSupportedArchiveFormat,
+  extractToFileMap,
+  findSkillMdKey,
+  getRootPrefix,
+  stripRootPrefix
+} from '@fastgpt/service/core/agentSkill/archiveUtils';
 import type {
   ImportSkillBody,
   ImportSkillResponse,
   ExtractedSkillPackage
 } from '@fastgpt/global/core/agentSkill/api';
 import { multer } from '@fastgpt/service/common/file/multer';
-import JSZip from 'jszip';
 import fs from 'fs/promises';
 
 export const config = {
@@ -50,10 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       result.data?.description ?? req.body?.description;
 
     // Validate file type
-    if (!file.originalname?.endsWith('.zip')) {
+    const format = getSupportedArchiveFormat(file.originalname ?? '');
+    if (!format) {
       return jsonRes(res, {
         code: 400,
-        error: 'Only ZIP files are allowed'
+        error: 'Only ZIP, TAR, and TAR.GZ files are supported'
       });
     }
 
@@ -64,14 +71,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authApiKey: true
     });
 
-    // Extract and validate ZIP content
+    // Extract and validate archive content
     let skillPackage;
     let zipBuffer: Buffer;
 
     try {
-      const result = await extractSkillPackage(file.path);
-      skillPackage = result.skillPackage;
-      zipBuffer = result.zipBuffer;
+      const extracted = await extractSkillPackage(file.path);
+      skillPackage = extracted.skillPackage;
+      zipBuffer = extracted.zipBuffer;
     } catch (error: any) {
       return jsonRes(res, {
         code: 400,
@@ -110,89 +117,77 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 /**
- * Extract and validate skill package from ZIP
- * Supports ZIP files with multiple files and directories
- * Only requires SKILL.md with YAML frontmatter
+ * Extract and validate skill package from archive (zip/tar/tar.gz).
+ * Internal storage format remains ZIP; the archive is converted after extraction.
  */
 async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPackage> {
-  // Check ZIP file size (limit to 50MB by default, configurable via env var)
+  // Check archive file size (50MB default, configurable via env var)
   const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
-  const maxZipSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024; // 50MB default
+  const maxArchiveSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024;
 
   const stats = await fs.stat(filePath);
-  if (stats.size > maxZipSize) {
+  if (stats.size > maxArchiveSize) {
     throw new Error(
-      `ZIP file size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxZipSize / 1024 / 1024).toFixed(2)}MB)`
+      `Archive file size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum (${(maxArchiveSize / 1024 / 1024).toFixed(2)}MB)`
     );
   }
 
-  // Read ZIP file to buffer
-  const zipBuffer = await fs.readFile(filePath);
+  // 1. Extract all files (supports zip/tar/tar.gz via decompress)
+  let fileMap: Record<string, Buffer>;
+  try {
+    fileMap = await extractToFileMap(filePath);
+  } catch (err: any) {
+    throw new Error(`Failed to extract archive: ${err.message || 'Unknown error'}`);
+  }
+  if (Object.keys(fileMap).length === 0) throw new Error('Archive is empty');
 
-  // 1. Initial extraction to get SKILL.md for metadata
-  const zip = await JSZip.loadAsync(zipBuffer);
-  const files = Object.keys(zip.files);
-
-  // Find SKILL.md (required)
-  let skillMdKey = files.find((key) => key === 'SKILL.md' || key.toLowerCase() === 'skill.md');
-
-  // If not found in root, check single-level subdirectory
+  // 2. Find SKILL.md (case-insensitive, root or single-level subdir)
+  const skillMdKey = findSkillMdKey(fileMap);
   if (!skillMdKey) {
-    for (const key of files) {
-      if (key.toLowerCase().endsWith('/skill.md') && key.split('/').length === 2) {
-        skillMdKey = key;
-        break;
-      }
-    }
+    throw new Error(
+      'SKILL.md not found in archive (expected in root or single-level subdirectory)'
+    );
   }
 
-  if (!skillMdKey) {
-    throw new Error('SKILL.md not found in ZIP archive (not in root or single-level subdirectory)');
-  }
-
-  const skillMdFile = zip.file(skillMdKey);
-  if (!skillMdFile) {
-    throw new Error('SKILL.md not found in ZIP archive');
-  }
-  const markdown = await skillMdFile.async('string');
-
-  // Extract skill metadata from SKILL.md frontmatter
+  // 3. Parse SKILL.md frontmatter
+  const markdown = fileMap[skillMdKey].toString('utf-8');
   const { skill, error: extractError } = extractSkillFromMarkdown(markdown);
-  if (extractError || !skill) {
-    throw new Error(extractError || 'Failed to parse SKILL.md');
+  if (extractError || !skill) throw new Error(extractError || 'Failed to parse SKILL.md');
+
+  // 4. Validate package
+  const result = parseSkillPackage({ skill, markdown });
+  if (!result.success) throw new Error(result.error);
+
+  // 5. Normalize asset files (strip root prefix, exclude SKILL.md)
+  const rootPrefix = getRootPrefix(skillMdKey);
+  const normalizedMap = stripRootPrefix(fileMap, rootPrefix);
+  const assets: Record<string, Buffer> = {};
+  for (const [key, value] of Object.entries(normalizedMap)) {
+    if (key.toLowerCase() !== 'skill.md') assets[key] = value;
   }
 
-  // 2. Standardize ZIP structure (enforce root folder named after skill)
-  const { buffer: standardizedZipBuffer } = await standardizeSkillPackage(zipBuffer, skill.name);
-
-  // Build package
-  const packageData = {
-    skill,
-    markdown
-  };
-
-  // Validate package
-  const result = parseSkillPackage(packageData);
-  if (!result.success) {
-    throw new Error(result.error);
-  }
-
-  // Extract metadata for all ZIP entries from the standardized ZIP
-  const finalZip = await JSZip.loadAsync(standardizedZipBuffer);
-  const entriesMetadata = Object.entries(finalZip.files).map(([name, file]) => {
-    return {
-      name: name,
-      size: 0,
-      isDirectory: file.dir,
-      uncompressedSize: 0,
-      compressionMethod: 8
-    };
+  // 6. Re-package as standardized ZIP (root folder named after skill)
+  const zipBuffer = await createSkillPackage({
+    name: skill.name,
+    skillMd: markdown,
+    assets
   });
+
+  // 7. Build entry metadata from final ZIP
+  const JSZip = (await import('jszip')).default;
+  const finalZip = await JSZip.loadAsync(zipBuffer);
+  const zipEntries = Object.entries(finalZip.files).map(([name, file]) => ({
+    name,
+    size: 0,
+    isDirectory: file.dir,
+    uncompressedSize: 0,
+    compressionMethod: 8
+  }));
 
   return {
     skillPackage: result.package!,
-    zipBuffer: standardizedZipBuffer,
-    zipEntries: entriesMetadata,
-    totalSize: standardizedZipBuffer.length
+    zipBuffer,
+    zipEntries,
+    totalSize: zipBuffer.length
   };
 }
