@@ -1,6 +1,6 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { i18n } from '@/lib/i18n';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // Old path redirects mapping
 const exactMap: Record<string, string> = {
@@ -13,7 +13,10 @@ const exactMap: Record<string, string> = {
   '/docs/guide/knowledge_base/rag': '/docs/introduction/guide/knowledge_base/RAG',
   '/docs/commercial/intro/': '/docs/introduction/commercial',
   '/docs/upgrading/intro/': '/docs/upgrading',
-  '/docs/introduction/shopping_cart/intro/': '/docs/introduction/commercial'
+  '/docs/introduction/shopping_cart/intro/': '/docs/introduction/commercial',
+  '/docs/introduction/cloud': '/docs/introduction/cloud/intro',
+  '/docs/protocol/terms': '/docs/introduction/cloud/terms',
+  '/docs/protocol/privacy': '/docs/introduction/cloud/privacy'
 };
 
 const prefixMap: Record<string, string> = {
@@ -21,7 +24,6 @@ const prefixMap: Record<string, string> = {
   '/docs/FAQ': '/docs/faq',
   '/docs/guide': '/docs/introduction/guide',
   '/docs/shopping_cart': '/docs/introduction/shopping_cart',
-  '/docs/agreement': '/docs/protocol',
   '/docs/introduction/development/openapi': '/docs/openapi'
 };
 

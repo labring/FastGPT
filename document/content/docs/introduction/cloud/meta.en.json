@@ -1,0 +1,6 @@
+{
+  "title": "Cloud Service",
+  "description": "FastGPT Cloud Service",
+  "icon": "🌐",
+  "pages": ["intro", "faq", "terms", "privacy"]
+}
