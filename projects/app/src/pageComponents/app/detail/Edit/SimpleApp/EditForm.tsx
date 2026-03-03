@@ -7,7 +7,8 @@ import {
   useTheme,
   useDisclosure,
   Button,
-  HStack
+  HStack,
+  Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
@@ -35,6 +36,7 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -378,6 +380,29 @@ const EditForm = ({
               }));
             }}
           />
+        </Box>
+
+        {/* Use Computer */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <MyIcon name={SANDBOX_ICON} w={'20px'} />
+              <FormLabel ml={2}>{t('app:use_computer')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
+            </Flex>
+            <Switch
+              isChecked={appForm.aiSettings.useComputer ?? false}
+              onChange={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    useComputer: e.target.checked
+                  }
+                }));
+              }}
+            />
+          </Flex>
         </Box>
 
         {/* File select */}

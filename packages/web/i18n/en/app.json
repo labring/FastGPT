@@ -555,6 +555,8 @@
   "unnamed_app": "Unnamed",
   "upgrade": "Upgrade",
   "upload_file_exists_filtered": "Duplicate files have been automatically filtered.",
+  "use_computer": "Enable Sandbox",
+  "use_computer_desc": "When enabled, AI will have access to an isolated Linux environment for executing commands and file operations",
   "upload_file_extension_type_canSelectAudio": "Audio",
   "upload_file_extension_type_canSelectCustomFileExtension": "Custom file extension type",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "file extension name",

@@ -98,6 +98,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatJsonSchema
       );
+      defaultAppForm.aiSettings.useComputer = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.useComputer
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -527,7 +531,7 @@ export function form2AppWorkflow(
         : null;
 
     // Computed tools config
-    const pluginTool: WorkflowType[] = formData.selectedTools.map((tool, i) => {
+    const tools: WorkflowType[] = formData.selectedTools.map((tool, i) => {
       const nodeId = getNanoid(6);
       return {
         nodes: [
@@ -628,6 +632,13 @@ export function form2AppWorkflow(
               step: 50
             },
             {
+              key: NodeInputKeyEnum.useComputer,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: formData.aiSettings.useComputer ?? false
+            },
+            {
               key: 'systemPrompt',
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
               max: 3000,
@@ -678,7 +689,7 @@ export function form2AppWorkflow(
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),
-        ...pluginTool.map((tool) => tool.nodes).flat()
+        ...tools.map((tool) => tool.nodes).flat()
       ],
       edges: [
         {
@@ -689,7 +700,7 @@ export function form2AppWorkflow(
         },
         // tool edges
         ...(datasetTool ? datasetTool.edges : []),
-        ...pluginTool.map((tool) => tool.edges).flat()
+        ...tools.map((tool) => tool.edges).flat()
       ]
     };
 
@@ -709,7 +720,7 @@ export function form2AppWorkflow(
   }
 
   const workflow = (() => {
-    if (data.selectedTools.length > 0) return toolTemplates(data);
+    if (data.selectedTools.length > 0 || data.aiSettings.useComputer) return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();

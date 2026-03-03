@@ -532,6 +532,8 @@
   "unnamed_app": "未命名",
   "upgrade": "去升級",
   "upload_file_exists_filtered": "已自動過濾重複檔案",
+  "use_computer": "啟用虛擬機",
+  "use_computer_desc": "開啟後，AI 將獲得一個獨立 Linux 環境，可執行命令、操作檔案",
   "upload_file_extension_type_canSelectAudio": "音頻",
   "upload_file_extension_type_canSelectCustomFileExtension": "自定義文件擴展類型",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "文件擴展名",

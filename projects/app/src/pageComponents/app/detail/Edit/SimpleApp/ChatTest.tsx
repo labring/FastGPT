@@ -1,6 +1,6 @@
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -18,6 +18,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
+import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -26,6 +27,7 @@ type Props = {
 };
 const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const { chatId } = useChatStore();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -37,6 +39,9 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
+
+  // Sandbox state
+  const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
 
   useEffect(() => {
     const { nodes, edges } = form2WorkflowFn(appForm, t);
@@ -72,6 +77,14 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           </Box>
           {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
+          <Button
+            size="sm"
+            leftIcon={<MyIcon name="core/workflow/template/sandbox" w="14px" />}
+            onClick={() => setSandboxModalOpen(true)}
+            mr={2}
+          >
+            {'查看沙盒'}
+          </Button>
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -99,6 +112,15 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
             onClose={() => setCiteModalData(undefined)}
           />
         </Box>
+      )}
+
+      {/* Sandbox Editor Modal */}
+      {sandboxModalOpen && (
+        <SandboxEditorModal
+          onClose={() => setSandboxModalOpen(false)}
+          appId={appDetail._id}
+          chatId={chatId}
+        />
       )}
     </Flex>
   );

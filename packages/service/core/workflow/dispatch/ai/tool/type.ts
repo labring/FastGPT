@@ -27,6 +27,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
+  [NodeInputKeyEnum.useComputer]?: boolean;
 }> & {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
@@ -37,4 +38,10 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];
   jsonSchema?: JSONSchemaInputType;
+};
+
+export type ChildResponseItemType = {
+  flowResponses: DispatchFlowResponse['flowResponses'];
+  runTimes: DispatchFlowResponse['runTimes'];
+  flowUsages: DispatchFlowResponse['flowUsages'];
 };

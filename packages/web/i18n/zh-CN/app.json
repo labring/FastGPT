@@ -555,6 +555,8 @@
   "unnamed_app": "未命名",
   "upgrade": "去升级",
   "upload_file_exists_filtered": "已自动过滤重复文件",
+  "use_computer": "启用虚拟机",
+  "use_computer_desc": "开启后，AI 将获得一个独立 Linux 环境，可执行命令、操作文件",
   "upload_file_extension_type_canSelectAudio": "音频",
   "upload_file_extension_type_canSelectCustomFileExtension": "自定义文件扩展类型",
   "upload_file_extension_type_canSelectCustomFileExtension_placeholder": "文件扩展名",
@@ -604,5 +606,9 @@
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",
-  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线",
+  "sandbox.files": "文件",
+  "sandbox.search_files": "搜索文件",
+  "sandbox.select_file": "选择一个文件进行编辑",
+  "sandbox.unsaved": "未保存"
 }

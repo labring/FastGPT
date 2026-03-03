@@ -62,7 +62,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileUrlList: fileLinks,
       aiChatVision,
       aiChatReasoning,
-      isResponseAnswerText = true
+      isResponseAnswerText = true,
+      useComputer = false
     }
   } = props;
 
@@ -220,7 +221,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolModel,
         messages: adaptMessages,
         childrenInteractiveParams:
-          lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
+          lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined,
+        useComputer
       });
     })();
 
