@@ -3,8 +3,8 @@
   "version": "4.14.8",
   "private": false,
   "scripts": {
-    "dev": "npm run build:workers && next dev",
-    "build": "npm run build:workers && next build --debug --webpack",
+    "dev": "NODE_OPTIONS='--max-old-space-size=8192' npm run build:workers && next dev",
+    "build": "npm run build:workers && npm run lint && npm run typecheck && next build --debug",
     "start": "next start",
     "build:workers": "npx tsx scripts/build-workers.ts",
     "typecheck": "tsc --noEmit --pretty",
