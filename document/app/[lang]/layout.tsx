@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
 import Script from 'next/script';
+import type { Metadata } from 'next';
 
 const inter = Inter({
   subsets: ['latin']
@@ -43,6 +44,84 @@ const locales = [
     locale: 'zh-CN'
   }
 ];
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const domain = homeDomain.replace('https://', 'https://doc.');
+
+  const title = lang === 'zh-CN' ? 'FastGPT 文档' : 'FastGPT Documentation';
+  const description =
+    lang === 'zh-CN'
+      ? 'FastGPT 是一个 AI Agent 构建平台，通过 Flow 提供开箱即用的数据处理、模型调用能力和可视化工作流编排。'
+      : 'FastGPT is an AI Agent building platform that provides out-of-the-box data processing, model invocation capabilities, and visual workflow orchestration through Flow.';
+
+  return {
+    title: {
+      default: title,
+      template: `%s | FastGPT`
+    },
+    description,
+    keywords: ['FastGPT', 'AI', 'Agent', 'LLM', 'RAG', 'Workflow', 'Documentation'],
+    authors: [{ name: 'Labring', url: 'https://github.com/labring' }],
+    creator: 'Labring',
+    publisher: 'Labring',
+    metadataBase: new URL(domain),
+    alternates: {
+      canonical: '/',
+      languages: {
+        en: '/en',
+        'zh-CN': '/zh-CN'
+      }
+    },
+    openGraph: {
+      type: 'website',
+      locale: lang,
+      url: domain,
+      title,
+      description,
+      siteName: 'FastGPT',
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: 'FastGPT'
+        }
+      ]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/twitter-image.png']
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1
+      }
+    },
+    icons: {
+      icon: [
+        { url: '/favicon/favicon.ico' },
+        { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' }
+      ],
+      apple: [{ url: '/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
+    },
+    manifest: '/favicon/site.webmanifest'
+  };
+}
 
 export default async function Layout({
   children,

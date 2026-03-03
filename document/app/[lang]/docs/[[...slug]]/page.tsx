@@ -5,6 +5,7 @@ import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
+import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
 
 // 在构建时导入静态数据
 import docLastModifiedData from '@/data/doc-last-modified.json';
@@ -36,8 +37,46 @@ export default async function Page({
   // @ts-ignore
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const domain = homeDomain.replace('https://', 'https://doc.');
+  const url = `${domain}${page.url}`;
+
+  // 生成面包屑导航
+  const breadcrumbItems = [
+    { name: 'FastGPT', url: domain },
+    { name: 'Docs', url: `${domain}/${lang}/docs` }
+  ];
+  if (slug && slug.length > 0) {
+    slug.forEach((segment, index) => {
+      const segmentUrl = `${domain}/${lang}/docs/${slug.slice(0, index + 1).join('/')}`;
+      breadcrumbItems.push({ name: segment, url: segmentUrl });
+    });
+  }
+
+  // 生成结构化数据
+  const articleSchema = generateArticleSchema({
+    title: page.data.title,
+    description: page.data.description || '',
+    url,
+    dateModified: lastModified ? new Date(lastModified) : undefined,
+    lang
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    items: breadcrumbItems
+  });
+
   return (
-    <DocsPage
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <DocsPage
       toc={page.data.toc}
       full={page.data.full}
       tableOfContent={{
@@ -61,6 +100,7 @@ export default async function Page({
         />
       </DocsBody>
     </DocsPage>
+  </>
   );
 }
 
@@ -75,8 +115,33 @@ export async function generateMetadata(props: {
   const page = source.getPage(slug, lang);
   if (!page || !page.data) notFound();
 
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const domain = homeDomain.replace('https://', 'https://doc.');
+  const url = `${domain}${page.url}`;
+
+  // 构建多语言 alternates
+  const languages: Record<string, string> = {};
+  i18n.languages.forEach((locale) => {
+    const localePage = source.getPage(slug, locale);
+    if (localePage) {
+      languages[locale] = `${domain}/${locale}/docs/${slug?.join('/') || ''}`;
+    }
+  });
+
   return {
     title: `${page.data.title} | FastGPT`,
-    description: page.data.description
+    description: page.data.description,
+    alternates: {
+      canonical: url,
+      languages
+    },
+    openGraph: {
+      title: `${page.data.title} | FastGPT`,
+      description: page.data.description,
+      url,
+      siteName: 'FastGPT',
+      locale: lang,
+      type: 'article'
+    }
   };
 }
