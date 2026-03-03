@@ -21,6 +21,9 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - `STORAGE_SECRET_ACCESS_KEY` 服务访问密钥的 Secret Access Key
 - `STORAGE_PUBLIC_BUCKET` FastGPT 公开资源存储桶桶名
 - `STORAGE_PRIVATE_BUCKET` FastGPT 私有资源存储桶桶名
+- `STORAGE_TRANSFER_MODE` 文件传输模式，可选值：
+  - `proxy`（默认）：上传和下载都通过 FastGPT 后端代理，不要求浏览器直连对象存储。
+  - `presigned`：上传和下载都通过对象存储预签名 URL，兼容旧模式。
 
 ### 自部署的 MinIO 和 AWS S3
 
@@ -28,7 +31,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 > 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
 
 - `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 id 连接，比如 `http://fastgpt-minio:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该地址用于签发文件上传 URL 时使用。
+- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。当 `STORAGE_TRANSFER_MODE=presigned` 时，该配置用于签发上传/下载预签名 URL。
 - `STORAGE_S3_FORCE_PATH_STYLE` 【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES` 【可选】请求最大尝试次数，默认为 3 次
 
@@ -43,6 +46,7 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_TRANSFER_MODE=proxy
 STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_FORCE_PATH_STYLE=true

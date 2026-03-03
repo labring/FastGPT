@@ -4,6 +4,7 @@ import type {
   IOssStorageOptions,
   IStorageOptions
 } from '@fastgpt-sdk/storage';
+import { env } from '../../env';
 
 export const Mimes = {
   '.gif': 'image/gif',
@@ -32,6 +33,8 @@ export const S3Buckets = {
   public: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
   private: process.env.STORAGE_PRIVATE_BUCKET || 'fastgpt-private'
 } as const;
+
+export const storageTransferMode = env.STORAGE_TRANSFER_MODE;
 
 export const getSystemMaxFileSize = () => {
   const config = global.feConfigs.uploadFileMaxSize || 1024; // MB, default 1024MB

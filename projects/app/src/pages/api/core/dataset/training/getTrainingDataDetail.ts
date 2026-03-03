@@ -3,8 +3,9 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { isS3ObjectKey, jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
+import { S3Buckets } from '@fastgpt/service/common/s3/constants';
 
 export type getTrainingDataDetailQuery = {};
 
@@ -50,7 +51,11 @@ async function handler(
     mode: data.mode,
     imagePreviewUrl:
       data.imageId && isS3ObjectKey(data.imageId, 'dataset')
-        ? jwtSignS3ObjectKey(data.imageId, addMinutes(new Date(), 30))
+        ? jwtSignS3DownloadToken({
+            objectKey: data.imageId,
+            bucketName: S3Buckets.private,
+            expiredTime: addMinutes(new Date(), 30)
+          })
         : undefined,
     q: data.q,
     a: data.a
