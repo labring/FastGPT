@@ -122,3 +122,7 @@ console.log(`Sandbox server starting on port ${config.port}...`);
 
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };
+export default {
+  port: config.port,
+  fetch: app.fetch
+};
