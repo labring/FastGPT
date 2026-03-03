@@ -163,7 +163,7 @@ const ChunkInfoCard = ({
           {...(isExpanded
             ? {}
             : {
-                maxH: '67px',
+                maxH: '98px',
                 overflow: 'hidden'
               })}
         >

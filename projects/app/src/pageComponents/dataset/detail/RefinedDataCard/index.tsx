@@ -622,7 +622,7 @@ const RefinedDataCard = () => {
                         <Box
                           {...(isFolded
                             ? {
-                                maxH: '67px',
+                                maxH: '98px',
                                 overflow: 'hidden'
                               }
                             : {
