@@ -353,16 +353,22 @@ rl.on('line', async (line: string) => {
   const logs: string[] = [];
   let logSize = 0;
   const MAX_LOG_SIZE = 1024 * 1024; // 1MB
-  const safeConsole = {
-    log(...args: any[]) {
-      const line = args
-        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
-        .join(' ');
-      if (logSize + line.length <= MAX_LOG_SIZE) {
-        logs.push(line);
-        logSize += line.length;
-      }
+  const _consoleLog = (...args: any[]) => {
+    const line = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+    if (logSize + line.length <= MAX_LOG_SIZE) {
+      logs.push(line);
+      logSize += line.length;
     }
+  };
+  const safeConsole = {
+    log: _consoleLog,
+    info: _consoleLog,
+    warn: _consoleLog,
+    error: _consoleLog,
+    debug: _consoleLog,
+    trace: _consoleLog,
+    dir: _consoleLog,
+    table: _consoleLog
   };
 
   let timer: ReturnType<typeof setTimeout> | undefined;
