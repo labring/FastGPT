@@ -33,7 +33,7 @@
   "code_allow_packages": "Available dependencies",
   "code_allow_packages_func": "Available packages: {{modules}}\nGlobal functions: {{globals}}",
   "code_execution": "Code Sandbox",
-  "code_sandbox_intro": "Execute a piece of script code, usually used for complex data processing.",
+  "code_sandbox_intro": "Executing a script code in the sandbox can be used to perform complex data processing, but the syntax and available dependencies will be limited.",
   "collection_metadata_filter": "Collection Metadata Filter",
   "complete_extraction_result": "Complete Extraction Result",
   "complete_extraction_result_description": "A JSON string, e.g., {\"name\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",

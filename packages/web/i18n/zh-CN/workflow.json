@@ -33,7 +33,7 @@
   "code_allow_packages": "可用依赖",
   "code_allow_packages_func": "可用依赖: {{modules}}\n全局函数: {{globals}}",
   "code_execution": "代码运行",
-  "code_sandbox_intro": "执行一段脚本代码，通常用于进行复杂的数据处理。",
+  "code_sandbox_intro": "在沙盒里执行一段脚本代码，可用于进行复杂的数据处理，语法和可用依赖会受到限制。",
   "collection_metadata_filter": "集合元数据过滤",
   "complete_extraction_result": "完整提取结果",
   "complete_extraction_result_description": "一个 JSON 字符串，例如：{\"name:\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
