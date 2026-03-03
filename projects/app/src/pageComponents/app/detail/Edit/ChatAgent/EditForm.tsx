@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo } from 'react';
-import { Box, Flex, Grid, type BoxProps, useDisclosure, Button, HStack } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Grid,
+  type BoxProps,
+  useDisclosure,
+  Button,
+  HStack,
+  Switch
+} from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -20,6 +29,8 @@ import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { useSkillManager } from './hooks/useSkillManager';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -197,6 +208,29 @@ const EditForm = ({
               />
             </Box>
           </Box>
+        </Box>
+
+        {/* Sandbox (虚拟机) */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <MyIcon name={SANDBOX_ICON} w={'20px'} />
+              <FormLabel ml={2}>{t('app:use_computer')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
+            </Flex>
+            <Switch
+              isChecked={appForm.aiSettings.useComputer ?? false}
+              onChange={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    useComputer: e.target.checked
+                  }
+                }));
+              }}
+            />
+          </Flex>
         </Box>
 
         {/* tool choice */}

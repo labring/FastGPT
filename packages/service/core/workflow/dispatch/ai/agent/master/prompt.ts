@@ -1,6 +1,15 @@
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 
-export const getMasterSystemPrompt = (systemPrompt?: string, hasUserTools: boolean = true) => {
+export const getMasterSystemPrompt = ({
+  systemPrompt,
+  hasUserTools,
+  useComputer
+}: {
+  systemPrompt?: string;
+  hasUserTools: boolean;
+  useComputer: boolean;
+}) => {
   return `<!-- Master Agent 决策系统 -->
 
 <role>
@@ -17,6 +26,15 @@ ${systemPrompt}
     : ''
 }
 
+${
+  useComputer
+    ? `
+<sandbox_environment>
+${SANDBOX_SYSTEM_PROMPT}
+</sandbox_environment>
+`
+    : ''
+}
 
 <decision_paths>
 三种执行路径：
