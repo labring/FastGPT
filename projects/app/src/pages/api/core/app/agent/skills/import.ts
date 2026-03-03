@@ -9,6 +9,7 @@ import {
 } from '@fastgpt/service/core/agentSkill/utils';
 import { standardizeSkillPackage } from '@fastgpt/service/core/agentSkill/zipBuilder';
 import type {
+  ImportSkillBody,
   ImportSkillResponse,
   ExtractedSkillPackage
 } from '@fastgpt/global/core/agentSkill/api';
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Parse form data to get the file using multer
-    const result = await multer.resolveFormData({
+    const result = await multer.resolveFormData<ImportSkillBody>({
       request: req,
       maxFileSize: 10 // 10MB
     });
@@ -43,6 +44,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     filepaths.push(result.fileMetadata.path);
 
     const file = result.fileMetadata;
+    // Support both JSON data field and direct form fields
+    const overrideName: string | undefined = result.data?.name ?? req.body?.name;
+    const overrideDescription: string | undefined =
+      result.data?.description ?? req.body?.description;
 
     // Validate file type
     if (!file.originalname?.endsWith('.zip')) {
@@ -73,6 +78,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: error.message || 'Failed to extract skill package'
       });
     }
+
+    // Apply name/description overrides from request body
+    if (overrideName?.trim()) skillPackage.skill.name = overrideName.trim();
+    if (overrideDescription?.trim()) skillPackage.skill.description = overrideDescription.trim();
 
     // Import skill with transaction
     const skillId = await mongoSessionRun(async (session) => {

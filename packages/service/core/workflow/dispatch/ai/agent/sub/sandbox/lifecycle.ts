@@ -18,9 +18,9 @@
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
 import type { HydratedDocument } from 'mongoose';
-import { MongoAgentSkill } from '../../../../../../agentSkill/schema';
+import { MongoAgentSkills } from '../../../../../../agentSkill/schema';
 import { MongoSkillSandbox } from '../../../../../../agentSkill/sandboxSchema';
-import { MongoSkillVersion } from '../../../../../../agentSkill/versionSchema';
+import { MongoAgentSkillsVersion } from '../../../../../../agentSkill/versionSchema';
 import { downloadSkillPackage } from '../../../../../../agentSkill/storage';
 import { standardizeSkillPackage } from '../../../../../../agentSkill/zipBuilder';
 import {
@@ -32,7 +32,7 @@ import {
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
 import type {
   AgentSkillSchemaType,
-  SkillVersionSchemaType
+  AgentSkillsVersionSchemaType
 } from '@fastgpt/global/core/agentSkill/type';
 import type { AgentSandboxContext } from './types';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
@@ -51,7 +51,7 @@ const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 // --- Private helpers ---
 
 type SkillDoc = HydratedDocument<AgentSkillSchemaType>;
-type VersionDoc = HydratedDocument<SkillVersionSchemaType>;
+type VersionDoc = HydratedDocument<AgentSkillsVersionSchemaType>;
 type ProviderConfig = ReturnType<typeof getSandboxProviderConfig>;
 
 /** Build a sandbox SDK instance from the resolved provider config. */
@@ -71,12 +71,12 @@ async function fetchSkillsWithVersionMap(
   skillIds: string[],
   teamId: string
 ): Promise<{ skills: SkillDoc[]; versionMap: Map<string, VersionDoc> }> {
-  const skills = await MongoAgentSkill.find({
+  const skills = await MongoAgentSkills.find({
     _id: { $in: skillIds },
     teamId,
     deleteTime: null
   });
-  const activeVersions = await MongoSkillVersion.find({
+  const activeVersions = await MongoAgentSkillsVersion.find({
     skillId: { $in: skills.map((s) => s._id) },
     isActive: true,
     isDeleted: false
@@ -399,7 +399,7 @@ export async function connectEditDebugSandbox(
     throw new Error('No active edit-debug sandbox found for this skill');
   }
 
-  const skill = await MongoAgentSkill.findOne({
+  const skill = await MongoAgentSkills.findOne({
     _id: skillId,
     teamId,
     deleteTime: null

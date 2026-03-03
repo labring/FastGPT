@@ -5,15 +5,18 @@
  */
 
 import { connectionMongo, getMongoModel } from '../../common/mongo';
-import { skillVersionCollectionName } from '@fastgpt/global/core/agentSkill/constants';
-import type { SkillVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
+import {
+  agentSkillsCollectionName,
+  agentSkillsVersionCollectionName
+} from '@fastgpt/global/core/agentSkill/constants';
+import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
 
 const { Schema } = connectionMongo;
 
-const SkillVersionSchema = new Schema({
+const AgentSkillsVersionSchema = new Schema({
   skillId: {
     type: Schema.Types.ObjectId,
-    ref: 'skill',
+    ref: agentSkillsCollectionName,
     required: true
   },
   tmbId: {
@@ -90,18 +93,18 @@ const SkillVersionSchema = new Schema({
 // Create indexes
 try {
   // Index for listing versions of a skill
-  SkillVersionSchema.index({ skillId: 1, isDeleted: 1, version: -1 });
+  AgentSkillsVersionSchema.index({ skillId: 1, isDeleted: 1, version: -1 });
 
   // Index for finding active version
-  SkillVersionSchema.index({ skillId: 1, isActive: 1 });
+  AgentSkillsVersionSchema.index({ skillId: 1, isActive: 1 });
 
   // Unique index to prevent duplicate versions
-  SkillVersionSchema.index({ skillId: 1, version: 1 }, { unique: true });
+  AgentSkillsVersionSchema.index({ skillId: 1, version: 1 }, { unique: true });
 } catch (error) {
   console.log('SkillVersion index error:', error);
 }
 
-export const MongoSkillVersion = getMongoModel<SkillVersionSchemaType>(
-  skillVersionCollectionName,
-  SkillVersionSchema
+export const MongoAgentSkillsVersion = getMongoModel<AgentSkillsVersionSchemaType>(
+  agentSkillsVersionCollectionName,
+  AgentSkillsVersionSchema
 );
