@@ -135,10 +135,10 @@ const DashboardContainer = ({
             typeId: AppTypeEnum.assistant,
             typeName: t('app:type.Smart customer service')
           },
-          {
-            typeId: AppTypeEnum.simple,
-            typeName: t('app:team.menu.app')
-          },
+          // {
+          //   typeId: AppTypeEnum.simple,
+          //   typeName: t('app:team.menu.app')
+          // },
           {
             typeId: AppTypeEnum.workflow,
             typeName: t('app:team.menu.workflow')

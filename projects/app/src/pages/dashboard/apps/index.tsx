@@ -194,12 +194,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   },
                   {
                     children: [
-                      {
-                        icon: 'core/app/simpleBot',
-                        label: t('app:type.Simple bot'),
-                        description: t('app:type.Create simple bot tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.simple)
-                      },
+                      // {
+                      //   icon: 'core/app/simpleBot',
+                      //   label: t('app:type.Simple bot'),
+                      //   description: t('app:type.Create simple bot tip'),
+                      //   onClick: () => setCreateAppType(AppTypeEnum.simple)
+                      // },
                       {
                         icon: 'core/app/type/workflowFill',
                         label: t('app:type.Workflow bot'),
