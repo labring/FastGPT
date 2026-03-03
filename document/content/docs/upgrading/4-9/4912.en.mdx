@@ -1,0 +1,49 @@
+---
+title: V4.9.12
+description: FastGPT V4.9.12 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update Environment Variables
+
+Add the following environment variable to both the `fastgpt` and `fastgpt-pro` image configurations: `AES256_SECRET_KEY=` — used for secret key encryption.
+
+### 2. Update Images:
+
+- Update FastGPT image tag: v4.9.12
+- Update FastGPT Pro image tag: v4.9.12
+- mcp_server: no update required
+- Sandbox: no update required
+- Update AIProxy image tag: v0.2.2
+
+## New Features
+
+1. Enhanced AI Proxy monitoring with chart and table views for model call and performance metrics.
+2. HTTP nodes and MCP now support separate "Auth Configuration" — plaintext credentials are never sent back to the client, ensuring data security.
+3. Question classification and content extraction now automatically include the previous round's results in the prompt for additional guidance.
+4. Conditional node now supports variable references.
+5. Pro edition supports LLM-based automatic segment detection during knowledge base chunking.
+6. Admin dashboard with data analytics.
+7. Doubao 1.6 series models and updated Qwen model configurations.
+
+## Improvements
+
+1. Password validation now accepts more special characters.
+2. Backend now fully computes knowledge base chunk parameters to prevent default values from being incorrectly applied in auto mode.
+3. Text chunking moved to a worker thread to avoid blocking.
+4. More subscription plan usage information displayed.
+5. Input box styling improvements, with updated voice input UI for both desktop and mobile.
+6. MCP tool calls now use raw schema for invocation to ensure completeness.
+7. Deleting knowledge base files no longer fails if the file doesn't exist.
+8. Upgraded MCP SDK with compatibility for the latest HTTP Streamable protocol.
+9. Yuque document library now recursively fetches data from document-type directories.
+
+## Bug Fixes
+
+1. Custom QA extraction prompts being overwritten.
+2. Template import failing when empty indexes exist in the data.
+3. Potential XSS vulnerability on the login page.
+4. Voice input in the text box causing the file list to be lost.
+5. Image TTL field not being cleared in knowledge base documents, causing images to expire.
+6. MCP tool storage not escaping integer type data.

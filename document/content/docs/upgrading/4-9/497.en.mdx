@@ -1,0 +1,54 @@
+---
+title: V4.9.7
+description: FastGPT V4.9.7 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Data
+
+### 2. Update Image Tags
+
+- Update FastGPT image tag: v4.9.7-fix2
+- Update FastGPT Pro image tag: v4.9.7
+- mcp_server: no update required
+- Sandbox: no update required
+- Update AIProxy image tag: v0.1.8
+
+## New Features
+
+1. Knowledge base answers now include citations at the end of each referenced paragraph.
+2. MCP tools support the HTTP Streamable protocol.
+3. MCP Server supports editing tool names to accommodate clients that don't support Chinese characters.
+4. Right-click in the workflow editor to auto-align nodes.
+5. Support for custom `config.json` path in production environments.
+6. API calls support passing a special chatId (`NO_RECORD_HISTORIES`) to prevent the system from storing conversation history.
+7. Rerank model usage-based billing support.
+8. Subscription plan redemption codes.
+9. Alipay payment support.
+10. Short link analytics tracking.
+11. Added Jina AI model system configuration.
+
+## Improvements
+
+1. Doc2x document parsing: added error message capture and increased timeout duration.
+2. Adjusted PG vector query to force vector index usage.
+3. Conversation time statistics now accurately return the overall workflow execution time.
+4. Audio parsing duration now retrieved from ai_proxy.
+5. AI model token counts now prioritize the API usage values for accuracy. If unavailable, falls back to GPT-3.5 estimation.
+6. Optimized the chat log list API to handle scenarios with large numbers of messages in a single conversation.
+
+## Bug Fixes
+
+1. File upload chunk size limit to prevent exceeding MongoDB limits.
+2. Usage dashboard unable to retrieve statistics for specific members.
+3. Dashboard API returning incorrect statistics due to timezone handling issues.
+4. LLM model test API unable to test disabled models. Also fixed the issue where model testing would strip custom request URLs.
+5. Copy app permission issues.
+6. Chat record export now limits individual conversations to 1,000 message pairs to prevent export failures.
+7. Workflow variables followed by another workflow variable not triggering rendering.
+8. Debugging the knowledge base search module showing "no permission" errors.
+9. Text content extraction node default value assignment logic.
+10. Share links forcibly returning citation content from nested apps.
+11. Knowledge base collection metadata filtering: same-named tags across different knowledge bases returning no results when using `$and` filters.
+12. App list permission configuration potentially causing index refresh issues.

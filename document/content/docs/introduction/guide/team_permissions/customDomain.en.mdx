@@ -1,0 +1,42 @@
+---
+title: Configure Custom Domain
+description: How to configure a custom domain in FastGPT
+---
+
+FastGPT Cloud supports custom domain configuration starting from v4.14.4.
+
+## How to Configure a Custom Domain
+
+### 1. Open the "Custom Domain" Page
+
+In the sidebar, go to "Account" -> "Custom Domain" to open the configuration page.
+
+If your plan does not support this feature, follow the on-screen instructions to upgrade.
+
+![Open configuration page](/imgs/guide/team_permissions/customDomain/1.png)
+
+### 2. Add a Custom Domain
+
+1. Have your domain ready. Your domain must have an ICP filing. Currently supported filing providers are Alibaba Cloud, Tencent Cloud, and Volcano Engine.
+2. Click the "Edit" button to enter edit mode.
+3. Enter your domain, e.g. www.example.com
+4. In your domain provider's DNS management console, add the CNAME record shown on the screen.
+5. After adding the DNS record, click "Save". The system will automatically verify the DNS configuration -- this usually takes less than a minute. If verification takes too long, try again.
+6. Once the status shows "Active", click "Confirm" to finish.
+
+![Configure custom domain](/imgs/guide/team_permissions/customDomain/2.png)
+
+You can now access FastGPT services and call FastGPT APIs using your own domain.
+
+## DNS Resolution Failure
+
+The system checks DNS resolution daily. If the DNS record becomes invalid, the custom domain will be disabled. You can re-verify it by clicking "Edit" on the "Custom Domain" management page.
+
+![Edit](/imgs/guide/team_permissions/customDomain/3.png)
+
+To change your custom domain or switch providers, delete the existing configuration and set it up again.
+
+
+## Use Cases
+
+- [Integrate with WeCom Bot](/docs/use-cases/external-integration/wecom)

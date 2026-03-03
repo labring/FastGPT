@@ -2,15 +2,17 @@ import { type ReactNode } from 'react';
 import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/notebook';
 import { baseOptions } from '@/app/layout.config';
-import { t } from '@/lib/i18n';
+import { t, getLocalizedPath, i18n } from '@/lib/i18n';
 import LogoLight from '@/components/docs/logo';
 import LogoDark from '@/components/docs/logoDark';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
+import { SidebarKeepOpen } from '@/components/sidebarKeepOpen';
 import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
 import GithubLogoDark from '@/components/docs/githubLogoDark';
+import { BookOpen, Code, Lightbulb, CircleHelp, Scale, History } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -21,32 +23,41 @@ export default async function Layout({
 }) {
   const { lang } = await params;
 
+  const iconClass = 'size-4';
   const tab = [
     {
+      icon: <BookOpen className={iconClass} />,
       title: t('common:introduction', lang),
-      url: lang === 'zh-CN' ? '/docs/introduction' : '/en/docs/introduction'
+      url: getLocalizedPath('/docs/introduction', lang)
     },
     {
+      icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
-      url: lang === 'zh-CN' ? '/docs/openapi' : '/en/docs/openapi'
+      url: getLocalizedPath('/docs/openapi', lang)
     },
     {
+      icon: <Lightbulb className={iconClass} />,
       title: t('common:use-cases', lang),
-      url: lang === 'zh-CN' ? '/docs/use-cases' : '/en/docs/use-cases'
+      url: getLocalizedPath('/docs/use-cases', lang)
     },
     {
+      icon: <CircleHelp className={iconClass} />,
       title: t('common:faq', lang),
-      url: lang === 'zh-CN' ? '/docs/faq' : '/en/docs/faq'
+      url: getLocalizedPath('/docs/faq', lang)
     },
     {
+      icon: <Scale className={iconClass} />,
       title: t('common:protocol', lang),
-      url: lang === 'zh-CN' ? '/docs/protocol' : '/en/docs/protocol'
+      url: getLocalizedPath('/docs/protocol', lang)
     },
     {
+      icon: <History className={iconClass} />,
       title: t('common:upgrading', lang),
-      url: lang === 'zh-CN' ? '/docs/upgrading' : '/en/docs/upgrading'
+      url: getLocalizedPath('/docs/upgrading', lang)
     }
   ];
+
+  const tabUrls = tab.map((t) => t.url);
 
   return (
     <DocsLayout
@@ -96,7 +107,7 @@ export default async function Layout({
           text: 'github'
         }
       ]}
-      tree={source.pageTree[lang]}
+      tree={source.pageTree[lang] || source.pageTree[i18n.defaultLanguage]}
       searchToggle={{
         enabled: true
       }}
@@ -107,6 +118,7 @@ export default async function Layout({
       }}
       tabMode="navbar"
     >
+      <SidebarKeepOpen tabUrls={tabUrls} />
       {children}
     </DocsLayout>
   );

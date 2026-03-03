@@ -1,5 +1,5 @@
 import * as createapi from '@/pages/api/support/wallet/usage/createTrainingUsage';
-import type { CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api.d';
+import type { CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';

@@ -5,7 +5,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
-import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';

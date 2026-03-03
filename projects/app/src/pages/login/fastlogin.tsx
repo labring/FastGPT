@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes.d';
+import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';

@@ -136,7 +136,7 @@ services:
       retries: 3
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.7
+    image: ghcr.io/labring/fastgpt-sandbox:v4.14.7.1
     ports:
       - 3002:3000
     networks:

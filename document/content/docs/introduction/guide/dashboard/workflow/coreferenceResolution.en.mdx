@@ -1,0 +1,34 @@
+---
+title: Query Enhancement
+description: FastGPT Query Enhancement node overview and usage
+---
+
+## Characteristics
+
+- Can be added multiple times
+- Has external input
+- Trigger-based execution
+
+![](/imgs/coreferenceResolution1.jpg)
+
+## Background
+
+In RAG, we perform embedding searches against the database based on the input query to find relevant content (Knowledge Base search).
+
+During search -- especially in multi-turn conversations -- follow-up questions often fail to retrieve useful results. One reason is that Knowledge Base search only uses the "current" question. Consider this example:
+
+![](/imgs/coreferenceResolution2.webp)
+
+When the user asks "What is the second point?", the system searches the Knowledge Base for exactly that phrase and finds nothing. The actual intended query is "What is the QA structure?". This is why we need a Query Enhancement node to refine the user's current question so the Knowledge Base search can return relevant results. With query enhancement applied:
+
+![](/imgs/coreferenceResolution3.webp)
+
+## What It Does
+
+Calls an AI model to complete and refine the user's current question. It primarily resolves coreferences (pronouns and vague references), making search queries more complete and reliable. This improves Knowledge Base search accuracy in multi-turn conversations.
+
+The main challenge is that the model may not have a clear understanding of "completion" and often struggles to determine how to properly refine queries with long context.
+
+## Examples
+
+- [Integrate Google Search](/docs/use-cases/app-cases/google_search/)

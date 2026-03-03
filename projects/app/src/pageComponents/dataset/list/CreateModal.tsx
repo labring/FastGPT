@@ -8,7 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
-import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
+import type { CreateDatasetParams } from '@/global/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';

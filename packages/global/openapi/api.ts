@@ -1,3 +1,4 @@
+import type { RequireOnlyOne } from '../common/type/utils';
 import { z } from 'zod';
 
 export const PaginationSchema = z.object({
@@ -6,6 +7,13 @@ export const PaginationSchema = z.object({
   pageNum: z.union([z.number(), z.string()]).optional().describe('页码(与偏移量二选一)')
 });
 export type PaginationType = z.infer<typeof PaginationSchema>;
+
+export type PaginationProps<T = {}> = T & {
+  pageSize: number | string;
+} & RequireOnlyOne<{
+    offset: number | string;
+    pageNum: number | string;
+  }>;
 
 export const PaginationResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({

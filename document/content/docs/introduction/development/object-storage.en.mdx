@@ -1,0 +1,98 @@
+---
+title: Object Storage Configuration & Common Issues
+description: How to configure and connect to various object storage providers via environment variables, and common configuration issues
+---
+
+import { Alert } from '@/components/docs/Alert';
+import FastGPTLink from '@/components/docs/linkFastGPT';
+
+## Object Storage Configuration
+
+This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Alibaba Cloud OSS, and Tencent Cloud COS.
+
+### Common Required Environment Variables
+
+> - Temporary credential authentication (e.g., STS) is not supported. Ensure service security on your own.
+> - Private bucket reuse is not supported. If you set the private and public bucket names to the same value, ensure the bucket policy is at least **public read, private write**.
+
+- `STORAGE_VENDOR` Enum value. Options: `minio`, `aws-s3`, `oss`, `cos`.
+- `STORAGE_REGION` Region where the object storage service is located, e.g., `us-east-1`. Refer to your provider's region list. For self-hosted MinIO, any value works.
+- `STORAGE_ACCESS_KEY_ID` Access Key ID for the service credentials
+- `STORAGE_SECRET_ACCESS_KEY` Secret Access Key for the service credentials
+- `STORAGE_PUBLIC_BUCKET` FastGPT public resource bucket name
+- `STORAGE_PRIVATE_BUCKET` FastGPT private resource bucket name
+
+### Self-Hosted MinIO and AWS S3
+
+> MinIO has strong AWS S3 protocol support, so MinIO and AWS S3 configurations are nearly identical — differences come from provider-specific or self-hosted requirements.
+> In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS, RustFS, etc.
+
+- `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
+- `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This address is used when generating signed file upload URLs.
+- `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
+- `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
+
+**Complete Example**
+
+> If using Sealos object storage, set `STORAGE_VENDOR` to `aws-s3`
+
+```dotenv
+STORAGE_VENDOR=minio
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_S3_MAX_RETRIES=3
+```
+
+### Alibaba Cloud OSS
+
+> - [CORS Configuration](https://help.aliyun.com/zh/oss/user-guide/configure-cross-origin-resource-sharing/?spm=5176.8466032.console-base_help.dexternal.1bcd1450Wau6J6#b58400ec36rqf)
+
+- `STORAGE_OSS_ENDPOINT` Alibaba Cloud OSS hostname. Default is usually `{region}.aliyuncs.com`, e.g., `oss-cn-hangzhou.aliyuncs.com`. If using a custom domain, enter it here, e.g., `your-domain.com`
+- `STORAGE_OSS_CNAME` Whether custom domain is enabled
+- `STORAGE_OSS_SECURE` Whether TLS is enabled. Disable if your domain doesn't have a certificate.
+- `STORAGE_OSS_INTERNAL` [Optional] Whether to use internal network access. Enable if your service is also on Alibaba Cloud to save bandwidth. Default: disabled
+
+**Complete Example**
+
+```dotenv
+STORAGE_VENDOR=oss
+STORAGE_REGION=oss-cn-hangzhou
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+STORAGE_OSS_CNAME=false
+STORAGE_OSS_SECURE=false
+STORAGE_OSS_INTERNAL=false
+```
+
+### Tencent Cloud COS
+
+> - [CORS Configuration](https://cloud.tencent.com/document/product/436/13318)
+
+- `STORAGE_COS_PROTOCOL` Options: `https:`, `http:` — don't forget the `:`. If your custom domain doesn't have a certificate, don't use `https:`
+- `STORAGE_COS_USE_ACCELERATE` [Optional] Enable global acceleration domain. Default: false. If true, the bucket must have global acceleration enabled.
+- `STORAGE_COS_CNAME_DOMAIN` [Optional] Custom domain, e.g., `your-domain.com`
+- `STORAGE_COS_PROXY` [Optional] Proxy server, e.g., `http://localhost:7897`
+
+**Complete Example**
+
+```dotenv
+STORAGE_VENDOR=cos
+STORAGE_REGION=ap-shanghai
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_COS_PROTOCOL=http:
+STORAGE_COS_USE_ACCELERATE=false
+STORAGE_COS_CNAME_DOMAIN=
+STORAGE_COS_PROXY=
+```

@@ -1,5 +1,5 @@
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
+import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {

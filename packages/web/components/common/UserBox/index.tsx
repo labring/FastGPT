@@ -6,14 +6,14 @@ import { useTranslation } from 'next-i18next';
 import Tag from '../Tag';
 
 export type UserBoxProps = {
-  sourceMember: SourceMemberType;
+  sourceMember?: SourceMemberType;
   avatarSize?: string;
 } & StackProps;
 
 function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProps) {
   const { t } = useTranslation();
 
-  return (
+  return sourceMember ? (
     <HStack space="1" {...props}>
       <Avatar src={sourceMember.avatar} w={avatarSize} borderRadius={'xs'} />
       <Box maxW={'150px'} whiteSpace={'nowrap'} overflow={'hidden'}>
@@ -21,7 +21,7 @@ function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProp
       </Box>
       {sourceMember.status === 'leave' && <Tag color="gray">{t('common:user_leaved')}</Tag>}
     </HStack>
-  );
+  ) : null;
 }
 
 export default React.memo(UserBox);

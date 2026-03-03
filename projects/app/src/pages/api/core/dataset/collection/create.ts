@@ -1,5 +1,5 @@
 import type { NextApiRequest } from 'next';
-import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
+import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { NextAPI } from '@/service/middleware/entry';

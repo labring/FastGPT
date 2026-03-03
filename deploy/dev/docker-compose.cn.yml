@@ -136,7 +136,7 @@ services:
       retries: 3
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7.1
     ports:
       - 3002:3000
     networks:

@@ -1,0 +1,100 @@
+---
+title: V4.8.10 (Includes Migration Script)
+description: FastGPT V4.8.10 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+
+### 2. Commercial Edition — Update environment variables
+
+1. Add the sandbox environment variable to the `fastgpt-pro` image: `SANDBOX_URL=http://xxxxx:3000`
+2. Add the following environment variables to both the `fastgpt-pro` and `fastgpt` images for better system log storage:
+
+```
+LOG_LEVEL=debug
+STORE_LOG_LEVEL=warn
+```
+
+### 3. Update image tags
+
+- Update the FastGPT image tag to v4.8.10
+- Update the FastGPT commercial edition image tag to v4.8.10
+- Sandbox image update is optional
+
+## 4. Run initialization
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. Initializes publish record version markers
+2. Initializes invoice records
+
+-------
+
+## V4.8.10 Release Notes
+
+For full details, see: [4.8.10 release](https://github.com/labring/FastGPT/releases/tag/v4.8.10)
+
+1. New - Template marketplace.
+2. New - Workflow node drag-and-drop auto-alignment and snapping.
+3. New - User selection node (not yet supported in Debug mode).
+4. New - Added `uid` global variable to workflows.
+5. New - Workflow undo and redo.
+6. New - Workflow edit history for the current session, replacing auto-save.
+7. New - Workflow versions support renaming.
+8. New - The "App Call" node in workflows is deprecated and migrated to a standalone node that works the same way as plugins, with support for passing global variables and user-uploaded files.
+9. New - Plugins now support usage instructions configuration.
+10. New - Plugin custom inputs support radio buttons.
+11. New - HTTP node supports `text/plain` mode.
+12. New - HTTP node supports timeout configuration, additional Body types, and a new variable selection mode for params and headers.
+13. New - Workflow export/import now supports JSON files directly for easier sharing.
+14. New - Verification code security check.
+15. Commercial - Lark bot integration.
+16. Commercial - WeChat Official Account integration.
+17. Commercial - Self-service invoice requests.
+18. Commercial - SSO customization.
+19. Improved - Workflow loop validation to prevent skip-loop idle spinning. Also supports fully concurrent branch execution.
+20. Improved - Workflow nested execution to prevent potential parameter pollution.
+21. Improved - Added data type constraints to some global variables.
+22. Improved - Node selection to prevent path loading errors when switching tabs.
+23. Improved - Updated React Markdown component with Base64 image support.
+24. Improved - Chat dialog performance.
+25. Improved - Radio buttons auto-scroll to the selected position when opened.
+26. Improved - Disabling a Knowledge Base collection directory now recursively disables all children.
+27. Improved - SSE response code.
+28. Improved - Improved copy functionality when SSL certificate is not available.
+29. Improved - Knowledge Base list UI.
+30. Improved - Knowledge Base detail page UI.
+31. Improved - Support running without network configuration.
+32. Improved - Updated .env.template MongoDB documentation for better clarity.
+33. Improved - New payment mode.
+34. Improved - Default user avatars.
+35. Fixed - Prompt mode tool calls including `0:` prefix markers in non-stream mode.
+36. Fixed - Chat log authentication: users who are only app administrators could not view chat log details.
+37. Fixed - Unable to export Knowledge Base when using Milvus deployment.
+38. Fixed - Creating an app copy failed to copy system configuration.
+39. Fixed - Image recognition mode regex for auto-parsing image URLs was not strict enough.
+40. Fixed - Content extraction data types not matching output data types.
+41. Fixed - Workflow run time statistics were incorrect.
+42. Fixed - Tool calls could produce `undefined` in stream mode.
+43. Fixed - Reranker typo.
+44. Fixed - Home host typo.
+45. Fixed - i18n display.
+46. Fixed - Global variable keys could be defined with duplicates.
+47. Fixed - Global variables not persisting in Debug mode.
+48. Fixed - Global variables not persisting via API.
+49. Fixed - OpenAPI `detail=false` mode should not return tool call results, only text (resolves CoW compatibility issue).
+50. Fixed - Knowledge Base tags loading repeatedly.
+51. Fixed - Custom separators not taking effect when re-fetching web links.
+52. Fixed - Plugin runtime passing extra global variables, potentially polluting plugin-internal variables.
+53. Docs - QA docs.
+54. Docs - Updated feishu.md.
+55. Docs - Updated baseURL.

@@ -1,0 +1,89 @@
+---
+title: Try Open Source Models with SiliconCloud
+description: Try Open Source Models with SiliconCloud
+---
+
+[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform focused on providing open source model inference, with its own acceleration engine. It helps users test and use open source models quickly at low cost. In our experience, their models offer solid speed and stability, with a wide variety covering language, embedding, reranking, TTS, STT, image generation, and video generation models — meeting all model requirements in FastGPT.
+
+If you want to use SiliconCloud for only some models, see [OneAPI Integration with SiliconCloud](/docs/introduction/development/modelconfig/one-api/#siliconcloud--open-source-model-collection).
+
+This guide covers deploying FastGPT entirely with SiliconCloud models.
+
+## 1. Register a SiliconCloud Account
+
+1. [Register a SiliconCloud account](https://cloud.siliconflow.cn/i/TR9Ym0c4)
+2. Go to the console and get your API key: https://cloud.siliconflow.cn/account/ak
+
+## 2. Update FastGPT Environment Variables
+
+```bash
+OPENAI_BASE_URL=https://api.siliconflow.cn/v1
+# Enter the API Key from the SiliconCloud console
+CHAT_API_KEY=sk-xxxxxx
+```
+
+## 3. Update FastGPT Model Configuration
+
+The system includes a few SiliconCloud models by default for quick testing. You can add more models manually if needed.
+
+Here we enable `Qwen2.5 72b` for both text and vision models; `bge-m3` as the embedding model; `bge-reranker-v2-m3` as the reranking model; `fish-speech-1.5` as the TTS model; and `SenseVoiceSmall` as the STT model.
+
+![alt text](/imgs/image-104.png)
+
+## 4. Testing
+
+### Test Chat and Image Recognition
+
+Create a simple app, select the corresponding model, enable image upload, and test:
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-68.png) | ![alt text](/imgs/image-70.png) |
+
+The 72B model performs quite fast. Without several 4090 GPUs locally, just the output alone would take around 30 seconds — not to mention the environment setup.
+
+### Test Knowledge Base Import and Q&A
+
+Create a knowledge base (since only one embedding model is configured, the embedding model selector won't appear on the page):
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-72.png) | ![alt text](/imgs/image-71.png) |
+
+Import a local file — just select the file and click through the steps. 79 indexes were completed in about 20 seconds. Now let's test knowledge base Q&A.
+
+Go back to the app we just created, select the knowledge base, adjust the parameters, and start a conversation:
+
+|                                 |                                 |                                 |
+| ------------------------------- | ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-73.png) | ![alt text](/imgs/image-75.png) | ![alt text](/imgs/image-76.png) |
+
+After the conversation, click the citation at the bottom to view citation details, including retrieval and reranking scores:
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-77.png) | ![alt text](/imgs/image-78.png) |
+
+### Test Text-to-Speech
+
+In the same app, find "Voice Playback" in the left sidebar configuration. Click to select a voice model from the popup and preview it:
+
+![alt text](/imgs/image-79.png)
+
+### Test Speech-to-Text
+
+In the same app, find "Voice Input" in the left sidebar configuration. Click to enable voice input from the popup:
+
+![alt text](/imgs/image-80.png)
+
+Once enabled, a microphone icon appears in the chat input box. Click it to start voice input:
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-81.png) | ![alt text](/imgs/image-82.png) |
+
+## Summary
+
+If you want to quickly try open source models or get started with FastGPT without applying for API keys from multiple providers, SiliconCloud is a great option for a fast start.
+
+If you plan to self-host models and FastGPT in the future, you can use SiliconCloud for initial testing and validation, then proceed with hardware procurement later — reducing POC time and cost.

@@ -1,0 +1,135 @@
+---
+title: V4.8.11 (Commercial Edition Initialization)
+description: FastGPT V4.8.11 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your data
+
+### 2. Update configuration file
+
+To add the OpenAI o1 model, add the following configuration:
+
+```json
+{
+    "model": "o1-mini",
+    "name": "o1-mini",
+    "avatar": "/imgs/model/openai.svg",
+    "maxContext": 125000,
+    "maxResponse": 65000,
+    "quoteMaxToken": 120000,
+    "maxTemperature": 1.2,
+    "charsPointsPrice": 0,
+    "censor": false,
+    "vision": false,
+    "datasetProcess": true,
+    "usedInClassify": true,
+    "usedInExtractFields": true,
+    "usedInToolCall": true,
+    "toolChoice": false,
+    "functionCall": false,
+    "customCQPrompt": "",
+    "customExtractPrompt": "",
+    "defaultSystemChatPrompt": "",
+    "defaultConfig": {
+        "temperature": 1
+    }
+},
+{
+    "model": "o1-preview",
+    "name": "o1-preview",
+    "avatar": "/imgs/model/openai.svg",
+    "maxContext": 125000,
+    "maxResponse": 32000,
+    "quoteMaxToken": 120000,
+    "maxTemperature": 1.2,
+    "charsPointsPrice": 0,
+    "censor": false,
+    "vision": false,
+    "datasetProcess": true,
+    "usedInClassify": true,
+    "usedInExtractFields": true,
+    "usedInToolCall": true,
+    "toolChoice": false,
+    "functionCall": false,
+    "customCQPrompt": "",
+    "customExtractPrompt": "",
+    "defaultSystemChatPrompt": "",
+    "defaultConfig": {
+        "temperature": 1
+    }
+}
+```
+
+-------
+
+### 3. Update image tags and restart
+
+- Update the FastGPT image tag to v4.8.11-fix
+- Update the FastGPT commercial edition image tag to v4.8.11
+- Update the FastGPT Sandbox image tag to v4.8.11
+
+### 4. Commercial Edition initialization
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/init/4811' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This initializes team member groups.
+
+## V4.8.11 Release Notes
+
+1. New - Form input node, allowing users to enter information during workflow execution.
+2. New - Loop execution node that accepts an array for batch processing, currently supporting up to 50 items in serial execution.
+3. New - Nodes can now be collapsed.
+4. New - Simple Mode supports a new history mode that records local change history.
+5. New - Chat history now uses scroll-based loading instead of only loading 30 messages.
+6. New - Workflow adds a trackpad-priority mode, toggled via the button in the bottom-right corner.
+7. New - Sandbox adds a string-to-Base64 global method (global variable `strToBase64`).
+8. New - Support for OpenAI o1 models. Requires adding `defaultConfig` to the model configuration to override `temperature`, `max_tokens`, and `stream` settings, as o1 does not support stream mode.
+9. New - AI chat node Knowledge Base references now support configuring `role=system` and `role=user`. Nodes with custom prompts already configured will keep `user` mode; all others will switch to `system` mode.
+10. New - Plugins support uploading system files.
+11. New - Plugin outputs support designating specific fields as tool responses.
+12. New - When nesting child apps in workflows, you can now set "non-stream mode". Simple Mode can also select workflows as plugins. Simple Mode always forces non-stream mode when calling child apps.
+13. New - In debug mode, child app calls return detailed execution data.
+14. New - Logs for nested child app calls are now preserved in all modes.
+15. New - Chat logs display team members.
+16. New - Commercial edition supports configuring AI-generated copy prompts in the admin panel.
+17. New - Jest unit testing framework.
+18. New - Tool call parameter node for fully custom parameter declarations with tool calls.
+19. New - BI chart plugin.
+20. New - Surya OCR recognition module example.
+21. New - Right-click to add comments in workflows.
+22. Commercial - Team member groups.
+23. Improved - Workflow nesting limited to 20 levels to prevent infinite loops from improper configurations.
+24. Improved - Workflow handler performance.
+25. Improved - Workflow shortcuts no longer trigger copy and undo during debug testing.
+26. Improved - Removed extra "#" from names when copying workflow nodes.
+27. Improved - Stream output continues even after switching browser tabs.
+28. Improved - Enhanced external file Knowledge Base APIs.
+29. Improved - Updated config.json path.
+30. Improved - Properly handle hyperlinks starting with `//`.
+31. Improved - Workflow Textarea scrolls normally instead of zooming.
+32. Improved - Trimmed leading/trailing spaces from some input fields.
+33. Improved - Returning to workflow now navigates to the last remembered tab.
+34. Improved - Workflow canvas prevents trackpad browser zoom.
+35. Improved - Some workflow nodes auto-select user question as the initial value.
+36. Improved - Prompt Editor supports dynamic height expansion.
+37. Improved - Auto-complete tool descriptions.
+38. Improved - Updated configuration.md documentation.
+39. Improved - iOS Safari voice input accuracy.
+40. Fixed - Knowledge Base selection permission issue.
+41. Fixed - Starting a conversation with an empty chatId caused errors when the first message included user selections.
+42. Fixed - `createDataset` API not assigning `intro`.
+43. Fixed - Chat dialog rendering performance issue.
+44. Fixed - Rerank documentation URL.
+45. Fixed - In stream mode with toolChoice, the `function` and `type` fields of toolCall could be null.
+46. Fixed - Site sync custom separators not syncing.
+47. Fixed - Tool call history storage issue.
+48. Fixed - Chat page could enter an infinite redirect loop.
+49. Fixed - Global variables not persisting across tool calls.

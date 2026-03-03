@@ -1,7 +1,7 @@
 {
   "tags": {
-    "fastgpt": "v4.14.7",
-    "fastgpt-sandbox": "v4.14.7",
+    "fastgpt": "v4.14.7.2",
+    "fastgpt-sandbox": "v4.14.7.1",
     "fastgpt-mcp_server": "v4.14.6",
     "fastgpt-plugin": "v0.5.4",
     "aiproxy": "v0.3.5",

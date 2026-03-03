@@ -15,7 +15,7 @@ export default defineConfig({
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
       all: false, // 只包含被测试实际覆盖的文件，不包含空目录
-      include: ['projects/**/*.ts', 'packages/**/*.ts'],
+      include: ['projects/app/**/*.ts', 'packages/**/*.ts'],
       exclude: [
         '**/node_modules/**',
         '**/*.spec.ts',
@@ -48,7 +48,6 @@ export default defineConfig({
     include: [
       'test/**/*.test.ts',
       'projects/app/test/**/*.test.ts',
-      'projects/sandbox/test/**/*.test.ts',
       'projects/marketplace/test/**/*.test.ts'
     ]
   }

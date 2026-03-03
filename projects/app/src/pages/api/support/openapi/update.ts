@@ -1,5 +1,5 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
+import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';

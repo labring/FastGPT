@@ -1,0 +1,51 @@
+---
+title: V4.8.9 (Requires Initialization)
+description: FastGPT V4.8.9 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update images
+
+- Update the FastGPT image tag to v4.8.9
+- Update the FastGPT commercial edition image tag to v4.8.9
+- Sandbox image update is optional
+
+### 3. Run initialization (Commercial Edition)
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/init/489' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This initializes notification methods for multi-tenancy (internal use only, no action needed).
+
+-------
+
+## V4.8.9 Release Notes
+
+1. New - File upload configuration. Image upload capability is now determined by system configuration rather than relying on vision model availability.
+2. New - AI chat node and tool calls support toggling "Enable image recognition". When enabled, it automatically retrieves images uploaded in the chat and image URLs from "User question".
+3. New - Document parsing node.
+4. Commercial - Team notification account binding for receiving important messages.
+5. Commercial - Knowledge Base collection tagging for tag-based management.
+6. Commercial - Knowledge Base search node supports tag filtering and creation date filtering.
+7. Commercial - Transfer app owner permissions.
+8. New - Delete all conversation starters.
+9. New - QA splitting supports custom chunk sizes, and optimized the issue where GPT-4o-mini produced very little content with large chunks.
+10. Improved - Lazy loading for chat messages to reduce network transfer.
+11. Improved - Clear file selection cache to allow re-selecting the same file.
+12. Fixed - Knowledge Base file upload progress not reaching 100% under unstable network or with many files.
+13. Fixed - After deleting an app, returning to chat and selecting the last conversation from the deleted app showed an error.
+14. Fixed - Plugin dynamic variable default values not displaying correctly.
+15. Fixed - Tool call temperature and max response values not taking effect.
+16. Fixed - In function call mode, GPT models require the `content` parameter in assistant role messages (doesn't affect most models since nearly all have switched to ToolChoice mode; FC mode is deprecated).
+17. Fixed - Knowledge Base file upload progress updates could be incorrect.
+18. Fixed - Knowledge Base page always resetting to the first page during rebuilding.
+19. Fixed - Knowledge Base list OpenAPI authentication issue.
+20. Fixed - Unable to provide feedback on new conversations via share links.

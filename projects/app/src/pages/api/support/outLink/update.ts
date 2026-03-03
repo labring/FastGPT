@@ -1,5 +1,5 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';

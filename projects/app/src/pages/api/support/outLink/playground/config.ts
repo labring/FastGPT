@@ -9,7 +9,7 @@ import {
   type PlaygroundVisibilityConfigResponse,
   PlaygroundVisibilityConfigQuerySchema,
   PlaygroundVisibilityConfigResponseSchema
-} from '@fastgpt/global/support/outLink/api.d';
+} from '@fastgpt/global/support/outLink/api';
 
 async function handler(
   req: ApiRequestProps<{}, PlaygroundVisibilityConfigQuery>

@@ -8,10 +8,10 @@ import type {
   OutlinkAppType,
   OutLinkEditType,
   OutLinkSchema
-} from '@fastgpt/global/support/outLink/type.d';
+} from '@fastgpt/global/support/outLink/type';
 
 // create a shareChat
-export function createShareChat<T>(
+export function createShareChat<T extends OutlinkAppType>(
   data: OutLinkEditType<T> & {
     appId: string;
     type: OutLinkSchema['type'];

@@ -1,0 +1,61 @@
+---
+title: V4.6 (Includes Migration Script)
+description: FastGPT V4.6 Update
+---
+
+**V4.6 introduces basic team functionality, allowing you to invite other users to manage resources collaboratively. After upgrading to this version, older migration scripts cannot be run, and the upgrade cannot be rolled back.**
+
+## 1. Update Images and Modify Configuration
+
+Update the image to the latest or V4.6 version. For the commercial edition, update to V0.2.1.
+
+For the latest configuration, refer to: [V4.6 Latest config.json](/docs/introduction/development/configuration). The commercial edition configuration file has also been updated — refer to the latest Lark documentation.
+
+## 2. Run the Initialization APIs
+
+Send 2 HTTP requests (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
+
+**These initialization endpoints may be very slow. If the request times out, don't worry — just check the logs. Important: Make sure initv46 completes successfully before running initv46-2.**
+
+1. https://xxxxx/api/admin/initv46
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv46' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+2. https://xxxxx/api/admin/initv46-2
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv46-2' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+What the initialization does:
+1. Creates the default team.
+2. Initializes team fields for all resources in Mongo.
+3. Initializes PG fields.
+4. Initializes Mongo Data.
+
+## V4.6 New Features
+
+1. New - Team workspace.
+2. New - Multi-vector support (multiple vectors mapped to a single dataset).
+3. New - TTS (text-to-speech).
+4. New - Support for configuring text preprocessing models in knowledge bases.
+5. New (Online environment) - ReRank vector recall for improved retrieval accuracy.
+6. Improved - Knowledge base export now triggers a streaming download instead of showing a loading spinner.
+
+## V4.6 Bug Fix
+
+The initial V4.6 release was missing a field, which caused knowledge base data to not display during file imports. Run the following script to fix this:
+
+https://xxxxx/api/admin/initv46-fix
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv46-fix' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```

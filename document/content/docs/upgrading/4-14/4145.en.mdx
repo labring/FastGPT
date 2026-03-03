@@ -1,0 +1,103 @@
+---
+title: 'V4.14.5 (Includes Upgrade Script)'
+description: 'FastGPT V4.14.5 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Storage Bucket Environment Variables
+
+This version adds native support for OSS and COS in addition to MinIO, so the related environment variables need to be renamed. Below is the configuration for MinIO. For other providers, refer to [Object Storage Configuration](/docs/introduction/development/object-storage).
+
+**New Variables**
+
+```
+STORAGE_VENDOR=minio
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://192.168.0.2:9000 # An address accessible by both the server and client. Can be a static host IP or domain name. Do not use 127.0.0.1 or localhost (containers cannot access loopback addresses).
+STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # protocol://domain(IP):port
+```
+
+**Remove Old Variables**
+
+* S3_EXTERNAL_BASE_URL
+* S3_ENDPOINT
+* S3_PORT
+* S3_USE_SSL
+* S3_ACCESS_KEY
+* S3_SECRET_KEY
+* S3_PUBLIC_BUCKET
+* S3_PRIVATE_BUCKET
+
+### 2. Update Images:
+
+- Update FastGPT image tag: v4.14.5-fix
+- Update FastGPT commercial edition image tag: v4.14.5
+- Update fastgpt-plugin image tag: v0.4.0
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+- Update mongo 5.x to version 5.0.32 to fix CVE-2025-14847. Simply change the image tag to `5.0.32`.
+
+### 3. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. Retries all failed S3 deletion tasks.
+2. Adds the `showFullText` field to all share-type OutLink records.
+3. Renames fields:
+  - showNodeStatus -> showRunningStatus
+  - responseDetail -> showCite
+  - showRawSource -> canDownloadSource
+
+
+## New Features
+
+1. Workflow canvas now includes a demo mode, with improved collapsed mode styling and reduced edge overlap.
+2. Workflow now has a quick-jump button for nested apps.
+3. Workflow export now supports choosing whether to filter sensitive information.
+4. Chat record deletion is now soft-delete, with the ability to delete chat records from the log management page.
+5. When updating an Agent/tool, the update timestamp is propagated to all parent directories so they appear at the top of the list.
+6. Portal page now supports configuring visibility for individual app execution.
+7. API endpoint to export chunks from a single knowledge base collection.
+8. Upgraded Mongo 5.x to 5.0.32 to fix CVE-2025-14847.
+9. Email configuration now supports configuring security mode and port number.
+
+## Improvements
+
+1. Optimized Redis key retrieval logic to prevent blocking when fetching a large number of keys.
+2. Improved reconnection logic for MongoDB, Redis, and MQ.
+3. Variable input fields can now be copied in disabled state.
+4. LLM empty response detection now excludes content filter errors from being misidentified as no response.
+5. Improved error messages for AI chat and tool calls with more raw data.
+6. Increased file parsing API request size limit to 10MB.
+7. Citation list below chat responses now only shows knowledge base content actually cited by the AI.
+8. Updated MCP SDK version.
+9. Optimized Chats table indexes: reduced redundancy and added conditional indexes.
+
+## Bug Fixes
+
+1. Critical: Workflow parallel merge could cause duplicate execution.
+2. MCP tool creation with custom auth headers threw an error.
+3. Fetching chat log list threw an error when user avatar was empty.
+4. chatAgent showed question optimization as enabled in the frontend UI when it was actually disabled.
+5. maxTokens field was not assigned when loading default models, causing empty model max response configuration.
+6. S3 file cleanup queue was blocked due to network instability, preventing deletion tasks from executing.
+7. Chat log API adapted for mongo 4.x syntax.
+8. Variable update node incorrectly converted file URL string arrays to object arrays.
+9. Multiple form input nodes sharing sessionStorage caused default values not to display.
+10. Code execution node still used the old language for AI code generation after switching languages.
+11. Multiple custom feedback nodes writing concurrently triggered database write conflicts.
+12. Custom feedback nodes following interactive nodes failed to write.
+
+## Plugin Updates

@@ -1,4 +1,4 @@
-import type { ApiDatasetCreateDatasetCollectionV2Params } from '@fastgpt/global/core/dataset/api.d';
+import type { ApiDatasetCreateDatasetCollectionV2Params } from '@fastgpt/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,

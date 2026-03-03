@@ -4,7 +4,7 @@ import type {
   GetUsageDashboardProps,
   GetUsageDashboardResponseItem,
   GetUsageProps
-} from '@fastgpt/global/support/wallet/usage/api.d';
+} from '@fastgpt/global/support/wallet/usage/api';
 import type { UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 

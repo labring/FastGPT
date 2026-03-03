@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api.d';
+import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';

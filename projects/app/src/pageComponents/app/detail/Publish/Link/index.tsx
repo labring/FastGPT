@@ -31,7 +31,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
+import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';

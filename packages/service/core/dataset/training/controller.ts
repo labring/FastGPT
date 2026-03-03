@@ -1,10 +1,12 @@
 import { MongoDatasetTraining } from './schema';
-import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
+import type {
+  PushDatasetDataChunkProps,
+  PushDatasetDataResponse
+} from '@fastgpt/global/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -38,7 +40,24 @@ export async function pushDataListToTrainingQueue({
   mode = TrainingModeEnum.chunk,
   indexSize,
   session
-}: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+
+  data: PushDatasetDataChunkProps[];
+  mode?: TrainingModeEnum;
+
+  agentModel: string;
+  vectorModel: string;
+  vlmModel?: string;
+
+  indexSize?: number;
+
+  billId?: string;
+  session?: ClientSession;
+}): Promise<PushDatasetDataResponse> {
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));

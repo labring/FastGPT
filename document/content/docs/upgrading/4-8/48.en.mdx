@@ -1,0 +1,51 @@
+---
+title: V4.8
+description: FastGPT V4.8 Release Notes
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## New Workflow
+
+FastGPT Workflow V2 is here, with a cleaner and more streamlined workflow experience.
+
+<Alert icon="🤖" context="success">
+**Due to significant workflow changes, many parts need to be manually rebuilt. Please rebuild plugins first, then apps.**
+
+We recommend updating your workflows as soon as possible to avoid future compatibility issues as the platform continues to evolve.
+</Alert>
+
+A `version` field has been added to apps and plugins to distinguish between old and new workflows. After upgrading to V4.8, all saved and newly created workflows use the new version. Old workflows will show a reset prompt dialog. Workflows called via API or share links will continue to work until you save them again.
+
+## Commercial Edition Configuration Update
+
+Commercial edition users who have configured email verification codes need to update the admin panel: go to Admin Panel -> Project Settings -> Login Settings -> Email Login Settings -> update the **Email SMTP Server Address**. Previously only aliases were supported; now you can configure custom addresses. Here are some alias-to-address mappings:
+
+qq: smtp.qq.com
+gmail: smtp.gmail.com
+
+## V4.8 Release Notes
+
+1. Refactored - Workflow engine.
+2. New - If/ElseIf/Else conditional node. @newfish-cmyk (If/Else nodes from the preview version need to be deleted and recreated)
+3. New - Variable update node for modifying workflow output variables or global variables at runtime. @newfish-cmyk
+4. New - Workflow auto-save and version management.
+5. New - Workflow Debug mode for testing individual nodes or stepping through the workflow.
+6. New - Scheduled app execution for easy cron-like tasks.
+7. New - Improved plugin custom input with rendered input components.
+8. New - Share link pre-chat hook. https://github.com/labring/FastGPT/pull/1252 @gaord
+9. Improved - Workflow connections now support 4-directional linking for easier loop construction.
+10. Improved - Workflow context passing performance.
+11. Improved - Ctrl+Enter and Alt+Enter line break cursor positioning.
+12. Improved - Variable configuration storage in chat to prevent edits from affecting existing conversations.
+13. Improved - Simple mode now auto-updates the debug panel after config changes without saving.
+14. Improved - Worker process management; token calculation is now delegated to worker processes.
+15. Improved - Tool calling now supports specifying field data types (string, boolean, number). https://github.com/labring/FastGPT/issues/1236
+16. Improved - Completions API size limit. https://github.com/labring/FastGPT/issues/1241
+17. Improved - Node API middleware and API-side code. @c121914yu
+18. Improved - Chat history is now trimmed to an even number of messages to support models that require paired messages. Max length increased to 50 rounds. https://github.com/labring/FastGPT/issues/1384
+19. Improved - HTTP node now terminates the process on error. https://github.com/labring/FastGPT/issues/1290
+20. Fixed - Tool calling name cannot start with a number (random IDs occasionally generated numeric prefixes). @c121914yu
+21. Fixed - Share link global variable query params being cached. @c121914yu
+22. Fixed - Tool calling field compatibility. https://github.com/labring/FastGPT/issues/1253
+23. Fixed - HTTP module URL cursor issue. https://github.com/labring/FastGPT/issues/1334 @maquannene

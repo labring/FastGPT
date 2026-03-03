@@ -1,0 +1,99 @@
+---
+title: Integrating Marker PDF Parsing
+description: Use Marker to parse PDF documents with image extraction and layout recognition
+---
+
+## Background
+
+PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
+
+There are several PDF parsing solutions available. [Marker](https://github.com/VikParuchuri/marker) uses the Surya model for vision-based parsing, effectively extracting images, tables, formulas, and other complex content.
+
+Starting from `FastGPT v4.9.0`, community edition users can add the `systemEnv.customPdfParse` configuration in `config.json` to use Marker for PDF parsing. Commercial edition users can configure this directly in the Admin panel via the form. You need to pull the latest Marker image, as the API format has changed.
+
+## Tutorial
+
+### 1. Install Marker
+
+Refer to the [Marker installation guide](https://github.com/labring/FastGPT/tree/main/plugins/model/pdf-marker) to install the Marker model. The bundled API is already compatible with FastGPT's custom parsing service.
+
+Quick Docker installation:
+
+```dockerfile
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+```
+
+### 2. Add FastGPT Configuration
+
+```json
+{
+  xxx
+  "systemEnv": {
+    xxx
+    "customPdfParse": {
+      "url": "http://xxxx.com/v2/parse/file", // Custom PDF parsing service URL for Marker v0.2
+      "key": "", // Custom PDF parsing service key
+      "doc2xKey": "", // doc2x service key
+      "price": 0 // PDF parsing service price
+    }
+  }
+}
+```
+
+Restart the service after making changes.
+
+### 3. Test
+
+Upload a PDF file through the Knowledge Base and enable the `Enhanced PDF Parsing` option.
+
+![alt text](/imgs/marker2.png)
+
+After uploading, you should see the following logs (LOG_LEVEL must be set to info or debug):
+
+```
+[Info] 2024-12-05 15:04:42 Parsing files from an external service
+[Info] 2024-12-05 15:07:08 Custom file parsing is complete, time: 1316ms
+```
+
+You'll notice that PDFs parsed by Marker include image links:
+
+![alt text](/imgs/image-10.png)
+
+Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload settings.
+
+![alt text](/imgs/marker3.png)
+
+## Results
+
+Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example:
+
+|                                 |                                 |                                 |
+| ------------------------------- | ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-11.png) | ![alt text](/imgs/image-12.png) | ![alt text](/imgs/image-13.png) |
+| ![alt text](/imgs/image-14.png) | ![alt text](/imgs/image-15.png) | ![alt text](/imgs/image-16.png) |
+
+The top row shows chunked results; the bottom row shows the original PDF. Images, formulas, and tables are all extracted effectively.
+
+Note that [Marker](https://github.com/VikParuchuri/marker) is licensed under `GPL-3.0 license`. Please ensure compliance with the license when using it.
+
+## Legacy Marker Usage
+
+For FastGPT versions before V4.9.0, you can use the following method for Marker parsing.
+
+Install and run the Marker service:
+
+```dockerfile
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+```
+
+Then modify the FastGPT environment variables:
+
+```
+CUSTOM_READ_FILE_URL=http://xxxx.com/v1/parse/file
+CUSTOM_READ_FILE_EXTENSION=pdf
+```
+
+- CUSTOM_READ_FILE_URL - The custom parsing service URL. Replace the host with your parsing service address; the path must remain unchanged.
+- CUSTOM_READ_FILE_EXTENSION - Supported file extensions. Use commas to separate multiple file types.

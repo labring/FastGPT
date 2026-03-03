@@ -1,4 +1,4 @@
-import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
+import type { CreateDatasetParams } from '@/global/core/dataset/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';

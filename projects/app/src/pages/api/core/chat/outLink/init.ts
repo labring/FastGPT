@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { InitOutLinkChatProps } from '@/global/core/chat/api.d';
+import type { InitOutLinkChatProps } from '@/global/core/chat/api';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';

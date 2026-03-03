@@ -33,7 +33,7 @@ import {
   storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
-import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type.d';
+import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const Header = ({

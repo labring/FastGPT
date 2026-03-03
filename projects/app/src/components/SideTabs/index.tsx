@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 
 export type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   list: { value: ValueType; label: string; icon: string }[];

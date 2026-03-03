@@ -49,7 +49,9 @@ const WorkflowResponseItemSchema = z.object({
   id: z.string().optional(),
   stepId: z.string().optional(),
   event: z.custom<SseResponseEventEnum>(),
-  data: z.record(z.string(), z.any())
+  data: z.custom<Record<string, any> & { length?: never }>(
+    (val) => typeof val === 'object' && val !== null && !Array.isArray(val)
+  )
 });
 export type WorkflowResponseItemType = z.infer<typeof WorkflowResponseItemSchema>;
 export const WorkflowResponseFnSchema = z.function({

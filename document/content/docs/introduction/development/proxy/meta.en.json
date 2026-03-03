@@ -1,0 +1,9 @@
+{
+  "title": "Proxy Solutions",
+  "description": "FastGPT private deployment proxy solutions",
+  "pages": [
+    "nginx",
+    "http_proxy",
+    "cloudflare"
+  ]
+}

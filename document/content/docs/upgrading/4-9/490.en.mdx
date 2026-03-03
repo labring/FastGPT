@@ -1,0 +1,186 @@
+---
+title: V4.9.0 (Includes Upgrade Script)
+description: FastGPT V4.9.0 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Database
+
+### 2. Update Images and PG Container
+
+- Update FastGPT image tag: v4.9.0
+- Update FastGPT Pro image tag: v4.9.0
+- Sandbox image: no update required
+- Update PG container to v0.8.0-pg15. See the [latest yml](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml)
+
+### 3. Replace OneAPI (Optional)
+
+Follow this step if you want to replace OneAPI with [AI Proxy](https://github.com/labring/aiproxy).
+
+#### 1. Modify the yml File
+
+Refer to the [latest yml](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml) file. OneAPI has been removed and AI Proxy configuration has been added, including one service and one PgSQL database. Append the `aiproxy` configuration after the OneAPI configuration (don't remove OneAPI yet — the initialization process will automatically sync OneAPI's configuration).
+
+<details>
+<summary>AI Proxy Yml Configuration</summary>
+
+```
+  # AI Proxy
+  aiproxy:
+    image: 'ghcr.io/labring/aiproxy:latest'
+    container_name: aiproxy
+    restart: unless-stopped
+    depends_on:
+      aiproxy_pg:
+        condition: service_healthy
+    networks:
+      - fastgpt
+    environment:
+      # Corresponds to AIPROXY_API_TOKEN in FastGPT
+      - ADMIN_KEY=aiproxy
+      # Error log detail retention time (hours)
+      - LOG_DETAIL_STORAGE_HOURS=1
+      # Database connection URL
+      - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # Maximum retry attempts
+      - RETRY_TIMES=3
+      # Billing not required
+      - BILLING_ENABLED=false
+      # Strict model validation not required
+      - DISABLE_MODEL_CONFIG=true
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  aiproxy_pg:
+    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # Alibaba Cloud
+    restart: unless-stopped
+    container_name: aiproxy_pg
+    volumes:
+      - ./aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - fastgpt
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+```
+
+</details>
+
+#### 2. Add FastGPT Environment Variables:
+
+Modify the environment variables for the FastGPT container in the yml file:
+
+```
+# AI Proxy address — takes priority if configured
+- AIPROXY_API_ENDPOINT=http://aiproxy:3000
+# AI Proxy Admin Token, must match the ADMIN_KEY env var in AI Proxy
+- AIPROXY_API_TOKEN=aiproxy
+```
+
+#### 3. Restart Services
+
+Run `docker-compose down` to stop services, then `docker-compose up -d` to start them. This will add the `aiproxy` service and update FastGPT's configuration.
+
+#### 4. Run the OneAPI to AI Proxy Migration Script
+
+- If the container has internet access:
+
+```bash
+# Enter the aiproxy container
+docker exec -it aiproxy sh
+# Install curl
+apk add curl
+# Run the migration script
+curl --location --request POST 'http://localhost:3000/api/channels/import/oneapi' \
+--header 'Authorization: Bearer aiproxy' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dsn": "mysql://root:oneapimmysql@tcp(mysql:3306)/oneapi"
+}'
+# A response of {"data":[],"success":true} indicates success
+```
+
+- If the container has no internet access, expose the `aiproxy` external port and run the script locally.
+
+Expose the aiproxy port: 3003:3000, then run `docker-compose up -d` to restart services.
+
+```bash
+# Run the script from your terminal
+curl --location --request POST 'http://localhost:3003/api/channels/import/oneapi' \
+--header 'Authorization: Bearer aiproxy' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dsn": "mysql://root:oneapimmysql@tcp(mysql:3306)/oneapi"
+}'
+# A response of {"data":[],"success":true} indicates success
+```
+
+- If you're not familiar with Docker operations, skip the migration script and manually re-add channels after removing all OneAPI content.
+
+#### 5. Verify AI Proxy is Running in FastGPT
+
+Log in with the root account. On the `Account - Model Providers` page, you should see two new options: `Model Channels` and `Call Logs`. Open Model Channels to verify that your previous OneAPI channels are listed, confirming the migration was successful. You can then manually check that each channel is working properly.
+
+#### 6. Remove the OneAPI Service
+
+```bash
+# Stop services, or selectively stop OneAPI and its MySQL
+docker-compose down
+# Remove OneAPI and its MySQL dependency from the yml file
+# Restart services
+docker-compose up -d
+```
+
+### 4. Run the FastGPT Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv490' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**Script Functions**
+
+1. Upgrades the PG Vector extension version.
+2. Updates all knowledge base collection fields.
+3. Updates the index `type` field across all knowledge base data. (This takes a while — you may see a timeout at the end, which can be ignored. The process will continue incrementally as long as the database is running.)
+
+## Compatibility & Deprecations
+
+1. Deprecated — The previous custom file parsing solution for private deployments. Please update to the latest configuration. [See PDF Enhanced Parsing Configuration](/docs/introduction/development/configuration/#使用-doc2x-解析-pdf-文件)
+2. Deprecated — The legacy local file upload API: `/api/core/dataset/collection/create/file` (previously available only in the Pro edition). This endpoint has been replaced by: `/api/core/dataset/collection/create/localFile`
+3. Maintenance ending, deprecation upcoming — External file library APIs. Use the API File Library as a replacement.
+4. API Update — For endpoints that include a `trainingType` field (file upload to knowledge base, link collection creation, API file library, push chunk data, etc.), `trainingType` will only support `chunk` and `QA` modes going forward. Enhanced indexing mode will use a separate field: `autoIndexes`. Legacy `trainingType=auto` code is still supported for now, but please migrate to the new API format as soon as possible. See: [Knowledge Base OpenAPI Documentation](/docs/openapi/dataset.md)
+
+## New Features
+
+1. PDF enhanced parsing UI added to the page. Doc2x service is now built in, allowing direct PDF parsing via Doc2x.
+2. Automatic image annotation, along with updated data logic and UI for knowledge base file uploads.
+3. PG Vector extension upgraded to 0.8.0, introducing iterative search to reduce cases where data cannot be retrieved.
+4. Added qwen-qwq series model configurations.
+
+## Improvements
+
+1. Knowledge base data no longer has a limit on the number of indexes — unlimited custom indexes are now supported. Input text indexes are automatically updated without affecting custom indexes.
+2. Markdown parsing now detects Chinese punctuation after links and adds spacing.
+3. Prompt-mode tool calls now support reasoning models, with improved format detection to reduce empty outputs.
+4. Merged Mongo file read streams to reduce computation. Optimized storage chunks for significantly faster large file reads — 50MB PDF read time improved by 3x.
+5. HTTP Body adaptation now supports string object types.
+
+## Bug Fixes
+
+1. Added security link validation for web scraping.
+2. During batch runs, global variables were not passed to subsequent runs, causing incorrect final variable updates.

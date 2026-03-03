@@ -1,0 +1,61 @@
+import type { AppChatConfigType, AppTTSConfigType } from '@fastgpt/global/core/app/type';
+import type { AdminFbkType } from '@fastgpt/global/core/chat/type';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { GetChatTypeEnum } from '@/global/core/chat/constants';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+export type GetChatSpeechProps = OutLinkChatAuthProps & {
+  appId: string;
+  ttsConfig: AppTTSConfigType;
+  input: string;
+  shareId?: string;
+};
+
+/* ---------- chat ----------- */
+
+export type GetChatRecordsProps = OutLinkChatAuthProps & {
+  appId: string;
+  chatId?: string;
+  loadCustomFeedbacks?: boolean;
+  type?: `${GetChatTypeEnum}`;
+  includeDeleted?: boolean;
+};
+
+export type InitOutLinkChatProps = {
+  chatId?: string;
+  shareId: string;
+  outLinkUid: string;
+};
+export type InitTeamChatProps = {
+  teamId: string;
+  appId: string;
+  chatId?: string;
+  teamToken: string;
+};
+export type InitChatResponse = {
+  chatId?: string;
+  appId: string;
+  userAvatar?: string;
+  title?: string;
+  variables?: Record<string, any>;
+  app: {
+    chatConfig?: AppChatConfigType;
+    chatModels?: string[];
+    name: string;
+    avatar: string;
+    intro: string;
+    canUse?: boolean;
+    type: `${AppTypeEnum}`;
+    pluginInputs: FlowNodeInputItemType[];
+  };
+};
+
+/* -------- chat item ---------- */
+export type DeleteChatItemProps = OutLinkChatAuthProps & {
+  appId: string;
+  chatId: string;
+  contentId?: string;
+  delFile?: boolean;
+};

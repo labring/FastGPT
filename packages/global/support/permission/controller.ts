@@ -9,7 +9,6 @@ import {
   CommonPerList,
   CommonRoleList,
   CommonRolePerMap,
-  NullPermissionVal,
   NullRoleVal,
   OwnerPermissionVal,
   OwnerRoleVal

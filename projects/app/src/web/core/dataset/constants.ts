@@ -4,10 +4,7 @@ import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type {
-  DatasetCollectionItemType,
-  DatasetItemType
-} from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetCollectionItemType, DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
