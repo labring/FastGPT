@@ -7,6 +7,7 @@ const BoolSchema = z
   .pipe(z.boolean());
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
+const StorageTransferModeSchema = z.enum(['proxy', 'presigned']);
 
 export const env = createEnv({
   server: {
