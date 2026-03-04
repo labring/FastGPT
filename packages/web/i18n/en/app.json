@@ -341,6 +341,7 @@
   "remaining_points": "Reaming points: ",
   "request_headers": "Request header",
   "response_format": "Response format",
+  "sandbox.no_file": "Sandbox is empty",
   "save_team_app_log_keys": "Save as team configuration",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
   "search_agent": "Search Agent",

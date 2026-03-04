@@ -1,4 +1,4 @@
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React from 'react';
 import SandboxEditor from './Editor';
 import { useTranslation } from 'next-i18next';
@@ -16,12 +16,10 @@ const SandboxEditorModal = ({ onClose, appId, chatId }: Props) => {
     <MyModal
       isOpen
       onClose={onClose}
-      title={'Files'}
-      iconSrc="core/workflow/template/sandbox"
+      title={t('chat:sandbox_files')}
       isCentered
-      w="100%"
-      h="90vh"
-      maxW={['90vw', '1000px']}
+      size="lg"
+      h={'80vh'}
     >
       <SandboxEditor appId={appId} chatId={chatId} />
     </MyModal>

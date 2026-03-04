@@ -342,6 +342,7 @@
   "request_headers": "请求头",
   "response_format": "回复格式",
   "sandbox.files": "文件",
+  "sandbox.no_file": "虚拟机里还没有文件",
   "sandbox.search_files": "搜索文件",
   "sandbox.select_file": "选择一个文件进行编辑",
   "sandbox.unsaved": "未保存",

@@ -251,6 +251,57 @@ const EditForm = ({
           </Box>
         </Box>
 
+        {/* Use Computer */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <MyIcon name={SANDBOX_ICON} w={'20px'} />
+              <FormLabel ml={2}>{t('app:use_computer')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
+            </Flex>
+            <Switch
+              isChecked={appForm.aiSettings.useComputer ?? false}
+              onChange={(e) => {
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    useComputer: e.target.checked
+                  }
+                }));
+              }}
+            />
+          </Flex>
+        </Box>
+
+        {/* tool choice */}
+        <Box {...BoxStyles}>
+          <ToolSelect
+            selectedModel={selectedModel}
+            selectedTools={appForm.selectedTools}
+            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+            onAddTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: [e, ...(state.selectedTools || [])]
+              }));
+            }}
+            onUpdateTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools:
+                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              }));
+            }}
+            onRemoveTool={(id) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+              }));
+            }}
+          />
+        </Box>
+
         {/* dataset */}
         <Box {...BoxStyles}>
           <Flex alignItems={'center'}>
@@ -352,57 +403,6 @@ const EditForm = ({
               </Flex>
             ))}
           </Grid>
-        </Box>
-
-        {/* tool choice */}
-        <Box {...BoxStyles}>
-          <ToolSelect
-            selectedModel={selectedModel}
-            selectedTools={appForm.selectedTools}
-            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-            onAddTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
-              }));
-            }}
-            onUpdateTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              }));
-            }}
-            onRemoveTool={(id) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
-              }));
-            }}
-          />
-        </Box>
-
-        {/* Use Computer */}
-        <Box {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={1}>
-              <MyIcon name={SANDBOX_ICON} w={'20px'} />
-              <FormLabel ml={2}>{t('app:use_computer')}</FormLabel>
-              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
-            </Flex>
-            <Switch
-              isChecked={appForm.aiSettings.useComputer ?? false}
-              onChange={(e) => {
-                setAppForm((state) => ({
-                  ...state,
-                  aiSettings: {
-                    ...state.aiSettings,
-                    useComputer: e.target.checked
-                  }
-                }));
-              }}
-            />
-          </Flex>
         </Box>
 
         {/* File select */}

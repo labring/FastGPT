@@ -29,7 +29,7 @@ export const SANDBOX_NAME: I18nStringType = {
   'zh-Hant': '虛擬機',
   en: 'Sandbox'
 };
-export const SANDBOX_ICON = 'core/workflow/template/bing' as const;
+export const SANDBOX_ICON = 'core/app/sandbox/sandbox' as const;
 export const SANDBOX_TOOL_NAME = 'sandbox_shell';
 export const SANDBOX_TOOL_DESCRIPTION =
   '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等';

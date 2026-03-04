@@ -161,6 +161,7 @@ export const iconPaths = {
   'core/app/publish/wechat': () => import('./icons/core/app/publish/wechat.svg'),
   'core/app/publish/wecom': () => import('./icons/core/app/publish/wecom.svg'),
   'core/app/questionGuide': () => import('./icons/core/app/questionGuide.svg'),
+  'core/app/sandbox/sandbox': () => import('./icons/core/app/sandbox/sandbox.svg'),
   'core/app/schedulePlan': () => import('./icons/core/app/schedulePlan.svg'),
   'core/app/simpleBot': () => import('./icons/core/app/simpleBot.svg'),
   'core/app/simpleMode/ai': () => import('./icons/core/app/simpleMode/ai.svg'),

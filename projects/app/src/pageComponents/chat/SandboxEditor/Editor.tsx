@@ -10,19 +10,18 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  HStack
+  Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyTag from '@fastgpt/web/components/common/Tag';
-import Editor, { type Monaco } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
 import { listSandboxFiles, readSandboxFile, writeSandboxFile, downloadSandbox } from './api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useMount } from 'ahooks';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -65,6 +64,10 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   // 多标签页状态
   const [openedFiles, setOpenedFiles] = useState<OpenedFile[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string>('');
+
+  const activeFile = useMemoEnhance(() => {
+    return openedFiles.find((f) => f.path === activeFilePath);
+  }, [openedFiles, activeFilePath]);
 
   // 加载目录 - 改为普通异步函数,避免 useRequest 的并发问题
   const loadDirectory = async (path: string, level: number) => {
@@ -134,9 +137,6 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   // 下载当前文件
   const { run: downloadCurrentFile, loading: downloadingFile } = useRequest(
     async () => {
-      if (!activeFilePath) return;
-
-      const activeFile = openedFiles.find((f) => f.path === activeFilePath);
       if (!activeFile) return;
 
       // 直接下载文件内容,不压缩
@@ -253,7 +253,6 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   useEffect(() => {
     if (!editorRef.current || !activeFilePath) return;
 
-    const activeFile = openedFiles.find((f) => f.path === activeFilePath);
     if (!activeFile) return;
 
     // 使用 ref 标记防止循环更新
@@ -364,8 +363,8 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   const renderTreeNode = (node: TreeNode): React.ReactNode => {
     const isExpanded = expandedDirs.has(node.path);
     const isLoading = loadingDirs.has(node.path);
-    const isActive = activeFilePath === node.path;
-    console.log(node.path, isLoading);
+    const isActive = activeFile?.path === node.path;
+
     // 判断是否显示箭头:
     // 1. 必须是目录
     // 2. 未加载过 OR 已加载且有子节点
@@ -375,12 +374,13 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
     return (
       <React.Fragment key={node.path}>
         <Flex
-          pl={`${node.level * 12 + 8}px`}
+          pl={`${node.level * 16 + 4}px`}
           pr={2}
           py="6px"
           cursor="pointer"
-          _hover={{ bg: 'myGray.100' }}
-          bg={isActive ? 'primary.50' : 'transparent'}
+          _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+          bg={isActive ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
+          borderRadius="4px"
           onClick={() => {
             if (node.type === 'file') {
               openFile(node.path);
@@ -389,38 +389,32 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
             }
           }}
           align="center"
-          gap={1}
-          fontSize="13px"
-          color={isActive ? 'primary.600' : 'myGray.900'}
+          fontSize="12px"
+          color={isActive ? 'myGray.600' : 'myGray.600'}
         >
-          {shouldShowArrow ? (
-            isLoading ? (
-              <HStack justify="center" align="center" w="14px" h="14px">
+          <Flex justify="center" align="center" w="16px" h="16px">
+            {shouldShowArrow ? (
+              isLoading ? (
                 <Spinner size="xs" color="primary.400" w="12px" h="12px" />
-              </HStack>
-            ) : (
-              <MyIcon
-                name={isExpanded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
-                w="14px"
-                color="myGray.500"
-              />
-            )
-          ) : (
-            <Box w="14px" />
-          )}
+              ) : (
+                <MyIcon
+                  name={isExpanded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+                  w="16px"
+                  color="myGray.500"
+                />
+              )
+            ) : null}
+          </Flex>
           <MyIcon
+            mr={2}
+            ml={1}
             name={node.type === 'directory' ? 'common/folderFill' : 'file/fill/txt'}
-            w="14px"
-            color={node.type === 'directory' ? 'blue.500' : 'myGray.500'}
+            w="16px"
+            color={node.type === 'directory' ? '#EF7623' : 'black'}
           />
-          <Text flex={1} noOfLines={1} fontWeight={isActive ? '500' : '400'}>
+          <Text flex={1} noOfLines={1} fontWeight={isActive ? '500' : '500'} letterSpacing="0.5px">
             {node.name}
           </Text>
-          {node.type === 'file' && node.size !== undefined && (
-            <Text color="myGray.400" fontSize="11px">
-              {formatFileSize(node.size)}
-            </Text>
-          )}
         </Flex>
         {shouldShowArrow && isExpanded && node.children && node.children.map(renderTreeNode)}
       </React.Fragment>
@@ -435,246 +429,289 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
       display={'flex'}
       h="full"
       w="full"
-      bg="white"
+      bg="myGray.25"
+      borderRadius="12px"
+      overflow="hidden"
+      border="1px solid"
+      borderColor="myGray.200"
     >
-      {/* 左侧: 文件浏览器 */}
-      <Box
-        flex="0 0 260px"
-        borderRight="1px solid"
-        borderColor="myGray.200"
-        bg="myGray.25"
-        display="flex"
-        flexDirection="column"
-      >
-        {/* 标题栏 */}
-        <Flex
-          px={3}
-          py={2}
-          borderBottom="1px solid"
-          borderColor="myGray.200"
-          align="center"
-          gap={2}
-          bg="white"
-        >
-          <Text fontSize="13px" fontWeight="600" flex={1} color="myGray.900">
-            {t('app:sandbox.files')}
-          </Text>
-          <MyIconButton
-            size="16px"
-            icon="common/folderImport"
-            aria-label="Download"
-            isLoading={downloadingWorkspace}
-            onClick={downloadWorkspace}
-          />
-        </Flex>
-
-        {/* 搜索框 */}
-        <Box px={2} py={2}>
-          <InputGroup size="sm">
-            <InputLeftElement>
-              <MyIcon name="common/searchLight" w="14px" color="myGray.500" />
-            </InputLeftElement>
-            <Input
-              placeholder={t('app:sandbox.search_files')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              bg="white"
-              fontSize="13px"
-            />
-          </InputGroup>
-        </Box>
-
-        {/* 文件树 */}
-        <Box flex={1} overflowY="auto" overflowX="hidden">
-          <VStack align="stretch" spacing={0} py={1}>
-            {filteredTree.map(renderTreeNode)}
-          </VStack>
-        </Box>
-      </Box>
-
-      {/* 右侧: 编辑器区域 */}
-      <MyBox
-        isLoading={loadingFile}
-        display={'flex'}
-        flex={1}
-        w={0}
-        flexDirection="column"
-        bg="white"
-      >
-        {openedFiles.length > 0 ? (
-          <>
-            {/* Tab 栏 */}
-            <Flex borderBottom="1px solid" borderColor="myGray.200" bg="myGray.50">
-              <Flex
-                flex={'1 0 0'}
-                w={0}
-                mr={2}
-                overflowX="auto"
-                overflowY="hidden"
-                flexWrap="nowrap"
-                css={{
-                  '&::-webkit-scrollbar': {
-                    height: '6px'
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    background: '#E2E8F0',
-                    borderRadius: '3px'
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    background: 'transparent'
-                  }
-                }}
-              >
-                <Flex flexShrink={0} gap={0}>
-                  {openedFiles.map((file) => (
-                    <Flex
-                      key={file.path}
-                      px={3}
-                      py={2}
-                      bg={activeFilePath === file.path ? 'white' : 'transparent'}
-                      borderTop={'2px solid'}
-                      borderTopColor={activeFilePath === file.path ? 'primary.500' : 'transparent'}
-                      borderRight="1px solid"
-                      borderRightColor="myGray.200"
-                      align="center"
-                      gap={2}
-                      fontSize="13px"
-                      cursor="pointer"
-                      onClick={() => setActiveFilePath(file.path)}
-                      minW="120px"
-                      maxW="200px"
-                      flexShrink={0}
-                      position="relative"
-                      _hover={{
-                        bg: activeFilePath === file.path ? 'white' : 'myGray.100'
-                      }}
-                    >
-                      <MyIcon name="file/fill/txt" w="14px" color="myGray.600" />
-                      <Text
-                        flex={1}
-                        noOfLines={1}
-                        fontWeight={activeFilePath === file.path ? '500' : '400'}
-                        color={activeFilePath === file.path ? 'myGray.900' : 'myGray.600'}
-                      >
-                        {file.name}
-                      </Text>
-                      {file.isDirty && <Box w="6px" h="6px" borderRadius="50%" bg="yellow.600" />}
-                      <IconButton
-                        size="xs"
-                        icon={<MyIcon name="common/closeLight" w="10px" />}
-                        aria-label="Close"
-                        variant="ghost"
-                        onClick={(e) => closeFile(file.path, e)}
-                        opacity={0.6}
-                        _hover={{ opacity: 1 }}
-                        minW="auto"
-                        h="auto"
-                        p={0}
-                      />
-                    </Flex>
-                  ))}
-                </Flex>
-              </Flex>
-              {/* 下载和保存按钮 */}
-              <Flex align="center" gap={3} pr={3}>
-                {/* 下载当前文件按钮 */}
-                {activeFilePath && (
-                  <MyIconButton
-                    size="16px"
-                    icon="common/download"
-                    aria-label="Download"
-                    onClick={downloadCurrentFile}
-                    isLoading={downloadingFile}
-                  />
-                )}
-                {/* 未保存标签和保存按钮 */}
-                {openedFiles.some((f) => f.isDirty) && (
-                  <>
-                    <MyIconButton
-                      size="16px"
-                      icon="save"
-                      aria-label="Save"
-                      onClick={() => saveFile()}
-                      isLoading={saving}
-                    />
-                  </>
-                )}
-              </Flex>
-            </Flex>
-
-            {/* 编辑器 */}
-            <Box flex={1}>
-              <Editor
-                height="100%"
-                language={
-                  openedFiles.find((f) => f.path === activeFilePath)?.language || 'plaintext'
-                }
-                value={openedFiles.find((f) => f.path === activeFilePath)?.content || ''}
-                theme="vs-light"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  padding: { top: 12, bottom: 12 },
-                  lineHeight: 20,
-                  fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
-                  tabSize: 2,
-                  wordWrap: 'on',
-                  smoothScrolling: true,
-                  cursorBlinking: 'smooth',
-                  renderLineHighlight: 'line',
-                  scrollbar: {
-                    verticalScrollbarSize: 10,
-                    horizontalScrollbarSize: 10
-                  }
-                }}
-                onMount={(editor, monaco) => {
-                  editorRef.current = editor;
-
-                  // 保存快捷键 Ctrl/Cmd + S
-                  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-                    saveFile();
-                  });
-
-                  // 全部保存快捷键 Ctrl/Cmd + Shift + S
-                  editor.addCommand(
-                    monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
-                    () => {
-                      // 保存所有未保存的文件
-                      openedFiles.forEach((file) => {
-                        if (file.isDirty) {
-                          saveFile(file.path);
-                        }
-                      });
-                    }
-                  );
-                }}
-                onChange={(value) => {
-                  // 防止循环更新
-                  if (isUpdatingRef.current) return;
-
-                  // 更新当前文件内容
-                  if (activeFilePath && value !== undefined) {
-                    setOpenedFiles((prev) =>
-                      prev.map((f) =>
-                        f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
-                      )
-                    );
-                  }
-                }}
-              />
+      {fileTree.length > 0 ? (
+        <>
+          {' '}
+          {/* 左侧: 文件浏览器 */}
+          <Box
+            flex="0 0 224px"
+            borderRight="1px solid"
+            borderColor="myGray.200"
+            bg="myGray.25"
+            display="flex"
+            flexDirection="column"
+          >
+            {/* 搜索框 */}
+            <Box p={3}>
+              <InputGroup size="sm">
+                <InputLeftElement h="32px">
+                  <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
+                </InputLeftElement>
+                <Input
+                  placeholder={t('app:sandbox.search_files')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  bg="white"
+                  fontSize="12px"
+                  h="32px"
+                  borderRadius="6px"
+                  borderColor="myGray.200"
+                  _placeholder={{ color: 'myGray.500' }}
+                />
+              </InputGroup>
             </Box>
-          </>
-        ) : filteredTree.length > 0 ? (
-          <Center h="full">
-            <VStack spacing={3}>
-              <EmptyTip text={t('app:sandbox.select_file')} mt={0} />
-            </VStack>
-          </Center>
-        ) : null}
-      </MyBox>
+
+            {/* 文件树 */}
+            <Box flex={1} overflowY="auto" overflowX="hidden" px={2}>
+              <VStack align="stretch" spacing="6px" pb={2}>
+                {filteredTree.map(renderTreeNode)}
+              </VStack>
+            </Box>
+
+            {/* 下载所有按钮 */}
+            <Button
+              m={2}
+              variant={'unstyled'}
+              bg={'myGray.150'}
+              color={'primary.700'}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              leftIcon={<MyIcon name="common/downloadLine" w="16px" />}
+              isLoading={downloadingWorkspace}
+              onClick={downloadWorkspace}
+              display={'flex'}
+              alignItems={'center'}
+              _disabled={{
+                color: 'primary.700',
+                bg: 'myGray.150',
+                cursor: 'not-allowed',
+                _hover: {
+                  color: 'primary.700',
+                  bg: 'myGray.150'
+                }
+              }}
+            >
+              {t('chat:download_all_files')}
+            </Button>
+          </Box>
+          {/* 右侧: 编辑器区域 */}
+          <MyBox
+            isLoading={loadingFile}
+            display={'flex'}
+            flex={1}
+            w={0}
+            flexDirection="column"
+            bg="white"
+          >
+            {openedFiles.length > 0 ? (
+              <>
+                {/* Tab 栏 */}
+                <Box
+                  flexShrink={0}
+                  p={1}
+                  bg="myGray.50"
+                  borderRadius="md"
+                  border="1px solid"
+                  borderColor="myGray.200"
+                  m={3}
+                  mb={0}
+                  overflowX="auto"
+                  overflowY="hidden"
+                  flexWrap="nowrap"
+                  css={{
+                    '&::-webkit-scrollbar': {
+                      height: '6px'
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#E2E8F0',
+                      borderRadius: '3px'
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'transparent'
+                    }
+                  }}
+                >
+                  <Flex gap={2}>
+                    {openedFiles.map((file) => {
+                      const active = activeFilePath === file.path;
+                      return (
+                        <Flex
+                          key={file.path}
+                          px={3}
+                          py={1}
+                          h={'22px'}
+                          bg={active ? 'white' : 'myGray.25'}
+                          borderRadius="4px"
+                          align="center"
+                          gap={1}
+                          fontSize="12px"
+                          cursor="pointer"
+                          onClick={() => setActiveFilePath(file.path)}
+                          maxW="150px"
+                          flexShrink={0}
+                          position="relative"
+                          boxShadow={'1.5'}
+                          _hover={{
+                            bg: active ? 'white' : 'myGray.50'
+                          }}
+                        >
+                          <MyIcon name="file/fill/txt" w="16px" color="myGray.600" />
+                          <Text
+                            flex={1}
+                            noOfLines={1}
+                            fontWeight={active ? '500' : '400'}
+                            color={active ? 'primary.700' : 'myGray.500'}
+                          >
+                            {file.name}
+                          </Text>
+                          {file.isDirty && (
+                            <Box w="6px" h="6px" borderRadius="50%" bg="yellow.600" />
+                          )}
+                          <MyIconButton
+                            size={'12px'}
+                            icon="common/closeLight"
+                            onClick={(e) => closeFile(file.path, e)}
+                          />
+                        </Flex>
+                      );
+                    })}
+                  </Flex>
+                </Box>
+
+                <Flex
+                  flex={'1 0 0'}
+                  m={3}
+                  p={3}
+                  border="base"
+                  flexDirection="column"
+                  borderRadius={'md'}
+                >
+                  {/* 文件信息栏 */}
+                  <Flex align="center" justify="space-between" borderBottom={'base'} pb={4} mb={2}>
+                    <Box fontSize="20px" fontWeight="500" color="black">
+                      {activeFile?.name || ''}
+                    </Box>
+                    <Flex align="center" gap={2}>
+                      {/* 下载当前文件按钮 */}
+                      {activeFilePath && (
+                        <IconButton
+                          size="sm"
+                          icon={<MyIcon name="common/downloadLine" w="16px" />}
+                          aria-label="Download"
+                          onClick={downloadCurrentFile}
+                          isLoading={downloadingFile}
+                          variant="whiteBase"
+                        />
+                      )}
+                      {/* 未保存标签和保存按钮 */}
+                      {activeFile?.isDirty && (
+                        <IconButton
+                          size="sm"
+                          icon={<MyIcon name="save" w="16px" />}
+                          aria-label="Save"
+                          onClick={() => saveFile()}
+                          isLoading={saving}
+                          variant="whiteBase"
+                        />
+                      )}
+                    </Flex>
+                  </Flex>
+
+                  {/* 编辑器 */}
+
+                  <Box flex={1} borderColor="myGray.200">
+                    {activeFile?.content === '[Binary File - Cannot Display]' ? (
+                      t('chat:sandbox_not_utf_file_tip')
+                    ) : (
+                      <Editor
+                        height="100%"
+                        language={activeFile?.language || 'plaintext'}
+                        value={activeFile?.content || ''}
+                        theme="vs-light"
+                        options={{
+                          minimap: { enabled: false },
+                          overviewRulerLanes: 0,
+                          overviewRulerBorder: false,
+                          fontSize: 13,
+                          lineNumbers: 'on',
+                          lineNumbersMinChars: 4,
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                          lineHeight: 20,
+                          fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
+                          tabSize: 2,
+                          wordWrap: 'on',
+                          smoothScrolling: true,
+                          cursorBlinking: 'smooth',
+                          renderLineHighlight: 'line',
+                          scrollbar: {
+                            verticalScrollbarSize: 10,
+                            horizontalScrollbarSize: 10
+                          }
+                        }}
+                        onMount={(editor, monaco) => {
+                          editorRef.current = editor;
+
+                          // 保存快捷键 Ctrl/Cmd + S
+                          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+                            saveFile();
+                          });
+
+                          // 全部保存快捷键 Ctrl/Cmd + Shift + S
+                          editor.addCommand(
+                            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
+                            () => {
+                              // 保存所有未保存的文件
+                              openedFiles.forEach((file) => {
+                                if (file.isDirty) {
+                                  saveFile(file.path);
+                                }
+                              });
+                            }
+                          );
+                        }}
+                        onChange={(value) => {
+                          // 防止循环更新
+                          if (isUpdatingRef.current) return;
+
+                          // 更新当前文件内容
+                          if (activeFilePath && value !== undefined) {
+                            setOpenedFiles((prev) =>
+                              prev.map((f) =>
+                                f.path === activeFilePath
+                                  ? { ...f, content: value, isDirty: true }
+                                  : f
+                              )
+                            );
+                          }
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Flex>
+              </>
+            ) : filteredTree.length > 0 ? (
+              <Center h="full">
+                <VStack spacing={3}>
+                  <EmptyTip text={t('app:sandbox.select_file')} mt={0} />
+                </VStack>
+              </Center>
+            ) : null}
+          </MyBox>
+        </>
+      ) : !loadingRoot ? (
+        <Center h="full" w={'full'}>
+          <VStack spacing={3}>
+            <EmptyTip text={t('app:sandbox.no_file')} mt={0} />
+          </VStack>
+        </Center>
+      ) : null}
     </MyBox>
   );
 };

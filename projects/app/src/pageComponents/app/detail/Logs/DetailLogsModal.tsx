@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Flex, Box } from '@chakra-ui/react';
+import { Flex, Box, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -22,6 +22,7 @@ import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -85,6 +86,12 @@ const DetailLogsModal = ({
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
+
+  // Sandbox state
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId
+  });
 
   return (
     <>
@@ -162,6 +169,8 @@ const DetailLogsModal = ({
                 </Flex>
               </>
             )}
+
+            <Button onClick={onOpenSandboxModal}>打开沙盒</Button>
             <CloseIcon onClick={onClose} />
           </Flex>
         )}
@@ -231,6 +240,7 @@ const DetailLogsModal = ({
       </MyBox>
 
       <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />
+      <SandboxEditorModal />
     </>
   );
 };

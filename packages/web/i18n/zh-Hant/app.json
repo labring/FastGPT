@@ -326,6 +326,7 @@
   "remaining_points": "剩餘積分：",
   "request_headers": "請求頭",
   "response_format": "回覆格式",
+  "sandbox.no_file": "虛擬機器裡還沒有文件",
   "save_team_app_log_keys": "保存為團隊配置",
   "saved_success": "儲存成功！\n如需在外部使用該版本，請點選“儲存並發布”",
   "search_agent": "搜索 Agent",

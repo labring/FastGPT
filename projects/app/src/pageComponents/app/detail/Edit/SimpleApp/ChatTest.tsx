@@ -1,6 +1,6 @@
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -18,7 +18,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
-import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -41,7 +41,10 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   });
 
   // Sandbox state
-  const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
+  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
+    appId: appDetail._id,
+    chatId
+  });
 
   useEffect(() => {
     const { nodes, edges } = form2WorkflowFn(appForm, t);
@@ -77,14 +80,10 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           </Box>
           {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
-          <Button
-            size="sm"
-            leftIcon={<MyIcon name="core/workflow/template/sandbox" w="14px" />}
-            onClick={() => setSandboxModalOpen(true)}
-            mr={2}
-          >
-            {'查看沙盒'}
-          </Button>
+
+          <Box mr={2}>
+            <SandboxEntryIcon size={'smSquare'} />
+          </Box>
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -114,14 +113,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
         </Box>
       )}
 
-      {/* Sandbox Editor Modal */}
-      {sandboxModalOpen && (
-        <SandboxEditorModal
-          onClose={() => setSandboxModalOpen(false)}
-          appId={appDetail._id}
-          chatId={chatId}
-        />
-      )}
+      <SandboxEditorModal />
     </Flex>
   );
 };
