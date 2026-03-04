@@ -19,8 +19,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FileSelector, { type SelectFileItemType } from '../Import/components/FileSelector';
 import type { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { uploadFile2DB } from '@/web/common/file/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -105,39 +105,46 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const { fileId: uploadFileId } = await uploadFile2DB({
+            const { url, key, headers } = await getUploadDatasetFilePresignedUrl({
+              filename: file.name,
+              datasetId
+            });
+            await putFileToS3({
+              url,
               file,
-              bucketName: BucketNameEnum.dataset,
-              data: {
-                datasetId
-              },
-              percentListen: (e) => {
+              headers,
+              t,
+              onUploadProgress: (e) => {
+                if (!e.total) return;
+                const percent = Math.round((e.loaded / e.total) * 100);
                 setSelectFiles((state) =>
                   state.map((item) =>
                     item.id === fileId
                       ? {
                           ...item,
                           uploadedFileRate: item.uploadedFileRate
-                            ? Math.max(e, item.uploadedFileRate)
-                            : e
+                            ? Math.max(percent, item.uploadedFileRate)
+                            : percent
+                        }
+                      : item
+                  )
+                );
+              },
+              onSuccess: () => {
+                setSelectFiles((state) =>
+                  state.map((item) =>
+                    item.id === fileId
+                      ? {
+                          ...item,
+                          dbFileId: key,
+                          isUploading: false,
+                          uploadedFileRate: 100
                         }
                       : item
                   )
                 );
               }
             });
-            setSelectFiles((state) =>
-              state.map((item) =>
-                item.id === fileId
-                  ? {
-                      ...item,
-                      dbFileId: uploadFileId,
-                      isUploading: false,
-                      uploadedFileRate: 100
-                    }
-                  : item
-              )
-            );
           } catch (error) {
             setSelectFiles((state) =>
               state.map((item) =>

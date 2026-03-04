@@ -480,8 +480,6 @@ export async function searchDatasetDataForAssistant(
             id: String(data._id),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,
@@ -651,8 +649,6 @@ export async function searchDatasetDataForAssistant(
             collectionId: String(data.collectionId),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,
@@ -716,10 +712,10 @@ export async function searchDatasetDataForAssistant(
 
     // rrf concat (multi-query fusion)
     const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResults.map((list) => ({ k: 60, list }))
+      embeddingRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, embeddingLimit);
     const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResults.map((list) => ({ k: 60, list }))
+      fullTextRecallResults.map((list) => ({ weight: 1, list }))
     ).slice(0, fullTextLimit);
 
     // 打印召回统计日志
@@ -753,13 +749,12 @@ export async function searchDatasetDataForAssistant(
   const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
 
   // 【步骤 4】Embedding + FullText RRF 融合（修正：先RRF，再送reranker）
-  const baseK = 120;
-  const embK = Math.round(baseK * (1 - embeddingWeight));
-  const fullTextK = Math.round(baseK * embeddingWeight);
+  const embWeight = embeddingWeight; // 向量索引的 weight 大小
+  const fullTextWeight = 1 - embeddingWeight; // 全文索引的 weight 大小
 
   const rrfSearchResult = datasetSearchResultConcat([
-    { k: embK, list: embeddingRecallResults },
-    { k: fullTextK, list: fullTextRecallResults }
+    { weight: embWeight, list: embeddingRecallResults },
+    { weight: fullTextWeight, list: fullTextRecallResults }
   ]);
 
   // 【步骤 5】先去重，再取 top N
@@ -902,12 +897,11 @@ export async function searchDatasetDataForAssistant(
     if (reRankResults.length === 0) return dedupedRrfResults;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchK = Math.round(baseK * rerankWeight);
-    const rerankK = Math.round(baseK * (1 - rerankWeight));
+    const searchWeight = 1 - rerankWeight; // 搜索结果的 weight 大小
 
     return datasetSearchResultConcat([
-      { k: searchK, list: dedupedRrfResults },
-      { k: rerankK, list: reRankResults }
+      { weight: searchWeight, list: dedupedRrfResults },
+      { weight: rerankWeight, list: reRankResults }
     ]);
   })();
 

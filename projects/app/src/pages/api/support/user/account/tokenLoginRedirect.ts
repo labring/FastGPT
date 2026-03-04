@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { setCookie } from '@fastgpt/service/support/permission/controller';
+import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserSession } from '@fastgpt/service/support/user/session';

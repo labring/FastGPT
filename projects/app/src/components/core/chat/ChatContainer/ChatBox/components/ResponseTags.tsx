@@ -17,6 +17,7 @@ import { ChatBoxContext } from '../Provider';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { formatChatValue2InputType } from '../utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -83,11 +84,10 @@ const ResponseTags = ({
 
   const isAssistantType = useContextSelector(ChatBoxContext, (v) => v.isAssistantType);
 
-  const chatBoxData = useContextSelector(ChatBoxContext, (v) => ({
-    appId: v.appId,
-    chatId: v.chatId,
-    outLinkAuthData: v.outLinkAuthData
-  }));
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatBoxData = { appId, chatId, outLinkAuthData };
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 

@@ -12,8 +12,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 type RetrainingCollectionResponse = {
   collectionId: string;
@@ -49,11 +48,11 @@ async function handler(
     const isTemplate = collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
     let rawText: string | undefined;
     if (isTemplate && collection.fileId) {
-      const { filename, rawText: rawTextContent } = await readFileContentFromMongo({
+      const { rawText: rawTextContent } = await getS3DatasetSource().getDatasetFileRawText({
         teamId,
-        tmbId: collection.tmbId,
-        bucketName: BucketNameEnum.dataset,
-        fileId: collection.fileId,
+        tmbId,
+        datasetId: collection.datasetId,
+        fileId: String(collection.fileId),
         customPdfParse: false,
         getFormatText: false
       });

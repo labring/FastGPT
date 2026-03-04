@@ -169,6 +169,7 @@ export const checkTeamEvaluationTaskLimit = async (teamId: string, amount = 1) =
 
   if (
     standardConstants &&
+    standardConstants.maxEvaluationTaskAmount !== undefined &&
     evaluationTaskCount + amount > standardConstants.maxEvaluationTaskAmount
   ) {
     return Promise.reject(TeamErrEnum.evaluationTaskAmountNotEnough);
@@ -191,7 +192,11 @@ export const checkTeamEvalDatasetLimit = async (teamId: string, amount = 1) => {
     MongoEvalDatasetCollection.countDocuments({ teamId })
   ]);
 
-  if (standardConstants && evalDatasetCount + amount > standardConstants.maxEvalDatasetAmount) {
+  if (
+    standardConstants &&
+    standardConstants.maxEvalDatasetAmount !== undefined &&
+    evalDatasetCount + amount > standardConstants.maxEvalDatasetAmount
+  ) {
     return Promise.reject(TeamErrEnum.evaluationDatasetAmountNotEnough);
   }
 
@@ -214,6 +219,7 @@ export const checkTeamEvalDatasetDataLimit = async (teamId: string, amount = 1) 
 
   if (
     standardConstants &&
+    standardConstants.maxEvalDatasetDataAmount !== undefined &&
     evalDatasetDataCount + amount > standardConstants.maxEvalDatasetDataAmount
   ) {
     return Promise.reject(TeamErrEnum.evaluationDatasetDataAmountNotEnough);
@@ -236,7 +242,11 @@ export const checkTeamEvalMetricLimit = async (teamId: string, amount = 1) => {
     MongoEvalMetric.countDocuments({ teamId })
   ]);
 
-  if (standardConstants && evalMetricCount + amount > standardConstants.maxEvalMetricAmount) {
+  if (
+    standardConstants &&
+    standardConstants.maxEvalMetricAmount !== undefined &&
+    evalMetricCount + amount > standardConstants.maxEvalMetricAmount
+  ) {
     return Promise.reject(TeamErrEnum.evaluationMetricAmountNotEnough);
   }
 

@@ -22,7 +22,6 @@ import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { omit } from 'lodash';
@@ -164,11 +163,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // database
   const hasDatabaseConfig = useMemo(() => !isEmpty(datasetDetail.databaseConfig), [datasetDetail]);
   const handleOpenConfigPage = useCallback(
-    (
-      mode: 'edit' | 'create' = 'create',
-      databaseName?: string,
-      activeStep = 0
-    ) => {
+    (mode: 'edit' | 'create' = 'create', databaseName?: string, activeStep = 0) => {
       router.replace({
         query: {
           ...omit(router.query, ['databaseName']),

@@ -41,6 +41,7 @@ import {
   deleteEvaluationDataset,
   updateEvaluationDataset
 } from '@/web/core/evaluation/dataset';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
 const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
   const [searchValue, setSearchValue] = useState('');
@@ -310,7 +311,7 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                       sourceMember={{
                         avatar: dataset.creatorAvatar,
                         name: dataset.creatorName,
-                        status: 'active'
+                        status: TeamMemberStatusEnum.active
                       }}
                       fontSize="sm"
                       spacing={1}
@@ -338,16 +339,15 @@ const EvaluationDatasets = ({ Tab }: { Tab: React.ReactNode }) => {
                               icon: 'delete',
                               label: t('dashboard_evaluation:delete'),
                               onClick: () =>
-                                openConfirm(
-                                  async () => {
+                                openConfirm({
+                                  onConfirm: async () => {
                                     await onDelDataset({
                                       collectionId: dataset._id
                                     });
                                     fetchData();
                                   },
-                                  undefined,
-                                  t('dashboard_evaluation:confirm_delete_dataset')
-                                )()
+                                  customContent: t('dashboard_evaluation:confirm_delete_dataset')
+                                })()
                             }
                           ]
                         }

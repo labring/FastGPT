@@ -25,7 +25,7 @@ import {
   checkTeamAIPoints,
   checkTeamEvalDatasetLimit
 } from '@fastgpt/service/support/permission/teamLimit';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { getDefaultEvaluationModel } from '@fastgpt/service/core/ai/model';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -181,8 +181,11 @@ async function handler(
   const filePaths: string[] = [];
 
   try {
-    const upload = getUploadModel({ maxSize: global.feConfigs?.uploadFileMaxSize });
-    const { files, data } = await upload.getUploadFiles<importEvalDatasetFromFileBody>(req, res);
+    const { fileMetadata: files, data } =
+      await multer.resolveMultipleFormData<importEvalDatasetFromFileBody>({
+        request: req,
+        maxFileSize: global.feConfigs?.uploadFileMaxSize
+      });
 
     files.forEach((file) => filePaths.push(file.path));
 

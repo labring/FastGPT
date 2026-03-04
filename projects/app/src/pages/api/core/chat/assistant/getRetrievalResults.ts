@@ -21,6 +21,9 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { isDatabaseSource, isCorrectionSource } from '@fastgpt/global/core/dataset/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 export type AssistantGetRetrievalResultsProps = {
   datasetDataIdList: string[];
@@ -130,7 +133,7 @@ async function handler(
   );
 
   // 3. 权限验证
-  const [{ chat, responseDetail }, { chatItem }] = await Promise.all([
+  const [{ chat, showCite }, chatItem] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -141,6 +144,10 @@ async function handler(
       teamId,
       teamToken
     }),
+    MongoChatItem.findOne(
+      { appId, chatId, dataId: chatItemDataId },
+      'responseData time'
+    ).lean() as Promise<{ time: Date; responseData?: ChatHistoryItemResType[] } | null>,
     authCollectionInChatForRetrievalResult({
       appId,
       chatId,
@@ -149,7 +156,16 @@ async function handler(
     })
   ]);
 
-  if (!chat || !responseDetail) return Promise.reject(ChatErrEnum.unAuthChat);
+  if (!chat || !showCite || !chatItem) return Promise.reject(ChatErrEnum.unAuthChat);
+
+  // Concat response data
+  if (!chatItem.responseData || chatItem.responseData.length === 0) {
+    const chatItemResponses = await MongoChatItemResponse.find(
+      { appId, chatId, chatItemDataId },
+      { data: 1 }
+    ).lean();
+    chatItem.responseData = chatItemResponses.map((item) => item.data);
+  }
 
   // 4. 查询普通知识库数据
   const list = await MongoDatasetData.find(
@@ -158,7 +174,7 @@ async function handler(
   ).lean();
 
   // 获取图片预览 URL
-  let formatPreviewUrlList = getFormatDatasetCiteList(list);
+  let formatPreviewUrlList: DatasetCiteItemType[] = getFormatDatasetCiteList(list);
 
   // 5. 获取检索结果数据（从 chatItem.responseData）
   const Items = chatItem.responseData?.filter(

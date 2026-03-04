@@ -3,19 +3,15 @@ import xlsx from 'node-xlsx';
 import { MongoDatasetSynonym } from './schema';
 import { MongoDatasetSynonymMapping } from './mappingSchema';
 import { MongoDataset } from '../schema';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import {
-  uploadFile,
-  getDownloadStream,
-  delFileByFileIdList
-} from '../../../common/file/gridfs/controller';
-import { gridFsStream2Buffer } from '../../../common/file/gridfs/utils';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import streamConsumer from 'node:stream/consumers';
+import fs from 'node:fs';
+import { i18nT } from '../../../../web/i18n/utils';
 import type {
   DatasetSynonymSchemaType,
   DatasetSynonymMappingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { Types } from '../../../common/mongo';
-import * as iconv from 'iconv-lite';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDatasetTraining } from '../training/schema';
@@ -236,19 +232,16 @@ export function parseExcelToCSV(buffer: Buffer): string {
 }
 
 /**
- * 从GridFS读取同义词文件内容
- * @param fileId - GridFS文件ID
+ * 从 S3 读取同义词文件内容
+ * @param fileKey - S3 文件 key
  * @returns 文件内容字符串
  */
-export async function readSynonymFileFromGridFS(fileId: string): Promise<string> {
-  const fileStream = await getDownloadStream({
-    bucketName: BucketNameEnum.dataset,
-    fileId
-  });
-
-  const buffer = await gridFsStream2Buffer(fileStream as unknown as NodeJS.ReadableStream);
-
-  // 使用公共方法进行编码检测和解码
+export async function readSynonymFileFromS3(fileKey: string): Promise<string> {
+  const body = await getS3DatasetSource().getFileStream(fileKey);
+  if (!body) {
+    throw new Error(DatasetErrEnum.synonymFileNotExist);
+  }
+  const buffer = await streamConsumer.buffer(body);
   const { content } = detectAndDecodeBuffer(buffer);
   return content;
 }
@@ -306,37 +299,26 @@ export async function uploadSynonymFile({
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       : 'text/csv';
 
-    // 3. 上传文件到GridFS
-    const fileId = await uploadFile({
-      teamId,
-      uid: uploaderId,
-      bucketName: BucketNameEnum.dataset,
-      path: filePath,
-      filename: fileName,
-      contentType,
-      metadata: {
-        datasetId,
-        type: 'synonym'
-      }
-    });
-    uploadedFileId = fileId;
-
-    // 4. 读取并解析文件（验证格式）
+    // 3. 读取本地文件并解析（验证格式）
+    const fileBuffer = fs.readFileSync(filePath);
     let fileContent: string;
     if (isExcel) {
-      // 如果是Excel文件，先读取buffer再转换为CSV
-      const fileStream = await getDownloadStream({
-        bucketName: BucketNameEnum.dataset,
-        fileId
-      });
-      const buffer = await gridFsStream2Buffer(fileStream as any);
-      fileContent = parseExcelToCSV(buffer);
+      fileContent = parseExcelToCSV(fileBuffer);
     } else {
-      // 如果是CSV文件，直接读取文本内容
-      fileContent = await readSynonymFileFromGridFS(fileId);
+      const { content } = detectAndDecodeBuffer(fileBuffer);
+      fileContent = content;
     }
 
     const parsedData = await parseSynonymCSV(fileContent);
+
+    // 4. 上传文件到 S3
+    const fileId = await getS3DatasetSource().upload({
+      datasetId,
+      filename: fileName,
+      stream: fs.createReadStream(filePath),
+      contentType
+    });
+    uploadedFileId = fileId;
 
     // 5. 如果存在旧文件，删除旧文件及其映射
     if (existingSynonym) {
@@ -354,11 +336,11 @@ export async function uploadSynonymFile({
       throw new Error(DatasetErrEnum.unExist);
     }
 
-    // 6. 创建 billId (用于费用追踪)
-    const { billId } = await createTrainingUsage({
+    // 6. 创建 usageId (用于费用追踪)
+    const { usageId } = await createTrainingUsage({
       teamId,
       tmbId,
-      appName: '同义词标准化',
+      appName: i18nT('account_usage:synonym_standardize'),
       billSource: UsageSourceEnum.training,
       vectorModel: getEmbeddingModel(dataset.vectorModel)?.name
     });
@@ -372,7 +354,7 @@ export async function uploadSynonymFile({
             teamId: new Types.ObjectId(teamId),
             datasetId: new Types.ObjectId(datasetId),
             fileName,
-            fileId: new Types.ObjectId(fileId),
+            fileId: fileId,
             size: fileSize,
             uploadTime: new Date(),
             uploaderId: new Types.ObjectId(uploaderId)
@@ -486,7 +468,7 @@ export async function uploadSynonymFile({
                           synonymFileIds: data.synonymFileIds
                         },
                         retryCount: 3,
-                        billId
+                        billId: usageId
                       }
                     ],
                     { session, ordered: true }
@@ -512,13 +494,10 @@ export async function uploadSynonymFile({
 
     return result.toObject();
   } catch (error) {
-    // 如果过程中出错且已上传文件，清理GridFS中的孤儿文件
+    // 如果过程中出错且已上传文件，清理 S3 中的孤儿文件
     if (uploadedFileId) {
       try {
-        await delFileByFileIdList({
-          bucketName: BucketNameEnum.dataset,
-          fileIdList: [uploadedFileId]
-        });
+        await getS3DatasetSource().deleteDatasetFileByKey(uploadedFileId);
       } catch (cleanupError) {
         // 清理失败只记录，不影响原始错误的抛出
         addLog.error('Failed to cleanup uploaded file:', cleanupError);
@@ -573,8 +552,8 @@ export async function deleteSynonymFile({
     throw new Error(DatasetErrEnum.unExist);
   }
 
-  // 3. 创建 billId (用于费用追踪)
-  const { billId } = await createTrainingUsage({
+  // 3. 创建 usageId (用于费用追踪)
+  const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: '同义词恢复',
@@ -651,7 +630,7 @@ export async function deleteSynonymFile({
                         synonymFileIds: data.synonymFileIds
                       },
                       retryCount: 3,
-                      billId
+                      billId: usageId
                     }
                   ],
                   { session, ordered: true }
@@ -671,11 +650,8 @@ export async function deleteSynonymFile({
     }
   }
 
-  // 6. 删除GridFS中的文件
-  await delFileByFileIdList({
-    bucketName: BucketNameEnum.dataset,
-    fileIdList: [String(synonymFile.fileId)]
-  });
+  // 6. 删除 S3 中的文件
+  await getS3DatasetSource().deleteDatasetFileByKey(String(synonymFile.fileId));
 
   // 7. 删除所有相关的同义词映射
   await MongoDatasetSynonymMapping.deleteMany({

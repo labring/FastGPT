@@ -126,7 +126,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
               );
 
               // Create training usage record
-              const { billId } = await createTrainingUsage({
+              const { usageId } = await createTrainingUsage({
                 teamId,
                 tmbId,
                 appName: table.tableName,
@@ -143,7 +143,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     tmbId,
                     datasetId,
                     collectionId: collection._id,
-                    billId,
+                    billId: usageId,
                     mode: TrainingModeEnum.databaseSchema,
                     retryCount: 5
                   }
@@ -228,7 +228,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     session
                   });
                   // Create new training task
-                  const { billId } = await createTrainingUsage({
+                  const { usageId } = await createTrainingUsage({
                     teamId,
                     tmbId,
                     appName: table.tableName,
@@ -244,7 +244,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                         tmbId,
                         datasetId,
                         collectionId: collection._id,
-                        billId,
+                        billId: usageId,
                         mode: TrainingModeEnum.databaseSchema,
                         retryCount: 5
                       }

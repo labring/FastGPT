@@ -232,7 +232,7 @@ const ChatItem = (props: Props) => {
   const { t } = useTranslation();
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
-  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
+  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
 
   const chatStatusMap = useMemo(() => {
     if (!statusBoxData?.status) return;

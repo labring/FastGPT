@@ -11,7 +11,7 @@ const AppTypeCard = ({
 }: {
   selectedAppType: CreateAppType;
   onClick: () => void;
-  option: (typeof createAppTypeMap)[CreateAppType];
+  option: (typeof createAppTypeMap)[keyof typeof createAppTypeMap];
 }) => {
   const { t } = useTranslation();
   return (

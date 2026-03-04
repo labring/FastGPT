@@ -19,8 +19,6 @@ import { MongoDiscountCoupon } from '../../../wallet/discountCoupon/schema';
 import { MongoTeamAudit } from '../../audit/schema';
 import { deleteTeamAllDatasets } from '../../../../core/dataset/delete/processor';
 import { onDelAllApp } from './utils';
-import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
-import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => {
@@ -40,14 +38,14 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     // 2. 先删除知识库和应用（它们内部有自己的队列）
     await deleteTeamAllDatasets(teamId);
     await onDelAllApp(teamId);
-    // 删除评估
-    await MongoEvaluation.deleteMany({
-      teamId
-    });
-    // 删除评估项
-    await MongoEvalItem.deleteMany({
-      teamId
-    });
+    // // 删除评估
+    // await MongoEvaluation.deleteMany({
+    //   teamId
+    // });
+    // // 删除评估项
+    // await MongoEvalItem.deleteMany({
+    //   teamId
+    // });
 
     // 删除图片(旧的了)
     await MongoImage.deleteMany({

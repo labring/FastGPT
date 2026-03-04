@@ -65,6 +65,7 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
@@ -324,7 +325,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           workflowStreamResponse: workflowResponseWrite
         });
       }
-      return Promise.reject('您的工作流版本过低，请重新发布一次');
+      return Promise.reject(i18nT('app:workflow_version_too_low'));
     })();
 
     // save chat

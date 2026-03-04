@@ -2,10 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { uploadSynonymFile } from '@fastgpt/service/core/dataset/synonym/controller';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
@@ -41,17 +40,11 @@ async function handler(
   let filePaths: string[] = [];
 
   try {
-    // 1. 创建multer上传处理器
-    const upload = getUploadModel({
-      maxSize: 50 * 1024 * 1024 // 限制50MB
+    // 1. 接收上传的文件
+    const { fileMetadata: file, data } = await multer.resolveFormData<UploadSynonymFileBody>({
+      request: req,
+      maxFileSize: 50 // 限制50MB
     });
-
-    // 2. 接收上传的文件
-    const { file, data } = await upload.getUploadFile<UploadSynonymFileBody>(
-      req,
-      res,
-      BucketNameEnum.dataset
-    );
 
     if (!file) {
       throw new Error(CommonErrEnum.fileNotFound);

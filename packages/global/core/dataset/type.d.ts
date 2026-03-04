@@ -432,7 +432,7 @@ export type DatasetSynonymSchemaType = {
   teamId: string;
   datasetId: string;
   fileName: string;
-  fileId: string; // GridFS 文件ID
+  fileId: string; // S3 文件 key
   size: number; // 文件大小（字节）
   uploadTime: Date;
   uploaderId: string;

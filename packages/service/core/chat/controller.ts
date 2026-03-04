@@ -9,10 +9,8 @@ import type { ClientSession } from '../../common/mongo';
 import { Types } from '../../common/mongo';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { Types } from '../../common/mongo';
 
 export async function getChatItems({
   includeDeleted = false,

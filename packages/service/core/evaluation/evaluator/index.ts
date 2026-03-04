@@ -199,7 +199,6 @@ export class DitingEvaluator extends Evaluator {
           if (model) {
             const { totalPoints: usagePoints } = formatModelChars2Points({
               model,
-              modelType,
               inputTokens: usage.promptTokens || 0,
               outputTokens: usage.completionTokens || 0
             });

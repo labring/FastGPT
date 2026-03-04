@@ -7,6 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import format from 'date-fns/format';
 import type { EvaluationDisplayType } from '@fastgpt/global/core/evaluation/type';
 import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
 interface BasicInfoProps {
   evaluationDetail: EvaluationDisplayType | null;
@@ -146,7 +147,7 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ evaluationDetail, appDetail }) =>
                 sourceMember={{
                   avatar: evaluationDetail.sourceMember.avatar,
                   name: evaluationDetail.sourceMember.name,
-                  status: 'active'
+                  status: TeamMemberStatusEnum.active
                 }}
                 fontSize="12px"
                 spacing={1}

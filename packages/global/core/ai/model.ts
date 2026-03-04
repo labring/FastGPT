@@ -53,6 +53,13 @@ export const defaultSTTModels: STTModelType[] = [
   }
 ];
 
+export const getModelFromList = <T extends { model: string }>(
+  list: T[],
+  modelName: string
+): T | undefined => {
+  return list.find((item) => item.model === modelName);
+};
+
 export const modelTypeList = [
   { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.llm },
   { label: i18nT('common:model.type.embedding'), value: ModelTypeEnum.embedding },

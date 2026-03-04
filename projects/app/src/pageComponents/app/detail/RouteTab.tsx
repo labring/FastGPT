@@ -27,24 +27,24 @@ const RouteTab = () => {
     const allTabs = [
       ...(appDetail.permission.hasReadChatLogPer
         ? [
-            { label: t('app:logs_app_data'), id: TabEnum.dashboard },
-            { label: t('app:chat_logs'), id: TabEnum.logs }
+            { label: t('app:logs_app_data'), value: TabEnum.dashboard },
+            { label: t('app:chat_logs'), value: TabEnum.logs }
           ]
         : []),
-      { label: t('app:auto_learning'), id: TabEnum.autoLearn },
+      { label: t('app:auto_learning'), value: TabEnum.autoLearn },
       ...(appDetail.permission.hasWritePer
         ? [
             {
               label:
-                appDetail.type === AppTypeEnum.plugin
+                appDetail.type === AppTypeEnum.workflowTool
                   ? t('app:setting_plugin')
                   : t('app:setting_app'),
-              id: TabEnum.appEdit
+              value: TabEnum.appEdit
             }
           ]
         : []),
       ...(appDetail.permission.hasManagePer
-        ? [{ label: t('app:publish_channel'), id: TabEnum.publish }]
+        ? [{ label: t('app:publish_channel'), value: TabEnum.publish }]
         : [])
     ];
 

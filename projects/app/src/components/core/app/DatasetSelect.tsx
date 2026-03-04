@@ -21,9 +21,9 @@ interface DatasetSelectProps {
   setSearchKey: (key: string) => void;
   datasets: DatasetListItemType[];
   isFetching: boolean;
-  selectedDatasets: SelectedDatasetType;
+  selectedDatasets: SelectedDatasetType[];
   setSelectedDatasets: (
-    datasets: SelectedDatasetType | ((prev: SelectedDatasetType) => SelectedDatasetType)
+    datasets: SelectedDatasetType[] | ((prev: SelectedDatasetType[]) => SelectedDatasetType[])
   ) => void;
   scene?: string;
 }

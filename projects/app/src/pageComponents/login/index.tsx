@@ -195,7 +195,7 @@ export const LoginContainer = ({
 
   // login success handler
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponse) => {
+    async (res: LoginSuccessResponse) => {
       return onSuccess ? await onSuccess(res) : undefined;
     },
     [onSuccess]

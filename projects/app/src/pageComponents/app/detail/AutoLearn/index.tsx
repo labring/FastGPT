@@ -85,8 +85,7 @@ const AutoLearn = () => {
     pageSize: 20,
     params: requestParams,
     EmptyTip: EmptyTipDom,
-    refreshDeps: [appId, sortOrder],
-    errorToast: t('app:fetch_learning_records_error')
+    refreshDeps: [appId, sortOrder]
   }) as {
     data: RerankTrainTaskListItem[];
     total: number;
@@ -522,7 +521,7 @@ const AutoLearn = () => {
               variant={'whitePrimary'}
               isLoading={isRestoring}
               isDisabled={hasRunningTasks || total === 0}
-              onClick={() => openRestoreConfirm(handleRestoreAllTasks)()}
+              onClick={() => openRestoreConfirm({ onConfirm: handleRestoreAllTasks })()}
             >
               {t('app:auto_learn.restore')}
             </Button>

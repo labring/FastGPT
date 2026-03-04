@@ -14,12 +14,12 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { changeOwner, resumeInheritPer } from '@/web/core/app/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -132,15 +132,11 @@ const AssistantCard = () => {
           avatar={editPerApp.avatar}
           name={editPerApp.name}
           managePer={{
+            defaultRole: ReadRoleVal,
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             roleList: AppRoleList,
-            onUpdateCollaborators: (props: {
-              members?: string[];
-              groups?: string[];
-              orgs?: string[];
-              permission: PermissionValueType;
-            }) =>
+            onUpdateCollaborators: (props) =>
               postUpdateAppCollaborators({
                 ...props,
                 appId: editPerApp._id

@@ -66,7 +66,7 @@ async function CreateDatabaseCollections(
           session
         });
 
-        const { billId } = await createTrainingUsage({
+        const { usageId } = await createTrainingUsage({
           teamId,
           tmbId,
           appName: table.tableName,
@@ -83,7 +83,7 @@ async function CreateDatabaseCollections(
               tmbId,
               datasetId,
               collectionId: collection._id,
-              billId,
+              billId: usageId,
               mode: TrainingModeEnum.databaseSchema,
               retryCount: 5
             }

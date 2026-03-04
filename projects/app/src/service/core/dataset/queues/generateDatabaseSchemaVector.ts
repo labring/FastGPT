@@ -139,7 +139,7 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
           tmbId: data.tmbId,
           inputTokens: tokens,
           model: data.dataset.vectorModel,
-          billId: data.billId
+          usageId: data.billId
         });
 
         addLog.info(`[DB Schema Queue] Finish`, {

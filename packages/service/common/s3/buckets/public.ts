@@ -105,26 +105,6 @@ export class S3PublicBucket extends S3BaseBucket {
       .catch((error) => {
         addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
       });
-
-    externalClient
-      ?.ensureBucket()
-      .then(() => {
-        if (!(externalClient instanceof MinioStorageAdapter)) {
-          return;
-        }
-
-        externalClient.ensurePublicBucketPolicy().catch((error) => {
-          addLog.info(`Failed to ensure public bucket policy "${externalClient.bucketName}":`, {
-            error
-          });
-        });
-      })
-      .catch((error) => {
-        addLog.error(
-          `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
-          error
-        );
-      });
   }
 
   createPublicUrl(objectKey: string): string {

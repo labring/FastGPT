@@ -65,5 +65,7 @@
   "evaluation_summary_generation": "評估-總結生成",
   "generate_answer": "產生應用回答",
   "hype_index":"構建高質量的假定問題索引",
-  "synthesis": "合成問題生成"
+  "synthesis": "合成問題生成",
+  "synonym_standardize": "同義詞標準化",
+  "synonym_restore": "同義詞恢復"
 }

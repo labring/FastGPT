@@ -93,10 +93,13 @@ export class EvaluationTaskService {
 
     const evaluationParams = buildEvalDataConfig(evaluationParamsInput);
 
-    const { billId } = await createEvaluationUsage({
+    const model = evaluationParams.evaluators[0]?.runtimeConfig?.llm || '';
+
+    const { usageId } = await createEvaluationUsage({
       teamId,
       tmbId,
-      appName: evaluationParams.name
+      appName: evaluationParams.name,
+      model
     });
 
     await checkEvaluationItemQueueHealth();
@@ -108,7 +111,7 @@ export class EvaluationTaskService {
             ...evaluationParams,
             teamId,
             tmbId,
-            usageId: billId,
+            usageId: usageId,
             createTime: new Date()
           }
         ],

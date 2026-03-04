@@ -2,7 +2,8 @@
 {
   "feConfigs": {
     "lafEnv": "https://laf.dev", // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
-    "mcpServerProxyEndpoint": "" // mcp server 代理地址，例如： http://localhost:3005
+    "mcpServerProxyEndpoint": "", // mcp server 代理地址，例如： http://localhost:3005
+    "show_publish_wecom": true
   },
   "systemEnv": {
     "datasetParseMaxProcess": 10, // 知识库文件解析最大线程数量
@@ -20,6 +21,7 @@
     "customPdfParse": {
       "url": "", // 自定义 PDF 解析服务地址
       "key": "", // 自定义 PDF 解析服务密钥
+      "timeout": 60, // 自定义 PDF 解析超时时间
       "doc2xKey": "", // doc2x 服务密钥
       "textinAppId": "", // 合合信息 Textin 服务 App ID
       "textinSecretCode": "", // 合合信息 Textin 服务 Secret Code

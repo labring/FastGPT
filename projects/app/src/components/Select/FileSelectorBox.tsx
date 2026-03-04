@@ -22,6 +22,7 @@ const FileSelector = ({
   selectFiles,
   setSelectFiles,
   maxCount = 1000,
+  maxSize,
   FileTypeNode,
   autoFilterOverSize,
   fileTipNode,
@@ -34,6 +35,7 @@ const FileSelector = ({
   selectFiles: SelectFileItemType[];
   setSelectFiles: (files: SelectFileItemType[]) => void;
   maxCount?: number;
+  maxSize?: number;
   FileTypeNode?: React.ReactNode;
   fileTipNode?: React.ReactNode;
   autoFilterOverSize?: boolean;
@@ -48,8 +50,11 @@ const FileSelector = ({
   const { teamPlanStatus } = useUserStore();
 
   // 文件大小限制（B）：团队套餐 || 系统配置 || 默认值
-  const systemMaxSize = (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs.uploadFileMaxSize || 1024) * 1024 * 1024;
-  const displayMaxSize = formatFileSize(systemMaxSize);
+  const systemMaxSize =
+    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs.uploadFileMaxSize || 1024) *
+    1024 *
+    1024;
+  const displayMaxSize = maxSize ? formatFileSize(maxSize) : formatFileSize(systemMaxSize);
   // 文件数量限制：组件传入的maxCount || 团队套餐 || 系统配置
   const formatMaxCount = Math.min(
     maxCount,
@@ -62,7 +67,7 @@ const FileSelector = ({
     maxCount: formatMaxCount,
     ...(autoFilterOverSize
       ? {
-          maxSize: systemMaxSize
+          maxSize: maxSize || systemMaxSize
         }
       : {})
   });

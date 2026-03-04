@@ -18,7 +18,7 @@ import { createChatCompletion } from '../../ai/config';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { loadRequestMessages } from '../../chat/utils';
+import { loadRequestMessages } from '../../ai/llm/utils';
 import {
   problemAnalysisTemplateZhCN,
   strengthAnalysisTemplateZhCN,
@@ -39,7 +39,6 @@ import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { createMergedEvaluationUsage } from '../utils/usage';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { MetricResultStatusEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import { addSummaryTaskToQueue } from './queue';
@@ -921,8 +920,7 @@ export class EvaluationSummaryService {
       const { totalPoints } = formatModelChars2Points({
         model: modelData.model,
         inputTokens,
-        outputTokens,
-        modelType: (modelData.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
+        outputTokens
       });
 
       await createMergedEvaluationUsage({

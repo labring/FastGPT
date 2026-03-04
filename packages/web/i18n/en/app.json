@@ -717,5 +717,6 @@
   "retry": "Retry",
   "vector_model_mismatch": "Only knowledge bases with the same vector model are supported. The vector model of this knowledge base is {{model1}}, and the vector model of the selected knowledge base is {{model2}}.",
   "auto_learn.confirm_delete_completed_record": "Are you sure you want to delete this learning record? The model fine-tuning will be reverted to the state before this learning.",
-  "auto_learn.confirm_delete_failed_record": "Are you sure you want to delete this learning record?"
+  "auto_learn.confirm_delete_failed_record": "Are you sure you want to delete this learning record?",
+  "workflow_version_too_low": "Your workflow version is too low. Please republish the app once."
 }

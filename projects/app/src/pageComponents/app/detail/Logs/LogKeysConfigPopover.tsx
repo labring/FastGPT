@@ -1,6 +1,7 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useTranslation } from 'next-i18next';
+import type { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import {
   AppLogKeysEnumMap,
   AssistantAppLogKeysEnumMap
@@ -128,7 +129,14 @@ const DragItem = ({
         />
       </Box>
       <Box fontSize={'14px'} color={'myGray.900'}>
-        {t((isAssistant ? AssistantAppLogKeysEnumMap : AppLogKeysEnumMap)[item.key] as string)}
+        {t(
+          (
+            (isAssistant ? AssistantAppLogKeysEnumMap : AppLogKeysEnumMap) as Record<
+              AppLogKeysEnum,
+              string
+            >
+          )[item.key]
+        )}
       </Box>
       <Box flex={1} />
       {item.enable ? (

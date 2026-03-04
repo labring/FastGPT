@@ -199,7 +199,7 @@ const Detail = ({ taskId, currentTab }: Props) => {
     params: scrollParams,
     refreshDeps: [searchValue, taskId, currentTab],
     EmptyTip: EmptyTipDom,
-    errorToast: ''
+    showErrorToast: false
   });
 
   // 智能轮询刷新函数

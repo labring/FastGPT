@@ -39,7 +39,7 @@ export interface IntelligentGenerationForm {
   name: string;
   generationModel: string;
   dataAmount: number;
-  selectedDatasets: SelectedDatasetType;
+  selectedDatasets: SelectedDatasetType[];
   keywords?: string; // 关键词，仅在数据场景下使用
   collectionId?: string;
 }
@@ -188,7 +188,7 @@ const IntelligentGeneration = ({
 
   // 处理知识库选择
   const handleDatasetSelect = useCallback(
-    (datasets: SelectedDatasetType) => {
+    (datasets: SelectedDatasetType[]) => {
       setValue('selectedDatasets', datasets);
     },
     [setValue]
@@ -356,7 +356,6 @@ const IntelligentGeneration = ({
       {isOpenDatasetSelect && (
         <DatasetSelectModal
           formatResData={formatDatasetList}
-          isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectedDatasets.map((item) => ({
             datasetId: item.datasetId,
             vectorModel: item.vectorModel,

@@ -48,7 +48,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
     onDateTimeChange(newDate);
   };
 
-  const handleDateChange = (date: Date | undefined) => {
+  const handleDateChange = (date: Date | null) => {
     if (!date) {
       onDateTimeChange(undefined);
       return;
@@ -84,13 +84,8 @@ const TimeInput: React.FC<TimeInputProps> = ({
   return (
     <Flex alignItems={'center'} gap={2}>
       <DateTimePicker
-        selectedDateTime={formatValue}
+        value={formatValue}
         onChange={handleDateChange}
-        popPosition={popPosition}
-        disabled={[
-          ...(minDate ? [{ before: minDate }] : []),
-          ...(maxDate ? [{ after: maxDate }] : [])
-        ]}
         isDisabled={isDisabled}
         w={'168px'}
         h={8}

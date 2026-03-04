@@ -371,13 +371,12 @@ const EvaluationTasks = ({ Tab }: { Tab: React.ReactNode }) => {
                               icon: 'delete',
                               label: t('dashboard_evaluation:delete'),
                               onClick: () =>
-                                openConfirm(
-                                  async () => {
+                                openConfirm({
+                                  onConfirm: async () => {
                                     await handleDeleteTask(task._id);
                                   },
-                                  undefined,
-                                  t('dashboard_evaluation:confirm_delete_task')
-                                )()
+                                  customContent: t('dashboard_evaluation:confirm_delete_task')
+                                })()
                             }
                           ]
                         }

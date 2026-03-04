@@ -11,7 +11,7 @@ import {
   Text,
   Switch
 } from '@chakra-ui/react';
-import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

@@ -398,7 +398,7 @@ export async function getChildAppPreviewNode({
     if (source === AppToolSourceEnum.systemTool) {
       // system Tool or Toolsets
       const children = app.isFolder
-        ? (await getSystemTools(lang)).filter((item) => item.parentId === pluginId)
+        ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
         : [];
 
       // Check if system_input_config already exists in app.inputs

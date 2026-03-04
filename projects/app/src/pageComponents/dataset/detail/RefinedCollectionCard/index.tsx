@@ -330,11 +330,10 @@ const CollectionCard = () => {
               handleOpenConfigPage('edit', databaseName, activeStep)
             }
             onRemoveClick={(collectionId) => {
-              openDeleteConfirm(
-                () => onDelCollection([collectionId]),
-                undefined,
-                t('dataset:confirm_remove_database_table')
-              )();
+              openDeleteConfirm({
+                onConfirm: () => onDelCollection([collectionId]),
+                customContent: t('dataset:confirm_remove_database_table')
+              })();
             }}
           />
         ) : (
@@ -568,8 +567,10 @@ const CollectionCard = () => {
                                             </Flex>
                                           ),
                                           onClick: () =>
-                                            openSyncConfirm(() => {
-                                              onclickStartSync(collection._id);
+                                            openSyncConfirm({
+                                              onConfirm: () => {
+                                                onclickStartSync(collection._id);
+                                              }
                                             })()
                                         }
                                       ]
@@ -627,15 +628,15 @@ const CollectionCard = () => {
                                   ),
                                   type: 'danger',
                                   onClick: () =>
-                                    openDeleteConfirm(
-                                      () => onDelCollection([collection._id]),
-                                      undefined,
-                                      collection.type === DatasetCollectionTypeEnum.folder
-                                        ? t(
-                                            'common:dataset.collections.Confirm to delete the folder'
-                                          )
-                                        : t('common:dataset.Confirm to delete the file')
-                                    )()
+                                    openDeleteConfirm({
+                                      onConfirm: () => onDelCollection([collection._id]),
+                                      customContent:
+                                        collection.type === DatasetCollectionTypeEnum.folder
+                                          ? t(
+                                              'common:dataset.collections.Confirm to delete the folder'
+                                            )
+                                          : t('common:dataset.Confirm to delete the file')
+                                    })()
                                 }
                               ]
                             }
@@ -658,16 +659,15 @@ const CollectionCard = () => {
               <Button
                 variant={'whiteBase'}
                 onClick={() =>
-                  openDeleteConfirm(
-                    () =>
+                  openDeleteConfirm({
+                    onConfirm: () =>
                       onDelCollection(selectedItems.map((e) => e._id)).then(() =>
                         setSelectedItems([])
                       ),
-                    undefined,
-                    t('dataset:confirm_delete_collection', {
+                    customContent: t('dataset:confirm_delete_collection', {
                       num: selectedItems.length
                     })
-                  )()
+                  })()
                 }
               >
                 {t('dataset:batch_delete')}

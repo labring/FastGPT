@@ -13,6 +13,7 @@ import {
 import { dispatchWorkFlow } from '../../workflow/dispatch';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoApp } from '../../app/schema';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -30,9 +31,8 @@ import type {
   AIChatItemType
 } from '@fastgpt/global/core/chat/type';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../workflow/constants';
-import { getUserChatInfoAndAuthTeamPoints } from '../../../support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
-import { removeDatasetCiteText } from '../../ai/utils';
+import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { saveChat } from '../../chat/saveChat';
 import { MongoChatItem } from '../../chat/chatItemSchema';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -89,14 +89,11 @@ export class WorkflowTarget extends EvaluationTarget {
     }
 
     // Get user information and permissions
-    const [{ timezone, externalProvider }, { nodes, edges, chatConfig }] = await Promise.all([
-      getUserChatInfoAndAuthTeamPoints(appData.tmbId),
-      getAppVersionById({
-        appId: String(appData._id),
-        versionId: this.config.versionId,
-        app: appData
-      })
-    ]);
+    const { nodes, edges, chatConfig } = await getAppVersionById({
+      appId: String(appData._id),
+      versionId: this.config.versionId,
+      app: appData
+    });
 
     // Construct query
     const query: UserChatItemValueItemType[] = [
@@ -139,11 +136,11 @@ export class WorkflowTarget extends EvaluationTarget {
     const { assistantResponses, flowUsages, flowResponses, system_memories, durationSeconds } =
       await dispatchWorkFlow({
         chatId,
-        timezone,
-        externalProvider,
         mode: 'chat',
+        usageSource: UsageSourceEnum.evaluation,
         runningAppInfo: {
           id: String(appData._id),
+          name: String(appData.name),
           teamId: String(appData.teamId),
           tmbId: String(appData.tmbId)
         },
@@ -192,10 +189,10 @@ export class WorkflowTarget extends EvaluationTarget {
       nodes,
       appChatConfig: { ...chatConfig, ...(this.config.chatConfig || {}) },
       variables: input.targetCallParams?.variables || {},
-      isUpdateUseTime: false,
       newTitle: getChatTitleFromChatMessage(userQuestion),
       source: ChatSourceEnum.evaluation,
-      content: [userQuestion, aiResponse],
+      userContent: userQuestion,
+      aiContent: aiResponse,
       durationSeconds
     });
 

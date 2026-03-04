@@ -710,5 +710,6 @@
   "retry": "重试",
   "vector_model_mismatch": "仅支持选择同一个向量模型的知识库。该知识库向量模型为 {{model1}}，已选知识库向量模型为 {{model2}}。",
   "auto_learn.confirm_delete_completed_record": "确认删除该学习记录？删除后对模型的微调也将恢复至本次学习前。",
-  "auto_learn.confirm_delete_failed_record": "确认删除该学习记录？"
+  "auto_learn.confirm_delete_failed_record": "确认删除该学习记录？",
+  "workflow_version_too_low": "您的工作流版本过低，请重新发布一次"
 }

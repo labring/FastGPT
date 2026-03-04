@@ -352,6 +352,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
       <Box flex={'1'} />
       {showSyncPopover && (
         <SyncLogKeysPopover
+          appId={appId}
           logKeys={logKeys}
           setLogKeys={setLogKeys}
           teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAssistantLogKey}

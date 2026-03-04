@@ -67,8 +67,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
     pageSize: 20,
     params: requestParams as Omit<ListChatCorrectionParams, 'offset' | 'pageSize'>,
     EmptyTip: EmptyTipDom,
-    refreshDeps: [appId, dateRange],
-    errorToast: t('app:fetch_optimize_records_error')
+    refreshDeps: [appId, dateRange]
   });
 
   // 处理编辑

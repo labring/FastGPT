@@ -351,8 +351,7 @@ export const pushGenerateSqlUsage = ({
   const { totalPoints, modelName } = formatModelChars2Points({
     inputTokens,
     outputTokens,
-    model,
-    modelType: ModelTypeEnum.llm
+    model
   });
 
   createUsage({

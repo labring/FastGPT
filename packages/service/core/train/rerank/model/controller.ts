@@ -3,7 +3,7 @@ import { updatedReloadSystemModel } from '../../../ai/config/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import { getModelProvider } from '../../../app/provider/controller';
 import { deleteSFTTask } from '../external';
 import {
   deleteTunedModelChannel,

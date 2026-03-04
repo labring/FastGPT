@@ -239,13 +239,16 @@ export const createTrainingUsage = async ({
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
-                },
-                {
-                  moduleName: i18nT('account_usage:synthesis'),
-                  model: agentModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
+              },
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_synthesis,
+                name: i18nT('account_usage:synthesis'),
+                model: agentModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
               }
             ]
           : []),
@@ -272,44 +275,44 @@ export const createTrainingUsage = async ({
                 outputTokens: 0
               }
             ]
-            : []),
-          ...(vectorModel && agentModel
-            ? [
-                {
-                  teamId,
-                  usageId: result._id,
-                  itemType: UsageItemTypeEnum.training_hypeIndex,
-                  moduleName: i18nT('account_usage:hype_index'),
-                  model: vectorModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                },
-                {
-                  teamId,
-                  usageId: result._id,
-                  itemType: UsageItemTypeEnum.training_hypeIndex,
-                  moduleName: i18nT('account_usage:hype_index'),
-                  model: agentModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                }
-              ]
-            : []),
-          ...(rerankModel
-            ? [
-                {
-                  teamId,
-                  usageId: result._id,
-                  itemType: UsageItemTypeEnum.training_hypeIndex,
-                  moduleName: i18nT('account_usage:hype_index'),
-                  model: rerankModel,
-                  amount: 0,
-                  inputTokens: 0,
-                  outputTokens: 0
-                }
-              ]
+          : []),
+        ...(vectorModel && agentModel
+          ? [
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_hypeIndex,
+                name: i18nT('account_usage:hype_index'),
+                model: vectorModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              },
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_hypeIndex,
+                name: i18nT('account_usage:hype_index'),
+                model: agentModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              }
+            ]
+          : []),
+        ...(rerankModel
+          ? [
+              {
+                teamId,
+                usageId: result._id,
+                itemType: UsageItemTypeEnum.training_hypeIndex,
+                name: i18nT('account_usage:hype_index'),
+                model: rerankModel,
+                amount: 0,
+                inputTokens: 0,
+                outputTokens: 0
+              }
+            ]
           : [])
       ],
       {

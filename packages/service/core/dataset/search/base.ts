@@ -136,8 +136,6 @@ export const embeddingRecall = async ({
             id: String(data._id),
             updateTime: data.updateTime,
             ...formatDatasetDataValue({
-              teamId,
-              datasetId: data.datasetId,
               q: data.q,
               a: data.a,
               imageId: data.imageId,

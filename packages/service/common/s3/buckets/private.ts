@@ -98,12 +98,5 @@ export class S3PrivateBucket extends S3BaseBucket {
       .catch((error) => {
         addLog.error(`Failed to ensure bucket "${client.bucketName}" exists:`, error);
       });
-
-    externalClient?.ensureBucket().catch((error) => {
-      addLog.error(
-        `Failed to ensure external bucket "${externalClient.bucketName}" exists:`,
-        error
-      );
-    });
   }
 }

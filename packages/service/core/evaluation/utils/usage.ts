@@ -1,5 +1,12 @@
-import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
+import { concatUsage } from '../../../support/wallet/usage/controller';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
+
+const typeToItemType: Record<'target' | 'metric' | 'summary', UsageItemTypeEnum> = {
+  target: UsageItemTypeEnum.evaluation_generateAnswer,
+  metric: UsageItemTypeEnum.evaluation_metricsExecute,
+  summary: UsageItemTypeEnum.evaluation_summaryGeneration
+};
 
 /**
  * Create merged evaluation usage record
@@ -14,19 +21,16 @@ export const createMergedEvaluationUsage = async (params: {
   inputTokens?: number;
   outputTokens?: number;
 }) => {
-  const { evalId, teamId, tmbId, usageId, totalPoints, type, inputTokens, outputTokens } = params;
-
-  const listIndex = evaluationUsageIndexMap[type];
+  const { evalId, teamId, usageId, totalPoints, type, inputTokens, outputTokens } = params;
 
   await concatUsage({
-    billId: usageId,
+    usageId,
     teamId,
-    tmbId,
     totalPoints,
     inputTokens: inputTokens || 0,
     outputTokens: outputTokens || 0,
     count: 1,
-    listIndex
+    itemType: typeToItemType[type]
   });
 
   addLog.debug(`[Evaluation] Record usage: ${evalId}, ${type}, ${totalPoints} points`);

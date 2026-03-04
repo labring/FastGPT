@@ -28,7 +28,6 @@ interface LoginFormType {
 
 const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { t, i18n } = useTranslation();
-  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
   const router = useRouter();
@@ -42,22 +41,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
     async ({ username, password }: LoginFormType) => {
       const { code } = await getPreLogin(username);
-      const res = await postLogin({
-        username,
-        password,
-        code,
-        language: i18n.language as LangEnum
-      });
-
-      // 等待 loginSuccess 执行完成
-      const result = await loginSuccess(res);
-
-      if (result !== false) {
-        toast({
-          title: t('login:login_success'),
-          status: 'success'
-        });
-      }
+      loginSuccess(
+        await postLogin({
+          username,
+          password,
+          code,
+          language: i18n.language as LangEnum
+        })
+      );
     },
     {
       refreshDeps: [loginSuccess],

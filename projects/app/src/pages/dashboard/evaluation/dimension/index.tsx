@@ -206,13 +206,12 @@ const EvaluationDimensions = ({ Tab }: { Tab: React.ReactNode }) => {
                         hoverBg="red.50"
                         hoverColor={'red.600'}
                         onClick={() =>
-                          openConfirm(
-                            async () => {
+                          openConfirm({
+                            onConfirm: async () => {
                               await handleDeleteDimension(dimension._id);
                             },
-                            undefined,
-                            t('dashboard_evaluation:confirm_delete_dimension')
-                          )()
+                            customContent: t('dashboard_evaluation:confirm_delete_dimension')
+                          })()
                         }
                       />
                     )}

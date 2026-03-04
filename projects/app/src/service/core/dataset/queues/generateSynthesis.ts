@@ -12,6 +12,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
 // Diting API response type
 type DitingResponse = {
@@ -216,12 +217,11 @@ export async function generateSynthesis(): Promise<any> {
         // Push usage after successful processing
         pushLLMTrainingUsage({
           teamId: data.teamId,
-          tmbId: data.tmbId,
           inputTokens,
           outputTokens,
-          billId: data.billId,
+          usageId: data.billId,
           model: agentModel.model,
-          mode: 'synthesis'
+          type: UsageItemTypeEnum.training_qa
         });
       } catch (fetchError: any) {
         clearTimeout(timeoutId);

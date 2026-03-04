@@ -43,8 +43,12 @@ export const createAppTypeMap = {
     imgUrl: '/imgs/app/httpToolSetPreview.svg'
   },
   [AppTypeEnum.assistant]: {
+    type: AppTypeEnum.assistant,
     icon: 'core/app/assistant/assistantIcon',
     title: i18nT('app:type.Create smart customer service'),
+    intro: i18nT('app:create_empty_smart_customer_service'),
+    description: i18nT('app:create_empty_smart_customer_service'),
+    imgUrl: '',
     avatar: 'core/app/assistant/assistantIcon',
     emptyCreateText: i18nT('app:create_empty_smart_customer_service')
   }

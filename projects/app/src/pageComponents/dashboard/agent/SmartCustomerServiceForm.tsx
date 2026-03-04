@@ -11,7 +11,7 @@ import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type SmartCustomerServiceFormType = {
-  datasets: SelectedDatasetType;
+  datasets: SelectedDatasetType[];
   rerankModel: string;
 };
 
@@ -42,7 +42,7 @@ const SmartCustomerServiceForm = ({ value, onChange }: SmartCustomerServiceFormP
   } = useDatasetSelect();
 
   const handleDatasetsChange = (
-    newDatasets: SelectedDatasetType | ((prev: SelectedDatasetType) => SelectedDatasetType)
+    newDatasets: SelectedDatasetType[] | ((prev: SelectedDatasetType[]) => SelectedDatasetType[])
   ) => {
     const updatedDatasets = typeof newDatasets === 'function' ? newDatasets(datasets) : newDatasets;
     onChange({

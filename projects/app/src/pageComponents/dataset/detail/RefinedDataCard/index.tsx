@@ -271,7 +271,6 @@ const RefinedDataCard = () => {
     defaultPageSize: 10,
     pageSizeOptions: [10, 20, 50, 100],
     defaultPageNum: initialPageNum,
-    defaultRequest: false,
     params: {
       collectionId,
       searchText: debouncedSearchText

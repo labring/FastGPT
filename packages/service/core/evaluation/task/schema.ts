@@ -7,7 +7,7 @@ import type {
   EvaluationSchemaType,
   EvaluationItemSchemaType
 } from '@fastgpt/global/core/evaluation/type';
-import { UsageCollectionName } from '../../../support/wallet/usage/schema';
+import { UsageCollectionName } from '../../../support/wallet/usage/constants';
 import {
   EvaluationStatusEnum,
   EvaluationStatusValues,

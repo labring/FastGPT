@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { getFileById, updateGridFSFilename } from '@fastgpt/service/common/file/gridfs/controller';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -11,10 +11,8 @@ import {
   DataChunkSplitModeEnum,
   ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { deleteRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/controller';
 import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
@@ -122,10 +120,7 @@ async function handler(
   });
 
   // 2. Get file info
-  const file = await getFileById({
-    bucketName: BucketNameEnum.dataset,
-    fileId
-  });
+  const file = await getS3DatasetSource().getFileMetadata(fileId);
 
   if (!file) {
     return Promise.reject(CommonErrEnum.fileNotFound);
@@ -208,13 +203,6 @@ async function handler(
       }
 
       fileName = `${fileNameWithoutExt}(${maxSuffix + 1})${fileExt}`;
-
-      // Update GridFS filename to match the renamed collection name
-      await updateGridFSFilename({
-        bucketName: BucketNameEnum.dataset,
-        fileId,
-        newFilename: fileName
-      });
 
       addLog.info(
         `[FileImport] Renamed duplicate file from '${name || filename}' to '${fileName}'`
@@ -310,9 +298,6 @@ async function handler(
       qaPrompt: importMode.promptConfig?.qaPrompt || ''
     }
   });
-
-  // 9. Remove buffer
-  await deleteRawTextBuffer(fileId);
 
   return {
     collectionId,

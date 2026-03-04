@@ -49,9 +49,14 @@ export async function performDatasetSearch(
     query: [],
     stream: false,
     maxRunTimes: MAX_SEARCH_RUN_TIMES,
+    chatId: '',
+    checkIsStopping: () => false,
+    workflowDispatchDeep: 0,
+    mcpClientMemory: {},
 
     runningAppInfo: {
       id: task.appId,
+      name: app.name,
       teamId: task.teamId,
       tmbId: task.tmbId
     },

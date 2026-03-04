@@ -65,5 +65,7 @@
   "evaluation_summary_generation": "Generate summary",
   "generate_answer": "Generate app response",
   "hype_index":"build High-quality Hypothetical Prompt Index",
-  "synthesis": "Synthesis question generation"
+  "synthesis": "Synthesis question generation",
+  "synonym_standardize": "Synonym standardization",
+  "synonym_restore": "Synonym restore"
 }

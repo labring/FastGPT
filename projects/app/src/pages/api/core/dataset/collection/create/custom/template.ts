@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -11,7 +11,7 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -84,10 +84,12 @@ async function handler(
   const filePaths: string[] = [];
 
   try {
-    const upload = getUploadModel({
-      maxSize: global.feConfigs?.uploadFileMaxSize
+    const result = await multer.resolveFormData<CustomTemplateImportBody>({
+      request: req,
+      maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, data } = await upload.getUploadFile<CustomTemplateImportBody>(req, res);
+    const file = result.fileMetadata;
+    const data = result.data;
     filePaths.push(file.path);
 
     const extension = file.originalname.split('.').pop()?.toLowerCase();
@@ -196,13 +198,11 @@ async function handler(
       }
     }
 
-    // 4. 上传文件到GridFS（使用处理后的文件名）
-    const fileId = await uploadFile({
-      teamId,
-      uid: tmbId,
-      bucketName: 'dataset',
-      path: file.path,
+    // 4. 上传文件到 S3（使用处理后的文件名）
+    const fileId = await getS3DatasetSource().upload({
+      datasetId: data.datasetId,
       filename: fileName,
+      stream: fs.createReadStream(file.path),
       contentType: file.mimetype
     });
 

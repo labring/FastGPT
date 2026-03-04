@@ -77,7 +77,7 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
 
   const displayTitle = title || chat?.title;
   const chatModels = chat?.app?.chatModels;
-  const isPlugin = chat?.app.type === AppTypeEnum.plugin;
+  const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   return (
     <>
@@ -203,10 +203,11 @@ const Render = (props: Props) => {
   return (
     <ChatItemContextProvider
       showRouteToDatasetDetail={true}
-      isShowReadRawSource={true}
-      isResponseDetail={true}
-      // isShowFullText={true}
-      showNodeStatus
+      canDownloadSource={true}
+      isShowCite={true}
+      isShowFullText={true}
+      showRunningStatus={true}
+      showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params}>
         <DetailLogsModal {...props} />

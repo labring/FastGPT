@@ -27,10 +27,6 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppVersionById: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/support/permission/auth/team', () => ({
-  getUserChatInfoAndAuthTeamPoints: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: vi.fn()
 }));
@@ -47,7 +43,6 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getAppVersionById } from '@fastgpt/service/core/app/version/controller';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
@@ -83,11 +78,6 @@ describe('WorkflowTarget - Workflow Only Support', () => {
       _id: 'test-app-id',
       teamId: 'test-team-id',
       tmbId: 'test-tmb-id'
-    });
-
-    (getUserChatInfoAndAuthTeamPoints as any).mockResolvedValue({
-      timezone: 'UTC',
-      externalProvider: null
     });
 
     (getAppVersionById as any).mockResolvedValue({

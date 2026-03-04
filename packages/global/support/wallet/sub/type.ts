@@ -25,6 +25,11 @@ export const TeamStandardSubPlanItemSchema = z.object({
   maxUploadFileSize: z.int().optional(), // 最大上传文件大小（MB）
   maxUploadFileCount: z.int().optional(), // 最大上传文件数量
 
+  maxEvaluationTaskAmount: z.int().optional(),
+  maxEvalDatasetAmount: z.int().optional(),
+  maxEvalDatasetDataAmount: z.int().optional(),
+  maxEvalMetricAmount: z.int().optional(),
+
   // 定制套餐
   priceDescription: z.string().optional(), // 价格描述
   customFormUrl: z.string().optional(), // 自定义表单 URL
@@ -101,7 +106,11 @@ export const TeamSubSchema = z.object({
   ticketResponseTime: z.int().optional(),
   customDomain: z.int().optional(),
   maxUploadFileSize: z.int().optional(),
-  maxUploadFileCount: z.int().optional()
+  maxUploadFileCount: z.int().optional(),
+  maxEvaluationTaskAmount: z.int().optional(),
+  maxEvalDatasetAmount: z.int().optional(),
+  maxEvalDatasetDataAmount: z.int().optional(),
+  maxEvalMetricAmount: z.int().optional()
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
 
@@ -119,6 +128,10 @@ export const ClientTeamPlanStatusSchema = TeamPlanStatusSchema.extend({
   usedAppAmount: z.int(),
   usedDatasetSize: z.int(),
   usedDatasetIndexSize: z.int(),
-  usedRegistrationCount: z.int()
+  usedRegistrationCount: z.int(),
+  usedEvaluationTaskAmount: z.int(),
+  usedEvalDatasetAmount: z.int(),
+  usedEvalDatasetDataAmount: z.int(),
+  usedEvalMetricAmount: z.int()
 });
 export type ClientTeamPlanStatusType = z.infer<typeof ClientTeamPlanStatusSchema>;

@@ -3,8 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { getDownloadStream } from '@fastgpt/service/common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import streamConsumer from 'node:stream/consumers';
 import { Types } from '@fastgpt/service/common/mongo';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -40,11 +40,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     per: ReadPermissionVal
   });
 
-  // 3. 从GridFS获取文件流
-  const fileStream = await getDownloadStream({
-    bucketName: BucketNameEnum.dataset,
-    fileId: String(synonymFile.fileId)
-  });
+  // 3. 从 S3 获取文件流
+  const body = await getS3DatasetSource().getFileStream(String(synonymFile.fileId));
+  if (!body) {
+    throw new Error(DatasetErrEnum.synonymFileNotExist);
+  }
+  const buffer = await streamConsumer.buffer(body);
 
   // 4. 设置响应头
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -53,8 +54,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     `attachment; filename="${encodeURIComponent(synonymFile.fileName)}"`
   );
 
-  // 5. 将文件流pipe到响应
-  fileStream.pipe(res);
+  // 5. 发送文件内容
+  res.end(buffer);
 }
 
 export default NextAPI(handler);

@@ -18,9 +18,9 @@ export const SfDatasetSelectModal = ({
   formatResData
 }: {
   isOpen: boolean;
-  defaultSelectedDatasets: SelectedDatasetType;
+  defaultSelectedDatasets: SelectedDatasetType[];
   scene?: string;
-  onChange: (e: SelectedDatasetType) => void;
+  onChange: (e: SelectedDatasetType[]) => void;
   onClose: () => void;
   formatResData?: (datasetList: DatasetListItemType[]) => DatasetListItemType[];
 }) => {
@@ -28,7 +28,7 @@ export const SfDatasetSelectModal = ({
 
   // Current selected datasets, initialized with defaultSelectedDatasets
   const [selectedDatasets, setSelectedDatasets] =
-    useState<SelectedDatasetType>(defaultSelectedDatasets);
+    useState<SelectedDatasetType[]>(defaultSelectedDatasets);
 
   // Use server-side search, following the logic of the dataset list page
   const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect(

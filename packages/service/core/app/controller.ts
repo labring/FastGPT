@@ -9,7 +9,6 @@ import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { MongoEvaluation } from './evaluation/evalSchema';
 import { MongoChatItem } from '../chat/chatItemSchema';
 import { MongoChat } from '../chat/chatSchema';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -158,9 +157,7 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
  *
  * @param appId Application ID to be deleted
  */
-export async function cleanupTrainModuleOnAppDelete(
-  appId: string
-): Promise<void> {
+export async function cleanupTrainModuleOnAppDelete(appId: string): Promise<void> {
   if (!appId) return;
 
   addLog.info('Cleanup train module on app delete', { appId });
@@ -280,14 +277,16 @@ export const deleteAppsImmediate = async ({
   teamId: string;
   appIds: string[];
 }) => {
+  // sxf 删除应用和评估任务无关
   // Remove eval job
-  const evalJobs = await MongoEvaluation.find(
-    {
-      teamId,
-      appId: { $in: appIds }
-    },
-    '_id'
-  ).lean();
+  // const evalJobs = await MongoEvaluation.find(
+  //   {
+  //     teamId,
+  //     appId: { $in: appIds }
+  //   },
+  //   '_id'
+  // ).lean();
+  // await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
 
   // Remove app record
   await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
