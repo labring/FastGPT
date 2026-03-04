@@ -5,6 +5,7 @@
   "Next": "下一個",
   "Previous": "上一個",
   "agent_plan_continue": "繼續規劃",
+  "agent_plan_parse_retry_tip": "規劃結果格式異常，請補充一句需求後我重新生成計畫。",
   "ai_reasoning": "思考過程",
   "back_to_text": "返回輸入",
   "balance_not_enough_pause": "由於 AI 積分不足，暫停運行工作流",
