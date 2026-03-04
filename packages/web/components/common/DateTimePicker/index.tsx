@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import type { Matcher } from 'react-day-picker';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import zhCN from 'date-fns/locale/zh-CN';
+import { zhCN } from 'date-fns/locale/zh-CN';
 import MyIcon from '../Icon';
 
 const DateTimePicker = ({

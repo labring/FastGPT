@@ -23,6 +23,7 @@ import { getNanoid } from '../../common/string/tools';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
+  [ChatCompletionRequestMessageRoleEnum.Developer]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
   [ChatCompletionRequestMessageRoleEnum.Function]: ChatRoleEnum.AI,
