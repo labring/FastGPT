@@ -1,10 +1,10 @@
-# 基于 base/ 目录构建的 skill-agent/sandbox:v1，在其基础上注入 Sync Agent
+# 基于 base/ 目录构建的 fastgpt-agent-sandbox:latest，在其基础上注入 Sync Agent
 #
 # 构建顺序：
-#   1. cd base && docker build -t skill-agent/sandbox:v1 .
-#   2. docker build -f Dockerfile -t skill-agent/sandbox:sync-sidecar .
+#   1. cd base && docker build -t fastgpt-agent-sandbox:latest .
+#   2. docker build -f Dockerfile -t fastgpt-agent-sandbox:k8s .
 
-FROM skill-agent/sandbox:v1
+FROM fastgpt-agent-sandbox:latest
 
 USER root
 

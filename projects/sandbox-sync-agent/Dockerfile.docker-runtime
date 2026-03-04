@@ -1,10 +1,10 @@
 # Docker 双进程模式镜像
-# 基于 base/ 目录构建的 skill-agent/sandbox:v1，在其基础上注入 Sync Agent
+# 基于 base/ 目录构建的 fastgpt-agent-sandbox:latest，在其基础上注入 Sync Agent
 #
 # 构建顺序：
-#   1. cd base && docker build -t skill-agent/sandbox:v1 .
-#   2. docker build -f Dockerfile.docker-runtime -t skill-agent/sandbox:with-sync .
-FROM skill-agent/sandbox:v1
+#   1. cd base && docker build -t fastgpt-agent-sandbox:latest .
+#   2. docker build -f Dockerfile.docker-runtime -t fastgpt-agent-sandbox:docker .
+FROM fastgpt-agent-sandbox:latest
 
 USER root
 
