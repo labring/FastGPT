@@ -100,6 +100,48 @@
         "stream": false
       }
     }
+    },
+    {
+      "provider": "Gemini",
+      "model": "gemini-3.1-pro-preview",
+      "name": "Gemini 3.1 Pro",
+      "maxContext": 1000000,
+      "maxResponse": 64000,
+      "quoteMaxToken": 1000000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": true,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {},
+      "fieldMap": {}
+    },
+    {
+      "provider": "Gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "name": "Gemini 3.1 Flash Lite",
+      "maxContext": 1000000,
+      "maxResponse": 64000,
+      "quoteMaxToken": 1000000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": true,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {},
+      "fieldMap": {}
   ],
   "vectorModels": [
     {
