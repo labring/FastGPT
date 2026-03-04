@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SYNC_PATH=${SYNC_PATH:-/workspace}
-BUCKET_PATH="minio/${MINIO_BUCKET}/sessions/${SESSION_ID}"
+BUCKET_PATH="minio/${MINIO_BUCKET}/agent-sessions/${SESSION_ID}"
 SYNC_INTERVAL=${SYNC_INTERVAL:-60}
 HTTP_PORT=${HTTP_PORT:-8081}
 STATE_DIR="${STATE_DIR:-/tmp/sync-state}"

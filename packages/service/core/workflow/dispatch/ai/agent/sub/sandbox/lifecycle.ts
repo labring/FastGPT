@@ -288,7 +288,7 @@ export async function createAgentSandbox(
     } else {
       // Docker 模式：通过环境变量注入 SESSION_ID，sync agent 据此确定 MinIO 数据路径
       await sandbox.create({
-        image: { repository: 'skill-agent/sandbox', tag: 'with-sync' },
+        image: { repository: 'fastgpt-agent-sandbox', tag: 'docker' },
         timeout: defaults.timeout,
         entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),

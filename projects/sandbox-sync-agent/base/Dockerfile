@@ -1,8 +1,8 @@
 # Skill Sandbox 基础镜像
 # 提供 code-server 开发环境，供 K8s Sidecar 和 Docker 双进程两种运行时使用
 #
-# 构建：docker build -t skill-agent/sandbox:v1 .
-# 产物：skill-agent/sandbox:v1
+# 构建：docker build -t fastgpt-agent-sandbox:latest .
+# 产物：fastgpt-agent-sandbox:latest
 FROM ubuntu:24.04
 
 # Avoid prompts during installation
@@ -10,6 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    vim-tiny \
+    tree \
     unzip \
     curl \
     ca-certificates \
