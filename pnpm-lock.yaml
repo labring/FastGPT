@@ -20652,7 +20652,10 @@ snapshots:
       concat-stream: 2.0.0
       type-is: 1.6.18
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 7ccf333ad (lock)
 <<<<<<< HEAD
       xtend: 4.0.2
 =======
@@ -20661,7 +20664,12 @@ snapshots:
       xtend: 4.0.2
 >>>>>>> 24426556e (sandbxo in agent)
 >>>>>>> fff1be06e (sandbxo in agent)
+<<<<<<< HEAD
 >>>>>>> 8026306d6 (sandbxo in agent)
+=======
+=======
+>>>>>>> 8be313ac6 (lock)
+>>>>>>> 7ccf333ad (lock)
 
   mysql2@3.13.0:
     dependencies:
@@ -20705,7 +20713,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+<<<<<<< HEAD
   next-i18next@15.4.2(i18next@23.16.8)(next@16.1.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+=======
+  next-i18next@15.4.2(i18next@23.16.8)(next@15.5.12(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+>>>>>>> 8be313ac6 (lock)
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
@@ -21384,11 +21396,8 @@ snapshots:
 
   process-warning@5.0.0: {}
 
-<<<<<<< HEAD
-=======
   process@0.11.10: {}
 
->>>>>>> 24426556e (sandbxo in agent)
   prop-types@15.8.1:
     dependencies:
       loose-envify: 1.4.0
