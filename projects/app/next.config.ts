@@ -142,4 +142,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '../../')
 };
 
-export default withRspack(withBundleAnalyzer(nextConfig));
+const configWithPluginsExceptWithRspack = withBundleAnalyzer(nextConfig);
+
+export default isDev
+  ? withRspack(configWithPluginsExceptWithRspack)
+  : configWithPluginsExceptWithRspack;

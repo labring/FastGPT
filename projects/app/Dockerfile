@@ -74,7 +74,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
-COPY --from=maindeps /app/projects/app/node_modules/immer ./node_modules/immer
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
 # copy config
