@@ -200,7 +200,7 @@ export function validateSkillPackage(data: any): { valid: boolean; error?: strin
     return { valid: false, error: 'Invalid package format' };
   }
 
-  const { skill, markdown } = data;
+  const { skill } = data;
 
   // Check required fields
   if (!skill || typeof skill !== 'object') {
@@ -213,10 +213,6 @@ export function validateSkillPackage(data: any): { valid: boolean; error?: strin
 
   if (skill.name.length > 50) {
     return { valid: false, error: 'Skill name must be less than 50 characters' };
-  }
-
-  if (!markdown || typeof markdown !== 'string' || markdown.trim().length === 0) {
-    return { valid: false, error: 'Skill markdown (SKILL.md content) is required' };
   }
 
   // Validate description length
@@ -295,7 +291,6 @@ export function createSkillTemplate(name: string): SkillPackageType {
       description: 'Enter a description for your skill',
       category: ['other'],
       config: {}
-    },
-    markdown: `# ${name || 'New Skill'}\n\n## Description\n\nDescribe what this skill does and how to use it.\n\n## Parameters\n\nList the parameters this skill accepts.\n\n## Examples\n\nProvide examples of how to use this skill.\n`
+    }
   };
 }

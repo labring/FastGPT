@@ -32,27 +32,6 @@ const AgentSkillsVersionSchema = new Schema({
     type: String,
     default: ''
   },
-  // Snapshot of skill data
-  name: {
-    type: String,
-    required: true
-  },
-  markdown: {
-    type: String,
-    required: true
-  },
-  config: {
-    type: Object,
-    default: {}
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  category: {
-    type: [String],
-    default: []
-  },
   // Storage information
   storage: {
     bucket: {

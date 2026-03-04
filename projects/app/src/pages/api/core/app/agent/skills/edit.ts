@@ -8,8 +8,6 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 /**
- * POST /api/core/app/agent/skills/sandbox/edit
- *
  * Create an edit-debug sandbox for a skill.
  * Returns an SSE stream with sandboxStatus events; the final 'ready' event contains endpoint info.
  */

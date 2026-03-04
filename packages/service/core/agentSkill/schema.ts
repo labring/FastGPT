@@ -22,10 +22,6 @@ const AgentSkillsSchema = new Schema({
     type: String,
     default: ''
   },
-  markdown: {
-    type: String,
-    required: true
-  },
   author: {
     type: String,
     default: ''

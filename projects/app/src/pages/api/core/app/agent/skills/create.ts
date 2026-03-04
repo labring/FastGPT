@@ -32,27 +32,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Get request body
-    const {
-      name,
-      description,
-      markdown,
-      category = [],
-      config = {},
-      avatar
-    } = req.body as CreateSkillBody;
+    const { name, description, category = [], config = {}, avatar } = req.body as CreateSkillBody;
 
     // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return jsonRes(res, {
         code: 400,
         error: 'Skill name is required'
-      });
-    }
-
-    if (!markdown || typeof markdown !== 'string' || markdown.trim().length === 0) {
-      return jsonRes(res, {
-        code: 400,
-        error: 'Skill markdown is required'
       });
     }
 
@@ -86,8 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 1. Build SKILL.md content
       const skillMd = buildSkillMd({
         name: name.trim(),
-        description: description?.trim() || '',
-        markdown: markdown.trim()
+        description: description?.trim() || ''
       });
 
       // 2. Create ZIP package
@@ -101,7 +86,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           name: name.trim(),
           description: description?.trim() || '',
-          markdown: markdown.trim(),
           author: userId || '',
           category: category.length > 0 ? category : [AgentSkillCategoryEnum.other],
           config,
@@ -130,11 +114,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           tmbId,
           version: 0,
           versionName: 'Initial creation',
-          name: name.trim(),
-          markdown: markdown.trim(),
-          config: config || {},
-          description: description?.trim() || '',
-          category: category.length > 0 ? category : [AgentSkillCategoryEnum.other],
           storage: storageInfo
         },
         session

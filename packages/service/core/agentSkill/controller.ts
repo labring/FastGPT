@@ -13,7 +13,6 @@ import { createVersion } from './versionController';
 type CreateSkillData = {
   name: string;
   description: string;
-  markdown: string;
   author: string;
   category: string[];
   config: Record<string, any>;
@@ -204,14 +203,13 @@ export async function importSkill(
   zipBuffer: Buffer,
   session?: ClientSession
 ): Promise<string> {
-  const { skill, markdown } = packageData;
+  const { skill } = packageData;
 
   // Create skill record first
   const newSkill = new MongoAgentSkills({
     source: AgentSkillSourceEnum.personal,
     name: skill.name,
     description: skill.description,
-    markdown,
     author: userId,
     category: skill.category,
     config: skill.config || {},
@@ -245,11 +243,6 @@ export async function importSkill(
       tmbId,
       version: 0,
       versionName: 'Initial import',
-      name: skill.name,
-      markdown,
-      config: skill.config || {},
-      description: skill.description,
-      category: skill.category,
       storage: storageInfo
     },
     session

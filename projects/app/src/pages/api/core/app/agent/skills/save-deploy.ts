@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/service/core/agentSkill/zipBuilder';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkill/utils';
 import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkill/sandboxSchema';
-import { MongoAgentSkill } from '@fastgpt/service/core/agentSkill/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/agentSkill/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
 import type {
   SaveDeploySkillBody,
@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Parse request body
-    const { skillId, versionName, description } = req.body as SaveDeploySkillBody;
+    const { skillId, versionName } = req.body as SaveDeploySkillBody;
 
     // Validate required parameters
     if (!skillId) {
@@ -181,17 +181,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error(`Failed to upload package: ${error.message || 'Unknown error'}`);
       }
 
-      // Prepare version data - ensure markdown is string
+      // Prepare version data
       const versionData = {
         skillId,
         tmbId,
         version: nextVersion,
         versionName: versionName || `v${nextVersion}`,
-        name: skillMetadata.name || skill.name,
-        markdown: extractResult.skillMd || '',
-        config: skillMetadata.config || skill.config,
-        description: description || skillMetadata.description || skill.description,
-        category: skillMetadata.category || skill.category,
         storage: storageInfo,
         isActive: true
       };
@@ -212,7 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Update skill current version and metadata
       try {
-        await MongoAgentSkill.updateOne(
+        await MongoAgentSkills.updateOne(
           { _id: skillId },
           {
             $set: {
