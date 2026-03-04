@@ -22,7 +22,7 @@ import { MongoAgentSkills } from '../../../../../../agentSkill/schema';
 import { MongoSkillSandbox } from '../../../../../../agentSkill/sandboxSchema';
 import { MongoAgentSkillsVersion } from '../../../../../../agentSkill/versionSchema';
 import { downloadSkillPackage } from '../../../../../../agentSkill/storage';
-import { scanSkillDirectories } from '../../../../../../agentSkill/zipBuilder';
+import { parseSkillMarkdown } from '../../../../../../agentSkill/utils';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
@@ -94,11 +94,48 @@ function mergeSkillWithVersion(
   return { ...skill };
 }
 
-/** Download and extract each skill package into the sandbox work directory.
+/** Dynamically discover all deployed skill directories in the sandbox by locating SKILL.md files.
+ * Example:
+ * $ find /workspace/projects -name "SKILL.md" -maxdepth 5 2>/dev/null
+ * /workspace/projects/skill-creator/SKILL.md
+ * /workspace/projects/deep-research/SKILL.md
+ * /workspace/projects/science/SKILL.md
  *
- * Each ZIP may contain multiple top-level skill directories (multi-skill package).
- * Returns DeployedSkillInfo[] for all successfully deployed skill directories.
+ * Runs `find` inside the sandbox to locate SKILL.md files up to maxdepth 2,
+ * then reads each file and parses the frontmatter for name/description.
+ * This replaces the pre-scan approach and works with arbitrary ZIP structures.
  */
+async function discoverSkillsInSandbox(
+  sandbox: ISandbox,
+  workDirectory: string
+): Promise<DeployedSkillInfo[]> {
+  // search 可能存在耗时性能问题，可以引用find命令加上 maxdepth 深度目录约束
+  const searchResults = await sandbox.search('SKILL.md', workDirectory);
+  if (!searchResults || searchResults.length === 0) return [];
+
+  const paths = searchResults.map((r) => r.path);
+  const files = await sandbox.readFiles(paths);
+
+  const result: DeployedSkillInfo[] = [];
+  for (const file of files) {
+    const content =
+      file.content instanceof Uint8Array
+        ? new TextDecoder('utf-8').decode(file.content)
+        : String(file.content);
+    const { frontmatter } = parseSkillMarkdown(content);
+    if (!frontmatter.name) continue;
+    const directory = file.path.replace(/\/SKILL\.md$/i, '');
+    result.push({
+      name: String(frontmatter.name),
+      description: frontmatter.description ? String(frontmatter.description) : '',
+      directory,
+      skillMdPath: file.path
+    });
+  }
+  return result;
+}
+
+/** Download and extract each skill package into the sandbox work directory. */
 async function deploySkillsToSandbox(
   sandbox: ISandbox,
   deployableSkills: SkillDoc[],
@@ -106,9 +143,7 @@ async function deploySkillsToSandbox(
   workDirectory: string,
   onProgress?: (status: SandboxStatusItemType) => void,
   sessionId?: string
-): Promise<DeployedSkillInfo[]> {
-  const allDeployedSkills: DeployedSkillInfo[] = [];
-
+): Promise<void> {
   for (const skill of deployableSkills) {
     const version = versionMap.get(String(skill._id))!;
     onProgress?.({
@@ -118,9 +153,6 @@ async function deploySkillsToSandbox(
     });
     try {
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
-
-      // Scan ZIP for skill directories before deploying
-      const skillDirs = await scanSkillDirectories(packageBuffer);
 
       // Write raw ZIP to sandbox and extract in-place (preserves multi-skill directory structure)
       const zipPath = `${workDirectory}/package_${skill.name}.zip`;
@@ -135,34 +167,11 @@ async function deploySkillsToSandbox(
           skillName: skill.name,
           stderr: extractResult.stderr
         });
-        continue;
-      }
-
-      // Build DeployedSkillInfo for each discovered skill directory
-      for (const dir of skillDirs) {
-        const directory = dir.dirName ? `${workDirectory}/${dir.dirName}` : workDirectory;
-        const skillMdPath = dir.dirName
-          ? `${workDirectory}/${dir.dirName}/SKILL.md`
-          : `${workDirectory}/SKILL.md`;
-
-        allDeployedSkills.push({
-          name: dir.name,
-          description: dir.description,
-          directory,
-          skillMdPath
-        });
-
-        logger.info('[Agent Sandbox] Skill directory deployed', {
-          name: dir.name,
-          directory
-        });
       }
     } catch (error) {
       logger.error('[Agent Sandbox] Failed to deploy skill', { skillName: skill.name, error });
     }
   }
-
-  return allDeployedSkills;
 }
 
 // --- Exported lifecycle functions ---
@@ -220,17 +229,14 @@ export async function createAgentSandbox(
     const mergedSkills = skills.map((skill) =>
       mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id)))
     );
+    // Dynamically discover deployed skills instead of reconstructing from DB name assumptions
+    const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
     return {
       sandbox,
       providerSandboxId: existingDoc.sandbox.sandboxId,
       sessionId,
       skills: mergedSkills,
-      deployedSkills: mergedSkills.map((s) => ({
-        name: s.name,
-        description: s.description,
-        directory: `${defaults.workDirectory}/${s.name}`,
-        skillMdPath: `${defaults.workDirectory}/${s.name}/SKILL.md`
-      })),
+      deployedSkills,
       workDirectory: defaults.workDirectory,
       isReady: true
     };
@@ -266,7 +272,6 @@ export async function createAgentSandbox(
 
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer', isWarmStart: false });
     if (providerConfig.runtime === 'kubernetes') {
-      // K8s 模式：SESSION_ID 由 Sync Agent Sidecar 从 Pod label/metadata 读取
       await sandbox.create({
         image: defaults.defaultImage,
         timeout: defaults.timeout,
@@ -306,8 +311,8 @@ export async function createAgentSandbox(
       sessionId
     });
 
-    // Step 4: Deploy skill packages
-    const deployedSkills = await deploySkillsToSandbox(
+    // Step 4: Deploy skill packages, then dynamically discover skills in sandbox
+    await deploySkillsToSandbox(
       sandbox,
       deployableSkills,
       versionMap,
@@ -315,6 +320,7 @@ export async function createAgentSandbox(
       onProgress,
       sessionId
     );
+    const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
 
     // Step 5: Persist to MongoDB
     await MongoSkillSandbox.create({
@@ -443,32 +449,8 @@ export async function connectEditDebugSandbox(
     providerSandboxId: sandboxDoc.sandbox.sandboxId
   });
 
-  // Rebuild deployedSkills from persisted metadata, with fallback for legacy records
-  let deployedSkills: DeployedSkillInfo[];
-  const deployedSkillsMeta = sandboxDoc.metadata?.get('deployedSkills');
-
-  if (deployedSkillsMeta) {
-    type PersistedSkillDir = { name: string; description: string; dirName: string };
-    const dirs = JSON.parse(deployedSkillsMeta as string) as PersistedSkillDir[];
-    deployedSkills = dirs.map((d) => ({
-      name: d.name,
-      description: d.description,
-      directory: d.dirName ? `${defaults.workDirectory}/${d.dirName}` : defaults.workDirectory,
-      skillMdPath: d.dirName
-        ? `${defaults.workDirectory}/${d.dirName}/SKILL.md`
-        : `${defaults.workDirectory}/SKILL.md`
-    }));
-  } else {
-    // Legacy fallback: single-skill record without deployedSkills metadata
-    deployedSkills = [
-      {
-        name: skill.name,
-        description: skill.description,
-        directory: `${defaults.workDirectory}/${skill.name}`,
-        skillMdPath: `${defaults.workDirectory}/${skill.name}/SKILL.md`
-      }
-    ];
-  }
+  // Dynamically discover deployed skills instead of reading from persisted metadata
+  const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
 
   return {
     sandbox,

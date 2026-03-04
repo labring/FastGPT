@@ -89,9 +89,9 @@ export async function createSandboxSkillsCapability(
           if (workflowStreamResponse) {
             for (const path of parsed.data.paths) {
               if (path.endsWith('/SKILL.md')) {
-                const segments = path.split('/');
-                const skillName = segments[segments.length - 2];
-                const skill = sandboxContext.skills.find((s) => s.name === skillName);
+                const skill = sandboxContext.deployedSkills.find(
+                  (s) => s.skillMdPath === path || path.startsWith(s.directory + '/')
+                );
                 if (skill) {
                   workflowStreamResponse({
                     event: SseResponseEventEnum.skillCall,
@@ -99,7 +99,7 @@ export async function createSandboxSkillsCapability(
                       skill: {
                         name: skill.name,
                         description: skill.description,
-                        avatar: skill.avatar || '',
+                        avatar: '',
                         skillMdPath: path
                       }
                     }

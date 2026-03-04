@@ -20,7 +20,12 @@
     "editor.inlineSuggest.suppressInSnippetMode": false,
     "workbench.commandPalette.showAskInChat": false,
     "workbench.commandPalette.experimental.enableNaturalLanguageSearch": false,
-    "workbench.statusBar.visible": false,
     "workbench.tree.enableStickyScroll": false,
-    "chat.disableAIFeatures": true
+    "chat.disableAIFeatures": true,
+    "workbench.activityBar.location": "hidden",
+    "workbench.statusBar.visible": false,
+    "workbench.editor.showTabs": "none",
+    "window.commandCenter": false,
+    "workbench.editor.editorActionsLocation": "hidden",
+    "workbench.layoutControl.enabled": false
 }
