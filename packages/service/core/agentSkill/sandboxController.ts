@@ -195,7 +195,7 @@ export async function createEditDebugSandbox(
       });
     } else {
       await sandbox.create({
-        image: { repository: 'skill-agent/sandbox', tag: 'with-sync' },
+        image: { repository: 'fastgpt-agent-sandbox', tag: 'docker' },
         timeout: sandboxTimeout,
         entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),

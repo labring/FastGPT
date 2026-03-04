@@ -86,22 +86,23 @@ export function buildDockerSyncEnv(
   syncPath: string,
   enableCodeServer: boolean
 ): Record<string, string> {
-  const minioEndpoint = process.env.MINIO_ENDPOINT;
-  const minioAccessKey = process.env.MINIO_ACCESS_KEY;
-  const minioSecretKey = process.env.MINIO_SECRET_KEY;
+  const endpoint = process.env.STORAGE_S3_ENDPOINT;
+  const accessKey = process.env.STORAGE_ACCESS_KEY_ID;
+  const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY;
+  const bucket = process.env.STORAGE_PRIVATE_BUCKET || 'fastgpt-private';
 
-  if (!minioEndpoint || !minioAccessKey || !minioSecretKey) {
+  if (!endpoint || !accessKey || !secretKey) {
     throw new Error(
-      'Missing required MinIO configuration: MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY must be set'
+      'Missing required storage configuration: STORAGE_S3_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY must be set'
     );
   }
 
   return {
     SESSION_ID: sessionId,
-    MINIO_ENDPOINT: minioEndpoint,
-    MINIO_ACCESS_KEY: minioAccessKey,
-    MINIO_SECRET_KEY: minioSecretKey,
-    MINIO_BUCKET: process.env.MINIO_BUCKET || 'skill-artifacts',
+    MINIO_ENDPOINT: endpoint,
+    MINIO_ACCESS_KEY: accessKey,
+    MINIO_SECRET_KEY: secretKey,
+    MINIO_BUCKET: bucket,
     SYNC_PATH: syncPath,
     ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
   };
