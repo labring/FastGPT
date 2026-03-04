@@ -2,23 +2,6 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { z } from 'zod';
 
 /**
- * 获取沙盒 Web IDE URL
- */
-export const SandboxWebIdeUrlQuerySchema = z.object({
-  appId: z.string(),
-  chatId: z.string(),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-});
-
-export const SandboxWebIdeUrlResponseSchema = z.object({
-  url: z.string().url(),
-  expireAt: z.coerce.date()
-});
-
-export type SandboxWebIdeUrlQuery = z.infer<typeof SandboxWebIdeUrlQuerySchema>;
-export type SandboxWebIdeUrlResponse = z.infer<typeof SandboxWebIdeUrlResponseSchema>;
-
-/**
  * 文件操作 - 统一请求体
  */
 export const SandboxFileOperationBodySchema = z.discriminatedUnion('action', [
@@ -79,3 +62,19 @@ export const SandboxFileOperationResponseSchema = z.union([
 ]);
 
 export type SandboxFileOperationResponse = z.infer<typeof SandboxFileOperationResponseSchema>;
+
+/**
+ * 检查沙盒是否存在
+ */
+export const SandboxCheckExistBodySchema = z.object({
+  appId: z.string(),
+  chatId: z.string(),
+  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
+});
+
+export const SandboxCheckExistResponseSchema = z.object({
+  exists: z.boolean().describe('沙盒是否存在')
+});
+
+export type SandboxCheckExistBody = z.infer<typeof SandboxCheckExistBodySchema>;
+export type SandboxCheckExistResponse = z.infer<typeof SandboxCheckExistResponseSchema>;

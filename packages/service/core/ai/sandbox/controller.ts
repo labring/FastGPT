@@ -47,22 +47,21 @@ export class SandboxInstance extends SealosDevboxAdapter {
   }
 
   async ensureAvailable() {
-    await mongoSessionRun(async (session) => {
-      await MongoSandboxInstance.findOneAndUpdate(
-        { sandboxId: this.sandboxId },
-        {
-          $set: { status: SandboxStatusEnum.running, lastActiveAt: new Date() },
-          $setOnInsert: {
-            appId: this.appId,
-            userId: this.userId,
-            chatId: this.chatId,
-            createdAt: new Date()
-          }
-        },
-        { upsert: true, session }
-      );
-      await this.create({ image: { repository: 'ubuntu', tag: '22.04' } });
-    });
+    await MongoSandboxInstance.findOneAndUpdate(
+      { sandboxId: this.sandboxId },
+      {
+        $set: { status: SandboxStatusEnum.running, lastActiveAt: new Date() },
+        $setOnInsert: {
+          appId: this.appId,
+          userId: this.userId,
+          chatId: this.chatId,
+          createdAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    await this.create({ image: { repository: 'ubuntu', tag: '22.04' } });
   }
 
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {

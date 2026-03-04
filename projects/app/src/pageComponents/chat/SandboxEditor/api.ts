@@ -78,3 +78,12 @@ export const downloadSandbox = async (data: {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
 };
+
+/**
+ * 检查沙盒是否存在
+ */
+export const checkSandboxExist = async (data: {
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: any;
+}) => POST<{ exists: boolean }>('/core/ai/sandbox/checkExist', data);

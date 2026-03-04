@@ -70,8 +70,8 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   }, [openedFiles, activeFilePath]);
 
   // 加载目录 - 改为普通异步函数,避免 useRequest 的并发问题
-  const loadDirectory = async (path: string, level: number) => {
-    try {
+  const { runAsync: loadDirectory } = useRequest(
+    async (path: string, level: number) => {
       const data = await listSandboxFiles({ appId, chatId, path });
       const nodes: TreeNode[] = (data.files || []).map((file) => ({
         ...file,
@@ -89,11 +89,11 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
       });
 
       return nodes;
-    } catch (error) {
-      console.error('Load directory failed:', path, error);
-      throw error;
+    },
+    {
+      manual: true
     }
-  };
+  );
 
   // 初始加载根目录的 loading 状态
   const [loadingRoot, setLoadingRoot] = useState(false);
@@ -412,7 +412,15 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
             w="16px"
             color={node.type === 'directory' ? '#EF7623' : 'black'}
           />
-          <Text flex={1} noOfLines={1} fontWeight={isActive ? '500' : '500'} letterSpacing="0.5px">
+          <Text
+            flex={1}
+            minW={0}
+            noOfLines={1}
+            overflow="hidden"
+            textOverflow="ellipsis"
+            fontWeight={isActive ? '500' : '500'}
+            letterSpacing="0.5px"
+          >
             {node.name}
           </Text>
         </Flex>
@@ -437,10 +445,10 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
     >
       {fileTree.length > 0 ? (
         <>
-          {' '}
           {/* 左侧: 文件浏览器 */}
           <Box
             flex="0 0 224px"
+            w={0}
             borderRight="1px solid"
             borderColor="myGray.200"
             bg="myGray.25"

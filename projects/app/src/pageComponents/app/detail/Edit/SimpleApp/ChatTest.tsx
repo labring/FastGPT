@@ -41,7 +41,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   });
 
   // Sandbox state
-  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
+  const { SandboxEditorModal, SandboxEntryIcon, setSandboxExists } = useSandboxEditor({
     appId: appDetail._id,
     chatId
   });
@@ -81,9 +81,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
 
-          <Box mr={2}>
-            <SandboxEntryIcon size={'smSquare'} />
-          </Box>
+          <SandboxEntryIcon size={'smSquare'} mr={2} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -95,6 +93,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
               onClick={(e) => {
                 e.stopPropagation();
                 restartChat();
+                setSandboxExists(false);
               }}
             />
           </MyTooltip>
