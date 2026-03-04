@@ -108,7 +108,10 @@ export const chats2GPTMessages = ({
         if (value.stepId) return;
 
         if ((value.tools || value.tool) && reserveTool) {
-          const tools = value.tools || [value.tool!];
+          const tools = value.tools?.length ? value.tools : value.tool ? [value.tool] : [];
+          if (tools.length === 0) {
+            return;
+          }
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
           tools.forEach((tool) => {

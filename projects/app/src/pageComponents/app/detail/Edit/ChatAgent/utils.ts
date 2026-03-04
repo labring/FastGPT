@@ -164,6 +164,13 @@ export function agentForm2AppWorkflow(
               value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
+              key: NodeInputKeyEnum.aiChatVision,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: true
+            },
+            {
               key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
