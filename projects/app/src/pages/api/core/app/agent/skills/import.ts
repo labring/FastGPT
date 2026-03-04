@@ -3,15 +3,10 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { importSkill } from '@fastgpt/service/core/agentSkill/controller';
-import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkill/utils';
-import {
-  repackFileMapAsZip,
-  standardizePackageZip
-} from '@fastgpt/service/core/agentSkill/zipBuilder';
+import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkill/zipBuilder';
 import {
   getSupportedArchiveFormat,
-  extractToFileMap,
-  findAllSkillMdKeys
+  extractToFileMap
 } from '@fastgpt/service/core/agentSkill/archiveUtils';
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkill/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkill/type';
@@ -85,58 +80,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 400, error: 'Archive is empty' });
     }
 
-    // Find all SKILL.md paths (multi-skill or single-skill)
-    const skillMdKeys = findAllSkillMdKeys(fileMap);
-    if (skillMdKeys.length === 0) {
-      return jsonRes(res, {
-        code: 400,
-        error: 'No SKILL.md found in archive (expected in root or top-level subdirectories)'
-      });
-    }
+    // Derive package-level name from caller-supplied value or archive filename
+    const pkgName =
+      body.name ||
+      (file.originalname ?? 'package').replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim() ||
+      'package';
+    const pkgDescription = body.description ?? '';
 
-    // Decide package-level name / description
-    let pkgName: string;
-    let pkgDescription: string;
-
-    if (body.name) {
-      // Caller supplied name explicitly — use it regardless of skill count
-      pkgName = body.name;
-      pkgDescription = body.description ?? '';
-    } else if (skillMdKeys.length === 1) {
-      // Single-skill package: fall back to SKILL.md frontmatter
-      const markdown = fileMap[skillMdKeys[0]].toString('utf-8');
-      const { skill, error: extractError } = extractSkillFromMarkdown(markdown);
-      if (extractError || !skill) {
-        return jsonRes(res, {
-          code: 400,
-          error: `Failed to parse SKILL.md: ${extractError || 'Unknown error'}`
-        });
-      }
-      pkgName = skill.name;
-      pkgDescription = (skill.description as string) ?? '';
-    } else {
-      // Multi-skill without explicit name: derive from archive filename
-      const archiveName =
-        (file.originalname ?? 'package').replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim() ||
-        'package';
-      pkgName = archiveName;
-      pkgDescription = body.description ?? '';
-    }
-
-    // Non-blocking validation of each SKILL.md (warn only, do not block import)
-    for (const skillMdKey of skillMdKeys) {
-      const markdown = fileMap[skillMdKey].toString('utf-8');
-      const { error: validationError } = extractSkillFromMarkdown(markdown);
-      if (validationError) {
-        console.warn(
-          `[import skill] SKILL.md validation warning at "${skillMdKey}": ${validationError}`
-        );
-      }
-    }
-
-    // Repack the entire fileMap as ONE ZIP, then normalize directory names to canonical names
-    const rawZipBuffer = await repackFileMapAsZip(fileMap);
-    const { buffer: zipBuffer } = await standardizePackageZip(rawZipBuffer);
+    // Repack the entire fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
+    const zipBuffer = await repackFileMapAsZip(fileMap);
 
     // Build skill package using package-level metadata only
     const skillPackage: SkillPackageType = {
