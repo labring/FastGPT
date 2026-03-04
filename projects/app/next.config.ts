@@ -1,10 +1,11 @@
+// @ts-nocheck
+
 import type { NextConfig } from 'next';
 import path from 'path';
 import withBundleAnalyzerInit from '@next/bundle-analyzer';
+import withRspack from 'next-rspack';
 
-const withBundleAnalyzer = withBundleAnalyzerInit({
-  enabled: process.env.ANALYZE === 'true'
-});
+const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === 'true' });
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -55,12 +56,21 @@ const nextConfig: NextConfig = {
       {
         module: /@scalar\/api-reference-react/,
         message: /autoprefixer/
+      },
+      {
+        module: /any-promise[\\/]register\.js$/,
+        message: /Critical dependency: the request of a dependency is an expression/
+      },
+      {
+        module: /bullmq[\\/]dist[\\/](cjs|esm)[\\/]classes[\\/]child-processor\.js$/,
+        message: /Critical dependency: the request of a dependency is an expression/
       }
     ];
 
     Object.assign(config.resolve!.alias, {
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
+      'gcp-metadata': false,
       snappy: false,
       aws4: false,
       'mongodb-client-encryption': false,
@@ -132,4 +142,4 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '../../')
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default withRspack(withBundleAnalyzer(nextConfig));
