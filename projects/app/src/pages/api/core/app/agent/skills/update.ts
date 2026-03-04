@@ -27,8 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Get request body
-    const { skillId, name, description, markdown, category, config, avatar } =
-      req.body as UpdateSkillBody;
+    const { skillId, name, description, category, config, avatar } = req.body as UpdateSkillBody;
 
     // Validate skillId
     if (!skillId) {
@@ -84,16 +83,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, {
         code: 400,
         error: 'Description must be less than 500 characters'
-      });
-    }
-
-    // markdown cannot be directly modified through this API
-    // Use version management to update skill content
-    if (markdown !== undefined) {
-      return jsonRes(res, {
-        code: 400,
-        error:
-          'Cannot directly modify markdown through this API. Use version management workflow instead.'
       });
     }
 

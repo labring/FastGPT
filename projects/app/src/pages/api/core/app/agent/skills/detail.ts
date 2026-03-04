@@ -51,7 +51,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source: skill.source,
       name: skill.name,
       description: skill.description,
-      markdown: skill.markdown,
       author: skill.author,
       category: skill.category,
       config: skill.config,

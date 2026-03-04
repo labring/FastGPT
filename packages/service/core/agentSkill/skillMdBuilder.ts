@@ -8,15 +8,13 @@
 export type BuildSkillMdParams = {
   name: string;
   description: string;
-  markdown: string;
 };
 
 /**
- * Build a complete SKILL.md content with frontmatter and body
+ * Build a complete SKILL.md content with frontmatter only
  */
 export function buildSkillMd(params: BuildSkillMdParams): string {
-  const frontmatter = generateFrontmatter(params.name, params.description);
-  return `${frontmatter}\n\n${params.markdown}`;
+  return generateFrontmatter(params.name, params.description);
 }
 
 /**

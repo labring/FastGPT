@@ -69,10 +69,7 @@ export async function createSandboxSkillsCapability(
     });
   }
 
-  const systemPrompt = buildSkillsContextPrompt(
-    sandboxContext.skills,
-    sandboxContext.workDirectory
-  );
+  const systemPrompt = buildSkillsContextPrompt(sandboxContext.deployedSkills);
 
   return {
     id: 'sandbox-skills',
