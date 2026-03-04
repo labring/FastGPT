@@ -21,6 +21,9 @@ This guide covers environment variable configuration for object storage provider
 - `STORAGE_SECRET_ACCESS_KEY` Secret Access Key for the service credentials
 - `STORAGE_PUBLIC_BUCKET` FastGPT public resource bucket name
 - `STORAGE_PRIVATE_BUCKET` FastGPT private resource bucket name
+- `STORAGE_TRANSFER_MODE` File transfer mode. Options:
+  - `proxy` (default): uploads and downloads are proxied by FastGPT backend; browser direct access to object storage is not required.
+  - `presigned`: uploads and downloads use object-storage presigned URLs (legacy-compatible mode).
 
 ### Self-Hosted MinIO and AWS S3
 
@@ -28,7 +31,7 @@ This guide covers environment variable configuration for object storage provider
 > In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS, RustFS, etc.
 
 - `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This address is used when generating signed file upload URLs.
+- `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). When `STORAGE_TRANSFER_MODE=presigned`, this is used to generate upload/download presigned URLs.
 - `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
 
@@ -43,6 +46,7 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_TRANSFER_MODE=proxy
 STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_FORCE_PATH_STYLE=true

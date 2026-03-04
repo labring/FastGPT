@@ -35,6 +35,24 @@ describe('parseS3UploadError', () => {
     expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '1 KB' });
   });
 
+  it('should handle proxy json EntityTooLarge error', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            message: 'EntityTooLarge'
+          }
+        }
+      },
+      maxSize: 2 * 1024 * 1024
+    });
+
+    expect(result).toBe('common:error:s3_upload_file_too_large:{"max":"2 MB"}');
+    expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '2 MB' });
+  });
+
   it('should handle AccessDenied error', () => {
     const t = createTranslator();
     const result = parseS3UploadError({
@@ -42,6 +60,24 @@ describe('parseS3UploadError', () => {
       error: {
         response: {
           data: 'AccessDenied'
+        }
+      }
+    });
+
+    expect(result).toBe('common:error:s3_upload_auth_failed');
+    expect(t).toHaveBeenCalledWith('common:error:s3_upload_auth_failed');
+  });
+
+  it('should handle proxy json unauthorized error', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            statusText: 'unAuthFile',
+            message: 'error.unAuthFile'
+          }
         }
       }
     });

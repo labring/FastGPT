@@ -25,6 +25,22 @@ export function parseS3UploadError({
   if (error?.response?.data) {
     const data = error.response.data;
 
+    if (typeof data === 'object' && data !== null) {
+      const msg = `${data.message || ''}`.trim();
+      const statusText = `${data.statusText || ''}`.trim();
+
+      if (msg.includes('EntityTooLarge') || statusText.includes('EntityTooLarge')) {
+        return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
+      }
+      if (
+        msg.includes('unAuthFile') ||
+        statusText.includes('unAuthFile') ||
+        msg.includes('unAuthorization')
+      ) {
+        return t('common:error:s3_upload_auth_failed');
+      }
+    }
+
     // Try to parse XML error response
     if (typeof data === 'string') {
       if (data.includes('EntityTooLarge')) {

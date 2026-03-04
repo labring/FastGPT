@@ -7,6 +7,7 @@ const BoolSchema = z
   .pipe(z.boolean());
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
+const StorageTransferModeSchema = z.enum(['proxy', 'presigned']);
 
 export const env = createEnv({
   server: {
@@ -16,7 +17,9 @@ export const env = createEnv({
     LOG_ENABLE_OTEL: BoolSchema.default(false),
     LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
     LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
-    LOG_OTEL_URL: z.url().default('http://localhost:4318/v1/logs')
+    LOG_OTEL_URL: z.url().default('http://localhost:4318/v1/logs'),
+
+    STORAGE_TRANSFER_MODE: StorageTransferModeSchema.default('proxy')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
