@@ -54,6 +54,7 @@ export const masterCall = async ({
   systemPrompt,
   masterMessages,
   planMessages,
+  useVision,
   getSubAppInfo,
   getSubApp,
   completionTools,
@@ -64,6 +65,7 @@ export const masterCall = async ({
 }: DispatchAgentModuleProps & {
   masterMessages: ChatCompletionMessageParam[];
   planMessages: ChatCompletionMessageParam[];
+  useVision: boolean;
   systemPrompt?: string;
 
   getSubAppInfo: GetSubAppInfoFnType;
@@ -215,6 +217,7 @@ export const masterCall = async ({
       messages: requestMessages,
       model: getLLMModel(model),
       stream: true,
+      useVision,
       tools: isStepCall
         ? completionTools.filter((item) => item.function.name !== SubAppIds.plan)
         : completionTools
