@@ -6,7 +6,7 @@ import {
   CallToolRequestSchema,
   type CallToolResult,
   ListToolsRequestSchema
-} from '@modelcontextprotocol/sdk/types';
+} from '@modelcontextprotocol/sdk/types.js';
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';

@@ -35,7 +35,7 @@ import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum
 } from '@fastgpt/global/support/user/team/constant';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useCallback, useState, useMemo } from 'react';
