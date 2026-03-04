@@ -221,8 +221,7 @@ export const runToolCall = async (
               toolName: toolNode.name,
               toolAvatar: toolNode.avatar,
               functionName: call.function.name,
-              params: call.function.arguments ?? '',
-              response: ''
+              params: call.function.arguments ?? ''
             }
           }
         });
@@ -238,8 +237,7 @@ export const runToolCall = async (
             id: tool.id,
             toolName: '',
             toolAvatar: '',
-            params,
-            response: ''
+            params
           }
         }
       });

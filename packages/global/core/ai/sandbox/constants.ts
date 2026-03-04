@@ -13,11 +13,6 @@ export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxS
 // ---- 暂停阈值（分钟） ----
 export const SANDBOX_SUSPEND_MINUTES = 5;
 
-// ---- 环境变量 ----
-export const AGENT_SANDBOX_PROVIDER = process.env.AGENT_SANDBOX_PROVIDER;
-export const AGENT_SANDBOX_SEALOS_BASEURL = process.env.AGENT_SANDBOX_SEALOS_BASEURL;
-export const AGENT_SANDBOX_SEALOS_TOKEN = process.env.AGENT_SANDBOX_SEALOS_TOKEN;
-
 // ---- sandboxId 生成 ----
 export const generateSandboxId = (appId: string, userId: string, chatId: string): string => {
   return hashStr(`${appId}-${userId}-${chatId}`).slice(0, 16);

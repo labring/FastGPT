@@ -12,6 +12,12 @@ async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<SandboxCheckExistResponse>
 ): Promise<SandboxCheckExistResponse> {
+  if (!global.feConfigs?.show_agent_sandbox) {
+    return {
+      exists: false
+    };
+  }
+
   // 解析请求体
   const body = SandboxCheckExistBodySchema.parse(req.body);
   const { appId, chatId, outLinkAuthData } = body;

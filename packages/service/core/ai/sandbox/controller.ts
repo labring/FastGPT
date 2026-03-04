@@ -1,11 +1,9 @@
 import {
   generateSandboxId,
   SandboxStatusEnum,
-  SANDBOX_SUSPEND_MINUTES,
-  AGENT_SANDBOX_PROVIDER,
-  AGENT_SANDBOX_SEALOS_BASEURL,
-  AGENT_SANDBOX_SEALOS_TOKEN
+  SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
+import { env } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import { SealosDevboxAdapter, type ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -27,16 +25,16 @@ export class SandboxInstance extends SealosDevboxAdapter {
   private sandboxId: string;
 
   constructor(params: UnionIdType) {
-    if (AGENT_SANDBOX_PROVIDER !== 'sealos-devbox') {
-      throw new Error(`Unsupported sandbox provider: ${AGENT_SANDBOX_PROVIDER}`);
+    if (env.AGENT_SANDBOX_PROVIDER !== 'sealos-devbox') {
+      throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
     }
-    if (!AGENT_SANDBOX_SEALOS_BASEURL || !AGENT_SANDBOX_SEALOS_TOKEN) {
+    if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
       throw new Error('AGENT_SANDBOX_SEALOS_BASEURL / AGENT_SANDBOX_SEALOS_TOKEN required');
     }
 
     super({
-      baseUrl: AGENT_SANDBOX_SEALOS_BASEURL,
-      token: AGENT_SANDBOX_SEALOS_TOKEN,
+      baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
+      token: env.AGENT_SANDBOX_SEALOS_TOKEN,
       sandboxId: generateSandboxId(params.appId, params.userId, params.chatId)
     });
 
