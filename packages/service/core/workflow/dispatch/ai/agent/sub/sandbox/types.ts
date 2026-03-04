@@ -1,6 +1,14 @@
 import type { ISandbox } from '@anyany/sandbox_provider';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkill/type';
 
+// Info about a single skill directory discovered inside a deployed package.zip
+export type DeployedSkillInfo = {
+  name: string; // from SKILL.md frontmatter
+  description: string; // from SKILL.md frontmatter
+  directory: string; // absolute path in sandbox, e.g. /workspace/projects/my-skill
+  skillMdPath: string; // absolute SKILL.md path in sandbox
+};
+
 // Sandbox runtime context - shared across the entire agent lifecycle
 export type AgentSandboxContext = {
   sandbox: ISandbox;
@@ -8,6 +16,7 @@ export type AgentSandboxContext = {
   // 与 sync agent SESSION_ID 对应的会话 key，决定 MinIO 数据路径
   sessionId: string;
   skills: AgentSkillSchemaType[];
+  deployedSkills: DeployedSkillInfo[];
   workDirectory: string;
   isReady: boolean;
 };

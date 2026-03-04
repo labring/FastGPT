@@ -34,7 +34,6 @@ export type ListSkillsResponse = {
 export type CreateSkillBody = {
   name: string;
   description: string;
-  markdown: string;
   category?: `${AgentSkillCategoryEnum}`[];
   config?: AgentSkillConfigType;
   avatar?: string;
@@ -47,7 +46,6 @@ export type UpdateSkillBody = {
   skillId: string;
   name?: string;
   description?: string;
-  markdown?: string;
   category?: `${AgentSkillCategoryEnum}`[];
   config?: AgentSkillConfigType;
   avatar?: string;
@@ -72,7 +70,6 @@ export type GetSkillDetailResponse = {
   source: `${AgentSkillSourceEnum}`;
   name: string;
   description: string;
-  markdown: string;
   author: string;
   category: `${AgentSkillCategoryEnum}`[];
   config: AgentSkillConfigType;
@@ -85,11 +82,11 @@ export type GetSkillDetailResponse = {
 
 // ==================== Import Skill ====================
 export type ImportSkillBody = {
-  name?: string;
-  description?: string;
+  name?: string; // required for multi-skill packages; optional for single-skill (falls back to SKILL.md)
+  description?: string; // optional, fallback to SKILL.md or ''
 };
 
-export type ImportSkillResponse = string; // skillId
+export type ImportSkillResponse = string; // single skillId
 
 // ==================== Skill Sandbox API ====================
 

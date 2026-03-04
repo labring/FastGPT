@@ -9,7 +9,6 @@ export type AgentSkillSchemaType = {
   // Metadata
   name: string;
   description: string;
-  markdown: string; // SKILL.md content
   author: string; // userId or 'system'
   category: `${AgentSkillCategoryEnum}`[];
 
@@ -61,12 +60,6 @@ export type AgentSkillsVersionSchemaType = {
   tmbId: string;
   version: number;
   versionName?: string;
-  // Snapshot of skill data
-  name: string;
-  markdown: string;
-  config: Record<string, any>;
-  description: string;
-  category: string[];
   // Storage information
   storage: {
     bucket: string;
@@ -116,7 +109,6 @@ export type SkillPackageType = {
     config: Record<string, any>;
     avatar?: string;
   };
-  markdown: string;
 };
 
 // ZIP entry information

@@ -13,11 +13,6 @@ export type CreateVersionData = {
   tmbId: string;
   version: number;
   versionName?: string;
-  name: string;
-  markdown: string;
-  config: Record<string, any>;
-  description: string;
-  category: string[];
   storage: {
     bucket: string;
     key: string;
@@ -205,11 +200,6 @@ export async function updateVersion(
   version: number,
   data: Partial<{
     versionName: string;
-    name: string;
-    markdown: string;
-    config: Record<string, any>;
-    description: string;
-    category: string[];
   }>,
   session?: ClientSession
 ): Promise<void> {

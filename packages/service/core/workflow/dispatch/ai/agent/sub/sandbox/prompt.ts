@@ -6,7 +6,7 @@
  * sandbox_read_file to load full SKILL.md on demand.
  */
 
-import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkill/type';
+import type { DeployedSkillInfo } from './types';
 
 function escapeXml(str: string): string {
   return str
@@ -20,14 +20,12 @@ function escapeXml(str: string): string {
 /**
  * Build skills context prompt for progressive disclosure.
  *
- * Only includes skill metadata (name, description, SKILL.md path).
+ * Accepts DeployedSkillInfo[] so that name/description come from SKILL.md
+ * frontmatter (scanned at deploy time) rather than from the database.
  * LLM loads full SKILL.md via sandbox_read_file when needed.
  */
-export function buildSkillsContextPrompt(
-  skills: AgentSkillSchemaType[],
-  workDirectory: string
-): string {
-  if (skills.length === 0) return '';
+export function buildSkillsContextPrompt(deployedSkills: DeployedSkillInfo[]): string {
+  if (deployedSkills.length === 0) return '';
 
   const lines = [
     '<agent_skills>',
@@ -36,13 +34,12 @@ export function buildSkillsContextPrompt(
     '<available_skills>'
   ];
 
-  for (const skill of skills) {
-    const skillDir = `${workDirectory}/${skill.name}`;
+  for (const info of deployedSkills) {
     lines.push('  <skill>');
-    lines.push(`    <name>${escapeXml(skill.name)}</name>`);
-    lines.push(`    <description>${escapeXml(skill.description)}</description>`);
-    lines.push(`    <location>${escapeXml(skillDir + '/SKILL.md')}</location>`);
-    lines.push(`    <directory>${escapeXml(skillDir)}</directory>`);
+    lines.push(`    <name>${escapeXml(info.name)}</name>`);
+    lines.push(`    <description>${escapeXml(info.description)}</description>`);
+    lines.push(`    <location>${escapeXml(info.skillMdPath)}</location>`);
+    lines.push(`    <directory>${escapeXml(info.directory)}</directory>`);
     lines.push('  </skill>');
   }
 

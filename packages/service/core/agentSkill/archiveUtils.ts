@@ -42,6 +42,28 @@ export function findSkillMdKey(fileMap: ArchiveFileMap): string | null {
   );
 }
 
+/**
+ * Find all SKILL.md keys in file map for multi-skill packages.
+ *
+ * Returns one path per skill directory (depth-1 entries with SKILL.md).
+ * Also handles legacy root-level SKILL.md as a single-element result.
+ */
+export function findAllSkillMdKeys(fileMap: ArchiveFileMap): string[] {
+  const paths = Object.keys(fileMap);
+
+  // Collect all depth-1 SKILL.md entries: exactly {dir}/SKILL.md
+  const dirSkillMds = paths.filter((p) => {
+    const parts = p.split('/');
+    return parts.length === 2 && parts[1].toLowerCase() === 'skill.md';
+  });
+
+  if (dirSkillMds.length > 0) return dirSkillMds;
+
+  // Fall back to root-level SKILL.md (legacy single-skill)
+  const rootKey = paths.find((p) => !p.includes('/') && p.toLowerCase() === 'skill.md');
+  return rootKey ? [rootKey] : [];
+}
+
 /** Get root directory prefix from SKILL.md path (e.g. 'my-skill/' or ''). */
 export function getRootPrefix(skillMdKey: string): string {
   const idx = skillMdKey.lastIndexOf('/');
