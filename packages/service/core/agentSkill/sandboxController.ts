@@ -12,7 +12,6 @@ import { MongoSkillSandbox } from './sandboxSchema';
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './versionSchema';
 import { downloadSkillPackage } from './storage';
-import { scanSkillDirectories } from './zipBuilder';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
@@ -158,9 +157,8 @@ export async function createEditDebugSandbox(
 
   addLog.info('[Sandbox] Package downloaded', { size: packageBuffer.length });
 
-  // Package is already normalized at import time (dir name = frontmatter name).
+  // Package is already in ZIP format from import time.
   const standardizedBuffer = packageBuffer;
-  const skillDirs = await scanSkillDirectories(packageBuffer);
 
   // === Phase 3: Sandbox operations ===
   let sandbox: ISandbox | null = null;
@@ -289,17 +287,7 @@ export async function createEditDebugSandbox(
             },
             metadata: new Map([
               ['skillName', skill.name],
-              ['version', activeVersion.version.toString()],
-              [
-                'deployedSkills',
-                JSON.stringify(
-                  skillDirs.map((d) => ({
-                    name: d.name,
-                    description: d.description,
-                    dirName: d.dirName
-                  }))
-                )
-              ]
+              ['version', activeVersion.version.toString()]
             ])
           }
         ],
