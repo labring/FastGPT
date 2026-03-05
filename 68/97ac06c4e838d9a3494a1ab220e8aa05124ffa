@@ -1,0 +1,48 @@
+packages/service/core/agentSkill/sandboxController.ts
+  5759539fe4f07176 198
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  5759539fe4f07176 291
+projects/sandbox-sync-agent/Dockerfile
+  5759539fe4f07176 1,4-5,7
+projects/sandbox-sync-agent/pool-skill-sandbox.yaml
+  5759539fe4f07176 27
+projects/sandbox-sync-agent/base/Dockerfile
+  5759539fe4f07176 4-5
+packages/service/core/agentSkill/sandboxConfig.ts
+  b1efabf7f31813e5 89-92,94,96,102-105
+projects/sandbox-sync-agent/Dockerfile.docker-runtime
+  5759539fe4f07176 2,5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "6897ac06c4e838d9a3494a1ab220e8aa05124ffa",
+  "prompts": {
+    "5759539fe4f07176": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9609c26a-a538-4df9-8c69-d5eec9799f62",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 14,
+      "accepted_lines": 13,
+      "overriden_lines": 1
+    },
+    "b1efabf7f31813e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b9f6de0-ab52-4f4a-96c0-20cc61d2ce0f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 9,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/global/core/agentSkill/api.d.ts
+  bb40ec67267c127f 88-89
+projects/app/src/pages/api/core/app/agent/skills/import.ts
+  bb40ec67267c127f 12,39,47-49,82-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "67095abcf99453f778c4c8bcdaa9257a3c472dbe",
+  "prompts": {
+    "bb40ec67267c127f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d76e6d66-40b0-4891-acd6-f9be91c5cea4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 3,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
