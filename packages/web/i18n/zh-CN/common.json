@@ -781,6 +781,7 @@
   "create_failed": "创建失败",
   "create_success": "创建成功",
   "create_time": "创建时间",
+  "update_time": "更新时间",
   "cron_job_run_app": "定时任务",
   "custom_title": "自定义标题",
   "data_index_custom": "自定义索引",

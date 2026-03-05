@@ -778,6 +778,7 @@
   "create_failed": "建立失敗",
   "create_success": "建立成功",
   "create_time": "建立時間",
+  "update_time": "更新時間",
   "cron_job_run_app": "排程任務",
   "custom_title": "自訂標題",
   "data_index_custom": "自定義索引",

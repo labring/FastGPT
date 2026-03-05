@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Flex,
+  HStack,
   TableContainer,
   Table,
   Thead,
@@ -20,6 +21,9 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
+import { useContextSelector } from 'use-context-selector';
+import { CollectionPageContext } from './Context';
+import StatusFilter from '../RefinedCollectionCard/StatusFilter';
 
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
 
@@ -42,18 +46,75 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const { sortBy, setSortBy, sortOrder, setSortOrder, statusFilter, setStatusFilter } =
+    useContextSelector(CollectionPageContext, (v) => v);
+
+  const handleSort = useCallback(
+    (field: 'name' | 'updateTime' | 'createTime') => {
+      setSortBy((prev) => {
+        if (prev === field) {
+          setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+          return field;
+        }
+        setSortOrder('asc');
+        return field;
+      });
+    },
+    [setSortBy, setSortOrder]
+  );
+
+  const renderSortIcon = useCallback(
+    (field: 'name' | 'updateTime' | 'createTime') => {
+      if (sortBy !== field) {
+        return (
+          <MyIcon
+            name={'common/table/sort'}
+            w={'12px'}
+            cursor={'pointer'}
+            _hover={{ color: 'primary.600' }}
+          />
+        );
+      }
+      return (
+        <MyIcon
+          name={sortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'}
+          w={'12px'}
+          cursor={'pointer'}
+        />
+      );
+    },
+    [sortBy, sortOrder]
+  );
+
   return (
     <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
       <Table variant={'simple'} draggable={false}>
         <Thead draggable={false}>
           <Tr>
-            <Th py={4}>{t('common:Name')}</Th>
-            <Th py={4}>{t('dataset:description')}</Th>
-            <Th py={4} w="150px">
-              {t('dataset:collection.Create update time')}
+            <Th py={4}>
+              <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('name')}>
+                <Box>{t('common:Name')}</Box>
+                {renderSortIcon('name')}
+              </HStack>
             </Th>
+            <Th py={4}>{t('dataset:description')}</Th>
             <Th py={4} w="100px">
-              {t('common:Status')}
+              <HStack spacing={1}>
+                <Box>{t('common:Status')}</Box>
+                <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+              </HStack>
+            </Th>
+            <Th py={4} w="150px">
+              <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('createTime')}>
+                <Box>{t('common:create_time')}</Box>
+                {renderSortIcon('createTime')}
+              </HStack>
+            </Th>
+            <Th py={4} w="150px">
+              <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('updateTime')}>
+                <Box>{t('common:update_time')}</Box>
+                {renderSortIcon('updateTime')}
+              </HStack>
             </Th>
             <Th py={4} w="100px">
               {t('dataset:Enable')}
@@ -67,19 +128,17 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
             <Tr key={collection._id} _hover={{ bg: 'myGray.50' }} cursor={'pointer'}>
               <Td py={2} maxW={'250px'}>
                 <MyTooltip label={collection.name} shouldWrapChildren={false}>
-                  <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                  <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
                     {collection.name}
                   </Box>
                 </MyTooltip>
               </Td>
               <Td py={2} minW={'200px'} maxW={'400px'}>
                 <MyTooltip label={collection.tableSchema?.description} shouldWrapChildren={false}>
-                  <Text className={'textEllipsis'}>{collection.tableSchema?.description}</Text>
+                  <Text fontSize={'xs'} color={'myWhite.1000'} className={'textEllipsis'}>
+                    {collection.tableSchema?.description}
+                  </Text>
                 </MyTooltip>
-              </Td>
-              <Td fontSize={'xs'} py={2} color={'myGray.500'} w="150px">
-                <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
               </Td>
               <Td py={2} w="100px">
                 {collection.statusKey === 'error' ? (
@@ -106,6 +165,12 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                     </Flex>
                   </MyTag>
                 )}
+              </Td>
+              <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                {formatTime2YMDHM(collection.createTime)}
+              </Td>
+              <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                {formatTime2YMDHM(collection.updateTime)}
               </Td>
               <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                 <Switch

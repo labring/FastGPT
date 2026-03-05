@@ -2,6 +2,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
+import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
@@ -36,6 +37,12 @@ type CollectionPageContextType = {
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
   setFilterTags: Dispatch<SetStateAction<string[]>>;
+  statusFilter: CollectionStatusEnum | undefined;
+  setStatusFilter: Dispatch<SetStateAction<CollectionStatusEnum | undefined>>;
+  sortBy: 'name' | 'updateTime' | 'createTime' | 'dataAmount' | null;
+  setSortBy: Dispatch<SetStateAction<'name' | 'updateTime' | 'createTime' | 'dataAmount' | null>>;
+  sortOrder: 'asc' | 'desc';
+  setSortOrder: Dispatch<SetStateAction<'asc' | 'desc'>>;
   hasDatabaseConfig: boolean;
   handleOpenConfigPage: (
     mode?: 'edit' | 'create',
@@ -68,6 +75,18 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   },
   filterTags: [],
   setFilterTags: function (value: SetStateAction<string[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  statusFilter: undefined,
+  setStatusFilter: function (value: SetStateAction<CollectionStatusEnum | undefined>): void {
+    throw new Error('Function not implemented.');
+  },
+  sortBy: null,
+  setSortBy: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  sortOrder: 'asc',
+  setSortOrder: function (): void {
     throw new Error('Function not implemented.');
   },
   hasDatabaseConfig: false,
@@ -132,6 +151,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<CollectionStatusEnum | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<'name' | 'updateTime' | 'createTime' | 'dataAmount' | null>(
+    null
+  );
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const {
     data: collections,
     Pagination,
@@ -146,10 +170,12 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       datasetId,
       parentId,
       searchText,
-      filterTags
+      filterTags,
+      status: statusFilter,
+      ...(sortBy ? { sortBy, sortOrder } : {})
     },
     // defaultRequest: false,
-    refreshDeps: [parentId, searchText, filterTags]
+    refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder]
   });
 
   // database
@@ -183,6 +209,12 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     setSearchText,
     filterTags,
     setFilterTags,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
     collections,
     Pagination,
     total,
