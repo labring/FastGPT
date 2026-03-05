@@ -225,6 +225,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     timeout: 60000
   });
 
+  // 添加请求拦截器
   instance.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
       const { data } = await axios.post<{ tenant_access_token: string }>(
@@ -241,6 +242,9 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return config;
   });
 
+  /**
+   * 响应数据检查
+   */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
       logger.warn('Feishu dataset response data is empty');
@@ -270,6 +274,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   };
 
   const request = <T>(url: string, data: any, method: Method): Promise<T> => {
+    /* 去空 */
     for (const key in data) {
       if (data[key] === undefined) {
         delete data[key];
