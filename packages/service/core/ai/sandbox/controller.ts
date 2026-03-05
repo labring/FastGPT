@@ -59,7 +59,7 @@ export class SandboxInstance extends SealosDevboxAdapter {
       { upsert: true }
     );
 
-    await this.create({ image: { repository: 'ubuntu', tag: '22.04' } });
+    await this.ensureRunning();
   }
 
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {

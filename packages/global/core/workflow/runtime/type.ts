@@ -394,7 +394,10 @@ export type DispatchNodeResponseType = {
   // Children node responses
   childrenResponses?: ChatHistoryItemResType[];
 
-  // abandon
+  // Tools
+  toolId?: string;
+
+  // @deprecated
   extensionModel?: string;
   extensionResult?: string;
   extensionTokens?: number;

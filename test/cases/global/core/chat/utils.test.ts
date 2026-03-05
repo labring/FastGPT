@@ -35,9 +35,7 @@ describe('transformPreviewHistories', () => {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: undefined,
-      llmModuleAccount: 1,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      totalQuoteList: []
     });
   });
 
@@ -61,9 +59,7 @@ describe('transformPreviewHistories', () => {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: undefined,
-      llmModuleAccount: 1,
-      totalQuoteList: undefined,
-      historyPreviewLength: undefined
+      totalQuoteList: undefined
     });
   });
 });
@@ -148,7 +144,6 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      llmModuleAccount: 3,
       totalQuoteList: [
         {
           id: quoteId,
@@ -182,9 +177,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      llmModuleAccount: 1,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      totalQuoteList: []
     });
   });
 
@@ -222,9 +215,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      llmModuleAccount: 3,
-      totalQuoteList: [],
-      historyPreviewLength: undefined
+      totalQuoteList: []
     });
   });
 });

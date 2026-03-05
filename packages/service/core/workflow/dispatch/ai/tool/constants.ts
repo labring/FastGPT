@@ -2,6 +2,7 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChildResponseItemType } from './type';
+import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 
 export const getMultiplePrompt = (obj: {
   fileCount: number;
@@ -35,6 +36,7 @@ export const getSandboxToolWorkflowResponse = ({
         moduleName: name,
         moduleType: FlowNodeTypeEnum.tool,
         moduleLogo: logo,
+        toolId: SANDBOX_TOOL_NAME,
         toolInput: input,
         toolRes: response,
         totalPoints: 0,

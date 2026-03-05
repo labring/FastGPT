@@ -2579,8 +2579,8 @@ packages:
   '@fastgpt-sdk/plugin@0.3.8':
     resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.6':
-    resolution: {integrity: sha512-akJKH2DGmqyvyrqRoOOuJOXVq2JIZoneHZGUupSR3zlqXDDnnI5XXvM7hBBmvveS58Hujm77IT9XwWfN2Rpb/w==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.7':
+    resolution: {integrity: sha512-RlbeXtIbAtD/rA84cczuKf8SMHwY53d7YzFckS2/gqSfoGkY613/kDc6O0JfqjV6QEAArOhyR38RrrjPN0b1UA==}
     engines: {node: '>=18'}
 
   '@fastgpt-sdk/storage@0.6.15':
@@ -13364,7 +13364,7 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.6':
+  '@fastgpt-sdk/sandbox-adapter@0.0.7':
     dependencies:
       '@alibaba-group/opensandbox': 0.1.4
 

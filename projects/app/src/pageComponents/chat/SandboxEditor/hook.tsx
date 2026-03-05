@@ -9,7 +9,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-export const useSandboxEditor = (data: {
+export const useSandboxEditor = ({
+  appId,
+  chatId,
+  outLinkAuthData
+}: {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
@@ -22,31 +26,38 @@ export const useSandboxEditor = (data: {
   // 检查沙盒是否存在
   const checkSandboxStatus = useCallback(async () => {
     try {
-      const result = await checkSandboxExist(data);
+      const result = await checkSandboxExist({ appId, chatId, outLinkAuthData });
       setSandboxExists(result.exists);
     } catch (error) {
       console.error('Failed to check sandbox status:', error);
     }
-  }, [data]);
+  }, [appId, chatId, outLinkAuthData]);
 
   // 组件挂载时检查
   useInterval(checkSandboxStatus, 10000, {
     immediate: true
   });
 
-  const onOpenSandboxModal = () => {
+  const onOpenSandboxModal = useCallback(() => {
     setSandboxModalOpen(true);
-  };
+  }, []);
 
-  const onCloseSandboxModal = () => {
+  const onCloseSandboxModal = useCallback(() => {
     setSandboxModalOpen(false);
     // 关闭后重新检查状态
     checkSandboxStatus();
-  };
+  }, [checkSandboxStatus]);
 
   const Dom = useCallback(() => {
-    return sandboxModalOpen ? <SandboxEditorModal onClose={onCloseSandboxModal} {...data} /> : null;
-  }, [sandboxModalOpen, data]);
+    return sandboxModalOpen ? (
+      <SandboxEditorModal
+        onClose={onCloseSandboxModal}
+        appId={appId}
+        chatId={chatId}
+        outLinkAuthData={outLinkAuthData}
+      />
+    ) : null;
+  }, [sandboxModalOpen, onCloseSandboxModal, appId, chatId, outLinkAuthData]);
 
   const SandboxEntryIcon = useCallback(
     (props: Omit<IconButtonProps, 'name' | 'onClick' | 'aria-label'>) => {
@@ -66,7 +77,7 @@ export const useSandboxEditor = (data: {
         </MyTooltip>
       );
     },
-    [sandboxExists, onOpenSandboxModal]
+    [sandboxExists, t, onOpenSandboxModal]
   );
 
   return {

@@ -4,7 +4,11 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { SANDBOX_ICON, SANDBOX_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  SANDBOX_ICON,
+  SANDBOX_NAME,
+  SANDBOX_TOOL_NAME
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
@@ -64,6 +68,7 @@ export const dispatchSandboxShell = async ({
         moduleType: FlowNodeTypeEnum.tool,
         moduleName,
         moduleLogo: SANDBOX_ICON,
+        toolId: SANDBOX_TOOL_NAME,
         toolInput: { command, timeout },
         toolRes: response,
         totalPoints: 0,
