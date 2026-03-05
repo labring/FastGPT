@@ -8,6 +8,8 @@ import {
   checkSkillNameExists
 } from '@fastgpt/service/core/agentSkills/controller';
 import type { UpdateSkillBody, UpdateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { isValidObjectId } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -19,8 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Authenticate user
-    const { tmbId } = await authUserPer({
+    // Authenticate user — destructure both teamId and tmbId in one call to avoid inconsistency
+    const { teamId, tmbId } = await authUserPer({
       req,
       authToken: true,
       authApiKey: true
@@ -35,6 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code: 400,
         error: 'Skill ID is required'
       });
+    }
+
+    if (!isValidObjectId(skillId)) {
+      return jsonRes(res, { code: 400, error: 'Invalid skill ID format' });
     }
 
     // Check if user can modify this skill
@@ -63,12 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Check for name uniqueness (excluding current skill)
-      const { teamId } = await authUserPer({
-        req,
-        authToken: true,
-        authApiKey: true
-      });
-
       const nameExists = await checkSkillNameExists(name.trim(), teamId, skillId);
       if (nameExists) {
         return jsonRes(res, {
@@ -84,6 +84,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code: 400,
         error: 'Description must be less than 500 characters'
       });
+    }
+
+    // Validate category enum values
+    if (category !== undefined) {
+      const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
+      if (category.some((c) => !validCategories.includes(c))) {
+        return jsonRes(res, { code: 400, error: 'Invalid category value' });
+      }
+    }
+
+    // Validate config size (max 50 KB)
+    if (config !== undefined && JSON.stringify(config).length > 50_000) {
+      return jsonRes(res, { code: 400, error: 'Config exceeds maximum allowed size (50KB)' });
     }
 
     // Build update data (only include defined fields)
@@ -110,7 +123,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     jsonRes<UpdateSkillResponse>(res, {
       data: undefined
     });
-  } catch (err) {
+  } catch (err: any) {
+    // E11000: unique index violation (concurrent duplicate name update)
+    if (err.code === 11000 || err.codeName === 'DuplicateKey') {
+      return jsonRes(res, { code: 409, error: 'Skill name already exists' });
+    }
     jsonRes(res, {
       code: 500,
       error: err

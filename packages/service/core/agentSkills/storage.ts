@@ -93,7 +93,10 @@ export async function uploadSkillPackage(
 /**
  * Download skill package from MinIO/S3 storage
  */
-export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
+export async function downloadSkillPackage(
+  params: DownloadSkillPackageParams,
+  maxBytes = 200 * 1024 * 1024
+): Promise<Buffer> {
   const { storageInfo } = params;
 
   const bucket = new S3PrivateBucket();
@@ -106,10 +109,16 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
     throw new Error(`Failed to download skill package: ${storageInfo.key}`);
   }
 
-  // Convert stream to buffer
+  // Convert stream to buffer with size limit to prevent OOM
   const chunks: Buffer[] = [];
+  let totalSize = 0;
   for await (const chunk of response.body) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalSize += buf.length;
+    if (totalSize > maxBytes) {
+      throw new Error(`Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`);
+    }
+    chunks.push(buf);
   }
 
   return Buffer.concat(chunks);

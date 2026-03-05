@@ -4,6 +4,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteSkill, canModifySkill } from '@fastgpt/service/core/agentSkills/controller';
 import type { DeleteSkillQuery, DeleteSkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import { isValidObjectId } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -31,6 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code: 400,
         error: 'Skill ID is required'
       });
+    }
+
+    if (!isValidObjectId(skillId)) {
+      return jsonRes(res, { code: 400, error: 'Invalid skill ID format' });
     }
 
     // Check if user can delete this skill

@@ -15,15 +15,26 @@ export function getSupportedArchiveFormat(filename: string): ArchiveFormat | nul
 /**
  * Extract archive file (zip/tar/tar.gz) to a file map.
  * Path traversal entries are filtered out for security.
+ * Total uncompressed size is capped to prevent Zip Bomb OOM attacks.
  */
-export async function extractToFileMap(filePath: string): Promise<ArchiveFileMap> {
+export async function extractToFileMap(
+  filePath: string,
+  maxUncompressedBytes = 200 * 1024 * 1024
+): Promise<ArchiveFileMap> {
   const files = await decompress(filePath);
   const fileMap: ArchiveFileMap = {};
+  let totalSize = 0;
   for (const file of files) {
     if (file.type === 'directory') continue;
     const normalized = file.path.replace(/\\/g, '/').replace(/^\/+/, '');
     // Filter path traversal
     if (!normalized || normalized.includes('../')) continue;
+    totalSize += file.data.length;
+    if (totalSize > maxUncompressedBytes) {
+      throw new Error(
+        `Uncompressed archive exceeds maximum allowed size (${maxUncompressedBytes / 1024 / 1024}MB)`
+      );
+    }
     fileMap[normalized] = file.data;
   }
   return fileMap;

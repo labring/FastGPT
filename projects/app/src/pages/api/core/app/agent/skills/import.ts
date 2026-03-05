@@ -27,9 +27,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 405, error: 'Method not allowed' });
     }
 
+    // Read env limit before multer so both use the same value
+    const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
+    const maxArchiveSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024;
+    // Convert bytes to MB for multer (multer expects MB)
+    const maxArchiveSizeMB = Math.ceil(maxArchiveSize / 1024 / 1024);
+
     const result = await multer.resolveFormData<ImportSkillBody>({
       request: req,
-      maxFileSize: 10 // 10MB
+      maxFileSize: maxArchiveSizeMB
     });
 
     filepaths.push(result.fileMetadata.path);
@@ -38,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Support both JSON-wrapped body ({"data": "..."}) and plain multipart form fields
     const body: ImportSkillBody = {
       name: result.data.name ?? (req.body?.name as string | undefined),
-      description: result.data.description ?? (req.body?.description as string | undefined)
+      description: result.data.description ?? (req.body?.description as string | undefined),
+      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined)
     };
 
     const format = getSupportedArchiveFormat(file.originalname ?? '');
@@ -55,9 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authApiKey: true
     });
 
-    // Check archive size
-    const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
-    const maxArchiveSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024;
+    // Check archive size (multer already enforces the limit, this is a secondary guard)
     const stats = await fs.stat(file.path);
     if (stats.size > maxArchiveSize) {
       return jsonRes(res, {
@@ -96,7 +101,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         name: pkgName,
         description: pkgDescription,
         category: ['other'],
-        config: {}
+        config: {},
+        avatar: body.avatar
       }
     };
 
