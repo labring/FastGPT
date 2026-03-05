@@ -37,7 +37,7 @@ export type GetSkillStorageInfoParams = {
  * Generate storage key for skill package
  */
 export function getSkillStorageKey(teamId: string, skillId: string, version: number): string {
-  return `skills/${teamId}/${skillId}/v${version}/package.zip`;
+  return `agent-skills/${teamId}/${skillId}/v${version}/package.zip`;
 }
 
 /**
@@ -46,7 +46,7 @@ export function getSkillStorageKey(teamId: string, skillId: string, version: num
 export function parseSkillStorageKey(
   key: string
 ): { teamId: string; skillId: string; version: number } | null {
-  const match = key.match(/^skills\/([^/]+)\/([^/]+)\/v(\d+)\/package\.zip$/);
+  const match = key.match(/^agent-skills\/([^/]+)\/([^/]+)\/v(\d+)\/package\.zip$/);
   if (!match) return null;
 
   return {

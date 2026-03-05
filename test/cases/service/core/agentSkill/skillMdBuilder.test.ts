@@ -10,29 +10,23 @@ import {
 describe('skillMdBuilder', () => {
   // ==================== buildSkillMd ====================
   describe('buildSkillMd', () => {
-    it('should generate valid SKILL.md with frontmatter and body', () => {
+    it('should generate valid SKILL.md with frontmatter', () => {
       const result = buildSkillMd({
         name: 'my-skill',
-        description: 'A test skill description',
-        markdown: '# Introduction\n\nThis is the skill documentation.'
+        description: 'A test skill description'
       });
 
       // Should contain frontmatter
       expect(result).toMatch(/^---\n/);
       expect(result).toContain('name: my-skill');
       expect(result).toContain('description: A test skill description');
-      expect(result).toContain('---\n\n');
-
-      // Should contain markdown body
-      expect(result).toContain('# Introduction');
-      expect(result).toContain('This is the skill documentation.');
+      expect(result).toMatch(/---$/);
     });
 
     it('should escape special characters in YAML frontmatter', () => {
       const result = buildSkillMd({
         name: 'test-skill',
-        description: 'Description with "quotes" and [brackets]',
-        markdown: '# Test'
+        description: 'Description with "quotes" and [brackets]'
       });
 
       expect(result).toContain('description: "Description with \\"quotes\\" and [brackets]"');
@@ -41,8 +35,7 @@ describe('skillMdBuilder', () => {
     it('should handle multi-line description', () => {
       const result = buildSkillMd({
         name: 'test-skill',
-        description: 'Line 1\nLine 2\nLine 3',
-        markdown: '# Test'
+        description: 'Line 1\nLine 2\nLine 3'
       });
 
       // Multi-line strings should use YAML literal block
@@ -55,38 +48,21 @@ describe('skillMdBuilder', () => {
     it('should handle empty description', () => {
       const result = buildSkillMd({
         name: 'test-skill',
-        description: '',
-        markdown: '# Test'
+        description: ''
       });
 
       expect(result).toContain('description: ""');
     });
 
-    it('should preserve markdown formatting in body', () => {
-      const markdown = `# Heading 1
-
-## Heading 2
-
-- List item 1
-- List item 2
-
-\`\`\`typescript
-const x = 1;
-\`\`\`
-
-> Blockquote`;
-
+    it('should only contain frontmatter without body', () => {
       const result = buildSkillMd({
         name: 'test-skill',
-        description: 'Test',
-        markdown
+        description: 'Test'
       });
 
-      expect(result).toContain('# Heading 1');
-      expect(result).toContain('## Heading 2');
-      expect(result).toContain('- List item 1');
-      expect(result).toContain('```typescript');
-      expect(result).toContain('> Blockquote');
+      // Result should be just frontmatter, no body content
+      expect(result).toMatch(/^---\n[\s\S]+\n---$/);
+      expect(result).toBe('---\nname: test-skill\ndescription: Test\n---');
     });
   });
 

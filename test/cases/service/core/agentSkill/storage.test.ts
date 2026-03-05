@@ -37,17 +37,17 @@ describe('storage', () => {
   describe('getSkillStorageKey', () => {
     it('should generate correct storage key for v0', () => {
       const key = getSkillStorageKey(mockTeamId, mockSkillId, 0);
-      expect(key).toBe(`skills/${mockTeamId}/${mockSkillId}/v0/package.zip`);
+      expect(key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`);
     });
 
     it('should generate correct storage key for higher versions', () => {
       const key = getSkillStorageKey(mockTeamId, mockSkillId, 5);
-      expect(key).toBe(`skills/${mockTeamId}/${mockSkillId}/v5/package.zip`);
+      expect(key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/v5/package.zip`);
     });
 
     it('should handle different team and skill IDs', () => {
       const key = getSkillStorageKey('team-xyz', 'skill-123', 1);
-      expect(key).toBe('skills/team-xyz/skill-123/v1/package.zip');
+      expect(key).toBe('agent-skills/team-xyz/skill-123/v1/package.zip');
     });
   });
 
@@ -63,7 +63,7 @@ describe('storage', () => {
 
       expect(result).toEqual({
         bucket: 'fastgpt-private',
-        key: `skills/${mockTeamId}/${mockSkillId}/v${mockVersion}/package.zip`,
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/v${mockVersion}/package.zip`,
         size: mockZipBuffer.length
       });
     });
@@ -90,7 +90,9 @@ describe('storage', () => {
           zipBuffer: mockZipBuffer
         });
 
-        expect(result.key).toBe(`skills/${mockTeamId}/${mockSkillId}/v${version}/package.zip`);
+        expect(result.key).toBe(
+          `agent-skills/${mockTeamId}/${mockSkillId}/v${version}/package.zip`
+        );
       }
     });
 
@@ -113,7 +115,7 @@ describe('storage', () => {
     it('should download skill package successfully', async () => {
       const storageInfo = {
         bucket: 'fastgpt-private',
-        key: `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
         size: mockZipBuffer.length
       };
 
@@ -126,7 +128,7 @@ describe('storage', () => {
     it('should handle download errors', async () => {
       const storageInfo = {
         bucket: 'fastgpt-private',
-        key: `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
         size: 0
       };
 
@@ -140,7 +142,7 @@ describe('storage', () => {
     it('should delete skill package successfully', async () => {
       const storageInfo = {
         bucket: 'fastgpt-private',
-        key: `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
         size: mockZipBuffer.length
       };
 
@@ -159,14 +161,14 @@ describe('storage', () => {
 
       expect(result).toEqual({
         bucket: 'fastgpt-private',
-        key: `skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
         exists: true,
         size: 0
       });
     });
 
     it('should handle non-existing objects', async () => {
-      const key = `skills/${mockTeamId}/${mockSkillId}/v999/package.zip`;
+      const key = `agent-skills/${mockTeamId}/${mockSkillId}/v999/package.zip`;
 
       const result = await getSkillStorageInfo(key);
 
