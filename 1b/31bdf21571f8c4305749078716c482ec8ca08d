@@ -1,0 +1,31 @@
+packages/global/core/agentSkill/type.d.ts
+  b8e1d254192f3887 35
+test/cases/service/core/agentSkill/storage.test.ts
+  b8e1d254192f3887 40,45,50,66,93
+packages/service/core/agentSkill/storage.ts
+  b8e1d254192f3887 40,49
+test/cases/service/core/agentSkill/skillMdBuilder.test.ts
+  b8e1d254192f3887 13,23,57,60,63-65
+test/cases/service/core/agentSkill/version.test.ts
+  b8e1d254192f3887 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "1b31bdf21571f8c4305749078716c482ec8ca08d",
+  "prompts": {
+    "b8e1d254192f3887": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f2aac38-15fa-4046-9ed8-f22ccf79582d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 49,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    }
+  }
+}
