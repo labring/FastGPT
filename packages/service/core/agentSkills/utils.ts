@@ -1,5 +1,5 @@
-import type { SkillPackageType } from '@fastgpt/global/core/agentSkill/type';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkill/constants';
+import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 /**
  * Parse YAML frontmatter from markdown content

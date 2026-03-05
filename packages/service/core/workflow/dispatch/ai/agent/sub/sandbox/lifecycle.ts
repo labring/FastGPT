@@ -18,22 +18,22 @@
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
 import type { HydratedDocument } from 'mongoose';
-import { MongoAgentSkills } from '../../../../../../agentSkill/schema';
-import { MongoSkillSandbox } from '../../../../../../agentSkill/sandboxSchema';
-import { MongoAgentSkillsVersion } from '../../../../../../agentSkill/versionSchema';
-import { downloadSkillPackage } from '../../../../../../agentSkill/storage';
-import { parseSkillMarkdown } from '../../../../../../agentSkill/utils';
+import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
+import { MongoSkillSandbox } from '../../../../../../agentSkills/sandboxSchema';
+import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/versionSchema';
+import { downloadSkillPackage } from '../../../../../../agentSkills/storage';
+import { parseSkillMarkdown } from '../../../../../../agentSkills/utils';
 import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
   buildDockerSyncEnv
-} from '../../../../../../agentSkill/sandboxConfig';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
+} from '../../../../../../agentSkills/sandboxConfig';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
   AgentSkillsVersionSchemaType
-} from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/global/core/agentSkills/type';
 import type { AgentSandboxContext, DeployedSkillInfo } from './types';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';

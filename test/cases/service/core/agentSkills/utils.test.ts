@@ -4,8 +4,8 @@ import {
   parseSkillPackage,
   sanitizeSkillName,
   createSkillTemplate
-} from '@fastgpt/service/core/agentSkill/utils';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkill/constants';
+} from '@fastgpt/service/core/agentSkills/utils';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 describe('AgentSkill Utils', () => {
   // ==================== validateSkillPackage ====================

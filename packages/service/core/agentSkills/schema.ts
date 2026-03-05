@@ -3,8 +3,8 @@ import {
   agentSkillsCollectionName as agentSkillsCollectionName,
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
-} from '@fastgpt/global/core/agentSkill/constants';
-import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/global/core/agentSkills/constants';
+import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 const { Schema } = connectionMongo;
 

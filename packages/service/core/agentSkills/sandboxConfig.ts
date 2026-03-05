@@ -4,7 +4,7 @@
  * Provides configuration and defaults for sandbox management.
  */
 
-import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkill/type';
+import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/type';
 
 export type SandboxProviderConfig = {
   provider: string;
