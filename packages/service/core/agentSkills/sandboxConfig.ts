@@ -64,6 +64,31 @@ export function getSandboxDefaults(): SandboxDefaults {
   };
 }
 
+export type SkillSizeLimits = {
+  maxUploadBytes: number; // Compressed upload size limit
+  maxUncompressedBytes: number; // Uncompressed size after extraction (Zip Bomb guard)
+  maxDownloadBytes: number; // Download from MinIO/S3
+  maxSandboxPackageBytes: number; // Sandbox directory size before zip
+};
+
+/**
+ * Get skill size limits from environment variables
+ */
+export function getSkillSizeLimits(): SkillSizeLimits {
+  return {
+    maxUploadBytes: safeParseInt(process.env.AGENT_SKILL_MAX_UPLOAD_SIZE, 50 * 1024 * 1024),
+    maxUncompressedBytes: safeParseInt(
+      process.env.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE,
+      200 * 1024 * 1024
+    ),
+    maxDownloadBytes: safeParseInt(process.env.AGENT_SKILL_MAX_DOWNLOAD_SIZE, 200 * 1024 * 1024),
+    maxSandboxPackageBytes: safeParseInt(
+      process.env.AGENT_SKILL_MAX_SANDBOX_SIZE,
+      200 * 1024 * 1024
+    )
+  };
+}
+
 /**
  * Validate sandbox configuration
  */

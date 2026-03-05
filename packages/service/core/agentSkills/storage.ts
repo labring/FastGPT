@@ -7,6 +7,7 @@
 
 import { S3PrivateBucket } from '../../common/s3/buckets/private';
 import type { ClientSession } from '../../common/mongo';
+import { getSkillSizeLimits } from './sandboxConfig';
 
 export type SkillStorageInfo = {
   bucket: string;
@@ -93,11 +94,9 @@ export async function uploadSkillPackage(
 /**
  * Download skill package from MinIO/S3 storage
  */
-export async function downloadSkillPackage(
-  params: DownloadSkillPackageParams,
-  maxBytes = 200 * 1024 * 1024
-): Promise<Buffer> {
+export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
   const { storageInfo } = params;
+  const { maxDownloadBytes } = getSkillSizeLimits();
 
   const bucket = new S3PrivateBucket();
 
@@ -115,8 +114,10 @@ export async function downloadSkillPackage(
   for await (const chunk of response.body) {
     const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     totalSize += buf.length;
-    if (totalSize > maxBytes) {
-      throw new Error(`Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`);
+    if (totalSize > maxDownloadBytes) {
+      throw new Error(
+        `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
+      );
     }
     chunks.push(buf);
   }
@@ -133,6 +134,17 @@ export async function deleteSkillPackage(storageInfo: SkillStorageInfo): Promise
   await bucket.client.deleteObject({
     key: storageInfo.key
   });
+}
+
+/**
+ * Delete all packages for a skill across all versions using prefix deletion.
+ * Fire-and-forget: enqueues to BullMQ and returns immediately.
+ * Prefix covers: agent-skills/{teamId}/{skillId}/ (all versions)
+ */
+export function deleteSkillAllPackages(teamId: string, skillId: string): void {
+  const prefix = `agent-skills/${teamId}/${skillId}/`;
+  const bucket = new S3PrivateBucket();
+  bucket.addDeleteJob({ prefix });
 }
 
 /**
