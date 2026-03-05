@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "0c4689e3a68b0bb129e2fcd9e81e51ef0219d7a6",
+  "prompts": {
+    "ce89bb7ebd7a0643": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a2b07a4-124b-4e93-ad25-aca1cbd05321",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 6,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
