@@ -1,0 +1,99 @@
+{{- if .Values.server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opensandbox-controller.fullname" . }}-server
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- include "opensandbox-controller.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/server-configmap.yaml") . | sha256sum }}
+        {{- with .Values.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "opensandbox-controller.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+        {{- with .Values.server.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "opensandbox-controller.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.server.securityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.server.terminationGracePeriodSeconds | default 10 }}
+      containers:
+      - name: server
+        image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+        imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+        args:
+        - --config
+        - /etc/opensandbox/config.toml
+        {{- if .Values.server.reload }}
+        - --reload
+        {{- end }}
+        {{- with .Values.server.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.server.config.server.port }}
+          protocol: TCP
+        {{- with .Values.server.env }}
+        env:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.server.healthProbes.liveness.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.server.healthProbes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.server.healthProbes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.server.healthProbes.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.server.healthProbes.liveness.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.server.healthProbes.readiness.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.server.healthProbes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.server.healthProbes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.server.healthProbes.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.server.healthProbes.readiness.failureThreshold }}
+        resources:
+          {{- toYaml .Values.server.resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/opensandbox
+          readOnly: true
+        securityContext:
+          {{- toYaml .Values.server.containerSecurityContext | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "opensandbox-controller.fullname" . }}-server-config
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

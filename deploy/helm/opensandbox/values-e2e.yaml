@@ -1,0 +1,134 @@
+# OpenSandbox Helm Chart - E2E测试配置
+# values-e2e.yaml
+#
+# 此配置文件专为端到端测试设计，使用最小资源配置
+
+# Controller配置
+controllerManager:
+  image:
+    repository: opensandbox/controller
+    tag: latest
+    pullPolicy: Never
+  replicas: 1
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Task Executor镜像配置
+taskExecutor:
+  image:
+    repository: opensandbox/task-executor
+    tag: latest
+    pullPolicy: Never
+
+# Server配置 - E2E测试
+server:
+  enabled: true
+  image:
+    repository: opensandbox/server
+    tag: latest
+    pullPolicy: Never
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  # Server 安全上下文 - 镜像以 root 运行
+  securityContext: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - "ALL"
+  # 使用 ClusterIP，通过 port-forward 访问
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Pool配置 - 最小配置用于E2E测试
+pools:
+  - name: agent-pool
+    enabled: true
+    labels:
+      app: opensandbox
+      component: agent-pool
+    annotations:
+      description: "E2E Test Pool - Minimal Capacity"
+
+    template:
+      metadata:
+        labels:
+          pool: agent-pool
+          sdk-compatible: "true"
+      spec:
+        shareProcessNamespace: true
+        initContainers:
+        - name: execd-installer
+          image: opensandbox/execd:v1.0.5
+          imagePullPolicy: Never
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cp ./execd /opt/opensandbox/bin/execd && \
+              cp ./bootstrap.sh /opt/opensandbox/bin/bootstrap.sh && \
+              chmod +x /opt/opensandbox/bin/*
+          volumeMounts:
+          - name: opensandbox-bin
+            mountPath: /opt/opensandbox/bin
+        containers:
+        - name: sandbox-container
+          image: nginx:latest
+          imagePullPolicy: Never
+          command: ["/opt/opensandbox/bin/bootstrap.sh", "sleep", "infinity"]
+          env:
+          - name: EXECD
+            value: /opt/opensandbox/bin/execd
+          ports:
+          - containerPort: 44772
+            name: execd
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          volumeMounts:
+          - name: opensandbox-bin
+            mountPath: /opt/opensandbox/bin
+        - name: task-executor
+          image: opensandbox/task-executor:dev
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          securityContext:
+            capabilities:
+              add: ["SYS_PTRACE"]
+        volumes:
+        - name: opensandbox-bin
+          emptyDir: {}
+
+    # E2E测试容量配置：最小化以避免主机过载
+    capacitySpec:
+      bufferMin: 2      # 最小可用2个
+      bufferMax: 3      # 最多预热3个
+      poolMin: 2        # 最小总数2个
+      poolMax: 5        # 最大总数5个
+
+# Metrics监控
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # 禁用 ServiceMonitor

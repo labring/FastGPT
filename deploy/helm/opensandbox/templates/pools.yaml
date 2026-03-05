@@ -1,0 +1,147 @@
+{{- if .Values.pools }}
+{{- range .Values.pools }}
+{{- if .enabled }}
+---
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: {{ .name }}
+  namespace: {{ include "opensandbox-controller.namespace" $ }}
+  labels:
+    {{- include "opensandbox-controller.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .template }}
+  template:
+    {{- with .template.metadata }}
+    metadata:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    spec:
+      {{- if .template.spec.shareProcessNamespace }}
+      shareProcessNamespace: {{ .template.spec.shareProcessNamespace }}
+      {{- end }}
+
+      {{- if .template.spec.initContainers }}
+      initContainers:
+      {{- range .template.spec.initContainers }}
+      - name: {{ .name }}
+        image: {{ .image }}
+        {{- if .imagePullPolicy }}
+        imagePullPolicy: {{ .imagePullPolicy }}
+        {{- end }}
+        {{- if .command }}
+        command:
+          {{- toYaml .command | nindent 10 }}
+        {{- end }}
+        {{- if .args }}
+        args:
+          {{- toYaml .args | nindent 10 }}
+        {{- end }}
+        {{- if .env }}
+        env:
+          {{- toYaml .env | nindent 10 }}
+        {{- end }}
+        {{- if .volumeMounts }}
+        volumeMounts:
+          {{- toYaml .volumeMounts | nindent 10 }}
+        {{- end }}
+        {{- if .resources }}
+        resources:
+          {{- toYaml .resources | nindent 10 }}
+        {{- end }}
+        {{- if .securityContext }}
+        securityContext:
+          {{- toYaml .securityContext | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+
+      containers:
+      {{- range .template.spec.containers }}
+      - name: {{ .name }}
+        image: {{ .image }}
+        {{- if .imagePullPolicy }}
+        imagePullPolicy: {{ .imagePullPolicy }}
+        {{- end }}
+        {{- if .command }}
+        command:
+          {{- toYaml .command | nindent 10 }}
+        {{- end }}
+        {{- if .args }}
+        args:
+          {{- toYaml .args | nindent 10 }}
+        {{- end }}
+        {{- if .env }}
+        env:
+          {{- toYaml .env | nindent 10 }}
+        {{- end }}
+        {{- if .ports }}
+        ports:
+          {{- toYaml .ports | nindent 10 }}
+        {{- end }}
+        {{- if .volumeMounts }}
+        volumeMounts:
+          {{- toYaml .volumeMounts | nindent 10 }}
+        {{- end }}
+        {{- if .resources }}
+        resources:
+          {{- toYaml .resources | nindent 10 }}
+        {{- end }}
+        {{- if .securityContext }}
+        securityContext:
+          {{- toYaml .securityContext | nindent 10 }}
+        {{- end }}
+        {{- if .livenessProbe }}
+        livenessProbe:
+          {{- toYaml .livenessProbe | nindent 10 }}
+        {{- end }}
+        {{- if .readinessProbe }}
+        readinessProbe:
+          {{- toYaml .readinessProbe | nindent 10 }}
+        {{- end }}
+      {{- end }}
+
+      {{- if .template.spec.volumes }}
+      volumes:
+        {{- toYaml .template.spec.volumes | nindent 6 }}
+      {{- end }}
+
+      {{- if .template.spec.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .template.spec.nodeSelector | nindent 8 }}
+      {{- end }}
+
+      {{- if .template.spec.tolerations }}
+      tolerations:
+        {{- toYaml .template.spec.tolerations | nindent 8 }}
+      {{- end }}
+
+      {{- if .template.spec.affinity }}
+      affinity:
+        {{- toYaml .template.spec.affinity | nindent 8 }}
+      {{- end }}
+  {{- end }}
+
+  capacitySpec:
+    {{- if .capacitySpec.bufferMin }}
+    bufferMin: {{ .capacitySpec.bufferMin }}
+    {{- end }}
+    {{- if .capacitySpec.bufferMax }}
+    bufferMax: {{ .capacitySpec.bufferMax }}
+    {{- end }}
+    {{- if .capacitySpec.poolMin }}
+    poolMin: {{ .capacitySpec.poolMin }}
+    {{- end }}
+    {{- if .capacitySpec.poolMax }}
+    poolMax: {{ .capacitySpec.poolMax }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
