@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkill/sandboxSchema';
+import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkills/sandboxSchema';
 import { initFastGPTTest } from '../../../../test/inits';
 
 beforeAll(async () => {

@@ -6,13 +6,13 @@ import {
   createSkill,
   checkSkillNameExists,
   updateCurrentStorage
-} from '@fastgpt/service/core/agentSkill/controller';
-import { buildSkillMd } from '@fastgpt/service/core/agentSkill/skillMdBuilder';
-import { createSkillPackage } from '@fastgpt/service/core/agentSkill/zipBuilder';
-import { uploadSkillPackage } from '@fastgpt/service/core/agentSkill/storage';
-import { createVersion } from '@fastgpt/service/core/agentSkill/versionController';
-import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkill/api';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkill/constants';
+} from '@fastgpt/service/core/agentSkills/controller';
+import { buildSkillMd } from '@fastgpt/service/core/agentSkills/skillMdBuilder';
+import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder';
+import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
+import { createVersion } from '@fastgpt/service/core/agentSkills/versionController';
+import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

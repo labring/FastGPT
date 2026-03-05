@@ -5,7 +5,7 @@ import {
   generateZipBuffer,
   validateZipStructure,
   extractSkillPackage
-} from '@fastgpt/service/core/agentSkill/zipBuilder';
+} from '@fastgpt/service/core/agentSkills/zipBuilder';
 import JSZip from 'jszip';
 
 describe('zipBuilder', () => {

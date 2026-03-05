@@ -1,10 +1,10 @@
 import { MongoAgentSkills } from './schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkill/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
   AgentSkillListItemType,
   SkillPackageType
-} from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/global/core/agentSkills/type';
 import type { ClientSession } from '../../common/mongo';
 import { uploadSkillPackage } from './storage';
 import { createVersion } from './versionController';

@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { createEditDebugSandbox } from '@fastgpt/service/core/agentSkill/sandboxController';
-import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkill/api';
+import { createEditDebugSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
+import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkills/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 

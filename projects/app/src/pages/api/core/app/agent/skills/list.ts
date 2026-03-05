@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { listSkills } from '@fastgpt/service/core/agentSkill/controller';
-import type { ListSkillsQuery, ListSkillsResponse } from '@fastgpt/global/core/agentSkill/api';
+import { listSkills } from '@fastgpt/service/core/agentSkills/controller';
+import type { ListSkillsQuery, ListSkillsResponse } from '@fastgpt/global/core/agentSkills/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

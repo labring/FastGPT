@@ -8,8 +8,8 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import {
   agentSkillsCollectionName,
   agentSkillsVersionCollectionName
-} from '@fastgpt/global/core/agentSkill/constants';
-import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/global/core/agentSkills/constants';
+import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 const { Schema } = connectionMongo;
 

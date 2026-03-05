@@ -5,7 +5,7 @@ import {
   validateSkillName,
   escapeYaml,
   sanitizeSkillNameForFile
-} from '@fastgpt/service/core/agentSkill/skillMdBuilder';
+} from '@fastgpt/service/core/agentSkills/skillMdBuilder';
 
 describe('skillMdBuilder', () => {
   // ==================== buildSkillMd ====================

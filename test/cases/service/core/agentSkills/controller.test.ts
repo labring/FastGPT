@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoAgentSkill } from '@fastgpt/service/core/agentSkill/schema';
+import { MongoAgentSkill } from '@fastgpt/service/core/agentSkills/schema';
 import {
   createSkill,
   updateSkill,
@@ -9,15 +9,15 @@ import {
   canModifySkill,
   checkSkillNameExists,
   importSkill
-} from '@fastgpt/service/core/agentSkill/controller';
+} from '@fastgpt/service/core/agentSkills/controller';
 import {
   parseSkillMarkdown,
   extractSkillFromMarkdown
-} from '@fastgpt/service/core/agentSkill/utils';
+} from '@fastgpt/service/core/agentSkills/utils';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
-} from '@fastgpt/global/core/agentSkill/constants';
+} from '@fastgpt/global/core/agentSkills/constants';
 import { initFastGPTTest } from '../../../../test/inits';
 
 describe('AgentSkill Controller', () => {
