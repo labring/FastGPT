@@ -20735,28 +20735,6 @@ snapshots:
       busboy: 1.6.0
       concat-stream: 2.0.0
       type-is: 1.6.18
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 7ccf333ad (lock)
-<<<<<<< HEAD
-      xtend: 4.0.2
-=======
-<<<<<<< HEAD
-=======
-      xtend: 4.0.2
->>>>>>> 24426556e (sandbxo in agent)
->>>>>>> fff1be06e (sandbxo in agent)
-<<<<<<< HEAD
->>>>>>> 8026306d6 (sandbxo in agent)
-=======
-=======
->>>>>>> 8be313ac6 (lock)
->>>>>>> 7ccf333ad (lock)
-=======
->>>>>>> d5ddb8ba6 (doc)
 
   mysql2@3.13.0:
     dependencies:
