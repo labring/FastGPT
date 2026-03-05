@@ -31,7 +31,10 @@ export type DatasetCollectionsListItemType = {
   hasError?: boolean;
 
   // 计算得出的状态字段
-  status: CollectionStatusEnum;
+  // - 对于普通文件：单一状态值
+  // - 对于 folder：使用 matchingStatuses 数组（递归聚合模式）
+  status?: CollectionStatusEnum; // 文件的单一状态（folder 无此字段）
+  matchingStatuses?: CollectionStatusEnum[]; // folder 的匹配状态数组（仅 folder 类型有此字段）
 
   // For database type datasets, include table schema description
   tableSchemaDescription?: string;

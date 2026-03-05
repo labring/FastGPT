@@ -27,14 +27,6 @@ import {
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
-// 状态优先级（用于 folder 状态合并，不包含 notExist，因为 folder 不会有此状态）
-const StatusPriority: Record<CollectionStatusEnum, number> = {
-  [CollectionStatusEnum.notExist]: 0, // folder 不会有此状态，设为 0 不参与优先级计算
-  [CollectionStatusEnum.error]: 3,
-  [CollectionStatusEnum.training]: 2,
-  [CollectionStatusEnum.ready]: 1
-};
-
 // 计算单个文件（非 folder）的状态
 function getFileStatus(item: {
   dataAmount: number;
@@ -59,31 +51,18 @@ function getFileStatus(item: {
   return CollectionStatusEnum.ready;
 }
 
-// 根据子文件状态列表计算 folder 状态
-// 注意：notExist 状态不参与 folder 状态计算，因为 folder 本身不会有此状态
-function getFolderStatus(childStatuses: CollectionStatusEnum[]): CollectionStatusEnum {
+// 根据子文件状态列表计算 folder 的匹配状态集合（递归聚合模式）
+// 返回 folder 下存在的所有状态类型的集合
+function getFolderMatchingStatuses(
+  childStatuses: CollectionStatusEnum[]
+): Set<CollectionStatusEnum> {
+  // 空 folder 默认匹配 ready 状态
   if (childStatuses.length === 0) {
-    return CollectionStatusEnum.ready;
+    return new Set([CollectionStatusEnum.ready]);
   }
 
-  // 过滤掉 notExist 状态，因为它不影响 folder 状态
-  const validStatuses = childStatuses.filter((s) => s !== CollectionStatusEnum.notExist);
-
-  if (validStatuses.length === 0) {
-    return CollectionStatusEnum.ready;
-  }
-
-  let highestPriority = 0;
-  let resultStatus: CollectionStatusEnum = CollectionStatusEnum.ready;
-
-  for (const status of validStatuses) {
-    const priority = StatusPriority[status];
-    if (priority > highestPriority) {
-      highestPriority = priority;
-      resultStatus = status;
-    }
-  }
-  return resultStatus;
+  // 收集所有子文件的状态类型（去重）
+  return new Set(childStatuses);
 }
 
 // Collection 数据类型（用于缓存）
@@ -138,18 +117,18 @@ async function preloadAllCollections(
   }));
 }
 
-// 计算 folder 的状态（基于其下所有子文件的状态）
+// 计算 folder 的匹配状态集合（基于其下所有子文件的状态）
 // 使用预加载的 collection 数据避免重复查询
-async function computeFolderStatus(
+async function computeFolderMatchingStatuses(
   teamId: Types.ObjectId,
   datasetId: Types.ObjectId,
   folderId: string,
   allCollectionsCache: CollectionCacheItem[]
-): Promise<CollectionStatusEnum> {
+): Promise<Set<CollectionStatusEnum>> {
   const childItems = getChildCollectionIdsFromCache(allCollectionsCache, folderId);
 
   if (childItems.length === 0) {
-    return CollectionStatusEnum.ready;
+    return new Set([CollectionStatusEnum.ready]);
   }
 
   const childIds = childItems.map((item) => item.id);
@@ -218,7 +197,7 @@ async function computeFolderStatus(
     });
   });
 
-  return getFolderStatus(childStatuses);
+  return getFolderMatchingStatuses(childStatuses);
 }
 
 async function handler(
@@ -470,7 +449,7 @@ async function handleFieldSort({
   const trainingMap = new Map(trainingAmountResult.map((item) => [String(item._id), item]));
   const dataMap = new Map(dataAmountResult.map((item) => [String(item._id), item]));
 
-  // 分离 folder 和非 folder，并行计算所有 folder 状态
+  // 分离 folder 和非 folder，并行计算所有 folder 的匹配状态集合
   const folders = collections.filter((item) => item.type === DatasetCollectionTypeEnum.folder);
 
   // 预加载所有 collection 数据（仅在有 folder 时执行，避免重复查询）
@@ -479,12 +458,12 @@ async function handleFieldSort({
       ? await preloadAllCollections(new Types.ObjectId(teamId), new Types.ObjectId(datasetId))
       : [];
 
-  // 并行计算所有 folder 的状态
-  const folderStatusesPromise =
+  // 并行计算所有 folder 的匹配状态集合
+  const folderMatchingStatusesPromise =
     folders.length > 0
       ? Promise.all(
           folders.map((folder) =>
-            computeFolderStatus(
+            computeFolderMatchingStatuses(
               new Types.ObjectId(teamId),
               new Types.ObjectId(datasetId),
               String(folder._id),
@@ -495,15 +474,15 @@ async function handleFieldSort({
       : Promise.resolve([]);
 
   // 同时并行处理 tags
-  const [folderStatuses, tagResults] = await Promise.all([
-    folderStatusesPromise,
+  const [folderMatchingStatusesArray, tagResults] = await Promise.all([
+    folderMatchingStatusesPromise,
     Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  // 创建 folder 状态映射
-  const folderStatusMap = new Map<string, CollectionStatusEnum>();
+  // 创建 folder 匹配状态映射
+  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
   folders.forEach((folder, index) => {
-    folderStatusMap.set(String(folder._id), folderStatuses[index]);
+    folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
   });
 
   // 组装最终结果
@@ -516,32 +495,49 @@ async function handleFieldSort({
     const dataAmount = data?.count || 0;
     const hasError = training?.hasError || false;
 
-    // 获取状态：folder 从预计算的 Map 中获取，文件直接计算
-    const itemStatus =
-      item.type === DatasetCollectionTypeEnum.folder
-        ? folderStatusMap.get(itemId)!
-        : getFileStatus({
-            dataAmount,
-            trainingAmount,
-            hasError,
-            tableSchemaExist: item.tableSchema?.exist
-          });
+    const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
-    return {
-      ...item,
-      tags: tagResults[index],
-      trainingAmount,
-      dataAmount,
-      hasError,
-      status: itemStatus,
-      permission,
-      ...(isDatabaseDataset && item.tableSchema
-        ? { tableSchemaDescription: item.tableSchema.description }
-        : {}),
-      ...(isStructureDocument && item.metadata
-        ? { rows: item.metadata.rows, cols: item.metadata.cols }
-        : {})
-    };
+    // folder 返回 matchingStatuses 数组，文件返回 status 字段
+    if (isFolder) {
+      const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
+      return {
+        ...item,
+        tags: tagResults[index],
+        trainingAmount,
+        dataAmount,
+        hasError,
+        matchingStatuses: Array.from(matchingStatuses),
+        permission,
+        ...(isDatabaseDataset && item.tableSchema
+          ? { tableSchemaDescription: item.tableSchema.description }
+          : {}),
+        ...(isStructureDocument && item.metadata
+          ? { rows: item.metadata.rows, cols: item.metadata.cols }
+          : {})
+      };
+    } else {
+      const fileStatus = getFileStatus({
+        dataAmount,
+        trainingAmount,
+        hasError,
+        tableSchemaExist: item.tableSchema?.exist
+      });
+      return {
+        ...item,
+        tags: tagResults[index],
+        trainingAmount,
+        dataAmount,
+        hasError,
+        status: fileStatus,
+        permission,
+        ...(isDatabaseDataset && item.tableSchema
+          ? { tableSchemaDescription: item.tableSchema.description }
+          : {}),
+        ...(isStructureDocument && item.metadata
+          ? { rows: item.metadata.rows, cols: item.metadata.cols }
+          : {})
+      };
+    }
   });
 
   return { list, total };
@@ -730,42 +726,62 @@ async function handleDataAmountSortOrStatusFilter({
   const total = result[0]?.metadata[0]?.total || 0;
   const collections = result[0]?.data || [];
 
-  // 处理 folder 状态
+  // 处理 folder 匹配状态集合
   const folders = collections.filter((item: any) => item.type === DatasetCollectionTypeEnum.folder);
-  const folderStatusMap = new Map<string, CollectionStatusEnum>();
+  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
 
   if (folders.length > 0) {
     const allCollectionsCache = await preloadAllCollections(teamIdObj, datasetIdObj);
-    const folderStatuses = await Promise.all(
+    const folderMatchingStatusesArray = await Promise.all(
       folders.map((folder: any) =>
-        computeFolderStatus(teamIdObj, datasetIdObj, String(folder._id), allCollectionsCache)
+        computeFolderMatchingStatuses(
+          teamIdObj,
+          datasetIdObj,
+          String(folder._id),
+          allCollectionsCache
+        )
       )
     );
     folders.forEach((folder: any, index: number) => {
-      folderStatusMap.set(String(folder._id), folderStatuses[index]);
+      folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
     });
   }
 
   // 组装结果
   const list = await Promise.all(
     collections.map(async (item: any) => {
-      const finalStatus =
-        item.type === DatasetCollectionTypeEnum.folder
-          ? folderStatusMap.get(String(item._id)) || CollectionStatusEnum.ready
-          : item.status;
+      const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
-      return {
-        ...item,
-        tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-        status: finalStatus,
-        permission,
-        ...(isDatabaseDataset && item.tableSchema
-          ? { tableSchemaDescription: item.tableSchema.description }
-          : {}),
-        ...(isStructureDocument && item.metadata
-          ? { rows: item.metadata.rows, cols: item.metadata.cols }
-          : {})
-      };
+      // folder 返回 matchingStatuses 数组，文件返回 status 字段
+      if (isFolder) {
+        const matchingStatuses =
+          folderMatchingStatusesMap.get(String(item._id)) || new Set([CollectionStatusEnum.ready]);
+        return {
+          ...item,
+          tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
+          matchingStatuses: Array.from(matchingStatuses),
+          permission,
+          ...(isDatabaseDataset && item.tableSchema
+            ? { tableSchemaDescription: item.tableSchema.description }
+            : {}),
+          ...(isStructureDocument && item.metadata
+            ? { rows: item.metadata.rows, cols: item.metadata.cols }
+            : {})
+        };
+      } else {
+        return {
+          ...item,
+          tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
+          status: item.status,
+          permission,
+          ...(isDatabaseDataset && item.tableSchema
+            ? { tableSchemaDescription: item.tableSchema.description }
+            : {}),
+          ...(isStructureDocument && item.metadata
+            ? { rows: item.metadata.rows, cols: item.metadata.cols }
+            : {})
+        };
+      }
     })
   );
 
@@ -847,23 +863,28 @@ async function handleStatusFilterWithMemoryPagination({
   const trainingMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
   const dataMap = new Map(dataAmount.map((item) => [String(item._id), item]));
 
-  // 计算 folder 状态
+  // 计算 folder 匹配状态集合
   const folders = allCollections.filter((item) => item.type === DatasetCollectionTypeEnum.folder);
   const allCollectionsCache =
     folders.length > 0 ? await preloadAllCollections(teamIdObj, datasetIdObj) : [];
 
-  const folderStatuses =
+  const folderMatchingStatusesArray =
     folders.length > 0
       ? await Promise.all(
           folders.map((folder) =>
-            computeFolderStatus(teamIdObj, datasetIdObj, String(folder._id), allCollectionsCache)
+            computeFolderMatchingStatuses(
+              teamIdObj,
+              datasetIdObj,
+              String(folder._id),
+              allCollectionsCache
+            )
           )
         )
       : [];
 
-  const folderStatusMap = new Map<string, CollectionStatusEnum>();
+  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
   folders.forEach((folder, index) => {
-    folderStatusMap.set(String(folder._id), folderStatuses[index]);
+    folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
   });
 
   // 组合数据并计算状态
@@ -876,29 +897,46 @@ async function handleStatusFilterWithMemoryPagination({
     const dataAmountVal = data?.count || 0;
     const hasErrorVal = training?.hasError || false;
 
-    const itemStatus =
-      item.type === DatasetCollectionTypeEnum.folder
-        ? folderStatusMap.get(itemId)!
-        : getFileStatus({
-            dataAmount: dataAmountVal,
-            trainingAmount: trainingAmountVal,
-            hasError: hasErrorVal,
-            tableSchemaExist: item.tableSchema?.exist
-          });
+    const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
-    return {
-      ...item,
-      trainingAmount: trainingAmountVal,
-      dataAmount: dataAmountVal,
-      hasError: hasErrorVal,
-      status: itemStatus
-    };
+    // folder 使用匹配状态集合，文件使用单一状态
+    if (isFolder) {
+      const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
+      return {
+        ...item,
+        trainingAmount: trainingAmountVal,
+        dataAmount: dataAmountVal,
+        hasError: hasErrorVal,
+        matchingStatuses
+      };
+    } else {
+      const fileStatus = getFileStatus({
+        dataAmount: dataAmountVal,
+        trainingAmount: trainingAmountVal,
+        hasError: hasErrorVal,
+        tableSchemaExist: item.tableSchema?.exist
+      });
+      return {
+        ...item,
+        trainingAmount: trainingAmountVal,
+        dataAmount: dataAmountVal,
+        hasError: hasErrorVal,
+        status: fileStatus
+      };
+    }
   });
 
-  // 状态筛选
-  const filteredCollections = collectionsWithData.filter((item) =>
-    statusFilter.includes(item.status)
-  );
+  // 状态筛选：使用 Set 交集判断
+  const filteredCollections = collectionsWithData.filter((item) => {
+    const isFolder = item.type === DatasetCollectionTypeEnum.folder;
+    if (isFolder) {
+      // folder: 检查 matchingStatuses 集合是否与筛选条件有交集
+      return statusFilter.some((status) => (item as any).matchingStatuses.has(status));
+    } else {
+      // 文件: 直接检查 status 是否在筛选条件中
+      return statusFilter.includes((item as any).status);
+    }
+  });
 
   // 排序
   if (sortBy === 'dataAmount') {
@@ -941,20 +979,40 @@ async function handleStatusFilterWithMemoryPagination({
 
   // 组装结果
   const list = await Promise.all(
-    paginatedCollections.map(async (item) => ({
-      ...item,
-      tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-      permission,
-      ...(isDatabaseDataset && item.tableSchema
-        ? { tableSchemaDescription: item.tableSchema.description }
-        : {}),
-      ...(isStructureDocument && item.metadata
-        ? { rows: item.metadata.rows, cols: item.metadata.cols }
-        : {})
-    }))
+    paginatedCollections.map(async (item) => {
+      const isFolder = item.type === DatasetCollectionTypeEnum.folder;
+
+      // folder 返回 matchingStatuses 数组，文件返回 status 字段
+      if (isFolder) {
+        return {
+          ...item,
+          tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
+          matchingStatuses: Array.from((item as any).matchingStatuses) as CollectionStatusEnum[],
+          permission,
+          ...(isDatabaseDataset && item.tableSchema
+            ? { tableSchemaDescription: item.tableSchema.description }
+            : {}),
+          ...(isStructureDocument && item.metadata
+            ? { rows: item.metadata.rows, cols: item.metadata.cols }
+            : {})
+        };
+      } else {
+        return {
+          ...item,
+          tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
+          permission,
+          ...(isDatabaseDataset && item.tableSchema
+            ? { tableSchemaDescription: item.tableSchema.description }
+            : {}),
+          ...(isStructureDocument && item.metadata
+            ? { rows: item.metadata.rows, cols: item.metadata.cols }
+            : {})
+        };
+      }
+    })
   );
 
-  return { list, total };
+  return { list: list as DatasetCollectionsListItemType[], total };
 }
 
 export default NextAPI(handler);
