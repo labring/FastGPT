@@ -23,6 +23,9 @@ import type {
 import Markdown from '@/components/Markdown';
 import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
+// 兜底回复切换节点 ID（用于判断是否走了 LLM 回复分支）
+const FALLBACK_REPLY_SWITCH_NODE_ID = 'ekVOtsUJMYWg4col';
+
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
   score?: SearchDataResponseItemType['score'];
@@ -542,23 +545,57 @@ const FinalAnswerNode = ({
   data,
   totalRunningTime,
   isFallback,
-  chatNodeData
+  chatNodeData,
+  workflowNodes
 }: {
   data?: ChatHistoryItemResType;
   totalRunningTime?: number;
   isFallback?: boolean;
   chatNodeData?: ChatHistoryItemResType;
+  workflowNodes?: ChatHistoryItemResType[];
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
 
+  // 检查兜底回复切换节点状态：是否存在该节点 & ifElseResult 是否为 "ELSE"
+  const { fallbackReplySwitchCheckerFlag, generateReplyWithLlmFlag } = useMemo(() => {
+    if (!workflowNodes)
+      return { fallbackReplySwitchCheckerFlag: false, generateReplyWithLlmFlag: false };
+    const fallbackSwitchNode = workflowNodes.find(
+      (node: any) => node.nodeId === FALLBACK_REPLY_SWITCH_NODE_ID
+    );
+    return {
+      fallbackReplySwitchCheckerFlag: !!fallbackSwitchNode,
+      generateReplyWithLlmFlag: fallbackSwitchNode?.ifElseResult === 'ELSE'
+    };
+  }, [workflowNodes]);
+
   // 获取最终回答文本
   const finalAnswer = useMemo(() => {
     let rawValue = '';
 
-    // 如果是兜底回复，使用 answerNode 的 textOutput
+    // 检查兜底回复切换节点状态：是否存在该节点 nodeId: "ekVOtsUJMYWg4col" 存在且 ifElseResult 为 "ELSE" 时
+    // 从 chatNode 的 historyPreview 中获取最后一个 AI 对话的 value
+    if (fallbackReplySwitchCheckerFlag && generateReplyWithLlmFlag) {
+      if (chatNodeData?.errorText) {
+        // 优先检查 errorText - 如果存在错误，直接返回错误文本
+        return chatNodeData.errorText;
+      } else if (chatNodeData?.historyPreview && Array.isArray(chatNodeData.historyPreview)) {
+        const aiMessages = chatNodeData.historyPreview.filter((msg: any) => msg.obj === 'AI');
+        if (aiMessages.length > 0) {
+          rawValue = aiMessages[aiMessages.length - 1].value;
+        }
+      }
+      // 如果没有找到 AI 消息，使用 answerNode 的 textOutput 作为兜底
+      if (!rawValue) {
+        rawValue = data?.textOutput || '';
+      }
+      return removeDatasetCiteText(rawValue, false);
+    }
+
+    // 原有逻辑：如果是兜底回复，使用 answerNode 的 textOutput
     if (isFallback) {
       rawValue = data?.textOutput || '';
     } else if (chatNodeData?.errorText) {
@@ -577,7 +614,7 @@ const FinalAnswerNode = ({
 
     // 使用 removeDatasetCiteText 处理文本，移除数据集引用标记
     return removeDatasetCiteText(rawValue, false);
-  }, [data, isFallback, chatNodeData]);
+  }, [data, isFallback, chatNodeData, fallbackReplySwitchCheckerFlag, generateReplyWithLlmFlag]);
 
   // 判断是否为错误状态：非兜底回复 && chatNode 有 errorText && 没有 AI 消息
   const isError = useMemo(() => {
@@ -889,6 +926,7 @@ const ChatDetailModal = ({
                 chatNodeData={workflowNodes.find(
                   (node) => node.moduleType === FlowNodeTypeEnum.chatNode
                 )}
+                workflowNodes={workflowNodes}
               />
             </Box>
           </>
