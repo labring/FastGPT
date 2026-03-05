@@ -11,6 +11,7 @@ import {
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
 import { multer } from '@fastgpt/service/common/file/multer';
+import { getSkillSizeLimits } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import fs from 'fs/promises';
 
 export const config = {
@@ -28,8 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Read env limit before multer so both use the same value
-    const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
-    const maxArchiveSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024;
+    const { maxUploadBytes: maxArchiveSize, maxUncompressedBytes } = getSkillSizeLimits();
     // Convert bytes to MB for multer (multer expects MB)
     const maxArchiveSizeMB = Math.ceil(maxArchiveSize / 1024 / 1024);
 
@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Extract archive to file map
     let fileMap: Record<string, Buffer>;
     try {
-      fileMap = await extractToFileMap(file.path);
+      fileMap = await extractToFileMap(file.path, maxUncompressedBytes);
     } catch (err: any) {
       return jsonRes(res, {
         code: 400,

@@ -15,9 +15,10 @@ RUN apt-get update && apt-get install -y \
     unzip \
     curl \
     ca-certificates \
-    sudo \
-    python3 \
-    && rm -rf /var/lib/apt/lists/*
+    sudo
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+RUN apt install -y python3 nodejs
+RUN rm -rf /var/lib/apt/lists/*
 
 # Install code-server using the official script
 RUN curl -fsSL https://code-server.dev/install.sh | sh
