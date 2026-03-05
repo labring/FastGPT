@@ -9,8 +9,8 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import {
   agentSkillsCollectionName,
   skillSandboxCollectionName
-} from '@fastgpt/global/core/agentSkill/constants';
-import type { SkillSandboxSchemaType } from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/global/core/agentSkills/constants';
+import type { SkillSandboxSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 const { Schema } = connectionMongo;
 

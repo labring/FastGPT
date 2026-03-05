@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { importSkill } from '@fastgpt/service/core/agentSkill/controller';
-import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkill/zipBuilder';
+import { importSkill } from '@fastgpt/service/core/agentSkills/controller';
+import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import {
   getSupportedArchiveFormat,
   extractToFileMap
-} from '@fastgpt/service/core/agentSkill/archiveUtils';
-import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkill/api';
-import type { SkillPackageType } from '@fastgpt/global/core/agentSkill/type';
+} from '@fastgpt/service/core/agentSkills/archiveUtils';
+import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
 import { multer } from '@fastgpt/service/common/file/multer';
 import fs from 'fs/promises';
 

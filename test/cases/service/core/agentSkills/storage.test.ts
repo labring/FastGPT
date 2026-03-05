@@ -5,7 +5,7 @@ import {
   deleteSkillPackage,
   getSkillStorageKey,
   getSkillStorageInfo
-} from '@fastgpt/service/core/agentSkill/storage';
+} from '@fastgpt/service/core/agentSkills/storage';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 
 // Mock the S3 bucket

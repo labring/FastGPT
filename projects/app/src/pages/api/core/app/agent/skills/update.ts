@@ -6,8 +6,8 @@ import {
   updateSkill,
   canModifySkill,
   checkSkillNameExists
-} from '@fastgpt/service/core/agentSkill/controller';
-import type { UpdateSkillBody, UpdateSkillResponse } from '@fastgpt/global/core/agentSkill/api';
+} from '@fastgpt/service/core/agentSkills/controller';
+import type { UpdateSkillBody, UpdateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

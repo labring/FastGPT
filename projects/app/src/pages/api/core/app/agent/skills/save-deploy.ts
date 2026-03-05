@@ -6,27 +6,27 @@ import {
   getSkillById,
   canModifySkill,
   updateCurrentStorage
-} from '@fastgpt/service/core/agentSkill/controller';
-import { packageSkillInSandbox } from '@fastgpt/service/core/agentSkill/sandboxController';
+} from '@fastgpt/service/core/agentSkills/controller';
+import { packageSkillInSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
 import {
   createVersion,
   getNextVersionNumber,
   setActiveVersion
-} from '@fastgpt/service/core/agentSkill/versionController';
-import { uploadSkillPackage } from '@fastgpt/service/core/agentSkill/storage';
+} from '@fastgpt/service/core/agentSkills/versionController';
+import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import {
   validateZipStructure,
   extractSkillPackage,
   standardizeSkillPackage
-} from '@fastgpt/service/core/agentSkill/zipBuilder';
-import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkill/utils';
-import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkill/sandboxSchema';
-import { MongoAgentSkills } from '@fastgpt/service/core/agentSkill/schema';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
+} from '@fastgpt/service/core/agentSkills/zipBuilder';
+import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
+import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkills/sandboxSchema';
+import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   SaveDeploySkillBody,
   SaveDeploySkillResponse
-} from '@fastgpt/global/core/agentSkill/api';
+} from '@fastgpt/global/core/agentSkills/api';
 
 /**
  * POST /api/core/app/agent/skills/save-deploy

@@ -6,7 +6,7 @@
 
 import { MongoAgentSkillsVersion } from './versionSchema';
 import type { ClientSession } from '../../common/mongo';
-import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkill/type';
+import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 export type CreateVersionData = {
   skillId: string;

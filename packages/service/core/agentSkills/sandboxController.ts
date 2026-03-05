@@ -22,8 +22,8 @@ import type {
   SkillSandboxSchemaType,
   SandboxImageConfigType,
   SkillSandboxEndpointType
-} from '@fastgpt/global/core/agentSkill/type';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkill/constants';
+} from '@fastgpt/global/core/agentSkills/type';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';

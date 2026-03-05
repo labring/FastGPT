@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, beforeEach, afterEach } from 'vitest';
-import { MongoSkillVersion } from '@fastgpt/service/core/agentSkill/versionSchema';
-import { MongoAgentSkill } from '@fastgpt/service/core/agentSkill/schema';
+import { MongoSkillVersion } from '@fastgpt/service/core/agentSkills/versionSchema';
+import { MongoAgentSkill } from '@fastgpt/service/core/agentSkills/schema';
 import {
   createVersion,
   getNextVersionNumber,
@@ -10,9 +10,9 @@ import {
   getActiveVersion,
   deleteVersion,
   restoreVersion
-} from '@fastgpt/service/core/agentSkill/versionController';
+} from '@fastgpt/service/core/agentSkills/versionController';
 import { initFastGPTTest } from '../../../../test/inits';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkill/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 describe('versionController', () => {
   let testTeamId: string;

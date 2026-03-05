@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import { randomBytes } from 'crypto';
 
 // Import the function from the API route file
-import type { ExtractedSkillPackage } from '@fastgpt/global/core/agentSkill/type';
+import type { ExtractedSkillPackage } from '@fastgpt/global/core/agentSkills/type';
 
 // Load the extractSkillPackage function from the source file
 // We'll need to test it directly, so we'll create a test implementation
@@ -64,9 +64,11 @@ This is a test skill.`;
    */
   async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPackage> {
     const { parseSkillPackage, extractSkillFromMarkdown } = await import(
-      '@fastgpt/service/core/agentSkill/utils'
+      '@fastgpt/service/core/agentSkills/utils'
     );
-    const { standardizeSkillPackage } = await import('@fastgpt/service/core/agentSkill/zipBuilder');
+    const { standardizeSkillPackage } = await import(
+      '@fastgpt/service/core/agentSkills/zipBuilder'
+    );
 
     // Check ZIP file size (limit to 50MB by default, configurable via env var)
     const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
