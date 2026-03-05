@@ -58,6 +58,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Validate category enum values
+    const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
+    if (category.length > 0 && category.some((c) => !validCategories.includes(c))) {
+      return jsonRes(res, { code: 400, error: 'Invalid category value' });
+    }
+
+    // Validate config size (max 50 KB)
+    if (config && JSON.stringify(config).length > 50_000) {
+      return jsonRes(res, { code: 400, error: 'Config exceeds maximum allowed size (50KB)' });
+    }
+
     // Check if skill name already exists
     const nameExists = await checkSkillNameExists(name.trim(), teamId);
     if (nameExists) {
@@ -125,7 +136,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     jsonRes<CreateSkillResponse>(res, {
       data: skillId
     });
-  } catch (err) {
+  } catch (err: any) {
+    // E11000: unique index violation (concurrent duplicate name creation)
+    if (err.code === 11000 || err.codeName === 'DuplicateKey') {
+      return jsonRes(res, { code: 409, error: 'Skill name already exists' });
+    }
     jsonRes(res, {
       code: 500,
       error: err

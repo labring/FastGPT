@@ -1,436 +1,347 @@
-import { describe, expect, it, afterEach, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import fs from 'fs/promises';
-import { randomBytes } from 'crypto';
 
-// Import the function from the API route file
-import type { ExtractedSkillPackage } from '@fastgpt/global/core/agentSkills/type';
+import type { ImportSkillBody } from '@fastgpt/global/core/agentSkills/api';
+import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
+import {
+  getSupportedArchiveFormat,
+  findSkillMdKey,
+  getRootPrefix,
+  stripRootPrefix
+} from '@fastgpt/service/core/agentSkills/archiveUtils';
+import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
 
-// Load the extractSkillPackage function from the source file
-// We'll need to test it directly, so we'll create a test implementation
-// based on the actual implementation in import.ts
+// ---------------------------------------------------------------------------
+// Helpers that mirror the core logic in the import API route
+// (import.ts cannot be imported directly due to Next.js / auth / DB deps)
+// ---------------------------------------------------------------------------
 
-describe('extractSkillPackage', () => {
-  let tempFiles: string[] = [];
+/** Replicate the body-building logic from import.ts */
+function buildImportBody(
+  resultData: Partial<ImportSkillBody>,
+  reqBody: Partial<ImportSkillBody> | undefined
+): ImportSkillBody {
+  return {
+    name: resultData.name ?? reqBody?.name,
+    description: resultData.description ?? reqBody?.description,
+    avatar: resultData.avatar ?? reqBody?.avatar
+  };
+}
 
-  afterEach(async () => {
-    // Clean up temporary files
-    for (const file of tempFiles) {
-      try {
-        await fs.unlink(file);
-      } catch {
-        // Ignore errors
-      }
+/** Replicate the pkgName / pkgDescription derivation from import.ts */
+function derivePkgMeta(
+  body: ImportSkillBody,
+  originalname: string | undefined
+): { pkgName: string; pkgDescription: string } {
+  const pkgName =
+    body.name ||
+    (originalname ?? 'package').replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim() ||
+    'package';
+  const pkgDescription = body.description ?? '';
+  return { pkgName, pkgDescription };
+}
+
+/** Replicate the skillPackage construction from import.ts */
+function buildSkillPackage(
+  pkgName: string,
+  pkgDescription: string,
+  avatar: string | undefined
+): SkillPackageType {
+  return {
+    skill: {
+      name: pkgName,
+      description: pkgDescription,
+      category: ['other'],
+      config: {},
+      avatar
     }
-    tempFiles = [];
+  };
+}
+
+// ===========================================================================
+// getSupportedArchiveFormat
+// ===========================================================================
+describe('getSupportedArchiveFormat', () => {
+  it('returns zip for .zip', () => {
+    expect(getSupportedArchiveFormat('skill.zip')).toBe('zip');
   });
 
-  /**
-   * Create a temporary ZIP file with given contents
-   */
-  async function createTempZip(contents: Record<string, string | Buffer>): Promise<string> {
-    const zip = new JSZip();
+  it('returns tar for .tar', () => {
+    expect(getSupportedArchiveFormat('skill.tar')).toBe('tar');
+  });
 
-    for (const [path, content] of Object.entries(contents)) {
-      zip.file(path, content);
-    }
+  it('returns tar.gz for .tar.gz', () => {
+    expect(getSupportedArchiveFormat('skill.tar.gz')).toBe('tar.gz');
+  });
 
-    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-    const tempFile = `/tmp/test-skill-${Date.now()}-${randomBytes(8).toString('hex')}.zip`;
+  it('returns tar.gz for .tgz', () => {
+    expect(getSupportedArchiveFormat('skill.tgz')).toBe('tar.gz');
+  });
 
-    await fs.writeFile(tempFile, buffer);
-    tempFiles.push(tempFile);
+  it('returns null for unsupported extension', () => {
+    expect(getSupportedArchiveFormat('skill.rar')).toBeNull();
+    expect(getSupportedArchiveFormat('skill.7z')).toBeNull();
+    expect(getSupportedArchiveFormat('skill')).toBeNull();
+  });
 
-    return tempFile;
-  }
+  it('is case-insensitive', () => {
+    expect(getSupportedArchiveFormat('Skill.ZIP')).toBe('zip');
+    expect(getSupportedArchiveFormat('Skill.TAR.GZ')).toBe('tar.gz');
+    expect(getSupportedArchiveFormat('Skill.TGZ')).toBe('tar.gz');
+  });
+});
 
-  /**
-   * Create a test SKILL.md content
-   */
-  function createSkillMd(name: string, description: string): string {
-    return `---
-name: ${name}
-description: ${description}
----
+// ===========================================================================
+// findSkillMdKey
+// ===========================================================================
+describe('findSkillMdKey', () => {
+  it('finds SKILL.md at root', () => {
+    const fileMap = { 'SKILL.md': Buffer.from(''), 'main.py': Buffer.from('') };
+    expect(findSkillMdKey(fileMap)).toBe('SKILL.md');
+  });
 
-# ${name}
+  it('finds skill.md at root case-insensitively', () => {
+    const fileMap = { 'skill.md': Buffer.from(''), 'main.py': Buffer.from('') };
+    expect(findSkillMdKey(fileMap)).toBe('skill.md');
+  });
 
-This is a test skill.`;
-  }
+  it('finds SKILL.md one level deep', () => {
+    const fileMap = { 'my-skill/SKILL.md': Buffer.from(''), 'my-skill/main.py': Buffer.from('') };
+    expect(findSkillMdKey(fileMap)).toBe('my-skill/SKILL.md');
+  });
 
-  /**
-   * Mock implementation of extractSkillPackage for testing
-   * This mirrors the actual implementation in import.ts
-   */
-  async function extractSkillPackage(filePath: string): Promise<ExtractedSkillPackage> {
-    const { parseSkillPackage, extractSkillFromMarkdown } = await import(
-      '@fastgpt/service/core/agentSkills/utils'
+  it('does not find SKILL.md more than one level deep', () => {
+    const fileMap = { 'a/b/SKILL.md': Buffer.from('') };
+    expect(findSkillMdKey(fileMap)).toBeNull();
+  });
+
+  it('returns null when no SKILL.md present', () => {
+    const fileMap = { 'README.md': Buffer.from(''), 'main.py': Buffer.from('') };
+    expect(findSkillMdKey(fileMap)).toBeNull();
+  });
+
+  it('returns null for empty file map', () => {
+    expect(findSkillMdKey({})).toBeNull();
+  });
+});
+
+// ===========================================================================
+// getRootPrefix
+// ===========================================================================
+describe('getRootPrefix', () => {
+  it('returns empty string for root-level SKILL.md', () => {
+    expect(getRootPrefix('SKILL.md')).toBe('');
+  });
+
+  it('returns directory prefix for subdirectory SKILL.md', () => {
+    expect(getRootPrefix('my-skill/SKILL.md')).toBe('my-skill/');
+  });
+});
+
+// ===========================================================================
+// stripRootPrefix
+// ===========================================================================
+describe('stripRootPrefix', () => {
+  it('returns unchanged map when prefix is empty', () => {
+    const fileMap = { 'SKILL.md': Buffer.from('a'), 'main.py': Buffer.from('b') };
+    expect(stripRootPrefix(fileMap, '')).toEqual(fileMap);
+  });
+
+  it('strips the prefix from matching keys', () => {
+    const fileMap = {
+      'my-skill/SKILL.md': Buffer.from('a'),
+      'my-skill/src/main.py': Buffer.from('b'),
+      'other/file.txt': Buffer.from('c') // does not match prefix
+    };
+    const result = stripRootPrefix(fileMap, 'my-skill/');
+    expect(result).toHaveProperty('SKILL.md');
+    expect(result).toHaveProperty('src/main.py');
+    expect(result).toHaveProperty('other/file.txt');
+    expect(result).not.toHaveProperty('my-skill/SKILL.md');
+  });
+
+  it('removes keys that become empty after stripping', () => {
+    // Key equals the prefix itself — stripping yields '' which should be dropped
+    const fileMap = { 'my-skill/': Buffer.from('') };
+    const result = stripRootPrefix(fileMap, 'my-skill/');
+    expect(Object.keys(result)).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// buildImportBody – body merging logic
+// ===========================================================================
+describe('buildImportBody', () => {
+  it('uses result.data values when present', () => {
+    const body = buildImportBody(
+      { name: 'from-data', description: 'desc-data', avatar: 'https://data.com/icon.png' },
+      { name: 'from-req', description: 'desc-req', avatar: 'https://req.com/icon.png' }
     );
-    const { standardizeSkillPackage } = await import(
-      '@fastgpt/service/core/agentSkills/zipBuilder'
+    expect(body.name).toBe('from-data');
+    expect(body.description).toBe('desc-data');
+    expect(body.avatar).toBe('https://data.com/icon.png');
+  });
+
+  it('falls back to req.body when result.data fields are undefined', () => {
+    const body = buildImportBody(
+      {},
+      {
+        name: 'fallback-name',
+        description: 'fallback-desc',
+        avatar: 'https://fallback.com/icon.png'
+      }
     );
+    expect(body.name).toBe('fallback-name');
+    expect(body.description).toBe('fallback-desc');
+    expect(body.avatar).toBe('https://fallback.com/icon.png');
+  });
 
-    // Check ZIP file size (limit to 50MB by default, configurable via env var)
-    const maxSizeEnv = process.env.MAX_SKILL_ZIP_SIZE;
-    const maxZipSize = maxSizeEnv ? parseInt(maxSizeEnv, 10) : 50 * 1024 * 1024; // 50MB default
+  it('returns all undefined when both sources are empty', () => {
+    const body = buildImportBody({}, undefined);
+    expect(body.name).toBeUndefined();
+    expect(body.description).toBeUndefined();
+    expect(body.avatar).toBeUndefined();
+  });
 
-    const stats = await fs.stat(filePath);
-    if (stats.size > maxZipSize) {
-      throw new Error(
-        `ZIP file size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxZipSize / 1024 / 1024).toFixed(2)}MB)`
-      );
-    }
+  it('avatar is undefined when neither source provides it', () => {
+    const body = buildImportBody({ name: 'only-name' }, { description: 'only-desc' });
+    expect(body.avatar).toBeUndefined();
+  });
 
-    // Read ZIP file to buffer
-    const zipBuffer = await fs.readFile(filePath);
+  it('result.data avatar takes precedence over req.body avatar', () => {
+    const body = buildImportBody(
+      { avatar: 'https://primary.com/icon.png' },
+      { avatar: 'https://secondary.com/icon.png' }
+    );
+    expect(body.avatar).toBe('https://primary.com/icon.png');
+  });
 
-    // Load ZIP
+  it('accepts base64 string as avatar', () => {
+    const base64 = 'data:image/png;base64,iVBORw0KGgo=';
+    const body = buildImportBody({ avatar: base64 }, undefined);
+    expect(body.avatar).toBe(base64);
+  });
+});
+
+// ===========================================================================
+// derivePkgMeta – package name / description derivation
+// ===========================================================================
+describe('derivePkgMeta', () => {
+  it('uses body.name when provided', () => {
+    const { pkgName } = derivePkgMeta({ name: 'my-skill' }, 'archive.zip');
+    expect(pkgName).toBe('my-skill');
+  });
+
+  it('strips extension from originalname when body.name is absent', () => {
+    expect(derivePkgMeta({}, 'cool-skill.zip').pkgName).toBe('cool-skill');
+    expect(derivePkgMeta({}, 'cool-skill.tar.gz').pkgName).toBe('cool-skill');
+    expect(derivePkgMeta({}, 'cool-skill.tgz').pkgName).toBe('cool-skill');
+    expect(derivePkgMeta({}, 'cool-skill.tar').pkgName).toBe('cool-skill');
+  });
+
+  it("defaults to 'package' when both body.name and originalname are absent", () => {
+    expect(derivePkgMeta({}, undefined).pkgName).toBe('package');
+  });
+
+  it('body.name takes precedence over originalname', () => {
+    const { pkgName } = derivePkgMeta({ name: 'explicit' }, 'archive.zip');
+    expect(pkgName).toBe('explicit');
+  });
+
+  it('defaults pkgDescription to empty string when not provided', () => {
+    const { pkgDescription } = derivePkgMeta({}, 'skill.zip');
+    expect(pkgDescription).toBe('');
+  });
+
+  it('uses body.description when provided', () => {
+    const { pkgDescription } = derivePkgMeta({ description: 'my description' }, 'skill.zip');
+    expect(pkgDescription).toBe('my description');
+  });
+});
+
+// ===========================================================================
+// buildSkillPackage – skillPackage construction including avatar propagation
+// ===========================================================================
+describe('buildSkillPackage', () => {
+  it('includes avatar when provided', () => {
+    const pkg = buildSkillPackage('my-skill', 'desc', 'https://example.com/icon.png');
+    expect(pkg.skill.avatar).toBe('https://example.com/icon.png');
+  });
+
+  it('avatar is undefined when not provided', () => {
+    const pkg = buildSkillPackage('my-skill', 'desc', undefined);
+    expect(pkg.skill.avatar).toBeUndefined();
+  });
+
+  it("defaults category to ['other']", () => {
+    const pkg = buildSkillPackage('skill', '', undefined);
+    expect(pkg.skill.category).toEqual(['other']);
+  });
+
+  it('sets name and description correctly', () => {
+    const pkg = buildSkillPackage('test-skill', 'A test skill', undefined);
+    expect(pkg.skill.name).toBe('test-skill');
+    expect(pkg.skill.description).toBe('A test skill');
+  });
+
+  it('config defaults to empty object', () => {
+    const pkg = buildSkillPackage('skill', '', undefined);
+    expect(pkg.skill.config).toEqual({});
+  });
+
+  it('end-to-end: avatar flows from body through to skillPackage', () => {
+    const resultData = { name: 'e2e-skill', avatar: 'https://cdn.example.com/icon.svg' };
+    const body = buildImportBody(resultData, undefined);
+    const { pkgName, pkgDescription } = derivePkgMeta(body, 'e2e-skill.zip');
+    const pkg = buildSkillPackage(pkgName, pkgDescription, body.avatar);
+
+    expect(pkg.skill.name).toBe('e2e-skill');
+    expect(pkg.skill.avatar).toBe('https://cdn.example.com/icon.svg');
+  });
+});
+
+// ===========================================================================
+// repackFileMapAsZip
+// ===========================================================================
+describe('repackFileMapAsZip', () => {
+  it('creates a valid ZIP buffer from a file map', async () => {
+    const fileMap = {
+      'SKILL.md': Buffer.from('# skill'),
+      'src/main.py': Buffer.from('print("hello")')
+    };
+    const zipBuffer = await repackFileMapAsZip(fileMap);
+    expect(zipBuffer).toBeInstanceOf(Buffer);
+    expect(zipBuffer.length).toBeGreaterThan(0);
+  });
+
+  it('preserves all file paths in the resulting ZIP', async () => {
+    const fileMap = {
+      'SKILL.md': Buffer.from('# skill'),
+      'src/utils.py': Buffer.from(''),
+      'data/config.json': Buffer.from('{}')
+    };
+    const zipBuffer = await repackFileMapAsZip(fileMap);
     const zip = await JSZip.loadAsync(zipBuffer);
-    const files = Object.keys(zip.files);
+    const files = Object.keys(zip.files).filter((k) => !zip.files[k].dir);
 
-    // Find SKILL.md (required)
-    let skillMdKey = files.find((key) => key === 'SKILL.md' || key.toLowerCase() === 'skill.md');
-
-    // If not found in root, check single-level subdirectory
-    if (!skillMdKey) {
-      for (const key of files) {
-        if (key.toLowerCase().endsWith('/skill.md') && key.split('/').length === 2) {
-          skillMdKey = key;
-          break;
-        }
-      }
-    }
-
-    if (!skillMdKey) {
-      throw new Error('SKILL.md not found in ZIP archive');
-    }
-
-    // Get markdown content
-    const skillMdFile = zip.file(skillMdKey);
-    if (!skillMdFile) {
-      throw new Error('SKILL.md not found in ZIP archive');
-    }
-    const markdown = await skillMdFile.async('string');
-
-    // Extract skill metadata from SKILL.md frontmatter
-    const { skill, error: extractError } = extractSkillFromMarkdown(markdown);
-    if (extractError || !skill) {
-      throw new Error(extractError || 'Failed to parse SKILL.md');
-    }
-
-    // Standardize ZIP structure
-    const { buffer: standardizedZipBuffer } = await standardizeSkillPackage(zipBuffer, skill.name);
-
-    // Build package
-    const packageData = {
-      skill,
-      markdown
-    };
-
-    // Validate package
-    const result = parseSkillPackage(packageData);
-
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-
-    // Extract metadata for all ZIP entries from standardized ZIP
-    const finalZip = await JSZip.loadAsync(standardizedZipBuffer);
-    const entriesMetadata = Object.entries(finalZip.files).map(([name, file]) => {
-      return {
-        name: name,
-        size: 0,
-        isDirectory: file.dir,
-        uncompressedSize: 0,
-        compressionMethod: 8 // Default compression method (DEFLATE)
-      };
-    });
-
-    return {
-      skillPackage: result.package!,
-      zipBuffer: standardizedZipBuffer,
-      zipEntries: entriesMetadata,
-      totalSize: standardizedZipBuffer.length
-    };
-  }
-
-  // ==================== Basic Tests ====================
-  describe('Basic Functionality', () => {
-    it('should extract and standardize skill package with only SKILL.md', async () => {
-      const skillName = 'test-skill';
-      const skillMd = createSkillMd(skillName, 'A test skill');
-      const tempFile = await createTempZip({ 'SKILL.md': skillMd });
-
-      const result = await extractSkillPackage(tempFile);
-
-      expect(result.skillPackage).toBeDefined();
-      expect(result.skillPackage.skill.name).toBe(skillName);
-      expect(result.zipBuffer).toBeInstanceOf(Buffer);
-
-      // Verify standardized structure (should have root folder)
-      const zip = await JSZip.loadAsync(result.zipBuffer);
-      expect(Object.keys(zip.files)).toContain(`${skillName}/`);
-      expect(Object.keys(zip.files)).toContain(`${skillName}/SKILL.md`);
-    });
-
-    it('should extract and standardize skill package from subfolder', async () => {
-      const skillName = 'subfolder-skill';
-      const skillMd = createSkillMd(skillName, 'A skill in a subfolder');
-      // Put it in an incorrectly named subfolder
-      const tempFile = await createTempZip({ 'wrong-folder/SKILL.md': skillMd });
-
-      const result = await extractSkillPackage(tempFile);
-
-      expect(result.skillPackage.skill.name).toBe(skillName);
-
-      // Verify standardized structure (should have correct root folder now)
-      const zip = await JSZip.loadAsync(result.zipBuffer);
-      expect(Object.keys(zip.files)).toContain(`${skillName}/`);
-      expect(Object.keys(zip.files)).toContain(`${skillName}/SKILL.md`);
-      expect(Object.keys(zip.files)).not.toContain('wrong-folder/SKILL.md');
-    });
-
-    it('should handle nested directory structure', async () => {
-      const skillName = 'nested-skill';
-      const skillMd = createSkillMd(skillName, 'Nested structure skill');
-
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'src/utils/helper.py': '# Helper functions',
-        'src/core/engine.py': '# Core engine',
-        'tests/test_helper.py': '# Test helper',
-        'config/settings.json': '{ "setting": "value" }'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-
-      const fileNames = result.zipEntries.map((e) => e.name);
-      expect(fileNames).toContain(`${skillName}/src/utils/helper.py`);
-      expect(fileNames).toContain(`${skillName}/src/core/engine.py`);
-      expect(fileNames).toContain(`${skillName}/tests/test_helper.py`);
-      expect(fileNames).toContain(`${skillName}/config/settings.json`);
-    });
+    expect(files).toContain('SKILL.md');
+    expect(files).toContain('src/utils.py');
+    expect(files).toContain('data/config.json');
   });
 
-  // ==================== ZIP Entry Metadata Tests ====================
-  describe('ZIP Entry Metadata', () => {
-    it('should include correct metadata for each entry', async () => {
-      const skillName = 'metadata-test';
-      const skillMd = createSkillMd(skillName, 'Test metadata');
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'test.txt': 'Some content'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-
-      // Check that each entry has required metadata fields
-      for (const entry of result.zipEntries) {
-        expect(entry.name).toBeDefined();
-        expect(typeof entry.name).toBe('string');
-        expect(entry.size).toBeDefined();
-        expect(typeof entry.size).toBe('number');
-        expect(entry.isDirectory).toBeDefined();
-        expect(typeof entry.isDirectory).toBe('boolean');
-      }
-    });
-
-    it('should correctly identify directories', async () => {
-      const skillName = 'dir-test';
-      const skillMd = createSkillMd(skillName, 'Directory test');
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'assets/icon.png': 'png',
-        'docs/README.md': '# Docs'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-
-      const directories = result.zipEntries.filter((e) => e.isDirectory);
-      const files = result.zipEntries.filter((e) => !e.isDirectory);
-
-      // Expect at least some directories (ZIP may include directory entries)
-      expect(files.length).toBeGreaterThanOrEqual(2);
-      expect(
-        result.zipEntries.some((e) => !e.isDirectory && e.name === `${skillName}/SKILL.md`)
-      ).toBe(true);
-    });
-
-    it('should include compression information', async () => {
-      const skillMd = createSkillMd('compression-test', 'Compression test');
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'data.txt': 'Some data content'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-
-      const entries = result.zipEntries.filter((e) => !e.isDirectory);
-      for (const entry of entries) {
-        // Compression method should be defined (8 = DEFLATE, 0 = STORED)
-        expect(entry.compressionMethod).toBeDefined();
-        expect(typeof entry.compressionMethod).toBe('number');
-      }
-    });
+  it('preserves file content', async () => {
+    const content = 'name: test\ndescription: hello';
+    const fileMap = { 'SKILL.md': Buffer.from(content) };
+    const zipBuffer = await repackFileMapAsZip(fileMap);
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const extracted = await zip.file('SKILL.md')!.async('string');
+    expect(extracted).toBe(content);
   });
 
-  // ==================== File Size Tests ====================
-  describe('File Size Validation', () => {
-    it('should return correct total size of ZIP file', async () => {
-      const skillName = 'size-test';
-      const skillMd = createSkillMd(skillName, 'Size test');
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'file1.txt': 'Content 1',
-        'file2.txt': 'Content 2'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-
-      expect(result.totalSize).toBeGreaterThan(0);
-      expect(result.totalSize).toBe(result.zipBuffer.length);
-    });
-
-    it('should reject ZIP file exceeding size limit', async () => {
-      const skillMd = createSkillMd('large-skill', 'Large skill');
-
-      // Create a ZIP with a large file
-      const zip = new JSZip();
-      zip.file('SKILL.md', skillMd);
-
-      // Create a 51MB file (exceeds default 50MB limit)
-      const largeContent = Buffer.alloc(51 * 1024 * 1024); // 51MB
-      zip.file('large-file.dat', largeContent);
-
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-      const tempFile = `/tmp/test-large-${Date.now()}.zip`;
-      await fs.writeFile(tempFile, buffer);
-      tempFiles.push(tempFile);
-
-      await expect(extractSkillPackage(tempFile)).rejects.toThrow('exceeds maximum allowed size');
-    });
-
-    it('should accept ZIP file within size limit', async () => {
-      const skillMd = createSkillMd('valid-size', 'Valid size');
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'data.txt': 'Some data'
-      });
-
-      const stats = await fs.stat(tempFile);
-      // Default limit is 50MB, so small files should work
-      expect(stats.size).toBeLessThan(50 * 1024 * 1024);
-
-      const result = await extractSkillPackage(tempFile);
-      expect(result.skillPackage).toBeDefined();
-    });
-
-    it('should respect custom size limit from environment', async () => {
-      const skillMd = createSkillMd('custom-limit', 'Custom limit test');
-
-      // Set custom limit to 1MB
-      vi.stubEnv('MAX_SKILL_ZIP_SIZE', '1048576'); // 1MB in bytes
-
-      // Create a 2MB file
-      const zip = new JSZip();
-      zip.file('SKILL.md', skillMd);
-      const largeContent = Buffer.alloc(2 * 1024 * 1024); // 2MB
-      zip.file('large-file.dat', largeContent);
-
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-      const tempFile = `/tmp/test-custom-limit-${Date.now()}.zip`;
-      await fs.writeFile(tempFile, buffer);
-      tempFiles.push(tempFile);
-
-      await expect(extractSkillPackage(tempFile)).rejects.toThrow('exceeds maximum allowed size');
-
-      vi.unstubAllEnvs();
-    });
-  });
-
-  // ==================== Error Handling Tests ====================
-  describe('Error Handling', () => {
-    it('should throw error when SKILL.md is missing', async () => {
-      const tempFile = await createTempZip({
-        'README.md': '# README'
-      });
-
-      await expect(extractSkillPackage(tempFile)).rejects.toThrow('SKILL.md not found');
-    });
-
-    it('should throw error for invalid skill markdown', async () => {
-      const invalidMd = `---
-description: Missing name
----
-# Invalid`;
-
-      const tempFile = await createTempZip({ 'SKILL.md': invalidMd });
-
-      await expect(extractSkillPackage(tempFile)).rejects.toThrow();
-    });
-
-    it('should handle case-insensitive SKILL.md', async () => {
-      const skillMd = createSkillMd('case-test', 'Case insensitive test');
-      const tempFile = await createTempZip({ 'skill.md': skillMd });
-
-      const result = await extractSkillPackage(tempFile);
-      expect(result.skillPackage.skill.name).toBe('case-test');
-    });
-  });
-
-  // ==================== Edge Cases ====================
-  describe('Edge Cases', () => {
-    it('should handle empty assets directory', async () => {
-      const skillMd = createSkillMd('empty-assets', 'Empty assets');
-
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'assets/.gitkeep': '' // Empty file to create directory
-      });
-
-      const result = await extractSkillPackage(tempFile);
-      expect(result.skillPackage.skill.name).toBe('empty-assets');
-      expect(result.zipEntries.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('should handle files with various extensions', async () => {
-      const skillName = 'extensions-test';
-      const skillMd = createSkillMd(skillName, 'Various extensions');
-
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'image.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]),
-        'document.json': '{ "key": "value" }',
-        'script.js': 'console.log("test");',
-        'style.css': '.class { color: red; }',
-        'data.xml': '<root></root>',
-        'archive.tar.xz': 'tar content'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-      const fileNames = result.zipEntries.map((e) => e.name);
-
-      expect(fileNames).toContain(`${skillName}/image.png`);
-      expect(fileNames).toContain(`${skillName}/document.json`);
-      expect(fileNames).toContain(`${skillName}/script.js`);
-      expect(fileNames).toContain(`${skillName}/style.css`);
-      expect(fileNames).toContain(`${skillName}/data.xml`);
-      expect(fileNames).toContain(`${skillName}/archive.tar.xz`);
-    });
-
-    it('should handle deeply nested paths', async () => {
-      const skillName = 'deep-nest';
-      const skillMd = createSkillMd(skillName, 'Deep nesting');
-
-      const tempFile = await createTempZip({
-        'SKILL.md': skillMd,
-        'a/b/c/d/e/file.txt': 'Deep content'
-      });
-
-      const result = await extractSkillPackage(tempFile);
-      const fileNames = result.zipEntries.map((e) => e.name);
-
-      expect(fileNames).toContain(`${skillName}/a/b/c/d/e/file.txt`);
-    });
+  it('returns empty (but valid) ZIP for empty file map', async () => {
+    const zipBuffer = await repackFileMapAsZip({});
+    expect(zipBuffer).toBeInstanceOf(Buffer);
+    const zip = await JSZip.loadAsync(zipBuffer);
+    expect(Object.keys(zip.files)).toHaveLength(0);
   });
 });

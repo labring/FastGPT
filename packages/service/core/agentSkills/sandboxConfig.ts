@@ -6,6 +6,12 @@
 
 import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/type';
 
+/** Parse an integer from an env-var string, returning defaultValue when the result is NaN. */
+function safeParseInt(value: string | undefined, defaultValue: number): number {
+  const n = parseInt(value ?? '', 10);
+  return isNaN(n) ? defaultValue : n;
+}
+
 export type SandboxProviderConfig = {
   provider: string;
   baseUrl: string;
@@ -45,9 +51,9 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
  */
 export function getSandboxDefaults(): SandboxDefaults {
   return {
-    timeout: parseInt(process.env.SANDBOX_DEFAULT_TIMEOUT || '600', 10), // 10 minutes, Automatic termination timeout (server-side TTL)
-    cleanupInterval: parseInt(process.env.SANDBOX_CLEANUP_INTERVAL || '3600000', 10),
-    inactiveThreshold: parseInt(process.env.SANDBOX_INACTIVE_THRESHOLD || '7200', 10),
+    timeout: safeParseInt(process.env.SANDBOX_DEFAULT_TIMEOUT, 600), // 10 minutes, Automatic termination timeout (server-side TTL)
+    cleanupInterval: safeParseInt(process.env.SANDBOX_CLEANUP_INTERVAL, 3600000),
+    inactiveThreshold: safeParseInt(process.env.SANDBOX_INACTIVE_THRESHOLD, 7200),
     defaultImage: {
       repository: process.env.SANDBOX_DEFAULT_IMAGE || 'node',
       tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || '18-alpine'

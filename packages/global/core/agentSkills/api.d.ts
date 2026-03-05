@@ -81,9 +81,15 @@ export type GetSkillDetailResponse = {
 };
 
 // ==================== Import Skill ====================
+/**
+ * ImportSkillBody — optional metadata fields for multipart/form-data upload.
+ * The actual archive file (ZIP / TAR / TAR.GZ) must be sent as the `file` field
+ * in a multipart/form-data request; it is not represented in this type.
+ */
 export type ImportSkillBody = {
   name?: string; // required for multi-skill packages; optional for single-skill (falls back to SKILL.md)
   description?: string; // optional, fallback to SKILL.md or ''
+  avatar?: string; // optional skill icon/avatar URL or base64
 };
 
 export type ImportSkillResponse = string; // single skillId

@@ -46,13 +46,17 @@ export async function createVersion(
 }
 
 /**
- * Get the next version number for a skill
+ * Get the next version number for a skill.
+ * Should be called inside a transaction session to avoid version number races.
  */
-export async function getNextVersionNumber(skillId: string): Promise<number> {
+export async function getNextVersionNumber(
+  skillId: string,
+  session?: ClientSession
+): Promise<number> {
   const lastVersion = await MongoAgentSkillsVersion.findOne(
     { skillId, isDeleted: false },
     { version: 1 },
-    { sort: { version: -1 } }
+    { sort: { version: -1 }, session }
   ).lean();
 
   return (lastVersion?.version ?? -1) + 1;
@@ -140,7 +144,8 @@ export async function setActiveVersion(
 }
 
 /**
- * Soft delete a version
+ * Soft delete a version.
+ * Active versions cannot be deleted — deactivate or switch to another version first.
  */
 export async function deleteVersion(
   skillId: string,
@@ -157,18 +162,24 @@ export async function deleteVersion(
     throw new Error(`Version ${version} not found for skill ${skillId}`);
   }
 
-  // If this is the active version, we should not allow deletion
-  // or we should deactivate it first
-  const updateData: Record<string, any> = {
-    isDeleted: true,
-    isActive: false
-  };
+  // Refuse to delete the currently active version to prevent data orphaning
+  if (versionDoc.isActive) {
+    throw new Error(
+      `Cannot delete active version ${version}. Switch to another version before deleting.`
+    );
+  }
 
-  await MongoAgentSkillsVersion.updateOne({ skillId, version }, { $set: updateData }, { session });
+  await MongoAgentSkillsVersion.updateOne(
+    { skillId, version },
+    { $set: { isDeleted: true } },
+    { session }
+  );
 }
 
 /**
- * Restore a deleted version
+ * Restore a deleted version.
+ * The restored version is set back to isDeleted=false but remains inactive (isActive=false).
+ * Call setActiveVersion explicitly if you want to make it the active version.
  */
 export async function restoreVersion(
   skillId: string,
