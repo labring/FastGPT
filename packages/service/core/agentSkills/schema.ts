@@ -82,11 +82,11 @@ try {
   AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
   // Category index
   AgentSkillsSchema.index({ category: 1 });
-  // Removed unique index on name to allow duplicate skill names
-  // AgentSkillSchema.index(
-  //   { name: 1, teamId: 1, deleteTime: 1 },
-  //   { unique: true, partialFilterExpression: { deleteTime: null } }
-  // );
+  // Unique constraint: same team cannot have two live skills with the same name
+  AgentSkillsSchema.index(
+    { name: 1, teamId: 1, deleteTime: 1 },
+    { unique: true, partialFilterExpression: { deleteTime: null } }
+  );
 } catch (error) {
   console.log('AgentSkill index error:', error);
 }

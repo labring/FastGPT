@@ -93,6 +93,7 @@ export type AgentSkillConfigType = {
     url: string;
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';
     headers?: Record<string, string>;
+    /** Request timeout in seconds */
     timeout?: number;
   };
 

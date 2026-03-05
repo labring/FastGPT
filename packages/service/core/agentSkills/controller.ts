@@ -157,9 +157,9 @@ export async function listSkills(
     query.teamId = teamId;
   }
 
-  // Category filter
+  // Category filter — use $in because category is an array field
   if (category) {
-    query.category = category;
+    query.category = { $in: [category] };
   }
 
   // Search key (text search on name and description)

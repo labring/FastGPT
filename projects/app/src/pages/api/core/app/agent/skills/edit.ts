@@ -6,6 +6,7 @@ import { createEditDebugSandbox } from '@fastgpt/service/core/agentSkills/sandbo
 import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkills/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
+import { isValidObjectId } from 'mongoose';
 
 /**
  * Create an edit-debug sandbox for a skill.
@@ -38,6 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Validate required parameters
     if (!skillId) {
       sseErrRes(res, new Error('skillId is required'));
+      res.end();
+      return;
+    }
+
+    if (!isValidObjectId(skillId)) {
+      sseErrRes(res, new Error('Invalid skill ID format'));
       res.end();
       return;
     }
@@ -77,7 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   } catch (err: any) {
     console.error('[API] Create edit-debug sandbox error:', err);
-    sseErrRes(res, err);
+    // Wrap to avoid leaking internal implementation details via SSE
+    sseErrRes(res, new Error('Failed to create sandbox'));
     res.end();
   }
 }

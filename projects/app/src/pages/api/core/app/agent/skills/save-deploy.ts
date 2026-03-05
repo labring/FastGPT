@@ -27,6 +27,7 @@ import type {
   SaveDeploySkillBody,
   SaveDeploySkillResponse
 } from '@fastgpt/global/core/agentSkills/api';
+import { isValidObjectId } from 'mongoose';
 
 /**
  * POST /api/core/app/agent/skills/save-deploy
@@ -60,6 +61,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code: 400,
         error: 'skillId is required'
       });
+    }
+
+    if (!isValidObjectId(skillId)) {
+      return jsonRes(res, { code: 400, error: 'Invalid skill ID format' });
     }
 
     // Get skill info
@@ -162,11 +167,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get next version number
-    const nextVersion = await getNextVersionNumber(skillId);
-
     // Create version and upload package with transaction
     const response = await mongoSessionRun(async (session) => {
+      // Get next version number inside transaction to avoid version number races
+      const nextVersion = await getNextVersionNumber(skillId, session);
       // Upload package.zip to MinIO
       let storageInfo;
 
