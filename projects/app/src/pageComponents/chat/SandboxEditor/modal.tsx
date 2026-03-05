@@ -1,15 +1,15 @@
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React from 'react';
+import type { Props as EditorProps } from './Editor';
 import SandboxEditor from './Editor';
 import { useTranslation } from 'next-i18next';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-type Props = {
+type Props = EditorProps & {
   onClose: () => void;
-  appId: string;
-  chatId: string;
 };
 
-const SandboxEditorModal = ({ onClose, appId, chatId }: Props) => {
+const SandboxEditorModal = ({ onClose, ...props }: Props) => {
   const { t } = useTranslation();
 
   return (
@@ -20,8 +20,9 @@ const SandboxEditorModal = ({ onClose, appId, chatId }: Props) => {
       isCentered
       size="lg"
       h={'80vh'}
+      closeOnOverlayClick={false}
     >
-      <SandboxEditor appId={appId} chatId={chatId} />
+      <SandboxEditor {...props} />
     </MyModal>
   );
 };

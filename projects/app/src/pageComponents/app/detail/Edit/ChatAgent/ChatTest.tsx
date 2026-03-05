@@ -24,6 +24,7 @@ import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context'
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -33,6 +34,7 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const { chatId } = useChatStore();
 
   const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('chat_debug');
   const HelperBotRef = useRef<HelperBotRefType>(null);
@@ -46,6 +48,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
+  });
+
+  // Sandbox state
+  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
+    appId: appDetail._id,
+    chatId
   });
 
   useEffect(() => {
@@ -117,6 +125,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           )}
 
           <Box flex={1} />
+          <SandboxEntryIcon size={'smSquare'} mr={2} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -207,6 +216,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           />
         </Box>
       )}
+
+      <SandboxEditorModal />
     </Flex>
   );
 };

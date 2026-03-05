@@ -2,12 +2,19 @@ import { useCallback, useState } from 'react';
 import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 import type { IconButtonProps } from '@chakra-ui/react';
 import { IconButton } from '@chakra-ui/react';
-import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { checkSandboxExist } from './api';
 import { useInterval } from 'ahooks';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useTranslation } from 'next-i18next';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-export const useSandboxEditor = (data: { appId: string; chatId: string }) => {
+export const useSandboxEditor = (data: {
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => {
+  const { t } = useTranslation();
   // Sandbox state
   const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
   const [sandboxExists, setSandboxExists] = useState(false);
@@ -15,15 +22,12 @@ export const useSandboxEditor = (data: { appId: string; chatId: string }) => {
   // 检查沙盒是否存在
   const checkSandboxStatus = useCallback(async () => {
     try {
-      const result = await checkSandboxExist({
-        appId: data.appId,
-        chatId: data.chatId
-      });
+      const result = await checkSandboxExist(data);
       setSandboxExists(result.exists);
     } catch (error) {
       console.error('Failed to check sandbox status:', error);
     }
-  }, [data.appId, data.chatId]);
+  }, [data]);
 
   // 组件挂载时检查
   useInterval(checkSandboxStatus, 10000, {
@@ -41,10 +45,8 @@ export const useSandboxEditor = (data: { appId: string; chatId: string }) => {
   };
 
   const Dom = useCallback(() => {
-    return sandboxModalOpen ? (
-      <SandboxEditorModal onClose={onCloseSandboxModal} appId={data.appId} chatId={data.chatId} />
-    ) : null;
-  }, [sandboxModalOpen, data.appId, data.chatId]);
+    return sandboxModalOpen ? <SandboxEditorModal onClose={onCloseSandboxModal} {...data} /> : null;
+  }, [sandboxModalOpen, data]);
 
   const SandboxEntryIcon = useCallback(
     (props: Omit<IconButtonProps, 'name' | 'onClick' | 'aria-label'>) => {
@@ -52,19 +54,23 @@ export const useSandboxEditor = (data: { appId: string; chatId: string }) => {
       if (!sandboxExists) return null;
 
       return (
-        <IconButton
-          variant={'whiteBase'}
-          icon={<MyIcon name={SANDBOX_ICON} w={'16px'} />}
-          onClick={onOpenSandboxModal}
-          {...props}
-          aria-label="Sandbox Entry"
-        />
+        <MyTooltip label={t('chat:sandbox_entry_tooltip')}>
+          <IconButton
+            variant={'whiteBase'}
+            size={'smSquare'}
+            icon={<MyIcon name={'core/app/sandbox/file'} w={'16px'} />}
+            onClick={onOpenSandboxModal}
+            {...props}
+            aria-label="Sandbox Entry"
+          />
+        </MyTooltip>
       );
     },
     [sandboxExists, onOpenSandboxModal]
   );
 
   return {
+    sandboxExists,
     setSandboxExists,
     checkSandboxStatus,
     SandboxEntryIcon,

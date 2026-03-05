@@ -568,7 +568,7 @@
   "upload_method": "Upload method",
   "url_upload": "File link",
   "use_computer": "Computer",
-  "use_computer_desc": "When enabled, AI will have access to an isolated Linux environment for executing commands and file operations",
+  "use_computer_desc": "After being turned on, AI will get a virtual machine environment where it can execute commands, operate files, and run code. \nEach session,shares a virtual machine environment.",
   "used_points": "Used point: ",
   "variable.internal_type_desc": "Use only inside the workflow and will not appear in the dialog box",
   "variable.select type_desc": "The input box will be displayed in the site conversation and run preview, and this variable will not be displayed in the sharing link.",

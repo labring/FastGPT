@@ -60,7 +60,7 @@ const MyModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => onClose && onClose()}
+      onClose={() => onClose?.()}
       size={size}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
@@ -83,7 +83,6 @@ const MyModal = ({
         }}
         {...props}
       >
-        {!title && onClose && showCloseButton && <ModalCloseButton zIndex={1} />}
         {onClose && <ModalCloseButton position={'absolute'} fontSize={'xs'} top={3} right={3} />}
 
         {!!title && (

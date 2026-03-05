@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Flex, Box, Button } from '@chakra-ui/react';
+import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -9,7 +9,6 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { PcHeader } from '@/pageComponents/chat/ChatHeader';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
@@ -23,6 +22,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -88,7 +88,7 @@ const DetailLogsModal = ({
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   // Sandbox state
-  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
     appId,
     chatId
   });
@@ -139,7 +139,13 @@ const DetailLogsModal = ({
               fontSize={'sm'}
             />
 
-            <CloseIcon onClick={onClose} />
+            <IconButton
+              variant={'whiteBase'}
+              size={'smSquare'}
+              icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
+              onClick={onClose}
+              aria-label="Close"
+            />
           </Flex>
         ) : (
           <Flex
@@ -170,8 +176,14 @@ const DetailLogsModal = ({
               </>
             )}
 
-            <Button onClick={onOpenSandboxModal}>打开沙盒</Button>
-            <CloseIcon onClick={onClose} />
+            <SandboxEntryIcon size={'smSquare'} mr={2} />
+            <IconButton
+              variant={'whiteBase'}
+              size={'smSquare'}
+              aria-label="Close"
+              icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
+              onClick={onClose}
+            />
           </Flex>
         )}
 

@@ -545,7 +545,7 @@
   "upload_method": "上傳方式",
   "url_upload": "文件鏈接",
   "use_computer": "虛擬機",
-  "use_computer_desc": "開啟後，AI 將獲得一個獨立 Linux 環境，可執行命令、操作檔案",
+  "use_computer_desc": "開啟後，AI 將獲得一個虛擬機器環境，執行指令、操作檔案、執行程式碼。\n每個會話，共享一個虛擬機器環境。",
   "used_points": "積分用量：",
   "variable.internal_type_desc": "僅在工作流內部使用，不會出現在對話框中",
   "variable.select type_desc": "會在站內對話和運行預覽中顯示輸入框，在分享鏈接中不會顯示此變量",

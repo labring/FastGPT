@@ -20,14 +20,16 @@ import { listSandboxFiles, readSandboxFile, writeSandboxFile, downloadSandbox } 
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useMount } from 'ahooks';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { getIconByFilename } from './utils';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
-type Props = {
+export type Props = {
   appId: string;
   chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
 };
 
 type FileItem = {
@@ -51,7 +53,7 @@ type OpenedFile = {
   isDirty: boolean;
 };
 
-const SandboxEditor = ({ appId, chatId }: Props) => {
+const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   const { t } = useTranslation();
   const editorRef = useRef<EditorInstance>();
   const isUpdatingRef = useRef(false); // 防止循环更新
@@ -72,7 +74,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   // 加载目录 - 改为普通异步函数,避免 useRequest 的并发问题
   const { runAsync: loadDirectory } = useRequest(
     async (path: string, level: number) => {
-      const data = await listSandboxFiles({ appId, chatId, path });
+      const data = await listSandboxFiles({ appId, chatId, outLinkAuthData, path });
       const nodes: TreeNode[] = (data.files || []).map((file) => ({
         ...file,
         level,
@@ -101,7 +103,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   // 读取文件
   const { runAsync: loadFile, loading: loadingFile } = useRequest(
     async (filePath: string) => {
-      const data = await readSandboxFile({ appId, chatId, path: filePath });
+      const data = await readSandboxFile({ appId, chatId, outLinkAuthData, path: filePath });
       return data.content;
     },
     { manual: true }
@@ -116,7 +118,13 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
       const targetFile = openedFiles.find((f) => f.path === targetPath);
       if (!targetFile) return;
 
-      await writeSandboxFile({ appId, chatId, path: targetPath, content: targetFile.content });
+      await writeSandboxFile({
+        appId,
+        chatId,
+        outLinkAuthData,
+        path: targetPath,
+        content: targetFile.content
+      });
 
       // 标记为已保存
       setOpenedFiles((prev) =>
@@ -129,7 +137,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
   // 下载工作区
   const { run: downloadWorkspace, loading: downloadingWorkspace } = useRequest(
     async () => {
-      await downloadSandbox({ appId, chatId, path: '/workspace' });
+      await downloadSandbox({ appId, chatId, outLinkAuthData, path: '/workspace' });
     },
     { manual: true }
   );
@@ -406,11 +414,11 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
             ) : null}
           </Flex>
           <MyIcon
-            mr={2}
+            mr={1}
             ml={1}
-            name={node.type === 'directory' ? 'common/folderFill' : 'file/fill/txt'}
+            name={node.type === 'directory' ? 'common/folderFill' : getIconByFilename(node.name)}
             w="16px"
-            color={node.type === 'directory' ? '#EF7623' : 'black'}
+            color={node.type === 'directory' ? '#EF7623' : 'myGray.600'}
           />
           <Text
             flex={1}
@@ -477,7 +485,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
 
             {/* 文件树 */}
             <Box flex={1} overflowY="auto" overflowX="hidden" px={2}>
-              <VStack align="stretch" spacing="6px" pb={2}>
+              <VStack align="stretch" spacing="0" pb={2}>
                 {filteredTree.map(renderTreeNode)}
               </VStack>
             </Box>
@@ -515,7 +523,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
             flex={1}
             w={0}
             flexDirection="column"
-            bg="white"
+            bg="myGray.25"
           >
             {openedFiles.length > 0 ? (
               <>
@@ -525,8 +533,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                   p={1}
                   bg="myGray.50"
                   borderRadius="md"
-                  border="1px solid"
-                  borderColor="myGray.200"
+                  border="sm"
                   m={3}
                   mb={0}
                   overflowX="auto"
@@ -545,7 +552,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                     }
                   }}
                 >
-                  <Flex gap={2}>
+                  <Flex gap={2} alignItems={'center'}>
                     {openedFiles.map((file) => {
                       const active = activeFilePath === file.path;
                       return (
@@ -569,7 +576,7 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                             bg: active ? 'white' : 'myGray.50'
                           }}
                         >
-                          <MyIcon name="file/fill/txt" w="16px" color="myGray.600" />
+                          <MyIcon name={getIconByFilename(file.name)} w="16px" color="myGray.600" />
                           <Text
                             flex={1}
                             noOfLines={1}
@@ -581,9 +588,13 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                           {file.isDirty && (
                             <Box w="6px" h="6px" borderRadius="50%" bg="yellow.600" />
                           )}
-                          <MyIconButton
-                            size={'12px'}
-                            icon="common/closeLight"
+                          <MyIcon
+                            name="common/closeLight"
+                            w="16px"
+                            color="myGray.500"
+                            _hover={{
+                              color: 'primary.500'
+                            }}
                             onClick={(e) => closeFile(file.path, e)}
                           />
                         </Flex>
@@ -599,9 +610,17 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                   border="base"
                   flexDirection="column"
                   borderRadius={'md'}
+                  bg={'white'}
                 >
                   {/* 文件信息栏 */}
-                  <Flex align="center" justify="space-between" borderBottom={'base'} pb={4} mb={2}>
+                  <Flex
+                    align="center"
+                    justify="space-between"
+                    borderBottom={'sm'}
+                    mt={'-3px'}
+                    pb={'9px'}
+                    mb={3}
+                  >
                     <Box fontSize="20px" fontWeight="500" color="black">
                       {activeFile?.name || ''}
                     </Box>
@@ -632,7 +651,6 @@ const SandboxEditor = ({ appId, chatId }: Props) => {
                   </Flex>
 
                   {/* 编辑器 */}
-
                   <Box flex={1} borderColor="myGray.200">
                     {activeFile?.content === '[Binary File - Cannot Display]' ? (
                       t('chat:sandbox_not_utf_file_tip')

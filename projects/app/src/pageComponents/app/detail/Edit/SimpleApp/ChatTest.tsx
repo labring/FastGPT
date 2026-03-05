@@ -1,4 +1,4 @@
-import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
