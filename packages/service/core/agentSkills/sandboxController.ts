@@ -16,7 +16,8 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
-  buildDockerSyncEnv
+  buildDockerSyncEnv,
+  getSkillSizeLimits
 } from './sandboxConfig';
 import type {
   SkillSandboxSchemaType,
@@ -470,13 +471,14 @@ export async function renewSandboxExpiration(
  * @param params.workDirectory - Working directory (defaults to homeDirectory)
  * @returns Buffer containing the package.zip file
  *
- * @throws Error if packaging fails or file cannot be read
+ * @throws Error if packaging fails, file cannot be read, or directory exceeds size limit
  */
 export async function packageSkillInSandbox(params: {
   providerSandboxId: string;
   workDirectory?: string;
 }): Promise<Buffer> {
   const { providerSandboxId, workDirectory } = params;
+  const { maxSandboxPackageBytes: maxBytes } = getSkillSizeLimits();
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
@@ -502,6 +504,28 @@ export async function packageSkillInSandbox(params: {
 
     // Connect to existing sandbox
     await sandbox.connect(providerSandboxId);
+
+    // Fast path: check directory size before expensive zip operation
+    // Use 'find -ls | awk' instead of 'du' for better portability:
+    // 'du' reports disk-block usage and its flags (-sb, --bytes) differ across GNU coreutils,
+    // busybox (Alpine), and BSD; 'find -ls' is POSIX and outputs per-file byte sizes in $7
+    // uniformly across all those environments.
+    const sizeCheckCmd = `find ${targetDir} -type f ! -name 'package.zip' -ls | awk '{s+=$7} END {print s+0}'`;
+    addLog.info('[Sandbox] Checking directory size before packaging');
+    const sizeResult = await sandbox.execute(sizeCheckCmd);
+
+    if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
+      const dirBytes = parseInt(sizeResult.stdout.trim(), 10);
+      if (!isNaN(dirBytes) && dirBytes > maxBytes) {
+        throw new Error(
+          `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
+        );
+      }
+      addLog.info('[Sandbox] Directory size check passed', {
+        dirBytes,
+        maxBytes
+      });
+    }
 
     // Execute zip command to package the directory
     // -r: recursive, -x: exclude pattern (exclude package.zip itself)

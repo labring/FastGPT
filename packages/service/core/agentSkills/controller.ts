@@ -1,4 +1,5 @@
 import { MongoAgentSkills } from './schema';
+import { MongoAgentSkillsVersion } from './versionSchema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
@@ -6,7 +7,7 @@ import type {
   SkillPackageType
 } from '@fastgpt/global/core/agentSkills/type';
 import type { ClientSession } from '../../common/mongo';
-import { uploadSkillPackage } from './storage';
+import { uploadSkillPackage, deleteSkillAllPackages } from './storage';
 import { createVersion } from './versionController';
 
 // Types for service operations
@@ -115,11 +116,20 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
     throw new Error('Cannot delete system skill');
   }
 
+  // Soft delete the skill record
   await MongoAgentSkills.updateOne(
     { _id: skillId },
     { $set: { deleteTime: new Date() } },
     { session }
   );
+
+  // Soft delete all version records for this skill
+  await MongoAgentSkillsVersion.updateMany({ skillId }, { $set: { isDeleted: true } }, { session });
+
+  // Queue Minio file deletion after DB changes — runs outside the session (S3 is not transactional)
+  if (skill.teamId) {
+    deleteSkillAllPackages(skill.teamId.toString(), skillId);
+  }
 }
 
 /**
