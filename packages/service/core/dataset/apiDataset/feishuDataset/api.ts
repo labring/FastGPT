@@ -8,6 +8,12 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { uploadImage2S3Bucket, getFileS3Key } from '../../../../common/s3/utils';
+import { Mimes } from '../../../../common/s3/constants';
+import { S3Sources } from '../../../../common/s3/type';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 type ResponseDataType = {
   success: boolean;
@@ -33,13 +39,192 @@ type FeishuFileListResponse = {
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
+const uploadLocalFileToS3 = async ({
+  localPath,
+  s3Prefix
+}: {
+  localPath: string;
+  s3Prefix: string;
+}): Promise<string> => {
+  const buffer = await fs.promises.readFile(localPath);
+  const ext = path.extname(localPath).toLowerCase() || '.jpg';
+  const safeExt = ext as keyof typeof Mimes;
+  // Use the original basename (e.g. {resourceToken}.jpg) as the S3 filename
+  // so that repeated uploads of the same image produce the same key (idempotent).
+  const filename = path.basename(localPath);
+  const mimetype = Mimes[safeExt] || 'image/jpeg';
+  const uploadKey = `${s3Prefix}/${filename}`;
+
+  return uploadImage2S3Bucket('private', {
+    base64Img: buffer.toString('base64'),
+    uploadKey,
+    mimetype,
+    filename
+  });
+};
+
+const cleanupImageDir = (dirPath: string) => {
+  try {
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    }
+  } catch (err) {
+    logger.warn('Failed to cleanup Feishu temp image directory', { dirPath, error: err });
+  }
+};
+
+/**
+ * Create a patched FeishuDoc2Markdown subclass that uses the configured
+ * feishuBaseUrl instead of hardcoded 'https://open.feishu.cn'.
+ * This ensures both Feishu (China) and Lark (International) work correctly.
+ */
+const createPatchedHandler = async (params: {
+  appId: string;
+  appSecret: string;
+  docToken: string;
+  imageStorageTarget: string;
+  disableImageCache: boolean;
+  handleImage: (imageUrl: string) => Promise<string>;
+}) => {
+  const { FeishuDoc2Markdown } = await import('doc2markdown/dist/src/doc/impl/feishu');
+
+  // @ts-expect-error - Subclass overrides TS-private methods that are runtime-accessible prototype methods
+  class PatchedFeishuHandler extends FeishuDoc2Markdown {
+    // Override getAccessToken to use configurable base URL
+    async getAccessToken() {
+      const apiUrl = `${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`;
+      const { appId, appSecret } = this.params;
+      const { data } = await axios.post(
+        apiUrl,
+        {
+          app_id: appId,
+          app_secret: appSecret
+        },
+        {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        }
+      );
+      const { tenant_access_token: accessToken, code, msg, expire } = data;
+      if (code !== 0) {
+        throw new Error(`Failed to get Feishu access token: ${msg}`);
+      }
+      return {
+        expireTime: Date.now() + expire * 1000 - 3000,
+        accessToken
+      };
+    }
+
+    // Override getDocMetadata to use configurable base URL
+    async getDocMetadata(documentId: string) {
+      const api = `${feishuBaseUrl}/open-apis/docx/v1/documents/${documentId}`;
+      const { data } = await axios.get(api, { headers: this.getHeaders() });
+      const metadata = data?.data?.document;
+      return {
+        ...metadata,
+        id: metadata.document_id,
+        token: metadata.document_id,
+        url: metadata.url,
+        name: metadata.title
+      };
+    }
+
+    // Override getRawDocContent to use configurable base URL
+    async getRawDocContent(documentId: string) {
+      const apiUrl = `${feishuBaseUrl}/open-apis/docx/v1/documents/${documentId}/blocks`;
+      const { data } = await axios.get(apiUrl, { headers: this.getHeaders() });
+      return data?.data;
+    }
+
+    // @ts-ignore - handleFeishuImage is TS-private but prototype-based, override works at runtime
+    async handleFeishuImage(
+      documentId: string,
+      resourceToken: string,
+      imageMeta: Record<string, any> = {}
+    ): Promise<string> {
+      const { imageStorageTarget, disableImageCache, skipMediaCheck } = this.params;
+      const downloadUrl = `${feishuBaseUrl}/open-apis/drive/v1/medias/${resourceToken}/download`;
+
+      let imagePath: string;
+      if (typeof imageStorageTarget === 'function') {
+        imagePath = imageStorageTarget(downloadUrl, documentId, {
+          token: resourceToken,
+          ...imageMeta
+        });
+      } else {
+        const baseDir = typeof imageStorageTarget === 'string' ? imageStorageTarget : process.cwd();
+        const imagesDir = path.join(baseDir, `${documentId}_images`);
+        if (!fs.existsSync(imagesDir)) {
+          fs.mkdirSync(imagesDir, { recursive: true });
+        }
+        imagePath = path.join(imagesDir, `${resourceToken}.jpg`);
+      }
+
+      if (fs.existsSync(imagePath)) {
+        if (skipMediaCheck) return imagePath;
+        if (!disableImageCache) {
+          try {
+            const headResp = await axios.head(downloadUrl, { headers: this.getHeaders() });
+            const remoteSize = parseInt(headResp.headers['content-length'] ?? '0', 10);
+            const localSize = fs.statSync(imagePath).size;
+            if (remoteSize > 0 && remoteSize === localSize) return imagePath;
+          } catch {}
+        }
+      }
+
+      const parentDir = path.dirname(imagePath);
+      fs.mkdirSync(parentDir, { recursive: true });
+
+      const response = await axios({
+        url: downloadUrl,
+        method: 'GET',
+        headers: this.getHeaders(),
+        responseType: 'stream'
+      });
+      const writer = fs.createWriteStream(imagePath);
+      response.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      }).catch(() => {});
+
+      return imagePath;
+    }
+
+    // @ts-ignore - getFileList is TS-private but prototype-based, override works at runtime
+    async getFileList(folderToken: string, nextPageToken?: string): Promise<any> {
+      const api = `${feishuBaseUrl}/open-apis/drive/v1/files`;
+      const reqParams: Record<string, any> = {
+        folder_token: folderToken,
+        page_size: (this.params as any).pageSize || 200
+      };
+      if (nextPageToken) reqParams.page_token = nextPageToken;
+      const { data } = await axios.get(api, {
+        headers: this.getHeaders(),
+        params: reqParams
+      });
+      return data?.data;
+    }
+  }
+
+  const handler = new PatchedFeishuHandler({
+    type: 'feishu' as const,
+    appId: params.appId,
+    appSecret: params.appSecret,
+    docToken: params.docToken,
+    imageStorageTarget: params.imageStorageTarget,
+    disableImageCache: params.disableImageCache,
+    handleImage: params.handleImage
+  });
+
+  return handler;
+};
+
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
   const instance = createProxyAxios({
     baseURL: feishuBaseUrl,
     timeout: 60000
   });
 
-  // 添加请求拦截器
   instance.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
       const { data } = await axios.post<{ tenant_access_token: string }>(
@@ -56,9 +241,6 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return config;
   });
 
-  /**
-   * 响应数据检查
-   */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
       logger.warn('Feishu dataset response data is empty');
@@ -88,7 +270,6 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   };
 
   const request = <T>(url: string, data: any, method: Method): Promise<T> => {
-    /* 去空 */
     for (const key in data) {
       if (data[key] === undefined) {
         delete data[key];
@@ -146,7 +327,68 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       }));
   };
 
+  // Use doc2markdown block API for rich content with images
   const getFileContent = async ({
+    apiFileId,
+    datasetId
+  }: {
+    apiFileId: string;
+    datasetId?: string;
+  }): Promise<ApiFileReadContentResponse> => {
+    if (!datasetId) {
+      return getFileContentRaw({ apiFileId });
+    }
+
+    // Deterministic S3 prefix tied to apiFileId for trackable image cleanup
+    const virtualKey = [S3Sources.dataset, datasetId, `feishu-${apiFileId}`].join('/');
+    const { fileParsedPrefix } = getFileS3Key.s3Key(virtualKey);
+
+    // Store temp images in OS temp dir instead of cwd
+    const tmpBaseDir = os.tmpdir();
+    const imageDirPath = path.join(tmpBaseDir, `${apiFileId}_images`);
+
+    try {
+      const handler = await createPatchedHandler({
+        appId: feishuServer.appId,
+        appSecret: feishuServer.appSecret!,
+        docToken: apiFileId,
+        imageStorageTarget: tmpBaseDir,
+        disableImageCache: true,
+        handleImage: async (localImagePath: string) => {
+          try {
+            return await uploadLocalFileToS3({
+              localPath: localImagePath,
+              s3Prefix: fileParsedPrefix
+            });
+          } catch (err) {
+            logger.warn('Failed to upload Feishu image to S3', { localImagePath, error: err });
+            return '';
+          }
+        }
+      });
+
+      await handler.getCachedAccessToken();
+      const tasks = await handler.getDocTaskList();
+
+      for (const task of tasks) {
+        await handler.getCachedAccessToken();
+        const result = await handler.handleDocTask(task);
+        cleanupImageDir(imageDirPath);
+        return {
+          title: task.name || task.id,
+          rawText: result || ''
+        };
+      }
+
+      cleanupImageDir(imageDirPath);
+      return { title: apiFileId, rawText: '' };
+    } catch (err) {
+      cleanupImageDir(imageDirPath);
+      throw err;
+    }
+  };
+
+  const getFileContentRaw = async ({
     apiFileId
   }: {
     apiFileId: string;

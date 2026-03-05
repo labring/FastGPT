@@ -1,4 +1,5 @@
 dist
+deploy
 .vscode
 **/.DS_Store
 node_modules
