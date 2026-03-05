@@ -32,7 +32,7 @@ export type AgentSkillSchemaType = {
   versionCount: number; // Total version count
   currentStorage?: {
     bucket: string;
-    key: string; // e.g.g. skills/{teamId}/{skillId}/v{n}/package.zip
+    key: string; // e.g.g. agent-skills/{teamId}/{skillId}/v{n}/package.zip
     size: number;
   };
 };

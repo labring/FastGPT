@@ -74,7 +74,7 @@ describe('versionController', () => {
         category: ['tool'],
         storage: {
           bucket: 'fastgpt-private',
-          key: `skills/${testTeamId}/${testSkillId}/v0/package.zip`,
+          key: `agent-skills/${testTeamId}/${testSkillId}/v0/package.zip`,
           size: 1024
         }
       };
