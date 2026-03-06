@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "@anyany/sandbox_provider": "^0.1.1",
+    "@apidevtools/json-schema-ref-parser": "^11.7.2",
     "@fastgpt-sdk/storage": "^0.6.15",
     "@fastgpt/global": "workspace:*",
     "@logtape/logtape": "^2",
@@ -39,7 +41,6 @@
     "iconv-lite": "^0.6.3",
     "ioredis": "^5.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
-    "@apidevtools/json-schema-ref-parser": "^11.7.2",
     "json5": "^2.2.3",
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.2",

@@ -13,7 +13,8 @@ export const getSubapps = async ({
   lang,
   getPlanTool,
   hasDataset,
-  hasFiles
+  hasFiles,
+  extraTools
 }: {
   tmbId: string;
   tools: SkillToolType[];
@@ -21,6 +22,7 @@ export const getSubapps = async ({
   getPlanTool?: Boolean;
   hasDataset?: boolean;
   hasFiles: boolean;
+  extraTools?: ChatCompletionTool[];
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -40,6 +42,11 @@ export const getSubapps = async ({
   /* Dataset Search */
   if (hasDataset) {
     completionTools.push(datasetSearchTool);
+  }
+
+  /* Capability extra tools (e.g. sandbox skills) */
+  if (extraTools && extraTools.length > 0) {
+    completionTools.push(...extraTools);
   }
 
   /* System tool */
