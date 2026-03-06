@@ -9,16 +9,11 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "incremental": true,
-    "baseUrl": ".",
-    "paths": {
-      "@fastgpt/*": ["packages/*"],
-      "@test/*": ["test/*"]
-    }
+    "incremental": true
   },
   "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]
 }

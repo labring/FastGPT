@@ -54,7 +54,7 @@
     "ali-oss": "^6.23.0",
     "cos-nodejs-sdk-v5": "^2.15.4",
     "es-toolkit": "^1.43.0",
-    "minio": "^8.0.5",
+    "minio": "catalog:",
     "vitest": "^4.0.16"
   },
   "devDependencies": {
