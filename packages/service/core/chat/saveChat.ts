@@ -459,6 +459,14 @@ export const updateInteractiveChat = async ({
     input: userInteractiveVal
   });
   if (status === 'query') {
+    // AskQuery 需要把用户答案回填到上一条 interactive，避免后续多轮恢复时丢失 answer。
+    const finalInteractive = extractDeepestInteractive(interactive);
+    if (finalInteractive.type === 'agentPlanAskQuery') {
+      finalInteractive.params.answer = userInteractiveVal;
+      chatItem.value[chatItem.value.length - 1].interactive = interactive;
+      chatItem.markModified('value');
+      await chatItem.save();
+    }
     return await pushChatRecords(props);
   }
 

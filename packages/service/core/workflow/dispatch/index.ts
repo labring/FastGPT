@@ -1048,7 +1048,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
         });
       });
-
       const interactiveResult: WorkflowInteractiveResponseType = {
         ...interactiveResponse,
         skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({

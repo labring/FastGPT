@@ -25,7 +25,7 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import type { PlanAgentParamsType } from './constants';
+import type { PlanAgentRuntimeParamsType } from './constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
@@ -54,7 +54,7 @@ type ContinueParams = {
 };
 
 type DispatchPlanAgentProps = PlanAgentConfig &
-  PlanAgentParamsType & {
+  PlanAgentRuntimeParamsType & {
     checkIsStopping: () => boolean;
     completionTools: ChatCompletionTool[];
     getSubAppInfo: GetSubAppInfoFnType;
@@ -63,7 +63,7 @@ type DispatchPlanAgentProps = PlanAgentConfig &
 export type DispatchPlanAgentResponse = {
   askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
   plan?: AgentPlanType;
-  planBuffer: PlanAgentParamsType;
+  planBuffer: PlanAgentRuntimeParamsType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
   nodeResponse: ChatHistoryItemResType;
@@ -71,12 +71,13 @@ export type DispatchPlanAgentResponse = {
 
 const parsePlan = async ({
   text,
+  planId,
   task,
   description,
   background
 }: {
   text: string;
-} & PlanAgentParamsType) => {
+} & PlanAgentRuntimeParamsType) => {
   if (!text) {
     return;
   }
@@ -90,7 +91,8 @@ const parsePlan = async ({
     ...result,
     task,
     description,
-    background
+    background,
+    planId
   });
   if (!params.success) {
     getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Plan Agent] Not plan`, { text });
@@ -100,7 +102,8 @@ const parsePlan = async ({
   return params.data;
 };
 const parseAskInteractive = async (
-  toolCalls: ChatCompletionMessageToolCall[]
+  toolCalls: ChatCompletionMessageToolCall[],
+  planId: string
 ): Promise<UserInputInteractive | AgentPlanAskQueryInteractive | undefined> => {
   const tooCall = toolCalls[0];
   if (!tooCall) return;
@@ -111,6 +114,7 @@ const parseAskInteractive = async (
     if (data.form && data.form.length > 0) {
       return {
         type: 'agentPlanAskUserForm',
+        planId,
         params: {
           description: data.question,
           inputForm:
@@ -136,6 +140,7 @@ const parseAskInteractive = async (
     }
     return {
       type: 'agentPlanAskQuery',
+      planId,
       params: {
         content: data.question
       }
@@ -161,12 +166,14 @@ export const dispatchPlanAgent = async ({
   getSubAppInfo,
   systemPrompt,
   model,
+  planId,
   task,
   description,
   background,
   ...props
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const startTime = Date.now();
+  const currentPlanId = planId;
   const modelData = getLLMModel(model);
 
   // 移除 plan 工具
@@ -259,12 +266,13 @@ export const dispatchPlanAgent = async ({
   // 获取生成的 plan
   const plan = await parsePlan({
     text: answerText,
+    planId: currentPlanId,
     task,
     description,
     background
   });
   // 获取交互结果
-  const askInteractive = await parseAskInteractive(toolCalls);
+  const askInteractive = await parseAskInteractive(toolCalls, currentPlanId);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,
@@ -292,6 +300,7 @@ export const dispatchPlanAgent = async ({
     askInteractive,
     plan,
     planBuffer: {
+      planId: currentPlanId,
       task,
       description,
       background
