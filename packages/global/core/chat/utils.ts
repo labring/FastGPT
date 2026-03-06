@@ -10,7 +10,10 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
-import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '../workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
 
 export type PlanAskInfo = {
@@ -31,28 +34,22 @@ export type BuildPlanAgentResponseTextParams = {
   asks?: PlanAskInfo[];
 };
 
-export const getPlanAskInfoFromInteractive = (interactive?: unknown): PlanAskInfo | undefined => {
-  if (!interactive || typeof interactive !== 'object') return;
+export const getPlanAskInfoFromInteractive = (
+  interactive?: InteractiveNodeResponseType
+): PlanAskInfo | undefined => {
+  if (!interactive) return;
 
-  const interactiveData = interactive as {
-    type?: string;
-    params?: {
-      content?: string;
-      description?: string;
-      inputForm?: Array<{ label?: string; value?: unknown }>;
-    };
-  };
-
-  if (interactiveData.type === 'agentPlanAskQuery') {
-    const question = interactiveData.params?.content?.trim();
+  if (interactive.type === 'agentPlanAskQuery') {
+    const question = interactive.params?.content?.trim();
     if (!question) return;
-    return { question };
+    const answer = interactive.params?.answer?.trim() || undefined;
+    return { question, answer };
   }
 
-  if (interactiveData.type === 'agentPlanAskUserForm') {
-    const question = interactiveData.params?.description?.trim();
+  if (interactive.type === 'agentPlanAskUserForm') {
+    const question = interactive.params?.description?.trim();
     const answer =
-      interactiveData.params?.inputForm
+      interactive.params?.inputForm
         ?.map((item) => {
           if (!item?.label) return '';
           if (item.value === undefined || item.value === null || item.value === '') return '';
@@ -80,7 +77,17 @@ export const getPlanAsksByPlanId = ({
   assistantResponses: AIChatItemValueItemType[];
 }): PlanAskInfo[] =>
   assistantResponses
-    .filter((item) => item.planId === planId && Boolean(item.interactive))
+    .filter((item) => {
+      if (!item.interactive) return false;
+      if (
+        item.interactive.type === 'agentPlanAskQuery' ||
+        item.interactive.type === 'agentPlanAskUserForm'
+      ) {
+        return item.interactive.planId === planId || item.planId === planId;
+      }
+
+      return item.planId === planId;
+    })
     .map((item) => getPlanAskInfoFromInteractive(item.interactive))
     .filter((ask): ask is NonNullable<ReturnType<typeof getPlanAskInfoFromInteractive>> =>
       Boolean(ask)
@@ -115,7 +122,7 @@ export const buildPlanAgentResponseTextFromAssistantResponses = ({
       .filter(Boolean)
       .join('\n');
 
-    const result = step.response?.trim() || step.summary?.trim() || extractedText?.trim() || 'none';
+    const result = extractedText?.trim() || 'none';
     const executed = result !== 'none';
     return { step, executed, result };
   });
