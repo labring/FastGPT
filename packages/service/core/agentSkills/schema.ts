@@ -2,13 +2,25 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import {
   agentSkillsCollectionName as agentSkillsCollectionName,
   AgentSkillSourceEnum,
-  AgentSkillCategoryEnum
+  AgentSkillCategoryEnum,
+  AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 const { Schema } = connectionMongo;
 
 const AgentSkillsSchema = new Schema({
+  // Folder hierarchy
+  parentId: {
+    type: Schema.Types.ObjectId,
+    ref: agentSkillsCollectionName,
+    default: null
+  },
+  type: {
+    type: String,
+    enum: Object.values(AgentSkillTypeEnum),
+    default: AgentSkillTypeEnum.skill
+  },
   source: {
     type: String,
     enum: Object.values(AgentSkillSourceEnum),
@@ -82,10 +94,15 @@ try {
   AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
   // Category index
   AgentSkillsSchema.index({ category: 1 });
-  // Unique constraint: same team cannot have two live skills with the same name
+  // Folder hierarchy index
+  AgentSkillsSchema.index({ parentId: 1, teamId: 1, deleteTime: 1 });
+  // Unique constraint: same parent folder cannot have two live skills/folders with the same name (personal only)
   AgentSkillsSchema.index(
-    { name: 1, teamId: 1, deleteTime: 1 },
-    { unique: true, partialFilterExpression: { deleteTime: null } }
+    { parentId: 1, name: 1, teamId: 1, deleteTime: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { deleteTime: null, source: AgentSkillSourceEnum.personal }
+    }
   );
 } catch (error) {
   console.log('AgentSkill index error:', error);

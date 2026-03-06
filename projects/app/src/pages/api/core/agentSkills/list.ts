@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source = 'store',
       searchKey,
       category,
+      parentId,
       page = '1',
       pageSize = '20'
     } = req.query as unknown as ListSkillsQuery;
@@ -46,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       searchKey,
       category,
+      parentId,
       page: pageNum,
       pageSize: pageSizeNum
     });

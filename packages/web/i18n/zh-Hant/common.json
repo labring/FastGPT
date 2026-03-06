@@ -151,6 +151,8 @@
   "code_error.app_error.invalid_owner": "非法的應用程式擁有者",
   "code_error.app_error.not_exist": "應用程式不存在",
   "code_error.app_error.un_auth_app": "無權操作此應用程式",
+  "code_error.skill_error.not_exist": "技能不存在",
+  "code_error.skill_error.un_auth_skill": "無權操作該技能",
   "code_error.chat_error.un_auth": "沒有權限操作此對話記錄",
   "code_error.error_code.400": "請求失敗",
   "code_error.error_code.401": "無存取權限",

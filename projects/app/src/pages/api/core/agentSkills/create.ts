@@ -13,6 +13,10 @@ import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import { createVersion } from '@fastgpt/service/core/agentSkills/versionController';
 import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -24,15 +28,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Authenticate user
-    const { teamId, tmbId, userId } = await authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
-
     // Get request body
-    const { name, description, category = [], config = {}, avatar } = req.body as CreateSkillBody;
+    const {
+      parentId,
+      name,
+      description,
+      category = [],
+      config = {},
+      avatar
+    } = req.body as CreateSkillBody;
+
+    // Authenticate user: if parentId exists, verify parent folder permission
+    const { teamId, tmbId, userId } = parentId
+      ? await authSkill({
+          req,
+          skillId: parentId,
+          per: WritePermissionVal,
+          authToken: true,
+          authApiKey: true
+        })
+      : await authUserPer({
+          req,
+          authToken: true,
+          authApiKey: true
+        });
 
     // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -69,12 +88,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 400, error: 'Config exceeds maximum allowed size (50KB)' });
     }
 
-    // Check if skill name already exists
-    const nameExists = await checkSkillNameExists(name.trim(), teamId);
+    // Check if skill name already exists in the same parent folder
+    const nameExists = await checkSkillNameExists(name.trim(), teamId, parentId || null);
     if (nameExists) {
       return jsonRes(res, {
         code: 409,
-        error: 'Skill name already exists'
+        error: 'Skill name already exists in this directory'
       });
     }
 
@@ -95,6 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 3. Create skill record first (to get the skillId)
       const newSkillId = await createSkill(
         {
+          parentId: parentId || null,
           name: name.trim(),
           description: description?.trim() || '',
           author: userId || '',
@@ -132,6 +152,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return newSkillId;
     });
+
+    // Add audit log
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.CREATE_SKILL,
+        params: {
+          skillName: name.trim()
+        }
+      });
+    })();
 
     jsonRes<CreateSkillResponse>(res, {
       data: skillId

@@ -13,6 +13,8 @@ import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getSkillSizeLimits } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import fs from 'fs/promises';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export const config = {
   api: {
@@ -108,8 +110,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create ONE DB record
     const skillId = await mongoSessionRun(async (session) =>
-      importSkill(skillPackage, teamId, tmbId, userId || '', zipBuffer, session)
+      importSkill(skillPackage, teamId, tmbId, userId || '', zipBuffer, null, session)
     );
+
+    // Add audit log
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.IMPORT_SKILL,
+        params: {
+          skillName: pkgName
+        }
+      });
+    })();
 
     jsonRes<ImportSkillResponse>(res, { data: skillId });
   } catch (err: any) {

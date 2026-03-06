@@ -1,6 +1,9 @@
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './versionSchema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillSourceEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
   AgentSkillListItemType,
@@ -12,6 +15,7 @@ import { createVersion } from './versionController';
 
 // Types for service operations
 type CreateSkillData = {
+  parentId?: string | null;
   name: string;
   description: string;
   author: string;
@@ -33,6 +37,7 @@ type ListSkillsParams = {
   teamId?: string;
   searchKey?: string;
   category?: string;
+  parentId?: string | null;
   page: number;
   pageSize: number;
 };
@@ -45,6 +50,8 @@ type ListSkillsParams = {
 export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
   const skill = new MongoAgentSkills({
     ...data,
+    parentId: data.parentId || null,
+    type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
     currentVersion: 0,
     versionCount: 0,
@@ -100,7 +107,8 @@ export async function updateCurrentStorage(
 }
 
 /**
- * Soft delete a skill (only personal skills can be deleted)
+ * Soft delete a skill or folder (only personal skills can be deleted)
+ * If it's a folder, recursively deletes all children
  */
 export async function deleteSkill(skillId: string, session?: ClientSession): Promise<void> {
   const skill = await MongoAgentSkills.findOne({
@@ -116,19 +124,36 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
     throw new Error('Cannot delete system skill');
   }
 
-  // Soft delete the skill record
-  await MongoAgentSkills.updateOne(
-    { _id: skillId },
+  // Find all children if it's a folder
+  let deleteList: AgentSkillSchemaType[];
+  if (skill.type === AgentSkillTypeEnum.folder) {
+    deleteList = await findSkillAndAllChildren({
+      teamId: skill.teamId!.toString(),
+      skillId
+    });
+  } else {
+    deleteList = [skill];
+  }
+
+  // Batch soft delete all skill records
+  await MongoAgentSkills.updateMany(
+    { _id: { $in: deleteList.map((s) => s._id) } },
     { $set: { deleteTime: new Date() } },
     { session }
   );
 
-  // Soft delete all version records for this skill
-  await MongoAgentSkillsVersion.updateMany({ skillId }, { $set: { isDeleted: true } }, { session });
+  // Batch soft delete all version records
+  await MongoAgentSkillsVersion.updateMany(
+    { skillId: { $in: deleteList.map((s) => s._id) } },
+    { $set: { isDeleted: true } },
+    { session }
+  );
 
-  // Queue Minio file deletion after DB changes — runs outside the session (S3 is not transactional)
-  if (skill.teamId) {
-    deleteSkillAllPackages(skill.teamId.toString(), skillId);
+  // Queue MinIO file deletion after DB changes (S3 is not transactional)
+  for (const item of deleteList) {
+    if (item.teamId && item.type !== AgentSkillTypeEnum.folder) {
+      deleteSkillAllPackages(item.teamId.toString(), item._id);
+    }
   }
 }
 
@@ -152,12 +177,17 @@ export async function getSkillById(skillId: string): Promise<AgentSkillSchemaTyp
 export async function listSkills(
   params: ListSkillsParams
 ): Promise<{ list: AgentSkillListItemType[]; total: number }> {
-  const { source, teamId, searchKey, category, page, pageSize } = params;
+  const { source, teamId, searchKey, category, parentId, page, pageSize } = params;
 
   // Build query
   const query: Record<string, any> = {
     deleteTime: null
   };
+
+  // Parent ID filter
+  if (parentId !== undefined) {
+    query.parentId = parentId || null;
+  }
 
   // Source filter
   if (source === 'store') {
@@ -185,8 +215,10 @@ export async function listSkills(
 
   const [skills, total] = await Promise.all([
     MongoAgentSkills.find(query)
-      .select('_id source name description author category avatar createTime updateTime')
-      .sort({ createTime: -1 })
+      .select(
+        '_id source type parentId name description author category avatar createTime updateTime'
+      )
+      .sort({ type: -1, createTime: -1 }) // Folders first
       .skip(skip)
       .limit(pageSize)
       .lean(),
@@ -211,18 +243,21 @@ export async function importSkill(
   tmbId: string,
   userId: string,
   zipBuffer: Buffer,
+  parentId?: string | null,
   session?: ClientSession
 ): Promise<string> {
   const { skill } = packageData;
 
   // Check for duplicate name before creating
-  const nameExists = await checkSkillNameExists(skill.name, teamId);
+  const nameExists = await checkSkillNameExists(skill.name, teamId, parentId || null);
   if (nameExists) {
     throw new Error('Skill with this name already exists');
   }
 
   // Create skill record first
   const newSkill = new MongoAgentSkills({
+    parentId: parentId || null,
+    type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
     name: skill.name,
     description: skill.description,
@@ -292,17 +327,20 @@ export async function canModifySkill(skillId: string, tmbId: string): Promise<bo
 }
 
 /**
- * Check if skill name already exists for a team
+ * Check if skill/folder name already exists in the same parent folder
  */
 export async function checkSkillNameExists(
   name: string,
   teamId: string,
+  parentId: string | null,
   excludeId?: string
 ): Promise<boolean> {
   const query: Record<string, any> = {
     name,
     teamId,
-    deleteTime: null
+    parentId: parentId || null,
+    deleteTime: null,
+    source: AgentSkillSourceEnum.personal
   };
 
   if (excludeId) {
@@ -311,4 +349,133 @@ export async function checkSkillNameExists(
 
   const count = await MongoAgentSkills.countDocuments(query);
   return count > 0;
+}
+
+// ==================== Folder Management ====================
+
+/**
+ * Recursively find a skill/folder and all its children
+ */
+export async function findSkillAndAllChildren({
+  teamId,
+  skillId,
+  fields
+}: {
+  teamId: string;
+  skillId: string;
+  fields?: string;
+}): Promise<AgentSkillSchemaType[]> {
+  const find = async (id: string): Promise<AgentSkillSchemaType[]> => {
+    const children = await MongoAgentSkills.find(
+      {
+        teamId,
+        parentId: id,
+        deleteTime: null
+      },
+      fields
+    ).lean();
+
+    let skills: AgentSkillSchemaType[] = children as AgentSkillSchemaType[];
+
+    for (const child of children) {
+      const grandChildren = await find(child._id);
+      skills = skills.concat(grandChildren);
+    }
+
+    return skills;
+  };
+
+  const [skill, childSkills] = await Promise.all([
+    MongoAgentSkills.findById(skillId, fields).lean(),
+    find(skillId)
+  ]);
+
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+
+  return [skill as AgentSkillSchemaType, ...childSkills];
+}
+
+/**
+ * Create a skill folder
+ */
+export async function createSkillFolder(
+  data: {
+    name: string;
+    description?: string;
+    parentId?: string | null;
+    teamId: string;
+    tmbId: string;
+  },
+  session?: ClientSession
+): Promise<string> {
+  const { name, description, parentId, teamId, tmbId } = data;
+
+  // Check name uniqueness in the same parent folder
+  const nameExists = await checkSkillNameExists(name, teamId, parentId || null);
+  if (nameExists) {
+    throw new Error('Folder name already exists in this directory');
+  }
+
+  const folder = new MongoAgentSkills({
+    type: AgentSkillTypeEnum.folder,
+    source: AgentSkillSourceEnum.personal,
+    parentId: parentId || null,
+    name,
+    description: description || '',
+    author: '',
+    category: [],
+    config: {},
+    teamId,
+    tmbId,
+    currentVersion: 0,
+    versionCount: 0,
+    createTime: new Date(),
+    updateTime: new Date()
+  });
+
+  await folder.save({ session });
+  return folder._id.toString();
+}
+
+/**
+ * Get folder path from a skill/folder to root
+ */
+export async function getSkillFolderPath(
+  skillId: string | null,
+  type: 'current' | 'parent'
+): Promise<{ parentId: string | null; parentName: string }[]> {
+  if (!skillId) {
+    return [];
+  }
+
+  const skill = await MongoAgentSkills.findById(skillId, 'name parentId type');
+  if (!skill) {
+    return [];
+  }
+
+  const targetId = type === 'current' ? skillId : skill.parentId ?? null;
+  return await getParents(targetId);
+}
+
+/**
+ * Recursively get parent folders
+ */
+async function getParents(
+  parentId: string | null
+): Promise<{ parentId: string | null; parentName: string }[]> {
+  if (!parentId) {
+    return [];
+  }
+
+  const parent = await MongoAgentSkills.findById(parentId, 'name parentId');
+  if (!parent) {
+    return [];
+  }
+
+  const paths = await getParents(parent.parentId ?? null);
+  paths.push({ parentId, parentName: parent.name });
+
+  return paths;
 }

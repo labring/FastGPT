@@ -1,12 +1,17 @@
 import type {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
+  AgentSkillTypeEnum,
   SandboxTypeEnum,
   SandboxStatusEnum
 } from './constants';
 
 export type AgentSkillSchemaType = {
   _id: string;
+
+  // Folder hierarchy
+  parentId?: string | null;
+  type: `${AgentSkillTypeEnum}`;
 
   // Source
   source: `${AgentSkillSourceEnum}`;
@@ -46,6 +51,8 @@ export type AgentSkillSchemaType = {
 export type AgentSkillListItemType = {
   _id: string;
   source: `${AgentSkillSourceEnum}`;
+  type: `${AgentSkillTypeEnum}`;
+  parentId?: string | null;
   name: string;
   description: string;
   author: string;
