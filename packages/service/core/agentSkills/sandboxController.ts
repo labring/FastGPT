@@ -131,8 +131,49 @@ export async function createEditDebugSandbox(
   });
 
   if (existingSandbox) {
-    addLog.info('[Sandbox] Found existing edit-debug sandbox, soft deleting', {
-      sandboxId: existingSandbox._id
+    const now = new Date();
+    const expiresAt = existingSandbox.sandbox.expiresAt;
+    const isExpired = expiresAt != null && expiresAt <= now;
+
+    if (!isExpired) {
+      // Reuse existing sandbox - renew expiration and return early
+      addLog.info('[Sandbox] Found existing edit-debug sandbox (not expired), reusing', {
+        sandboxId: existingSandbox._id,
+        expiresAt
+      });
+
+      const newExpiresAt = await renewSandboxExpiration({
+        sandboxId: existingSandbox._id.toString(),
+        teamId,
+        additionalSeconds: sandboxTimeout
+      });
+
+      const endpointInfo = existingSandbox.endpoint!;
+
+      onProgress?.({
+        sandboxId: skillId,
+        phase: 'ready',
+        endpoint: endpointInfo,
+        providerSandboxId: existingSandbox.sandbox.sandboxId,
+        expiresAt: newExpiresAt?.toISOString()
+      });
+
+      return {
+        sandboxId: existingSandbox._id.toString(),
+        providerSandboxId: existingSandbox.sandbox.sandboxId,
+        endpoint: endpointInfo,
+        status: {
+          state: existingSandbox.sandbox.status.state,
+          message: existingSandbox.sandbox.status.message
+        },
+        expiresAt: newExpiresAt
+      };
+    }
+
+    // Sandbox has expired - soft delete and recreate
+    addLog.info('[Sandbox] Found existing edit-debug sandbox but it has expired, soft deleting', {
+      sandboxId: existingSandbox._id,
+      expiredAt: expiresAt
     });
 
     existingSandbox.deleteTime = new Date();
