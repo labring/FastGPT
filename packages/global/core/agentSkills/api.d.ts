@@ -1,4 +1,4 @@
-import type { AgentSkillCategoryEnum, AgentSkillSourceEnum } from './constants';
+import type { AgentSkillCategoryEnum, AgentSkillSourceEnum, AgentSkillTypeEnum } from './constants';
 import type {
   AgentSkillConfigType,
   ExtractedSkillPackage,
@@ -11,6 +11,7 @@ export type ListSkillsQuery = {
   source?: 'store' | 'mine'; // store = system skills, mine = personal skills
   searchKey?: string;
   category?: `${AgentSkillCategoryEnum}`;
+  parentId?: string | null; // Filter by parent folder
   page?: number;
   pageSize?: number;
 };
@@ -19,6 +20,8 @@ export type ListSkillsResponse = {
   list: {
     _id: string;
     source: `${AgentSkillSourceEnum}`;
+    type: `${AgentSkillTypeEnum}`;
+    parentId?: string | null;
     name: string;
     description: string;
     author: string;
@@ -32,6 +35,7 @@ export type ListSkillsResponse = {
 
 // ==================== Create Skill ====================
 export type CreateSkillBody = {
+  parentId?: string | null; // Parent folder ID
   name: string;
   description: string;
   category?: `${AgentSkillCategoryEnum}`[];
@@ -171,3 +175,25 @@ export type SaveDeploySkillResponse = {
 
 // ==================== Export Types from type.d.ts ====================
 export type { ExtractedSkillPackage, SkillPackageType, ZipEntryInfo };
+
+// ==================== Create Skill Folder ====================
+export type CreateSkillFolderBody = {
+  parentId?: string | null;
+  name: string;
+  description?: string;
+};
+
+export type CreateSkillFolderResponse = {
+  folderId: string;
+};
+
+// ==================== Get Skill Folder Path ====================
+export type GetSkillFolderPathQuery = {
+  sourceId?: string;
+  type: 'current' | 'parent';
+};
+
+export type GetSkillFolderPathResponse = {
+  parentId: string | null;
+  parentName: string;
+}[];

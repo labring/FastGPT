@@ -457,13 +457,13 @@ describe('AgentSkill Controller', () => {
       };
 
       await createSkill(skillData);
-      const exists = await checkSkillNameExists('Existing Name', testTeamId);
+      const exists = await checkSkillNameExists('Existing Name', testTeamId, null);
 
       expect(exists).toBe(true);
     });
 
     it('should return false for non-existing name', async () => {
-      const exists = await checkSkillNameExists('Non-Existing Name', testTeamId);
+      const exists = await checkSkillNameExists('Non-Existing Name', testTeamId, null);
       expect(exists).toBe(false);
     });
 

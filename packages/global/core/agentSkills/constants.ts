@@ -51,6 +51,16 @@ export const agentSkillsCollectionName = 'agent_skills';
 
 export const agentSkillsVersionCollectionName = 'agent_skills_versions';
 
+export const skillSandboxCollectionName = 'skill_sandbox_info';
+
+// Agent Skill types
+export enum AgentSkillTypeEnum {
+  folder = 'folder',
+  skill = 'skill'
+}
+
+export const AgentSkillFolderTypeList = [AgentSkillTypeEnum.folder];
+
 // Sandbox types
 export enum SandboxTypeEnum {
   editDebug = 'edit-debug',
