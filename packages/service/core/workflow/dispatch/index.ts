@@ -22,7 +22,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   ChatDispatchProps,
-  DispatchInteractiveNodeResponseType,
   DispatchNodeResultType,
   ModuleDispatchProps,
   SystemVariablesType

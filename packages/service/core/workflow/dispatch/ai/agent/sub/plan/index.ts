@@ -102,7 +102,8 @@ const parsePlan = async ({
   return params.data;
 };
 const parseAskInteractive = async (
-  toolCalls: ChatCompletionMessageToolCall[]
+  toolCalls: ChatCompletionMessageToolCall[],
+  planId: string
 ): Promise<UserInputInteractive | AgentPlanAskQueryInteractive | undefined> => {
   const tooCall = toolCalls[0];
   if (!tooCall) return;
@@ -113,6 +114,7 @@ const parseAskInteractive = async (
     if (data.form && data.form.length > 0) {
       return {
         type: 'agentPlanAskUserForm',
+        planId,
         params: {
           description: data.question,
           inputForm:
@@ -138,6 +140,7 @@ const parseAskInteractive = async (
     }
     return {
       type: 'agentPlanAskQuery',
+      planId,
       params: {
         content: data.question
       }
@@ -269,7 +272,7 @@ export const dispatchPlanAgent = async ({
     background
   });
   // 获取交互结果
-  const askInteractive = await parseAskInteractive(toolCalls);
+  const askInteractive = await parseAskInteractive(toolCalls, currentPlanId);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,

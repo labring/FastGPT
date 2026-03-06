@@ -54,8 +54,11 @@ export const chats2GPTMessages = ({
   reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
+  const chatAssistantResponses = messages
+    .filter((item) => item.obj === ChatRoleEnum.AI)
+    .flatMap((item) => item.value);
 
-  messages.forEach((item) => {
+  messages.forEach((item, index) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -67,6 +70,28 @@ export const chats2GPTMessages = ({
         });
       }
     } else if (item.obj === ChatRoleEnum.Human) {
+      // Skip plan ask reply messages (already embedded in COLLECTED INFO)
+      const prevAI = messages[index - 1];
+      if (prevAI?.obj === ChatRoleEnum.AI) {
+        const askValue = prevAI.value.find(
+          (v) =>
+            v.interactive?.type === 'agentPlanAskQuery' ||
+            v.interactive?.type === 'agentPlanAskUserForm'
+        );
+        const askPlanId =
+          askValue?.interactive && 'planId' in askValue.interactive
+            ? askValue.interactive.planId
+            : undefined;
+        const hasPlanAhead =
+          askPlanId &&
+          messages
+            .slice(index + 1)
+            .some(
+              (m) => m.obj === ChatRoleEnum.AI && m.value.some((v) => v.plan?.planId === askPlanId)
+            );
+        if (hasPlanAhead) return;
+      }
+
       const value = item.value
         .map((item) => {
           if (item.text) {
@@ -110,11 +135,10 @@ export const chats2GPTMessages = ({
         // 只需要把根节点转化即可
         if (value.stepId) return;
 
-        if ((value.tools || value.tool) && reserveTool) {
-          const tools = value.tools?.length ? value.tools : value.tool ? [value.tool] : [];
-          if (tools.length === 0) {
-            return;
-          }
+        const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
+
+        if (reserveTool && (hasTools || value.tool)) {
+          const tools = hasTools ? value.tools : [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
           tools.forEach((tool) => {
@@ -167,7 +191,7 @@ export const chats2GPTMessages = ({
             .flatMap((item) => item.plan?.steps || []);
           const asks = getPlanAsksByPlanId({
             planId,
-            assistantResponses: item.value
+            assistantResponses: chatAssistantResponses
           });
           const planResponseText = buildPlanAgentResponseTextFromAssistantResponses({
             planId,
@@ -201,20 +225,32 @@ export const chats2GPTMessages = ({
             content: planResponseText
           });
         } else if (value.interactive) {
-          if (value.interactive.type === 'agentPlanAskQuery') {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: value.interactive.params.content
-            });
-          } else if (value.interactive.type === 'agentPlanAskUserForm') {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: `${value.interactive.params.description}
-
-Answer: ${value.interactive.params.inputForm.map((item) => `- ${item.label}: ${item.value}`).join('\n')}`
-            });
+          const interactive = value.interactive;
+          if (
+            interactive.type === 'agentPlanAskQuery' ||
+            interactive.type === 'agentPlanAskUserForm'
+          ) {
+            // 有对应 plan 时 ask 已嵌入 COLLECTED INFO，跳过避免重复
+            // 无对应 plan 时（对话中断/最后一个 ask）输出以保持上下文完整
+            const planId = 'planId' in interactive ? interactive.planId : undefined;
+            const hasPlan = planId && chatAssistantResponses.some((v) => v.plan?.planId === planId);
+            if (!hasPlan) {
+              if (interactive.type === 'agentPlanAskQuery') {
+                aiResults.push({
+                  dataId,
+                  role: ChatCompletionRequestMessageRoleEnum.Assistant,
+                  content: interactive.params.content
+                });
+              } else {
+                aiResults.push({
+                  dataId,
+                  role: ChatCompletionRequestMessageRoleEnum.Assistant,
+                  content: `${interactive.params.description}\n\nAnswer: ${interactive.params.inputForm
+                    .map((item) => `- ${item.label}: ${item.value}`)
+                    .join('\n')}`
+                });
+              }
+            }
           }
         }
       });

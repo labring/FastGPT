@@ -1,5 +1,6 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { SubAppRuntimeType } from './type';
 import { getAgentRuntimeTools } from './sub/tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
@@ -79,25 +80,16 @@ export const getPlanAskInfoFromInteractive = ({
   interactive,
   queryInput
 }: {
-  interactive?: unknown;
+  interactive?: InteractiveNodeResponseType;
   queryInput: string;
 }): { question?: string; answer?: string } | undefined => {
-  if (!interactive || typeof interactive !== 'object') return;
+  if (!interactive) return;
 
-  const interactiveData = interactive as {
-    type?: string;
-    params?: {
-      content?: string;
-      description?: string;
-      inputForm?: Array<{ label?: string; value?: unknown }>;
-    };
-  };
-
-  if (interactiveData.type === 'agentPlanAskQuery') {
-    const question = interactiveData.params?.content?.trim();
+  if (interactive.type === 'agentPlanAskQuery') {
+    const question = interactive.params?.content?.trim();
     if (!question) return;
 
-    const answer = queryInput.trim() || undefined;
+    const answer = interactive.params?.answer?.trim() || queryInput.trim() || undefined;
 
     return {
       question,
@@ -105,14 +97,13 @@ export const getPlanAskInfoFromInteractive = ({
     };
   }
 
-  if (interactiveData.type !== 'agentPlanAskUserForm') return;
+  if (interactive.type !== 'agentPlanAskUserForm') return;
 
-  const question = interactiveData.params?.description?.trim();
+  const question = interactive.params?.description?.trim();
   if (!question) return;
 
   const formAnswer =
-    interactiveData.params?.inputForm?.map((item) => `- ${item.label}: ${item.value}`).join('\n') ||
-    '';
+    interactive.params?.inputForm?.map((item) => `- ${item.label}: ${item.value}`).join('\n') || '';
 
   const answer = formAnswer || queryInput.trim() || undefined;
 

@@ -313,10 +313,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       agentPlan = plan;
 
       if (askInteractive) {
-        const interactiveResponse = {
-          ...askInteractive,
-          planId: currentPlanBuffer.planId
-        };
         return {
           [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
           [DispatchNodeResponseKeyEnum.memories]: {
@@ -325,7 +321,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             [agentPlanKey]: agentPlan,
             [planBufferKey]: planBuffer
           },
-          [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+          [DispatchNodeResponseKeyEnum.interactive]: askInteractive
         };
       }
     };
@@ -531,10 +527,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           // 收集用户信息，结束调用，等待用户反馈
           if (askInteractive) {
-            const interactiveResponse = {
-              ...askInteractive,
-              planId: planBuffer.planId
-            };
             return {
               [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
               [DispatchNodeResponseKeyEnum.memories]: {
@@ -543,7 +535,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 [agentPlanKey]: plan,
                 [planBufferKey]: planBuffer
               },
-              [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse,
+              [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
               [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
             };
           }
