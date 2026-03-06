@@ -188,7 +188,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       });
 
       return {
-        title: sourceName,
+        title,
         rawText
       };
     }
