@@ -32,7 +32,8 @@ import {
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
-  AgentSkillsVersionSchemaType
+  AgentSkillsVersionSchemaType,
+  SandboxImageConfigType
 } from '@fastgpt/global/core/agentSkills/type';
 import type { AgentSandboxContext, DeployedSkillInfo } from './types';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
@@ -44,6 +45,7 @@ type CreateAgentSandboxParams = {
   tmbId: string;
   sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key，决定 MinIO 数据路径
   entrypoint?: string; // override default entrypoint for this request
+  image?: SandboxImageConfigType; // override default image for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
 
@@ -102,7 +104,7 @@ function mergeSkillWithVersion(
  * /home/sandbox/workspace/projects/deep-research/SKILL.md
  * /home/sandbox/workspace/projects/science/SKILL.md
  *
- * Runs `find` inside the sandbox to locate SKILL.md files up to maxdepth 2,
+ * Runs `find` inside the sandbox to locate SKILL.md files up to maxdepth 5,
  * then reads each file and parses the frontmatter for name/description.
  * This replaces the pre-scan approach and works with arbitrary ZIP structures.
  */
@@ -110,11 +112,13 @@ async function discoverSkillsInSandbox(
   sandbox: ISandbox,
   workDirectory: string
 ): Promise<DeployedSkillInfo[]> {
-  // search 可能存在耗时性能问题，可以引用find命令加上 maxdepth 深度目录约束
-  const searchResults = await sandbox.search('SKILL.md', workDirectory);
-  if (!searchResults || searchResults.length === 0) return [];
+  // Use `find` with -maxdepth 5 to avoid deep recursion performance issues.
+  const findResult = await sandbox.execute(
+    `find "${workDirectory}" -name "SKILL.md" -maxdepth 5 2>/dev/null`
+  );
+  if (findResult.exitCode !== 0 || !findResult.stdout.trim()) return [];
 
-  const paths = searchResults.map((r) => r.path);
+  const paths = findResult.stdout.trim().split('\n').filter(Boolean);
   const files = await sandbox.readFiles(paths);
 
   const result: DeployedSkillInfo[] = [];
@@ -187,7 +191,7 @@ async function deploySkillsToSandbox(
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
 ): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId, sessionId, entrypoint, onProgress } = params;
+  const { skillIds, teamId, tmbId, sessionId, entrypoint, image, onProgress } = params;
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
@@ -274,7 +278,7 @@ export async function createAgentSandbox(
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer', isWarmStart: false });
     if (providerConfig.runtime === 'kubernetes') {
       await sandbox.create({
-        image: defaults.defaultImage,
+        image: image ?? defaults.defaultImage,
         timeout: defaults.timeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.sessionKubernetes],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
@@ -289,7 +293,7 @@ export async function createAgentSandbox(
     } else {
       // Docker 模式：通过环境变量注入 SESSION_ID，sync agent 据此确定 MinIO 数据路径
       await sandbox.create({
-        image: { repository: 'fastgpt-agent-sandbox', tag: 'docker' },
+        image: image ?? defaults.defaultImage,
         timeout: defaults.timeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.docker],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
