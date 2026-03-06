@@ -93,7 +93,7 @@ export const parseLLMStreamResponse = () => {
         };
         finish_reason?: CompletionFinishReason;
       }[];
-      usage?: CompletionUsage;
+      usage?: CompletionUsage | null;
     };
     parseThinkTag?: boolean;
     retainDatasetCite?: boolean;

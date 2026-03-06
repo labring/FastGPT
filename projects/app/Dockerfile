@@ -10,6 +10,7 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@9.4.0
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ./packages ./packages
+COPY ./sdk ./sdk
 COPY ./projects/app/package.json ./projects/app/package.json
 
 RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
@@ -32,6 +33,7 @@ ARG base_url
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json .eslintrc.json ./
 COPY --from=maindeps /app/node_modules ./node_modules
 COPY --from=maindeps /app/packages ./packages
+COPY --from=maindeps /app/sdk ./sdk
 COPY ./projects/app ./projects/app
 COPY --from=maindeps /app/projects/app/node_modules ./projects/app/node_modules
 

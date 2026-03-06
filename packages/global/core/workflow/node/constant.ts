@@ -247,9 +247,11 @@ export const datasetQuoteValueDesc = `{
   q: string;
   a: string
 }[]`;
-export const datasetSelectValueDesc = `{
-  datasetId: string;
-}[]`;
+export const datasetSelectValueDesc = `[
+  {
+    "datasetId": "6693a4a6b69b7a9b0e37d9b0"
+  }
+]`;
 
 export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
   [FlowNodeTypeEnum.pluginModule]: true,
