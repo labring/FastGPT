@@ -11,8 +11,8 @@ import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { uploadMarkdownBase64 } from '@fastgpt/global/common/string/markdown';
+import { retryFn, batchRun } from '@fastgpt/global/common/system/utils';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
@@ -253,27 +253,39 @@ export const readDatasetSourceRawText = async ({
       return { title, rawText: rawMarkdown || '' };
     }
 
-    // Reuse the standard KB image processing pipeline:
-    // uploadMarkdownBase64 extracts base64 images from markdown and uploads them to S3
-    // using the dataset S3 prefix convention via getFileS3Key.dataset().
-    const { fileParsedPrefix } = getFileS3Key.dataset({
-      datasetId,
-      filename: sourceId
-    });
-    let imageIndex = 0;
-    const rawText = await uploadMarkdownBase64({
-      rawText: rawMarkdown || '',
-      uploadImgController: async (base64Img) => {
-        const ext = `.${(base64Img.match(/data:image\/([^;]+)/) || [])[1]?.replace('x-', '') || 'jpeg'}`;
-        const uploadKey = `${fileParsedPrefix}/${imageIndex++}${ext}`;
-        return uploadImage2S3Bucket('private', {
-          base64Img,
-          uploadKey,
-          mimetype: Mimes[ext as keyof typeof Mimes],
-          filename: `${imageIndex}${ext}`
-        });
-      }
-    });
+    // Reuse the exact same image processing pipeline as readFileContentByBuffer:
+    // matchMdImg extracts base64 images into ImageType[] with UUID placeholders,
+    // then batchRun uploads each image to S3 via uploadImage2S3Bucket.
+    const { text, imageList } = matchMdImg(rawMarkdown || '');
+    let rawText = text;
+
+    if (imageList.length > 0) {
+      const { fileParsedPrefix } = getFileS3Key.dataset({
+        datasetId,
+        filename: sourceId
+      });
+
+      await batchRun(imageList, async (item) => {
+        const src = await (async () => {
+          try {
+            const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+            return await uploadImage2S3Bucket('private', {
+              base64Img: `data:${item.mime};base64,${item.base64}`,
+              uploadKey: `${fileParsedPrefix}/${item.uuid}${ext}`,
+              mimetype: Mimes[ext as keyof typeof Mimes],
+              filename: `${item.uuid}${ext}`
+            });
+          } catch (error) {
+            logger.warn('Failed to upload parsed image to S3', {
+              imageUuid: item.uuid,
+              error
+            });
+            return `[Image Upload Failed: ${item.uuid}]`;
+          }
+        })();
+        rawText = rawText.replace(item.uuid, src);
+      });
+    }
 
     return {
       title,
