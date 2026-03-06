@@ -137,7 +137,7 @@ export const chats2GPTMessages = ({
         const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
 
         if (reserveTool && (hasTools || value.tool)) {
-          const tools = hasTools ? value.tools : [value.tool!];
+          const tools = hasTools ? value.tools! : [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
           tools.forEach((tool) => {
