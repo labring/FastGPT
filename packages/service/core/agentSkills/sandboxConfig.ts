@@ -24,9 +24,13 @@ export type SandboxDefaults = {
   cleanupInterval: number; // in milliseconds
   inactiveThreshold: number; // in seconds
   defaultImage: SandboxImageConfigType;
-  homeDirectory: string;
   workDirectory: string;
   targetPort: number;
+  entrypoint: {
+    editDebugKubernetes: string; // SANDBOX_K8S_ENTRYPOINT
+    sessionKubernetes: string; // SANDBOX_SESSION_K8S_ENTRYPOINT
+    docker: string; // SANDBOX_DOCKER_ENTRYPOINT
+  };
 };
 
 /**
@@ -55,12 +59,17 @@ export function getSandboxDefaults(): SandboxDefaults {
     cleanupInterval: safeParseInt(process.env.SANDBOX_CLEANUP_INTERVAL, 3600000),
     inactiveThreshold: safeParseInt(process.env.SANDBOX_INACTIVE_THRESHOLD, 7200),
     defaultImage: {
-      repository: process.env.SANDBOX_DEFAULT_IMAGE || 'node',
-      tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || '18-alpine'
+      repository: process.env.SANDBOX_DEFAULT_IMAGE || 'fastgpt-agent-sandbox',
+      tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || 'docker'
     },
-    homeDirectory: '/home/coder',
-    workDirectory: '/workspace/projects',
-    targetPort: 8080
+    workDirectory: process.env.SANDBOX_WORK_DIRECTORY || '/home/sandbox/workspace',
+    targetPort: 8080,
+    entrypoint: {
+      editDebugKubernetes: process.env.SANDBOX_K8S_ENTRYPOINT || '/home/sandbox/entrypoint.sh',
+      sessionKubernetes:
+        process.env.SANDBOX_SESSION_K8S_ENTRYPOINT || '/opt/sync-agent/docker-entrypoint.sh',
+      docker: process.env.SANDBOX_DOCKER_ENTRYPOINT || '/opt/sync-agent/docker-entrypoint.sh'
+    }
   };
 }
 
@@ -129,12 +138,13 @@ export function buildDockerSyncEnv(
   }
 
   return {
-    SESSION_ID: sessionId,
-    MINIO_ENDPOINT: endpoint,
-    MINIO_ACCESS_KEY: accessKey,
-    MINIO_SECRET_KEY: secretKey,
-    MINIO_BUCKET: bucket,
-    SYNC_PATH: syncPath,
-    ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
+    FASTGPT_SESSION_ID: sessionId,
+    FASTGPT_MINIO_ENDPOINT: endpoint,
+    FASTGPT_MINIO_ACCESS_KEY: accessKey,
+    FASTGPT_MINIO_SECRET_KEY: secretKey,
+    FASTGPT_MINIO_BUCKET: bucket,
+    FASTGPT_WORKDIR: syncPath,
+    FASTGPT_SYNC_PATH: syncPath,
+    FASTGPT_ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
   };
 }

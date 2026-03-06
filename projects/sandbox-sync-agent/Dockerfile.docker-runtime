@@ -11,7 +11,6 @@ USER root
 # 安装 Sync Agent 依赖
 RUN apt-get update && apt-get install -y \
     inotify-tools \
-    curl \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,8 +28,8 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN chmod +x /opt/sync-agent/sync.sh \
              /opt/sync-agent/docker-entrypoint.sh && \
     mkdir -p /var/log/supervisor && \
-    chown -R coder:coder /var/log/supervisor
+    chown -R sandbox:sandbox /var/log/supervisor
 
-USER coder
+USER sandbox
 
 ENTRYPOINT ["/opt/sync-agent/docker-entrypoint.sh"]

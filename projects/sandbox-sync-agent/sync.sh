@@ -1,7 +1,7 @@
 #!/bin/sh
 
-SYNC_PATH=${SYNC_PATH:-/workspace}
-BUCKET_PATH="minio/${MINIO_BUCKET}/agent-sessions/${SESSION_ID}"
+SYNC_PATH=${FASTGPT_SYNC_PATH:-/home/sandbox}
+BUCKET_PATH="minio/${FASTGPT_MINIO_BUCKET}/agent-sessions/${FASTGPT_SESSION_ID}"
 SYNC_INTERVAL=${SYNC_INTERVAL:-60}
 HTTP_PORT=${HTTP_PORT:-8081}
 STATE_DIR="${STATE_DIR:-/tmp/sync-state}"
@@ -20,7 +20,7 @@ echo "0" > "${PENDING_FILE}"
 
 # 1. 启动时下载历史文件
 echo "[Sync] Downloading files from ${BUCKET_PATH}..."
-mc mirror "${BUCKET_PATH}/projects" "${SYNC_PATH}" --overwrite || true
+mc mirror "${BUCKET_PATH}" "${SYNC_PATH}" --overwrite || true
 date -u +%Y-%m-%dT%H:%M:%SZ > "${LAST_SYNC_FILE}"
 
 # 2. 启动 HTTP 健康检查服务（后台）
@@ -39,7 +39,7 @@ python3 "${HTTP_SERVER_PATH}" &
     fi
 
     echo "[Sync] Periodic sync to MinIO..."
-    mc mirror "${SYNC_PATH}" "${BUCKET_PATH}/projects" --overwrite
+    mc mirror "${SYNC_PATH}" "${BUCKET_PATH}" --overwrite
     date -u +%Y-%m-%dT%H:%M:%SZ > "${LAST_SYNC_FILE}"
     echo "0" > "${PENDING_FILE}"
   done
@@ -64,7 +64,7 @@ inotifywait -m -r -e create,modify,move,delete --format '%w%f' "${SYNC_PATH}" | 
 
   if [ -f "$file" ]; then
     # 文件创建/修改：上传到 MinIO
-    mc cp "$file" "${BUCKET_PATH}/projects/${rel_path}"
+    mc cp "$file" "${BUCKET_PATH}/${rel_path}"
     date -u +%Y-%m-%dT%H:%M:%SZ > "${LAST_SYNC_FILE}"
     # 成功后将 pending 减 1
     PENDING=$(cat "${PENDING_FILE}" 2>/dev/null || echo "1")
@@ -73,7 +73,7 @@ inotifywait -m -r -e create,modify,move,delete --format '%w%f' "${SYNC_PATH}" | 
     echo "${PENDING}" > "${PENDING_FILE}"
   elif [ ! -e "$file" ]; then
     # 文件删除
-    mc rm "${BUCKET_PATH}/projects/${rel_path}" || true
+    mc rm "${BUCKET_PATH}/${rel_path}" || true
     date -u +%Y-%m-%dT%H:%M:%SZ > "${LAST_SYNC_FILE}"
     PENDING=$(cat "${PENDING_FILE}" 2>/dev/null || echo "1")
     PENDING=$((PENDING - 1))

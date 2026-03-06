@@ -26,9 +26,15 @@ spec:
         - name: sandbox
           image: fastgpt-agent-sandbox:latest
           imagePullPolicy: IfNotPresent
+          env:
+            # FASTGPT_WORKDIR: the workspace directory opened by code-server.
+            # This is a subdirectory of the volume mountPath (/home/sandbox),
+            # keeping code under /home/sandbox/workspace separate from home files.
+            - name: FASTGPT_WORKDIR
+              value: "/home/sandbox/workspace"
           volumeMounts:
             - name: workspace
-              mountPath: /workspace/projects
+              mountPath: /home/sandbox
           ports:
             - containerPort: 8080
               name: code-server
@@ -51,36 +57,36 @@ spec:
           image: fastgpt-agent-sandbox:k8s
           imagePullPolicy: IfNotPresent
           env:
-            - name: MINIO_ENDPOINT
+            - name: FASTGPT_MINIO_ENDPOINT
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: endpoint
-            - name: MINIO_ACCESS_KEY
+            - name: FASTGPT_MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: accessKey
-            - name: MINIO_SECRET_KEY
+            - name: FASTGPT_MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: secretKey
-            - name: MINIO_BUCKET
+            - name: FASTGPT_MINIO_BUCKET
               value: "fastgpt-private"
-            - name: SESSION_ID
+            - name: FASTGPT_SESSION_ID
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.labels['session-id']
-            - name: SYNC_PATH
-              value: "/workspace/projects"
+            - name: FASTGPT_SYNC_PATH
+              value: "/home/sandbox/workspace"
             - name: SYNC_INTERVAL
               value: "60"
             - name: HTTP_PORT
               value: "8081"
           volumeMounts:
             - name: workspace
-              mountPath: /workspace/projects
+              mountPath: /home/sandbox
           ports:
             - containerPort: 8081
               name: sync-api
