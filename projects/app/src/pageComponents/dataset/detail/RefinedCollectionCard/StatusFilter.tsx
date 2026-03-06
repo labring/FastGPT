@@ -37,7 +37,12 @@ const StatusFilter = ({ value, onChange, hideNotExist = false }: Props) => {
     <Popover placement="bottom" isLazy isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
       <PopoverTrigger>
         <Box as="span" cursor="pointer" display="inline-flex" alignItems="center">
-          <MyIcon name={'common/table/filter'} w={'12px'} _hover={{ color: 'primary.600' }} />
+          <MyIcon
+            name={'common/table/filter'}
+            w={'12px'}
+            color={isOpen || value !== undefined ? '#1770E6' : undefined}
+            _hover={{ color: '#1770E6' }}
+          />
         </Box>
       </PopoverTrigger>
       <PopoverContent
@@ -60,7 +65,7 @@ const StatusFilter = ({ value, onChange, hideNotExist = false }: Props) => {
                 cursor="pointer"
                 borderRadius={isSelected ? '4px' : 'none'}
                 bg={isSelected ? 'rgba(50, 136, 250, 0.06)' : 'transparent'}
-                color={isSelected ? 'primary.600' : '#333'}
+                color={isSelected ? '#1770E6' : '#333'}
                 _hover={{ bg: isSelected ? 'rgba(50, 136, 250, 0.06)' : 'myGray.50' }}
                 onClick={() => {
                   onChange(option.key);

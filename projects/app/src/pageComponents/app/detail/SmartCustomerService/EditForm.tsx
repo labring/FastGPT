@@ -458,16 +458,17 @@ const EditForm = ({
               </FormItem>
 
               {/* 兜底回复文本框 */}
-              <Flex alignItems={'start'} mt={3}>
-                <Box minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM} />
-                <MyTextarea
-                  value={appForm.chatConfig.fallbackReply}
-                  rows={3}
-                  onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
-                  isDisabled={appForm.chatConfig.enableFallbackReply === 'llmReply'}
-                  flex={1}
-                />
-              </Flex>
+              {appForm.chatConfig.enableFallbackReply !== 'llmReply' && (
+                <Flex alignItems={'start'} mt={3}>
+                  <Box minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM} />
+                  <MyTextarea
+                    value={appForm.chatConfig.fallbackReply}
+                    rows={3}
+                    onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
+                    flex={1}
+                  />
+                </Flex>
+              )}
             </Box>
           </AccordionSection>
         </Box>

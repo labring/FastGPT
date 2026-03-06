@@ -395,7 +395,7 @@
   "smart_customer_service_llm_summary": "LLM summary",
   "smart_customer_service_welcome_text": "Welcome message",
   "smart_customer_service_fallback_reply": "Fallback reply",
-  "smart_customer_service_fallback_reply_tooltip": "Reply with the following content when no knowledge is found.",
+  "smart_customer_service_fallback_reply_tooltip": "Reply in the specified way when no knowledge is found.",
   "smart_customer_service_no_knowledge_found_mode": "When no knowledge is found",
   "smart_customer_service_no_knowledge_found_mode_tooltip": "When no knowledge base content is retrieved, select the response method.",
   "smart_customer_service_use_fallback_reply": "Use specified reply",
