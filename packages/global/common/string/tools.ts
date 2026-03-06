@@ -85,7 +85,7 @@ export function replaceVariable(
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     replacements.push({
-      pattern: `{{(${escapedKey})}}`,
+      pattern: `{{${escapedKey}}}`,
       replacement: formatVal
     });
 
