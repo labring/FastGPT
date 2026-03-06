@@ -84,6 +84,11 @@ const CollectionCard = () => {
 
   // 格式化数据量的函数
   const formatDataAmount = (collection: any, isStructureDocument: boolean) => {
+    // 文件夹类型显示 "-"
+    if (collection.type === DatasetCollectionTypeEnum.folder) {
+      return '-';
+    }
+
     if (isStructureDocument && collection.metadata) {
       const metadata = collection.metadata;
       if (metadata.rows && metadata.cols) {
@@ -119,6 +124,14 @@ const CollectionCard = () => {
       collections.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
         const status = (() => {
+          // 文件夹类型不显示状态
+          if (collection.type === DatasetCollectionTypeEnum.folder) {
+            return {
+              statusText: '-',
+              colorSchema: 'gray',
+              statusKey: 'folder'
+            };
+          }
           if (collection.tableSchema?.hasOwnProperty('exist') && !collection.tableSchema.exist) {
             return {
               statusText: t('common:table_not_exist'),
