@@ -11,7 +11,6 @@ USER root
 # 安装 Sync Agent 依赖
 RUN apt-get update && apt-get install -y \
     inotify-tools \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 MinIO Client (mc)
@@ -28,6 +27,6 @@ RUN chmod +x /sync.sh /entrypoint.sh
 # 8081: Sync Agent HTTP API（健康检查 / 手动触发同步）
 EXPOSE 8081
 
-USER coder
+USER sandbox
 
 ENTRYPOINT ["/entrypoint.sh"]

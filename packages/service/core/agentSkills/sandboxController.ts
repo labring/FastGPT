@@ -37,6 +37,7 @@ export type CreateEditDebugSandboxParams = {
   tmbId: string;
   image?: SandboxImageConfigType;
   timeout?: number;
+  entrypoint?: string; // override default entrypoint for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
 
@@ -78,7 +79,7 @@ export type RenewSandboxParams = {
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
-  const { skillId, teamId, tmbId, image, timeout, onProgress } = params;
+  const { skillId, teamId, tmbId, image, timeout, entrypoint, onProgress } = params;
 
   // === Phase 1: Resolve and validate configuration ===
   const providerConfig = getSandboxProviderConfig();
@@ -186,7 +187,8 @@ export async function createEditDebugSandbox(
       await sandbox.create({
         image: sandboxImage,
         timeout: sandboxTimeout,
-        entrypoint: ['/home/coder/entrypoint.sh'],
+        entrypoint: [entrypoint ?? defaults.entrypoint.editDebugKubernetes],
+        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
         metadata: {
           skillId,
           teamId,
@@ -196,9 +198,9 @@ export async function createEditDebugSandbox(
       });
     } else {
       await sandbox.create({
-        image: { repository: 'fastgpt-agent-sandbox', tag: 'docker' },
+        image: sandboxImage,
         timeout: sandboxTimeout,
-        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        entrypoint: [entrypoint ?? defaults.entrypoint.docker],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
         metadata: {
           skillId,
@@ -468,7 +470,7 @@ export async function renewSandboxExpiration(
  *
  * @param params - Parameters for packaging
  * @param params.providerSandboxId - Provider sandbox ID
- * @param params.workDirectory - Working directory (defaults to homeDirectory)
+ * @param params.workDirectory - Working directory
  * @returns Buffer containing the package.zip file
  *
  * @throws Error if packaging fails, file cannot be read, or directory exceeds size limit

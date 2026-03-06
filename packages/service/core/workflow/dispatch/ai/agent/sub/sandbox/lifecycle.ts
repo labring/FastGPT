@@ -43,6 +43,7 @@ type CreateAgentSandboxParams = {
   teamId: string;
   tmbId: string;
   sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key，决定 MinIO 数据路径
+  entrypoint?: string; // override default entrypoint for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
 
@@ -96,10 +97,10 @@ function mergeSkillWithVersion(
 
 /** Dynamically discover all deployed skill directories in the sandbox by locating SKILL.md files.
  * Example:
- * $ find /workspace/projects -name "SKILL.md" -maxdepth 5 2>/dev/null
- * /workspace/projects/skill-creator/SKILL.md
- * /workspace/projects/deep-research/SKILL.md
- * /workspace/projects/science/SKILL.md
+ * $ find ${FASTGPT_WORKDIR} -name "SKILL.md" -maxdepth 5 2>/dev/null
+ * /home/sandbox/workspace/projects/skill-creator/SKILL.md
+ * /home/sandbox/workspace/projects/deep-research/SKILL.md
+ * /home/sandbox/workspace/projects/science/SKILL.md
  *
  * Runs `find` inside the sandbox to locate SKILL.md files up to maxdepth 2,
  * then reads each file and parses the frontmatter for name/description.
@@ -186,7 +187,7 @@ async function deploySkillsToSandbox(
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
 ): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId, sessionId, onProgress } = params;
+  const { skillIds, teamId, tmbId, sessionId, entrypoint, onProgress } = params;
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
@@ -275,7 +276,7 @@ export async function createAgentSandbox(
       await sandbox.create({
         image: defaults.defaultImage,
         timeout: defaults.timeout,
-        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        entrypoint: [entrypoint ?? defaults.entrypoint.sessionKubernetes],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
         metadata: {
           teamId,
@@ -290,7 +291,7 @@ export async function createAgentSandbox(
       await sandbox.create({
         image: { repository: 'fastgpt-agent-sandbox', tag: 'docker' },
         timeout: defaults.timeout,
-        entrypoint: ['/opt/sync-agent/docker-entrypoint.sh'],
+        entrypoint: [entrypoint ?? defaults.entrypoint.docker],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
         metadata: {
           teamId,

@@ -10,12 +10,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    jq \
+    ripgrep \
     vim-tiny \
     tree \
     unzip \
     curl \
-    ca-certificates \
-    sudo
+    ca-certificates
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
 RUN apt install -y python3 nodejs
 RUN rm -rf /var/lib/apt/lists/*
@@ -24,24 +26,20 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
 # Create a non-root user for security
-RUN useradd -m -s /bin/bash coder
+RUN useradd --create-home --shell /bin/bash sandbox
 
-# Create the workspace directory and set permissions
-RUN mkdir -p /workspace/projects && \
-    chown -R coder:coder /workspace/projects
-
-USER coder
-WORKDIR /workspace/projects
+USER sandbox
+WORKDIR /home/sandbox
 
 # Copy VS Code settings
-RUN mkdir -p /home/coder/.local/share/code-server/User
-COPY --chown=coder:coder settings.json /home/coder/.local/share/code-server/User/settings.json
+RUN mkdir -p /home/sandbox/.local/share/code-server/User
+COPY --chown=sandbox:sandbox settings.json /home/sandbox/.local/share/code-server/User/settings.json
 
 # Copy and configure entrypoint
-COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
-RUN chmod +x /home/coder/entrypoint.sh
+COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
+RUN chmod +x /home/sandbox/entrypoint.sh
 
 # Expose code-server port
 EXPOSE 8080
 
-ENTRYPOINT ["/home/coder/entrypoint.sh"]
+ENTRYPOINT ["/home/sandbox/entrypoint.sh"]
