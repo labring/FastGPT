@@ -395,7 +395,7 @@
   "smart_customer_service_llm_summary": "大模型汇总生成回答",
   "smart_customer_service_welcome_text": "对话开场白",
   "smart_customer_service_fallback_reply": "兜底回复",
-  "smart_customer_service_fallback_reply_tooltip": "没有找到知识时，回复以下内容",
+  "smart_customer_service_fallback_reply_tooltip": "没有找到知识时，按照指定方式回复。",
   "smart_customer_service_no_knowledge_found_mode": "没有找到知识时的方式",
   "smart_customer_service_no_knowledge_found_mode_tooltip": "当检索不到知识库内容时，选择回答方式",
   "smart_customer_service_use_fallback_reply": "指定回复内容",
