@@ -600,7 +600,11 @@ const CollectionCard = () => {
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
                         <Td py={2} w="100px">
-                          {collection.statusKey === 'error' ? (
+                          {collection.statusKey === 'folder' ? (
+                            <Box fontSize={'xs'} color={'myWhite.1000'}>
+                              {collection.statusText}
+                            </Box>
+                          ) : collection.statusKey === 'error' ? (
                             <MyTooltip label={t('common:Click_to_expand')}>
                               <MyTag
                                 colorSchema={collection.colorSchema as any}
