@@ -54,14 +54,17 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
         <NextHead
           title={title}
           desc={process.env.SYSTEM_DESCRIPTION || t('common:system_intro', { title })}
-          icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
+          icon={getWebReqUrl(feConfigs?.systemLogo || process.env.SYSTEM_FAVICON)}
         />
       )}
 
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 
       <QueryClientContext>
-        <SystemStoreContextProvider device={pageProps.deviceSize}>
+        <SystemStoreContextProvider
+          device={pageProps.deviceSize}
+          systemLogo={feConfigs?.systemLogo}
+        >
           <ChakraUIContext>
             <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
           </ChakraUIContext>

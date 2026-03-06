@@ -1,15 +1,20 @@
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import Head from 'next/head';
 import React, { useMemo } from 'react';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
+  const { feConfigs } = useSystemStore();
+  const defaultIcon = getWebReqUrl(feConfigs?.systemLogo || LOGO_ICON);
+
   const formatIcon = useMemo(() => {
-    if (!icon) return LOGO_ICON;
+    if (!icon) return defaultIcon;
     if (icon.startsWith('http') || icon.startsWith('/')) {
       return icon;
     }
-    return LOGO_ICON;
-  }, [icon]);
+    return defaultIcon;
+  }, [icon, defaultIcon]);
 
   return (
     <Head>

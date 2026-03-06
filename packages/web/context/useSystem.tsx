@@ -11,18 +11,22 @@ const setSize = (value: string) => {
 
 type useSystemContextType = {
   isPc: boolean;
+  systemLogo: string;
 };
 
 export const useSystemStoreContext = createContext<useSystemContextType>({
-  isPc: true
+  isPc: true,
+  systemLogo: ''
 });
 
 const SystemStoreContextProvider = ({
   children,
-  device
+  device,
+  systemLogo = ''
 }: {
   children: ReactNode;
   device?: 'pc' | 'mobile' | null;
+  systemLogo?: string;
 }) => {
   const [isPc] = useMediaQuery('(min-width: 900px)', {
     fallback: device === 'pc'
@@ -33,9 +37,10 @@ const SystemStoreContextProvider = ({
 
   const contextValue = useMemo(
     () => ({
-      isPc
+      isPc,
+      systemLogo
     }),
-    [isPc]
+    [isPc, systemLogo]
   );
 
   return (

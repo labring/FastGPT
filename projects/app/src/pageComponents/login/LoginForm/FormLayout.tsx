@@ -1,8 +1,9 @@
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AbsoluteCenter, Box, Button, Flex } from '@chakra-ui/react';
-import { SANGFOR_LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { useRouter } from 'next/router';
 import { type Dispatch, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -34,6 +35,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const rootLogin = router.query.rootLogin === '1';
 
   const { setLoginStore, feConfigs } = useSystemStore();
+  const logoSrc = getWebReqUrl(feConfigs?.systemLogo || LOGO_ICON);
 
   const { lastRoute = '/dashboard/apps' } = router.query as { lastRoute: string };
   const computedLastRoute = useMemo(() => {
@@ -156,22 +158,11 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'} justify={'space-between'}>
-        <Flex alignItems={'center'}>
-          <Flex
-            w={['42px', '56px']}
-            h={['42px', '56px']}
-            bg={'myGray.25'}
-            borderRadius={['semilg', 'lg']}
-            borderWidth={['1px', '1.5px']}
-            borderColor={'myGray.200'}
-            alignItems={'center'}
-            justifyContent={'center'}
-          >
-            <MyImage src={SANGFOR_LOGO_ICON} w={['22.5px', '36px']} alt={'icon'} />
-          </Flex>
+      <Flex alignItems={'center'} justifyContent={'center'}>
+        <Flex flexDirection={'column'} alignItems={'center'} gap={8}>
+          <MyImage src={logoSrc} w={['36px', '48px']} alt={'icon'} />
           <Box ml={[3, 5]} fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
-            {t('sangfor:support.user.login.sxf_com')}
+            {feConfigs?.systemTitle || t('sangfor:support.user.login.fastgpt_sxf_com')}
           </Box>
         </Flex>
         {/* {!isPc && <I18nLngSelector />} */}

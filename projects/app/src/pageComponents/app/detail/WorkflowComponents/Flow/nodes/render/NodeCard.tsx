@@ -38,6 +38,8 @@ import { formatToolError } from '@fastgpt/global/core/app/utils';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/plugin/SecretInputModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -60,10 +62,11 @@ const NodeCard = (props: Props) => {
   const { t } = useTranslation();
 
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
 
   const {
     children,
-    avatar = LOGO_ICON,
+    avatar: _avatar,
     name = t('common:core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
@@ -82,6 +85,7 @@ const NodeCard = (props: Props) => {
     customStyle,
     inputs
   } = props;
+  const avatar = _avatar ?? getWebReqUrl(feConfigs?.systemLogo || LOGO_ICON);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
