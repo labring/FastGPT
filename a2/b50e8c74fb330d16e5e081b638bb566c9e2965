@@ -1,0 +1,52 @@
+packages/service/core/agentSkills/sandboxController.ts
+  cf2e8b9b1839393b 134-176
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  239cc594f611da75 116,119,121
+  926ad95cf8495510 35-36,48,194,281,296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "a2b50e8c74fb330d16e5e081b638bb566c9e2965",
+  "prompts": {
+    "239cc594f611da75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08600fcd-c543-4bc6-adc0-2aa8099019bc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 5,
+      "accepted_lines": 3,
+      "overriden_lines": 1
+    },
+    "926ad95cf8495510": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32c16966-92e5-4412-a069-1e8819cd8279",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 4,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "cf2e8b9b1839393b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f471b24-3879-4df5-808c-a59b4dba0a6b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 43,
+      "total_deletions": 2,
+      "accepted_lines": 43,
+      "overriden_lines": 0
+    }
+  }
+}
