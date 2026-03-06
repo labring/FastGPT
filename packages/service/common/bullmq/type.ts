@@ -5,3 +5,5 @@ declare global {
   var queues: Map<QueueNames, Queue> | undefined;
   var workers: Map<QueueNames, Worker> | undefined;
 }
+
+export {};
