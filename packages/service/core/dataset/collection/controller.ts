@@ -33,7 +33,6 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
-import { S3Sources } from '../../../common/s3/type';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -412,26 +411,7 @@ export async function delCollection({
       ...(delFile
         ? [
             getS3DatasetSource().deleteDatasetFilesByKeys(
-              collections
-                .map((item) => {
-                  if (item?.fileId) return item.fileId;
-                  // API file collections (e.g. Feishu) have no fileId but store
-                  // parsed images under a virtual key. Pass the virtual key so the
-                  // MQ worker auto-deletes the corresponding -parsed/ prefix.
-                  if (
-                    item?.type === DatasetCollectionTypeEnum.apiFile &&
-                    item?.apiFileId &&
-                    item?.datasetId
-                  ) {
-                    return [
-                      S3Sources.dataset,
-                      String(item.datasetId),
-                      `feishu-${item.apiFileId}`
-                    ].join('/');
-                  }
-                  return '';
-                })
-                .filter(Boolean)
+              collections.map((item) => item?.fileId || '').filter(Boolean)
             )
           ]
         : []),

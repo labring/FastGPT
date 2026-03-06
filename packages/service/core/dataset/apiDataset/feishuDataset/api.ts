@@ -8,9 +8,6 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { uploadImage2S3Bucket, getFileS3Key } from '../../../../common/s3/utils';
-import { Mimes } from '../../../../common/s3/constants';
-import { S3Sources } from '../../../../common/s3/type';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -38,30 +35,6 @@ type FeishuFileListResponse = {
 
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
-
-const uploadLocalFileToS3 = async ({
-  localPath,
-  s3Prefix
-}: {
-  localPath: string;
-  s3Prefix: string;
-}): Promise<string> => {
-  const buffer = await fs.promises.readFile(localPath);
-  const ext = path.extname(localPath).toLowerCase() || '.jpg';
-  const safeExt = ext as keyof typeof Mimes;
-  // Use the original basename (e.g. {resourceToken}.jpg) as the S3 filename
-  // so that repeated uploads of the same image produce the same key (idempotent).
-  const filename = path.basename(localPath);
-  const mimetype = Mimes[safeExt] || 'image/jpeg';
-  const uploadKey = `${s3Prefix}/${filename}`;
-
-  return uploadImage2S3Bucket('private', {
-    base64Img: buffer.toString('base64'),
-    uploadKey,
-    mimetype,
-    filename
-  });
-};
 
 const cleanupImageDir = (dirPath: string) => {
   try {
@@ -332,23 +305,14 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       }));
   };
 
-  // Use doc2markdown block API for rich content with images
+  // Use doc2markdown to fetch rich content with images as base64-embedded markdown.
+  // The caller (readDatasetSourceRawText) handles S3 upload through the standard
+  // knowledge base image processing pipeline.
   const getFileContent = async ({
-    apiFileId,
-    datasetId
+    apiFileId
   }: {
     apiFileId: string;
-    datasetId?: string;
   }): Promise<ApiFileReadContentResponse> => {
-    if (!datasetId) {
-      return getFileContentRaw({ apiFileId });
-    }
-
-    // Deterministic S3 prefix tied to apiFileId for trackable image cleanup
-    const virtualKey = [S3Sources.dataset, datasetId, `feishu-${apiFileId}`].join('/');
-    const { fileParsedPrefix } = getFileS3Key.s3Key(virtualKey);
-
-    // Store temp images in OS temp dir instead of cwd
     const tmpBaseDir = os.tmpdir();
     const imageDirPath = path.join(tmpBaseDir, `${apiFileId}_images`);
 
@@ -361,12 +325,15 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         disableImageCache: true,
         handleImage: async (localImagePath: string) => {
           try {
-            return await uploadLocalFileToS3({
-              localPath: localImagePath,
-              s3Prefix: fileParsedPrefix
-            });
+            const buffer = await fs.promises.readFile(localImagePath);
+            const ext = path.extname(localImagePath).toLowerCase().replace('.', '');
+            const mime =
+              (
+                { png: 'image/png', gif: 'image/gif', webp: 'image/webp' } as Record<string, string>
+              )[ext] || 'image/jpeg';
+            return `data:${mime};base64,${buffer.toString('base64')}`;
           } catch (err) {
-            logger.warn('Failed to upload Feishu image to S3', { localImagePath, error: err });
+            logger.warn('Failed to read Feishu image', { localImagePath, error: err });
             return '';
           }
         }
@@ -386,10 +353,11 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       }
 
       cleanupImageDir(imageDirPath);
-      return { title: apiFileId, rawText: '' };
+      return getFileContentRaw({ apiFileId });
     } catch (err) {
       cleanupImageDir(imageDirPath);
-      throw err;
+      logger.warn('doc2markdown failed, falling back to raw text API', { apiFileId, error: err });
+      return getFileContentRaw({ apiFileId });
     }
   };
 

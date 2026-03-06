@@ -12,10 +12,12 @@ import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { uploadMarkdownBase64 } from '@fastgpt/global/common/string/markdown';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
-import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
+import { getFileS3Key, isS3ObjectKey, uploadImage2S3Bucket } from '../../common/s3/utils';
+import { Mimes } from '../../common/s3/constants';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -167,7 +169,8 @@ export const readDatasetSourceRawText = async ({
   customPdfParse,
   getFormatText,
   usageId,
-  datasetId
+  datasetId,
+  isPreview
 }: {
   teamId: string;
   tmbId: string;
@@ -181,6 +184,7 @@ export const readDatasetSourceRawText = async ({
   apiDatasetServer?: ApiDatasetServerType; // api dataset
   usageId?: string;
   datasetId: string; // For S3 image upload
+  isPreview?: boolean; // Preview mode: skip S3 image upload, return base64 directly
 }): Promise<{
   title?: string;
   rawText: string;
@@ -233,7 +237,7 @@ export const readDatasetSourceRawText = async ({
       rawText
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
-    const { title, rawText } = await readApiServerFileContent({
+    const { title, rawText: rawMarkdown } = await readApiServerFileContent({
       apiDatasetServer,
       apiFileId: sourceId,
       teamId,
@@ -241,6 +245,36 @@ export const readDatasetSourceRawText = async ({
       customPdfParse,
       datasetId
     });
+
+    // Preview mode: return raw markdown with base64 images directly.
+    // The frontend can render base64 inline. This avoids duplicate S3 uploads
+    // since the actual parse will upload images later.
+    if (isPreview) {
+      return { title, rawText: rawMarkdown || '' };
+    }
+
+    // Reuse the standard KB image processing pipeline:
+    // uploadMarkdownBase64 extracts base64 images from markdown and uploads them to S3
+    // using the dataset S3 prefix convention via getFileS3Key.dataset().
+    const { fileParsedPrefix } = getFileS3Key.dataset({
+      datasetId,
+      filename: sourceId
+    });
+    let imageIndex = 0;
+    const rawText = await uploadMarkdownBase64({
+      rawText: rawMarkdown || '',
+      uploadImgController: async (base64Img) => {
+        const ext = `.${(base64Img.match(/data:image\/([^;]+)/) || [])[1]?.replace('x-', '') || 'jpeg'}`;
+        const uploadKey = `${fileParsedPrefix}/${imageIndex++}${ext}`;
+        return uploadImage2S3Bucket('private', {
+          base64Img,
+          uploadKey,
+          mimetype: Mimes[ext as keyof typeof Mimes],
+          filename: `${imageIndex}${ext}`
+        });
+      }
+    });
+
     return {
       title,
       rawText
