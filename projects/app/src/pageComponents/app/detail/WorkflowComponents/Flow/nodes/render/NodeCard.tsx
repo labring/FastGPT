@@ -98,6 +98,7 @@ const NodeCard = (props: Props) => {
     isError = false,
     debugResult,
     isFolded,
+    hasBreakpoint,
     customStyle,
     inputs,
     rtDoms,
@@ -319,6 +320,23 @@ const NodeCard = (props: Props) => {
         {...(isError ? { onMouseDownCapture: () => onUpdateNodeError(nodeId, false) } : {})}
       >
         {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
+
+        {/* Breakpoint indicator */}
+        {hasBreakpoint && (
+          <Box
+            position={'absolute'}
+            top={'-4px'}
+            left={'-4px'}
+            w={'12px'}
+            h={'12px'}
+            borderRadius={'full'}
+            bg={'red.500'}
+            border={'2px solid'}
+            borderColor={'white'}
+            zIndex={30}
+            title={t('workflow:debug.Breakpoint')}
+          />
+        )}
 
         {foldedOverlay}
 
@@ -692,6 +710,7 @@ const MenuRender = React.memo(function MenuRender({
   // Get current node to check if folded
   const currentNode = getNodeById(nodeId);
   const isFolded = currentNode?.isFolded;
+  const hasBreakpoint = currentNode?.hasBreakpoint;
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -818,6 +837,21 @@ const MenuRender = React.memo(function MenuRender({
               label: t('common:core.workflow.Debug'),
               variant: 'whiteBase',
               onClick: () => openDebugNode({ entryNodeId: nodeId })
+            },
+            {
+              icon: hasBreakpoint ? 'core/workflow/runSuccess' : 'core/workflow/runError',
+              label: hasBreakpoint
+                ? t('workflow:debug.Remove breakpoint')
+                : t('workflow:debug.Set breakpoint'),
+              variant: 'whiteBase',
+              onClick: () => {
+                onChangeNode({
+                  nodeId,
+                  type: 'attr',
+                  key: 'hasBreakpoint',
+                  value: !hasBreakpoint
+                });
+              }
             }
           ]),
       ...(menuForbid?.copy
@@ -888,6 +922,7 @@ const MenuRender = React.memo(function MenuRender({
     onCopyNode,
     onDelNode,
     isFolded,
+    hasBreakpoint,
     onChangeNode
   ]);
 
