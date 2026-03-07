@@ -58,6 +58,7 @@ vi.mock('@fastgpt/service/common/vectorDB/milvus', () => ({
 vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({
   DatasetVectorDbName: 'fastgpt',
   DatasetVectorTableName: 'modeldata',
+  VECTOR_DIMENSION: 1536,
   PG_ADDRESS: 'mock://pg',
   OCEANBASE_ADDRESS: undefined,
   MILVUS_ADDRESS: undefined,

@@ -1,5 +1,5 @@
 /* pg vector crud */
-import { DatasetVectorTableName, VectorVQ } from '../constants';
+import { DatasetVectorTableName, VECTOR_DIMENSION, VectorVQ } from '../constants';
 import { PgClient, connectPg } from './controller';
 import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type { VectorControllerType } from '../type';
@@ -19,7 +19,7 @@ export class PgVectorCtrl implements VectorControllerType {
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGSERIAL PRIMARY KEY,
-            vector ${isHalfVec ? 'HALFVEC(1536)' : 'VECTOR(1536)'} NOT NULL,
+            vector ${isHalfVec ? `HALFVEC(${VECTOR_DIMENSION})` : `VECTOR(${VECTOR_DIMENSION})`} NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,

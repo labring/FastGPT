@@ -3,7 +3,8 @@ import {
   DatasetVectorDbName,
   DatasetVectorTableName,
   MILVUS_ADDRESS,
-  MILVUS_TOKEN
+  MILVUS_TOKEN,
+  VECTOR_DIMENSION
 } from '../constants';
 import type { VectorControllerType } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -69,7 +70,7 @@ export class MilvusCtrl implements VectorControllerType {
           {
             name: 'vector',
             data_type: DataType.FloatVector,
-            dim: 1536
+            dim: VECTOR_DIMENSION
           },
           { name: 'teamId', data_type: DataType.VarChar, max_length: 64 },
           { name: 'datasetId', data_type: DataType.VarChar, max_length: 64 },
