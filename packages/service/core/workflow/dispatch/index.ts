@@ -211,10 +211,15 @@ export async function dispatchWorkFlow({
   const checkStoppingTimer =
     apiVersion === 'v2'
       ? setInterval(async () => {
-          stopping = await shouldWorkflowStop({
+          if (stopping) return;
+
+          const shouldStop = await shouldWorkflowStop({
             appId: runningAppInfo.id,
             chatId
           });
+          if (shouldStop) {
+            stopping = true;
+          }
         }, 100)
       : undefined;
 
