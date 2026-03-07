@@ -8,6 +8,9 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 type ResponseDataType = {
   success: boolean;
@@ -32,6 +35,162 @@ type FeishuFileListResponse = {
 
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
+
+const cleanupImageDir = (dirPath: string) => {
+  try {
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    }
+  } catch (err) {
+    logger.warn('Failed to cleanup Feishu temp image directory', { dirPath, error: err });
+  }
+};
+
+/**
+ * Create a patched FeishuDoc2Markdown subclass that uses the configured
+ * feishuBaseUrl instead of hardcoded 'https://open.feishu.cn'.
+ * This ensures both Feishu (China) and Lark (International) work correctly.
+ */
+const createPatchedHandler = async (params: {
+  appId: string;
+  appSecret: string;
+  docToken: string;
+  imageStorageTarget: string;
+  disableImageCache: boolean;
+  handleImage: (imageUrl: string) => Promise<string>;
+}) => {
+  const { FeishuDoc2Markdown } = await import('doc2markdown/dist/src/doc/impl/feishu');
+
+  // @ts-expect-error - Subclass overrides TS-private methods that are runtime-accessible prototype methods
+  class PatchedFeishuHandler extends FeishuDoc2Markdown {
+    // Override getAccessToken to use configurable base URL
+    async getAccessToken() {
+      const apiUrl = `${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`;
+      const { appId, appSecret } = this.params;
+      const { data } = await axios.post(
+        apiUrl,
+        {
+          app_id: appId,
+          app_secret: appSecret
+        },
+        {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' }
+        }
+      );
+      const { tenant_access_token: accessToken, code, msg, expire } = data;
+      if (code !== 0) {
+        throw new Error(`Failed to get Feishu access token: ${msg}`);
+      }
+      return {
+        expireTime: Date.now() + expire * 1000 - 3000,
+        accessToken
+      };
+    }
+
+    // Override getDocMetadata to use configurable base URL
+    async getDocMetadata(documentId: string) {
+      const api = `${feishuBaseUrl}/open-apis/docx/v1/documents/${documentId}`;
+      const { data } = await axios.get(api, { headers: this.getHeaders() });
+      const metadata = data?.data?.document;
+      return {
+        ...metadata,
+        id: metadata.document_id,
+        token: metadata.document_id,
+        url: metadata.url,
+        name: metadata.title
+      };
+    }
+
+    // Override getRawDocContent to use configurable base URL
+    async getRawDocContent(documentId: string) {
+      const apiUrl = `${feishuBaseUrl}/open-apis/docx/v1/documents/${documentId}/blocks`;
+      const { data } = await axios.get(apiUrl, { headers: this.getHeaders() });
+      return data?.data;
+    }
+
+    // @ts-ignore - handleFeishuImage is TS-private but prototype-based, override works at runtime
+    async handleFeishuImage(
+      documentId: string,
+      resourceToken: string,
+      imageMeta: Record<string, any> = {}
+    ): Promise<string> {
+      const { imageStorageTarget, disableImageCache, skipMediaCheck } = this.params;
+      const downloadUrl = `${feishuBaseUrl}/open-apis/drive/v1/medias/${resourceToken}/download`;
+
+      let imagePath: string;
+      if (typeof imageStorageTarget === 'function') {
+        imagePath = imageStorageTarget(downloadUrl, documentId, {
+          token: resourceToken,
+          ...imageMeta
+        });
+      } else {
+        const baseDir = typeof imageStorageTarget === 'string' ? imageStorageTarget : process.cwd();
+        const imagesDir = path.join(baseDir, `${documentId}_images`);
+        if (!fs.existsSync(imagesDir)) {
+          fs.mkdirSync(imagesDir, { recursive: true });
+        }
+        imagePath = path.join(imagesDir, `${resourceToken}.jpg`);
+      }
+
+      if (fs.existsSync(imagePath)) {
+        if (skipMediaCheck) return imagePath;
+        if (!disableImageCache) {
+          try {
+            const headResp = await axios.head(downloadUrl, { headers: this.getHeaders() });
+            const remoteSize = parseInt(headResp.headers['content-length'] ?? '0', 10);
+            const localSize = fs.statSync(imagePath).size;
+            if (remoteSize > 0 && remoteSize === localSize) return imagePath;
+          } catch {}
+        }
+      }
+
+      const parentDir = path.dirname(imagePath);
+      fs.mkdirSync(parentDir, { recursive: true });
+
+      const response = await axios({
+        url: downloadUrl,
+        method: 'GET',
+        headers: this.getHeaders(),
+        responseType: 'stream'
+      });
+      const writer = fs.createWriteStream(imagePath);
+      response.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      }).catch(() => {});
+
+      return imagePath;
+    }
+
+    // @ts-ignore - getFileList is TS-private but prototype-based, override works at runtime
+    async getFileList(folderToken: string, nextPageToken?: string): Promise<any> {
+      const api = `${feishuBaseUrl}/open-apis/drive/v1/files`;
+      const reqParams: Record<string, any> = {
+        folder_token: folderToken,
+        page_size: (this.params as any).pageSize || 200
+      };
+      if (nextPageToken) reqParams.page_token = nextPageToken;
+      const { data } = await axios.get(api, {
+        headers: this.getHeaders(),
+        params: reqParams
+      });
+      return data?.data;
+    }
+  }
+
+  const handler = new PatchedFeishuHandler({
+    type: 'feishu' as const,
+    appId: params.appId,
+    appSecret: params.appSecret,
+    docToken: params.docToken,
+    imageStorageTarget: params.imageStorageTarget,
+    disableImageCache: params.disableImageCache,
+    handleImage: params.handleImage
+  });
+
+  return handler;
+};
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
   const instance = createProxyAxios({
@@ -146,7 +305,63 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       }));
   };
 
+  // Use doc2markdown to fetch rich content with images as base64-embedded markdown.
+  // The caller (readDatasetSourceRawText) handles S3 upload through the standard
+  // knowledge base image processing pipeline.
   const getFileContent = async ({
+    apiFileId
+  }: {
+    apiFileId: string;
+  }): Promise<ApiFileReadContentResponse> => {
+    const tmpBaseDir = os.tmpdir();
+    const imageDirPath = path.join(tmpBaseDir, `${apiFileId}_images`);
+
+    try {
+      const handler = await createPatchedHandler({
+        appId: feishuServer.appId,
+        appSecret: feishuServer.appSecret!,
+        docToken: apiFileId,
+        imageStorageTarget: tmpBaseDir,
+        disableImageCache: true,
+        handleImage: async (localImagePath: string) => {
+          try {
+            const buffer = await fs.promises.readFile(localImagePath);
+            const ext = path.extname(localImagePath).toLowerCase().replace('.', '');
+            const mime =
+              (
+                { png: 'image/png', gif: 'image/gif', webp: 'image/webp' } as Record<string, string>
+              )[ext] || 'image/jpeg';
+            return `data:${mime};base64,${buffer.toString('base64')}`;
+          } catch (err) {
+            logger.warn('Failed to read Feishu image', { localImagePath, error: err });
+            return '';
+          }
+        }
+      });
+
+      await handler.getCachedAccessToken();
+      const tasks = await handler.getDocTaskList();
+
+      for (const task of tasks) {
+        await handler.getCachedAccessToken();
+        const result = await handler.handleDocTask(task);
+        cleanupImageDir(imageDirPath);
+        return {
+          title: task.name || task.id,
+          rawText: result || ''
+        };
+      }
+
+      cleanupImageDir(imageDirPath);
+      return getFileContentRaw({ apiFileId });
+    } catch (err) {
+      cleanupImageDir(imageDirPath);
+      logger.warn('doc2markdown failed, falling back to raw text API', { apiFileId, error: err });
+      return getFileContentRaw({ apiFileId });
+    }
+  };
+
+  const getFileContentRaw = async ({
     apiFileId
   }: {
     apiFileId: string;
