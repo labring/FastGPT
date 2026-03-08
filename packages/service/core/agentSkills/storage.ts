@@ -230,7 +230,7 @@ export async function copySkillPackage(
  * 获取会话制品列表
  */
 export async function listSessionArtifacts(sessionId: string): Promise<string[]> {
-  const prefix = `sessions/${sessionId}/projects/`;
+  const prefix = `agent-sessions/${sessionId}/`;
   const bucket = new S3PrivateBucket();
 
   const { keys } = await bucket.client.listObjects({ prefix });
@@ -244,7 +244,7 @@ export async function downloadSessionArtifact(
   sessionId: string,
   filePath: string
 ): Promise<Buffer> {
-  const key = `sessions/${sessionId}/projects/${filePath}`;
+  const key = `agent-sessions/${sessionId}/${filePath}`;
   const bucket = new S3PrivateBucket();
 
   const response = await bucket.client.downloadObject({ key });
@@ -265,7 +265,7 @@ export async function downloadSessionArtifact(
  * 清理单个会话的所有制品
  */
 export async function cleanSessionArtifacts(sessionId: string): Promise<{ deletedCount: number }> {
-  const prefix = `sessions/${sessionId}/`;
+  const prefix = `agent-sessions/${sessionId}/`;
   const bucket = new S3PrivateBucket();
 
   const { keys: failedKeys } = await bucket.client.deleteObjectsByPrefix({ prefix });

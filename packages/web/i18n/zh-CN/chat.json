@@ -218,11 +218,12 @@
   "sandbox_status_fetchSkills": "加载技能信息...",
   "sandbox_status_creatingContainer": "启动沙箱（约 60 秒）...",
   "sandbox_status_deployingSkills": "部署技能 {{skillName}}...",
-  "sandbox_status_downloadingPackage": "下载技能包...",
-  "sandbox_status_uploadingPackage": "上传技能包...",
-  "sandbox_status_extractingPackage": "解压技能包...",
+  "sandbox_status_downloadingPackage": "下载技能包 {{skillName}}...",
+  "sandbox_status_uploadingPackage": "上传技能包 {{skillName}}...",
+  "sandbox_status_extractingPackage": "解压技能包 {{skillName}}...",
   "sandbox_status_ready_warm": "沙箱已连接",
   "sandbox_status_ready_cold": "沙箱就绪",
   "sandbox_status_failed": "沙箱启动失败",
+  "sandbox_status_lazyInit": "初始化沙箱...",
   "skill_calling": "正在调用技能：{{name}}"
 }

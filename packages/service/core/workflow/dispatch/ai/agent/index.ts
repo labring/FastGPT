@@ -128,7 +128,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
-    const { filesMap, prompt: fileInputPrompt } = formatFileInput({
+
+    const {
+      filesMap,
+      allFilesMap,
+      prompt: fileInputPrompt
+    } = formatFileInput({
       fileUrls: fileLinks,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
@@ -169,21 +174,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     })();
 
-    // Initialize capabilities
-    if (skillIds && skillIds.length > 0) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
+    // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
+    const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+    const useEditDebugSandbox_flag = !!useEditDebugSandbox;
+    const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';
 
-      const sandboxCap = await createSandboxSkillsCapability({
-        skillIds,
-        teamId: runningAppInfo.teamId,
-        tmbId: runningAppInfo.tmbId,
-        sessionId: sandboxSessionId,
-        mode: sandboxMode,
-        workflowStreamResponse
-      });
-      capabilities.push(sandboxCap);
-    }
+    const sandboxCap = await createSandboxSkillsCapability({
+      skillIds: skillIds ?? [],
+      teamId: runningAppInfo.teamId,
+      tmbId: runningAppInfo.tmbId,
+      sessionId: sandboxSessionId,
+      mode: sandboxMode,
+      workflowStreamResponse,
+      allFilesMap
+    });
+    capabilities.push(sandboxCap);
 
     // Aggregate capability contributions
     const capabilitySystemPrompt = capabilities

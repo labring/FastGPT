@@ -4,7 +4,7 @@
  * Manages sandbox creation/destruction for agent skill execution.
  *
  * session-runtime 沙箱的数据持久化依赖 sync agent 与 MinIO 的联动：
- * - SESSION_ID 决定 MinIO 存储路径：sessions/{SESSION_ID}/projects/
+ * - SESSION_ID 决定 MinIO 存储路径：agent-sessions/{SESSION_ID}/
  * - 沙箱启动时，sync agent 从 MinIO 恢复历史数据
  * - 运行时，文件变更实时同步到 MinIO
  * - 容器销毁后，数据仍保留在 MinIO，下次以相同 SESSION_ID 启动可恢复
@@ -151,18 +151,23 @@ async function deploySkillsToSandbox(
 ): Promise<void> {
   for (const skill of deployableSkills) {
     const version = versionMap.get(String(skill._id))!;
+    const sandboxId = sessionId ?? skill._id.toString();
     onProgress?.({
-      sandboxId: sessionId ?? skill._id.toString(),
+      sandboxId,
       phase: 'deployingSkills',
       skillName: skill.name
     });
     try {
+      onProgress?.({ sandboxId, phase: 'downloadingPackage', skillName: skill.name });
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
 
-      // Write raw ZIP to sandbox and extract in-place (preserves multi-skill directory structure)
+      // Write raw ZIP to sandbox and extract directly into workDirectory.
+      // Sync agent maps workDirectory/* to MinIO agent-sessions/{sessionId}/* directly.
       const zipPath = `${workDirectory}/package_${skill.name}.zip`;
+      onProgress?.({ sandboxId, phase: 'uploadingPackage', skillName: skill.name });
       await sandbox.writeFiles([{ path: zipPath, data: packageBuffer }]);
 
+      onProgress?.({ sandboxId, phase: 'extractingPackage', skillName: skill.name });
       const extractResult = await sandbox.execute(
         `cd ${workDirectory} && unzip -o package_${skill.name}.zip && rm package_${skill.name}.zip`
       );
@@ -247,26 +252,33 @@ export async function createAgentSandbox(
     };
   }
 
-  // Step 2: Fetch skills and filter deployable ones
+  // Step 2: Fetch skills and filter deployable ones (skip when no skills configured)
   logger.info('[Agent Sandbox] Creating new session-runtime sandbox', {
     skillIds,
     teamId,
     sessionId
   });
 
-  onProgress?.({ sandboxId: sessionId, phase: 'fetchSkills', isWarmStart: false });
-  const { skills, versionMap } = await fetchSkillsWithVersionMap(skillIds, teamId);
+  const hasSkills = skillIds.length > 0;
+  let deployableSkills: SkillDoc[] = [];
+  let versionMap = new Map<string, VersionDoc>();
 
-  if (skills.length === 0) {
-    throw new Error('No valid skills found');
-  }
+  if (hasSkills) {
+    onProgress?.({ sandboxId: sessionId, phase: 'fetchSkills', isWarmStart: false });
+    const result = await fetchSkillsWithVersionMap(skillIds, teamId);
 
-  const deployableSkills = skills.filter(
-    (skill) => versionMap.get(String(skill._id)) && skill.currentStorage
-  );
+    if (result.skills.length === 0) {
+      throw new Error('No valid skills found');
+    }
 
-  if (deployableSkills.length === 0) {
-    throw new Error('No deployable skills found (missing active versions)');
+    deployableSkills = result.skills.filter(
+      (skill) => result.versionMap.get(String(skill._id)) && skill.currentStorage
+    );
+    versionMap = result.versionMap;
+
+    if (deployableSkills.length === 0) {
+      throw new Error('No deployable skills found (missing active versions)');
+    }
   }
 
   // Step 3: Create sandbox container, inject SESSION_ID
@@ -316,21 +328,28 @@ export async function createAgentSandbox(
       sessionId
     });
 
-    // Step 4: Deploy skill packages, then dynamically discover skills in sandbox
-    await deploySkillsToSandbox(
-      sandbox,
-      deployableSkills,
-      versionMap,
-      defaults.workDirectory,
-      onProgress,
-      sessionId
-    );
-    const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
+    // Step 4: Deploy skill packages (only when skills are configured)
+    if (hasSkills) {
+      await deploySkillsToSandbox(
+        sandbox,
+        deployableSkills,
+        versionMap,
+        defaults.workDirectory,
+        onProgress,
+        sessionId
+      );
+    }
+    const deployedSkills = hasSkills
+      ? await discoverSkillsInSandbox(sandbox, defaults.workDirectory)
+      : [];
 
     // Step 5: Persist to MongoDB
+    // Use first deployable skill id or a zero ObjectId placeholder for bare containers
+    const primarySkillId = hasSkills ? deployableSkills[0]._id : '000000000000000000000000';
+
     await MongoSkillSandbox.create({
-      skillId: deployableSkills[0]._id, // 保留 required 字段兼容性
-      skillIds: deployableSkills.map((s) => s._id),
+      skillId: primarySkillId, // 保留 required 字段兼容性
+      skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
       sessionId,
       sandboxType: SandboxTypeEnum.sessionRuntime,
       teamId,
@@ -356,9 +375,11 @@ export async function createAgentSandbox(
       sandbox,
       providerSandboxId: sandboxInfo.id,
       sessionId,
-      skills: deployableSkills.map((skill) =>
-        mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id))!)
-      ),
+      skills: hasSkills
+        ? deployableSkills.map((skill) =>
+            mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id))!)
+          )
+        : [],
       deployedSkills,
       workDirectory: defaults.workDirectory,
       isReady: true

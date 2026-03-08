@@ -69,3 +69,44 @@ export function stripRootPrefix(fileMap: ArchiveFileMap, rootPrefix: string): Ar
   }
   return result;
 }
+
+/** SKILL.md content together with its relative path inside the archive. */
+export type SkillMdInfo = { content: string; relativePath: string };
+
+/**
+ * Extract SKILL.md content and its relative path from a ZIP buffer without writing to disk.
+ * Searches the same locations as findSkillMdKey:
+ *   - root: SKILL.md
+ *   - one level deep: {dir}/SKILL.md
+ * Returns null when SKILL.md is not found.
+ */
+export async function extractSkillMdInfoFromBuffer(buffer: Buffer): Promise<SkillMdInfo | null> {
+  const files = await decompress(buffer);
+
+  const target = files.find((f) => {
+    const p = f.path.replace(/\\/g, '/').replace(/^\//, '');
+    const parts = p.split('/');
+    if (parts.length === 1 && parts[0].toLowerCase() === 'skill.md') return true;
+    if (parts.length === 2 && parts[1].toLowerCase() === 'skill.md') return true;
+    return false;
+  });
+
+  if (!target || !target.data) return null;
+  const content = Buffer.isBuffer(target.data)
+    ? target.data.toString('utf-8')
+    : String(target.data);
+  const relativePath = target.path.replace(/\\/g, '/').replace(/^\//, '');
+  return { content, relativePath };
+}
+
+/**
+ * Extract SKILL.md content from a ZIP buffer without writing to disk.
+ * Searches the same locations as findSkillMdKey:
+ *   - root: SKILL.md
+ *   - one level deep: {dir}/SKILL.md
+ * Returns null when SKILL.md is not found.
+ */
+export async function extractSkillMdContentFromBuffer(buffer: Buffer): Promise<string | null> {
+  const info = await extractSkillMdInfoFromBuffer(buffer);
+  return info ? info.content : null;
+}

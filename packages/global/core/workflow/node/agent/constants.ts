@@ -116,5 +116,14 @@ export const systemSubInfo: Record<
     },
     avatar: 'core/workflow/template/datasetSearch',
     toolDescription: 'Search for files in the sandbox'
+  },
+  [SandboxToolIds.fetchUserFile]: {
+    name: {
+      'zh-CN': '获取用户文件',
+      'zh-Hant': '獲取用戶文件',
+      en: 'FetchUserFile'
+    },
+    avatar: 'core/workflow/template/readFiles',
+    toolDescription: 'Download a user-uploaded file into the sandbox filesystem'
   }
 };

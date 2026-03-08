@@ -6,7 +6,8 @@ export enum SandboxToolIds {
   writeFile = 'sandbox_write_file',
   editFile = 'sandbox_edit_file',
   execute = 'sandbox_execute',
-  search = 'sandbox_search'
+  search = 'sandbox_search',
+  fetchUserFile = 'sandbox_fetch_user_file'
 }
 
 // Zod parameter schemas (runtime validation)
@@ -34,6 +35,14 @@ export const SandboxExecuteSchema = z.object({
 export const SandboxSearchSchema = z.object({
   pattern: z.string().describe('Search pattern (filename or glob)'),
   path: z.string().optional().describe('Starting path for search (optional)')
+});
+export const SandboxFetchUserFileSchema = z.object({
+  file_index: z.string().describe('File index from available_files (e.g. "1")'),
+  target_path: z
+    .string()
+    .describe(
+      'Relative path from workspace root to write the file (e.g. "uploads/document.pdf"). Do NOT use absolute paths or "..".'
+    )
 });
 
 // ChatCompletionTool definitions (exposed to LLM)
@@ -137,10 +146,35 @@ export const sandboxSearchTool: ChatCompletionTool = {
   }
 };
 
+export const sandboxFetchUserFileTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SandboxToolIds.fetchUserFile,
+    description:
+      'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_index: {
+          type: 'string',
+          description: 'File index from available_files (e.g. "1")'
+        },
+        target_path: {
+          type: 'string',
+          description:
+            'Relative path from workspace root (e.g. "uploads/document.pdf"). Must not start with "/" or contain "..".'
+        }
+      },
+      required: ['file_index', 'target_path']
+    }
+  }
+};
+
 export const allSandboxTools: ChatCompletionTool[] = [
   sandboxReadFileTool,
   sandboxWriteFileTool,
   sandboxEditFileTool,
   sandboxExecuteTool,
-  sandboxSearchTool
+  sandboxSearchTool,
+  sandboxFetchUserFileTool
 ];
