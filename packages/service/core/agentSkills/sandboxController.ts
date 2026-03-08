@@ -553,7 +553,7 @@ export async function packageSkillInSandbox(params: {
     // 'du' reports disk-block usage and its flags (-sb, --bytes) differ across GNU coreutils,
     // busybox (Alpine), and BSD; 'find -ls' is POSIX and outputs per-file byte sizes in $7
     // uniformly across all those environments.
-    const sizeCheckCmd = `find ${targetDir} -type f ! -name 'package.zip' -ls | awk '{s+=$7} END {print s+0}'`;
+    const sizeCheckCmd = `find ${targetDir} -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
     addLog.info('[Sandbox] Checking directory size before packaging');
     const sizeResult = await sandbox.execute(sizeCheckCmd);
 
@@ -570,8 +570,8 @@ export async function packageSkillInSandbox(params: {
       });
     }
 
-    // Execute zip command to package the directory
-    // -r: recursive, -x: exclude pattern (exclude package.zip itself)
+    // Zip workDirectory directly so that archive entries are {skill-name}/...
+    // keeping the same structure expected by validateZipStructure.
     const zipCommand = `cd ${targetDir} && zip -r package.zip . -x 'package.zip'`;
 
     addLog.info('[Sandbox] Executing zip command');

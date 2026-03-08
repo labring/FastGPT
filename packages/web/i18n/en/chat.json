@@ -216,11 +216,12 @@
   "sandbox_status_fetchSkills": "Loading skill metadata...",
   "sandbox_status_creatingContainer": "Starting sandbox (up to 60s)...",
   "sandbox_status_deployingSkills": "Deploying skill {{skillName}}...",
-  "sandbox_status_downloadingPackage": "Downloading skill package...",
-  "sandbox_status_uploadingPackage": "Uploading skill package...",
-  "sandbox_status_extractingPackage": "Extracting skill package...",
+  "sandbox_status_downloadingPackage": "Downloading {{skillName}} package...",
+  "sandbox_status_uploadingPackage": "Uploading {{skillName}} package...",
+  "sandbox_status_extractingPackage": "Extracting {{skillName}} package...",
   "sandbox_status_ready_warm": "Sandbox connected",
   "sandbox_status_ready_cold": "Sandbox ready",
   "sandbox_status_failed": "Sandbox failed to start",
+  "sandbox_status_lazyInit": "Initializing sandbox...",
   "skill_calling": "Calling skill: {{name}}"
 }

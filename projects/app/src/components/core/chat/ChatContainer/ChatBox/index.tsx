@@ -302,6 +302,13 @@ const ChatBox = ({
               if (phase === 'deployingSkills') {
                 return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
               }
+              if (
+                phase === 'downloadingPackage' ||
+                phase === 'uploadingPackage' ||
+                phase === 'extractingPackage'
+              ) {
+                return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
+              }
               if (phase === 'ready') {
                 return t(
                   isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'

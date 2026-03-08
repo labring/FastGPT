@@ -12,8 +12,12 @@ import type {
   SandboxWriteFileSchema,
   SandboxEditFileSchema,
   SandboxExecuteSchema,
-  SandboxSearchSchema
+  SandboxSearchSchema,
+  SandboxFetchUserFileSchema
 } from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
+import axios from 'axios';
+import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
+import path from 'path';
 
 type DispatchResult = {
   response: string;
@@ -149,6 +153,69 @@ export async function dispatchSandboxSearch(
   } catch (error) {
     return {
       response: `Failed to search files: ${error instanceof Error ? error.message : String(error)}`,
+      usages: []
+    };
+  }
+}
+
+/**
+ * Fetch a user-uploaded file (from conversation) and write it into the sandbox filesystem
+ */
+
+/**
+ * Resolve target_path to an absolute path within workDirectory.
+ * Strips leading slash if present, then resolves and validates no traversal.
+ * Returns null if the resolved path escapes workDirectory.
+ */
+function resolveTargetPath(targetPath: string, workDirectory: string): string | null {
+  // Strip leading slash if provided (LLM might still send absolute path)
+  const relative = targetPath.startsWith('/') ? targetPath.slice(1) : targetPath;
+
+  // Resolve to absolute, then verify it's within workDirectory
+  const resolved = path.resolve(workDirectory, relative);
+  if (!resolved.startsWith(workDirectory + '/') && resolved !== workDirectory) {
+    return null; // Path traversal detected
+  }
+  return resolved;
+}
+
+export async function dispatchSandboxFetchUserFile(
+  ctx: AgentSandboxContext,
+  params: z.infer<typeof SandboxFetchUserFileSchema>,
+  allFilesMap: Record<string, { url: string; name: string; type: string }>
+): Promise<DispatchResult> {
+  const fileEntry = allFilesMap[params.file_index];
+  if (!fileEntry) {
+    return {
+      response: `Failed: file index "${params.file_index}" not found in available_files`,
+      usages: []
+    };
+  }
+
+  const resolvedPath = resolveTargetPath(params.target_path, ctx.workDirectory);
+  if (!resolvedPath) {
+    return {
+      response: `Failed: target_path "${params.target_path}" is invalid or attempts to escape workspace.`,
+      usages: []
+    };
+  }
+
+  try {
+    const response = await axios.get(fileEntry.url, {
+      baseURL: serverRequestBaseUrl,
+      responseType: 'arraybuffer'
+    });
+    const buffer: ArrayBuffer = response.data;
+
+    await ctx.sandbox.writeFiles([{ path: resolvedPath, data: buffer }]);
+
+    return {
+      response: `File written to sandbox: ${resolvedPath} (name: ${fileEntry.name}, size: ${buffer.byteLength} bytes)`,
+      usages: []
+    };
+  } catch (error) {
+    return {
+      response: `Failed to fetch user file: ${error instanceof Error ? error.message : String(error)}`,
       usages: []
     };
   }

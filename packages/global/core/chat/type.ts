@@ -35,25 +35,29 @@ export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
 /* Sandbox lifecycle phase */
 export type SandboxStatusPhase =
-  // Session-runtime phases
+  // Lifecycle phases
   | 'checkExisting' // checking for existing container in MongoDB
   | 'connecting' // warm-start: reusing existing container
   | 'fetchSkills' // cold-start: fetching skill metadata from DB
   | 'creatingContainer' // cold-start: creating container, waiting ready (up to 60s)
-  | 'deployingSkills' // cold-start: deploying skill packages into container
-  // Edit-debug phases
+  // Skill deployment phases (used in both session-runtime and edit-debug)
+  | 'deployingSkills' // announcing which skill is about to be deployed
   | 'downloadingPackage' // downloading skill package from MinIO
   | 'uploadingPackage' // uploading package into sandbox container
   | 'extractingPackage' // extracting package in sandbox
-  // Common terminal phases
+  // Lazy-init phases
+  | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
+  // Terminal phases
   | 'ready' // sandbox is ready
   | 'failed'; // initialization failed
+// Note: 'expiredDetected' and 'restarting' are internal and filtered server-side
 
 export type SandboxStatusItemType = {
   sandboxId: string; // sessionId or skillId (correlates events for same sandbox)
   phase: SandboxStatusPhase;
   isWarmStart?: boolean; // present on 'connecting' and 'ready'
-  skillName?: string; // present on 'deployingSkills'
+  skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
+  // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
   // Present on 'ready' phase for edit-debug sandboxes
   endpoint?: {
