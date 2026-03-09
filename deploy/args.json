@@ -14,7 +14,10 @@
     "milvus-etcd": "v3.5.5",
     "milvus-standalone": "v2.4.3",
     "oceanbase": "4.3.5-lts",
-    "seekdb": "1.0.1.0-100000392025122619"
+    "seekdb": "1.0.1.0-100000392025122619",
+    "opensandbox-server": "v0.1.4",
+    "opensandbox-execd": "v1.0.6",
+    "opensandbox-egress": "v1.0.1"
   },
   "images": {
     "cn": {
@@ -32,7 +35,10 @@
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
       "oceanbase": "oceanbase/oceanbase-ce",
-      "seekdb": "oceanbase/seekdb"
+      "seekdb": "oceanbase/seekdb",
+      "opensandbox-server": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server",
+      "opensandbox-execd": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd",
+      "opensandbox-egress": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress"
     },
     "global": {
       "fastgpt": "ghcr.io/labring/fastgpt",
@@ -49,7 +55,10 @@
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
       "oceanbase": "oceanbase/oceanbase-ce",
-      "seekdb": "oceanbase/seekdb"
+      "seekdb": "oceanbase/seekdb",
+      "opensandbox-server": "opensandbox/server",
+      "opensandbox-execd": "opensandbox/execd",
+      "opensandbox-egress": "opensandbox/egress"
     }
   }
 }
