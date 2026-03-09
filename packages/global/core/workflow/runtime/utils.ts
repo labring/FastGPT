@@ -575,7 +575,7 @@ export function replaceEditorVariable({
     const escapedId = id.replace(variableRegex, '\\$&');
 
     replacements.push({
-      pattern: `\\{\\{\\$(${escapedNodeId}\\.${escapedId})\\$\\}\\}`,
+      pattern: `\\{\\{\\$${escapedNodeId}\\.${escapedId}\\$\\}\\}`,
       replacement: formatVal
     });
 
