@@ -352,7 +352,7 @@ const HomeChatWindow = ({ myApps }: Props) => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
 
       {/* show history slider */}
       {isPc ? (

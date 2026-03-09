@@ -39,7 +39,7 @@ const ChatSetting = () => {
 
   return (
     <>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} icon="/icon/logo.svg" />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
 
       {!isPc && (
         <>
