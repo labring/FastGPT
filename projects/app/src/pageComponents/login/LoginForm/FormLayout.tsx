@@ -39,7 +39,9 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   const { lastRoute = '/dashboard/apps' } = router.query as { lastRoute: string };
   const computedLastRoute = useMemo(() => {
-    return router.pathname === '/chat' ? router.asPath : lastRoute;
+    return router.pathname === '/chat' || router.pathname === '/chat/share'
+      ? router.asPath
+      : lastRoute;
   }, [lastRoute, router.pathname, router.asPath]);
 
   const state = useRef(getNanoid(8));
