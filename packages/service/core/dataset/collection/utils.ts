@@ -202,7 +202,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     });
 
     return DatasetCollectionSyncResultEnum.success;
-  } else if (collection.name !== title) {
+  } else if (title && collection.name !== title) {
     await MongoDatasetCollection.updateOne({ _id: collection._id }, { $set: { name: title } });
     return DatasetCollectionSyncResultEnum.success;
   }
