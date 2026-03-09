@@ -17,11 +17,12 @@ The API File Library lets you integrate your existing document library seamlessl
 
 ## How to Use the API File Library
 
-When creating a knowledge base, select the API File Library type and configure two key parameters: the baseURL of your file service and the request header for authentication. As long as your endpoints conform to FastGPT's specification, the system will automatically fetch and display the complete file list for selective import.
+When creating a knowledge base, select the API File Library type and configure the key parameters: the baseURL of your file service and the request header for authentication. As long as your endpoints conform to FastGPT's specification, the system will automatically fetch and display the complete file list for selective import.
 
-You need to provide two parameters:
+You need to provide three parameters:
 - baseURL: The base URL of your file service
 - authorization: The authentication request header, sent as `Authorization: Bearer <token>`
+- basePath: Optional, the root directory path to specify the starting position of the file tree
 
 ## API Specification
 
@@ -46,6 +47,7 @@ type FileListItem = {
   type: 'file' | 'folder';
   updateTime: Date;
   createTime: Date;
+  hasChild?: boolean; // Optional, whether it has child nodes, defaults to true for folder type
 }
 ```
 
@@ -57,7 +59,7 @@ type FileListItem = {
 
 
 <Alert icon=" " context="success">
-- parentId - Parent ID, optional or null.
+- parentId - Parent ID, optional. If not provided or null, the configured basePath will be used as the root directory
 - searchKey - Search keyword, optional
 </Alert>
 
@@ -79,17 +81,17 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": [
         {
             "id": "xxxx",
             "parentId": "xxxx",
-            "type": "file",  // file | folder
+            "type": "file",
             "name":"test.json",
             "updateTime":"2024-11-26T03:05:24.759Z",
-            "createTime":"2024-11-26T03:05:24.759Z"
+            "createTime":"2024-11-26T03:05:24.759Z",
+            "hasChild": false
         }
    ]
 }
@@ -118,24 +120,25 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": {
         "title": "Document Title",
-        "content": "FastGPT is an LLM-based knowledge base Q&A system with out-of-the-box data processing and model invocation capabilities. It also supports visual workflow orchestration via Flow for complex Q&A scenarios!\n",
-        "previewUrl": "xxxx"
+        "content": "FastGPT is an LLM-based knowledge base Q&A system with out-of-the-box data processing and model invocation capabilities. It also supports visual workflow orchestration via Flow for complex Q&A scenarios!\n"
     }
 }
 ```
 
 <Alert icon=" " context="success">
 
-- title - File title.
-- content - File content, used directly.
-- previewUrl - File link; the system will request this URL to fetch the file content.
+- **title** - File title, optional. Used to display the file name. If not provided, the system will attempt to parse the filename from `previewUrl`.
+- **content** - The text content of the file, optional. Returns the complete text content of the file directly, which the system will use for indexing and retrieval.
+- **previewUrl** - The access link to the file, optional. Provides an accessible file URL, and the system will automatically request this address to download the file and extract its content. Supports various file formats (such as PDF, Word, Markdown, etc.).
 
-Return either `content` or `previewUrl`. If both are returned, `content` takes priority. When `previewUrl` is returned, the system will access that link to read the document content.
+**Important Notes:**
+- Either `content` or `previewUrl` must be returned, **at least one is required**, otherwise an error will occur.
+- If both `content` and `previewUrl` are returned, `content` takes priority and the system will use the `content` directly.
+- When `previewUrl` is returned, the system will access the link to read and parse the document content, and will cache the parsing results to improve performance.
 
 </Alert>
 
@@ -165,7 +168,6 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": {
@@ -181,3 +183,52 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 
   </Tab>
 </Tabs>
+
+
+### 4. Get File Details
+
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
+
+
+id is the file's ID.
+
+```bash
+curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
+--header 'Authorization: Bearer {{authorization}}'
+```
+
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+
+```json
+{
+    "success": true,
+    "message": "",
+    "data": {
+        "id": "xxxx",
+        "name": "test.json",
+        "parentId": "xxxx",
+        "type": "file",
+        "updateTime": "2024-11-26T03:05:24.759Z",
+        "createTime": "2024-11-26T03:05:24.759Z"
+    }
+}
+```
+
+<Alert icon=" " context="success">
+- id - File ID
+- name - File name
+- parentId - Parent ID, null indicates root directory
+- type - File type, file or folder
+- updateTime - Update time
+- createTime - Creation time
+</Alert>
+
+
+  </Tab>
+</Tabs>
+
