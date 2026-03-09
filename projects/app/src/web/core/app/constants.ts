@@ -30,7 +30,7 @@ export const defaultOutLinkForm: OutLinkEditType = {
   responseDetail: false,
   // showFullText: false,
   showRawSource: false,
-  allowAnonymous: true,
+  allowAnonymous: false,
   limit: {
     QPM: 100,
     maxUsagePoints: -1
