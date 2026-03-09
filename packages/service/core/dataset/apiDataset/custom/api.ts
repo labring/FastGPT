@@ -92,6 +92,26 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       .catch((err) => responseError(err));
   };
 
+  const getPreviewUrlFilename = (previewUrl: string) => {
+    const parseFilename = (pathname: string) => {
+      const filename = pathname.split('/').pop() || '';
+
+      if (!filename) return '';
+
+      try {
+        return decodeURIComponent(filename);
+      } catch {
+        return filename;
+      }
+    };
+
+    try {
+      return parseFilename(new URL(previewUrl).pathname);
+    } catch {
+      return parseFilename(previewUrl.split('?')[0].split('#')[0]);
+    }
+  };
+
   const listFiles = async ({
     searchKey,
     parentId
@@ -163,7 +183,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       });
       if (rawTextBuffer) {
         return {
-          title,
+          title: title || rawTextBuffer.filename || getPreviewUrlFilename(previewUrl),
           rawText: rawTextBuffer.text
         };
       }
@@ -178,7 +198,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         getFormatText: true
       });
 
-      const sourceName = title || getNanoid();
+      const sourceName = title || getPreviewUrlFilename(previewUrl) || getNanoid();
 
       getS3RawTextSource().addRawTextBuffer({
         sourceId: previewUrl,
@@ -188,7 +208,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       });
 
       return {
-        title,
+        title: title || sourceName,
         rawText
       };
     }
