@@ -13,6 +13,7 @@ import type {
   GetHistoriesProps,
   InitTeamChatProps
 } from '@/global/core/chat/api.d';
+import { chatRequestManager } from './utils/chatRequestManager';
 
 import type {
   AdminUpdateFeedbackParams,
@@ -70,7 +71,14 @@ export const getChatRecords = (data: getPaginationRecordsBody) =>
 /**
  * delete one history
  */
-export const delChatHistoryById = (data: DelHistoryProps) => DELETE(`/core/chat/delHistory`, data);
+export const delChatHistoryById = async (data: DelHistoryProps) => {
+  const result = await DELETE(`/core/chat/delHistory`, data);
+  // 删除成功后清理控制器
+  if (data.chatId) {
+    chatRequestManager.cleanup(data.chatId);
+  }
+  return result;
+};
 /**
  * clear all history by appid
  */

@@ -13,6 +13,7 @@ import { type UpdateHistoryProps } from '@/global/core/chat/api';
 import { type BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { chatRequestManager } from '../utils/chatRequestManager';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type UpdateHistoryParams = {
@@ -33,6 +34,7 @@ type ChatContextType = {
   onOpenSlider: () => void;
   setHistories: React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>;
   forbidLoadChat: React.MutableRefObject<boolean>;
+  forbidLoadChatMap: React.MutableRefObject<Map<string, boolean>>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   loadHistories: () => void;
   ScrollData: ({
@@ -87,6 +89,7 @@ export const ChatContext = createContext<ChatContextType>({
     throw new Error('Function not implemented.');
   },
   forbidLoadChat: { current: false },
+  forbidLoadChatMap: { current: new Map() },
   onChangeChatId: function (chatId?: string | undefined, forbid?: boolean | undefined): void {
     throw new Error('Function not implemented.');
   },
@@ -103,6 +106,7 @@ const ChatContextProvider = ({
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
+  const forbidLoadChatMap = useRef<Map<string, boolean>>(new Map());
   const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
@@ -203,6 +207,8 @@ const ChatContextProvider = ({
       refreshDeps: [outLinkAuthData, appId],
       onSuccess() {
         setHistories([]);
+        // 清理所有会话的控制器和缓存，防止内存泄漏
+        chatRequestManager.cleanupAll();
       },
       onFinally() {
         onChangeChatId();
@@ -236,6 +242,7 @@ const ChatContextProvider = ({
       onCloseSlider,
       onOpenSlider,
       forbidLoadChat,
+      forbidLoadChatMap,
       onChangeChatId,
       onChangeAppId,
       isLoading,

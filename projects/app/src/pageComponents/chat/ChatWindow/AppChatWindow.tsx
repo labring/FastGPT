@@ -39,7 +39,10 @@ const AppChatWindow = ({ myApps }: Props) => {
   const { isPc } = useSystem();
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatMap = useContextSelector(ChatContext, (v) => v.forbidLoadChatMap);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const histories = useContextSelector(ChatContext, (v) => v.histories);
+  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -55,7 +58,8 @@ const AppChatWindow = ({ myApps }: Props) => {
 
   const { loading } = useRequest2(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      // 使用 chatId 级别的禁止加载标记
+      if (!appId || forbidLoadChatMap.current.get(chatId)) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
@@ -77,6 +81,8 @@ const AppChatWindow = ({ myApps }: Props) => {
         }
       },
       onFinally() {
+        // 清除当前 chatId 的禁止加载标记
+        forbidLoadChatMap.current.delete(chatId);
         forbidLoadChat.current = false;
       }
     }
@@ -90,10 +96,35 @@ const AppChatWindow = ({ myApps }: Props) => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
-      const histories = messages.slice(-1);
+      const histories_messages = messages.slice(-1);
+
+      // 立即生成标题并添加新会话到列表
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories_messages)[0]);
+      const isNewChat = !histories.find((h) => h.chatId === chatId);
+
+      if (isNewChat && chatId) {
+        // 标记禁止加载，防止切换回来时重新加载空数据
+        forbidLoadChatMap.current.set(chatId, true);
+        forbidLoadChat.current = true;
+
+        // 立即添加到历史列表，使用用户输入前20字作为标题
+        // customTitle 设置为 newTitle，确保刷新页面后也使用固定标题
+        setHistories((state) => [
+          {
+            chatId,
+            appId,
+            title: newTitle,
+            updateTime: new Date(),
+            customTitle: newTitle,
+            top: false
+          },
+          ...state
+        ]);
+      }
+
       const { responseText } = await streamFetch({
         data: {
-          messages: histories,
+          messages: histories_messages,
           variables,
           responseChatItemId,
           appId,
@@ -103,9 +134,7 @@ const AppChatWindow = ({ myApps }: Props) => {
         onMessage: generatingMessage
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
-
-      onUpdateHistoryTitle({ chatId, newTitle });
+      // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
       setChatBoxData((state) => ({
         ...state,
         title: newTitle
@@ -113,7 +142,7 @@ const AppChatWindow = ({ myApps }: Props) => {
 
       return { responseText, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
+    [appId, chatId, setChatBoxData, forbidLoadChat, forbidLoadChatMap, histories, setHistories]
   );
 
   return (
