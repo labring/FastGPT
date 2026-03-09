@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import type { NextConfig } from 'next';
 import path from 'path';
 import withBundleAnalyzerInit from '@next/bundle-analyzer';
@@ -17,11 +15,9 @@ const nextConfig: NextConfig = {
     localeDetection: false
   },
   output: 'standalone',
-  // 开发环境关闭 strict mode，避免第三方库的双重渲染问题
-  reactStrictMode: !isDev,
+  // 关闭 strict mode，避免第三方库的双重渲染问题
+  reactStrictMode: false,
   productionBrowserSourceMaps: false,
-  // 启用 SWC 压缩
-  swcMinify: true,
   async headers() {
     return [
       {
