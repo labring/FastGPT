@@ -54,11 +54,11 @@ export async function generateMetadata({
   const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
   const domain = homeDomain.replace('https://', 'https://doc.');
 
-  const title = lang === 'zh-CN' ? 'FastGPT 文档' : 'FastGPT Documentation';
+  const title = lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
   const description =
     lang === 'zh-CN'
-      ? 'FastGPT 是一个 AI Agent 构建平台，通过 Flow 提供开箱即用的数据处理、模型调用能力和可视化工作流编排。'
-      : 'FastGPT is an AI Agent building platform that provides out-of-the-box data processing, model invocation capabilities, and visual workflow orchestration through Flow.';
+      ? '学习如何使用 FastGPT 构建 AI 智能体。完整文档涵盖知识库、可视化工作流、RAG 系统和 API 集成。'
+      : 'Learn how to build AI agents with FastGPT. Complete documentation covering knowledge base, visual workflow, RAG system, and API integration.';
 
   return {
     title: {
@@ -80,25 +80,29 @@ export async function generateMetadata({
     },
     openGraph: {
       type: 'website',
-      locale: lang,
+      locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',
       url: domain,
-      title,
-      description,
-      siteName: 'FastGPT',
+      title: lang === 'zh-CN' ? 'FastGPT 快速开始' : 'Getting Started with FastGPT',
+      description: lang === 'zh-CN' 
+        ? 'FastGPT 是基于大语言模型的知识库问答系统，结合智能对话与可视化编排，让 AI 应用开发变得简单自然。'
+        : 'FastGPT is a knowledge base Q&A system built on LLMs, combining intelligent conversation with visual orchestration to make AI application development simple and natural.',
+      siteName: 'FastGPT Documentation',
       images: [
         {
           url: '/og-image.png',
           width: 1200,
           height: 630,
-          alt: 'FastGPT'
+          alt: lang === 'zh-CN' ? 'FastGPT 文档' : 'FastGPT Documentation'
         }
       ]
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
-      images: ['/twitter-image.png']
+      title: lang === 'zh-CN' ? 'FastGPT 快速开始' : 'Getting Started with FastGPT',
+      description: lang === 'zh-CN'
+        ? '学习如何使用 FastGPT 构建 AI 智能体。完整文档涵盖知识库、可视化工作流、RAG 系统和 API 集成。'
+        : 'Learn how to build AI agents with FastGPT. Complete documentation covering knowledge base, visual workflow, RAG system, and API integration.',
+      images: ['/og-image.png']
     },
     robots: {
       index: true,
