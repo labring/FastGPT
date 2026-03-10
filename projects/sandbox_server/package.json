@@ -16,6 +16,7 @@
     "./sdk": "./src/sdk/index.ts"
   },
   "dependencies": {
+    "@fastgpt-sdk/logger": "0.1.1",
     "@hono/zod-openapi": "^1.2.1",
     "@scalar/hono-api-reference": "^0.9.40",
     "@t3-oss/env-core": "^0.13.10",

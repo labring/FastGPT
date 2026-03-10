@@ -7,6 +7,9 @@ import {
   type ContainerStatus
 } from '../schemas';
 import { env, containerConfig } from '../env';
+import { getLogger, LogCategories } from '../utils';
+
+const logger = getLogger(LogCategories.SEALOS);
 
 /**
  * Sealos API Client
@@ -47,7 +50,7 @@ export class SealosClient {
       (error: AxiosError<{ error?: string; message?: string }>) => {
         const status = error.response?.status;
         const errorData = error.response?.data;
-        console.log(errorData, 2222);
+        logger.error('Sealos API error', { status, error: errorData });
         if (status === 401 || status === 403) {
           return Promise.reject(new Error('Authentication failed'));
         }

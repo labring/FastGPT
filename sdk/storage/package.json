@@ -5,7 +5,6 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "packageManager": "pnpm@9.15.9",
   "description": "FastGPT SDK for object storage",
   "author": "FastGPT",
   "repository": {
@@ -21,7 +20,8 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "exports": {
     ".": {
@@ -32,8 +32,7 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "object-storage",
     "storage",
@@ -59,8 +58,8 @@
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.13",
-    "@types/node": "^20",
-    "tsdown": "^0.18.2",
-    "typescript": "^5.9.3"
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   }
 }

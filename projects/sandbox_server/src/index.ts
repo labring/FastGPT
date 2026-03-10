@@ -1,10 +1,13 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { apiReference } from '@scalar/hono-api-reference';
+import { Scalar } from '@scalar/hono-api-reference';
 import { env } from './env';
 import { authMiddleware, errorHandler, loggerMiddleware } from './middleware';
 import { createSealosClient } from './clients';
 import { createContainerRoutes, createSandboxRoutes } from './routes';
-import { logger } from './utils';
+import { configureLogger, getLogger, LogCategories } from './utils';
+
+await configureLogger();
+const logger = getLogger(LogCategories.SERVER);
 
 // Create Hono app with OpenAPI support
 const app = new OpenAPIHono();
@@ -26,12 +29,16 @@ app.get('/health', (c) => {
 });
 
 // OpenAPI JSON document
-app.doc('/openapi', {
-  openapi: '3.0.0',
+app.doc31('/openapi.json', {
+  openapi: '3.1.0',
   info: {
     title: 'Sandbox Server API',
     version: '1.0.0',
-    description: 'API for managing sandbox containers via Sealos'
+    description: 'API for managing sandbox containers via Sealos',
+    license: {
+      name: 'Apache 2.0',
+      url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+    }
   },
   servers: [
     {
@@ -43,10 +50,13 @@ app.doc('/openapi', {
 
 // Scalar API Reference UI
 app.get(
-  '/openapi/ui',
-  apiReference({
-    url: '/openapi',
-    theme: 'default'
+  '/openapi',
+  Scalar({
+    url: '/openapi.json',
+    theme: 'default',
+    defaultOpenAllTags: true,
+    expandAllModelSections: true,
+    expandAllResponses: true
   })
 );
 
@@ -67,8 +77,8 @@ app.route('/v1', v1);
 
 // ==================== Start Server ====================
 
-logger.info('Server', `Starting on port ${env.PORT}`);
-logger.info('Server', `API Documentation: http://localhost:${env.PORT}/openapi/ui`);
+logger.info(`Starting on port ${env.PORT}`);
+logger.info(`API Documentation: http://localhost:${env.PORT}/openapi/ui`);
 
 export default {
   port: env.PORT,
