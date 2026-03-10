@@ -172,7 +172,7 @@ export enum NodeInputKeyEnum {
   selectedTools = 'agent_selectedTools',
   datasetParams = 'agent_datasetParams',
   skills = 'skills',
-  useComputer = 'useComputer',
+  useAgentSandbox = 'useAgentSandbox',
 
   // dataset
   datasetSelectList = 'datasets',

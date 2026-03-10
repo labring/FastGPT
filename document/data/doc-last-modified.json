@@ -95,8 +95,8 @@
   "document/content/docs/introduction/guide/dashboard/workflow/variable_update.mdx": "2025-07-23T21:35:03+08:00",
   "document/content/docs/introduction/guide/knowledge_base/RAG.en.mdx": "2026-02-26T22:14:30+08:00",
   "document/content/docs/introduction/guide/knowledge_base/RAG.mdx": "2025-07-23T21:35:03+08:00",
-  "document/content/docs/introduction/guide/knowledge_base/api_dataset.en.mdx": "2026-02-26T22:14:30+08:00",
-  "document/content/docs/introduction/guide/knowledge_base/api_dataset.mdx": "2025-07-23T21:35:03+08:00",
+  "document/content/docs/introduction/guide/knowledge_base/api_dataset.en.mdx": "2026-03-09T17:39:53+08:00",
+  "document/content/docs/introduction/guide/knowledge_base/api_dataset.mdx": "2026-03-09T17:39:53+08:00",
   "document/content/docs/introduction/guide/knowledge_base/collection_tags.en.mdx": "2026-02-26T22:14:30+08:00",
   "document/content/docs/introduction/guide/knowledge_base/collection_tags.mdx": "2025-08-02T19:38:37+08:00",
   "document/content/docs/introduction/guide/knowledge_base/dataset_engine.en.mdx": "2026-02-26T22:14:30+08:00",
@@ -137,8 +137,8 @@
   "document/content/docs/introduction/opensource/license.mdx": "2026-03-03T17:39:47+08:00",
   "document/content/docs/openapi/app.en.mdx": "2026-02-26T22:14:30+08:00",
   "document/content/docs/openapi/app.mdx": "2026-02-12T18:45:30+08:00",
-  "document/content/docs/openapi/chat.en.mdx": "2026-02-26T22:14:30+08:00",
-  "document/content/docs/openapi/chat.mdx": "2026-02-12T18:45:30+08:00",
+  "document/content/docs/openapi/chat.en.mdx": "2026-03-05T15:30:51+08:00",
+  "document/content/docs/openapi/chat.mdx": "2026-03-05T15:30:51+08:00",
   "document/content/docs/openapi/dataset.en.mdx": "2026-02-26T22:14:30+08:00",
   "document/content/docs/openapi/dataset.mdx": "2026-02-12T18:45:30+08:00",
   "document/content/docs/openapi/index.en.mdx": "2026-02-26T22:14:30+08:00",
@@ -231,19 +231,10 @@
   "document/content/docs/self-host/upgrading/4-14/4146.mdx": "2026-03-03T17:39:47+08:00",
   "document/content/docs/self-host/upgrading/4-14/4147.en.mdx": "2026-03-03T17:39:47+08:00",
   "document/content/docs/self-host/upgrading/4-14/4147.mdx": "2026-03-03T17:39:47+08:00",
-<<<<<<< HEAD
   "document/content/docs/self-host/upgrading/4-14/4148.en.mdx": "2026-03-06T19:32:23+08:00",
-  "document/content/docs/self-host/upgrading/4-14/4148.mdx": "2026-03-09T12:04:22+08:00",
-  "document/content/docs/self-host/upgrading/4-14/41481.en.mdx": "2026-03-09T12:02:02+08:00",
-  "document/content/docs/self-host/upgrading/4-14/41481.mdx": "2026-03-09T14:24:27+08:00",
-=======
-  "document/content/docs/self-host/upgrading/4-14/4148.en.mdx": "2026-03-03T17:39:47+08:00",
-<<<<<<< HEAD
   "document/content/docs/self-host/upgrading/4-14/4148.mdx": "2026-03-04T18:18:14+08:00",
->>>>>>> b7d57cb9d (sandbox in chat window)
-=======
-  "document/content/docs/self-host/upgrading/4-14/4148.mdx": "2026-03-05T13:59:50+08:00",
->>>>>>> b9d4f061f (sandbox entry)
+  "document/content/docs/self-host/upgrading/4-14/41481.en.mdx": "2026-03-09T12:02:02+08:00",
+  "document/content/docs/self-host/upgrading/4-14/41481.mdx": "2026-03-09T17:39:53+08:00",
   "document/content/docs/self-host/upgrading/outdated/40.en.mdx": "2026-03-03T17:39:47+08:00",
   "document/content/docs/self-host/upgrading/outdated/40.mdx": "2026-03-03T17:39:47+08:00",
   "document/content/docs/self-host/upgrading/outdated/41.en.mdx": "2026-03-03T17:39:47+08:00",

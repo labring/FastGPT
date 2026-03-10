@@ -98,9 +98,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatJsonSchema
       );
-      defaultAppForm.aiSettings.useComputer = findInputValueByKey(
+      defaultAppForm.aiSettings.useAgentSandbox = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.useComputer
+        NodeInputKeyEnum.useAgentSandbox
       );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
@@ -632,11 +632,11 @@ export function form2AppWorkflow(
               step: 50
             },
             {
-              key: NodeInputKeyEnum.useComputer,
+              key: NodeInputKeyEnum.useAgentSandbox,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
-              value: formData.aiSettings.useComputer ?? false
+              value: formData.aiSettings.useAgentSandbox ?? false
             },
             {
               key: 'systemPrompt',
@@ -720,7 +720,8 @@ export function form2AppWorkflow(
   }
 
   const workflow = (() => {
-    if (data.selectedTools.length > 0 || data.aiSettings.useComputer) return toolTemplates(data);
+    if (data.selectedTools.length > 0 || data.aiSettings.useAgentSandbox)
+      return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();

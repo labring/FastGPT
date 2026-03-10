@@ -29,7 +29,7 @@ export const SANDBOX_TOOL_NAME = 'sandbox_shell';
 export const SANDBOX_TOOL_DESCRIPTION =
   '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等';
 
-// ---- 系统提示词（useComputer=true 时追加） ----
+// ---- 系统提示词（useAgentSandbox=true 时追加） ----
 export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
 - 预装：bash / python3 / node / bun / git / curl
 - 工作目录：/workspace（文件在本次会话内持久保留）

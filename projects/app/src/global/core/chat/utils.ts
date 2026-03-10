@@ -58,7 +58,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
 
   // get llm module account and history preview length and total quote list and external link list and error text
   const {
-    useComputer,
+    useAgentSandbox,
     llmModuleAccount,
     historyPreviewLength,
     totalQuoteList,
@@ -93,7 +93,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
             }
           });
         } else if (item.toolId === SANDBOX_TOOL_NAME) {
-          acc.useComputer = true;
+          acc.useAgentSandbox = true;
         }
       }
 
@@ -107,7 +107,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
       return acc;
     },
     {
-      useComputer: false,
+      useAgentSandbox: false,
       totalQuoteList: [] as SearchDataResponseItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
@@ -124,7 +124,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
 
   return {
     ...historyItem,
-    useComputer,
+    useAgentSandbox,
     totalQuoteList: filteredQuoteList,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
     ...(errorText ? { errorText } : {}),

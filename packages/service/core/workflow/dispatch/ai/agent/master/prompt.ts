@@ -4,11 +4,11 @@ import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants
 export const getMasterSystemPrompt = ({
   systemPrompt,
   hasUserTools,
-  useComputer
+  useAgentSandbox
 }: {
   systemPrompt?: string;
   hasUserTools: boolean;
-  useComputer: boolean;
+  useAgentSandbox: boolean;
 }) => {
   return `<!-- Master Agent 决策系统 -->
 
@@ -27,7 +27,7 @@ ${systemPrompt}
 }
 
 ${
-  useComputer
+  useAgentSandbox
     ? `
 <sandbox_environment>
 ${SANDBOX_SYSTEM_PROMPT}

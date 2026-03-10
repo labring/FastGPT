@@ -51,7 +51,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
 
   // Sandbox (Computer Use)
-  [NodeInputKeyEnum.useComputer]?: boolean;
+  [NodeInputKeyEnum.useAgentSandbox]?: boolean;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -90,7 +90,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
-      useComputer = false
+      useAgentSandbox = false
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -168,7 +168,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useComputer
+        useAgentSandbox
       }
     );
 

@@ -195,7 +195,7 @@ const ErrorTextItemSchema = z.object({
 export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
 
 export type ResponseTagItemType = {
-  useComputer?: boolean;
+  useAgentSandbox?: boolean;
   totalQuoteList?: SearchDataResponseItemType[];
   toolCiteLinks?: ToolCiteLinksType[];
   errorText?: ErrorTextItemType;

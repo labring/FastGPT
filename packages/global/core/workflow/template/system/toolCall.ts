@@ -101,7 +101,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
     },
 
     {
-      key: NodeInputKeyEnum.useComputer,
+      key: NodeInputKeyEnum.useAgentSandbox,
       renderTypeList: [FlowNodeInputTypeEnum.switch],
       label: i18nT('app:use_computer'),
       description: i18nT('app:use_computer_desc'),

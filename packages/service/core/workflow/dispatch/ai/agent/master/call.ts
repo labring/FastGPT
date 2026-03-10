@@ -92,7 +92,7 @@ export const masterCall = async ({
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
-      useComputer = false
+      useAgentSandbox = false
     }
   } = props;
 
@@ -187,7 +187,7 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useComputer
+          useAgentSandbox
         })
       },
       ...masterMessages

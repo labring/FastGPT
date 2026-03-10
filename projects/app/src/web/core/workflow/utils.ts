@@ -485,8 +485,10 @@ export const checkWorkflowNodeAndConnection = ({
         (edge) =>
           edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
       );
-      const useComputer = inputs.find((input) => input.key === NodeInputKeyEnum.useComputer)?.value;
-      if (toolConnections.length === 0 && !useComputer) {
+      const useAgentSandbox = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.useAgentSandbox
+      )?.value;
+      if (toolConnections.length === 0 && !useAgentSandbox) {
         return [data.nodeId];
       }
     }

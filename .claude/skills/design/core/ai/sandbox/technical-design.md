@@ -139,7 +139,7 @@ Response: { url: string, expireAt: Date }
 
 ```typescript
 // 新增
-useComputer = 'useComputer',   // 启用沙盒（Computer Use）
+useAgentSandbox = 'useAgentSandbox',   // 启用沙盒（Computer Use）
 ```
 
 **影响范围**：枚举新增，不影响现有逻辑。
@@ -208,21 +208,21 @@ export const sandboxShellTool: ChatCompletionTool = {
 
 ### 3.4 `packages/service/core/workflow/dispatch/ai/agent/utils.ts`
 
-**改动**：在 `getSubapps()` 中新增 `useComputer` 参数，与 `hasDataset`、`hasFiles` 同级注入。
+**改动**：在 `getSubapps()` 中新增 `useAgentSandbox` 参数，与 `hasDataset`、`hasFiles` 同级注入。
 
 ```typescript
 // 参数新增
 export const getSubapps = async ({
   // ...现有参数...
-  useComputer   // 新增
+  useAgentSandbox   // 新增
 }: {
   // ...现有类型...
-  useComputer?: boolean;  // 新增
+  useAgentSandbox?: boolean;  // 新增
 }) => {
   // ...现有逻辑...
 
   /* Sandbox Shell */        // 新增，与 Dataset Search 同级
-  if (useComputer) {
+  if (useAgentSandbox) {
     completionTools.push(sandboxShellTool);
   }
 
@@ -248,18 +248,18 @@ export const getSubapps = async ({
 
 ### 3.6 `packages/service/core/workflow/dispatch/ai/agent/master/prompt.ts`
 
-**改动**：`getMasterSystemPrompt()` 函数中，当 `useComputer=true` 时，在 System Prompt 末尾追加沙盒环境说明。
+**改动**：`getMasterSystemPrompt()` 函数中，当 `useAgentSandbox=true` 时，在 System Prompt 末尾追加沙盒环境说明。
 
 ```typescript
-// 新增参数 useComputer?: boolean
-// 当 useComputer=true 时，追加 SANDBOX_SYSTEM_PROMPT
+// 新增参数 useAgentSandbox?: boolean
+// 当 useAgentSandbox=true 时，追加 SANDBOX_SYSTEM_PROMPT
 export const getMasterSystemPrompt = (
   systemPrompt?: string,
   hasUserTools: boolean = true,
-  useComputer?: boolean  // 新增
+  useAgentSandbox?: boolean  // 新增
 ) => {
   let prompt = `...现有逻辑...`;
-  if (useComputer) {
+  if (useAgentSandbox) {
     prompt += `\n\n${SANDBOX_SYSTEM_PROMPT}`;
   }
   return prompt;
@@ -270,10 +270,10 @@ export const getMasterSystemPrompt = (
 
 ### 3.7 `packages/service/core/workflow/dispatch/ai/tool/index.ts`
 
-**改动**：`dispatchRunTools`（toolCall 模式）中，读取 `useComputer` 输入值，传递给下游。
+**改动**：`dispatchRunTools`（toolCall 模式）中，读取 `useAgentSandbox` 输入值，传递给下游。
 
 ```
-位置：函数入口处，从 inputs 中读取 useComputer
+位置：函数入口处，从 inputs 中读取 useAgentSandbox
 传递给 runToolCall() 调用
 ```
 
@@ -283,7 +283,7 @@ export const getMasterSystemPrompt = (
 
 **改动**：`runToolCall` 中：
 
-1. 当 `useComputer=true` 时，在 `tools` 数组中追加 `sandboxShellTool`
+1. 当 `useAgentSandbox=true` 时，在 `tools` 数组中追加 `sandboxShellTool`
 2. 在 System Prompt 末尾追加 `SANDBOX_SYSTEM_PROMPT`
 3. 处理 AI 返回的 `sandbox_shell` 工具调用：拦截 → 调用 `execShell()` → 将结果作为 tool response 返回
 
@@ -366,12 +366,12 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 | `packages/service/core/ai/sandbox/controller.ts` | 🆕 新增 | ~156 行 | SandboxInstance 类 + delete/stop 函数 + cronJob |
 | `packages/service/.../agent/sub/sandbox/utils.ts` | 🆕 新增 | ~35 行 | sandboxShellTool 定义（同 datasetSearchTool 模式） |
 | `projects/app/src/pages/api/core/ai/sandbox/webideUrl.ts` | 🆕 新增 | ~30 行 | Web IDE URL API |
-| `packages/global/core/workflow/constants.ts` | ✏️ 改造 | +1 行 | NodeInputKeyEnum 新增 useComputer |
+| `packages/global/core/workflow/constants.ts` | ✏️ 改造 | +1 行 | NodeInputKeyEnum 新增 useAgentSandbox |
 | `packages/global/.../agent/constants.ts` | ✏️ 改造 | +12 行 | SubAppIds 新增 sandboxShell + systemSubInfo 注册 |
-| `packages/service/.../agent/utils.ts` | ✏️ 改造 | +5 行 | getSubapps() 新增 useComputer 参数，注入 sandboxShellTool |
+| `packages/service/.../agent/utils.ts` | ✏️ 改造 | +5 行 | getSubapps() 新增 useAgentSandbox 参数，注入 sandboxShellTool |
 | `packages/service/.../agent/master/call.ts` | ✏️ 改造 | +20 行 | 拦截 sandbox_shell 调用，路由到 SandboxInstance.exec() |
 | `packages/service/.../agent/master/prompt.ts` | ✏️ 改造 | +5 行 | 追加沙盒 System Prompt |
-| `packages/service/.../ai/tool/index.ts` | ✏️ 改造 | +5 行 | 读取 useComputer 传递下游 |
+| `packages/service/.../ai/tool/index.ts` | ✏️ 改造 | +5 行 | 读取 useAgentSandbox 传递下游 |
 | `packages/service/.../ai/tool/toolCall.ts` | ✏️ 改造 | +30 行 | 注入 shell tool + 拦截调用 |
 | `projects/app/.../system/cron.ts` | ✏️ 改造 | +2 行 | 注册沙盒 cronJob |
 | `projects/app/.../chat/history/batchDelete.ts` | ✏️ 改造 | +3 行 | 异步删除沙盒 |
@@ -394,7 +394,7 @@ graph LR
 | 阶段 | 内容 | 可独立测试 |
 |------|------|-----------|
 | Phase 1（完成）| 新增 constants + schema + controller (含 cronJob) | 可集成测试 SandboxInstance.exec() / stop() / delete() |
-| Phase 2 （完成）| ToolCall 节点注入 useComputer + 简易模式支持 useComputer（一个开关即可） + shell tool + 拦截调用 | 需手动运行验证 |
+| Phase 2 （完成）| ToolCall 节点注入 useAgentSandbox + 简易模式支持 useComputer（一个开关即可） + shell tool + 拦截调用 | 需手动运行验证 |
 | Phase 3（完成） | 注册 cronJob + 会话/应用删除时清理 | 可通过 cron 日志 + 手动删除会话验证 |
 | Phase 4 | Web IDE URL API + 前端入口 | 需要前端配合 |
 | Phase 5 | Agent 模式支持 computer | 需手动运行验证 |

@@ -58,7 +58,7 @@ const ResponseTags = ({
   const {
     totalQuoteList: quoteList = [],
     toolCiteLinks = [],
-    useComputer
+    useAgentSandbox
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -69,7 +69,7 @@ const ResponseTags = ({
         : {})
     };
   }, [historyItem, isShowCite]);
-  console.log(useComputer, historyItem);
+  console.log(useAgentSandbox, historyItem);
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
@@ -274,7 +274,7 @@ const ResponseTags = ({
             </MyTooltip>
           )}
 
-          {useComputer && (
+          {useAgentSandbox && (
             <>
               <MyTag
                 colorSchema="green"

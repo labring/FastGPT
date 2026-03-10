@@ -40,14 +40,14 @@ type ResponseType = {
 };
 
 export const runToolCall = async (
-  props: DispatchToolModuleProps & { useComputer?: boolean }
+  props: DispatchToolModuleProps & { useAgentSandbox?: boolean }
 ): Promise<ResponseType> => {
   const {
     messages,
     toolNodes,
     toolModel,
     childrenInteractiveParams,
-    useComputer,
+    useAgentSandbox,
     ...workflowProps
   } = props;
   const {
@@ -128,7 +128,7 @@ export const runToolCall = async (
 
   // 注入 sandbox_shell 工具和提示词
   let finalMessages = messages;
-  if (useComputer) {
+  if (useAgentSandbox) {
     tools.push(SANDBOX_SHELL_TOOL);
 
     const systemMessage = messages.find((m) => m.role === 'system');

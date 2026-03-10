@@ -63,7 +63,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       aiChatVision,
       aiChatReasoning,
       isResponseAnswerText = true,
-      useComputer = false
+      useAgentSandbox = false
     }
   } = props;
 
@@ -222,7 +222,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         messages: adaptMessages,
         childrenInteractiveParams:
           lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined,
-        useComputer
+        useAgentSandbox
       });
     })();
 

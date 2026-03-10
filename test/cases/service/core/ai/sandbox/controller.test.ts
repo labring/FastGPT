@@ -1,33 +1,58 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+
+// Mock the env module BEFORE any imports that use it
+vi.mock('@fastgpt/service/env', () => ({
+  env: {
+    AGENT_SANDBOX_PROVIDER: 'sealos-devbox',
+    AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sandbox.local',
+    AGENT_SANDBOX_SEALOS_TOKEN: 'mock-token-12345'
+  }
+}));
+
+// Mock the SealosDevboxAdapter to avoid real API calls
+vi.mock('@fastgpt-sdk/sandbox-adapter', () => {
+  class MockSealosDevboxAdapter {
+    async create() {
+      return undefined;
+    }
+    async start() {
+      return undefined;
+    }
+    async stop() {
+      return undefined;
+    }
+    async delete() {
+      return undefined;
+    }
+    async getInfo() {
+      return null;
+    }
+    async execute() {
+      return { stdout: 'ok', stderr: '', exitCode: 0 };
+    }
+    async waitUntilReady() {
+      return undefined;
+    }
+    async ensureRunning() {
+      return undefined;
+    }
+  }
+
+  return {
+    SealosDevboxAdapter: MockSealosDevboxAdapter
+  };
+});
+
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-
-const { Types } = connectionMongo;
-const oid = () => String(new Types.ObjectId());
-
-// Set environment variables for testing
-process.env.AGENT_SANDBOX_PROVIDER = 'sealos-devbox';
-process.env.AGENT_SANDBOX_SEALOS_BASEURL = 'http://mock-sandbox.local';
-process.env.AGENT_SANDBOX_SEALOS_TOKEN = 'mock-token-12345';
-
-// Mock the SealosDevboxAdapter to avoid real API calls
-vi.mock('@fastgpt-sdk/sandbox-adapter', () => ({
-  SealosDevboxAdapter: vi.fn().mockImplementation(() => ({
-    create: vi.fn().mockResolvedValue(undefined),
-    start: vi.fn().mockResolvedValue(undefined),
-    stop: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    getInfo: vi.fn().mockResolvedValue(null),
-    execute: vi.fn().mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 }),
-    waitUntilReady: vi.fn().mockResolvedValue(undefined)
-  }))
-}));
-
 import {
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId
 } from '@fastgpt/service/core/ai/sandbox/controller';
+
+const { Types } = connectionMongo;
+const oid = () => String(new Types.ObjectId());
 
 beforeAll(async () => {
   vi.clearAllMocks();

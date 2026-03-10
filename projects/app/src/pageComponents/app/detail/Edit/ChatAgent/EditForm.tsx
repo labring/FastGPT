@@ -219,13 +219,13 @@ const EditForm = ({
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
             <Switch
-              isChecked={appForm.aiSettings.useComputer ?? false}
+              isChecked={appForm.aiSettings.useAgentSandbox ?? false}
               onChange={(e) => {
                 setAppForm((state) => ({
                   ...state,
                   aiSettings: {
                     ...state.aiSettings,
-                    useComputer: e.target.checked
+                    useAgentSandbox: e.target.checked
                   }
                 }));
               }}
