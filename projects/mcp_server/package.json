@@ -14,8 +14,8 @@
     "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20.x",
+    "pnpm": ">=9.x"
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",

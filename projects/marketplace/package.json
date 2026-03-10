@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20.x",
+    "pnpm": ">=9.x"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
