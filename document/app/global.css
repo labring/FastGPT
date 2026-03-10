@@ -57,3 +57,31 @@
 [data-radix-popper-content-wrapper] > div > a > div {
   margin-top: 0 !important;
 }
+
+/* Image zoom modal overlay */
+html [data-rmiz-modal-overlay='visible'] {
+  --color-fd-background: rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+html.dark [data-rmiz-modal-overlay='visible'] {
+  --color-fd-background: rgba(0, 0, 0, 0.75);
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Content */
+
+/* img */
+#nd-page article img {
+  object-fit: contain;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80%;
+  max-height: 500px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+[data-rmiz-modal-img] {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
