@@ -2,12 +2,6 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'fumadocs-ui/css/black.css';
 
-#nd-sidebar
-  > div.flex.flex-col.gap-3.p-4.pb-2.data-\[empty\=true\]\:hidden
-  > button.inline-flex.items-center.gap-2.rounded-lg.border.bg-fd-secondary\/50.p-1\.5.ps-2.text-sm.text-fd-muted-foreground.transition-colors.hover\:bg-fd-accent.hover\:text-fd-accent-foreground.max-md\:hidden {
-  height: 38px;
-}
-
 /* 移动端目录下拉框：文本溢出省略号 */
 @media (max-width: 767px) {
   button[class*='tocnav'] {
@@ -40,16 +34,26 @@
   justify-content: center;
 }
 
-#nd-sidebar
-  > div.flex.flex-col.gap-3.p-4.pb-2.data-\[empty\=true\]\:hidden
-  > button.flex.items-center.gap-2.rounded-lg.p-2.border.bg-fd-secondary\/50.text-start.text-fd-secondary-foreground.transition-colors.hover\:bg-fd-accent.data-\[state\=open\]\:bg-fd-accent.data-\[state\=open\]\:text-fd-accent-foreground {
+#nd-sidebar > div > div,
+#nd-sidebar-mobile > div > div {
+  padding-top: 6px !important;
+}
+
+#nd-sidebar > div > button,
+#nd-sidebar-mobile > div > button {
   height: 38px;
   padding: 6px 8px !important;
 }
-#radix-_r_4c_ > a {
-  height: 40px;
+#nd-sidebar-mobile > div > button {
+  gap: 0;
 }
-#nd-sidebar > div.overflow-hidden.h-full > div,
-#nd-sidebar-mobile > div.overflow-hidden.h-full > div {
-  padding-top: 6px !important;
+
+/* 移除导航栏图标的上边距 - 使用通用选择器匹配所有 radix 弹窗 */
+[data-radix-popper-content-wrapper] > div > a {
+  padding: 8px 6px;
+  height: 38px;
+}
+
+[data-radix-popper-content-wrapper] > div > a > div {
+  margin-top: 0 !important;
 }
