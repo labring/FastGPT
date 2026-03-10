@@ -31,6 +31,9 @@ import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchRunAgent } from './ai/agent';
+import { dispatchCambTranslation } from './tools/cambTranslation';
+import { dispatchCambVoiceClone } from './tools/cambVoiceClone';
+import { dispatchCambTranslatedTTS } from './tools/cambTranslatedTTS';
 
 export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -77,6 +80,11 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
   [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
+
+  // CAMB AI nodes
+  [FlowNodeTypeEnum.cambTranslation]: dispatchCambTranslation,
+  [FlowNodeTypeEnum.cambVoiceClone]: dispatchCambVoiceClone,
+  [FlowNodeTypeEnum.cambTranslatedTTS]: dispatchCambTranslatedTTS,
 
   // @deprecated
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest
