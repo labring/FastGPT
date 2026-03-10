@@ -120,6 +120,12 @@ interface OpenTelemetrySinkOptionsBase {
    * Turned off by default.
    */
   diagnostics?: boolean;
+
+  /**
+   * The logger name passed to the OpenTelemetry provider.
+   * Defaults to the service name when omitted.
+   */
+  loggerName?: string;
 }
 
 /**
@@ -268,6 +274,12 @@ export interface OpenTelemetrySink extends Sink, AsyncDisposable {
   readonly ready: Promise<void>;
 }
 
+function getOpenTelemetryLoggerName(options: OpenTelemetrySinkOptions): string {
+  const serviceName = 'serviceName' in options ? options.serviceName : undefined;
+
+  return options.loggerName ?? serviceName ?? 'app';
+}
+
 /**
  * Creates a sink that forwards log records to OpenTelemetry.
  *
@@ -285,7 +297,7 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
 
   if (options.loggerProvider != null) {
     const loggerProvider = options.loggerProvider;
-    const logger = loggerProvider.getLogger('fastgpt');
+    const logger = loggerProvider.getLogger(getOpenTelemetryLoggerName(options));
     const shutdown = loggerProvider.shutdown?.bind(loggerProvider);
     const sink: OpenTelemetrySink = Object.assign(
       (record: LogRecord) => {
@@ -333,7 +345,7 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
         initPromise = initializeLoggerProvider(options)
           .then((provider) => {
             loggerProvider = provider;
-            logger = provider.getLogger('fastgpt');
+            logger = provider.getLogger(getOpenTelemetryLoggerName(options));
             for (const pendingRecord of pendingRecords) {
               emitLogRecord(logger, pendingRecord, options);
             }
