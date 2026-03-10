@@ -21,7 +21,8 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x",
+    "pnpm": "9.x"
   },
   "exports": {
     ".": {
@@ -32,8 +33,7 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "object-storage",
     "storage",
@@ -59,8 +59,8 @@
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.13",
-    "@types/node": "^20",
-    "tsdown": "^0.18.2",
-    "typescript": "^5.9.3"
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   }
 }
