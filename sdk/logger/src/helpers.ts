@@ -18,5 +18,3 @@ export function mapLevelToSeverityNumber(level: string): number {
       return SeverityNumber.UNSPECIFIED;
   }
 }
-
-export const sensitiveProperties = ['fastgpt'] as const;

@@ -12,8 +12,8 @@
     "test:watch": "vitest"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "axios": "^1.7.9",

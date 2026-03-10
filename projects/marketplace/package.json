@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
@@ -20,6 +20,7 @@
     "@chakra-ui/styled-system": "catalog:",
     "@chakra-ui/system": "catalog:",
     "@fastgpt/global": "workspace:*",
+    "@fastgpt-sdk/logger": "catalog:",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "axios": "catalog:",

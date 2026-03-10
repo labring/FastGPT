@@ -1,41 +1,46 @@
 import { createMiddleware } from 'hono/factory';
-import { logger } from '../utils';
+import { getLogger, LogCategories } from '../utils';
 
-// Store for request timing and error info
+const logger = getLogger(LogCategories.HTTP);
+
 const requestStore = new WeakMap<Request, { startTime: number; errorMessage?: string }>();
 
-/**
- * HTTP Logger middleware
- * Logs request start and completion with timing information
- */
 export const loggerMiddleware = createMiddleware(async (c, next) => {
   const startTime = Date.now();
   const method = c.req.method;
   const path = c.req.path;
 
-  // Store timing info
   requestStore.set(c.req.raw, { startTime });
 
-  // Log request start
-  logger.httpRequest(method, path);
+  logger.info`--> ${method} ${path}`;
 
   await next();
 
-  // Log response
   const duration = Date.now() - startTime;
   const status = c.res.status;
   const stored = requestStore.get(c.req.raw);
   const errorMessage = status >= 400 ? stored?.errorMessage : undefined;
 
-  logger.httpResponse(method, path, status, duration, errorMessage);
+  if (status >= 400) {
+    logger.error(`<-- ${method} ${path} ${status} ${duration}ms`, {
+      method,
+      path,
+      status,
+      duration,
+      ...(errorMessage ? { error: errorMessage } : {})
+    });
+  } else {
+    logger.info(`<-- ${method} ${path} ${status} ${duration}ms`, {
+      method,
+      path,
+      status,
+      duration
+    });
+  }
 
-  // Cleanup
   requestStore.delete(c.req.raw);
 });
 
-/**
- * Set error message for logging (called from errorHandler)
- */
 export function setLoggerError(req: Request, message: string): void {
   const stored = requestStore.get(req);
   if (stored) {

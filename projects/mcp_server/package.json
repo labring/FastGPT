@@ -14,12 +14,12 @@
     "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@fastgpt/service": "workspace:*",
+    "@fastgpt-sdk/logger": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "chalk": "^5.3.0",
     "dayjs": "catalog:",
