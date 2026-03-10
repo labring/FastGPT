@@ -65,7 +65,6 @@ export default async function Layout({
         collapsible: false,
         components: CustomSidebarComponents
       }}
-      tabMode="sidebar"
       links={[
         {
           type: 'icon',
