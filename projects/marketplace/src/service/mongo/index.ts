@@ -1,6 +1,6 @@
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger, LogCategories } from '../logger';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
@@ -55,13 +55,13 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      console.error('mongo error', error);
+      logger.error('Mongo connection error', { error });
     });
     db.connection.on('connected', async () => {
-      console.log('mongo connected');
+      logger.info('Mongo connected');
     });
     db.connection.on('disconnected', async () => {
-      console.error('mongo disconnected');
+      logger.error('Mongo disconnected');
     });
 
     await db.connect(url, {

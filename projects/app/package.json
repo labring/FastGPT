@@ -11,8 +11,8 @@
     "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
   },
   "engines": {
-    "node": ">=20.x",
-    "pnpm": ">=9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
