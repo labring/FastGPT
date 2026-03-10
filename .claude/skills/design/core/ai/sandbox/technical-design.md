@@ -406,4 +406,4 @@ graph LR
 | 依赖 | 说明 | 状态 |
 |------|------|------|
 | `@fastgpt-sdk/sandbox-adapter` | SDK 包，提供 create/exec/suspend/delete/getWebIdeUrl | 需确认 API 是否就绪 |
-| i18n key | `workflow:template.use_computer` / `workflow:template.use_computer_desc` | 需新增中英繁体翻译 |
+| i18n key | `workflow:template.use_agent_sandbox` / `workflow:template.use_computer_desc` | 需新增中英繁体翻译 |

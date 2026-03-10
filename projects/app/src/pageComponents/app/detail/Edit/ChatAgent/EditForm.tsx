@@ -20,8 +20,6 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
@@ -31,6 +29,9 @@ import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common
 import { useSkillManager } from './hooks/useSkillManager';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import SandboxTipTag from '../../components/SandboxTipTag';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -57,6 +58,8 @@ const EditForm = ({
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const showSandbox = feConfigs.show_agent_sandbox;
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
@@ -215,21 +218,31 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={SANDBOX_ICON} w={'20px'} />
-              <FormLabel ml={2}>{t('app:use_computer')}</FormLabel>
+              <FormLabel ml={2}>{t('app:use_agent_sandbox')}</FormLabel>
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
-            <Switch
-              isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-              onChange={(e) => {
-                setAppForm((state) => ({
-                  ...state,
-                  aiSettings: {
-                    ...state.aiSettings,
-                    useAgentSandbox: e.target.checked
-                  }
-                }));
-              }}
-            />
+
+            {showSandbox ? (
+              <>
+                <Box mr={2}>
+                  <SandboxTipTag />
+                </Box>
+                <Switch
+                  isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+                  onChange={(e) => {
+                    setAppForm((state) => ({
+                      ...state,
+                      aiSettings: {
+                        ...state.aiSettings,
+                        useAgentSandbox: e.target.checked
+                      }
+                    }));
+                  }}
+                />
+              </>
+            ) : (
+              <SandboxNotSupportTip />
+            )}
           </Flex>
         </Box>
 
