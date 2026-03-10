@@ -121,7 +121,7 @@ importers:
     devDependencies:
       '@chakra-ui/cli':
         specifier: ^2.4.1
-        version: 2.5.8(encoding@0.1.13)(react@18.3.1)
+        version: 2.5.8(react@18.3.1)
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.21.0
         version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1)(typescript@5.8.2)
@@ -12705,11 +12705,11 @@ snapshots:
 
   '@chakra-ui/anatomy@2.3.6': {}
 
-  '@chakra-ui/cli@2.5.8(encoding@0.1.13)(react@18.3.1)':
+  '@chakra-ui/cli@2.5.8(react@18.3.1)':
     dependencies:
       bundle-n-require: 1.1.2
       chokidar: 3.6.0
-      cli-welcome: 2.2.3(encoding@0.1.13)(react@18.3.1)
+      cli-welcome: 2.2.3(react@18.3.1)
       commander: 11.1.0
       ora: 7.0.1
       prettier: 3.2.4
@@ -17072,9 +17072,9 @@ snapshots:
 
   claygl@1.3.0: {}
 
-  clear-any-console@1.16.3(encoding@0.1.13)(react@18.3.1):
+  clear-any-console@1.16.3(react@18.3.1):
     dependencies:
-      langbase: 1.1.44(encoding@0.1.13)(react@18.3.1)
+      langbase: 1.1.44(react@18.3.1)
     transitivePeerDependencies:
       - encoding
       - react
@@ -17093,10 +17093,10 @@ snapshots:
       slice-ansi: 5.0.0
       string-width: 5.1.2
 
-  cli-welcome@2.2.3(encoding@0.1.13)(react@18.3.1):
+  cli-welcome@2.2.3(react@18.3.1):
     dependencies:
       chalk: 2.4.2
-      clear-any-console: 1.16.3(encoding@0.1.13)(react@18.3.1)
+      clear-any-console: 1.16.3(react@18.3.1)
     transitivePeerDependencies:
       - encoding
       - react
@@ -18125,7 +18125,7 @@ snapshots:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
       eslint: 8.57.1
-      get-tsconfig: 4.13.0
+      get-tsconfig: 4.13.6
       is-bun-module: 1.3.0
       oxc-resolver: 5.0.0
       stable-hash: 0.0.5
@@ -18135,7 +18135,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -18157,7 +18157,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -19672,10 +19672,10 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langbase@1.1.44(encoding@0.1.13)(react@18.3.1):
+  langbase@1.1.44(react@18.3.1):
     dependencies:
       dotenv: 16.4.7
-      openai: 4.104.0(encoding@0.1.13)(zod@3.25.76)
+      openai: 4.104.0(zod@3.25.76)
       zod: 3.25.76
       zod-validation-error: 3.4.0(zod@3.25.76)
     optionalDependencies:
@@ -20952,20 +20952,6 @@ snapshots:
     dependencies:
       mimic-fn: 4.0.0
 
-  openai@4.104.0(encoding@0.1.13)(zod@3.25.76):
-    dependencies:
-      '@types/node': 18.19.80
-      '@types/node-fetch': 2.6.12
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - encoding
-
   openai@4.104.0(encoding@0.1.13)(zod@4.1.12):
     dependencies:
       '@types/node': 18.19.80
@@ -20977,6 +20963,20 @@ snapshots:
       node-fetch: 2.7.0(encoding@0.1.13)
     optionalDependencies:
       zod: 4.1.12
+    transitivePeerDependencies:
+      - encoding
+
+  openai@4.104.0(zod@3.25.76):
+    dependencies:
+      '@types/node': 18.19.80
+      '@types/node-fetch': 2.6.12
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    optionalDependencies:
+      zod: 3.25.76
     transitivePeerDependencies:
       - encoding
 
