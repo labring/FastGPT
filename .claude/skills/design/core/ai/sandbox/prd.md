@@ -102,24 +102,29 @@ stateDiagram-v2
 ```typescript
 type SandboxInstanceSchema = {
   _id: ObjectId;
-  sandboxId: string;        // hash(appId+userId+chatId)，唯一索引
+  provider: 'sealosdevbox';  // 沙盒提供商
+  sandboxId: string;         // hash(appId+userId+chatId)
 
-  appId: string;
-  userId: string;
-  chatId: string;
+  appId?: ObjectId;          // 可选，Chat 模式下关联应用
+  userId?: string;           // 可选，Chat 模式下关联用户
+  chatId?: string;           // 可选，Chat 模式下关联会话
 
   status: 'running' | 'stoped';
-  lastActiveAt: Date;       // 最后活跃时间，驱动停止定时任务
-
+  lastActiveAt: Date;        // 最后活跃时间，驱动停止定时任务
   createdAt: Date;
+
+  limit?: {                  // 可选，资源限制
+    cpuCount: number;
+    memoryMiB: number;
+    diskGiB: number;
+  };
 };
 ```
 
 **索引**：
-- `sandboxId`：唯一索引（快速查找）
-- `chatId`：单个会话删除时查找对应沙盒
-- `appId`：整个应用删除时批量查找沙盒
-- `status + lastActiveAt`：暂停定时任务扫描
+- `{ provider, sandboxId }`：唯一索引（快速查找）
+- `{ appId, chatId }`：部分唯一索引（仅当两者都存在时）
+- `{ status, lastActiveAt }`：暂停定时任务扫描
 
 ### 3.4 定时任务 & 触发时机
 
@@ -160,7 +165,7 @@ sequenceDiagram
 
     Exec->>SDK: create(sandboxId)
     Note over SDK,SSS: 幂等：不存在则创建，Stoped 则唤醒，Running 则直接返回
-    SDK-->>Exec: SandboxInstance
+    SDK-->>Exec: SandboxClient
 
     Exec->>DB: upsert { sandboxId, status=running, lastActiveAt=now }
 
@@ -194,7 +199,7 @@ async function execShell(params: {
 
 ### 5.1 节点改造方案
 
-**不新增节点类型**，在现有的 **Agent 节点**（`tools`）和**工具调用节点**上增加一个 input：
+**不新增节点类型**，在现有的**工具调用节点**上增加一个 input：
 
 ```typescript
 {
@@ -210,32 +215,39 @@ async function execShell(params: {
 
 ```mermaid
 flowchart TD
-    NodeExec["Agent/工具节点执行"] --> Check{useAgentSandbox\n= true?}
+    NodeExec["工具调用节点执行"] --> Check{useAgentSandbox\n= true?}
     Check -->|否| Normal["正常执行，不注入任何沙盒能力"]
-    Check -->|是| Inject["自动注入内置 shell 工具\n到 Agent 的 tools 列表"]
+    Check -->|是| Inject["自动注入内置 sandbox_shell 工具\n到 Agent 的 tools 列表"]
     Inject --> Prompt["在 System Prompt 末尾\n追加沙盒环境说明"]
-    Prompt --> Run["Agent 正常运行\n（可自主决定是否调用 shell）"]
-    Run --> CallShell{Agent 调用\nshell 工具?}
+    Prompt --> Run["Agent 正常运行\n（可自主决定是否调用 sandbox_shell）"]
+    Run --> CallShell{Agent 调用\nsandbox_shell 工具?}
     CallShell -->|否| End["正常返回"]
-    CallShell -->|是| Sandbox["Sandbox Manager\n执行命令并返回结果"]
+    CallShell -->|是| Sandbox["SandboxClient\n执行命令并返回结果"]
     Sandbox --> End
 ```
 
-**自动注入的内置 shell 工具定义**：
+**自动注入的内置 sandbox_shell 工具定义**：
 
 ```typescript
 // 由系统内置，不需要用户配置，useAgentSandbox=true 时自动追加到 tools
-const computerTool = {
-  name: 'shell',
-  description: '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
-  parameters: {
-    command: { type: 'string', description: '要执行的 shell 命令' },
-    timeout: { type: 'number', description: '超时秒数（可选，由上游沙盒服务控制）', optional: true }
-  },
-  returns: {
-    stdout: 'string',
-    stderr: 'string',
-    exitCode: 'number'   // 0=成功，负数=系统错误
+export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'sandbox_shell',
+    description: '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: '要执行的 shell 命令' },
+        timeout: {
+          type: 'number',
+          description: '超时秒数',
+          max: 300,
+          min: 1
+        }
+      },
+      required: ['command']
+    }
   }
 };
 ```
@@ -245,11 +257,10 @@ const computerTool = {
 `useAgentSandbox=true` 时，在节点原有 System Prompt **末尾追加**：
 
 ```
-你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 shell 工具执行命令：
-- 预装：bash / python3 / node / git / curl / wget
+你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 sandbox_shell 工具执行命令：
+- 预装：bash / python3 / node / bun / git / curl
 - 工作目录：/workspace（文件在本次会话内持久保留）
 - 可自行安装软件包（apt / pip / npm）
-- 可通过 timeout 参数指定命令超时时间
 ```
 
 ---
@@ -289,40 +300,45 @@ FastGPT 业务层只控制命令超时，其余由下游负责：
 
 ## 八、前端功能
 
-### 8.1 SSH / Web IDE 接入
+### 8.1 文件操作 API
 
-Web IDE 入口同样遵循懒加载原则，打开前先调用 `create()` 确保沙盒处于 Running 状态，再获取 IDE URL。
+提供文件读写和下载接口，替代 Web IDE 方案：
 
-```mermaid
-sequenceDiagram
-    participant User as 用户浏览器
-    participant FE as FastGPT 前端
-    participant BE as FastGPT 后端
-    participant SDK as sandbox-adapter
-    participant SSS as Sealos SSS
+**文件操作 API**：`POST /api/core/ai/sandbox/file`
 
-    User->>FE: 点击「进入沙盒」
-    FE->>BE: GET /api/sandbox/webide-url?chatId=xxx
-    BE->>SDK: create(sandboxId)
-    Note over SDK,SSS: 确保沙盒处于 Running 状态（同 execShell 逻辑）
-    SDK->>SSS: 唤醒/确认沙盒
-    SSS-->>SDK: ok
-    SDK-->>BE: SandboxInstance
-    BE->>SSS: 获取 Web IDE URL（含鉴权 Token）
-    SSS-->>BE: { url, token, expireAt }
-    BE-->>FE: webideUrl
-    FE->>User: 新标签页打开 Web VSCode
+```typescript
+// 支持三种操作
+type Action = 'list' | 'read' | 'write';
+
+// 列出目录
+{ action: 'list', appId, chatId, path: '/workspace' }
+→ { action: 'list', files: [{ name, path, type, size }] }
+
+// 读取文件
+{ action: 'read', appId, chatId, path: '/workspace/test.txt' }
+→ { action: 'read', content: 'file content' }
+
+// 写入文件
+{ action: 'write', appId, chatId, path: '/workspace/test.txt', content: 'new content' }
+→ { action: 'write', success: true }
 ```
 
-**实现方案**：利用 Sealos Devbox 内置的 Web IDE 能力（基于 code-server），前端只需跳转到带鉴权 token 的 URL。
+**文件下载 API**：`POST /api/core/ai/sandbox/download`
 
-### 8.2 沙盒状态展示（可选）
+```typescript
+// 下载单个文件或整个目录（ZIP）
+{ appId, chatId, path: '/workspace' }
+→ 返回文件流或 ZIP 压缩包
+```
+
+### 8.2 沙盒状态展示
 
 在对话页面的工具调用结果中，展示：
 - 命令内容（折叠显示）
 - 执行状态（成功/失败/超时）
 - stdout/stderr 输出（Markdown 代码块）
 - 执行耗时
+- 文件操作入口（列表、读取、下载）
 
 ---
 
@@ -331,9 +347,10 @@ sequenceDiagram
 | 问题 | 决策 |
 |------|------|
 | 沙盒配额管理 | 不关心，由下游处理 |
-| 沙盒何时创建 | 懒加载，Agent 首次调用 shell 或打开 Web IDE 时才创建 |
+| 沙盒何时创建 | 懒加载，Agent 首次调用 sandbox_shell 时才创建 |
 | 停止由谁驱动 | **FastGPT 定时任务**，5 分钟无活动自动停止，不可配置 |
 | 销毁由谁驱动 | **会话删除时异步触发**，不依赖定时任务 |
 | 多厂商适配 | 由 SDK 适配层处理，FastGPT 不感知 |
 | 审计日志 | 下游处理，FastGPT 不记录 |
 | 事务一致性 | 使用 mongoSessionRun 保证 DB 操作和 SDK 调用的一致性 |
+| Web IDE 方案 | 改为文件操作 API（list/read/write/download），不使用 Web IDE |

@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { SandboxInstance } from '@fastgpt/service/core/ai/sandbox/controller';
+import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import archiver from 'archiver';
 import { z } from 'zod';
 import { OutLinkChatAuthSchema } from '@fastgpt/global/support/permission/chat';
@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   });
 
   // 创建沙盒实例
-  const sandbox = new SandboxInstance({
+  const sandbox = new SandboxClient({
     appId,
     userId: uid,
     chatId
@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   await sandbox.ensureAvailable();
 
   // 检查路径类型
-  const entries = await sandbox.listDirectory(path);
+  const entries = await sandbox.provider.listDirectory(path);
   const isDirectory = entries.length > 0 || path.endsWith('/');
 
   if (isDirectory) {
@@ -63,7 +63,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     await archive.finalize();
   } else {
     // 下载单个文件
-    const results = await sandbox.readFiles([path]);
+    const results = await sandbox.provider.readFiles([path]);
     const result = results[0];
 
     if (result.error) {
@@ -79,12 +79,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
 
 // 递归添加目录到 archive
 async function addDirectoryToArchive(
-  sandbox: SandboxInstance,
+  sandbox: SandboxClient,
   archive: archiver.Archiver,
   dirPath: string,
   archivePath: string
 ): Promise<void> {
-  const entries = await sandbox.listDirectory(dirPath);
+  const entries = await sandbox.provider.listDirectory(dirPath);
 
   for (const entry of entries) {
     const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
@@ -94,7 +94,7 @@ async function addDirectoryToArchive(
       await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath);
     } else {
       // 添加文件
-      const results = await sandbox.readFiles([entry.path]);
+      const results = await sandbox.provider.readFiles([entry.path]);
       const result = results[0];
 
       if (!result.error) {

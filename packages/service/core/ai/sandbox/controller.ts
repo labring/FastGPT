@@ -5,11 +5,17 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { env } from '../../../env';
 import { MongoSandboxInstance } from './schema';
-import { SealosDevboxAdapter, type ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  createSandbox,
+  type ExecuteResult,
+  type ISandbox,
+  type ResourceLimits
+} from '@fastgpt-sdk/sandbox-adapter';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { addMilliseconds } from 'date-fns';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -18,48 +24,74 @@ type UnionIdType = {
   chatId: string;
 };
 
-export class SandboxInstance extends SealosDevboxAdapter {
-  private appId: string;
-  private userId: string;
-  private chatId: string;
+export class SandboxClient {
+  private appId?: string;
+  private userId?: string;
+  private chatId?: string;
   private sandboxId: string;
+  provider: ISandbox;
 
-  constructor(params: UnionIdType) {
-    if (env.AGENT_SANDBOX_PROVIDER !== 'sealos-devbox') {
-      throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
+  constructor(
+    props:
+      | {
+          sandboxId: string;
+        }
+      | UnionIdType,
+    opts: {
+      resourceLimits?: ResourceLimits;
+    } = {}
+  ) {
+    if ('sandboxId' in props) {
+      this.sandboxId = props.sandboxId;
+    } else {
+      this.appId = props.appId;
+      this.userId = props.userId;
+      this.chatId = props.chatId;
+      this.sandboxId = generateSandboxId(this.appId, this.userId, this.chatId);
     }
-    if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
-      throw new Error('AGENT_SANDBOX_SEALOS_BASEURL / AGENT_SANDBOX_SEALOS_TOKEN required');
-    }
 
-    super({
-      baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
-      token: env.AGENT_SANDBOX_SEALOS_TOKEN,
-      sandboxId: generateSandboxId(params.appId, params.userId, params.chatId)
-    });
+    const providerName = env.AGENT_SANDBOX_PROVIDER;
+    const params = (() => {
+      if (providerName === 'sealosdevbox') {
+        if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
+          throw new Error('AGENT_SANDBOX_SEALOS_BASEURL / AGENT_SANDBOX_SEALOS_TOKEN required');
+        }
+        return {
+          provider: 'sealosdevbox' as const,
+          config: {
+            baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
+            token: env.AGENT_SANDBOX_SEALOS_TOKEN,
+            sandboxId: this.sandboxId
+          },
+          createConfig: undefined
+        };
+      } else {
+        throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
+      }
+    })();
 
-    this.appId = params.appId;
-    this.userId = params.userId;
-    this.chatId = params.chatId;
-    this.sandboxId = generateSandboxId(this.appId, this.userId, this.chatId);
+    this.provider = createSandbox(params.provider, params.config, params.createConfig);
   }
 
   async ensureAvailable() {
     await MongoSandboxInstance.findOneAndUpdate(
-      { sandboxId: this.sandboxId },
+      { provider: this.provider.provider, sandboxId: this.sandboxId },
       {
-        $set: { status: SandboxStatusEnum.running, lastActiveAt: new Date() },
+        $set: {
+          status: SandboxStatusEnum.running,
+          lastActiveAt: new Date()
+        },
         $setOnInsert: {
-          appId: this.appId,
-          userId: this.userId,
-          chatId: this.chatId,
+          ...(this.appId ? { appId: this.appId } : {}),
+          ...(this.userId ? { userId: this.userId } : {}),
+          ...(this.chatId ? { chatId: this.chatId } : {}),
           createdAt: new Date()
         }
       },
       { upsert: true }
     );
 
-    await this.ensureRunning();
+    await this.provider.ensureRunning();
   }
 
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {
@@ -73,7 +105,7 @@ export class SandboxInstance extends SealosDevboxAdapter {
       };
     }
 
-    return await this.execute(command, {
+    return await this.provider.execute(command, {
       timeoutMs: timeout ? timeout * 1000 : undefined
     });
   }
@@ -81,7 +113,7 @@ export class SandboxInstance extends SealosDevboxAdapter {
   async delete() {
     await mongoSessionRun(async (session) => {
       await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId }, { session });
-      await super.delete();
+      await this.provider.delete();
     });
   }
 
@@ -92,7 +124,7 @@ export class SandboxInstance extends SealosDevboxAdapter {
         { $set: { status: SandboxStatusEnum.stoped } },
         { session }
       );
-      await super.stop();
+      await this.provider.stop();
     });
   }
 }
@@ -110,10 +142,8 @@ export const deleteSandboxesByChatIds = async ({
 
   await Promise.allSettled(
     instances.map((doc) =>
-      new SandboxInstance({
-        appId: doc.appId,
-        userId: doc.userId,
-        chatId: doc.chatId
+      new SandboxClient({
+        sandboxId: doc.sandboxId
       }).delete()
     )
   );
@@ -124,10 +154,8 @@ export const deleteSandboxesByAppId = async (appId: string) => {
 
   await Promise.allSettled(
     instances.map((doc) =>
-      new SandboxInstance({
-        appId: doc.appId,
-        userId: doc.userId,
-        chatId: doc.chatId
+      new SandboxClient({
+        sandboxId: doc.sandboxId
       }).delete()
     )
   );
@@ -144,14 +172,14 @@ export const cronJob = async () => {
 
     logger.info('Found running sandboxes inactive > 5 min', { count: instances.length });
 
-    await Promise.allSettled(
-      instances.map((doc) =>
-        new SandboxInstance({
-          appId: doc.appId,
-          userId: doc.userId,
-          chatId: doc.chatId
-        }).stop()
-      )
+    await batchRun(instances, (doc) =>
+      new SandboxClient({
+        sandboxId: doc.sandboxId
+      })
+        .stop()
+        .catch((error) => {
+          logger.error('Failed to stop sandbox', { sandboxId: doc.sandboxId, error });
+        })
     );
   });
 };

@@ -24,7 +24,7 @@ import {
   SANDBOX_NAME,
   SANDBOX_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxInstance } from '../../../../ai/sandbox/controller';
+import { SandboxClient } from '../../../../ai/sandbox/controller';
 import { getSandboxToolWorkflowResponse } from './constants';
 
 type ResponseType = {
@@ -259,7 +259,7 @@ export const runToolCall = async (
           try {
             const params = SandboxShellToolSchema.parse(parseJsonArgs(call.function.arguments));
 
-            const instance = new SandboxInstance({
+            const instance = new SandboxClient({
               appId: String(workflowProps.runningAppInfo.id),
               userId: String(workflowProps.uid),
               chatId: workflowProps.chatId

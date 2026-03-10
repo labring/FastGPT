@@ -1,4 +1,4 @@
-import { SandboxInstance } from '../../../../../../ai/sandbox/controller';
+import { SandboxClient } from '../../../../../../ai/sandbox/controller';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -39,7 +39,7 @@ export const dispatchSandboxShell = async ({
   const moduleName = parseI18nString(SANDBOX_NAME, lang);
 
   try {
-    const sandboxInstance = new SandboxInstance({
+    const sandboxInstance = new SandboxClient({
       appId,
       userId,
       chatId

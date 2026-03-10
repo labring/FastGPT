@@ -10,7 +10,7 @@
 graph TD
     subgraph 新增文件["🆕 新增文件"]
         A1["packages/service/core/ai/sandbox/schema.ts"]
-        A2["packages/service/core/ai/sandbox/controller.ts\n(含 SandboxInstance 类 + cronJob)"]
+        A2["packages/service/core/ai/sandbox/controller.ts\n(含 SandboxClient 类 + cronJob)"]
         A4["packages/global/core/ai/sandbox/constants.ts"]
         A5["projects/app/src/pages/api/core/ai/sandbox/webideUrl.ts"]
         A6["packages/service/.../agent/sub/sandbox/utils.ts"]
@@ -98,7 +98,7 @@ MongoDB Model 定义。
 
 沙盒业务逻辑层，核心类和函数：
 
-**SandboxInstance 类**：
+**SandboxClient 类**：
 | 方法 | 职责 |
 |------|------|
 | `constructor({ appId, userId, chatId })` | 初始化实例，生成 sandboxId，创建 SDK adapter |
@@ -118,22 +118,108 @@ MongoDB Model 定义。
 - 定时任务直接在 controller.ts 中实现，使用 `setCron('*/5 * * * *', ...)`
 - 错误处理：SDK.create() 失败时返回 exitCode=-1 的错误结果
 
-### 2.4 `projects/app/src/pages/api/core/ai/sandbox/webideUrl.ts`
+### 2.4 `projects/app/src/pages/api/core/ai/sandbox/file.ts`
 
-Web IDE URL 获取 API。
+文件操作 API（列表、读取、写入）。
 
-```
-GET /api/core/ai/sandbox/webideUrl
-Query: { appId, chatId }
+```typescript
+POST /api/core/ai/sandbox/file
+Body: {
+  appId: string;
+  chatId: string;
+  action: 'list' | 'read' | 'write';
+  path: string;
+  content?: string;  // write 时必需
+  outLinkAuthData?: object;
+}
 Auth: authChatCrud
-Response: { url: string, expireAt: Date }
+Response:
+  - list: { action: 'list', files: Array<{ name, path, type, size }> }
+  - read: { action: 'read', content: string }
+  - write: { action: 'write', success: boolean }
+```
+
+### 2.5 `projects/app/src/pages/api/core/ai/sandbox/download.ts`
+
+文件下载 API（单文件或目录 ZIP）。
+
+```typescript
+POST /api/core/ai/sandbox/download
+Body: {
+  appId: string;
+  chatId: string;
+  path: string;  // 文件或目录路径
+  outLinkAuthData?: object;
+}
+Auth: authChatCrud
+Response: 文件流或 ZIP 压缩包
 ```
 
 ---
 
 ## 三、改造文件
 
-### 3.1 `packages/global/core/workflow/constants.ts`
+### 3.2 `packages/global/core/ai/sandbox/constants.ts`
+
+**改动**：沙盒相关的全局常量和类型定义。
+
+```typescript
+// 沙盒状态枚举
+export const SandboxStatusEnum = {
+  running: 'running',
+  stoped: 'stoped'
+} as const;
+
+// 沙盒默认配置
+export const SANDBOX_SUSPEND_MINUTES = 5;
+
+// sandboxId 生成函数
+export const generateSandboxId = (appId: string, userId: string, chatId: string): string => {
+  return hashStr(`${appId}-${userId}-${chatId}`).slice(0, 16);
+};
+
+// 工具名称和图标
+export const SANDBOX_NAME: I18nStringType = {
+  'zh-CN': '虚拟机',
+  'zh-Hant': '虛擬機',
+  en: 'Sandbox'
+};
+export const SANDBOX_ICON = 'core/app/sandbox/sandbox';
+export const SANDBOX_TOOL_NAME = 'sandbox_shell';
+
+// 系统提示词
+export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
+- 预装：bash / python3 / node / bun / git / curl
+- 工作目录：/workspace（文件在本次会话内持久保留）
+- 可自行安装软件包（apt / pip / npm）`;
+
+// 工具定义
+export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SANDBOX_TOOL_NAME,
+    description: '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: '要执行的 shell 命令' },
+        timeout: { type: 'number', description: '超时秒数', max: 300, min: 1 }
+      },
+      required: ['command']
+    }
+  }
+};
+
+// Zod Schema 用于参数验证
+export const SandboxShellToolSchema = z.object({
+  command: z.string(),
+  timeout: z.number().optional()
+});
+```
+
+**影响范围**：新增文件，提供全局常量和类型定义。
+
+### 3.3 `packages/global/core/workflow/constants.ts`
 
 **改动**：在 `NodeInputKeyEnum` 中新增 key。
 
@@ -146,28 +232,22 @@ useAgentSandbox = 'useAgentSandbox',   // 启用沙盒（Computer Use）
 
 ---
 
-### 3.2 `packages/global/core/workflow/node/agent/constants.ts`
+### 3.4 `packages/service/env.ts`
 
-**改动**：在 `SubAppIds` 中新增 `sandboxShell`，在 `systemSubInfo` 中注册元信息。
+**改动**：新增沙盒相关环境变量定义。
 
 ```typescript
-// SubAppIds 新增
-export enum SubAppIds {
-  // ...现有...
-  sandboxShell = 'sandbox_shell'   // 新增
-}
-
-// systemSubInfo 新增
-[SubAppIds.sandboxShell]: {
-  name: {
-    'zh-CN': '沙盒终端',
-    'zh-Hant': '沙盒終端',
-    en: 'SandboxShell'
-  },
-  avatar: 'core/workflow/template/sandbox',
-  toolDescription: '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等'
-}
+export const env = createEnv({
+  server: {
+    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox']).optional(),
+    AGENT_SANDBOX_SEALOS_BASEURL: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
+    // ...其他环境变量
+  }
+});
 ```
+
+**影响范围**：环境变量验证和类型定义。
 
 ---
 
@@ -363,13 +443,13 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 |------|------|--------|------|
 | `packages/global/core/ai/sandbox/constants.ts` | 🆕 新增 | ~40 行 | 常量、类型、系统提示词 |
 | `packages/service/core/ai/sandbox/schema.ts` | 🆕 新增 | ~50 行 | MongoDB Model + 索引 |
-| `packages/service/core/ai/sandbox/controller.ts` | 🆕 新增 | ~156 行 | SandboxInstance 类 + delete/stop 函数 + cronJob |
+| `packages/service/core/ai/sandbox/controller.ts` | 🆕 新增 | ~156 行 | SandboxClient 类 + delete/stop 函数 + cronJob |
 | `packages/service/.../agent/sub/sandbox/utils.ts` | 🆕 新增 | ~35 行 | sandboxShellTool 定义（同 datasetSearchTool 模式） |
 | `projects/app/src/pages/api/core/ai/sandbox/webideUrl.ts` | 🆕 新增 | ~30 行 | Web IDE URL API |
 | `packages/global/core/workflow/constants.ts` | ✏️ 改造 | +1 行 | NodeInputKeyEnum 新增 useAgentSandbox |
 | `packages/global/.../agent/constants.ts` | ✏️ 改造 | +12 行 | SubAppIds 新增 sandboxShell + systemSubInfo 注册 |
 | `packages/service/.../agent/utils.ts` | ✏️ 改造 | +5 行 | getSubapps() 新增 useAgentSandbox 参数，注入 sandboxShellTool |
-| `packages/service/.../agent/master/call.ts` | ✏️ 改造 | +20 行 | 拦截 sandbox_shell 调用，路由到 SandboxInstance.exec() |
+| `packages/service/.../agent/master/call.ts` | ✏️ 改造 | +20 行 | 拦截 sandbox_shell 调用，路由到 SandboxClient.exec() |
 | `packages/service/.../agent/master/prompt.ts` | ✏️ 改造 | +5 行 | 追加沙盒 System Prompt |
 | `packages/service/.../ai/tool/index.ts` | ✏️ 改造 | +5 行 | 读取 useAgentSandbox 传递下游 |
 | `packages/service/.../ai/tool/toolCall.ts` | ✏️ 改造 | +30 行 | 注入 shell tool + 拦截调用 |
@@ -393,7 +473,7 @@ graph LR
 
 | 阶段 | 内容 | 可独立测试 |
 |------|------|-----------|
-| Phase 1（完成）| 新增 constants + schema + controller (含 cronJob) | 可集成测试 SandboxInstance.exec() / stop() / delete() |
+| Phase 1（完成）| 新增 constants + schema + controller (含 cronJob) | 可集成测试 SandboxClient.exec() / stop() / delete() |
 | Phase 2 （完成）| ToolCall 节点注入 useAgentSandbox + 简易模式支持 useComputer（一个开关即可） + shell tool + 拦截调用 | 需手动运行验证 |
 | Phase 3（完成） | 注册 cronJob + 会话/应用删除时清理 | 可通过 cron 日志 + 手动删除会话验证 |
 | Phase 4 | Web IDE URL API + 前端入口 | 需要前端配合 |

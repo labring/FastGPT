@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { SandboxInstance } from '@fastgpt/service/core/ai/sandbox/controller';
+import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import {
   SandboxFileOperationBodySchema,
   type SandboxFileOperationResponse
@@ -27,7 +27,7 @@ async function handler(
   });
 
   // 创建沙盒实例
-  const sandbox = new SandboxInstance({
+  const sandbox = new SandboxClient({
     appId,
     userId: uid,
     chatId
@@ -38,7 +38,7 @@ async function handler(
   // 根据 action 分类执行
   switch (action) {
     case 'list': {
-      const entries = await sandbox.listDirectory(body.path);
+      const entries = await sandbox.provider.listDirectory(body.path);
       const files = entries.map((entry) => ({
         name: entry.name,
         path: entry.path,
@@ -49,11 +49,11 @@ async function handler(
     }
 
     case 'read': {
-      const results = await sandbox.readFiles([body.path]);
+      const results = await sandbox.provider.readFiles([body.path]);
       const result = results[0];
 
       if (result.error) {
-        return Promise.reject('Failed to read file');
+        return Promise.reject(result.error);
       }
 
       // 尝试将 Uint8Array 转换为 UTF-8 字符串
@@ -68,7 +68,7 @@ async function handler(
     }
 
     case 'write': {
-      const results = await sandbox.writeFiles([
+      const results = await sandbox.provider.writeFiles([
         {
           path: body.path,
           data: body.content
@@ -77,7 +77,7 @@ async function handler(
       const result = results[0];
 
       if (result.error) {
-        return Promise.reject('Failed to write file');
+        return Promise.reject(result.error);
       }
 
       return { action: 'write', success: true };
