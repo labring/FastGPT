@@ -2,8 +2,8 @@
 
 import React from 'react';
 
-const feishuLogoLight: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+const feishuLogoLight: React.FC<React.SVGProps<SVGSVGElement>> = ({ className, ...props }) => (
+  <svg {...props} className={className} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
       d="M17 29C21 29 25 26.9339 28 23.4065C36 14 41.4242 16.8166 44 17.9998C38.5 20.9998 40.5 29.6233 33 35.9998C28.382 39.9259 23.4945 41.014 19 41C12.5231 40.9799 6.86226 37.7637 4 35.4063V16.9998"
       stroke="#8a8a8a"
