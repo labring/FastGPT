@@ -47,6 +47,7 @@ import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getTokenLogin } from '@/web/support/user/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import type { ResLogin } from '@/global/support/api/userRes.d';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -400,8 +401,12 @@ const Render = (props: Props) => {
         await getInitChatInfo({ appId });
 
         setIsConfirmed(true);
-      } catch (error) {
-        // 5. 自动登录失败，显示登录页面
+      } catch (error: any) {
+        if (error?.code && error.code >= 502000) {
+          // 已登录但无应用权限，显示错误信息
+          toast({ title: t('chat:no_auth_to_chat'), status: 'error' });
+        }
+        // 显示登录页面（允许切换账号或首次登录）
         setShowLoginModal(true);
       } finally {
         setIsChecking(false);
@@ -412,12 +417,11 @@ const Render = (props: Props) => {
       checkAutoLogin();
     }, []);
 
-    const handleLoginSuccess = async () => {
+    const handleLoginSuccess = async (_res?: ResLogin) => {
       try {
         // 验证应用权限
         await getInitChatInfo({ appId });
         setIsConfirmed(true);
-
         return true;
       } catch (e: any) {
         if (e?.code && e.code >= 502000) {
@@ -425,7 +429,6 @@ const Render = (props: Props) => {
         } else {
           toast({ title: t('login:login_failed'), status: 'error' });
         }
-
         return false;
       }
     };
