@@ -6,6 +6,7 @@ import { t, getLocalizedPath, i18n } from '@/lib/i18n';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
 import { SidebarKeepOpen } from '@/components/sidebarKeepOpen';
+import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import FeishuLogoLight from '@/components/docs/feishuLogoLIght';
 import FeishuLogoDark from '@/components/docs/feishuLogoDark';
 import GithubLogoLight from '@/components/docs/githubLogoLight';
@@ -81,6 +82,7 @@ export default async function Layout({
       ]}
     >
       <SidebarKeepOpen tabUrls={tabUrls} />
+      <SidebarScrollFix />
       {children}
     </DocsLayout>
   );

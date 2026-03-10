@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { i18n } from '@/lib/i18n';
+import Image from 'next/image';
 
 /**
  * Shared layout configurations
@@ -17,8 +18,8 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
     nav: {
       title: (
         <div className="flex flex-row items-center gap-2">
-          <img src="/logo.svg" alt="FastGPT" width={24} height={24} />
-          <span className="font-semibold">FastGPT</span>
+          <Image src="/logo.svg" alt="FastGPT" width={30} height={30} />
+          <span className="font-semibold text-lg">FastGPT</span>
         </div>
       )
     },

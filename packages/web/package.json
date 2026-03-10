@@ -2,8 +2,8 @@
   "name": "@fastgpt/web",
   "version": "1.0.0",
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20.x",
+    "pnpm": ">=9.x"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
