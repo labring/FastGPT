@@ -3,9 +3,23 @@ title: 'V4.14.9(进行中)'
 description: 'FastGPT V4.14.9 更新说明'
 ---
 
+### 环境变量更新
+
+```bash
+# 调整 CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
+SANDBOX_URL=代码运行沙盒的地址
+SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
+
+# 新增 Agent sandbox 沙盒环境变量
+AGENT_SANDBOX_PROVIDER=
+AGENT_SANDBOX_SEALOS_BASEURL=
+AGENT_SANDBOX_SEALOS_TOKEN=
+```
+
 ## 接口变更
 
 `/api/core/chat/getPaginationRecords` 接口，增加返回`useAgentSandbox:boolean`字段，代表本轮对话，是否使用了虚拟机工具。即将移除`llmModuleAccount`和`historyPreviewLength`字段，如使用该字段，请尽快适配。
+
 
 ## 🚀 新增内容
 

@@ -139,6 +139,9 @@ export type FastGPTFeConfigsType = {
   };
 
   ip_whitelist?: string;
+
+  // tmp
+  agentSandboxFree?: boolean;
 };
 
 export type SystemEnvType = {

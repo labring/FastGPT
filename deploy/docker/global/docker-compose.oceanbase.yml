@@ -35,12 +35,11 @@ x-log-config: &x-log-config
 x-vec-config: &x-vec-config
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 
-
 version: '3.3'
 services:
   # Vector DB
   vectorDB:
-    image:  oceanbase/oceanbase-ce:4.3.5-lts
+    image: oceanbase/oceanbase-ce:4.3.5-lts
     container_name: ob
     restart: always
     # ports: # 生产环境建议不要暴露
@@ -68,8 +67,8 @@ services:
       # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
       test:
         [
-          "CMD-SHELL",
-          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
+          'CMD-SHELL',
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
         ]
       interval: 30s
       timeout: 10s
@@ -88,7 +87,19 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -191,7 +202,7 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
-      SANDBOX_URL: http://sandbox:3000
+      CODE_SANDBOX_URL: http://sandbox:3000
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -303,4 +314,3 @@ configs:
     name: init_sql
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
-    

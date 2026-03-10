@@ -53,7 +53,19 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -156,7 +168,7 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
-      SANDBOX_URL: http://sandbox:3000
+      CODE_SANDBOX_URL: http://sandbox:3000
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -263,4 +275,3 @@ networks:
   fastgpt:
   aiproxy:
   vector:
-
