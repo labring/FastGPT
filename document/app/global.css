@@ -2,6 +2,12 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'fumadocs-ui/css/black.css';
 
+#nd-sidebar
+  > div.flex.flex-col.gap-3.p-4.pb-2.data-\[empty\=true\]\:hidden
+  > button.inline-flex.items-center.gap-2.rounded-lg.border.bg-fd-secondary\/50.p-1\.5.ps-2.text-sm.text-fd-muted-foreground.transition-colors.hover\:bg-fd-accent.hover\:text-fd-accent-foreground.max-md\:hidden {
+  height: 38px;
+}
+
 /* 移动端目录下拉框：文本溢出省略号 */
 @media (max-width: 767px) {
   button[class*='tocnav'] {
@@ -34,10 +40,11 @@
   justify-content: center;
 }
 
-#nd-sidebar-mobile
+#nd-sidebar
   > div.flex.flex-col.gap-3.p-4.pb-2.data-\[empty\=true\]\:hidden
   > button.flex.items-center.gap-2.rounded-lg.p-2.border.bg-fd-secondary\/50.text-start.text-fd-secondary-foreground.transition-colors.hover\:bg-fd-accent.data-\[state\=open\]\:bg-fd-accent.data-\[state\=open\]\:text-fd-accent-foreground {
-  height: 42px;
+  height: 38px;
+  padding: 6px 8px !important;
 }
 #radix-_r_4c_ > a {
   height: 40px;
