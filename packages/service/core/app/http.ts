@@ -6,6 +6,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
+import { isInternalAddress } from '../../common/system/utils';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -136,6 +137,18 @@ export const runHTTPTool = async ({
   staticBody
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
+    // Construct full base URL
+    const fullBaseUrl =
+      baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+        ? baseUrl
+        : `https://${baseUrl}`;
+
+    // SSRF Protection: Validate URL before making request
+    const fullUrl = new URL(toolPath, fullBaseUrl).toString();
+    if (await isInternalAddress(fullUrl)) {
+      return { errorMsg: 'Access to internal addresses is not allowed' };
+    }
+
     const { headers, body, queryParams } = buildHttpRequest({
       method,
       params,
@@ -148,10 +161,7 @@ export const runHTTPTool = async ({
 
     const { data } = await axios({
       method: method.toUpperCase(),
-      baseURL:
-        baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
-          ? baseUrl
-          : `https://${baseUrl}`,
+      baseURL: fullBaseUrl,
       url: toolPath,
       headers,
       data: body,
