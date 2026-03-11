@@ -7,43 +7,33 @@ description: FastGPT 私有部署常见问题
 
 可以先找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
 
-### (1)获取后端错误
+### 获取后端错误
 
 1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
 2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
 
----
-
-### (2)前端错误
+### 前端错误
 
 前端报错时，页面会出现崩溃，并提示检查控制台日志。可以打开浏览器控制台，并查看`console`中的 log 日志。还可以点击对应 log 的超链接，会提示到具体错误文件，可以把这些详细错误信息提供，方便排查。
 
----
-
-### (3)OneAPI 错误
+### OneAPI 错误
 
 带有`requestId`的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。可以参考 [OneAPI 常见错误](/docs/self-host/faq/#三常见的-oneapi-错误)
 
----
-
 ## 二、通用问题
 
-### (1)前端页面崩溃
+### 前端页面崩溃
 
 1. 90% 情况是模型配置不正确：确保每类模型都至少有一个启用；检查模型中一些`对象`参数是否异常（数组和对象），如果为空，可以尝试给个空数组或空对象。
 2. 少部分是由于浏览器兼容问题，由于项目中包含一些高阶语法，可能低版本浏览器不兼容，可以将具体操作步骤和控制台中错误信息提供 issue。
 3. 关闭浏览器翻译功能，如果浏览器开启了翻译，可能会导致页面崩溃。
 
----
-
-### (2)通过sealos部署的话，是否没有本地部署的一些限制？
+### 通过sealos部署的话，是否没有本地部署的一些限制？
 
 ![](/imgs/faq1.png)
 这是索引模型的长度限制，通过任何方式部署都一样的，但不同索引模型的配置不一样，可以在后台修改参数。
 
----
-
-### (3)怎么挂载小程序配置文件
+### 怎么挂载小程序配置文件
 
 将验证文件，挂载到指定位置：/app/projects/app/public/xxxx.txt
 
@@ -51,36 +41,26 @@ description: FastGPT 私有部署常见问题
 
 ![](/imgs/faq2.png)
 
----
-
-### (4)数据库3306端口被占用了，启动服务失败
+### 数据库3306端口被占用了，启动服务失败
 
 ![](/imgs/faq3.png)
 
 把端口映射改成 3307 之类的，例如 3307:3306。
 
----
-
-### (5)本地部署的限制
+### 本地部署的限制
 
 具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
 
----
-
-### (6)能否纯本地运行
+### 能否纯本地运行
 
 可以。需要准备好向量模型和LLM模型。
 
----
-
-### (7)其他模型没法进行问题分类/内容提取
+### 其他模型没法进行问题分类/内容提取
 
 1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
 2. 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改`customCQPrompt`来自定义提示词。
 
----
-
-### (8)页面崩溃
+### 页面崩溃
 
 1. 关闭翻译
 2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。
@@ -88,26 +68,19 @@ description: FastGPT 私有部署常见问题
 - 95%情况是配置文件不对。会提示 xxx undefined
 - 提示`URI malformed`，请 Issue 反馈具体操作和页面，这是由于特殊字符串编码解析报错。
 
-
 3. 某些api不兼容问题（较少）
 
----
-
-### (9)开启内容补全后，响应速度变慢
+### 开启内容补全后，响应速度变慢
 
 1. 问题补全需要经过一轮AI生成。
 2. 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。
 
----
-
-### (10)页面中可以正常回复，API 报错
+### 页面中可以正常回复，API 报错
 
 页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。
 和上一个问题一样，curl 测试。
 
----
-
-### (11)知识库索引没有进度/索引很慢
+### 知识库索引没有进度/索引很慢
 
 先看日志报错信息。有以下几种情况：
 
@@ -115,151 +88,29 @@ description: FastGPT 私有部署常见问题
 2. 不能对话，也不能索引：API调用失败。可能是没连上OneAPI或OpenAI
 3. 有进度，但是非常慢：api key不行，OpenAI的免费号，一分钟只有3次还是60次。一天上限200次。
 
----
-
-### (12)Connection error
+### Connection error
 
 网络异常。国内服务器无法请求OpenAI，自行检查与AI模型的连接是否正常。
 
 或者是FastGPT请求不到 OneAPI（没放同一个网络）
 
----
-
-### (13)修改了 vectorModels 但是没有生效
+### 修改了 vectorModels 但是没有生效
 
 1. 重启容器，确保模型配置已经加载（可以在日志或者新建知识库时候看到新模型）
 2. 记得刷新一次浏览器。
 3. 如果是已经创建的知识库，需要删除重建。向量模型是创建时候绑定的，不会动态更新。
 
----
-
-### (14) 登录页面 Logo 更换
-**问题：** 如何更换登录页面的 Logo？  
-**解决方法：**  
-在 `docker-compose.yaml` 文件中，找到 `fastgpt` 服务下的 `volumes` 配置项进行修改。将左侧替换为您本地的图片路径。
-
-**配置示例：**
-```yaml
-services:
-  fastgpt:
-    volumes:
-      - ./my_logo.svg:/app/projects/app/public/icon/logo.svg
-```
-
----
-
-### (15)门户页面 Logo 更换
-**问题：** 登录后的门户页面 Logo 如何更换？  
-**解决方法：**  
-在 `docker-compose.yaml` 文件中，找到 `fastgpt` 服务下的 `volumes` 配置项进行修改，需要替换侧边栏的 Banner 资源。
-
-**配置示例：**
-```yaml
-services:
-  fastgpt:
-    volumes:
-      - ./my_banner.svg:/app/projects/app/public/imgs/chat/fastgpt_banner.svg
-      - ./my_banner_fold.svg:/app/projects/app/public/imgs/chat/fastgpt_banner_fold.svg
-```
-
----
-### (16)门户在页面更换完 Logo 后 刷新闪现初始 Logo
-**问题：** 更换 Logo 后，刷新页面会先闪现旧 Logo 再显示新 Logo。  
-**原因：** 受限于页面加载逻辑，加载速度过慢会导致旧 Logo 先显示。  
-**解决方法：**  
-在 `docker-compose.yaml` 文件中，找到 `fastgpt` 服务下的 `volumes` 配置项进行修改，需要替换侧边栏的 Banner 资源。
-
-**配置示例：**
-```yaml
-services:
-  fastgpt:
-    volumes:
-      - ./my_banner.svg:/app/projects/app/public/imgs/chat/fastgpt_banner.svg
-      - ./my_banner_fold.svg:/app/projects/app/public/imgs/chat/fastgpt_banner_fold.svg
-```
-
----
-### (17)部署报错：SignatureDoesNotMatch
-**问题：** 上传文件时提示 `SignatureDoesNotMatch`。  
-**原因：** S3 存储（MinIO/OSS）的 AccessKey/SecretKey 错误，或 Endpoint 配置不规范。  
-**解决方法：**  
-1. **检查 AK/SK**：核对 `STORAGE_ACCESS_KEY_ID` 和 `STORAGE_SECRET_ACCESS_KEY`。
-2. **检查 Endpoint**：`STORAGE_S3_ENDPOINT` 应为 `http://ip:port` 格式，不能包含 Bucket 名称。
-3. **MinIO 特殊配置**：确保 `STORAGE_S3_FORCE_PATH_STYLE=true`。
-4. **时间同步**：确保服务器系统时间与存储服务端同步。
-
----
-
-### (18)打开网页报：Internal Server Error
-**问题：** 部署完成后，打开网页显示 `Internal Server Error`。  
-**原因：** 数据库连接失败或关键环境变量缺失。  
-**解决方法：**  
-1. **查看日志**：运行 `docker logs fastgpt` 查看具体错误。
-2. **数据库检查**：确认 MongoDB 和 PostgreSQL 容器状态为 `Up`，且网络互通。
-3. **配置检查**：检查 `MONGODB_URL`、`PG_URL`、`ONEAPI_URL` 等是否正确。
-
----
-
-### (19)登录报错：User not found
-**问题：** 使用默认账号登录时提示 `User not found`。  
-**原因：** 数据库初始化失败或账号密码错误。  
-**解决方法：**  
-1. **默认凭据**：账号 `root`，密码 `123456`（或 `1234`，视版本而定）。
-2. **手动检查**：进入 MongoDB 查看 `fastgpt` 数据库下的 `users` 集合是否存在 root 用户。
-3. **初始化检查**：若数据库为空，重启 FastGPT 容器触发自动初始化。
-
----
-
-### (20)MinerU 解析报错：422 Unprocessable Entity
-**问题：** 上传知识库文件使用 MinerU 解析时报 `422` 错误。  
-**原因：** 参数校验失败、文件格式不支持或代理配置干扰。  
-**解决方法：**  
-1. **格式确认**：确保上传的是 PDF 或图片格式。
-2. **配置校验**：检查 `config.json` 中 `customPdfParse` 的 `url` 是否能被 FastGPT 容器访问。
-3. **禁用代理测试**：若使用了 `createProxyAxios`，尝试在请求 MinerU 时绕过代理，防止 Payload 结构被破坏。
-4. **查看 MinerU 日志**：确认 MinerU 服务端收到的具体报错字段。
-
----
-
-### (21)上传文件报错：知识库上传文件、智能体对话上传文件、头像上传错误
-**问题：** 上传文件时提示 `网络错误` 或其他报错。  
-**原因：** 网络连接问题、S3 存储服务端异常或 FastGPT、FastGPT-Pro、FastGPT-Plugin 容器配置错误。FastGPT-Minio的服务需要配置公网或挂载域名访问。  
-**解决方法：**  
-1. **检查网络**：确认 FastGPT-Minio 容器的 9000 端口能被外部访问，且端口映射正确，如果是挂载域名访问，不能是二级路由进行反代，单独的域名或子域名都可以。具体配置参考 [Nginx代理FastGPT服务](https://fael3z0zfze.feishu.cn/wiki/CBvzwxXXqivsymk1gCPc0g7knSc?from=from_copylink)。
-2. **S3渠道确认**：目前FastGPT的S3仅支持自部署的MinIO/AWS S3、阿里云OSS、腾讯云COS。针对于不同的S3渠道，需要配置不同的参数。具体可参考 [FastGPT 对象存储配置](https://doc.fastgpt.cn/zh-CN/docs/self-host/config/object-storage)。
-3. **docker-compose配置检查**：确认 `docker-compose.yaml` 文件中 `fastgpt` 、`fastgpt-pro` 、`fastgpt-plugin` 服务下的 `environment` S3的配置是否正确，特别是 `STORAGE_S3_ENDPOINT`、`STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY` 等参数。
-
----
-
-### (22)识别图片文件报错
-**问题：** 在对话中上传图片或识别图片时提示 `500 Expected a cached item for mm_hash='...'`。  
-**原因：** 图片缓存造成的问题。  
-**解决方法：**  
-在 `docker-compose.yaml` 文件中，找到 `fastgpt` 服务下的 `environment` 配置项，增加 `MULTIPLE_DATA_TO_BASE64=true` 环境变量。
-
-**配置示例：**
-```yaml
-services:
-  fastgpt:
-    environment:
-      - MULTIPLE_DATA_TO_BASE64=true
-```
-
----
-
 ## 三、常见的 OneAPI 错误
 
 带有 requestId 的都是 OneAPI 的报错。
 
-### (1)insufficient_user_quota user quota is not enough
+### insufficient_user_quota user quota is not enough
 
 OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
 
 路径：打开OneAPI -> 用户 -> root用户右边的编辑 -> 剩余余额调大
 
----
-
-### (2)xxx渠道找不到
+### xxx渠道找不到
 
 FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应上，否则就会提示这个错误。可检查下面内容：
 
@@ -269,45 +120,33 @@ FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应
 
 如果OneAPI中，没有配置对应的模型，`config.json`中也不要配置，否则容易报错。
 
----
-
-### (3)点击模型测试失败
+### 点击模型测试失败
 
 OneAPI 只会测试渠道的第一个模型，并且只会测试对话模型，向量模型无法自动测试，需要手动发起请求进行测试。[查看测试模型命令示例](/docs/self-host/faq/#如何检查模型问题)
 
----
-
-### (4)get request url failed: Post `"https://xxx"` dial tcp: xxxx
+### get request url failed: Post `"https://xxx"` dial tcp: xxxx
 
 OneAPI 与模型网络不通，需要检查网络配置。
 
----
-
-### (5)Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
+### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
 
 OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 docker-compose down 然后再 docker-compose up -d 运行一次）。
 
 可以`exec`进入容器，`env`查看环境变量是否生效。
 
----
-
-### (6)bad_response_status_code bad response status code 503
+### bad_response_status_code bad response status code 503
 
 1. 模型服务不可用
 2. 模型接口参数异常（温度、max token等可能不适配）
 3. ....
 
----
-
-### (7)Tiktoken 下载失败
+### Tiktoken 下载失败
 
 由于 OneAPI 会在启动时从网络下载一个 tiktoken 的依赖，如果网络异常，就会导致启动失败。可以参考[OneAPI 离线部署](https://blog.csdn.net/wanh/article/details/139039216)解决。
 
----
 ## 四、常见模型问题
 
-
-### (1)如何检查模型可用性问题
+### 如何检查模型可用性问题
 
 1. 私有部署模型，先确认部署的模型是否正常。
 2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
@@ -387,9 +226,7 @@ curl https://api.openai.com/v1/audio/transcriptions \
   </Tab>
 </Tabs>
 
----
-
-### (2)报错 - 模型响应为空/模型报错
+### 报错 - 模型响应为空/模型报错
 
 该错误是由于 stream 模式下，oneapi 直接结束了流请求，并且未返回任何内容导致。
 
@@ -423,9 +260,8 @@ curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
   ]
 }'
 ```
----
 
-### (3)如何测试模型是否支持工具调用
+### 如何测试模型是否支持工具调用
 
 需要模型提供商和 oneapi 同时支持工具调用才可使用，测试方法如下：
 
@@ -552,8 +388,6 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 }'
 ```
 
----
-
-### (4)向量检索得分大于 1
+### 向量检索得分大于 1
 
 由于模型没有归一化导致的。目前仅支持归一化的模型。
