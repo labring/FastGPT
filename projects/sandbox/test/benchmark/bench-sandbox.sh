@@ -1,12 +1,12 @@
 #!/bin/bash
 # FastGPT Sandbox JS 压测脚本
-# 用法: SANDBOX_TOKEN=xxx ./bench-sandbox.sh
-#       SANDBOX_URL=http://host:3000 SANDBOX_TOKEN=xxx ./bench-sandbox.sh
+# 用法: CODE_SANDBOX_TOKEN=xxx ./bench-sandbox.sh
+#       CODE_SANDBOX_URL=http://host:3000 CODE_SANDBOX_TOKEN=xxx ./bench-sandbox.sh
 
 set -eo pipefail
 
-BASE="${SANDBOX_URL:-http://localhost:3000}"
-TOKEN="${SANDBOX_TOKEN:-}"
+BASE="${CODE_SANDBOX_URL:-http://localhost:3000}"
+TOKEN="${CODE_SANDBOX_TOKEN:-}"
 DURATION="${BENCH_DURATION:-10}"
 
 # 构建 npx autocannon 认证参数

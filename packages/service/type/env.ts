@@ -26,7 +26,7 @@ declare global {
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
 
-      SANDBOX_URL: string;
+      CODE_SANDBOX_URL: string;
       FE_DOMAIN: string;
       FILE_DOMAIN: string;
       USE_IP_LIMIT?: string;

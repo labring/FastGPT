@@ -71,6 +71,7 @@ export type FastGPTFeConfigsType = {
   show_publish_dingtalk?: boolean;
   show_publish_wecom?: boolean;
   show_publish_offiaccount?: boolean;
+  show_agent_sandbox?: boolean;
 
   show_dataset_enhance?: boolean;
   show_batch_eval?: boolean;
@@ -138,6 +139,9 @@ export type FastGPTFeConfigsType = {
   };
 
   ip_whitelist?: string;
+
+  // tmp
+  agentSandboxFree?: boolean;
 };
 
 export type SystemEnvType = {
