@@ -13,18 +13,27 @@ const int = (defaultValue: number) => z.coerce.number().int().default(defaultVal
 
 /** 字符串，带默认值 */
 const str = (defaultValue: string) => z.string().default(defaultValue);
+const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
 const envSchema = z.object({
   // ===== 服务 =====
   SANDBOX_PORT: int(3000),
   /** Bearer token，仅允许 ASCII 可打印字符（RFC 6750） */
-  SANDBOX_TOKEN: z
+  CODE_SANDBOX_TOKEN: z
     .string()
     .default('')
     .refine((v) => v === '' || /^[\x21-\x7E]+$/.test(v), {
       message:
-        'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
+        'CODE_SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
+
+  // Logger
+  LOG_ENABLE_CONSOLE: z.boolean().default(true),
+  LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
+  LOG_ENABLE_OTEL: z.boolean().default(false),
+  LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
+  LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-code-sandbox'),
+  LOG_OTEL_URL: z.url().optional(),
 
   // ===== 进程池 =====
   /** 进程池大小（预热 worker 数量） */
@@ -73,7 +82,7 @@ const e = parsed.data;
 export const env = {
   // 服务
   port: e.SANDBOX_PORT,
-  token: e.SANDBOX_TOKEN,
+  token: e.CODE_SANDBOX_TOKEN,
 
   // 资源限制
   maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,

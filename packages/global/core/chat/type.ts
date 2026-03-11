@@ -197,11 +197,14 @@ const ErrorTextItemSchema = z.object({
 export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
 
 export type ResponseTagItemType = {
+  useAgentSandbox?: boolean;
   totalQuoteList?: SearchDataResponseItemType[];
-  llmModuleAccount?: number;
-  historyPreviewLength?: number;
   toolCiteLinks?: ToolCiteLinksType[];
   errorText?: ErrorTextItemType;
+
+  // @deprecated
+  llmModuleAccount?: number;
+  historyPreviewLength?: number;
 };
 
 export type ChatItemType = ChatItemObjItemType & {

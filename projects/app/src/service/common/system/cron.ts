@@ -8,6 +8,7 @@ import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/controller';
+import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/controller';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -70,4 +71,5 @@ export const startCron = () => {
   scheduleTriggerAppCron();
   cronRefreshModels();
   clearExpiredS3FilesCron();
+  sandboxCronJob();
 };

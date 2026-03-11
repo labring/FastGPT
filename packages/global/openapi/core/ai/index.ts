@@ -1,8 +1,11 @@
 import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import { GetLLMRequestRecordParamsSchema, LLMRequestRecordSchema } from './api';
+import { SandboxPath } from './sandbox';
 
 export const AIPath: OpenAPIPath = {
+  ...SandboxPath,
+
   '/core/ai/record/getRecord': {
     get: {
       summary: '获取 LLM 请求追踪记录',

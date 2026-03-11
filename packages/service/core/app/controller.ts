@@ -30,6 +30,7 @@ import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
+import { deleteSandboxesByAppId } from '../ai/sandbox/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -152,7 +153,10 @@ export const deleteAppDataProcessor = async ({
 
   // 1. 删除应用头像
   await removeImageByPath(app.avatar);
+
   // 2. 删除聊天记录和S3文件
+  // 删除沙盒实例
+  await deleteSandboxesByAppId(appId);
   await getS3ChatSource().deleteChatFilesByPrefix({ appId });
   await MongoAppChatLog.deleteMany({ teamId, appId });
   await MongoChatItemResponse.deleteMany({ appId });
