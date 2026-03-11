@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/controller';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const { Types } = connectionMongo;
 
@@ -22,21 +23,22 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN
   }
 }));
-
-describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
+console.log(hasSandboxEnv, 232323);
+describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
   const testDir = '/tmp/workspace';
   const testParams = {
     appId: String(new Types.ObjectId()),
     userId: 'integration-user',
     chatId: `integration-chat-${Date.now()}`
   };
-  const sandbox = new SandboxClient(testParams);
+  let sandbox: SandboxClient;
 
   // 测试开始前，确认 workspace 存在
   beforeAll(async () => {
+    sandbox = new SandboxClient(testParams);
     const result = await sandbox.exec(`mkdir -p ${testDir} && cd ${testDir}`);
-    console.log(result, 23232);
     expect(result.exitCode).toBe(0);
+    await delay(2000);
   });
 
   afterAll(async () => {
@@ -49,20 +51,17 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   });
 
   it('should create sandbox and execute echo command', async () => {
-    const sandbox = new SandboxClient(testParams);
     const result = await sandbox.exec('echo hello');
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('hello');
   });
 
   it('should return non-zero exitCode for failing command', async () => {
-    const sandbox = new SandboxClient(testParams);
     const result = await sandbox.exec('exit 1');
     expect(result.exitCode).not.toBe(0);
   });
 
   it('should share filesystem within same session', async () => {
-    const sandbox = new SandboxClient(testParams);
     await sandbox.exec(`touch ${testDir}/test-integration.txt`);
     const result = await sandbox.exec(`ls ${testDir}/test-integration.txt`);
     expect(result.exitCode).toBe(0);
@@ -70,7 +69,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   });
 
   it('should delete sandbox and clean DB on deleteSandboxesByChatIds', async () => {
-    const sandbox = new SandboxClient(testParams);
     await sandbox.exec('echo setup');
     await deleteSandboxesByChatIds({ appId: testParams.appId, chatIds: [testParams.chatId] });
 
@@ -81,27 +79,23 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 错误处理和边界情况 =====
   describe('Error Handling', () => {
     it('should handle command timeout gracefully', async () => {
-      const sandbox = new SandboxClient(testParams);
       // 超时会抛出异常而不是返回错误码
       await expect(sandbox.exec('sleep 3', 1)).rejects.toThrow();
     });
 
     it('should handle invalid commands', async () => {
-      const sandbox = new SandboxClient(testParams);
       const result = await sandbox.exec('nonexistent-command-xyz');
       expect(result.exitCode).not.toBe(0);
       expect(result.stderr).toBeTruthy();
     });
 
     it('should handle empty command', async () => {
-      const sandbox = new SandboxClient(testParams);
       // 空命令在某些沙盒实现中可能失败，改为测试 true 命令
       const result = await sandbox.exec('true');
       expect(result.exitCode).toBe(0);
     });
 
     it('should handle very long output', async () => {
-      const sandbox = new SandboxClient(testParams);
       const result = await sandbox.exec('seq 1 10000');
       expect(result.exitCode).toBe(0);
       expect(result.stdout.length).toBeGreaterThan(0);
@@ -111,7 +105,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 状态管理测试 =====
   describe('State Management', () => {
     it('should update status to running after exec', async () => {
-      const sandbox = new SandboxClient(testParams);
       await sandbox.exec('echo test');
 
       const doc = await MongoSandboxInstance.findOne({ chatId: testParams.chatId });
@@ -120,7 +113,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should stop sandbox and update status', async () => {
-      const sandbox = new SandboxClient(testParams);
       await sandbox.exec('echo test');
       await sandbox.stop();
 
@@ -129,7 +121,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should update lastActiveAt on each exec', async () => {
-      const sandbox = new SandboxClient(testParams);
       await sandbox.exec('echo first');
 
       const firstDoc = await MongoSandboxInstance.findOne({ chatId: testParams.chatId });
@@ -145,7 +136,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should persist sandbox metadata correctly', async () => {
-      const sandbox = new SandboxClient(testParams);
       await sandbox.exec('echo test');
 
       const doc = await MongoSandboxInstance.findOne({ chatId: testParams.chatId });
@@ -214,8 +204,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 并发和竞态条件 =====
   describe('Concurrency', () => {
     it('should handle concurrent exec calls on same sandbox', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       // 先确保沙盒已初始化
       await sandbox.exec('echo init');
 
@@ -245,7 +233,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should handle concurrent delete operations', async () => {
-      const sandbox = new SandboxClient(testParams);
       await sandbox.exec('echo test');
 
       await Promise.all([
@@ -261,8 +248,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 文件系统持久化测试 =====
   describe('Filesystem Persistence', () => {
     it('should persist files across multiple exec calls', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       await sandbox.exec(`echo "content" > ${testDir}/test.txt`);
       const result1 = await sandbox.exec(`cat ${testDir}/test.txt`);
       expect(result1.stdout).toContain('content');
@@ -274,8 +259,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should handle directory operations', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       await sandbox.exec(`touch ${testDir}/file.txt`);
       const result = await sandbox.exec(`ls ${testDir}`);
 
@@ -284,8 +267,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should handle file permissions', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       await sandbox.exec(`touch ${testDir}/script.sh`);
       await sandbox.exec(`chmod +x ${testDir}/script.sh`);
       await sandbox.exec(`echo "#!/bin/bash\necho executed" > ${testDir}/script.sh`);
@@ -299,8 +280,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 环境变量和工作目录测试 =====
   describe('Environment and Working Directory', () => {
     it('should maintain working directory across commands', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       await sandbox.exec(`cd ${testDir} && pwd`);
       const result = await sandbox.exec('pwd');
       // 注意：每次 exec 可能重置工作目录，这取决于实现
@@ -308,8 +287,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should handle environment variables', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       const result = await sandbox.exec('export TEST_VAR=hello && echo $TEST_VAR');
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('hello');
@@ -319,8 +296,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
   // ===== 资源限制测试 =====
   describe('Resource Limits', () => {
     it('should handle large file creation', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       const result = await sandbox.exec(`dd if=/dev/zero of=${testDir}/large.bin bs=1M count=10`);
       expect(result.exitCode).toBe(0);
 
@@ -329,8 +304,6 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     });
 
     it('should handle process spawning', async () => {
-      const sandbox = new SandboxClient(testParams);
-
       // 先确保沙盒已初始化
       await sandbox.exec('echo init');
 

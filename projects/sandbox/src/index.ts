@@ -7,6 +7,12 @@ import { ProcessPool } from './pool/process-pool';
 import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
 import { getErrText } from './utils';
+import { configureLogger, getLogger, LogCategories } from './utils/logger';
+
+await configureLogger();
+
+const serverLogger = getLogger(LogCategories.MODULE.SANDBOX.SERVER);
+const apiLogger = getLogger(LogCategories.MODULE.SANDBOX.API);
 
 /** 请求体校验 schema */
 const executeSchema = z.object({
@@ -25,10 +31,12 @@ const pythonPool = new PythonProcessPool(config.poolSize);
 
 const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
   .then(() => {
-    console.log(`Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`);
+    serverLogger.info(
+      `Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`
+    );
   })
   .catch((err) => {
-    console.log('Failed to init process pool:', err.message);
+    serverLogger.error('Failed to init process pool:', err.message);
     process.exit(1);
   });
 
@@ -40,11 +48,57 @@ app.get('/health', (c) => {
   return c.json({ status: isReady ? 'ok' : 'degraded' }, isReady ? 200 : 503);
 });
 
+// 增加日志中间件，打印请求信息
+app.use('/sandbox/*', async (c, next) => {
+  apiLogger.info(`Request: ${c.req.url}`);
+  await next();
+});
+// 增加响应日志，打印时间，状态，错误信息，并检查业务层面的成功状态
+app.use('/sandbox/*', async (c, next) => {
+  const startTime = Date.now();
+  await next();
+
+  const duration = Date.now() - startTime;
+  const { method, url } = c.req;
+  const { status } = c.res;
+
+  // 尝试解析响应体以检查业务状态
+  let businessSuccess = true;
+  let errorMessage = '';
+
+  try {
+    // 克隆响应以读取内容（避免消耗原始响应流）
+    const clonedRes = c.res.clone();
+    const contentType = clonedRes.headers.get('content-type');
+
+    if (contentType?.includes('application/json')) {
+      const body = await clonedRes.json();
+      businessSuccess = body.success !== false; // 如果没有 success 字段，默认为成功
+      errorMessage = body.message || '';
+    }
+  } catch (err) {
+    // 解析失败时不影响日志记录
+  }
+
+  // 根据 HTTP 状态码和业务状态决定日志级别
+  const isHttpSuccess = status >= 200 && status < 300;
+  const isFullSuccess = isHttpSuccess && businessSuccess;
+
+  const logMessage = `Response: ${url} | HTTP ${status} | Business ${businessSuccess ? '✓' : '✗'} | ${duration}ms${errorMessage ? ` | Error: ${errorMessage}` : ''}`;
+
+  if (isFullSuccess) {
+    apiLogger.info(logMessage);
+  } else if (!businessSuccess) {
+    apiLogger.warn(logMessage);
+  } else {
+    apiLogger.error(logMessage);
+  }
+});
 /** 认证中间件：仅当配置了 token 时启用 */
 if (config.token) {
   app.use('/sandbox/*', bearerAuth({ token: config.token }));
 } else {
-  console.warn(
+  apiLogger.warn(
     '⚠️  WARNING: CODE_SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set CODE_SANDBOX_TOKEN in production!'
   );
 }
@@ -64,12 +118,8 @@ app.post('/sandbox/js', async (c) => {
       );
     }
     const result = await jsPool.execute(parsed.data as ExecuteOptions);
-    if (!result.success) {
-      console.log(`JS sandbox error: ${result.message}`);
-    }
     return c.json(result);
   } catch (err: any) {
-    console.log('JS sandbox error:', err);
     return c.json({
       success: false,
       message: getErrText(err)
@@ -92,12 +142,8 @@ app.post('/sandbox/python', async (c) => {
       );
     }
     const result = await pythonPool.execute(parsed.data as ExecuteOptions);
-    if (!result.success) {
-      console.log(`Python sandbox error: ${result.message}`);
-    }
     return c.json(result);
   } catch (err: any) {
-    console.log('Python sandbox error:', err);
     return c.json({
       success: false,
       message: getErrText(err)
@@ -118,7 +164,7 @@ app.get('/sandbox/modules', (c) => {
 });
 
 /** 启动服务 */
-console.log(`Sandbox server starting on port ${config.port}...`);
+serverLogger.info(`Sandbox server starting on port ${config.port}...`);
 
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };

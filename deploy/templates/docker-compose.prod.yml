@@ -182,6 +182,9 @@ ${{vec.db}}
     networks:
       - fastgpt
     restart: always
+    environment:
+      <<: [*x-log-config]
+      LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: ${{fastgpt-mcp_server.image}}:${{fastgpt-mcp_server.tag}}

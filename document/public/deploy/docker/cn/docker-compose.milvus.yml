@@ -35,6 +35,7 @@ x-log-config: &x-log-config
 x-vec-config: &x-vec-config
   MILVUS_ADDRESS: http://milvusStandalone:19530
   MILVUS_TOKEN: none
+    
 
 version: '3.3'
 services:
@@ -110,19 +111,7 @@ services:
     volumes:
       - ./mongo/data:/data/db
     healthcheck:
-      test:
-        [
-          'CMD',
-          'mongo',
-          '-u',
-          'myusername',
-          '-p',
-          'mypassword',
-          '--authenticationDatabase',
-          'admin',
-          '--eval',
-          "db.adminCommand('ping')"
-        ]
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -252,6 +241,9 @@ services:
     networks:
       - fastgpt
     restart: always
+    environment:
+      <<: [*x-log-config]
+      LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.8
@@ -332,3 +324,4 @@ networks:
   fastgpt:
   aiproxy:
   vector:
+

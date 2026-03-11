@@ -13,13 +13,13 @@ export const env = createEnv({
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox']).optional(),
     AGENT_SANDBOX_SEALOS_BASEURL: z.string().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
-    LOG_ENABLE_CONSOLE: BoolSchema.default(true),
-    LOG_CONSOLE_LEVEL: LogLevelSchema.default('trace'),
 
+    LOG_ENABLE_CONSOLE: BoolSchema.default(true),
+    LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
     LOG_ENABLE_OTEL: BoolSchema.default(false),
     LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
     LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
-    LOG_OTEL_URL: z.url().default('http://localhost:4318/v1/logs')
+    LOG_OTEL_URL: z.url().optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
