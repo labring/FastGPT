@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   // 关闭 strict mode，避免第三方库的双重渲染问题
-  reactStrictMode: false,
+  reactStrictMode: !isDev,
   productionBrowserSourceMaps: false,
   async headers() {
     return [
@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  webpack(config, { isServer }) {
+  webpack(config, { isServer, dev }) {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
       {
@@ -105,6 +105,8 @@ const nextConfig: NextConfig = {
     };
 
     if (isDev && !isServer) {
+      config.devtool = 'cheap-module-source-map';
+
       config.watchOptions = {
         ...config.watchOptions,
         ignored: [
