@@ -29,6 +29,7 @@ export type getPaginationRecordsQuery = {};
 export type getPaginationRecordsBody = PaginationProps &
   GetChatRecordsProps & {
     chatLogsFilter?: `${ChatLogsFilterEnum}`;
+    filterDeleted?: boolean; // 是否过滤已删除的记录，默认true（用户端过滤，管理员日志详情传false）
   };
 
 export type getPaginationRecordsResponse = PaginationResponse<ChatItemType> & {
@@ -46,7 +47,8 @@ async function handler(
     chatId,
     loadCustomFeedbacks,
     type = GetChatTypeEnum.normal,
-    chatLogsFilter = ChatLogsFilterEnum.all
+    chatLogsFilter = ChatLogsFilterEnum.all,
+    filterDeleted = true // 默认过滤已删除的记录
   } = req.body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
@@ -92,7 +94,8 @@ async function handler(
     offset,
     pageSize,
     field: fieldMap[type],
-    chatLogsFilter
+    chatLogsFilter,
+    filterDeleted // 传递过滤已删除记录的参数
   });
 
   let filteredHistories: ChatItemWithRewrite[] = histories as ChatItemWithRewrite[];

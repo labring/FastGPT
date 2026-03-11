@@ -88,13 +88,17 @@ async function handler(
 
   const mergeMatch = { ...match, ...timeMatch };
 
+  // 用户端过滤已删除的会话
+  const deletedFilter = { deleted: { $ne: true } };
+  const finalMatch = { ...mergeMatch, ...deletedFilter };
+
   const [data, total] = await Promise.all([
-    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime')
+    await MongoChat.find(finalMatch, 'chatId title top customTitle appId updateTime')
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
-    MongoChat.countDocuments(mergeMatch)
+    MongoChat.countDocuments(finalMatch)
   ]);
 
   return {

@@ -4,12 +4,11 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { type ClearHistoriesProps } from '@/global/core/chat/api';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { NextAPI } from '@/service/middleware/entry';
-import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 
-/* clear chat history */
+/* 批量逻辑删除会话历史 */
 async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextApiResponse) {
   const { appId, shareId, outLinkUid, teamId, teamToken } = req.query;
 
@@ -59,24 +58,45 @@ async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextA
     return Promise.reject('Param are error');
   })();
 
-  // find chatIds
-  const list = await MongoChat.find(match, 'chatId').lean();
+  // find chatIds (只查找未删除的)
+  const list = await MongoChat.find({ ...match, deleted: { $ne: true } }, 'chatId').lean();
   const idList = list.map((item) => item.chatId);
 
-  await deleteChatFiles({ chatIdList: idList });
+  if (idList.length === 0) {
+    return;
+  }
+
+  // 逻辑删除：不删除文件，保留供管理员查看
+  const now = new Date();
 
   return mongoSessionRun(async (session) => {
-    await MongoChatItem.deleteMany(
+    // 批量标记 chatitems 为已删除
+    await MongoChatItem.updateMany(
       {
         appId,
         chatId: { $in: idList }
       },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: now,
+          deletedBy: tmbId
+        }
+      },
       { session }
     );
-    await MongoChat.deleteMany(
+    // 批量标记 chat 为已删除
+    await MongoChat.updateMany(
       {
         appId,
         chatId: { $in: idList }
+      },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: now,
+          deletedBy: tmbId
+        }
       },
       { session }
     );

@@ -6,6 +6,7 @@ import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
+/* 逻辑删除单条对话消息 */
 async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
   const { appId, chatId, contentId } = req.query;
 
@@ -13,18 +14,28 @@ async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextA
     return Promise.reject('contentId or chatId is empty');
   }
 
-  await authChatCrud({
+  const { tmbId } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
     ...req.query
   });
 
-  await MongoChatItem.deleteOne({
-    appId,
-    chatId,
-    dataId: contentId
-  });
+  // 逻辑删除：标记为已删除而非物理删除
+  await MongoChatItem.updateOne(
+    {
+      appId,
+      chatId,
+      dataId: contentId
+    },
+    {
+      $set: {
+        deleted: true,
+        deletedAt: new Date(),
+        deletedBy: tmbId
+      }
+    }
+  );
 
   return;
 }

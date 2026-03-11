@@ -7,32 +7,49 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 
-/* clear chat history */
+/* 逻辑删除会话历史 */
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
   const { appId, chatId } = req.query;
 
-  await authChatCrud({
+  const { tmbId } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
     ...req.query
   });
 
-  await deleteChatFiles({ chatIdList: [chatId] });
+  // 逻辑删除：不删除文件，保留供管理员查看
+  const now = new Date();
+
   await mongoSessionRun(async (session) => {
-    await MongoChatItem.deleteMany(
+    // 标记所有 chatitems 为已删除
+    await MongoChatItem.updateMany(
       {
         appId,
         chatId
       },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: now,
+          deletedBy: tmbId
+        }
+      },
       { session }
     );
-    await MongoChat.deleteOne(
+    // 标记 chat 为已删除
+    await MongoChat.updateOne(
       {
         appId,
         chatId
+      },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: now,
+          deletedBy: tmbId
+        }
       },
       { session }
     );

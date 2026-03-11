@@ -257,7 +257,11 @@ async function handler(
             errorCount: 1,
             totalPoints: 1,
             outLinkUid: 1,
-            tmbId: 1
+            tmbId: 1,
+            // 逻辑删除字段（供管理员查看）
+            deleted: 1,
+            deletedAt: 1,
+            deletedBy: 1
           }
         }
       ],

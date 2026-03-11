@@ -85,7 +85,20 @@ const ChatSchema = new Schema({
     default: {}
   },
 
-  initStatistics: Boolean
+  initStatistics: Boolean,
+
+  // 逻辑删除字段
+  deleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName
+  }
 });
 
 try {
@@ -94,13 +107,13 @@ try {
   ChatSchema.index({ appId: 1, tmbId: 1, outLinkUid: 1 });
 
   ChatSchema.index({ chatId: 1 });
-  // get user history
-  ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 });
+  // get user history (包含 deleted 过滤)
+  ChatSchema.index({ tmbId: 1, appId: 1, deleted: 1, top: -1, updateTime: -1 });
   // delete by appid; clear history; init chat; update chat; auth chat; get chat;
   ChatSchema.index({ appId: 1, chatId: 1 });
 
-  // get chat logs;
-  ChatSchema.index({ teamId: 1, appId: 1, sources: 1, tmbId: 1, updateTime: -1 });
+  // get chat logs (包含 deleted 过滤);
+  ChatSchema.index({ teamId: 1, appId: 1, deleted: 1, sources: 1, tmbId: 1, updateTime: -1 });
   // get share chat history
   ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
 

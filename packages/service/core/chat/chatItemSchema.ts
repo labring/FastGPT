@@ -84,21 +84,34 @@ const ChatItemSchema = new Schema({
   correctionId: {
     type: Schema.Types.ObjectId,
     ref: ChatCorrectionCollectionName
+  },
+
+  // 逻辑删除字段
+  deleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName
   }
 });
 
 try {
   ChatItemSchema.index({ dataId: 1 });
   ChatItemSchema.index({ correctionId: 1 });
-  /* delete by app; 
+  /* delete by app;
      delete by chat id;
-     get chat list; 
-     get chat logs; 
-     close custom feedback; 
+     get chat list;
+     get chat logs;
+     close custom feedback;
   */
-  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+  ChatItemSchema.index({ appId: 1, chatId: 1, deleted: 1, dataId: 1 });
   // timer, clear history
-  ChatItemSchema.index({ teamId: 1, time: -1 });
+  ChatItemSchema.index({ teamId: 1, deleted: 1, time: -1 });
 
   // Admin charts
   ChatItemSchema.index({ obj: 1, time: -1 }, { partialFilterExpression: { obj: 'Human' } });

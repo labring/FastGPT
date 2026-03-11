@@ -27,9 +27,12 @@ export async function getChatItems({
     return { histories: [], total: 0 };
   }
 
+  // 过滤已删除的记录（用户端看不到已删除的对话）
+  const query = { chatId, appId, deleted: { $ne: true } };
+
   const [histories, total] = await Promise.all([
-    MongoChatItem.find({ chatId, appId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
-    MongoChatItem.countDocuments({ chatId, appId })
+    MongoChatItem.find(query, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
+    MongoChatItem.countDocuments(query)
   ]);
   histories.reverse();
 
@@ -121,7 +124,8 @@ export async function getPaginationChatItems({
   offset,
   pageSize,
   field,
-  chatLogsFilter = ChatLogsFilterEnum.all
+  chatLogsFilter = ChatLogsFilterEnum.all,
+  filterDeleted = true
 }: {
   appId: string;
   chatId: string;
@@ -129,6 +133,7 @@ export async function getPaginationChatItems({
   pageSize: number;
   field: string;
   chatLogsFilter?: `${ChatLogsFilterEnum}`;
+  filterDeleted?: boolean; // 是否过滤已删除的记录（用户端默认true，管理员端传false）
 }): Promise<{
   histories: ChatItemType[];
   total: number;
@@ -141,8 +146,15 @@ export async function getPaginationChatItems({
 
   const appObjectId = new Types.ObjectId(appId);
 
+  // 构建基础匹配条件
+  const baseMatch: any = { appId: appObjectId, chatId };
+  // 如果需要过滤已删除的记录，添加 deleted 条件
+  if (filterDeleted) {
+    baseMatch.deleted = { $ne: true };
+  }
+
   const pipeline: any[] = [
-    { $match: { appId: appObjectId, chatId } },
+    { $match: baseMatch },
     {
       $addFields: {
         hasNotFoundKnowledge: {
@@ -238,16 +250,20 @@ export async function getPaginationChatItems({
     // Query Human messages with _id less than the maximum AI _id
     // Use descending sort + limit to get only the most recent Human messages
     // Then reverse to ascending order for efficient pairing
+    // Build Human messages query with same deleted filter as AI messages
+    const humanQuery: any = {
+      appId: appObjectId,
+      chatId,
+      obj: ChatRoleEnum.Human,
+      _id: { $lt: maxAiId }
+    };
+    // Apply the same deleted filter as baseMatch
+    if (filterDeleted) {
+      humanQuery.deleted = { $ne: true };
+    }
+
     const humanMessages: any[] = (
-      await MongoChatItem.find(
-        {
-          appId: appObjectId,
-          chatId,
-          obj: ChatRoleEnum.Human,
-          _id: { $lt: maxAiId }
-        },
-        fieldProjection
-      )
+      await MongoChatItem.find(humanQuery, fieldProjection)
         .sort({ _id: -1 }) // Descending: get the most recent Human messages first
         .limit(aiMessages.length) // Limit to avoid querying too many historical messages
         .lean()
