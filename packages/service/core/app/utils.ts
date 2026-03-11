@@ -82,7 +82,7 @@ export async function rewriteAppWorkflowToDetail({
   /* Add node(App Type) versionlabel and latest sign ==== */
   await Promise.all(
     nodes.map(async (node) => {
-      // Tool node(简易模式/工作流)
+      // Tool node
       if (node.pluginId) {
         const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
         if (result.success) {

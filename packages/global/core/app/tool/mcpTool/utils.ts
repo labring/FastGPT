@@ -13,15 +13,13 @@ export const getMCPToolSetRuntimeNode = ({
   toolList,
   headerSecret,
   name,
-  avatar,
-  toolId
+  avatar
 }: {
   url: string;
   toolList: McpToolConfigType[];
   headerSecret?: StoreSecretValueType;
   name?: string;
   avatar?: string;
-  toolId: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId: getNanoid(16),
@@ -32,8 +30,7 @@ export const getMCPToolSetRuntimeNode = ({
       mcpToolSet: {
         toolList,
         headerSecret,
-        url,
-        toolId
+        url
       }
     },
     inputs: [],
@@ -47,12 +44,14 @@ export const getMCPToolRuntimeNode = ({
   tool,
   avatar = 'core/app/type/mcpToolsFill',
   nodeId,
+  toolsetName,
   toolSetId
 }: {
   nodeId: string;
   tool: McpToolConfigType;
-  avatar?: string;
   toolSetId: string;
+  toolsetName: string;
+  avatar?: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId,
@@ -76,7 +75,7 @@ export const getMCPToolRuntimeNode = ({
         type: FlowNodeOutputTypeEnum.static
       }
     ],
-    name: tool.name,
+    name: `${toolsetName}/${tool.name}`,
     version: ''
   };
 };
