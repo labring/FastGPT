@@ -24,7 +24,7 @@ FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pak
   <a href="https://doc.fastgpt.io/docs/introduction">
     <img height="21" src="https://img.shields.io/badge/Dokumentasi-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
+  <a href="https://doc.fastgpt.io/docs/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/Pengembangan_Lokal-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-proyek--tautan-kami">
@@ -47,7 +47,7 @@ docker compose up -d
 
 Setelah sepenuhnya aktif, Anda dapat mengakses FastGPT di `http://localhost:3000`. Akun default adalah `root` dan kata sandinya adalah `1234`.
 
-Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker lengkap](https://doc.fastgpt.io/docs/introduction/development/docker)
+Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker lengkap](https://doc.fastgpt.io/docs/self-host/deploy/docker)
 
 ## 🛸 Cara Penggunaan
 
@@ -55,7 +55,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
   Jika Anda tidak memerlukan penyebaran privat, Anda dapat langsung menggunakan layanan cloud kami di: [fastgpt.io](https://fastgpt.io/)
 
 - **Versi Self-Hosted Komunitas**  
-  Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) untuk menyebarkan FastGPT dengan satu klik.
+  Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/docs/self-host/deploy/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/docs/self-host/deploy/sealos) untuk menyebarkan FastGPT dengan satu klik.
 
 - **Versi Komersial**  
   Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/docs/introduction/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
@@ -115,7 +115,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 
 ## 💪 Proyek & Tautan Kami
 
-- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/docs/self-host/dev/)
 - [Dokumentasi OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)

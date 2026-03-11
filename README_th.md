@@ -24,7 +24,7 @@ FastGPT เป็นแพลตฟอร์มสำหรับสร้าง
   <a href="https://doc.fastgpt.io/docs/introduction">
     <img height="21" src="https://img.shields.io/badge/เอกสาร-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
+  <a href="https://doc.fastgpt.io/docs/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/พัฒนาในเครื่อง-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-โปรเจกต์และลิงก์ของเรา">
@@ -47,7 +47,7 @@ docker compose up -d
 
 เมื่อเริ่มต้นสมบูรณ์แล้ว คุณสามารถเข้าถึง FastGPT ที่ `http://localhost:3000` บัญชีเริ่มต้นคือ `root` และรหัสผ่านคือ `1234`
 
-หากคุณพบปัญหา คุณสามารถ [ดูบทแนะนำการติดตั้ง Docker ฉบับสมบูรณ์](https://doc.fastgpt.io/docs/introduction/development/docker)
+หากคุณพบปัญหา คุณสามารถ [ดูบทแนะนำการติดตั้ง Docker ฉบับสมบูรณ์](https://doc.fastgpt.io/docs/self-host/deploy/docker)
 
 ## 🛸 วิธีการใช้งาน
 
@@ -55,7 +55,7 @@ docker compose up -d
   หากคุณไม่ต้องการติดตั้งแบบส่วนตัว คุณสามารถใช้บริการคลาวด์ของเราได้โดยตรงที่: [fastgpt.io](https://fastgpt.io/)
 
 - **เวอร์ชันโฮสต์ตัวเองของชุมชน**  
-  คุณสามารถติดตั้งได้อย่างรวดเร็วโดยใช้ [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) หรือใช้ [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) เพื่อติดตั้ง FastGPT ด้วยคลิกเดียว
+  คุณสามารถติดตั้งได้อย่างรวดเร็วโดยใช้ [Docker](https://doc.fastgpt.io/docs/self-host/deploy/docker) หรือใช้ [Sealos Cloud](https://doc.fastgpt.io/docs/self-host/deploy/sealos) เพื่อติดตั้ง FastGPT ด้วยคลิกเดียว
 
 - **เวอร์ชันพาณิชย์**  
   หากคุณต้องการคุณสมบัติที่สมบูรณ์มากขึ้นหรือการสนับสนุนบริการเชิงลึก คุณสามารถเลือก [เวอร์ชันพาณิชย์](https://doc.fastgpt.io/docs/introduction/commercial) นอกจากการให้ซอฟต์แวร์ที่สมบูรณ์ เรายังให้คำแนะนำการนำไปใช้สำหรับสถานการณ์เฉพาะ คุณสามารถส่ง[ปรึกษาธุรกิจ](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
@@ -115,7 +115,7 @@ docker compose up -d
 
 ## 💪 โปรเจกต์และลิงก์ของเรา
 
-- [เริ่มต้นพัฒนาในเครื่อง](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [เริ่มต้นพัฒนาในเครื่อง](https://doc.fastgpt.io/docs/self-host/dev/)
 - [เอกสาร OpenAPI](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: บริการ Load Balancing การรวมโมเดล](https://github.com/labring/aiproxy)

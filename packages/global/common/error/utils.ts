@@ -12,6 +12,7 @@ export const getErrText = (err: any, def = ''): any => {
         err?.response?.msg ||
         err?.msg ||
         err?.error ||
+        err?.code ||
         def;
 
   if (ERROR_RESPONSE[msg]) {

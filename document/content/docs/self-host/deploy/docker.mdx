@@ -1,0 +1,405 @@
+---
+title: Docker-compose 部署
+description: 使用 Docker Compose 快速部署 FastGPT
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## 前置知识
+
+1. 基础的网络知识：端口，防火墙……
+2. Docker 和 Docker Compose 基础知识
+
+## 部署架构图
+
+![](/imgs/sealos-fastgpt.webp)
+
+<Alert icon="🤖" context="success">
+
+- MongoDB：用于存储除了向量外的各类数据
+- PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
+- AIProxy: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
+
+</Alert>
+
+## 推荐配置
+
+### PgVector版本
+
+非常轻量，适合知识库索引量在 5000 万以下。
+
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
+
+### Milvus版本
+
+对于亿级以上向量性能更优秀。
+
+[点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
+
+| 环境        | 最低配置（单节点） | 推荐配置 |
+| ----------- | ------------------ | -------- |
+| 测试        | 2c8g               | 4c16g    |
+| 100w 组向量 | 未测试             |          |
+| 500w 组向量 |                    |          |
+
+### zilliz cloud版本
+
+Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
+
+由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
+
+### SeekDB版本
+
+SeekDB 是基于 MySQL 协议的高性能向量数据库，与 OceanBase 协议完全兼容，支持高效的向量检索。
+
+| 环境                             | 最低配置（单节点） | 推荐配置     |
+| -------------------------------- | ------------------ | ------------ |
+| 测试（可以把计算进程设置少一些） | 2c4g               | 2c8g         |
+| 100w 组向量                      | 4c8g 50GB          | 4c16g 50GB   |
+| 500w 组向量                      | 8c32g 200GB        | 16c64g 200GB |
+
+<Alert icon="🤖" context="success">
+
+SeekDB 使用 MySQL 协议，与 OceanBase 完全兼容：
+- 支持 1536 维向量检索
+- 内置 HNSW 索引算法
+- 提供批量插入和查询优化
+- 自动重试和连接池管理
+
+</Alert>
+
+## 前置工作
+
+### 准备 Docker-compose 环境
+
+<Tabs items={['Linux','MacOS','Windows']}>
+  <Tab value="Linux">
+```bash
+# 安装 Docker
+curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+systemctl enable --now docker
+# 安装 docker-compose
+curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+# 验证安装
+docker -v
+docker-compose -v
+# 如失效，自行百度~
+```
+  </Tab>
+  <Tab value="MacOS">
+推荐直接使用 [Orbstack](https://orbstack.dev/)。可直接通过 Homebrew 来安装：
+
+```bash
+brew install orbstack
+```
+
+或者直接[下载安装包](https://orbstack.dev/download)进行安装。
+
+  </Tab>
+  <Tab value="Windows">
+我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
+
+可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
+
+也可以直接[在 WSL 2 中安装命令行版本的 Docker](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop)。
+
+  </Tab>
+</Tabs>
+
+## 开始部署
+
+### 1. 获取配置文件
+
+#### 方法一：使用交互式脚本部署
+
+需要在 Linux/MacOS/Windows WSL 环境下执行，引导用户选择部署环境、向量库版本，IP地址等。
+
+```bash
+bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+#### 方法二：手动下载部署
+如果部署环境为非 *nix 环境或无法访问外网，需要手动下载 `docker-compose.yml` 进行部署
+
+1. 下载 `docker-compose.yml` 文件：
+
+<details>
+<summary>点击展开查看不同数据库的 docker-compose 配置文件下载地址</summary>
+
+- **Pgvector**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
+- **Oceanbase**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.ob.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.ob.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.ob.yml)
+- **Milvus**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.milvus.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.milvus.yml)
+- **Zilliz**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+- **SeekDB**
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.seekdb.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.seekdb.yml)
+
+2. 下载 `config.json` 文件：
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+</details>
+
+下载 config.json 文件
+- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+
+### 2. 修改环境变量
+
+对于 `Zilliz 版本` 还需要获取密钥，参考 [部署 Zilliz 版本获取账号和密钥](#部署-zilliz-版本获取账号和密钥), 其他版本可直接下一步。
+
+### 3. 开放外网端口/配置域名
+
+以下端口必须被访问到：
+
+1. 3000 端口（FastGPT 主服务）
+2. 9000 端口（S3 服务）
+1. 3005 端口（FastGPT SSE MCP server 服务）
+
+### 4. 启动容器
+
+在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
+
+```bash
+# 启动容器
+docker-compose up -d
+```
+
+### 5. 访问 FastGPT
+
+可通过第二步开放的端口/域名访问 FastGPT。
+登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
+每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致）。
+
+### 6. 配置模型
+
+- 首次登录FastGPT后，系统会提示未配置`语言模型`和`索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
+- 如果系统未正常跳转，可以在`账号-模型提供商`页面，进行模型配置。[点击查看相关教程](/docs/self-host/config/model/ai-proxy)
+- 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该tab，重新打开一次即可。
+
+### 7. 按需安装系统插件
+
+从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
+
+* 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
+* 如果你的 FastGPT 无法访问插件市场，则可以手动访问[FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
+* 除了安装外，还可对工具进行排序、默认安装、标签管理等。
+
+![alt text](/imgs/image-121.png)
+
+## FAQ
+
+### FastGPT 和 FastGPT-plugin 版本对应
+
+| FastGPT-plugin 版本  |  FastGPT 主服务 |
+| ------------------- | ---------------- |
+|   0.5.x      |     >= 4.14.6         |
+|  < 0.5.0      |   < 4.14.6        |
+
+### S3 无法正常连接
+
+
+检查`STORAGE_EXTERNAL_ENDPOINT`变量，需设置成客户端和 FastGPT 服务均可访问的地址。
+
+**重要：**
+
+> 填入的地址不可为`127.0.0.1`或者`localhost`等本地回环地址，可填 Docker 部署时的宿主机本地IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
+>
+> 具体查看 [对象存储配置及常见问题](/docs/self-host/config/object-storage)
+
+### 登录系统后，浏览器无法响应
+
+无法点击任何内容，刷新也无效。此时需要删除该tab，重新打开一次即可。
+
+### Mongo 副本集自动初始化失败
+
+最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。仍无法正常启动，大部分是因为 cpu 不支持 AVX 指令集，可以切换 Mongo4.x 版本。
+
+如果是由于，无法自动初始化副本集合，可以手动初始化副本集：
+
+1. 终端中执行下面命令，创建mongo密钥：
+
+```bash
+openssl rand -base64 756 > ./mongodb.key
+chmod 600 ./mongodb.key
+# 修改密钥权限，部分系统是admin，部分是root
+chown 999:root ./mongodb.key
+```
+
+2. 修改 docker-compose.yml，挂载密钥
+
+```yml
+mongo:
+  #  image: mongo:5.0.18
+  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+  container_name: mongo
+  ports:
+    - 27017:27017
+  networks:
+    - fastgpt
+  command: mongod --keyFile /data/mongodb.key --replSet rs0
+  environment:
+    # 默认的用户名和密码，只有首次允许有效
+    - MONGO_INITDB_ROOT_USERNAME=myusername
+    - MONGO_INITDB_ROOT_PASSWORD=mypassword
+  volumes:
+    - ./mongo/data:/data/db
+    - ./mongodb.key:/data/mongodb.key
+```
+
+3. 重启服务
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+4. 进入容器执行副本集合初始化
+
+```bash
+# 查看 mongo 容器是否正常运行
+docker ps
+# 进入容器
+docker exec -it mongo bash
+
+# 连接数据库（这里要填Mongo的用户名和密码）
+mongo -u myusername -p mypassword --authenticationDatabase admin
+
+# 初始化副本集。如果需要外网访问，mongo:27017 。如果需要外网访问，需要增加Mongo连接参数：directConnection=true
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# 检查状态。如果提示 rs0 状态，则代表运行成功
+rs.status()
+```
+
+### 如何修改API地址和密钥
+
+默认是写了OneAPi的连接地址和密钥，可以通过修改`docker-compose.yml`中，fastgpt容器的环境变量实现。
+
+`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）
+`CHAT_API_KEY`（API 接口的凭证）。
+
+修改完后重启：
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+### 如何更新版本？
+
+1. 查看[更新文档](/docs/self-host/upgrading/upgrade-intruction)，确认要升级的版本，避免跨版本升级。
+2. 修改镜像 tag 到指定版本
+3. 执行下面命令会自动拉取镜像：
+
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   ```
+
+4. 执行初始化脚本（如果有）
+
+### 如何自定义配置文件？
+
+修改`config.json`文件，并执行`docker-compose down`再执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/self-host/config/json)。
+
+### 如何检查自定义配置文件是否挂载
+
+1. `docker logs fastgpt` 可以查看日志，在启动容器后，第一次请求网页，会进行配置文件读取，可以看看有没有读取成功以及有无错误日志。
+2. `docker exec -it fastgpt sh` 进入 FastGPT 容器，可以通过`ls data`查看目录下是否成功挂载`config.json`文件。可通过`cat data/config.json`查看配置文件。
+
+**可能不生效的原因**
+
+1. 挂载目录不正确
+2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
+3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
+
+### 如何检查环境变量是否正常加载
+
+1. `docker exec -it fastgpt sh` 进入 FastGPT 容器。
+2. 直接输入`env`命令查看所有环境变量。
+
+### 为什么无法连接`本地模型`镜像
+
+`docker-compose.yml`中使用了桥接的模式建立了`fastgpt`网络，如想通过0.0.0.0或镜像名访问其它镜像，需将其它镜像也加入到网络中。
+
+### 端口冲突怎么解决？
+
+docker-compose 端口定义为：`映射端口:运行端口`。
+
+桥接模式下，容器运行端口不会有冲突，但是会有映射端口冲突，只需将映射端口修改成不同端口即可。
+
+如果`容器1`需要连接`容器2`，使用`容器2:运行端口`来进行连接即可。
+
+（自行补习 docker 基本知识）
+
+### relation "modeldata" does not exist
+
+PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
+
+1. 检查数据库容器是否正常启动
+2. 非 docker 部署的，需要手动安装 pg vector 插件
+3. 查看 fastgpt 日志，有没有相关报错
+
+### Illegal instruction
+
+可能原因：
+
+1. arm架构。需要使用 Mongo 官方镜像： mongo:5.0.18
+2. cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x。把 mongo 的 image 换成: mongo:4.4.29
+
+### Operation `auth_codes.findOne()` buffering timed out after 10000ms
+
+mongo连接失败，查看mongo的运行状态**对应日志**。
+
+可能原因：
+
+1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以docker hub找个最新的4.x，修改镜像版本，重新运行）
+2. 连接数据库的环境变量填写错误（账号密码，注意host和port，非容器网络连接，需要用公网ip并加上 directConnection=true）
+3. 副本集启动失败。导致容器一直重启。
+4. `Illegal instruction.... Waiting for MongoDB to start`: cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x
+
+### 首次部署，root用户提示未注册
+
+日志会有错误提示。大概率是没有启动 Mongo 副本集模式。
+
+### 无法导出知识库、无法使用语音输入/播报
+
+没配置 SSL 证书，无权使用部分功能。
+
+### 登录提示 Network Error
+
+由于服务初始化错误，系统重启导致。
+
+- 90%是由于配置文件写不对，导致 JSON 解析报错
+- 剩下的基本是因为向量数据库连不上
+
+### 如何修改密码
+
+修改`docker-compose.yml`文件中`DEFAULT_ROOT_PSW`并重启即可，密码会自动更新。
+
+### 部署 Zilliz 版本，获取账号和密钥
+打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
+
+![zilliz_key](/imgs/zilliz_key.png)
+
+<Alert icon="🤖" context="success">
+
+1. 修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
+
+</Alert>

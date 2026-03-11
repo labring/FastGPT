@@ -12,10 +12,10 @@ function getLanguage(language: string | undefined): string {
       fullName = 'python';
       break;
     case 'js':
-      fullName = 'typescript';
+      fullName = 'javascript';
       break;
     default:
-      fullName = `typescript`;
+      fullName = `javascript`;
       break;
   }
   return fullName;

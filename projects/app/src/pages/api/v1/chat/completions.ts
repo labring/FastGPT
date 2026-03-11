@@ -398,7 +398,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const feResponseData = responseAllData
       ? flowResponses
       : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showCite });
-
     if (stream) {
       workflowResponseWrite({
         event: SseResponseEventEnum.answer,
@@ -413,10 +412,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         data: '[DONE]'
       });
 
+      // 特殊输配(data 不是{})
       if (detail) {
-        workflowResponseWrite({
+        responseWrite({
+          res,
           event: SseResponseEventEnum.flowResponses,
-          data: feResponseData
+          data: JSON.stringify(feResponseData)
         });
       }
 

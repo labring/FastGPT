@@ -1,0 +1,113 @@
+---
+title: Template Import
+description: Introduction and usage of the FastGPT template import feature
+---
+
+## Background
+
+FastGPT provides a template import feature that lets you batch-import Q&A pair data using a predefined CSV template format. This is especially useful if you already have structured Q&A data and want to quickly load it into a knowledge base.
+
+## Template Structure
+
+The template uses CSV format with the following columns:
+
+- q: Question column — stores questions users might ask
+- a: Answer column — stores the corresponding answers
+- indexes: Index column — stores related indexes for the question
+
+### Example Data
+
+```csv
+q,a,indexes
+"Who are you?","I'm an AI assistant, always here to chat with you, answer your questions, discuss topics, address everyday queries, or brainstorm creative ideas. I do my best to help using my 'knowledge brain' — I hope to be your go-to partner for exploring and learning!","1. What are you?\n2. What can you do?\n3. What kinds of questions can you answer?\n4. What kind of partner do you want to be?\n5. How do you provide help?"
+"What are you?","I'm an AI assistant, always ready to chat with users and answer their questions. I can participate in knowledge discussions, address everyday queries, and brainstorm creative ideas, providing help and companionship through my 'knowledge brain'. I hope to be a great partner for interaction and exploration.","What are you?"
+"What can you do?","I can chat with users, answer questions, participate in knowledge discussions, address everyday queries, and brainstorm creative ideas, providing help and companionship through my 'knowledge brain'.","What can you do?"
+```
+
+## Usage Instructions
+
+### 1. Open the Knowledge Base, Click Import, and Select Template Import
+
+![](/imgs/template/import.png)
+
+![](/imgs/template/box.png)
+
+### 2. Download the Template
+
+Click to download the CSV template. It contains two content modes:
+
+#### Standard Mode Template
+
+![](/imgs/template/nomal.png)
+
+Corresponding CSV format:
+
+![](/imgs/template/nomal_data.png)
+
+In standard mode, q is the content, a is empty, and indexes can have multiple entries.
+
+#### Q&A Pair Mode Template
+
+![](/imgs/template/Question-answer.png)
+
+Corresponding CSV format:
+
+![](/imgs/template/Question-answer_data.png)
+
+In Q&A pair mode, q is the question, a is the answer, and indexes are the index entries.
+
+### 3. Fill in Your Data
+
+Fill in your Q&A data following the template format:
+- Each row represents one content entry or one Q&A pair
+- The question (q) must never be empty
+- Within a row, you can add more index entries by extending columns to the right
+
+### 4. Import Limits
+
+- Only CSV format files are supported
+- Maximum file size is 100MB
+- Data must strictly follow the template format, otherwise import may fail
+- Only one file can be imported at a time
+
+After a successful import:
+
+![](/imgs/template/import_csv.png)
+
+### 4. Important Notes
+
+- Ensure the CSV file uses UTF-8 encoding
+- If content contains commas, wrap the entire value in double quotes
+- The indexes column is used as search indexes for related questions, helping improve retrieval accuracy
+- We recommend testing with a small dataset before importing large amounts of data
+
+## Best Practices
+
+1. **Data Preparation**
+   - Ensure content or Q&A pair quality — answers should be clear and accurate
+   - Add appropriate index keywords for each import entry
+   - Avoid duplicate content or Q&A pairs
+
+2. **Format Check**
+   - Verify the CSV file format before importing
+   - Ensure there are no extra blank lines or spaces
+   - Verify that special characters are properly escaped
+
+3. **Batch Import**
+   - For large datasets, import in batches
+   - Verify data correctness after each batch
+
+## FAQ
+
+Q: Why did my file import fail?
+A: Check the following:
+- Is the file format CSV?
+- Is the encoding UTF-8?
+- Does the data strictly follow the template format?
+- Does the file exceed the size limit?
+
+Q: How do I verify a successful import?
+A: After a successful import, you can:
+- Search for imported questions in the knowledge base
+- Test answer accuracy through conversations
+- Check the knowledge base data statistics

@@ -1,0 +1,33 @@
+---
+title: 'V4.14.8'
+description: 'FastGPT V4.14.8 Release Notes'
+---
+
+## Upgrade Guide
+
+### Update Images
+
+- FastGPT image tag: v4.14.8
+- FastGPT commercial image tag: v4.14.8
+- fastgpt-plugin image tag: no update needed
+- mcp_server: no update needed
+- sandbox image tag: v4.14.8
+- AIProxy: no update needed
+- mongo: no update needed
+
+## 🚀 New Features
+
+1. Upgraded Next.js to version 16 with rspack for local development, delivering 3–5× faster local development performance.
+2. Refactored the code sandbox with a unified isolation model, adding support for network requests and built-in dependency packages.
+
+## ⚙️ Improvements
+
+1. MCP JSON Schema `type` fields no longer need to be restricted to enum values.
+2. Updated the variable reference label in Knowledge Base search to use clearer, more intuitive wording.
+
+## 🐛 Bug Fixes
+
+1. New SDK compatibility: fixed errors caused by multiple connections when calling the same MCP service consecutively.
+2. Fixed incorrect ordering of text and tool outputs after saving when both are produced simultaneously.
+3. Fixed variable update logic where `$1` in input values was incorrectly replaced by a regex capture group.
+4. API Knowledge Base now returns the `title` of the uploaded file in the response; if no `title` was provided, the field is omitted.

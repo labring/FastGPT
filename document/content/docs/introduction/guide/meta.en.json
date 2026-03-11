@@ -1,0 +1,13 @@
+{
+  "title": "Features",
+  "description": "FastGPT features",
+  "pages": [
+    "course",
+    "dashboard",
+    "plugins",
+    "knowledge_base",
+    "team_permissions",
+    "DialogBoxes",
+    "admin"
+  ]
+}

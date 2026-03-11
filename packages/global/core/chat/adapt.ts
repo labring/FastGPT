@@ -23,6 +23,7 @@ import { getNanoid } from '../../common/string/tools';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
+  [ChatCompletionRequestMessageRoleEnum.Developer]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
   [ChatCompletionRequestMessageRoleEnum.Function]: ChatRoleEnum.AI,
@@ -323,6 +324,18 @@ export const GPTMessages2Chats = ({
             }
           });
         }
+        if (typeof item.content === 'string' && item.content) {
+          const lastValue = value[value.length - 1];
+          if (lastValue && lastValue.text) {
+            lastValue.text.content += item.content;
+          } else {
+            value.push({
+              text: {
+                content: item.content
+              }
+            });
+          }
+        }
         if (item.tool_calls && reserveTool) {
           // save tool calls
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
@@ -383,18 +396,6 @@ export const GPTMessages2Chats = ({
           value.push({
             interactive: item.interactive
           });
-        }
-        if (typeof item.content === 'string' && item.content) {
-          const lastValue = value[value.length - 1];
-          if (lastValue && lastValue.text) {
-            lastValue.text.content += item.content;
-          } else {
-            value.push({
-              text: {
-                content: item.content
-              }
-            });
-          }
         }
 
         return {

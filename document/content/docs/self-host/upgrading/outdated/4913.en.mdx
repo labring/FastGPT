@@ -1,0 +1,31 @@
+---
+title: V4.9.13
+description: FastGPT V4.9.13 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.9.13
+- Update FastGPT Pro image tag: v4.9.13
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+
+## New Features
+
+1. Subscription plan caching to reduce MongoDB query frequency.
+
+## Improvements
+
+1. All NodeId random value generation adjusted to avoid starting with a digit.
+2. Knowledge base collection search now supports nested search.
+
+## Bug Fixes
+
+1. Chat log date range selection issues.
+2. System prompt potentially being duplicated when passed via API calls.
+3. AI chat/tool calls reading files from history even when no file link was selected.
+4. Manually updating knowledge base indexes incorrectly deleting old indexes, causing manual indexes to become ineffective.

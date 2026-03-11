@@ -1,0 +1,73 @@
+---
+title: V4.9.2
+description: FastGPT V4.9.2 Release Notes
+---
+
+## Upgrade Guide
+
+You can skip directly to v4.9.3 — v4.9.2 has a workflow data type conversion bug.
+
+### 1. Back Up Your Database
+
+### 2. SSO Migration
+
+Pro edition users using SSO or member sync with DingTalk or WeCom need to migrate their existing SSO configuration:
+
+Refer to [SSO & External Member Sync](/docs/introduction/guide/admin/sso) for deploying and configuring the `sso-service`.
+
+1. Before upgrading images, copy and back up the existing configuration from the Pro admin panel (e.g., for WeCom, copy the AppId, Secret, etc.).
+2. Follow the documentation above to deploy the SSO service and configure the relevant environment variables.
+3. If you were previously using WeCom org structure sync, after upgrading, switch the team mode to "Sync Mode" in the Pro admin panel.
+
+### 3. Configuration Parameter Changes
+
+Rename the `systemEnv.pgHNSWEfSearch` parameter in your `config.json` file to `hnswEfSearch`.
+Pro edition users can make this change in the admin panel under `System Configuration - Basic Settings` after upgrading.
+
+### 4. Update Images
+
+- Update FastGPT image tag: v4.9.2
+- Update FastGPT Pro image tag: v4.9.2
+- Sandbox image: no update required
+- AIProxy image changed to: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.1.4
+
+## Important Updates
+
+- Knowledge base data import API changes: added optional parameters `chunkSettingMode`, `chunkSplitMode`, and `indexSize`. See the [Knowledge Base Data Import API](/docs/openapi/dataset) documentation for details.
+
+## New Features
+
+1. Knowledge base chunking optimization: supports separate configuration for chunk size and index size, allowing extra-large chunks that trade higher input tokens for complete chunks.
+2. Knowledge base chunking now includes custom separator presets and supports custom newline-based splitting.
+3. External variables renamed to Custom Variables. Now supports debugging during testing, and the variable is hidden in share links.
+4. Collection sync now supports syncing title changes.
+5. Team member management overhaul: extracted mainstream IM SSO (WeCom, Lark, DingTalk) and added support for connecting to FastGPT via custom SSO. Also improved member sync with external systems.
+6. Support for `oceanbase` vector database. Set the `OCEANBASE_URL` environment variable to enable.
+7. PDF parsing example based on mistral-ocr.
+8. PDF parsing example based on miner-u.
+
+## Improvements
+
+1. Chat log export now includes member names.
+2. Invite link UI improvements.
+3. When SSL certificate is unavailable and copy fails, a dialog is shown for manual copying.
+4. FastGPT now properly displays AI Proxy channel names even when channels are not built in.
+5. Upgraded Next.js to version 14.2.25.
+6. Workflow node array-string type now auto-adapts to string input.
+7. Workflow node array type now automatically JSON-parses string input.
+8. AI Proxy log optimization: removed retry failure logs, keeping only the final error log.
+9. Personal info and notification display improvements.
+10. Model testing loading animation improvements.
+11. Minor chunking algorithm adjustments:
+
+- Stronger continuity between cross-processing symbols.
+- Code blocks now use the LLM model context as chunk size to better preserve code block integrity.
+- Tables now use the LLM model context as chunk size to better preserve table integrity.
+
+## Bug Fixes
+
+1. Lark and Yuque knowledge bases unable to sync.
+2. Channel testing using the custom request URL instead of the channel request URL when a custom URL was configured.
+3. Speech recognition model testing unable to test disabled models.
+4. Admin-configured system plugins failing authentication when the plugin contains other system apps.
+5. Removing TTS custom request URL requiring the requestAuth field to be filled.

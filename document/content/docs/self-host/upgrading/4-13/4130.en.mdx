@@ -1,0 +1,82 @@
+---
+title: 'V4.13.0 (Environment Variable Changes)'
+description: 'FastGPT V4.13.0 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.13.0-fix
+- Update FastGPT commercial edition image tag: v4.13.0-fix
+- Update fastgpt-plugin image tag: v0.2.0-fix2
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+### 2. Update Environment Variables
+
+1. Update `fastgpt-plugin` environment variable names, and add `S3_PLUGIN_BUCKET`, `MONGODB_URI`, and `REDIS_URL` values.
+
+```
+S3_EXTERNAL_BASE_URL=https://xxx.com # S3 external URL
+S3_ENDPOINT=localhost
+S3_PORT=9000
+S3_USE_SSL=false
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_TOOL_BUCKET=fastgpt-tool # Bucket for temporary files created by system tools. Requires public read, private write.
+S3_PLUGIN_BUCKET=fastgpt-plugin # Bucket for system plugin hot-install files. Private read/write.
+RETENTION_DAYS=15 # Number of days to retain system tool temporary files
+MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin # MongoDB connection string
+REDIS_URL=redis://default:mypassword@redis:6379 # Redis connection string
+```
+
+2. Add S3-related environment variables for `fastgpt` and `fastgpt-pro (commercial edition)`.
+
+```
+# S3 external URL
+S3_EXTERNAL_BASE_URL=
+S3_ENDPOINT=localhost
+S3_PORT=9000
+S3_USE_SSL=false
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_PLUGIN_BUCKET=fastgpt-plugin # Bucket for system plugin hot-install files. Private read/write.
+```
+
+## New Features
+
+1. New HTTP Toolset type for apps, replacing the previous HTTP Plugin.
+2. System administrators can now quickly install system tools via file upload.
+3. Team administrators can assign model permissions.
+4. Code execution node supports AI-assisted code generation.
+5. Knowledge base file parsing now supports configuring maximum concurrency. (Open-source edition: configure via `systemEnv.datasetParseMaxProcess` in config.json. Commercial edition: configure via the admin dashboard.)
+
+## Improvements
+
+1. System tools now display the corresponding author name, with safe i18n translations.
+2. Metered billing push and merge logic.
+3. Node details in chat history are now stored in a separate table.
+4. Removed invalid `dataId` index from `chat_items`.
+5. Workflow UI performance improvements to reduce unnecessary re-renders.
+6. Knowledge base citation authentication in chats now applies to the entire conversation instead of individual messages.
+7. Improved UX for dynamic input/output variables in workflows.
+
+## Bug Fixes
+
+1. Global variables not passed in debug mode.
+2. Parameters from upstream nodes not passed to downstream nodes in debug mode.
+3. In debug mode, enabling "Auto Execute" would skip external variable input.
+4. Auto voice reply not working.
+5. Error capture configuration lost when copying nodes.
+6. "Suggested Questions" custom prompt: previous values were cleared on save.
+7. Knowledge base image URLs assembled incorrectly when a secondary route was configured.
+8. Prompt editor cleared Markdown formatting during keyboard input.
+9. Knowledge base collection page did not auto-refresh when training data was present.
+10. Workflow quick-add node popup showed empty toolbox on second open.
+11. PPTX file parsing order was incorrect.
+
+## Plugin Updates
+
+1. Added Volcengine Fusion Information Search tool.

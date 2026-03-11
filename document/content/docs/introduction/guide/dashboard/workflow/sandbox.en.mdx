@@ -1,0 +1,96 @@
+---
+title: Code Execution
+description: FastGPT Code Execution node overview
+---
+
+![alt text](/imgs/image.png)
+
+## Function
+
+Runs simple JavaScript code for complex data processing. Code executes in a sandbox with no access to network requests, DOM, or async operations. For advanced use cases, use an HTTP node instead.
+
+**Important Notes**
+
+- Self-hosted users must deploy the `fastgpt-sandbox` image and set the `SANDBOX_URL` environment variable.
+- The sandbox enforces a 10-second max runtime and 32 MB memory limit.
+
+## Variable Input
+
+Add the variables your code needs via custom inputs. In the code's `main` function, destructure them by matching name.
+
+As shown above, the custom inputs include `data1` and `data2`, which can be destructured with the same names in the `main` function.
+
+## Result Output
+
+You must return an object.
+
+In custom outputs, add variable names to retrieve values from the corresponding object keys. For example, the image above returns:
+
+```json
+{
+  result: data1,
+  data2
+}
+```
+
+This object has 2 keys: `result` and `data2` (JS shorthand where key = data2, value = data2). You can then add 2 custom output variables to access the values under each key.
+
+## Built-in JS Global Variables
+
+### delay
+
+Returns after a 1-second delay:
+
+```js
+async function main({data1, data2}){
+    await delay(1000)
+    return {
+        result: "111"
+    }
+}
+```
+
+### countToken
+
+```js
+function main({input}){
+    return {
+        result: countToken(input)
+    }
+}
+```
+
+![alt text](/imgs/image-1.png)
+
+### strToBase64 (added in v4.8.11)
+
+Useful for converting SVG images to base64 format for display.
+
+```js
+function main({input}){
+
+    return {
+        /*
+            param1: input - the string to convert
+            param2: base64 prefix
+        */
+        result: strToBase64(input,'data:image/svg+xml;base64,')
+    }
+}
+```
+
+![alt text](/imgs/image-2.png)
+
+### createHmac
+
+Works the same as Node.js crypto's `createHmac` method.
+
+```js
+function main({secret}){
+    const {sign,timestamp} = createHmac('sha256',secret)
+
+    return {
+        sign,timestamp
+    }
+}
+```

@@ -1,0 +1,14 @@
+{
+  "title": "User Guide",
+  "root": true,
+  "pages": [
+    "---Tutorials---",
+    "index",
+    "...guide",
+    "---Editions---",
+    "cloud",
+    "commercial",
+    "opensource"
+  ],
+  "order": 1
+}

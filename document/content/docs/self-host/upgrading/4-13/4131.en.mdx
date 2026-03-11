@@ -1,0 +1,40 @@
+---
+title: 'V4.13.1'
+description: 'FastGPT V4.13.1 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.13.1
+- Update FastGPT commercial edition image tag: v4.13.1
+- Update fastgpt-plugin image tag: v0.2.2
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+## New Features
+
+1. Added response size limit for HTTP requests.
+
+## Improvements
+
+1. When copying an app, the avatar is now duplicated to avoid sharing the same image link, which previously caused one app's avatar to disappear when the other's was updated.
+2. Markdown parser now handles Windows paths correctly, preventing `\` from being treated as an escape character.
+
+## Bug Fixes
+
+1. In loop nodes, the previous round's interactive response value was not cleared at the end of each iteration.
+2. After an interactive node responded, chat record statistics were not updated.
+3. Prompt editor displayed incorrect default values in popups.
+4. Form input fields with `.` in the variable name could not accept values properly.
+5. When calling a sub-workflow, auto-flow knowledge base citations were not displayed in share links.
+
+## Plugin Updates
+
+1. Base64 decode tool now supports conversion to both text and images.
+2. Moji Weather tool.
+3. Biyou PPT generation tool.
+4. Configurable maximum request body size and internal network request maximum response size to prevent memory overflow from oversized responses.
+5. Added model presets for Claude 4.5, Qwen3, Kimi2, and DeepSeek 3.2.

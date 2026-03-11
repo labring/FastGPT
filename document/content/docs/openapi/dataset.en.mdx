@@ -1,0 +1,1305 @@
+---
+title: Dataset API
+description: FastGPT OpenAPI Dataset API
+---
+
+| How to Get Dataset ID (datasetId) | How to Get Collection ID (collection_id) |
+| ----------------------------- | ----------------------------------- |
+| ![](/imgs/getDatasetId.jpg)   | ![](/imgs/getfile_id.webp)          |
+
+## Create Training Order
+
+<Tabs items={['Request Example','Response Example']}>
+  <Tab value="Request Example" >
+
+**New Example**
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/createTrainingUsage' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "datasetId": "Dataset ID",
+    "name": "Optional, custom order name, e.g.: Document Training-fastgpt.docx"
+}'
+```
+
+  </Tab>
+  <Tab value="Response Example" >
+
+data is the billId, which can be used for bill aggregation when adding dataset data.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": "65112ab717c32018f4156361"
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Dataset
+
+### Create a Dataset
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "parentId": null,
+  "type": "dataset",
+  "name":"测试",
+  "intro":"介绍",
+  "avatar": "",
+  "vectorModel": "text-embedding-ada-002",
+  "agentModel": "gpt-3.5-turbo-16k",
+  "vlmModel": "gpt-4.1"
+}'
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+
+- parentId - Parent ID for building directory structure. Usually can be null or omitted.
+- type - `dataset` or `folder`, represents regular dataset or folder. If not provided, creates a regular dataset.
+- name - Dataset name (required)
+- intro - Description (optional)
+- avatar - Avatar URL (optional)
+- vectorModel - Vector model (recommended to leave empty, use system default)
+- agentModel - Text processing model (recommended to leave empty, use system default)
+- vlmModel - Image understanding model (recommended to leave empty, use system default)
+
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": "65abc9bd9d1448617cba5e6c"
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Get Dataset List
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/list?parentId=' \
+--header 'Authorization: Bearer xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "parentId":""
+}'
+```
+
+  </Tab>
+  <Tab value="Parameters">
+
+<div>
+- parentId - Parent ID. Pass empty string or null to get datasets in the root directory
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": [
+    {
+      "_id": "65abc9bd9d1448617cba5e6c",
+      "parentId": null,
+      "avatar": "",
+      "name": "测试",
+      "intro": "",
+      "type": "dataset",
+      "permission": "private",
+      "canWrite": true,
+      "isOwner": true,
+      "vectorModel": {
+        "model": "text-embedding-ada-002",
+        "name": "Embedding-2",
+        "charsPointsPrice": 0,
+        "defaultToken": 512,
+        "maxToken": 8000,
+        "weight": 100
+      }
+    }
+  ]
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Get Dataset Details
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=6593e137231a2be9c5603ba7' \
+--header 'Authorization: Bearer {{authorization}}' \
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+- id: Dataset ID
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "_id": "6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "teamId": "65422be6aa44b7da77729ec8",
+    "tmbId": "65422be6aa44b7da77729ec9",
+    "type": "dataset",
+    "status": "active",
+    "avatar": "/icon/logo.svg",
+    "name": "FastGPT test",
+    "vectorModel": {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "weight": 100
+    },
+    "agentModel": {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "FastAI-16k",
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "charsPointsPrice": 0
+    },
+    "intro": "",
+    "permission": "private",
+    "updateTime": "2024-01-02T10:11:03.084Z",
+    "canWrite": true,
+    "isOwner": true
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Delete a Dataset
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?id=65abc8729d1448617cba5df6' \
+--header 'Authorization: Bearer {{authorization}}' \
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+- id: Dataset ID
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Collection
+
+### Common Creation Parameters (Must Read)
+
+**Request**
+
+| Parameter        | Description                                                                                                        | Required |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | ---- |
+| datasetId        | Dataset ID                                                                                                    | ✅   |
+| parentId：       | Parent ID. Defaults to root directory if not provided                                                                                  |      |
+| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                      | ✅   |
+| indexPrefixTitle | Whether to auto-generate title index                                                                                        |      |
+| customPdfParse | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                             |      |
+| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                              |      |
+| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                          |      |
+| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                      |      |
+| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                           |      |
+| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                        |      |
+| indexSize        | Index size, default 512, must be less than index model max token. Ineffective when chunkSettingMode=auto.                              |      |
+| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |      |
+| qaPrompt         | QA split prompt                                                                                                |      |
+| tags             | Collection tags (string array)                                                                                      |      |
+| createTime       | File creation time (Date / String)                                                                               |      |
+
+**Response**
+
+- collectionId - New collection ID
+- insertLen：Number of inserted chunks
+
+### Create an Empty Collection
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "name":"测试",
+    "type":"virtual",
+    "metadata":{
+      "test":111
+    }
+}'
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+- datasetId: Dataset ID(Required)
+- parentId： Parent ID. Defaults to root directory if not provided
+- name: Collection name (required)
+- type:
+  - folder：Folder
+  - virtual: Virtual collection (manual collection)
+- metadata： Metadata (not currently used)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": "65abcd009d1448617cba5ee1"
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Create a Text Collection
+
+Pass in text to create a collection. The text will be split accordingly.
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/text' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "text":"xxxxxxxx",
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "name":"测试训练",
+
+    "trainingType": "qa",
+    "chunkSettingMode": "auto",
+    "qaPrompt":"",
+
+    "metadata":{}
+}'
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+- text: Original text
+- datasetId: Dataset ID(Required)
+- parentId： Parent ID. Defaults to root directory if not provided
+- name: Collection name (required)
+- metadata： Metadata (not currently used)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abcfab9d1448617cba5f0d",
+    "results": {
+      "insertLen": 5, // Split into how many segments
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Create a Link Collection
+
+Pass in a web link to create a collection. Content will be fetched from the webpage first, then split.
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/link' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "link":"https://doc.fastgpt.io/docs/course/quick-start/",
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "parentId": null,
+
+    "trainingType": "chunk",
+    "chunkSettingMode": "auto",
+    "qaPrompt":"",
+
+    "metadata":{
+        "webPageSelector":".docs-content"
+    }
+}'
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+- link: Web link
+- datasetId: Dataset ID(Required)
+- parentId： Parent ID. Defaults to root directory if not provided
+- metadata.webPageSelector: Web page selector to specify which element to use as text (optional)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abd0ad9d1448617cba6031",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Create a File Collection
+
+Pass in a file to create a collection. File content will be read and split. Currently supports: pdf, docx, md, txt, html, csv.
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+When uploading via code, note that Chinese filenames need to be encoded to avoid garbled text.
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/localFile' \
+--header 'Authorization: Bearer {{authorization}}' \
+--form 'file=@"C:\\Users\\user\\Desktop\\fastgpt测试File\\index.html"' \
+--form 'data="{\"datasetId\":\"6593e137231a2be9c5603ba7\",\"parentId\":null,\"trainingType\":\"chunk\",\"chunkSize\":512,\"chunkSplitter\":\"\",\"qaPrompt\":\"\",\"metadata\":{}}"'
+```
+
+  </Tab>
+  <Tab value="Parameters" >
+
+<div>
+Use POST form-data format for upload. Contains file and data fields.
+
+- file: File
+- data: Dataset-related info (pass as serialized JSON). See "Common Creation Parameters" above
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abc044e4704bac793fbd81",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Create an API Collection
+
+Pass in a file ID to create a collection. File content will be read and split. Currently supports: pdf, docx, md, txt, html, csv.
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+<Tab value="Request Example" >
+
+When uploading via code, note that Chinese filenames need to be encoded to avoid garbled text.
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/apiCollection' \
+--header 'Authorization: Bearer fastgpt-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "A Quick Guide to Building a Discord Bot.pdf",
+  "apiFileId":"A Quick Guide to Building a Discord Bot.pdf",
+
+  "datasetId": "674e9e479c3503c385495027",
+  "parentId": null,
+
+  "trainingType": "chunk",
+  "chunkSize":512,
+  "chunkSplitter":"",
+  "qaPrompt":""
+}'
+```
+
+</Tab>
+<Tab value="Parameters" >
+
+<div>
+Use POST form-data format for upload. Contains file and data fields.
+
+- name: Collection name, recommended to use filename, required.
+- apiFileId: File ID, required.
+- datasetId: Dataset ID(Required)
+- parentId： Parent ID. Defaults to root directory if not provided
+- trainingType:Training mode (required)
+- chunkSize: Length of each chunk (optional). chunk mode: 100~3000; qa mode: 4000~model max token (16k models usually recommended not to exceed 10000)
+- chunkSplitter: Custom highest priority split symbol (optional)
+- qaPrompt: QA split custom prompt (optional)
+</div>
+
+</Tab>
+
+<Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "65abc044e4704bac793fbd81",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
+  }
+}
+```
+
+</Tab>
+</Tabs>
+
+### Create an External File Collection (Commercial)
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/externalFileUrl' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'User-Agent: Apifox/1.0.0 (https://apifox.com)' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "externalFileUrl":"https://image.xxxxx.com/fastgpt-dev/%E6%91%82.pdf",
+    "externalFileId":"1111",
+    "createTime": "2024-05-01T00:00:00.000Z",
+    "filename":"自定义File名.pdf",
+    "datasetId":"6642d105a5e9d2b00255b27b",
+    "parentId": null,
+    "tags": ["tag1","tag2"],
+
+    "trainingType": "chunk",
+    "chunkSize":512,
+    "chunkSplitter":"",
+    "qaPrompt":""
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+| Parameter       | Description                                 | Required |
+| --------------- | ------------------------------------ | ---- |
+| externalFileUrl | File access URL (can be temporary)       | ✅   |
+| externalFileId  | External file ID                           |      |
+| filename        | Custom filename with extension             |      |
+| createTime      | File creation time (Date or ISO string both ok) |      |
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+data is the collection ID.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "6646fcedfabd823cdc6de746",
+    "results": {
+      "insertLen": 1,
+      "overToken": [],
+      "repeat": [],
+      "error": []
+    }
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Get Collection List
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/listV2' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "offset":0,
+    "pageSize": 10,
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "searchText":""
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- offset: Offset
+- pageSize: Items per page, max 30 (optional)
+- datasetId: Dataset ID(Required)
+- parentId: Parent ID (optional)
+- searchText: Fuzzy search text (optional)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "_id": "6593e137231a2be9c5603ba9",
+        "parentId": null,
+        "tmbId": "65422be6aa44b7da77729ec9",
+        "type": "virtual",
+        "name": "Manual entry",
+        "updateTime": "2099-01-01T00:00:00.000Z",
+        "dataAmount": 3,
+        "trainingAmount": 0,
+        "externalFileId": "1111",
+        "tags": ["11", "测试的"],
+        "forbid": false,
+        "trainingType": "chunk",
+        "permission": {
+          "value": 4294967295,
+          "isOwner": true,
+          "hasManagePer": true,
+          "hasWritePer": true,
+          "hasReadPer": true
+        }
+      },
+      {
+        "_id": "65abd0ad9d1448617cba6031",
+        "parentId": null,
+        "tmbId": "65422be6aa44b7da77729ec9",
+        "type": "link",
+        "name": "快速上手 | FastGPT",
+        "rawLink": "https://doc.fastgpt.io/docs/course/quick-start/",
+        "updateTime": "2024-01-20T13:54:53.031Z",
+        "dataAmount": 3,
+        "trainingAmount": 0,
+        "externalFileId": "222",
+        "tags": ["测试的"],
+        "forbid": false,
+        "trainingType": "chunk",
+        "permission": {
+          "value": 4294967295,
+          "isOwner": true,
+          "hasManagePer": true,
+          "hasWritePer": true,
+          "hasReadPer": true
+        }
+      }
+    ],
+    "total": 93
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Get Collection Details
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/dataset/collection/detail?id=65abcfab9d1448617cba5f0d' \
+--header 'Authorization: Bearer {{authorization}}' \
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- id: Collection ID
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "_id": "65abcfab9d1448617cba5f0d",
+    "parentId": null,
+    "teamId": "65422be6aa44b7da77729ec8",
+    "tmbId": "65422be6aa44b7da77729ec9",
+    "datasetId": {
+      "_id": "6593e137231a2be9c5603ba7",
+      "parentId": null,
+      "teamId": "65422be6aa44b7da77729ec8",
+      "tmbId": "65422be6aa44b7da77729ec9",
+      "type": "dataset",
+      "status": "active",
+      "avatar": "/icon/logo.svg",
+      "name": "FastGPT test",
+      "vectorModel": "text-embedding-ada-002",
+      "agentModel": "gpt-3.5-turbo-16k",
+      "intro": "",
+      "permission": "private",
+      "updateTime": "2024-01-02T10:11:03.084Z"
+    },
+    "type": "virtual",
+    "name": "测试训练",
+    "trainingType": "qa",
+    "chunkSize": 8000,
+    "chunkSplitter": "",
+    "qaPrompt": "11",
+    "rawTextLength": 40466,
+    "hashRawText": "47270840614c0cc122b29daaddc09c2a48f0ec6e77093611ab12b69cba7fee12",
+    "createTime": "2024-01-20T13:50:35.838Z",
+    "updateTime": "2024-01-20T13:50:35.838Z",
+    "canWrite": true,
+    "sourceName": "测试训练"
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Update Collection Info
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+**Update Collection Info by Collection ID**
+
+```bash
+curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "id":"65abcfab9d1448617cba5f0d",
+    "parentId": null,
+    "name": "测2222试",
+    "tags": ["tag1", "tag2"],
+    "forbid": false,
+    "createTime": "2024-01-01T00:00:00.000Z"
+}'
+```
+
+**Update Collection Info by External File ID**， Just replace id with datasetId and externalFileId.
+
+```bash
+curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "externalFileId":"1111",
+    "parentId": null,
+    "name": "测2222试",
+    "tags": ["tag1", "tag2"],
+    "forbid": false,
+    "createTime": "2024-01-01T00:00:00.000Z"
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- id: Collection ID
+- parentId: Update parent ID (optional)
+- name: Update collection name (optional)
+- tags: Update collection tags (optional)
+- forbid: Update collection disabled status (optional)
+- createTime: Update collection creation time (optional)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Delete a Collection
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/delete' \
+--header 'Authorization: Bearer fastgpt-' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "collectionIds": ["65a8cdcb0d70d3de0bf08d0a"]
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- collectionIds: Collection ID list
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Data
+
+### Data Structure
+
+**Data Structure**
+
+| Field          | Type    | Description     | Required |
+| ------------- | ------- | -------- | ---- |
+| teamId        | String  | Team ID   | ✅   |
+| tmbId         | String  | Member ID   | ✅   |
+| datasetId     | String  | Dataset ID | ✅   |
+| collectionId  | String  | CollectionID   | ✅   |
+| q             | String  | Primary data | ✅   |
+| a             | String  | Auxiliary data | ✖   |
+| fullTextToken | String  | Tokenization     | ✖   |
+| indexes       | Index[] | Vector indexes | ✅   |
+| updateTime    | Date    | Update time | ✅   |
+| chunkIndex    | Number  | Chunk index | ✖   |
+
+**Index Structure**
+
+Maximum 5 custom indexes per data group
+
+| Field   | Type   | Description                                                                                                   | Required |
+| ------ | ------ | ------------------------------------------------------------------------------------------------------ | ---- |
+| type   | String | Optional index types: default-default index; custom-custom index; summary-summary index; question-question index; image-image index |      |
+| dataId | String | Associated vector ID. Pass this ID when updating data for incremental updates instead of full updates                                    |      |
+| text   | String | Text content                                                                                               | ✅   |
+
+`type` If not provided, defaults to `custom` index. A default index will also be created based on q/a. If a default index is provided, no additional one will be created.
+
+### Batch Add Data to Collection
+
+Note: Maximum 200 data groups per push.
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/data/pushData' \
+--header 'Authorization: Bearer apikey' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "collectionId": "64663f451ba1676dbdef0499",
+    "trainingType": "chunk",
+    "prompt": "Optional. QA split guide prompt, ignored in chunk mode",
+    "billId": "可选。如果有这个值，本次的Data会被聚合到一个订单中，这个值可以重复使用。可以参考 [Create Training Order] 获取该值。",
+    "data": [
+        {
+            "q": "Who are you?",
+            "a": "I'm FastGPT Assistant"
+        },
+        {
+            "q": "What can you do?",
+            "a": "I can do anything",
+            "indexes": [
+                {
+                    "text":"Custom index 1"
+                },
+                {
+                    "text":"Custom index 2"
+                }
+            ]
+        }
+    ]
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- collectionId: Collection ID (required)
+- trainingType:Training mode (required)
+- prompt: Custom QA split prompt. Must follow template strictly. Recommended not to pass. (optional)
+- data：(Specific data)
+
+  - q: Primary data（Required）
+  - a: Auxiliary data (optional)
+  - indexes: Custom indexes (optional). Can omit or pass empty array. By default, an index will be created from q and a.
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "data": {
+    "insertLen": 1, // Final number of successful insertions
+    "overToken": [], // Exceeding token
+    "repeat": [], // Number of duplicates
+    "error": [] // Other errors
+  }
+}
+```
+
+  </Tab>
+
+  <Tab value="QA Prompt Template" >
+
+[theme] content can be replaced with the data theme. Default: They may contain multiple theme contents
+
+```
+I'll give you a text, [theme], learn it, and organize the learning results, requirements:
+1. Propose up to 25 questions.
+2. Provide answers to each question.
+3. Answers should be detailed and complete, and can include plain text, links, code, tables, formulas, media links, and other markdown elements.
+4. Return multiple questions and answers in format:
+
+Q1: Question.
+A1: Answer.
+Q2:
+A2:
+……
+
+My text:"""{{text}}"""
+```
+
+  </Tab>
+
+</Tabs>
+
+### Get Collection Data List
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/list' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "offset": 0,
+    "pageSize": 10,
+    "collectionId":"65abd4ac9d1448617cba6171",
+    "searchText":""
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- offset: Offset (optional)
+- pageSize: Items per page, max 30 (optional)
+- collectionId: Collection ID（Required）
+- searchText: Fuzzy search term (optional)
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "list": [
+      {
+        "_id": "65abd4b29d1448617cba61db",
+        "datasetId": "65abc9bd9d1448617cba5e6c",
+        "collectionId": "65abd4ac9d1448617cba6171",
+        "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "a": "",
+        "chunkIndex": 0
+      },
+      {
+        "_id": "65abd4b39d1448617cba624d",
+        "datasetId": "65abc9bd9d1448617cba5e6c",
+        "collectionId": "65abd4ac9d1448617cba6171",
+        "q": "本白皮书重点从 AIGC 技术、应用和治理等维度进行了阐述。在技术层面，梳理提出了 AIGC 技术体系，既涵盖了对现实世界各种内容的数字化呈现和增强，也包括了基于人工智能的自主内容创作。在应用层面，重点分析了 AIGC 在传媒、电商、影视等行业和场景的应用情况，探讨了以虚拟数字人、写作机器人等为代表的新业态和新应用。在治理层面，从政策监管、技术能力、企业应用等视角，分析了AIGC 所暴露出的版权纠纷、虚假信息传播等各种Question.最后，从政府、行业、企业、社会等层面，给出了 AIGC 发展和治理建议。由于人工智能仍处于飞速发展阶段，我们对 AIGC 的认识还有待进一步深化，白皮书中存在不足之处，敬请大家批评指正。目 录一、 人工智能生成内容的发展历程与概念.............................................................. 1（一）AIGC 历史沿革 .......................................................................................... 1（二）AIGC 的概念与内涵 .................................................................................. 4二、人工智能生成内容的技术体系及其演进方向.................................................... 7（一）AIGC 技术升级步入深化阶段 .................................................................. 7（二）AIGC 大模型架构潜力凸显 .................................................................... 10（三）AIGC 技术演化出三大前沿能力 ............................................................ 18三、人工智能生成内容的应用场景.......................................................................... 26（一）AIGC+传媒：人机协同生产，",
+        "a": "",
+        "chunkIndex": 1
+      }
+    ],
+    "total": 63
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Get Single Data Details
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detail?id=65abd4b29d1448617cba61db' \
+--header 'Authorization: Bearer {{authorization}}' \
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- id: Data ID
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "id": "65abd4b29d1448617cba61db",
+    "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+    "a": "",
+    "chunkIndex": 0,
+    "indexes": [
+      {
+        "type": "default",
+        "dataId": "3720083",
+        "text": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "_id": "65abd4b29d1448617cba61dc"
+      }
+    ],
+    "datasetId": "65abc9bd9d1448617cba5e6c",
+    "collectionId": "65abd4ac9d1448617cba6171",
+    "sourceName": "中文-AIGC白皮书2022.pdf",
+    "sourceId": "65abd4ac9d1448617cba6166",
+    "isOwner": true,
+    "canWrite": true
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Update Single Data
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/update' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dataId":"65abd4b29d1448617cba61db",
+    "q":"Test 111",
+    "a":"sss",
+    "indexes":[
+        {
+            "dataId": "xxxx",
+            "type": "default",
+            "text": "Default index"
+        },
+        {
+            "dataId": "xxx",
+            "type": "custom",
+            "text": "旧的Custom index 1"
+        },
+        {
+            "type":"custom",
+            "text":"New custom index"
+        }
+    ]
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- dataId: Data ID
+- q: Primary data (optional)
+- a: Auxiliary data (optional)
+- indexes: Custom indexes (optional). See `Batch Add Data to Collection` for types. If custom indexes exist when created,
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": null
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Delete Single Data
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/delete?id=65abd4b39d1448617cba624d' \
+--header 'Authorization: Bearer {{authorization}}' \
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- id: Data ID
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": "success"
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Search Test
+
+<Tabs items={['Request Example','Parameters','Response Example']}>
+  <Tab value="Request Example" >
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTest' \
+--header 'Authorization: Bearer fastgpt-xxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "datasetId": "Dataset ID",
+    "text": "Who is the director",
+    "limit": 5000,
+    "similarity": 0,
+    "searchMode": "embedding",
+    "usingReRank": false,
+
+    "datasetSearchUsingExtensionQuery": true,
+    "datasetSearchExtensionModel": "gpt-5",
+    "datasetSearchExtensionBg": ""
+}'
+```
+
+  </Tab>
+
+  <Tab value="Parameters" >
+
+<div>
+- datasetId - Dataset ID
+- text - Text to test
+- limit - Maximum tokens
+- similarity - Minimum similarity (0~1, optional)
+- searchMode - Search mode: embedding | fullTextRecall | mixedRecall
+- usingReRank - Use rerank
+- datasetSearchUsingExtensionQuery - Use query extension
+- datasetSearchExtensionModel - Query extension model
+- datasetSearchExtensionBg - Query extension background description
+</div>
+
+  </Tab>
+
+  <Tab value="Response Example" >
+
+Returns top k results. limit is the maximum tokens, up to 20000 tokens.
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "data": [
+    {
+        "id": "65599c54a5c814fb803363cb",
+        "q": "你是谁",
+        "a": "I'm FastGPT Assistant",
+        "datasetId": "6554684f7f9ed18a39a4d15c",
+        "collectionId": "6556cd795e4b663e770bb66d",
+        "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
+        "sourceId": "6556cd775e4b663e770bb65c",
+        "score": 0.8050316572189331
+    },
+    ......
+  ]
+}
+```
+
+  </Tab>
+</Tabs>

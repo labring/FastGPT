@@ -1,5 +1,6 @@
 import { type preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
+import { type MongoImageSchemaType } from '@fastgpt/global/common/file/image/type';
 import { MongoImage } from './schema';
 import { type ClientSession, Types } from '../../../common/mongo';
 import { guessBase64ImageType } from './utils';
@@ -48,7 +49,7 @@ export async function uploadMongoImg({
     return Promise.reject(new UserError(`Invalid image file type: ${mime}`));
   }
 
-  const { _id } = await retryFn(() =>
+  const { _id } = await retryFn<MongoImageSchemaType>(() =>
     MongoImage.create({
       teamId,
       binary,

@@ -1171,7 +1171,6 @@ const ChatBox = ({
 
     return result;
   }, [chatType, chatRecords, expandedDeletedGroups]);
-
   //chat history
   const hasPlanCheck =
     lastInteractive?.type === 'agentPlanCheck' && !lastInteractive.params.confirmed;

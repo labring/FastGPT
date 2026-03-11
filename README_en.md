@@ -24,7 +24,7 @@ FastGPT is an AI Agent building platform that provides out-of-the-box capabiliti
   <a href="https://doc.fastgpt.io/docs/introduction">
     <img height="21" src="https://img.shields.io/badge/Documentation-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/docs/introduction/development/intro">
+  <a href="https://doc.fastgpt.io/docs/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/Local_Development-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-our-projects--links">
@@ -47,7 +47,7 @@ docker compose up -d
 
 After fully started, you can access FastGPT at `http://localhost:3000`. The default account is `root` and the password is `1234`.
 
-If you encounter any issues, you can [view the complete Docker deployment tutorial](https://doc.fastgpt.io/docs/introduction/development/docker)
+If you encounter any issues, you can [view the complete Docker deployment tutorial](https://doc.fastgpt.io/docs/self-host/deploy/docker)
 
 ## 🛸 Usage
 
@@ -55,7 +55,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
   If you don't need private deployment, you can directly use our cloud service at: [fastgpt.io](https://fastgpt.io/)
 
 - **Community Self-Hosted Version**  
-  You can quickly deploy using [Docker](https://doc.fastgpt.io/docs/introduction/development/docker) or use [Sealos Cloud](https://doc.fastgpt.io/docs/introduction/development/sealos) to deploy FastGPT with one click.
+  You can quickly deploy using [Docker](https://doc.fastgpt.io/docs/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/docs/self-host/deploy/sealos) to deploy FastGPT with one click.
 
 - **Commercial Version**  
   If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/docs/introduction/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
@@ -115,7 +115,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 
 ## 💪 Our Projects & Links
 
-- [Quick Start Local Development](https://doc.fastgpt.io/docs/introduction/development/intro/)
+- [Quick Start Local Development](https://doc.fastgpt.io/docs/self-host/dev/)
 - [OpenAPI Documentation](https://doc.fastgpt.io/docs/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)

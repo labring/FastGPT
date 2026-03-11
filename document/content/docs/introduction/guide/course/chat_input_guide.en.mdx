@@ -1,0 +1,50 @@
+---
+title: Chat Input Guide
+description: FastGPT chat input guide
+---
+
+![](/imgs/questionGuide.png)
+
+## What is Custom Question Guidance?
+
+You can preset questions for your app. As users type, the system dynamically searches these questions based on their input and displays them as suggestions, helping users ask questions faster.
+
+You can configure the question list directly in FastGPT or provide a custom API endpoint.
+
+## Custom Question List API
+
+The endpoint must be accessible from the user's browser.
+
+**Request:**
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=you'
+```
+
+Where `appId` is the application ID and `searchKey` is the search keyword (max 50 characters).
+
+**Response**
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": [
+    "it's you",
+    "who are you",
+    "you're great",
+    "hello there",
+    "who are you!",
+    "hello"
+  ]
+}
+```
+
+`data` is an array of matched questions. Return at most 5 results.
+
+
+**Parameters:**
+
+- appId - Application ID
+- searchKey - Search keyword

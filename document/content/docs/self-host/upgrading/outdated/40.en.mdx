@@ -1,0 +1,64 @@
+---
+title: V4.0
+description: Upgrade guide from older versions to FastGPT V4.0
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+If you are **upgrading from an older version to V4**, the MongoDB schema has changed significantly. You'll need to run the initialization scripts described below.
+
+## Rename Collections
+
+Connect to your MongoDB database and run these two commands:
+
+```js
+db.models.renameCollection('apps');
+db.sharechats.renameCollection('outlinks');
+```
+
+<Alert context="warning">
+  Note: When upgrading from an older version to V4, MongoDB will automatically create empty collections with these names. You need to manually drop those empty collections first before running the commands above.
+</Alert>
+
+## Initialize Fields in Several Collections
+
+Run the following 3 commands sequentially. They may take a while to complete. If a command fails, you can safely re-run it (already-initialized records will be skipped) until all data has been updated.
+
+```js
+db.chats.find({ appId: { $exists: false } }).forEach(function (item) {
+  db.chats.updateOne(
+    {
+      _id: item._id
+    },
+    { $set: { appId: item.modelId } }
+  );
+});
+
+db.collections.find({ appId: { $exists: false } }).forEach(function (item) {
+  db.collections.updateOne(
+    {
+      _id: item._id
+    },
+    { $set: { appId: item.modelId } }
+  );
+});
+
+db.outlinks.find({ shareId: { $exists: false } }).forEach(function (item) {
+  db.outlinks.updateOne(
+    {
+      _id: item._id
+    },
+    { $set: { shareId: item._id.toString(), appId: item.modelId } }
+  );
+});
+```
+
+## Initialization APIs
+
+Deploy the new version, then send 3 HTTP requests (remember to include `headers.rootkey` — this value comes from your environment variables):
+
+1. https://xxxxx/api/admin/initv4
+2. https://xxxxx/api/admin/initChat
+3. https://xxxxx/api/admin/initOutlink
+
+Requests 1 and 2 may crash due to insufficient memory. If that happens, simply re-run them.

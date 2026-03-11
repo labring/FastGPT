@@ -4,8 +4,8 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { S3Buckets } from '@fastgpt/service/common/s3/constants';
 import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
-import { runCode } from '@fastgpt/service/core/workflow/dispatch/tools/codeSandbox';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
+import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 
 export const instrumentationCheck = async () => {
   const logger = getLogger(LogCategories.SYSTEM);
@@ -50,13 +50,11 @@ export const instrumentationCheck = async () => {
   }
   // sandbox
   try {
-    await runCode({
+    await codeSandbox.runCode({
       codeType: SandboxCodeTypeEnum.py,
       code: `def main():
     print("Hello, World!")
-    return {
-    }
-`,
+    return {}`,
       variables: {}
     });
   } catch (error) {

@@ -12,7 +12,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
-  # @see https://doc.fastgpt.cn/docs/introduction/development/object-storage
+  # @see https://doc.fastgpt.cn/docs/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -185,7 +185,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.7.1 # git
+    image: ghcr.io/labring/fastgpt:v4.14.8 # git
     ports:
       - 3000:3000
     networks:
@@ -237,13 +237,13 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.7
+    image: ghcr.io/labring/fastgpt-sandbox:v4.14.8
     networks:
       - fastgpt
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.6
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.8
     networks:
       - fastgpt
     ports:

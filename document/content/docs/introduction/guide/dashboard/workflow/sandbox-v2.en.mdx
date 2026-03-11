@@ -1,0 +1,391 @@
+---
+title: Code Run
+description: FastGPT Code Run node documentation (for version 4.14.8 and above)
+---
+
+> This document applies to FastGPT **version 4.14.8 and above**. For version 4.14.7 and earlier, see [Code Run (Deprecated)](/docs/introduction/guide/dashboard/workflow/sandbox).
+
+## Features
+
+The Code Run node executes JavaScript and Python code in a secure sandbox for data processing, format conversion, logic calculations, and similar tasks.
+
+**Supported Languages**
+
+- JavaScript (Bun runtime)
+- Python 3
+
+**Important Notes**
+
+- Self-hosted users need to deploy the `fastgpt-sandbox` image and configure the `SANDBOX_URL` environment variable.
+- The sandbox has a default maximum runtime of 60s (configurable).
+- Code runs in isolated process pools with no access to the file system or internal network.
+
+## Variable Input
+
+Add variables needed for code execution in custom inputs.
+
+**JavaScript** — Destructure in the main function parameters:
+
+```js
+async function main({data1, data2}){
+    return {
+        result: data1 + data2
+    }
+}
+```
+
+**Python** — Receive variables by name in the main function parameters:
+
+```python
+def main(data1, data2):
+    return {"result": data1 + data2}
+```
+
+## Result Output
+
+Always return an object (JS) or dict (Python).
+
+In custom outputs, add variable names to access values by their keys. For example, if you return:
+
+```json
+{
+  "result": "hello",
+  "count": 42
+}
+```
+
+Add `result` and `count` variables in custom outputs to retrieve their values.
+
+## Built-in Functions
+
+### httpRequest - Make HTTP Requests
+
+Make external HTTP requests from within the sandbox. Internal network addresses are automatically blocked (SSRF protection).
+
+**JavaScript Example:**
+
+```js
+async function main({url}){
+    const res = await SystemHelper.httpRequest(url, {
+        method: 'GET',       // Request method, default GET
+        headers: {},         // Custom request headers
+        body: null,          // Request body (objects are auto JSON-serialized)
+        timeout: 60          // Timeout in seconds, max 60s
+    })
+    return {
+        status: res.status,
+        data: res.data
+    }
+}
+```
+
+**Python Example:**
+
+```python
+def main(url):
+    res = SystemHelper.httpRequest(url, method="GET", headers={}, timeout=10)
+    return {"status": res["status"], "data": res["data"]}
+```
+
+**Limitations:**
+- Maximum 30 requests per execution
+- Single request timeout: 60s
+- Maximum response body: 2MB
+- Only http/https protocols allowed
+- Internal IPs automatically blocked (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, etc.)
+
+## Available Modules
+
+### JavaScript Whitelist
+
+The following npm modules are available via `require()`:
+
+| Module | Description | Example |
+|--------|-------------|---------|
+| `lodash` | Utility library | `const _ = require('lodash')` |
+| `moment` | Date handling | `const moment = require('moment')` |
+| `dayjs` | Lightweight date library | `const dayjs = require('dayjs')` |
+| `crypto-js` | Encryption library | `const CryptoJS = require('crypto-js')` |
+| `uuid` | UUID generation | `const { v4 } = require('uuid')` |
+| `qs` | Query string parsing | `const qs = require('qs')` |
+
+Other modules (such as `fs`, `child_process`, `net`, etc.) are prohibited.
+
+### Python Whitelist
+
+The following Python standard library and third-party modules can be imported directly:
+
+**Math and Numerical Computing**
+
+| Module | Description |
+|--------|-------------|
+| `math` | Mathematical functions |
+| `cmath` | Complex number math |
+| `decimal` | Decimal floating-point arithmetic |
+| `fractions` | Fraction arithmetic |
+| `random` | Random number generation |
+| `statistics` | Statistical functions |
+
+**Data Structures and Algorithms**
+
+| Module | Description |
+|--------|-------------|
+| `collections` | Container data types |
+| `array` | Arrays |
+| `heapq` | Heap queue |
+| `bisect` | Array bisection |
+| `queue` | Queues |
+| `copy` | Shallow and deep copy |
+
+**Functional Programming**
+
+| Module | Description |
+|--------|-------------|
+| `itertools` | Iterator tools |
+| `functools` | Higher-order functions |
+| `operator` | Standard operators |
+
+**String and Text Processing**
+
+| Module | Description |
+|--------|-------------|
+| `string` | String constants |
+| `re` | Regular expressions |
+| `difflib` | Diff calculation |
+| `textwrap` | Text wrapping |
+| `unicodedata` | Unicode database |
+| `codecs` | Codec registry |
+
+**Date and Time**
+
+| Module | Description |
+|--------|-------------|
+| `datetime` | Date and time |
+| `time` | Time access |
+| `calendar` | Calendar |
+
+**Data Serialization**
+
+| Module | Description |
+|--------|-------------|
+| `json` | JSON encoding/decoding |
+| `csv` | CSV file handling |
+| `base64` | Base64 encoding/decoding |
+| `binascii` | Binary-to-ASCII conversion |
+| `struct` | Byte string parsing |
+
+**Encryption and Hashing**
+
+| Module | Description |
+|--------|-------------|
+| `hashlib` | Hash algorithms |
+| `hmac` | HMAC message authentication |
+| `secrets` | Secure random numbers |
+| `uuid` | UUID generation |
+
+**Types and Abstractions**
+
+| Module | Description |
+|--------|-------------|
+| `typing` | Type hints |
+| `abc` | Abstract base classes |
+| `enum` | Enumeration types |
+| `dataclasses` | Data classes |
+| `contextlib` | Context managers |
+
+**Other Utilities**
+
+| Module | Description |
+|--------|-------------|
+| `pprint` | Pretty printing |
+| `weakref` | Weak references |
+
+**Third-party Libraries**
+
+| Module | Description |
+|--------|-------------|
+| `numpy` | Numerical computing |
+| `pandas` | Data analysis |
+| `matplotlib` | Data visualization |
+
+**Prohibited modules:** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests`, and any modules involving system calls, network access, or file system operations.
+
+## Security Restrictions
+
+The sandbox provides multiple layers of security protection:
+
+- **Module Restrictions:** Only whitelisted modules are allowed for both JS and Python
+- **Network Isolation:** Internal IP requests are automatically blocked (SSRF protection)
+- **File Isolation:** No read/write access to the container file system
+- **Timeout Protection:** Default 60s timeout prevents infinite loops
+- **Process Isolation:** Each execution runs in an independent sandbox process
+
+## Usage Examples
+
+### JavaScript Examples
+
+<details>
+<summary>Data Format Conversion</summary>
+
+```js
+// Convert comma-separated string to array
+function main({input}){
+    const items = input.split(',').map(s => s.trim()).filter(Boolean)
+    return { items, count: items.length }
+}
+```
+
+</details>
+
+<details>
+<summary>Date Calculation</summary>
+
+```js
+const dayjs = require('dayjs')
+
+function main(){
+    const now = dayjs()
+    return {
+        today: now.format('YYYY-MM-DD'),
+        nextWeek: now.add(7, 'day').format('YYYY-MM-DD'),
+        timestamp: now.valueOf()
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>HTTP Request - Get Weather</summary>
+
+```js
+async function main({city}){
+    const res = await SystemHelper.httpRequest(
+        `https://api.example.com/weather?city=${city}`,
+        { method: 'GET', timeout: 10 }
+    )
+
+    return {
+        temperature: res.data.temp,
+        weather: res.data.condition
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>Data Encryption</summary>
+
+```js
+const CryptoJS = require('crypto-js')
+
+function main({text, key}){
+    const encrypted = CryptoJS.AES.encrypt(text, key).toString()
+    return { encrypted }
+}
+```
+
+</details>
+
+### Python Examples
+
+<details>
+<summary>Data Statistics</summary>
+
+```python
+import math
+
+def main(numbers):
+    if not numbers:
+        return {"error": "no data"}
+
+    mean = sum(numbers) / len(numbers)
+    variance = sum((x - mean)**2 for x in numbers) / len(numbers)
+
+    return {
+        "mean": mean,
+        "max": max(numbers),
+        "min": min(numbers),
+        "std": math.sqrt(variance)
+    }
+```
+
+</details>
+
+<details>
+<summary>Date Processing</summary>
+
+```python
+from datetime import datetime, timedelta
+
+def main(date_str):
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    next_week = dt + timedelta(days=7)
+
+    return {
+        "input": date_str,
+        "next_week": next_week.strftime("%Y-%m-%d"),
+        "weekday": dt.strftime("%A")
+    }
+```
+
+</details>
+
+<details>
+<summary>HTTP Request - API Call</summary>
+
+```python
+def main(api_url, api_key):
+    res = SystemHelper.httpRequest(
+        api_url,
+        method="GET",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=10
+    )
+
+    return {
+        "status": res["status"],
+        "data": res["data"]
+    }
+```
+
+</details>
+
+<details>
+<summary>JSON Data Processing</summary>
+
+```python
+import json
+
+def main(json_str):
+    data = json.loads(json_str)
+
+    # Extract specific fields
+    result = {
+        "names": [item["name"] for item in data if "name" in item],
+        "count": len(data)
+    }
+
+    return result
+```
+
+</details>
+
+<details>
+<summary>Regular Expression Matching</summary>
+
+```python
+import re
+
+def main(text):
+    # Extract all email addresses
+    emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+
+    return {
+        "emails": emails,
+        "count": len(emails)
+    }
+```
+
+</details>

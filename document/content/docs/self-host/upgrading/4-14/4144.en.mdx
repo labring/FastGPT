@@ -1,0 +1,88 @@
+---
+title: 'V4.14.4 (Includes Upgrade Script)'
+description: 'FastGPT V4.14.4 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.14.4
+- Update FastGPT commercial edition image tag: v4.14.4
+- Update fastgpt-plugin image tag: v0.3.4
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+### 2. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. Migrates files uploaded via the Dataset/local API (left over from 4.14.3) to S3.
+2. Recalculates feedback for all existing chats and adds flags for filtering. This function runs slowly and is executed asynchronously -- the API will not return a result. Check the logs for the message: `Migration feedback completed!`
+
+## New Features
+
+1. Tool calls now support configurable streaming output.
+2. AI credit alert notifications.
+3. Chat logs now display IP geolocation.
+4. Chat logs now display the app version name (if the version is updated mid-conversation, it will reflect the latest version).
+5. Chat logs support filtering by thumbs up/down, with quick navigation to liked/disliked records in the chat details.
+6. Upload local files to knowledge base via API, now saved to S3. All legacy GridFS code has been removed.
+7. New subscription plan logic.
+8. Configurable file whitelist for chat file uploads.
+9. S3 now supports pathStyle and region configuration.
+10. Support for multi-tenant custom domain configuration via Sealos.
+11. File input in workflow tool references now supports manual entry (previously only variable references were supported).
+12. Network proxy support (HTTP_PROXY, HTTPS_PROXY).
+
+## Improvements
+
+1. Increased S3 file upload timeout to 5 minutes.
+2. Question optimization now uses JinaAI's marginal utility formula to find the search term with the highest marginal gain.
+3. User notifications now support both Chinese and English, with improved templates.
+4. Knowledge base deletion now uses an asynchronous queue-based approach.
+5. Improved error messages for invalid images in LLM requests.
+6. Completions API in non-stream mode with detail=false now includes `reason_content` in the response.
+7. Added detection for invalid S3 keys.
+8. Deleting apps and knowledge bases now requires entering the name for confirmation.
+9. Mongo slow operation logs now accurately print the collection name and operation details.
+10. Share link custom authentication: the returned uid is now limited to 200 characters max (longer values affected file uploads).
+
+## Bug Fixes
+
+1. Loop node arrays no longer filter out empty content.
+2. Workflow tools did not pass custom DataId, causing "no permission" errors when viewing knowledge base during test runs.
+3. In Chat Agent tool configuration, non-required boolean and number types could not be confirmed directly.
+4. Workbench cards were misaligned when names were too long.
+5. Global variables passed via URL query parameters in share links were not loaded in the frontend UI.
+6. CSV file detection failed on Windows.
+7. Models that were not started could not be tested during model testing.
+8. MCP headers with special content caused errors.
+9. When referencing another Agent in a workflow, the UI was not updated after switching versions.
+10. HTTP node used null instead of empty string for global variables with empty string values.
+11. Condition node connections broke when the node was collapsed.
+12. Single-select and multi-select variable options were not displayed during node debugging.
+13. Publish channel documentation links pointed to incorrect locations.
+14. Checkbox hover style was incorrect in disabled state.
+15. Default huggingface.svg icon displayed incorrectly when model avatar was missing.
+16. Log export end date was off by one day.
+17. Form input frontend default values were not passed to the actual values.
+18. max_tokens parameter was not passed during tool calls.
+19. Workflow condition node value type was not determined by combining the condition with the value.
+20. Knowledge base data not using direct chunking mode had incorrect citation reader navigation order. The citation reader only loaded the same page.
+
+## Plugin Updates
+
+1. Added: GLM 4.6 and DeepSeek 3.2 series model presets.
+2. Fixed: MinerU SaaS plugin could not select the VLM model version.
+3. Fixed: WeChat Official Account plugin batch Markdown upload parameter passing issue.
+4. Added: Tool to retrieve WeChat Official Account draft box list.
+5. Improvement: Markdown-to-file now supports custom file names.
+6. Fixed: Import cache issue preventing plugins from being updated.

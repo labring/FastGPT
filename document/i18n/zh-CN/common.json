@@ -16,6 +16,7 @@
   "use-cases": "使用场景",
   "api": "API 手册",
   "protocol": "协议",
+  "selfHost": "自部署",
   "upgrading": "更新日志",
   "faq": "常见问题"
 }

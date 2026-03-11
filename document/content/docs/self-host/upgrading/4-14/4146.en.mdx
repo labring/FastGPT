@@ -1,0 +1,65 @@
+---
+title: 'V4.14.6'
+description: 'FastGPT V4.14.6 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.14.6.1
+- Update FastGPT commercial edition image tag: v4.14.6
+- Update fastgpt-plugin image tag: v0.5.2
+- mcp_server: no update needed
+- sandbox: no update needed
+- AIProxy: no update needed
+- mongo: no update needed
+
+### 2. Update System Plugins
+
+Go to the Plugin Marketplace and update the following system tools (skip this step if you already upgraded to 4.14.6):
+
+* base64Decode: Base64 decode conversion
+* dallle3: DALL-E 3 image generation
+* docDiff: Document diff comparison
+* drawing: BI charts
+* gptImage: GPT image generation
+* markdownTransform: Markdown file conversion
+* mineru: MinerU PDF parsing
+* minimax: MiniMax chat
+* openrouterMultiModal: OpenRouter multimodal
+* stability: Stability image generation
+
+## New Features
+
+1. System tools now support configurable custom category attributes.
+2. Subscription plans now support configuring maximum file upload count and size.
+3. Plugin Marketplace supports batch plugin updates.
+4. Cloud service supports dedicated WeCom integration.
+5. Seekdb vector database preset configuration.
+
+## Improvements
+
+### Feature Improvements
+1. Workflow trackpad scrolling is no longer blocked when encountering input fields.
+2. Workflow node paste now positions precisely at the mouse cursor.
+3. Precisely removes extraneous system fields from LLM requests to prevent errors with certain model APIs.
+
+### Code Quality
+
+1. Replaced useRequest with useRequest2 to reduce unused code.
+
+## Bug Fixes
+
+1. After setting system secret keys for a system toolset, child tools could not read the configured secret keys.
+2. Date picker overflow issue resolved with dynamic position adaptation.
+3. "Explore More" link for system tools on the workflow editor page pointed to the wrong URL.
+4. Default model avatar path /imgs/model/huggingface.svg was incorrect.
+5. Empty values are now filtered out when setting tool tags.
+
+## Plugin Updates
+
+1. Added tutorial documentation for Lark Multidimensional Table.
+2. WeCom-related plugins: Get WeCom enterprise access_token; WeCom smart table toolset.
+3. Added model preset for qwen-flash.
+4. Adjusted preset parameters for qwen3-max and qwen-plus.

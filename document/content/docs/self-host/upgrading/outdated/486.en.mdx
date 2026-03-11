@@ -1,0 +1,47 @@
+---
+title: V4.8.6 (Includes Upgrade Script)
+description: FastGPT V4.8.6 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Database
+
+### 2. Update Images
+
+- Update the fastgpt image tag to v4.8.6
+- Update the fastgpt-sandbox image tag to v4.8.6
+- Update the commercial edition image tag to v4.8.6
+
+### 3. Run Initialization
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv486' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will initialize inherited permissions for apps.
+
+-------
+
+## V4.8.6 Release Notes
+
+1. New - App permission inheritance.
+2. New - Knowledge Base now supports disabling individual collections.
+3. New - System plugin architecture change. Added link reader and math calculator plugins. The official release will include documentation on creating custom system plugins.
+4. New - Code sandbox runtime parameters.
+5. New - Option to hide the header during AI conversations, primarily for mobile optimization.
+6. Improved - File reading now defaults to MongoDB secondary nodes to reduce primary node load.
+7. Improved - Prompt templates.
+8. Improved - Fixed duplicate Mongo model loading.
+9. Fixed - Creating a link collection not returning the ID.
+10. Fixed - API documentation descriptions.
+11. Fixed - API system prompt merging.
+12. Fixed - Content inside team plugin folders failing to load.
+13. Fixed - Knowledge Base collection folder breadcrumbs failing to load.
+14. Fixed - Markdown export conversation error.
+15. Fixed - Prompt template closing tag error.
+16. Fixed - Documentation descriptions.

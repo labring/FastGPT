@@ -136,7 +136,7 @@ services:
       retries: 3
   sandbox:
     container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.7
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.8
     ports:
       - 3002:3000
     networks:
@@ -144,7 +144,7 @@ services:
     restart: always
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.6
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.8
     ports:
       - 3005:3000
     networks:
@@ -162,7 +162,7 @@ services:
       - fastgpt
     environment:
       - AUTH_TOKEN=token
-      # @see https://fastgpt.cn/docs/introduction/development/object-storage
+      # @see https://fastgpt.cn/docs/self-host/config/object-storage
       - STORAGE_VENDOR=minio # minio | aws-s3 | cos | oss
       - STORAGE_REGION=us-east-1
       - STORAGE_ACCESS_KEY_ID=minioadmin

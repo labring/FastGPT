@@ -2,8 +2,8 @@
 
 import React from 'react';
 
-const githubLogoLight: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg width="98" height="98" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 98">
+const githubLogoLight: React.FC<React.SVGProps<SVGSVGElement>> = ({ className, ...props }) => (
+  <svg {...props} className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 98">
     <path
       fillRule="evenodd"
       clipRule="evenodd"

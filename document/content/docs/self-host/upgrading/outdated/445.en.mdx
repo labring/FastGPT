@@ -1,0 +1,27 @@
+---
+title: V4.4.5 (includes upgrade script)
+description: FastGPT V4.4.5 Update
+---
+
+## Run the Initialization API
+
+Send 1 HTTP request (remember to include `headers.rootkey` — this value comes from your environment variables):
+
+1. https://xxxxx/api/admin/initv445
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv445' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This initializes the variable module by merging it into the user guide module.
+
+## What's New
+
+### FastGPT V4.4.5
+
+1. Added — Next-step suggestions: the model can now generate 3 predicted follow-up questions.
+2. Commercial edition — Share link restrictions and hook-based identity verification (can integrate with your existing user system).
+3. Commercial edition — API Key management: added alias, quota limits, and expiration. Includes a built-in appId, so no additional connection is needed.
+4. Improved — Global variables and opening message merged into a single module.
