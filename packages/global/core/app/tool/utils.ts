@@ -52,7 +52,7 @@ export function splitCombineToolId(id: string): {
   }
 
   // mcp-appId, mcp-appId/toolname
-  if (source === 'mcp') {
+  if (source === AppToolSourceEnum.mcp) {
     const [parentId, toolName] = toolId.split('/');
     return {
       source: AppToolSourceEnum.mcp,
@@ -60,7 +60,7 @@ export function splitCombineToolId(id: string): {
       authAppId: parentId
     };
   }
-  if (source === 'http') {
+  if (source === AppToolSourceEnum.http) {
     const [parentId, toolName] = toolId.split('/');
     return {
       source: AppToolSourceEnum.http,
@@ -68,7 +68,7 @@ export function splitCombineToolId(id: string): {
       authAppId: parentId
     };
   }
-  if (source === 'personal') {
+  if (source === AppToolSourceEnum.personal) {
     return {
       source: AppToolSourceEnum.personal,
       pluginId: toolId,
@@ -76,7 +76,7 @@ export function splitCombineToolId(id: string): {
     };
   }
 
-  return { source, pluginId: id };
+  throw new Error('Invalid tool id');
 }
 
 export const getToolRawId = (id: string) => {

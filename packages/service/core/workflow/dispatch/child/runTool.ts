@@ -345,23 +345,15 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   }
 };
 
-/* 
-  旧版: source-appId/toolsetName/toolName
-  新版: source-appId/toolName
-*/
 export const parseToolId = (id: string) => {
   const formatId = id.split('-').slice(1).join('-');
-  const [parentId, newToolName, toolName] = formatId.split('/');
+  const [parentId, toolsetNameOrToolName, legacyToolName] = formatId.split('/');
 
-  if (toolName) {
-    return {
-      parentId,
-      toolName
-    };
+  if (legacyToolName) {
+    // 旧版格式: source-appId/toolsetName/toolName
+    return { parentId, toolName: legacyToolName };
   }
 
-  return {
-    parentId,
-    toolName: newToolName
-  };
+  // 新版格式: source-appId/toolName
+  return { parentId, toolName: toolsetNameOrToolName };
 };
