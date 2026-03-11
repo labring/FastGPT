@@ -15,6 +15,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { addMilliseconds } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -97,7 +98,7 @@ export class SandboxClient {
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {
     try {
       await this.ensureAvailable();
-    } catch {
+    } catch (err) {
       return {
         stdout: '',
         stderr: 'Sandbox service is not available, please try again later',
@@ -105,9 +106,17 @@ export class SandboxClient {
       };
     }
 
-    return await this.provider.execute(command, {
-      timeoutMs: timeout ? timeout * 1000 : undefined
-    });
+    return await this.provider
+      .execute(command, {
+        timeoutMs: timeout ? timeout * 1000 : undefined
+      })
+      .catch((err) => {
+        return {
+          stdout: '',
+          stderr: getErrText(err),
+          exitCode: -1
+        };
+      });
   }
 
   async delete() {

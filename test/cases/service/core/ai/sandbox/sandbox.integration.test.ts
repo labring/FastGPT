@@ -23,7 +23,7 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN
   }
 }));
-console.log(hasSandboxEnv, 232323);
+
 describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
   const testDir = '/tmp/workspace';
   const testParams = {
