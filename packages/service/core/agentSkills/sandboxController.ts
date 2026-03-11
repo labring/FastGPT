@@ -8,7 +8,7 @@
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
 import mongoose from 'mongoose';
-import { MongoSkillSandbox } from './sandboxSchema';
+import { MongoSandboxInstance } from './sandboxSchema';
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './versionSchema';
 import { downloadSkillPackage } from './storage';
@@ -20,11 +20,11 @@ import {
   getSkillSizeLimits
 } from './sandboxConfig';
 import type {
-  SkillSandboxSchemaType,
+  SandboxInstanceSchemaType,
   SandboxImageConfigType,
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
@@ -36,7 +36,6 @@ export type CreateEditDebugSandboxParams = {
   teamId: string;
   tmbId: string;
   image?: SandboxImageConfigType;
-  timeout?: number;
   entrypoint?: string; // override default entrypoint for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
 };
@@ -49,7 +48,6 @@ export type CreateEditDebugSandboxResult = {
     state: string;
     message?: string;
   };
-  expiresAt?: Date;
 };
 
 export type GetSandboxInfoParams = {
@@ -60,12 +58,6 @@ export type GetSandboxInfoParams = {
 export type DeleteSandboxParams = {
   sandboxId: string;
   teamId: string;
-};
-
-export type RenewSandboxParams = {
-  sandboxId: string;
-  teamId: string;
-  additionalSeconds?: number;
 };
 
 /**
@@ -79,14 +71,13 @@ export type RenewSandboxParams = {
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
-  const { skillId, teamId, tmbId, image, timeout, entrypoint, onProgress } = params;
+  const { skillId, teamId, tmbId, image, entrypoint, onProgress } = params;
 
   // === Phase 1: Resolve and validate configuration ===
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
-  const sandboxTimeout = timeout || defaults.timeout;
   const sandboxImage = image || defaults.defaultImage;
 
   addLog.info('[Sandbox] Creating edit-debug sandbox', {
@@ -123,69 +114,109 @@ export async function createEditDebugSandbox(
     throw new Error('No active version found for skill');
   }
 
-  // Check for existing edit-debug sandbox and soft delete it
-  const existingSandbox = await MongoSkillSandbox.findOne({
-    skillId,
-    sandboxType: SandboxTypeEnum.editDebug,
-    deleteTime: null
+  // chat ID used for all edit-debug sandbox instances
+  const EDIT_DEBUG_CHAT_ID = 'edit-debug';
+
+  // Check for existing sandbox instance by skillId
+  const existingInstance = await MongoSandboxInstance.findOne({
+    appId: skillId,
+    chatId: EDIT_DEBUG_CHAT_ID
   });
 
-  if (existingSandbox) {
-    const now = new Date();
-    const expiresAt = existingSandbox.sandbox.expiresAt;
-    const isExpired = expiresAt != null && expiresAt <= now;
+  if (existingInstance?.status === SandboxStatusEnum.running) {
+    // Reuse running sandbox - return stored endpoint directly
+    addLog.info('[Sandbox] Found running sandbox instance, reusing', {
+      instanceId: existingInstance._id,
+      sandboxId: existingInstance.sandboxId
+    });
 
-    if (!isExpired) {
-      // Reuse existing sandbox - renew expiration and return early
-      addLog.info('[Sandbox] Found existing edit-debug sandbox (not expired), reusing', {
-        sandboxId: existingSandbox._id,
-        expiresAt
+    const endpointInfo = existingInstance.detail.endpoint!;
+
+    await MongoSandboxInstance.updateOne(
+      { _id: existingInstance._id },
+      { lastActiveAt: new Date() }
+    );
+
+    onProgress?.({
+      sandboxId: skillId,
+      phase: 'ready',
+      endpoint: endpointInfo,
+      providerSandboxId: existingInstance.sandboxId
+    });
+
+    return {
+      sandboxId: existingInstance._id.toString(),
+      providerSandboxId: existingInstance.sandboxId,
+      endpoint: endpointInfo,
+      status: {
+        state: existingInstance.detail.providerStatus.state,
+        message: existingInstance.detail.providerStatus.message
+      }
+    };
+  }
+
+  if (existingInstance?.status === SandboxStatusEnum.stopped) {
+    // Resume stopped sandbox
+    addLog.info('[Sandbox] Found stopped sandbox instance, resuming', {
+      instanceId: existingInstance._id,
+      sandboxId: existingInstance.sandboxId
+    });
+
+    let resumeSandboxAdapter: ISandbox | null = null;
+    try {
+      resumeSandboxAdapter = createSandbox({
+        provider: providerConfig.provider,
+        connection: {
+          apiKey: providerConfig.apiKey,
+          baseUrl: providerConfig.baseUrl,
+          runtime: providerConfig.runtime
+        }
       });
 
-      const newExpiresAt = await renewSandboxExpiration({
-        sandboxId: existingSandbox._id.toString(),
-        teamId,
-        additionalSeconds: sandboxTimeout
-      });
+      onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
+      await resumeSandboxAdapter.connect(existingInstance.sandboxId);
+      await resumeSandboxAdapter.resume();
+      await resumeSandboxAdapter.waitUntilReady(60000);
 
-      const endpointInfo = existingSandbox.endpoint!;
+      const endpoint = await resumeSandboxAdapter.getEndpoint(defaults.targetPort);
+      const endpointInfo: SkillSandboxEndpointType = {
+        host: endpoint.host,
+        port: endpoint.port,
+        protocol: endpoint.protocol,
+        url: endpoint.url
+      };
+
+      await MongoSandboxInstance.updateOne(
+        { _id: existingInstance._id },
+        {
+          status: SandboxStatusEnum.running,
+          lastActiveAt: new Date(),
+          'detail.endpoint': endpointInfo,
+          'detail.providerStatus': { state: 'Running' }
+        }
+      );
 
       onProgress?.({
         sandboxId: skillId,
         phase: 'ready',
         endpoint: endpointInfo,
-        providerSandboxId: existingSandbox.sandbox.sandboxId,
-        expiresAt: newExpiresAt?.toISOString()
+        providerSandboxId: existingInstance.sandboxId
       });
 
       return {
-        sandboxId: existingSandbox._id.toString(),
-        providerSandboxId: existingSandbox.sandbox.sandboxId,
+        sandboxId: existingInstance._id.toString(),
+        providerSandboxId: existingInstance.sandboxId,
         endpoint: endpointInfo,
-        status: {
-          state: existingSandbox.sandbox.status.state,
-          message: existingSandbox.sandbox.status.message
-        },
-        expiresAt: newExpiresAt
+        status: { state: 'Running' }
       };
+    } catch (error) {
+      addLog.error('[Sandbox] Failed to resume stopped sandbox', { error });
+      throw error;
+    } finally {
+      if (resumeSandboxAdapter) {
+        await resumeSandboxAdapter.close();
+      }
     }
-
-    // Sandbox has expired - soft delete and recreate
-    addLog.info('[Sandbox] Found existing edit-debug sandbox but it has expired, soft deleting', {
-      sandboxId: existingSandbox._id,
-      expiredAt: expiresAt
-    });
-
-    existingSandbox.deleteTime = new Date();
-    await existingSandbox.save();
-
-    // Async cleanup of provider sandbox (fire and forget)
-    cleanupProviderSandbox(existingSandbox.sandbox.sandboxId, providerConfig).catch((err) => {
-      addLog.error('[Sandbox] Failed to cleanup old provider sandbox', {
-        sandboxId: existingSandbox.sandbox.sandboxId,
-        error: err
-      });
-    });
   }
 
   // Download package.zip from MinIO and standardize it
@@ -217,8 +248,7 @@ export async function createEditDebugSandbox(
     });
 
     addLog.info('[Sandbox] Creating sandbox instance', {
-      image: sandboxImage,
-      timeout: sandboxTimeout
+      image: sandboxImage
     });
 
     onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
@@ -227,7 +257,6 @@ export async function createEditDebugSandbox(
     if (providerConfig.runtime === 'kubernetes') {
       await sandbox.create({
         image: sandboxImage,
-        timeout: sandboxTimeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.editDebugKubernetes],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
         metadata: {
@@ -240,7 +269,6 @@ export async function createEditDebugSandbox(
     } else {
       await sandbox.create({
         image: sandboxImage,
-        timeout: sandboxTimeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.docker],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
         metadata: {
@@ -302,37 +330,41 @@ export async function createEditDebugSandbox(
 
     // Persist to MongoDB
     const newSandboxDoc = await mongoSessionRun(async (session) => {
-      const doc = await MongoSkillSandbox.create(
+      const doc = await MongoSandboxInstance.create(
         [
           {
-            _id: sessionId,
-            skillId,
-            sandboxType: SandboxTypeEnum.editDebug,
-            teamId,
-            tmbId,
-            sandbox: {
+            sandboxId: sandboxInfo.id,
+            appId: skillId,
+            userId: tmbId,
+            chatId: EDIT_DEBUG_CHAT_ID,
+            status: SandboxStatusEnum.running,
+            lastActiveAt: new Date(),
+            createdAt: new Date(),
+            detail: {
+              sandboxType: SandboxTypeEnum.editDebug,
+              teamId,
+              tmbId,
+              skillId,
               provider: providerConfig.provider,
-              sandboxId: sandboxInfo.id,
               image: sandboxInfo.image,
-              status: {
+              providerStatus: {
                 state: sandboxInfo.status.state,
                 message: sandboxInfo.status.message,
                 reason: sandboxInfo.status.reason
               },
-              createdAt: sandboxInfo.createdAt,
-              expiresAt: sandboxInfo.expiresAt
-            },
-            endpoint: endpointInfo,
-            storage: {
-              bucket: activeVersion.storage.bucket,
-              key: activeVersion.storage.key,
-              size: standardizedBuffer.length,
-              uploadedAt: new Date()
-            },
-            metadata: new Map([
-              ['skillName', skill.name],
-              ['version', activeVersion.version.toString()]
-            ])
+              providerCreatedAt: sandboxInfo.createdAt,
+              endpoint: endpointInfo,
+              storage: {
+                bucket: activeVersion.storage.bucket,
+                key: activeVersion.storage.key,
+                size: standardizedBuffer.length,
+                uploadedAt: new Date()
+              },
+              metadata: new Map([
+                ['skillName', skill.name],
+                ['version', activeVersion.version.toString()]
+              ])
+            }
           }
         ],
         { session }
@@ -349,8 +381,7 @@ export async function createEditDebugSandbox(
       sandboxId: skillId,
       phase: 'ready',
       endpoint: endpointInfo,
-      providerSandboxId: sandboxInfo.id,
-      expiresAt: sandboxInfo.expiresAt?.toISOString()
+      providerSandboxId: sandboxInfo.id
     });
 
     return {
@@ -360,8 +391,7 @@ export async function createEditDebugSandbox(
       status: {
         state: sandboxInfo.status.state,
         message: sandboxInfo.status.message
-      },
-      expiresAt: sandboxInfo.expiresAt
+      }
     };
   } catch (error) {
     addLog.error('[Sandbox] Failed to create sandbox', { error });
@@ -388,22 +418,17 @@ export async function createEditDebugSandbox(
  */
 export async function getSandboxInfo(
   params: GetSandboxInfoParams
-): Promise<SkillSandboxSchemaType> {
+): Promise<SandboxInstanceSchemaType> {
   const { sandboxId, teamId } = params;
 
-  const sandbox = await MongoSkillSandbox.findOne({
+  const sandbox = await MongoSandboxInstance.findOne({
     _id: sandboxId,
-    teamId,
-    deleteTime: null
+    'detail.teamId': teamId
   });
 
   if (!sandbox) {
     throw new Error('Sandbox not found or access denied');
   }
-
-  // Update last activity time
-  sandbox.lastActivityTime = new Date();
-  await sandbox.save();
 
   return sandbox;
 }
@@ -414,94 +439,31 @@ export async function getSandboxInfo(
 export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> {
   const { sandboxId, teamId } = params;
 
-  const sandbox = await MongoSkillSandbox.findOne({
+  const instanceDoc = await MongoSandboxInstance.findOne({
     _id: sandboxId,
-    teamId,
-    deleteTime: null
+    'detail.teamId': teamId
   });
 
-  if (!sandbox) {
+  if (!instanceDoc) {
     throw new Error('Sandbox not found or access denied');
   }
 
-  // Soft delete
-  sandbox.deleteTime = new Date();
-  await sandbox.save();
+  // Mark as stopped
+  await MongoSandboxInstance.updateOne(
+    { _id: instanceDoc._id },
+    { status: SandboxStatusEnum.stopped }
+  );
 
-  addLog.info('[Sandbox] Sandbox soft deleted', { sandboxId });
+  addLog.info('[Sandbox] Sandbox stopped', { sandboxId });
 
   // Async cleanup of provider sandbox
   const providerConfig = getSandboxProviderConfig();
-  cleanupProviderSandbox(sandbox.sandbox.sandboxId, providerConfig).catch((err) => {
+  cleanupProviderSandbox(instanceDoc.sandboxId, providerConfig).catch((err) => {
     addLog.error('[Sandbox] Failed to cleanup provider sandbox', {
-      sandboxId: sandbox.sandbox.sandboxId,
+      sandboxId: instanceDoc.sandboxId,
       error: err
     });
   });
-}
-
-/**
- * Renew sandbox expiration
- */
-export async function renewSandboxExpiration(
-  params: RenewSandboxParams
-): Promise<Date | undefined> {
-  const { sandboxId, teamId, additionalSeconds } = params;
-
-  const sandboxDoc = await MongoSkillSandbox.findOne({
-    _id: sandboxId,
-    teamId,
-    deleteTime: null
-  });
-
-  if (!sandboxDoc) {
-    throw new Error('Sandbox not found or access denied');
-  }
-
-  const providerConfig = getSandboxProviderConfig();
-  const defaults = getSandboxDefaults();
-  const renewSeconds = additionalSeconds || defaults.timeout;
-
-  let sandbox: ISandbox | null = null;
-
-  try {
-    sandbox = createSandbox({
-      provider: providerConfig.provider,
-      connection: {
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
-        runtime: providerConfig.runtime
-      }
-    });
-
-    // Connect to existing sandbox
-    await sandbox.connect(sandboxDoc.sandbox.sandboxId);
-
-    // Renew expiration
-    await sandbox.renewExpiration(renewSeconds);
-
-    // Get updated info
-    const updatedInfo = await sandbox.getInfo();
-
-    // Update MongoDB
-    sandboxDoc.sandbox.expiresAt = updatedInfo.expiresAt;
-    sandboxDoc.lastActivityTime = new Date();
-    await sandboxDoc.save();
-
-    addLog.info('[Sandbox] Sandbox expiration renewed', {
-      sandboxId,
-      expiresAt: updatedInfo.expiresAt
-    });
-
-    return updatedInfo.expiresAt;
-  } catch (error) {
-    addLog.error('[Sandbox] Failed to renew sandbox expiration', { error });
-    throw error;
-  } finally {
-    if (sandbox) {
-      await sandbox.close();
-    }
-  }
 }
 
 /**
@@ -650,20 +612,4 @@ async function cleanupProviderSandbox(
       await sandbox.close();
     }
   }
-}
-
-/**
- * Find inactive sandboxes for cleanup
- */
-export async function findInactiveSandboxes(
-  thresholdSeconds?: number
-): Promise<SkillSandboxSchemaType[]> {
-  const defaults = getSandboxDefaults();
-  const threshold = thresholdSeconds || defaults.inactiveThreshold;
-  const cutoffTime = new Date(Date.now() - threshold * 1000);
-
-  return await MongoSkillSandbox.find({
-    deleteTime: null,
-    lastActivityTime: { $lt: cutoffTime }
-  });
 }

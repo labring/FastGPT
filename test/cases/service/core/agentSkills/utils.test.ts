@@ -65,21 +65,23 @@ describe('AgentSkill Utils', () => {
       expect(result.error).toBe('Skill name must be less than 50 characters');
     });
 
-    it('should reject missing markdown', () => {
+    it('should accept package without markdown field', () => {
+      // markdown is not part of SkillPackageType, so it's not validated
       const result = validateSkillPackage({
         skill: { name: 'Test Skill' }
       });
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('Skill markdown (SKILL.md content) is required');
+      expect(result.valid).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
-    it('should reject empty markdown', () => {
+    it('should accept package with any extra fields', () => {
+      // validateSkillPackage only checks skill.* fields, not additional fields
       const result = validateSkillPackage({
         skill: { name: 'Test Skill' },
-        markdown: '   '
+        extraField: 'anything'
       });
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('Skill markdown (SKILL.md content) is required');
+      expect(result.valid).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
     it('should reject description exceeding 500 characters', () => {
@@ -235,13 +237,11 @@ describe('AgentSkill Utils', () => {
     it('should create template with provided name', () => {
       const template = createSkillTemplate('My Skill');
       expect(template.skill.name).toBe('My Skill');
-      expect(template.markdown).toContain('# My Skill');
     });
 
     it('should create template with default name when empty', () => {
       const template = createSkillTemplate('');
       expect(template.skill.name).toBe('New Skill');
-      expect(template.markdown).toContain('# New Skill');
     });
 
     it('should have required structure', () => {
@@ -249,9 +249,6 @@ describe('AgentSkill Utils', () => {
       expect(template.skill.description).toBeDefined();
       expect(template.skill.category).toEqual(['other']);
       expect(template.skill.config).toEqual({});
-      expect(template.markdown).toContain('## Description');
-      expect(template.markdown).toContain('## Parameters');
-      expect(template.markdown).toContain('## Examples');
     });
   });
 });

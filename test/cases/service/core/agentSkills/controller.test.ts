@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoAgentSkill } from '@fastgpt/service/core/agentSkills/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import {
   createSkill,
   updateSkill,
@@ -18,7 +19,6 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
 } from '@fastgpt/global/core/agentSkills/constants';
-import { initFastGPTTest } from '../../../../test/inits';
 
 describe('AgentSkill Controller', () => {
   let testTeamId: string;
@@ -26,20 +26,19 @@ describe('AgentSkill Controller', () => {
   let testUserId: string;
 
   beforeAll(async () => {
-    await initFastGPTTest();
-    testTeamId = 'test-team-id';
-    testTmbId = 'test-tmb-id';
-    testUserId = 'test-user-id';
+    testTeamId = new Types.ObjectId().toHexString();
+    testTmbId = new Types.ObjectId().toHexString();
+    testUserId = new Types.ObjectId().toHexString();
   });
 
   beforeEach(async () => {
     // Clean up test data before each test
-    await MongoAgentSkill.deleteMany({ teamId: testTeamId });
+    await MongoAgentSkills.deleteMany({ teamId: testTeamId });
   });
 
   afterAll(async () => {
     // Clean up all test data
-    await MongoAgentSkill.deleteMany({ teamId: testTeamId });
+    await MongoAgentSkills.deleteMany({ teamId: testTeamId });
   });
 
   // ==================== Create Skill ====================
@@ -48,7 +47,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Test Skill',
         description: 'A test skill',
-        markdown: '# Test Skill\n\nThis is a test.',
         author: testUserId,
         category: [AgentSkillCategoryEnum.tool],
         config: { test: true },
@@ -62,19 +60,17 @@ describe('AgentSkill Controller', () => {
       expect(typeof skillId).toBe('string');
 
       // Verify skill was created
-      const skill = await MongoAgentSkill.findById(skillId);
+      const skill = await MongoAgentSkills.findById(skillId);
       expect(skill).toBeDefined();
       expect(skill?.name).toBe(skillData.name);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
       expect(skill?.description).toBe(skillData.description);
-      expect(skill?.markdown).toBe(skillData.markdown);
     });
 
     it('should create skill with default category when not provided', async () => {
       const skillData = {
         name: 'Test Skill No Category',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -83,7 +79,7 @@ describe('AgentSkill Controller', () => {
       };
 
       const skillId = await createSkill(skillData);
-      const skill = await MongoAgentSkill.findById(skillId);
+      const skill = await MongoAgentSkills.findById(skillId);
 
       expect(skill).toBeDefined();
       expect(skill?.category).toEqual([]);
@@ -96,7 +92,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Get Test Skill',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [AgentSkillCategoryEnum.tool],
         config: {},
@@ -122,7 +117,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Deleted Skill',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -144,7 +138,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Original Name',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -156,16 +149,15 @@ describe('AgentSkill Controller', () => {
 
       await updateSkill(skillId, { name: 'Updated Name' });
 
-      const updatedSkill = await MongoAgentSkill.findById(skillId);
+      const updatedSkill = await MongoAgentSkills.findById(skillId);
       expect(updatedSkill?.name).toBe('Updated Name');
       expect(updatedSkill?.description).toBe(skillData.description); // Unchanged
     });
 
-    it('should update skill description and markdown', async () => {
+    it('should update skill description', async () => {
       const skillData = {
         name: 'Update Test',
         description: 'Original description',
-        markdown: '# Original',
         author: testUserId,
         category: [],
         config: {},
@@ -176,20 +168,17 @@ describe('AgentSkill Controller', () => {
       const skillId = await createSkill(skillData);
 
       await updateSkill(skillId, {
-        description: 'Updated description',
-        markdown: '# Updated'
+        description: 'Updated description'
       });
 
-      const updatedSkill = await MongoAgentSkill.findById(skillId);
+      const updatedSkill = await MongoAgentSkills.findById(skillId);
       expect(updatedSkill?.description).toBe('Updated description');
-      expect(updatedSkill?.markdown).toBe('# Updated');
     });
 
     it('should update updateTime on modification', async () => {
       const skillData = {
         name: 'Time Test',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -198,7 +187,7 @@ describe('AgentSkill Controller', () => {
       };
 
       const skillId = await createSkill(skillData);
-      const originalSkill = await MongoAgentSkill.findById(skillId);
+      const originalSkill = await MongoAgentSkills.findById(skillId);
       const originalUpdateTime = originalSkill?.updateTime;
 
       // Wait a bit to ensure time difference
@@ -206,7 +195,7 @@ describe('AgentSkill Controller', () => {
 
       await updateSkill(skillId, { name: 'Time Updated' });
 
-      const updatedSkill = await MongoAgentSkill.findById(skillId);
+      const updatedSkill = await MongoAgentSkills.findById(skillId);
       expect(updatedSkill?.updateTime?.getTime()).toBeGreaterThan(
         originalUpdateTime?.getTime() || 0
       );
@@ -219,7 +208,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Delete Test',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -230,14 +218,14 @@ describe('AgentSkill Controller', () => {
       const skillId = await createSkill(skillData);
 
       // Verify skill exists
-      let skill = await MongoAgentSkill.findById(skillId);
+      let skill = await MongoAgentSkills.findById(skillId);
       expect(skill?.deleteTime).toBeNull();
 
       // Delete skill
       await deleteSkill(skillId);
 
       // Verify soft delete
-      skill = await MongoAgentSkill.findById(skillId);
+      skill = await MongoAgentSkills.findById(skillId);
       expect(skill?.deleteTime).toBeDefined();
       expect(skill?.deleteTime).not.toBeNull();
     });
@@ -248,12 +236,11 @@ describe('AgentSkill Controller', () => {
 
     it('should throw error when deleting system skill', async () => {
       // Create a system skill directly
-      const [systemSkill] = await MongoAgentSkill.create([
+      const [systemSkill] = await MongoAgentSkills.create([
         {
           source: AgentSkillSourceEnum.system,
           name: 'System Skill',
           description: 'A system skill',
-          markdown: '# System',
           author: 'system',
           category: [],
           config: {},
@@ -270,7 +257,7 @@ describe('AgentSkill Controller', () => {
       );
 
       // Cleanup
-      await MongoAgentSkill.deleteOne({ _id: systemSkill._id });
+      await MongoAgentSkills.deleteOne({ _id: systemSkill._id });
     });
   });
 
@@ -283,7 +270,6 @@ describe('AgentSkill Controller', () => {
           source: AgentSkillSourceEnum.system,
           name: 'System Skill 1',
           description: 'A system skill about search',
-          markdown: '# System',
           author: 'system',
           category: [AgentSkillCategoryEnum.search],
           config: {},
@@ -297,7 +283,6 @@ describe('AgentSkill Controller', () => {
           source: AgentSkillSourceEnum.system,
           name: 'System Skill 2',
           description: 'A system skill about coding',
-          markdown: '# System',
           author: 'system',
           category: [AgentSkillCategoryEnum.coding],
           config: {},
@@ -311,7 +296,6 @@ describe('AgentSkill Controller', () => {
           source: AgentSkillSourceEnum.personal,
           name: 'Personal Skill 1',
           description: 'My personal search skill',
-          markdown: '# Personal',
           author: testUserId,
           category: [AgentSkillCategoryEnum.search],
           config: {},
@@ -323,7 +307,7 @@ describe('AgentSkill Controller', () => {
         }
       ];
 
-      await MongoAgentSkill.insertMany(skills);
+      await MongoAgentSkills.insertMany(skills);
     });
 
     it('should list system skills (store)', async () => {
@@ -404,7 +388,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Permission Test',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -422,7 +405,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Permission Test 2',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -437,12 +419,11 @@ describe('AgentSkill Controller', () => {
     });
 
     it('should return false for system skill', async () => {
-      const [systemSkill] = await MongoAgentSkill.create([
+      const [systemSkill] = await MongoAgentSkills.create([
         {
           source: AgentSkillSourceEnum.system,
           name: 'System Permission Test',
           description: 'A system skill',
-          markdown: '# System',
           author: 'system',
           category: [],
           config: {},
@@ -458,7 +439,7 @@ describe('AgentSkill Controller', () => {
       expect(canModify).toBe(false);
 
       // Cleanup
-      await MongoAgentSkill.deleteOne({ _id: systemSkill._id });
+      await MongoAgentSkills.deleteOne({ _id: systemSkill._id });
     });
   });
 
@@ -468,7 +449,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Existing Name',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -491,7 +471,6 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Unique Name',
         description: 'A test skill',
-        markdown: '# Test',
         author: testUserId,
         category: [],
         config: {},
@@ -515,8 +494,7 @@ describe('AgentSkill Controller', () => {
           description: 'An imported skill',
           category: [AgentSkillCategoryEnum.tool],
           config: { api: { url: 'https://example.com' } }
-        },
-        markdown: '# Imported Skill\n\nThis is imported.'
+        }
       };
 
       // Create a mock ZIP buffer
@@ -532,10 +510,9 @@ describe('AgentSkill Controller', () => {
 
       expect(skillId).toBeDefined();
 
-      const skill = await MongoAgentSkill.findById(skillId);
+      const skill = await MongoAgentSkills.findById(skillId);
       expect(skill?.name).toBe(packageData.skill.name);
       expect(skill?.description).toBe(packageData.skill.description);
-      expect(skill?.markdown).toBe(packageData.markdown);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
     });
 
@@ -546,8 +523,7 @@ describe('AgentSkill Controller', () => {
           description: 'A skill',
           category: [],
           config: {}
-        },
-        markdown: '# Test'
+        }
       };
 
       const mockZipBuffer = Buffer.from('mock zip content');
@@ -586,7 +562,7 @@ This is the content.`;
       expect(result.frontmatter.metadata).toEqual({
         author: 'test',
         version: '1.0',
-        category: ['search', 'tool']
+        category: 'search,tool' // raw string, not parsed array (parseSkillMarkdown returns raw YAML values)
       });
       expect(result.content).toContain('# Web Search');
     });

@@ -20,9 +20,6 @@ export type SandboxProviderConfig = {
 };
 
 export type SandboxDefaults = {
-  timeout: number; // in seconds
-  cleanupInterval: number; // in milliseconds
-  inactiveThreshold: number; // in seconds
   defaultImage: SandboxImageConfigType;
   workDirectory: string;
   targetPort: number;
@@ -55,9 +52,6 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
  */
 export function getSandboxDefaults(): SandboxDefaults {
   return {
-    timeout: safeParseInt(process.env.SANDBOX_DEFAULT_TIMEOUT, 600), // 10 minutes, Automatic termination timeout (server-side TTL)
-    cleanupInterval: safeParseInt(process.env.SANDBOX_CLEANUP_INTERVAL, 3600000),
-    inactiveThreshold: safeParseInt(process.env.SANDBOX_INACTIVE_THRESHOLD, 7200),
     defaultImage: {
       repository: process.env.SANDBOX_DEFAULT_IMAGE || 'fastgpt-agent-sandbox',
       tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || 'docker'

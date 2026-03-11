@@ -67,7 +67,6 @@ export type SandboxStatusItemType = {
     url: string;
   };
   providerSandboxId?: string; // present on 'ready' for edit-debug
-  expiresAt?: string; // ISO string, present on 'ready' for edit-debug
 };
 
 /* Skill call announce */

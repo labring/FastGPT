@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Parse request body
-    const { skillId, image, timeout } = req.body as CreateEditDebugSandboxBody;
+    const { skillId, image } = req.body as CreateEditDebugSandboxBody;
 
     // Validate required parameters
     if (!skillId) {
@@ -56,12 +56,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    if (timeout !== undefined && (typeof timeout !== 'number' || timeout <= 0)) {
-      sseErrRes(res, new Error('timeout must be a positive number'));
-      res.end();
-      return;
-    }
-
     // Build onProgress callback: each phase emits a sandboxStatus SSE event
     const onProgress = (status: SandboxStatusItemType) => {
       responseWrite({
@@ -77,7 +71,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       tmbId,
       image,
-      timeout,
       onProgress
     });
 

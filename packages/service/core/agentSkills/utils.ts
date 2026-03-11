@@ -117,8 +117,8 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
     return { skill: null, error: 'Frontmatter field "description" is required' };
   }
 
-  // Validate name format (lowercase, numbers, hyphens only)
-  const nameRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+  // Validate name format (lowercase, numbers, hyphens only; no consecutive hyphens; no leading/trailing hyphens)
+  const nameRegex = /^[a-z0-9]([a-z0-9]|-(?!-))*[a-z0-9]$|^[a-z0-9]$/;
   if (!nameRegex.test(frontmatter.name)) {
     return {
       skill: null,
@@ -132,15 +132,13 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
     return { skill: null, error: 'Name must be less than 50 characters' };
   }
 
-  // Validate description length (max 1024 per spec, but FastGPT uses 500)
-  if (frontmatter.description.length > 500) {
-    return { skill: null, error: 'Description must be less than 500 characters' };
-  }
+  // Truncate description if too long (max 500 characters)
+  const description = frontmatter.description.slice(0, 500);
 
   // Build FastGPT skill object
   const skill: any = {
     name: frontmatter.name,
-    description: frontmatter.description.slice(0, 500),
+    description,
     category: ['other'], // default
     config: {}
   };

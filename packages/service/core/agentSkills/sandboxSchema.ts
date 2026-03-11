@@ -6,167 +6,126 @@
  */
 
 import { connectionMongo, getMongoModel } from '../../common/mongo';
-import {
-  agentSkillsCollectionName,
-  skillSandboxCollectionName
-} from '@fastgpt/global/core/agentSkills/constants';
-import type { SkillSandboxSchemaType } from '@fastgpt/global/core/agentSkills/type';
+import { sandboxInstanceCollectionName } from '@fastgpt/global/core/agentSkills/constants';
+import type { SandboxInstanceSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 const { Schema } = connectionMongo;
 
-const SkillSandboxSchema = new Schema({
-  skillId: {
-    type: Schema.Types.ObjectId,
-    ref: agentSkillsCollectionName,
-    required: true
-  },
-  sandboxType: {
+// Provider details are embedded in `detail` to avoid cross-collection joins.
+//
+// Indexes:
+//   { sandboxId: 1 }            UNIQUE  -- provider sandbox ID lookup
+//   { appId: 1, chatId: 1 }     UNIQUE  -- one instance per (appId, chatId) pair
+//   { status: 1, lastActiveAt: 1 }      -- cron-based pausing queries
+//   { 'detail.skillId': 1 }             -- edit-debug lookup by skillId
+
+const SandboxInstanceSchema = new Schema({
+  sandboxId: {
     type: String,
-    enum: ['edit-debug', 'session-runtime'],
+    required: true,
+    unique: true
+  },
+  appId: {
+    type: String,
     required: true
   },
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: 'team',
-    required: true
-  },
-  tmbId: {
+  userId: {
     type: Schema.Types.ObjectId,
     ref: 'team_members',
     required: true
   },
-
-  sessionId: {
+  chatId: {
     type: String,
-    default: null
+    required: true
   },
-  skillIds: {
-    type: [Schema.Types.ObjectId],
-    default: []
+  status: {
+    type: String,
+    enum: ['running', 'stopped'],
+    required: true
   },
-
-  // Sandbox provider information
-  sandbox: {
+  lastActiveAt: {
+    type: Date,
+    default: () => new Date()
+  },
+  createdAt: {
+    type: Date,
+    default: () => new Date()
+  },
+  detail: {
+    sandboxType: {
+      type: String,
+      enum: ['edit-debug', 'session-runtime'],
+      required: true
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: 'team',
+      required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: 'team_members',
+      required: true
+    },
+    skillId: String,
+    sessionId: String,
+    skillIds: [Schema.Types.ObjectId],
     provider: {
       type: String,
       required: true,
       default: 'opensandbox'
     },
-    sandboxId: {
-      type: String,
-      required: true
-    },
     image: {
-      repository: {
-        type: String,
-        required: true
-      },
-      tag: {
-        type: String,
-        default: 'latest'
-      }
+      repository: { type: String, required: true },
+      tag: { type: String, default: 'latest' }
     },
-    status: {
-      state: {
-        type: String,
-        required: true
-      },
+    providerStatus: {
+      state: { type: String, required: true },
       message: String,
       reason: String
     },
-    createdAt: {
+    providerCreatedAt: {
       type: Date,
       required: true
     },
-    expiresAt: Date
-  },
-
-  // Endpoint information
-  endpoint: {
-    host: String,
-    port: Number,
-    protocol: {
-      type: String,
-      enum: ['http', 'https'],
-      default: 'http'
+    endpoint: {
+      host: String,
+      port: Number,
+      protocol: {
+        type: String,
+        enum: ['http', 'https'],
+        default: 'http'
+      },
+      url: String
     },
-    url: String
-  },
-
-  // Storage information
-  storage: {
-    bucket: String,
-    key: String,
-    size: Number,
-    uploadedAt: Date
-  },
-
-  // Metadata
-  metadata: {
-    type: Map,
-    of: Schema.Types.Mixed,
-    default: new Map()
-  },
-
-  // Timestamps
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  updateTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  deleteTime: {
-    type: Date,
-    default: null
-  },
-  lastActivityTime: {
-    type: Date,
-    default: () => new Date()
+    storage: {
+      bucket: String,
+      key: String,
+      size: Number,
+      uploadedAt: Date
+    },
+    metadata: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: new Map()
+    }
   }
 });
 
-// Create indexes
 try {
-  // Index for team-based queries
-  SkillSandboxSchema.index({ teamId: 1, deleteTime: 1, createTime: -1 });
+  // Unique index: one instance per (appId, chatId) pair
+  SandboxInstanceSchema.index({ appId: 1, chatId: 1 }, { unique: true });
 
-  // Index for cleanup operations (find inactive sandboxes)
-  SkillSandboxSchema.index({ lastActivityTime: 1, deleteTime: 1 });
+  // For cron-based pausing: find running instances by last active time
+  SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1 });
 
-  // Unique index: only one active edit-debug sandbox per skill
-  // Also serves as index for querying active sandboxes by skillId and type
-  SkillSandboxSchema.index(
-    { skillId: 1, sandboxType: 1, deleteTime: 1 },
-    {
-      unique: true,
-      partialFilterExpression: {
-        sandboxType: 'edit-debug',
-        deleteTime: null
-      }
-    }
-  );
-
-  // Unique index: only one active session-runtime sandbox per sessionId
-  SkillSandboxSchema.index(
-    { sessionId: 1, sandboxType: 1, deleteTime: 1 },
-    {
-      unique: true,
-      partialFilterExpression: {
-        sandboxType: 'session-runtime',
-        deleteTime: null
-      }
-    }
-  );
-
-  // Index for provider sandbox lookup
-  SkillSandboxSchema.index({ 'sandbox.provider': 1, 'sandbox.sandboxId': 1 });
+  // For edit-debug lookup by skillId
+  SandboxInstanceSchema.index({ 'detail.skillId': 1 });
 } catch (error) {
-  console.log('SkillSandbox index error:', error);
+  console.log('SandboxInstance index error:', error);
 }
 
-export const MongoSkillSandbox = getMongoModel<SkillSandboxSchemaType>(
-  skillSandboxCollectionName,
-  SkillSandboxSchema
+export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
+  sandboxInstanceCollectionName,
+  SandboxInstanceSchema
 );

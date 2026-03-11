@@ -103,7 +103,6 @@ export type CreateEditDebugSandboxBody = {
     repository: string;
     tag?: string;
   };
-  timeout?: number; // in seconds, default 3600
 };
 
 export type CreateEditDebugSandboxResponse = {
@@ -119,7 +118,6 @@ export type CreateEditDebugSandboxResponse = {
     state: string;
     message?: string;
   };
-  expiresAt?: string; // ISO date string
 };
 
 // Get Sandbox Info
@@ -143,8 +141,6 @@ export type GetSandboxInfoResponse = {
     message?: string;
   };
   createTime: string;
-  lastActivityTime: string;
-  expiresAt?: string;
 };
 
 // Delete Sandbox
@@ -153,16 +149,6 @@ export type DeleteSandboxBody = {
 };
 
 export type DeleteSandboxResponse = void;
-
-// Renew Sandbox Expiration
-export type RenewSandboxBody = {
-  sandboxId: string;
-  additionalSeconds?: number; // default 3600
-};
-
-export type RenewSandboxResponse = {
-  expiresAt?: string;
-};
 
 // ==================== Save/Deploy Skill ====================
 export type SaveDeploySkillBody = {
