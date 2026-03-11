@@ -28,8 +28,7 @@ describe('mcpTool utils', () => {
 
       const result = getMCPToolSetRuntimeNode({
         url: 'https://mcp.example.com/api',
-        toolList,
-        toolId: 'mcp-tool-123'
+        toolList
       });
 
       expect(result.flowNodeType).toBe(FlowNodeTypeEnum.toolSet);
@@ -40,7 +39,6 @@ describe('mcpTool utils', () => {
       expect(result.nodeId).toHaveLength(16);
       expect(result.toolConfig?.mcpToolSet?.url).toBe('https://mcp.example.com/api');
       expect(result.toolConfig?.mcpToolSet?.toolList).toEqual(toolList);
-      expect(result.toolConfig?.mcpToolSet?.toolId).toBe('mcp-tool-123');
     });
 
     it('should create runtime node with all optional params', () => {
@@ -49,7 +47,6 @@ describe('mcpTool utils', () => {
       const result = getMCPToolSetRuntimeNode({
         url: 'https://mcp.example.com/api',
         toolList,
-        toolId: 'mcp-tool-456',
         name: 'My MCP Tools',
         avatar: 'custom-mcp-avatar',
         headerSecret: { id: 'secret-1', key: 'Authorization' }
@@ -81,14 +78,15 @@ describe('mcpTool utils', () => {
       const result = getMCPToolRuntimeNode({
         tool,
         nodeId: 'node-123',
-        toolSetId: 'toolset-456'
+        toolSetId: 'toolset-456',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.nodeId).toBe('node-123');
       expect(result.flowNodeType).toBe(FlowNodeTypeEnum.tool);
       expect(result.avatar).toBe('core/app/type/mcpToolsFill');
       expect(result.intro).toBe('Search for information');
-      expect(result.name).toBe('searchTool');
+      expect(result.name).toBe('toolsetName/searchTool');
       expect(result.toolConfig?.mcpTool?.toolId).toBe(
         `${AppToolSourceEnum.mcp}-toolset-456/searchTool`
       );
@@ -105,7 +103,8 @@ describe('mcpTool utils', () => {
         tool,
         nodeId: 'node-789',
         avatar: 'custom-icon',
-        toolSetId: 'toolset-abc'
+        toolSetId: 'toolset-abc',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.avatar).toBe('custom-icon');
@@ -121,7 +120,8 @@ describe('mcpTool utils', () => {
       const result = getMCPToolRuntimeNode({
         tool,
         nodeId: 'node-001',
-        toolSetId: 'toolset-002'
+        toolSetId: 'toolset-002',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.outputs).toHaveLength(1);
@@ -142,7 +142,8 @@ describe('mcpTool utils', () => {
       const result = getMCPToolRuntimeNode({
         tool,
         nodeId: 'node-test',
-        toolSetId: 'parent-123'
+        toolSetId: 'parent-123',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.toolConfig?.mcpTool?.toolId).toBe('mcp-parent-123/myTool');

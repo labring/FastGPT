@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.14.8",
+  "version": "4.14.8.1",
   "private": false,
   "scripts": {
     "dev": "npm run build:workers && next dev",
@@ -11,8 +11,8 @@
     "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
   },
   "engines": {
-    "node": "20.x",
-    "pnpm": "9.x"
+    "node": ">=20.x",
+    "pnpm": ">=9.x"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",

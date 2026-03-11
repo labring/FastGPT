@@ -332,34 +332,29 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      // mcpToolsetVal.toolId-旧版 MCP
-      const toolSetId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      // mcpToolsetVal.toolId: 旧版 MCP
+      const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
+
       toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
           nodeId: `${toolSetNode.nodeId}${index}`,
           toolSetId,
+          toolsetName: toolSetNode.name,
           avatar: toolSetNode.avatar,
-          tool: {
-            ...tool,
-            name: `${toolSetNode.name}/${tool.name}`
-          }
+          tool
         });
-
         nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     } else if (httpToolsetVal) {
       httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
         const newToolNode = getHTTPToolRuntimeNode({
-          tool: {
-            ...tool,
-            name: `${toolSetNode.name}/${tool.name}`
-          },
+          tool,
           nodeId: `${toolSetNode.nodeId}${index}`,
           avatar: toolSetNode.avatar,
-          toolSetId: toolSetNode.pluginId!
+          toolSetId: toolSetNode.pluginId!,
+          toolsetName: toolSetNode.name
         });
-
         nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });

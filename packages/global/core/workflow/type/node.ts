@@ -12,7 +12,6 @@ import z from 'zod';
 export const NodeToolConfigTypeSchema = z.object({
   mcpToolSet: z
     .object({
-      toolId: z.string(),
       url: z.string(),
       headerSecret: StoreSecretValueTypeSchema.optional(),
       toolList: z.array(McpToolConfigSchema)
@@ -20,7 +19,7 @@ export const NodeToolConfigTypeSchema = z.object({
     .optional(),
   mcpTool: z
     .object({
-      toolId: z.string()
+      toolId: z.string() // mcp-appId/oolname
     })
     .optional(),
   systemTool: z
@@ -51,7 +50,7 @@ export const NodeToolConfigTypeSchema = z.object({
     .optional(),
   httpTool: z
     .object({
-      toolId: z.string()
+      toolId: z.string() // http-appId/oolname
     })
     .optional()
 });
