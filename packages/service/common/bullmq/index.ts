@@ -9,6 +9,7 @@ import {
 import { addLog } from '../system/log';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { isClusterMode } from '../redis/config';
 
 const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   removeOnComplete: {
@@ -61,10 +62,18 @@ export function getQueue<DataType, ReturnType = void>(
   if (queue) {
     return queue as Queue<DataType, ReturnType>;
   }
-  const newQueue = new Queue<DataType, ReturnType>(name.toString(), {
+
+  const queueOptions: QueueOptions = {
     connection: newQueueRedisConnection(),
     ...opts
-  });
+  };
+
+  // Add prefix for cluster mode to ensure hash tag grouping
+  if (isClusterMode()) {
+    queueOptions.prefix = '{bull}'; // Hash tag ensures same slot
+  }
+
+  const newQueue = new Queue<DataType, ReturnType>(name.toString(), queueOptions);
 
   // default error handler, to avoid unhandled exceptions
   newQueue.on('error', (error) => {
@@ -85,7 +94,7 @@ export function getWorker<DataType, ReturnType = void>(
   }
 
   const createWorker = () => {
-    const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
+    const workerOptions: WorkerOptions = {
       connection: newWorkerRedisConnection(),
       ...defaultWorkerOpts,
       // BullMQ Worker important settings
@@ -93,7 +102,14 @@ export function getWorker<DataType, ReturnType = void>(
       stalledInterval: 30000, // Check for stalled jobs every 30s
       maxStalledCount: 3, // Move job to failed after 1 stall (default behavior)
       ...opts
-    });
+    };
+
+    // Add prefix for cluster mode (must match queue prefix)
+    if (isClusterMode()) {
+      workerOptions.prefix = '{bull}'; // Must match queue prefix
+    }
+
+    const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, workerOptions);
 
     // Worker is ready to process jobs (fired on initial connection and after reconnection)
     newWorker.on('ready', () => {
@@ -105,6 +121,9 @@ export function getWorker<DataType, ReturnType = void>(
         message: error.message,
         data: { name }
       });
+    });
+    newWorker.on('failed', (_, error) => {
+      addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
     });
     // Critical: Worker has been closed - remove from pool and restart
     newWorker.on('closed', async () => {
