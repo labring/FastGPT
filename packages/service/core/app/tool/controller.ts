@@ -239,10 +239,10 @@ export const getSystemToolsWithInstalled = async ({
 };
 
 export const getSystemToolByIdAndVersionId = async (
-  pluginId: string,
+  toolId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
-  const tool = await getSystemToolById(pluginId);
+  const tool = await getSystemToolById(toolId);
 
   // App type system tool
   if (tool.associatedPluginId) {
@@ -333,10 +333,6 @@ export const getSystemToolByIdAndVersionId = async (
 
 /*
   Format plugin to workflow preview node data
-  Persion workflow/plugin: objectId
-  Persion mcptoolset: objectId
-  Persion mcp tool: mcp-parentId/name
-  System tool/toolset: system-toolId
 */
 export async function getChildAppPreviewNode({
   appId,
@@ -350,8 +346,7 @@ export async function getChildAppPreviewNode({
   const { source, pluginId } = splitCombineToolId(appId);
 
   const app: ChildAppType = await (async () => {
-    // 1. App
-    // 2. MCP ToolSets
+    // App / Mcp toolset / Http toolset
     if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -367,7 +362,8 @@ export async function getChildAppPreviewNode({
             })
           : true;
 
-      if (item.type === AppTypeEnum.mcpToolSet) {
+      // Adapt
+      if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0].toolConfig) {
         const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
           mcpToolSet: {
@@ -378,6 +374,7 @@ export async function getChildAppPreviewNode({
           }
         };
       }
+
       return {
         id: String(item._id),
         teamId: String(item.teamId),
@@ -430,11 +427,12 @@ export async function getChildAppPreviewNode({
             getMCPToolRuntimeNode({
               nodeId: getNanoid(6),
               toolSetId: item._id,
+              toolsetName: item.name,
               avatar: item.avatar,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
-                name: `${item.name}/${tool.name}`
+                name: tool.name
               }
             })
           ],
@@ -469,11 +467,12 @@ export async function getChildAppPreviewNode({
             getHTTPToolRuntimeNode({
               nodeId: getNanoid(6),
               toolSetId: item._id,
+              toolsetName: item.name,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
                 outputSchema: tool.outputSchema,
-                name: `${item.name}/${tool.name}`
+                name: tool.name
               },
               avatar: item.avatar
             })
@@ -484,10 +483,9 @@ export async function getChildAppPreviewNode({
         isLatestVersion: true
       };
     }
-    // 1. System Tools
-    // 2. System Plugins configured in Pro (has associatedPluginId)
+    // System Tools/ Commercial system tools
     else {
-      return getSystemToolByIdAndVersionId(pluginId, versionId);
+      return getSystemToolByIdAndVersionId(appId, versionId);
     }
   })();
 
@@ -504,7 +502,7 @@ export async function getChildAppPreviewNode({
     if (source === AppToolSourceEnum.systemTool) {
       // system Tool or Toolsets
       const children = app.isFolder
-        ? (await getSystemTools()).filter((item) => item.parentId === pluginId)
+        ? (await getSystemTools()).filter((item) => item.parentId === app.id)
         : [];
 
       return {
@@ -619,74 +617,6 @@ export async function getChildAppPreviewNode({
   };
 }
 
-/**
-  Get runtime plugin data
-  System plugin: plugin id
-  Personal plugin: Version id
-*/
-export async function getChildAppRuntimeById({
-  id,
-  versionId,
-  lang = 'en'
-}: {
-  id: string;
-  versionId?: string;
-  lang?: localeType;
-}): Promise<AppToolRuntimeType> {
-  const app = await (async () => {
-    const { source, pluginId } = splitCombineToolId(id);
-
-    if (source === AppToolSourceEnum.personal) {
-      const item = await MongoApp.findById(pluginId).lean();
-      if (!item) return Promise.reject(PluginErrEnum.unExist);
-
-      const version = await getAppVersionById({
-        appId: pluginId,
-        versionId,
-        app: item
-      });
-
-      return {
-        id: String(item._id),
-        teamId: String(item.teamId),
-        tmbId: String(item.tmbId),
-        name: item.name,
-        avatar: item.avatar,
-        intro: item.intro,
-        showStatus: true,
-        workflow: {
-          nodes: version.nodes,
-          edges: version.edges,
-          chatConfig: version.chatConfig
-        },
-        templateType: FlowNodeTemplateTypeEnum.teamApp,
-
-        originCost: 0,
-        currentCost: 0,
-        systemKeyCost: 0,
-        hasTokenFee: false,
-        pluginOrder: 0
-      };
-    } else {
-      return getSystemToolByIdAndVersionId(pluginId, versionId);
-    }
-  })();
-
-  return {
-    id: app.id,
-    teamId: app.teamId,
-    tmbId: app.tmbId,
-    name: parseI18nString(app.name, lang),
-    avatar: app.avatar || '',
-    showStatus: true,
-    currentCost: app.currentCost,
-    systemKeyCost: app.systemKeyCost,
-    nodes: app.workflow.nodes,
-    edges: app.workflow.edges,
-    hasTokenFee: app.hasTokenFee
-  };
-}
-
 /* FastsGPT-tool api: */
 export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> => {
   const workflowToolFormat = (item: SystemPluginToolCollectionType): AppToolTemplateItemType => {
@@ -784,10 +714,10 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
   return concatTools;
 };
 
-export const getSystemToolById = async (id: string): Promise<AppToolTemplateItemType> => {
-  const { pluginId } = splitCombineToolId(id);
+// toolId: systemTool-id, commercial-id
+export const getSystemToolById = async (toolId: string): Promise<AppToolTemplateItemType> => {
   const tools = await getSystemTools();
-  const tool = tools.find((item) => item.id === pluginId);
+  const tool = tools.find((item) => item.id === toolId);
   if (tool) {
     return cloneDeep(tool);
   }

@@ -51,12 +51,14 @@ export const getHTTPToolRuntimeNode = ({
   tool,
   nodeId,
   avatar = 'core/app/type/httpToolsFill',
-  toolSetId
+  toolSetId,
+  toolsetName
 }: {
   tool: Omit<HttpToolConfigType, 'path' | 'method'>;
   nodeId: string;
   avatar?: string;
   toolSetId: string;
+  toolsetName: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId,
@@ -81,7 +83,7 @@ export const getHTTPToolRuntimeNode = ({
         type: FlowNodeOutputTypeEnum.static
       }
     ],
-    name: tool.name,
+    name: `${toolsetName}/${tool.name}`,
     version: ''
   };
 };

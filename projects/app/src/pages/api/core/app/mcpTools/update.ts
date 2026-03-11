@@ -28,8 +28,7 @@ async function handler(req: ApiRequestProps<UpdateMcpToolsBodyType>, res: ApiRes
     toolList,
     headerSecret: formatedHeaderAuth,
     name: app.name,
-    avatar: app.avatar,
-    toolId: ''
+    avatar: app.avatar
   });
 
   await mongoSessionRun(async (session) => {

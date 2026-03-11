@@ -15,12 +15,11 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
-export const authPluginByTmbId = async ({
+export const authWorkflowToolByTmbId = async ({
   tmbId,
   appId,
   per
@@ -29,16 +28,12 @@ export const authPluginByTmbId = async ({
   appId: string;
   per: PermissionValueType;
 }) => {
-  const { authAppId } = splitCombineToolId(appId);
-  if (authAppId) {
-    const { app } = await authAppByTmbId({
-      appId: authAppId,
-      tmbId,
-      per
-    });
-
-    return app;
-  }
+  const { app } = await authAppByTmbId({
+    appId,
+    tmbId,
+    per
+  });
+  return app;
 };
 
 export const authAppByTmbId = async ({

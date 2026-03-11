@@ -9,7 +9,7 @@ export enum PluginErrEnum {
 const errList = [
   {
     statusText: PluginErrEnum.unExist,
-    message: i18nT('common:code_error.plugin_error.not_exist')
+    message: i18nT('common:error.tool_not_exist')
   },
   {
     statusText: PluginErrEnum.unAuth,

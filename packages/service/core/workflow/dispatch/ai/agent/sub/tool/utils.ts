@@ -25,7 +25,7 @@ import type { SubAppInitType } from '../type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
-export const agentSkillToToolRuntime = async ({
+export const getAgentRuntimeTools = async ({
   tools,
   tmbId,
   lang
@@ -195,18 +195,15 @@ export const agentSkillToToolRuntime = async ({
             if (!app) return [];
             const toolList = await getMCPChildren(app);
 
-            const toolSetId = mcpToolsetVal.toolId ?? toolNode.pluginId;
+            const toolSetId = mcpToolsetVal.toolId || toolNode.pluginId;
             const children = toolList.map((tool, index) => {
               const newToolNode = getMCPToolRuntimeNode({
                 toolSetId,
+                toolsetName: toolNode.name,
                 nodeId: `${toolSetId}${index}`,
                 avatar: toolNode.avatar,
-                tool: {
-                  ...tool,
-                  name: `${toolNode.name}/${tool.name}`
-                }
+                tool
               });
-
               return newToolNode;
             });
 
@@ -232,15 +229,12 @@ export const agentSkillToToolRuntime = async ({
           } else if (httpToolsetVal) {
             const children = httpToolsetVal.toolList.map((tool: HttpToolConfigType, index) => {
               const newToolNode = getHTTPToolRuntimeNode({
-                tool: {
-                  ...tool,
-                  name: `${toolNode.name}/${tool.name}`
-                },
+                tool,
                 nodeId: `${pluginId}${index}`,
                 avatar: toolNode.avatar,
-                toolSetId: pluginId
+                toolSetId: pluginId,
+                toolsetName: toolNode.name
               });
-
               return newToolNode;
             });
 

@@ -103,14 +103,15 @@ describe('httpTool utils', () => {
       const result = getHTTPToolRuntimeNode({
         tool,
         nodeId: 'node-123',
-        toolSetId: 'toolset-456'
+        toolSetId: 'toolset-456',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.nodeId).toBe('node-123');
       expect(result.flowNodeType).toBe(FlowNodeTypeEnum.tool);
       expect(result.avatar).toBe('core/app/type/httpToolsFill');
       expect(result.intro).toBe('Search for items');
-      expect(result.name).toBe('searchTool');
+      expect(result.name).toBe('toolsetName/searchTool');
       expect(result.toolConfig?.httpTool?.toolId).toBe(
         `${AppToolSourceEnum.http}-toolset-456/searchTool`
       );
@@ -128,7 +129,8 @@ describe('httpTool utils', () => {
         tool,
         nodeId: 'node-789',
         avatar: 'custom-icon',
-        toolSetId: 'toolset-abc'
+        toolSetId: 'toolset-abc',
+        toolsetName: 'toolsetName'
       });
 
       expect(result.avatar).toBe('custom-icon');
@@ -145,7 +147,8 @@ describe('httpTool utils', () => {
       const result = getHTTPToolRuntimeNode({
         tool,
         nodeId: 'node-001',
-        toolSetId: 'toolset-002'
+        toolSetId: 'toolset-002',
+        toolsetName: 'toolsetName'
       });
 
       const rawResponseOutput = result.outputs.find((o) => o.key === NodeOutputKeyEnum.rawResponse);

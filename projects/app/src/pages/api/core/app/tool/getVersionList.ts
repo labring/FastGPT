@@ -39,7 +39,7 @@ async function handler(
 
   // System tool plugin
   if (source === AppToolSourceEnum.systemTool) {
-    const item = await getSystemToolByIdAndVersionId(formatPluginId);
+    const item = await getSystemToolByIdAndVersionId(pluginId);
 
     return {
       total: 0,

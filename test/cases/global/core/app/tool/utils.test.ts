@@ -25,7 +25,6 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.personal);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
     });
   });
 
@@ -85,7 +84,7 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.http);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
+      expect(result.authAppId).toBe('507f1f77bcf86cd799439011');
     });
 
     it('should parse http-parentId/toolName format correctly', () => {
@@ -93,7 +92,6 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.http);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011/apiTool');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
     });
   });
 
