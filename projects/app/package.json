@@ -3,7 +3,7 @@
   "version": "4.14.8",
   "private": false,
   "scripts": {
-    "dev": "npm run build:workers && next dev --webpack",
+    "dev": "npm run build:workers && next dev",
     "build": "npm run build:workers && next build --debug --webpack",
     "start": "next start",
     "build:workers": "npx tsx scripts/build-workers.ts",
