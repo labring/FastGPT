@@ -257,7 +257,17 @@ export enum NodeInputKeyEnum {
 
   // Tool
   toolData = 'system_toolData',
-  toolSetData = 'system_toolSetData'
+  toolSetData = 'system_toolSetData',
+
+  // CAMB AI
+  cambSourceText = 'cambSourceText',
+  cambSourceLanguage = 'cambSourceLanguage',
+  cambTargetLanguage = 'cambTargetLanguage',
+  cambVoiceName = 'cambVoiceName',
+  cambAudioUrl = 'cambAudioUrl',
+  cambGender = 'cambGender',
+  cambVoiceId = 'cambVoiceId',
+  cambSpeed = 'cambSpeed'
 }
 
 export enum NodeOutputKeyEnum {
@@ -315,6 +325,11 @@ export enum NodeOutputKeyEnum {
 
   // File
   fileTitle = 'fileTitle',
+
+  // CAMB AI
+  cambTranslatedText = 'cambTranslatedText',
+  cambVoiceId = 'cambVoiceId',
+  cambAudioUrl = 'cambAudioUrl',
 
   // @deprecated
   error = 'error'

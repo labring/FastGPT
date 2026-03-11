@@ -36,6 +36,9 @@ import { CodeNode } from './system/sandbox';
 import { TextEditorNode } from './system/textEditor';
 import { ToolParamsNode } from './system/toolParams';
 import { VariableUpdateNode } from './system/variableUpdate';
+import { CambTranslationNode } from './system/cambTranslation';
+import { CambVoiceCloneNode } from './system/cambVoiceClone';
+import { CambTranslatedTTSNode } from './system/cambTranslatedTTS';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -55,7 +58,10 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode
+  LoopNode,
+  CambTranslationNode,
+  CambVoiceCloneNode,
+  CambTranslatedTTSNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [

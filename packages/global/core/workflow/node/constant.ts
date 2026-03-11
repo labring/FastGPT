@@ -154,6 +154,11 @@ export enum FlowNodeTypeEnum {
   tool = 'tool',
   toolSet = 'toolSet',
 
+  // CAMB AI nodes
+  cambTranslation = 'cambTranslation',
+  cambVoiceClone = 'cambVoiceClone',
+  cambTranslatedTTS = 'cambTranslatedTTS',
+
   // child:
   appModule = 'appModule',
   pluginModule = 'pluginModule',
