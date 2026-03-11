@@ -1,4 +1,9 @@
-import type { AgentSkillSourceEnum, AgentSkillCategoryEnum, SandboxTypeEnum } from './constants';
+import type {
+  AgentSkillSourceEnum,
+  AgentSkillCategoryEnum,
+  SandboxTypeEnum,
+  SandboxStatusEnum
+} from './constants';
 
 export type AgentSkillSchemaType = {
   _id: string;
@@ -131,54 +136,6 @@ export type ExtractedSkillPackage = {
 
 // ==================== Skill Sandbox Types ====================
 
-export type SkillSandboxSchemaType = {
-  _id: string;
-  skillId: string;
-  sandboxType: `${SandboxTypeEnum}`;
-  teamId: string;
-  tmbId: string;
-
-  sessionId?: string;
-  skillIds?: string[];
-
-  sandbox: {
-    provider: string;
-    sandboxId: string;
-    image: {
-      repository: string;
-      tag?: string;
-    };
-    status: {
-      state: string;
-      message?: string;
-      reason?: string;
-    };
-    createdAt: Date;
-    expiresAt?: Date;
-  };
-
-  endpoint?: {
-    host: string;
-    port: number;
-    protocol: 'http' | 'https';
-    url: string;
-  };
-
-  storage?: {
-    bucket: string;
-    key: string;
-    size: number;
-    uploadedAt: Date;
-  };
-
-  metadata?: Map<string, any>;
-
-  createTime: Date;
-  updateTime: Date;
-  deleteTime?: Date | null;
-  lastActivityTime: Date;
-};
-
 export type SkillSandboxEndpointType = {
   host: string;
   port: number;
@@ -189,4 +146,40 @@ export type SkillSandboxEndpointType = {
 export type SandboxImageConfigType = {
   repository: string;
   tag?: string;
+};
+
+// ==================== Sandbox Instance Types ====================
+
+export type SandboxInstanceSchemaType = {
+  _id: string;
+
+  // Provider sandbox ID (unique, used for connect/resumeSandbox)
+  sandboxId: string;
+  // edit-debug: skillId; session-runtime: appId (ObjectId string)
+  appId: string;
+  // tmbId (creator)
+  userId: string;
+  // edit-debug: constant 'edit-debug'; session-runtime: chatId
+  chatId: string;
+
+  status: `${SandboxStatusEnum}`;
+  lastActiveAt: Date;
+  createdAt: Date;
+
+  // Embedded provider details
+  detail: {
+    sandboxType: `${SandboxTypeEnum}`;
+    teamId: string;
+    tmbId: string;
+    skillId?: string; // edit-debug associated skillId
+    sessionId?: string; // session-runtime session identifier
+    skillIds?: string[]; // session-runtime deployed skill list
+    provider: string;
+    image: { repository: string; tag?: string };
+    providerStatus: { state: string; message?: string; reason?: string };
+    providerCreatedAt: Date;
+    endpoint?: SkillSandboxEndpointType;
+    storage?: { bucket: string; key: string; size: number; uploadedAt: Date };
+    metadata?: Map<string, any>;
+  };
 };

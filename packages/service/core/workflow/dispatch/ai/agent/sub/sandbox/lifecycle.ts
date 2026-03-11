@@ -11,15 +11,14 @@
  *
  * 沙箱容器生命周期：
  * - createAgentSandbox：优先复用已有容器（查 MongoDB），否则创建新容器并持久化到 MongoDB
- * - releaseAgentSandbox：断开 SDK 连接，更新 lastActivityTime，不销毁容器
- * - 实际容器销毁由 cleanup job 负责（基于 lastActivityTime 超过 inactiveThreshold）
+ * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
 import { createSandbox } from '@anyany/sandbox_provider';
 import type { ISandbox } from '@anyany/sandbox_provider';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
-import { MongoSkillSandbox } from '../../../../../../agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '../../../../../../agentSkills/sandboxSchema';
 import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/versionSchema';
 import { downloadSkillPackage } from '../../../../../../agentSkills/storage';
 import { parseSkillMarkdown } from '../../../../../../agentSkills/utils';
@@ -29,7 +28,7 @@ import {
   validateSandboxConfig,
   buildDockerSyncEnv
 } from '../../../../../../agentSkills/sandboxConfig';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   AgentSkillSchemaType,
   AgentSkillsVersionSchemaType,
@@ -190,7 +189,7 @@ async function deploySkillsToSandbox(
  * 创建或复用 session-runtime 沙箱。
  *
  * 优先查询 MongoDB 中是否有相同 sessionId 的活跃容器：
- * - 有 → connect 复用，更新 lastActivityTime，无冷启动
+ * - 有 → connect 复用，无冷启动
  * - 无 → 创建新容器（注入 SESSION_ID），sync agent 从 MinIO 恢复历史数据，持久化到 MongoDB
  */
 export async function createAgentSandbox(
@@ -204,35 +203,38 @@ export async function createAgentSandbox(
 
   // Step 1: Try to reuse an existing session-runtime sandbox
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
-  const existingDoc = await MongoSkillSandbox.findOne({
-    sessionId,
-    sandboxType: SandboxTypeEnum.sessionRuntime,
-    deleteTime: null
+  const existingInstance = await MongoSandboxInstance.findOne({
+    chatId: sessionId,
+    'detail.sandboxType': SandboxTypeEnum.sessionRuntime
   });
 
-  if (existingDoc) {
+  if (existingInstance) {
     logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
       sessionId,
-      providerSandboxId: existingDoc.sandbox.sandboxId
+      providerSandboxId: existingInstance.sandboxId
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
     const sandbox = buildSandboxInstance(providerConfig);
-    await sandbox.connect(existingDoc.sandbox.sandboxId);
+    await sandbox.connect(existingInstance.sandboxId);
 
-    // Refresh the sandbox TTL to prevent expiration mid-session
-    if (sandbox.capabilities.supportsRenews) {
-      await sandbox.renewExpiration(defaults.timeout);
-      const updatedInfo = await sandbox.getInfo();
-      if (updatedInfo.expiresAt) {
-        existingDoc.sandbox.expiresAt = updatedInfo.expiresAt;
-      }
+    if (existingInstance.status === SandboxStatusEnum.stopped) {
+      logger.info('[Agent Sandbox] Resuming stopped sandbox', {
+        sessionId,
+        providerSandboxId: existingInstance.sandboxId
+      });
+      await sandbox.resume();
+      await sandbox.waitUntilReady(60000);
     }
 
-    existingDoc.lastActivityTime = new Date();
-    await existingDoc.save();
+    await MongoSandboxInstance.updateOne(
+      { _id: existingInstance._id },
+      { lastActiveAt: new Date() }
+    );
 
-    const reusedSkillIds = existingDoc.skillIds ? existingDoc.skillIds.map(String) : skillIds;
+    const reusedSkillIds = existingInstance.detail.skillIds
+      ? existingInstance.detail.skillIds.map(String)
+      : skillIds;
     const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
 
     onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: true });
@@ -243,7 +245,7 @@ export async function createAgentSandbox(
     const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
     return {
       sandbox,
-      providerSandboxId: existingDoc.sandbox.sandboxId,
+      providerSandboxId: existingInstance.sandboxId,
       sessionId,
       skills: mergedSkills,
       deployedSkills,
@@ -291,7 +293,6 @@ export async function createAgentSandbox(
     if (providerConfig.runtime === 'kubernetes') {
       await sandbox.create({
         image: image ?? defaults.defaultImage,
-        timeout: defaults.timeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.sessionKubernetes],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
         metadata: {
@@ -306,7 +307,6 @@ export async function createAgentSandbox(
       // Docker 模式：通过环境变量注入 SESSION_ID，sync agent 据此确定 MinIO 数据路径
       await sandbox.create({
         image: image ?? defaults.defaultImage,
-        timeout: defaults.timeout,
         entrypoint: [entrypoint ?? defaults.entrypoint.docker],
         env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
         metadata: {
@@ -344,27 +344,28 @@ export async function createAgentSandbox(
       : [];
 
     // Step 5: Persist to MongoDB
-    // Use first deployable skill id or a zero ObjectId placeholder for bare containers
-    const primarySkillId = hasSkills ? deployableSkills[0]._id : '000000000000000000000000';
-
-    await MongoSkillSandbox.create({
-      skillId: primarySkillId, // 保留 required 字段兼容性
-      skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
-      sessionId,
-      sandboxType: SandboxTypeEnum.sessionRuntime,
-      teamId,
-      tmbId,
-      sandbox: {
+    await MongoSandboxInstance.create({
+      sandboxId: sandboxInfo.id,
+      appId: teamId, // session-runtime uses teamId as appId
+      userId: tmbId,
+      chatId: sessionId,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      detail: {
+        sandboxType: SandboxTypeEnum.sessionRuntime,
+        teamId,
+        tmbId,
+        sessionId,
+        skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
         provider: providerConfig.provider,
-        sandboxId: sandboxInfo.id,
         image: sandboxInfo.image,
-        status: {
+        providerStatus: {
           state: sandboxInfo.status.state,
           message: sandboxInfo.status.message,
           reason: sandboxInfo.status.reason
         },
-        createdAt: sandboxInfo.createdAt,
-        expiresAt: sandboxInfo.expiresAt
+        providerCreatedAt: sandboxInfo.createdAt
       }
     });
 
@@ -403,9 +404,8 @@ export async function createAgentSandbox(
 /**
  * 结束本次 sandbox 使用。
  *
- * 只断开 SDK 连接并更新 lastActivityTime，不销毁容器。
+ * 只断开 SDK 连接，不销毁容器。
  * 容器保持存活，供同会话的下一次 agent 调用复用。
- * 实际容器销毁由 cleanup job 在超过 inactiveThreshold 后执行。
  */
 export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
@@ -416,16 +416,6 @@ export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<voi
     });
   } catch (error) {
     logger.error('[Agent Sandbox] Failed to close sandbox connection', { error });
-  }
-
-  // 更新 lastActivityTime，cleanup job 据此判断是否超时
-  try {
-    await MongoSkillSandbox.updateOne(
-      { sessionId: ctx.sessionId, sandboxType: SandboxTypeEnum.sessionRuntime, deleteTime: null },
-      { $set: { lastActivityTime: new Date() } }
-    );
-  } catch (error) {
-    logger.error('[Agent Sandbox] Failed to update lastActivityTime', { error });
   }
 }
 
@@ -446,12 +436,11 @@ export async function connectEditDebugSandbox(
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
-  const sandboxDoc = await MongoSkillSandbox.findOne({
-    skillId,
-    sandboxType: SandboxTypeEnum.editDebug,
-    deleteTime: null
+  const instanceDoc = await MongoSandboxInstance.findOne({
+    appId: skillId,
+    chatId: 'edit-debug'
   });
-  if (!sandboxDoc) {
+  if (!instanceDoc) {
     throw new Error('No active edit-debug sandbox found for this skill');
   }
 
@@ -465,14 +454,13 @@ export async function connectEditDebugSandbox(
   }
 
   const sandbox = buildSandboxInstance(providerConfig);
-  await sandbox.connect(sandboxDoc.sandbox.sandboxId);
+  await sandbox.connect(instanceDoc.sandboxId);
 
-  sandboxDoc.lastActivityTime = new Date();
-  await sandboxDoc.save();
+  await MongoSandboxInstance.updateOne({ _id: instanceDoc._id }, { lastActiveAt: new Date() });
 
   logger.info('[Agent Sandbox] Connected to edit-debug sandbox', {
     skillId,
-    providerSandboxId: sandboxDoc.sandbox.sandboxId
+    providerSandboxId: instanceDoc.sandboxId
   });
 
   // Dynamically discover deployed skills instead of reading from persisted metadata
@@ -480,8 +468,8 @@ export async function connectEditDebugSandbox(
 
   return {
     sandbox,
-    providerSandboxId: sandboxDoc.sandbox.sandboxId,
-    sessionId: String(sandboxDoc._id), // editDebug 沙箱用自身 _id 作为 sessionId
+    providerSandboxId: instanceDoc.sandboxId,
+    sessionId: String(instanceDoc._id), // editDebug sandbox uses its own _id as sessionId
     skills: [skill.toJSON()],
     deployedSkills,
     workDirectory: defaults.workDirectory,

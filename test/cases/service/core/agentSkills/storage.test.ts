@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   uploadSkillPackage,
   downloadSkillPackage,
@@ -15,7 +15,8 @@ vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
     client: {
       uploadObject: vi.fn().mockResolvedValue(undefined),
       downloadObject: vi.fn().mockResolvedValue({
-        body: Buffer.from('mock zip content')
+        // body must be async-iterable; an array satisfies for-await-of
+        body: [Buffer.from('mock zip content')]
       }),
       deleteObject: vi.fn().mockResolvedValue(undefined),
       checkObjectExists: vi.fn().mockResolvedValue({ exists: true })
@@ -125,15 +126,27 @@ describe('storage', () => {
       expect(result.toString()).toBe('mock zip content');
     });
 
-    it('should handle download errors', async () => {
+    it('should throw when download response has no body', async () => {
+      // Override mock for this test to return null body
+      const { S3PrivateBucket: MockBucket } = await import(
+        '@fastgpt/service/common/s3/buckets/private'
+      );
+      (MockBucket as any).mockImplementationOnce(() => ({
+        bucketName: 'fastgpt-private',
+        client: {
+          downloadObject: vi.fn().mockResolvedValue({ body: null })
+        }
+      }));
+
       const storageInfo = {
         bucket: 'fastgpt-private',
         key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
         size: 0
       };
 
-      // Mock should handle the download
-      await expect(downloadSkillPackage({ storageInfo })).resolves.toBeDefined();
+      await expect(downloadSkillPackage({ storageInfo })).rejects.toThrow(
+        'Failed to download skill package'
+      );
     });
   });
 
@@ -167,12 +180,16 @@ describe('storage', () => {
       });
     });
 
-    it('should handle non-existing objects', async () => {
-      const key = `agent-skills/${mockTeamId}/${mockSkillId}/v999/package.zip`;
+    it('should return size 0 when object exists but metadata fetch fails', async () => {
+      // checkObjectExists returns true but getObjectMetadata is not mocked → catches → size: 0
+      const result = await getSkillStorageInfo({
+        teamId: mockTeamId,
+        skillId: mockSkillId,
+        version: 999
+      });
 
-      const result = await getSkillStorageInfo(key);
-
-      expect(result.exists).toBe(true); // Mock always returns true
+      expect(result.exists).toBe(true);
+      expect(result.size).toBe(0);
     });
   });
 });

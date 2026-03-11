@@ -51,8 +51,6 @@ export const agentSkillsCollectionName = 'agent_skills';
 
 export const agentSkillsVersionCollectionName = 'agent_skills_versions';
 
-export const skillSandboxCollectionName = 'skill_sandbox_info';
-
 // Sandbox types
 export enum SandboxTypeEnum {
   editDebug = 'edit-debug',
@@ -73,3 +71,11 @@ export enum SandboxProtocolEnum {
   http = 'http',
   https = 'https'
 }
+
+// Sandbox instance lifecycle status (running/stopped)
+export enum SandboxStatusEnum {
+  running = 'running',
+  stopped = 'stopped'
+}
+
+export const sandboxInstanceCollectionName = 'agent_sandbox_instances';

@@ -215,6 +215,12 @@ export async function importSkill(
 ): Promise<string> {
   const { skill } = packageData;
 
+  // Check for duplicate name before creating
+  const nameExists = await checkSkillNameExists(skill.name, teamId);
+  if (nameExists) {
+    throw new Error('Skill with this name already exists');
+  }
+
   // Create skill record first
   const newSkill = new MongoAgentSkills({
     source: AgentSkillSourceEnum.personal,

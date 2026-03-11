@@ -20,9 +20,9 @@ import {
   standardizeSkillPackage
 } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
-import { MongoSkillSandbox } from '@fastgpt/service/core/agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxSchema';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   SaveDeploySkillBody,
   SaveDeploySkillResponse
@@ -30,7 +30,7 @@ import type {
 import { isValidObjectId } from 'mongoose';
 
 /**
- * POST /api/core/app/agent/skills/save-deploy
+ * POST /api/core/agentSkills/save-deploy
  *
  * Save and deploy a skill from sandbox
  * Packages the skill directory, uploads to MinIO, and creates a new version
@@ -96,13 +96,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get edit-debug sandbox info
-    const sandboxInfo = await MongoSkillSandbox.findOne({
-      skillId,
-      sandboxType: SandboxTypeEnum.editDebug,
-      deleteTime: null
+    const sandboxInfo = await MongoSandboxInstance.findOne({
+      appId: skillId,
+      chatId: 'edit-debug',
+      status: SandboxStatusEnum.running
     });
 
-    if (!sandboxInfo || sandboxInfo.sandbox.status.state !== 'Running') {
+    if (!sandboxInfo || sandboxInfo.detail.providerStatus.state !== 'Running') {
       return jsonRes(res, {
         code: 404,
         error: 'Edit sandbox not found or not running'
@@ -114,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       packageBuffer = await packageSkillInSandbox({
-        providerSandboxId: sandboxInfo.sandbox.sandboxId
+        providerSandboxId: sandboxInfo.sandboxId
       });
     } catch (error: any) {
       return jsonRes(res, {

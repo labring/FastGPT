@@ -32,6 +32,7 @@ import type { WorkflowResponseType } from '../../../type';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type { AgentSandboxContext, DeployedSkillInfo } from '../sub/sandbox/types';
 import { MongoAgentSkills } from '../../../../../agentSkills/schema';
+import { MongoSandboxInstance } from '../../../../../agentSkills/sandboxSchema';
 import { getSandboxDefaults } from '../../../../../agentSkills/sandboxConfig';
 import { downloadSkillPackage } from '../../../../../agentSkills/storage';
 import { extractSkillMdInfoFromBuffer } from '../../../../../agentSkills/archiveUtils';
@@ -147,13 +148,23 @@ export async function createSandboxSkillsCapability(
       completionTools: allSandboxTools,
       handleToolCall: async (toolId, args) => {
         if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
-        return buildEditDebugHandler(
+        const result = await buildEditDebugHandler(
           toolId,
           args,
           sandboxContext,
           allFilesMap,
           workflowStreamResponse
         );
+        if (result !== null) {
+          // Fire-and-forget: renew sandbox expiration after successful execution
+          MongoSandboxInstance.updateOne(
+            { sandboxId: sandboxContext.providerSandboxId },
+            { lastActiveAt: new Date() }
+          ).catch((err) =>
+            logger.error('[Agent Sandbox] Failed to renew lastActiveAt', { error: err })
+          );
+        }
+        return result;
       },
       dispose: async () => {
         disconnectEditDebugSandbox(sandboxContext).catch((err) => {
@@ -202,16 +213,6 @@ export async function createSandboxSkillsCapability(
     return initPromise;
   }
 
-  async function renewTtl(ctx: AgentSandboxContext): Promise<void> {
-    if (ctx.sandbox.capabilities.supportsRenews) {
-      try {
-        await ctx.sandbox.renewExpiration(defaults.timeout);
-      } catch {
-        // ignore TTL renewal failures — sandbox still usable
-      }
-    }
-  }
-
   async function executeWithRetry(
     executor: (ctx: AgentSandboxContext) => Promise<{ response: string; usages: [] }>
   ): Promise<{ response: string; usages: [] }> {
@@ -244,8 +245,11 @@ export async function createSandboxSkillsCapability(
       }
     }
 
-    // Renew TTL after successful execution (fire-and-forget)
-    renewTtl(ctx).catch(() => {});
+    // Fire-and-forget: renew sandbox expiration after successful execution
+    MongoSandboxInstance.updateOne(
+      { sandboxId: ctx.providerSandboxId },
+      { lastActiveAt: new Date() }
+    ).catch((err) => logger.error('[Agent Sandbox] Failed to renew lastActiveAt', { error: err }));
 
     return result;
   }
