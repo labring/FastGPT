@@ -19,7 +19,7 @@ export const NodeToolConfigTypeSchema = z.object({
     .optional(),
   mcpTool: z
     .object({
-      toolId: z.string() // mcp-appId/toolsetname/oolname
+      toolId: z.string() // mcp-appId/oolname
     })
     .optional(),
   systemTool: z
@@ -50,7 +50,7 @@ export const NodeToolConfigTypeSchema = z.object({
     .optional(),
   httpTool: z
     .object({
-      toolId: z.string() // http-appId/toolsetname/oolname
+      toolId: z.string() // http-appId/oolname
     })
     .optional()
 });
