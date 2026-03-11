@@ -15,8 +15,16 @@ const hasSandboxEnv = !!(
   process.env.AGENT_SANDBOX_SEALOS_BASEURL &&
   process.env.AGENT_SANDBOX_SEALOS_TOKEN
 );
+vi.mock('@fastgpt/service/env', () => ({
+  env: {
+    AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
+    AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
+    AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN
+  }
+}));
 
 describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
+  const testDir = '/tmp/workspace';
   const testParams = {
     appId: String(new Types.ObjectId()),
     userId: 'integration-user',
@@ -26,8 +34,8 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
 
   // 测试开始前，确认 workspace 存在
   beforeAll(async () => {
-    // 确认 workspace 存在（如果没有的话，创建）
-    const result = await sandbox.exec('mkdir -p /workspace && cd /workspace');
+    const result = await sandbox.exec(`mkdir -p ${testDir} && cd ${testDir}`);
+    console.log(result, 23232);
     expect(result.exitCode).toBe(0);
   });
 
@@ -55,8 +63,8 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
 
   it('should share filesystem within same session', async () => {
     const sandbox = new SandboxClient(testParams);
-    await sandbox.exec('touch /workspace/test-integration.txt');
-    const result = await sandbox.exec('ls /workspace/test-integration.txt');
+    await sandbox.exec(`touch ${testDir}/test-integration.txt`);
+    const result = await sandbox.exec(`ls ${testDir}/test-integration.txt`);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('test-integration.txt');
   });
@@ -255,12 +263,12 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     it('should persist files across multiple exec calls', async () => {
       const sandbox = new SandboxClient(testParams);
 
-      await sandbox.exec('echo "content" > /workspace/test.txt');
-      const result1 = await sandbox.exec('cat /workspace/test.txt');
+      await sandbox.exec(`echo "content" > ${testDir}/test.txt`);
+      const result1 = await sandbox.exec(`cat ${testDir}/test.txt`);
       expect(result1.stdout).toContain('content');
 
-      await sandbox.exec('echo "more" >> /workspace/test.txt');
-      const result2 = await sandbox.exec('cat /workspace/test.txt');
+      await sandbox.exec(`echo "more" >> ${testDir}/test.txt`);
+      const result2 = await sandbox.exec(`cat ${testDir}/test.txt`);
       expect(result2.stdout).toContain('content');
       expect(result2.stdout).toContain('more');
     });
@@ -268,8 +276,8 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     it('should handle directory operations', async () => {
       const sandbox = new SandboxClient(testParams);
 
-      await sandbox.exec('touch /workspace/file.txt');
-      const result = await sandbox.exec('ls /workspace');
+      await sandbox.exec(`touch ${testDir}/file.txt`);
+      const result = await sandbox.exec(`ls ${testDir}`);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('file.txt');
@@ -278,11 +286,11 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     it('should handle file permissions', async () => {
       const sandbox = new SandboxClient(testParams);
 
-      await sandbox.exec('touch /workspace/script.sh');
-      await sandbox.exec('chmod +x /workspace/script.sh');
-      await sandbox.exec('echo "#!/bin/bash\necho executed" > /workspace/script.sh');
+      await sandbox.exec(`touch ${testDir}/script.sh`);
+      await sandbox.exec(`chmod +x ${testDir}/script.sh`);
+      await sandbox.exec(`echo "#!/bin/bash\necho executed" > ${testDir}/script.sh`);
 
-      const result = await sandbox.exec('/workspace/script.sh');
+      const result = await sandbox.exec(`${testDir}/script.sh`);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('executed');
     });
@@ -293,7 +301,7 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     it('should maintain working directory across commands', async () => {
       const sandbox = new SandboxClient(testParams);
 
-      await sandbox.exec('cd /workspace && pwd');
+      await sandbox.exec(`cd ${testDir} && pwd`);
       const result = await sandbox.exec('pwd');
       // 注意：每次 exec 可能重置工作目录，这取决于实现
       expect(result.exitCode).toBe(0);
@@ -313,10 +321,10 @@ describe.skipIf(!hasSandboxEnv)('Sandbox Integration', () => {
     it('should handle large file creation', async () => {
       const sandbox = new SandboxClient(testParams);
 
-      const result = await sandbox.exec('dd if=/dev/zero of=/workspace/large.bin bs=1M count=10');
+      const result = await sandbox.exec(`dd if=/dev/zero of=${testDir}/large.bin bs=1M count=10`);
       expect(result.exitCode).toBe(0);
 
-      const sizeResult = await sandbox.exec('ls -lh /workspace/large.bin');
+      const sizeResult = await sandbox.exec(`ls -lh ${testDir}/large.bin`);
       expect(sizeResult.stdout).toContain('10M');
     });
 

@@ -2,7 +2,7 @@ import z from 'zod';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 
 // ---- 沙盒实例 DB 类型 ----
-export const SandboxProviderSchema = z.enum(['sealos-devbox']);
+export const SandboxProviderSchema = z.enum(['sealosdevbox']);
 export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
 
 export const SandboxLimitSchema = z.object({

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 // Mock the env module BEFORE any imports that use it
 vi.mock('@fastgpt/service/env', () => ({
   env: {
-    AGENT_SANDBOX_PROVIDER: 'sealos-devbox',
+    AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sandbox.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-token-12345'
   }
@@ -66,6 +66,7 @@ describe('deleteSandboxesByChatIds', () => {
   beforeEach(async () => {
     await MongoSandboxInstance.create([
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb1',
         appId: appId1,
         userId: 'u1',
@@ -75,6 +76,7 @@ describe('deleteSandboxesByChatIds', () => {
         createdAt: new Date()
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb2',
         appId: appId1,
         userId: 'u1',
@@ -84,6 +86,7 @@ describe('deleteSandboxesByChatIds', () => {
         createdAt: new Date()
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb3',
         appId: appId2,
         userId: 'u1',
@@ -120,6 +123,7 @@ describe('deleteSandboxesByAppId', () => {
   beforeEach(async () => {
     await MongoSandboxInstance.create([
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb1',
         appId: appId1,
         userId: 'u1',
@@ -129,6 +133,7 @@ describe('deleteSandboxesByAppId', () => {
         createdAt: new Date()
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb2',
         appId: appId1,
         userId: 'u1',
@@ -138,6 +143,7 @@ describe('deleteSandboxesByAppId', () => {
         createdAt: new Date()
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'sb3',
         appId: appId2,
         userId: 'u1',
@@ -172,6 +178,7 @@ describe('cronJob - suspendInactiveSandboxes', () => {
 
     await MongoSandboxInstance.create([
       {
+        provider: 'sealosdevbox',
         sandboxId: 'old1',
         appId: appId1,
         userId: 'u',
@@ -181,6 +188,7 @@ describe('cronJob - suspendInactiveSandboxes', () => {
         createdAt: old
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'recent1',
         appId: appId1,
         userId: 'u',
@@ -190,6 +198,7 @@ describe('cronJob - suspendInactiveSandboxes', () => {
         createdAt: recent
       },
       {
+        provider: 'sealosdevbox',
         sandboxId: 'already',
         appId: appId1,
         userId: 'u',
