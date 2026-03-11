@@ -208,6 +208,11 @@ services:
     environment:
       <<: [*x-log-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: ghcr.io/labring/fastgpt-mcp_server:v4.14.8
@@ -237,6 +242,11 @@ services:
     depends_on:
       fastgpt-minio:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
   # AI Proxy
   aiproxy:
     image: ghcr.io/labring/aiproxy:v0.3.5
