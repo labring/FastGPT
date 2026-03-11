@@ -367,7 +367,6 @@ export async function getChildAppPreviewNode({
         const children = await getMCPChildren(item);
         version.nodes[0].toolConfig = {
           mcpToolSet: {
-            toolId: pluginId,
             toolList: children,
             url: '',
             headerSecret: {}
