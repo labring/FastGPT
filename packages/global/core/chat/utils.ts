@@ -10,8 +10,140 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
-import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import type {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '../workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
+
+export type PlanAskInfo = {
+  question?: string;
+  answer?: string;
+};
+
+export type BuildPlanAgentResponseTextParams = {
+  planId: string;
+  steps: Array<{
+    id: string;
+    title?: string;
+    description?: string;
+    response?: string | null;
+    summary?: string | null;
+  }>;
+  assistantResponses: AIChatItemValueItemType[];
+  asks?: PlanAskInfo[];
+};
+
+export const getPlanAskInfoFromInteractive = (
+  interactive?: InteractiveNodeResponseType
+): PlanAskInfo | undefined => {
+  if (!interactive) return;
+
+  if (interactive.type === 'agentPlanAskQuery') {
+    const question = interactive.params?.content?.trim();
+    if (!question) return;
+    const answer = interactive.params?.answer?.trim() || undefined;
+    return { question, answer };
+  }
+
+  if (interactive.type === 'agentPlanAskUserForm') {
+    const question = interactive.params?.description?.trim();
+    const answer =
+      interactive.params?.inputForm
+        ?.map((item) => {
+          if (!item?.label) return '';
+          if (item.value === undefined || item.value === null || item.value === '') return '';
+          if (Array.isArray(item.value)) {
+            return `${item.label}: ${item.value.map((value) => String(value)).join(', ')}`;
+          }
+          return `${item.label}: ${String(item.value)}`;
+        })
+        .filter(Boolean)
+        .join('; ') || undefined;
+
+    if (!question && !answer) return;
+    return {
+      question,
+      answer
+    };
+  }
+};
+
+export const getPlanAsksByPlanId = ({
+  planId,
+  assistantResponses
+}: {
+  planId: string;
+  assistantResponses: AIChatItemValueItemType[];
+}): PlanAskInfo[] =>
+  assistantResponses
+    .filter((item) => {
+      if (!item.interactive) return false;
+      if (
+        item.interactive.type === 'agentPlanAskQuery' ||
+        item.interactive.type === 'agentPlanAskUserForm'
+      ) {
+        return item.interactive.planId === planId || item.planId === planId;
+      }
+
+      return item.planId === planId;
+    })
+    .map((item) => getPlanAskInfoFromInteractive(item.interactive))
+    .filter((ask): ask is NonNullable<ReturnType<typeof getPlanAskInfoFromInteractive>> =>
+      Boolean(ask)
+    );
+
+export const buildPlanAgentResponseTextFromAssistantResponses = ({
+  planId,
+  steps,
+  assistantResponses,
+  asks
+}: BuildPlanAgentResponseTextParams): string => {
+  const askInfoList = (asks || [])
+    .map((ask) => {
+      return [
+        ask.question ? `question=${ask.question}` : '',
+        ask.answer ? `answer=${ask.answer}` : ''
+      ]
+        .filter(Boolean)
+        .join('; ');
+    })
+    .filter(Boolean);
+
+  const askText =
+    askInfoList.length === 0
+      ? 'COLLECTED INFO: '
+      : `COLLECTED INFO: ${askInfoList.map((askText, index) => `${index + 1}) ${askText}`).join('\n')}`;
+
+  const stepExecutionStates = steps.map((step) => {
+    const extractedText = assistantResponses
+      .filter((item) => item.planId === planId && item.stepId === step.id)
+      .map((item) => item.text?.content?.trim() || '')
+      .filter(Boolean)
+      .join('\n');
+
+    const result = extractedText?.trim() || 'none';
+    const executed = result !== 'none';
+    return { step, executed, result };
+  });
+
+  const parts: string[] = [askText, 'STEPS:'];
+  if (stepExecutionStates.some((item) => !item.executed)) {
+    parts.unshift('PLAN_PAUSE_HANDOFF');
+  }
+
+  stepExecutionStates.forEach(({ step, executed, result }, index) => {
+    parts.push(
+      `${index + 1}) [${executed ? 'executed' : 'pending'}] id=${step.id}; title=${step.title || ''}; description=${step.description || ''}`
+    );
+
+    if (executed) {
+      parts.push(`   result: ${result}`);
+    }
+  });
+
+  return parts.join('\n');
+};
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
