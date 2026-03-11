@@ -8,9 +8,6 @@ export interface FeishuAppType {
   // Encrypt config
   // refer to: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/configure-encrypt-key
   encryptKey?: string; // no secret if null
-  // Token Verification
-  // refer to: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
-  verificationToken?: string;
 }
 
 export interface DingtalkAppType {
