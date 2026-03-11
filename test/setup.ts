@@ -42,13 +42,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (connectionMongo?.connection) connectionMongo?.connection.close();
-  if (connectionLogMongo?.connection) connectionLogMongo?.connection.close();
+  await connectionMongo?.connection.db?.dropDatabase();
+  await connectionLogMongo?.connection.db?.dropDatabase();
 });
 
 beforeEach(async () => {
-  await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
-  await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
+  // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 
   onTestFinished(async () => {
     clean();

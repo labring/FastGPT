@@ -1,6 +1,6 @@
 /**
  * API 测试 - 使用 app.request() 直接测试 Hono 路由
- * 无需启动服务或配置 SANDBOX_URL
+ * 无需启动服务或配置 CODE_SANDBOX_URL
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { app, poolReady } from '../../src/index';
@@ -237,10 +237,10 @@ describe('API Zod 校验失败', () => {
 
 /**
  * Auth 测试
- * 默认 SANDBOX_TOKEN 为空，auth 中间件不启用。
- * 设置 SANDBOX_TOKEN=xxx 运行可测试鉴权逻辑。
+ * 默认 CODE_SANDBOX_TOKEN 为空，auth 中间件不启用。
+ * 设置 CODE_SANDBOX_TOKEN=xxx 运行可测试鉴权逻辑。
  */
-describe.skipIf(!config.token)('API Auth (requires SANDBOX_TOKEN)', () => {
+describe.skipIf(!config.token)('API Auth (requires CODE_SANDBOX_TOKEN)', () => {
   it('无 Token 返回 401', async () => {
     const res = await app.request('/sandbox/js', {
       method: 'POST',

@@ -1,3 +1,9 @@
+import {
+  SANDBOX_TOOL_NAME,
+  SANDBOX_ICON,
+  SANDBOX_NAME,
+  SANDBOX_TOOL_DESCRIPTION
+} from '../../../ai/sandbox/constants';
 import type { I18nStringType } from '../../../../common/i18n/type';
 
 export enum SubAppIds {
@@ -5,13 +11,19 @@ export enum SubAppIds {
   ask = 'ask_agent',
   model = 'model_agent',
   fileRead = 'file_read',
-  datasetSearch = 'dataset_search'
+  datasetSearch = 'dataset_search',
+  sandboxTool = 'sandbox_shell'
 }
 
 export const systemSubInfo: Record<
   string,
   { name: I18nStringType; avatar: string; toolDescription: string }
 > = {
+  [SubAppIds.sandboxTool]: {
+    name: SANDBOX_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_TOOL_DESCRIPTION
+  },
   [SubAppIds.plan]: {
     name: {
       'zh-CN': '规划Agent',

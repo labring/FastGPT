@@ -19,7 +19,7 @@ export default defineConfig({
     isolate: false,
     env: {
       SANDBOX_MAX_TIMEOUT: '5000',
-      SANDBOX_TOKEN: 'test'
+      CODE_SANDBOX_TOKEN: 'test'
     }
   }
 });

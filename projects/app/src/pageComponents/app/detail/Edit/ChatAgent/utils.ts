@@ -60,6 +60,7 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
+      defaultAppForm.aiSettings.useAgentSandbox = inputMap.get(NodeInputKeyEnum.useAgentSandbox);
 
       const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
       if (tools) {
@@ -227,6 +228,14 @@ export function agentForm2AppWorkflow(
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg
               })
+            },
+            // agent sandbox
+            {
+              key: NodeInputKeyEnum.useAgentSandbox,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: data.aiSettings.useAgentSandbox ?? false
             }
           ],
           outputs: AgentNode.outputs

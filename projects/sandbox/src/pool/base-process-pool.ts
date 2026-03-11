@@ -12,7 +12,9 @@ import { promisify } from 'util';
 import { platform } from 'os';
 import { config } from '../config';
 import type { ExecuteOptions, ExecuteResult } from '../types';
+import { getLogger, LogCategories } from '../utils/logger';
 
+const serverLogger = getLogger(LogCategories.MODULE.SANDBOX.SERVER);
 const execAsync = promisify(exec);
 
 /** RSS 轮询间隔（毫秒） */
@@ -75,7 +77,7 @@ export abstract class BaseProcessPool {
     await Promise.all(promises);
     this.ready = true;
     this.startHealthCheck();
-    console.log(`${this.tag}: ${this.poolSize} workers preheated`);
+    serverLogger.info(`${this.tag}: ${this.poolSize} workers preheated`);
   }
 
   async shutdown(): Promise<void> {
@@ -211,7 +213,7 @@ export abstract class BaseProcessPool {
       const removed = this.removeWorker(worker);
       if (this.ready && removed) {
         this.spawnWorker().catch((err) => {
-          console.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
+          serverLogger.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
         });
       }
     });
@@ -368,7 +370,7 @@ export abstract class BaseProcessPool {
     this.idleWorkers = this.idleWorkers.filter((w) => w !== worker);
 
     const replaceWorker = (reason: string) => {
-      console.warn(`${this.tag}: worker ${worker.id} ${reason}, replacing`);
+      serverLogger.warn(`${this.tag}: worker ${worker.id} ${reason}, replacing`);
       this.killAndRespawn(worker);
     };
 
@@ -451,7 +453,7 @@ export abstract class BaseProcessPool {
     this.removeWorker(worker);
     if (this.ready) {
       this.spawnWorker().catch((err) => {
-        console.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
+        serverLogger.error(`${this.tag}: failed to respawn worker ${worker.id}:`, err.message);
       });
     }
   }

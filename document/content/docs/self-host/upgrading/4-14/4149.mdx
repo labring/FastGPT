@@ -3,15 +3,37 @@ title: 'V4.14.9(进行中)'
 description: 'FastGPT V4.14.9 更新说明'
 ---
 
+### 环境变量更新
+
+```bash
+# 调整 CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
+SANDBOX_URL=代码运行沙盒的地址
+SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
+
+# 新增 Agent sandbox 沙盒环境变量
+AGENT_SANDBOX_PROVIDER=
+AGENT_SANDBOX_SEALOS_BASEURL=
+AGENT_SANDBOX_SEALOS_TOKEN=
+```
+
+## 接口变更
+
+`/api/core/chat/getPaginationRecords` 接口，增加返回`useAgentSandbox:boolean`字段，代表本轮对话，是否使用了虚拟机工具。即将移除`llmModuleAccount`和`historyPreviewLength`字段，如使用该字段，请尽快适配。
+
 
 ## 🚀 新增内容
 
+1. 新增 AI 虚拟机功能，可以给 AI 挂载一个虚拟机工具进行更丰富的操作。
+2. 封装 logger sdk。
 
 ## ⚙️ 优化
 
-1. HTTP 工具，增加 SSRF 防御。
+1. api 知识库同步时，增加更多 fallback 获取文件名方式。
+2. HTTP 工具，增加 SSRF 防御。
 
 ## 🐛 修复
 
-1. 工作流嵌套插件时，未成功保留插件运行详情。同时整理所有 tool 类型前缀。
-2. 更新 MCP toolset 后可能无法正常调用。
+1. 工作流变量值，包含特殊值($.)的时候，导致值替换异常。
+2. 工作流引用 agent 工具时，获取版本异常。
+3. 工作流嵌套插件时，未成功保留插件运行详情。同时整理所有 tool 类型前缀。
+4. 更新 MCP toolset 后可能无法正常调用。
