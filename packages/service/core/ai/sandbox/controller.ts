@@ -11,7 +11,6 @@ import {
   type ISandbox,
   type ResourceLimits
 } from '@fastgpt-sdk/sandbox-adapter';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { addMilliseconds } from 'date-fns';
@@ -51,6 +50,7 @@ export class SandboxClient {
     }
 
     const providerName = env.AGENT_SANDBOX_PROVIDER;
+
     const params = (() => {
       if (providerName === 'sealosdevbox') {
         if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
@@ -111,21 +111,16 @@ export class SandboxClient {
   }
 
   async delete() {
-    await mongoSessionRun(async (session) => {
-      await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId }, { session });
-      await this.provider.delete();
-    });
+    await this.provider.delete();
+    await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId });
   }
 
   async stop() {
-    await mongoSessionRun(async (session) => {
-      await MongoSandboxInstance.updateOne(
-        { sandboxId: this.sandboxId },
-        { $set: { status: SandboxStatusEnum.stoped } },
-        { session }
-      );
-      await this.provider.stop();
-    });
+    await this.provider.stop();
+    await MongoSandboxInstance.updateOne(
+      { sandboxId: this.sandboxId },
+      { $set: { status: SandboxStatusEnum.stoped } }
+    );
   }
 }
 

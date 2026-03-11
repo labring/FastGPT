@@ -59,7 +59,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   const isUpdatingRef = useRef(false); // 防止循环更新
 
   const [fileTree, setFileTree] = useState<TreeNode[]>([]);
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(['/workspace']));
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([]));
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -137,7 +137,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   // 下载工作区
   const { run: downloadWorkspace, loading: downloadingWorkspace } = useRequest(
     async () => {
-      await downloadSandbox({ appId, chatId, outLinkAuthData, path: '/workspace' });
+      await downloadSandbox({ appId, chatId, outLinkAuthData });
     },
     { manual: true }
   );
@@ -252,7 +252,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   // 初始化加载根目录
   useMount(() => {
     setLoadingRoot(true);
-    loadDirectory('/workspace', 0).finally(() => {
+    loadDirectory('', 0).finally(() => {
       setLoadingRoot(false);
     });
   });

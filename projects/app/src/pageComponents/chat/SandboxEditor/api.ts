@@ -49,7 +49,7 @@ export const writeSandboxFile = async (
 export const downloadSandbox = async (data: {
   appId: string;
   chatId: string;
-  path: string;
+  path?: string;
   outLinkAuthData?: any;
 }) => {
   const response = await fetch('/api/core/ai/sandbox/download', {

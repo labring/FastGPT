@@ -32,7 +32,6 @@ export const SANDBOX_TOOL_DESCRIPTION =
 // ---- 系统提示词（useAgentSandbox=true 时追加） ----
 export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
 - 预装：bash / python3 / node / bun / git / curl
-- 工作目录：/workspace（文件在本次会话内持久保留）
 - 可自行安装软件包（apt / pip / npm）`;
 
 export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
