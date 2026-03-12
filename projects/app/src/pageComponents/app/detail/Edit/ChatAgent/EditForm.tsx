@@ -32,6 +32,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -59,6 +60,8 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standardConstants?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
@@ -223,25 +226,29 @@ const EditForm = ({
             </Flex>
 
             {showSandbox ? (
-              <>
-                <Box mr={2}>
-                  <SandboxTipTag />
-                </Box>
-                <Switch
-                  isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-                  onChange={(e) => {
-                    setAppForm((state) => ({
-                      ...state,
-                      aiSettings: {
-                        ...state.aiSettings,
-                        useAgentSandbox: e.target.checked
-                      }
-                    }));
-                  }}
-                />
-              </>
+              enableSandbox ? (
+                <>
+                  <Box mr={2}>
+                    <SandboxTipTag />
+                  </Box>
+                  <Switch
+                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+                    onChange={(e) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        aiSettings: {
+                          ...state.aiSettings,
+                          useAgentSandbox: e.target.checked
+                        }
+                      }));
+                    }}
+                  />
+                </>
+              ) : (
+                <SandboxNotSupportTip type="freeDisable" />
+              )
             ) : (
-              <SandboxNotSupportTip />
+              <SandboxNotSupportTip type="systemDisable" />
             )}
           </Flex>
         </Box>

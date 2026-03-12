@@ -612,7 +612,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.model
             },
             {
-              key: 'temperature',
+              key: NodeInputKeyEnum.aiChatTemperature,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
               value: formData.aiSettings.temperature,
@@ -622,7 +622,14 @@ export function form2AppWorkflow(
               step: 1
             },
             {
-              key: 'maxToken',
+              key: NodeInputKeyEnum.aiChatTopP,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.number,
+              value: formData.aiSettings.aiChatTopP
+            },
+            {
+              key: NodeInputKeyEnum.aiChatMaxToken,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
               value: formData.aiSettings.maxToken,
@@ -639,7 +646,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.useAgentSandbox ?? false
             },
             {
-              key: 'systemPrompt',
+              key: NodeInputKeyEnum.aiSystemPrompt,
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
               max: 3000,
               valueType: WorkflowIOValueTypeEnum.string,
@@ -649,7 +656,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.systemPrompt
             },
             {
-              key: 'history',
+              key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
               label: 'core.module.input.label.chat history',
@@ -663,7 +670,7 @@ export function form2AppWorkflow(
               value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
-              key: 'userChatInput',
+              key: NodeInputKeyEnum.userChatInput,
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
               label: i18nT('common:core.module.input.label.user question'),

@@ -16,7 +16,7 @@ import {
   parseLLMStreamResponse,
   parseReasoningContent
 } from '../utils';
-import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { getLLMSupportParams, removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { customNanoid, getNanoid } from '@fastgpt/global/common/string/tools';
@@ -771,6 +771,21 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   requestBody = Object.fromEntries(
     Object.entries(requestBody).filter(([_, value]) => value !== null && value !== undefined)
   ) as T;
+
+  const supportParams = getLLMSupportParams(modelData);
+
+  if (!supportParams.temperature) {
+    delete requestBody.temperature;
+  }
+  if (!supportParams.topP) {
+    delete requestBody.top_p;
+  }
+  if (!supportParams.stop) {
+    delete requestBody.stop;
+  }
+  if (!supportParams.responseFormat) {
+    delete requestBody.response_format;
+  }
 
   // field map
   if (modelData.fieldMap) {

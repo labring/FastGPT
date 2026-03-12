@@ -343,6 +343,8 @@
   "request_headers": "Request header",
   "response_format": "Response format",
   "sandbox.no_file": "Sandbox is empty",
+  "sandbox_free_not_support": "The plan does not support this function",
+  "sandbox_free_not_support_tip": "Click to upgrade package",
   "sandbox_free_tip": "Free for a limited time",
   "sandbox_not_support_tip": "The sandbox function is not enabled in the system",
   "save_team_app_log_keys": "Save as team configuration",

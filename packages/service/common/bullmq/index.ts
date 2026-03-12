@@ -27,6 +27,7 @@ export enum QueueNames {
   datasetSync = 'datasetSync',
   evaluation = 'evaluation',
   s3FileDelete = 's3FileDelete',
+  collectionUpdate = 'collectionUpdate',
 
   // Delete Queue
   datasetDelete = 'datasetDelete',

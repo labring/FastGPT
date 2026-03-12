@@ -3,8 +3,9 @@ import type { ErrType } from '../errorCode';
 /* team: 500000 */
 export enum TeamErrEnum {
   notUser = 'notUser',
-  teamOverSize = 'teamOverSize',
   unAuthTeam = 'unAuthTeam',
+
+  teamOverSize = 'teamOverSize',
   teamMemberOverSize = 'teamMemberOverSize',
   aiPointsNotEnough = 'aiPointsNotEnough',
   datasetSizeNotEnough = 'datasetSizeNotEnough',
@@ -15,6 +16,8 @@ export enum TeamErrEnum {
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   ticketNotAvailable = 'ticketNotAvailable',
+  sandboxNotSupport = 'sandboxNotSupport',
+
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',

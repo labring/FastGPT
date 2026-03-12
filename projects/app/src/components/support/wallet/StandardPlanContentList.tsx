@@ -73,7 +73,8 @@ const StandardPlanContentList = ({
           1024 ** 2
       ),
       maxUploadFileCount:
-        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount
+        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+      enableSandbox: standplan?.enableSandbox ?? plan.enableSandbox
     };
   }, [
     subPlans?.standard,
@@ -95,6 +96,7 @@ const StandardPlanContentList = ({
     standplan?.customDomain,
     standplan?.maxUploadFileSize,
     standplan?.maxUploadFileCount,
+    standplan?.enableSandbox,
     feConfigs?.uploadFileMaxSize,
     feConfigs?.uploadFileMaxAmount
   ]);
@@ -261,6 +263,12 @@ const StandardPlanContentList = ({
           })}
         </Box>
       </Flex>
+      {planContent.enableSandbox && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
+          <Box color={'myGray.600'}>{t('common:enable_sandbox')}</Box>
+        </Flex>
+      )}
     </Grid>
   ) : null;
 };
