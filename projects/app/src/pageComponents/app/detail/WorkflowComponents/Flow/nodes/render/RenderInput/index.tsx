@@ -12,6 +12,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -103,6 +104,8 @@ type Props = {
 };
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standardConstants?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
 
   const filterProInputs = useMemoEnhance(() => {
@@ -175,12 +178,16 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
             {/* tmp */}
             {input.key === NodeInputKeyEnum.useAgentSandbox ? (
               showSandbox ? (
-                <Flex alignItems={'center'} gap={1}>
-                  <SandboxTipTag />
-                  {RenderComponent!.Component}
-                </Flex>
+                enableSandbox ? (
+                  <Flex alignItems={'center'} gap={1}>
+                    <SandboxTipTag />
+                    {RenderComponent!.Component}
+                  </Flex>
+                ) : (
+                  <SandboxNotSupportTip type="freeDisable" />
+                )
               ) : (
-                <SandboxNotSupportTip />
+                <SandboxNotSupportTip type="systemDisable" />
               )
             ) : (
               <>

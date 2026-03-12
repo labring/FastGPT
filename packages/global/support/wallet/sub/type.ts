@@ -25,6 +25,8 @@ export const TeamStandardSubPlanItemSchema = z.object({
   maxUploadFileSize: z.int().optional(), // 最大上传文件大小（MB）
   maxUploadFileCount: z.int().optional(), // 最大上传文件数量
 
+  enableSandbox: z.boolean().optional(), // 虚拟机
+
   // 定制套餐
   priceDescription: z.string().optional(), // 价格描述
   customFormUrl: z.string().optional(), // 自定义表单 URL
@@ -101,7 +103,8 @@ export const TeamSubSchema = z.object({
   ticketResponseTime: z.int().optional(),
   customDomain: z.int().optional(),
   maxUploadFileSize: z.int().optional(),
-  maxUploadFileCount: z.int().optional()
+  maxUploadFileCount: z.int().optional(),
+  enableSandbox: z.boolean().optional() // 虚拟机
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
 

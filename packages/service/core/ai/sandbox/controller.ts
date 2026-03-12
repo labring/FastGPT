@@ -101,7 +101,7 @@ export class SandboxClient {
     } catch (err) {
       return {
         stdout: '',
-        stderr: 'Sandbox service is not available, please try again later',
+        stderr: `Sandbox service is not available: ${getErrText(err)}`,
         exitCode: -1
       };
     }
