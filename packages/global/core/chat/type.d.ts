@@ -43,6 +43,11 @@ export type ChatSchemaType = {
   variables: Record<string, any>;
   pluginInputs?: FlowNodeInputItemType[];
   metadata?: Record<string, any>;
+
+  // 逻辑删除字段
+  deleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
 };
 
 export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
@@ -118,6 +123,11 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   time: Date;
   durationSeconds?: number;
   errorMsg?: string;
+
+  // 逻辑删除字段
+  deleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
 };
 
 export type AdminFbkType = {

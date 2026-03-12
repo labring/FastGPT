@@ -311,7 +311,11 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           userBadFeedbackItems: 1,
           customFeedbackItems: 1,
           markItems: 1,
-          chatDetails: 1
+          chatDetails: 1,
+          // 逻辑删除字段（供管理员查看）
+          deleted: 1,
+          deletedAt: 1,
+          deletedBy: 1
         }
       }
     ],
@@ -377,10 +381,14 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         doc.averageResponseTime ? Number(doc.averageResponseTime).toFixed(2) : 0,
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
-      chatDetails: () => formatJsonString(doc.chatDetails || [])
+      chatDetails: () => formatJsonString(doc.chatDetails || []),
+      // 逻辑删除字段
+      deleted: () => (doc.deleted ? 'Yes' : 'No'),
+      deletedAt: () =>
+        doc.deletedAt ? dayjs(doc.deletedAt.toISOString()).format('YYYY-MM-DD HH:mm:ss') : '-'
     };
 
-    const row = [...logKeys, 'chatDetails']
+    const row = [...logKeys, 'chatDetails', 'deleted', 'deletedAt']
       .map((key) => {
         const getter = valueMap[key];
         const val = getter ? getter() : '';
