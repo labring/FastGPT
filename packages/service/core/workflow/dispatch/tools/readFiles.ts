@@ -6,7 +6,10 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { axios } from '../../../../common/api/axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import {
+  detectFileEncoding,
+  parseContentDispositionFilename
+} from '@fastgpt/global/common/file/tools';
 import { parseUrlToFileType } from '../../utils/context';
 import { readFileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -18,8 +21,8 @@ import { replaceS3KeyToPreviewUrl } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
 import path from 'node:path';
-import { S3Buckets } from '../../../../common/s3/constants';
-import { S3Sources } from '../../../../common/s3/type';
+import { S3Buckets } from '../../../../common/s3/config/constants';
+import { S3Sources } from '../../../../common/s3/contracts/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
@@ -208,34 +211,7 @@ export const getFileContentFromLinks = async ({
           const { filename, extension, imageParsePrefix } = (() => {
             if (isChatExternalUrl) {
               const contentDisposition = response.headers['content-disposition'] || '';
-
-              // Priority: filename* (RFC 5987, UTF-8 encoded) > filename (traditional)
-              const extractFilename = (contentDisposition: string): string => {
-                // Try RFC 5987 filename* first (e.g., filename*=UTF-8''encoded-name)
-                const filenameStarRegex = /filename\*=([^']*)'([^']*)'([^;\n]*)/i;
-                const starMatches = filenameStarRegex.exec(contentDisposition);
-                if (starMatches && starMatches[3]) {
-                  const charset = starMatches[1].toLowerCase();
-                  const encodedFilename = starMatches[3];
-                  // Decode percent-encoded UTF-8 filename
-                  try {
-                    return decodeURIComponent(encodedFilename);
-                  } catch (error) {
-                    logger.warn('Failed to decode filename*', { encodedFilename, error });
-                  }
-                }
-
-                // Fallback to traditional filename parameter
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i;
-                const matches = filenameRegex.exec(contentDisposition);
-                if (matches && matches[1]) {
-                  return matches[1].replace(/['"]/g, '');
-                }
-
-                return '';
-              };
-
-              const matchFilename = extractFilename(contentDisposition);
+              const matchFilename = parseContentDispositionFilename(contentDisposition);
               const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
               const extension = path.extname(filename).replace('.', '');
 

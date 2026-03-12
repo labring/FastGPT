@@ -3,7 +3,7 @@ import { compressBase64Img } from '../img';
 import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
-import { type CreatePostPresignedUrlResult } from '../../../../service/common/s3/type';
+import { type CreatePostPresignedUrlResult } from '../../../../service/common/s3/contracts/type';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 
 export const useUploadAvatar = (

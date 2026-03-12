@@ -12,7 +12,7 @@ vi.mock('@fastgpt/service/common/s3/utils', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/common/s3/type', () => ({
+vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({
   S3Sources: {
     avatar: 'avatar',
     chat: 'chat',

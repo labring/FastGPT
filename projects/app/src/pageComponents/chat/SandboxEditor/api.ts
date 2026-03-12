@@ -2,6 +2,7 @@ import type {
   SandboxFileOperationBody,
   SandboxFileOperationResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
 
 /**
@@ -69,8 +70,8 @@ export const downloadSandbox = async (data: {
 
   // 从响应头获取文件名
   const contentDisposition = response.headers.get('Content-Disposition');
-  const fileNameMatch = contentDisposition?.match(/filename="(.+)"/);
-  const fileName = fileNameMatch ? fileNameMatch[1] : `download-${Date.now()}.zip`;
+  const fileName =
+    parseContentDispositionFilename(contentDisposition || '') || `download-${Date.now()}.zip`;
 
   a.download = fileName;
   document.body.appendChild(a);

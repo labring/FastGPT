@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { type OpenAPIPath } from '../../type';
 import { ApiKeyHealthParamsSchema, ApiKeyHealthResponseSchema } from './api';
 import { TagsMap } from '../../tag';

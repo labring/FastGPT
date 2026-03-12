@@ -4,8 +4,9 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import archiver from 'archiver';
-import { z } from 'zod';
+import z from 'zod';
 import { OutLinkChatAuthSchema } from '@fastgpt/global/support/permission/chat';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 const DownloadBodySchema = z.object({
   appId: z.string(),
@@ -45,7 +46,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     // 下载目录为 ZIP
     const fileName = path.split('/').filter(Boolean).pop() || 'workspace';
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}-${Date.now()}.zip"`);
+    res.setHeader(
+      'Content-Disposition',
+      getContentDisposition({
+        filename: `${fileName}-${Date.now()}.zip`,
+        type: 'attachment'
+      })
+    );
 
     const archive = archiver('zip', {
       zlib: { level: 9 }
@@ -72,7 +79,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
 
     const fileName = path.split('/').pop() || 'file';
     res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader(
+      'Content-Disposition',
+      getContentDisposition({ filename: fileName, type: 'attachment' })
+    );
     res.send(Buffer.from(result.content));
   }
 }

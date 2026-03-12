@@ -13,7 +13,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { jwtSignS3DownloadToken, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
-import { S3Buckets } from '@fastgpt/service/common/s3/constants';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 export type GetDatasetDataListProps = PaginationProps & {
   searchText?: string;

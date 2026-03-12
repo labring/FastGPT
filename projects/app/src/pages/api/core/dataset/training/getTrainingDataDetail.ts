@@ -5,7 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
-import { S3Buckets } from '@fastgpt/service/common/s3/constants';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 export type getTrainingDataDetailQuery = {};
 

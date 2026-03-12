@@ -6,8 +6,8 @@ import {
   PresignChatFilePostUrlSchema,
   PresignChatFileGetUrlSchema
 } from './api';
-import { CreatePostPresignedUrlResultSchema } from '../../../../../service/common/s3/type';
-import { z } from 'zod';
+import { CreatePostPresignedUrlResultSchema } from '../../../../../service/common/s3/contracts/type';
+import z from 'zod';
 
 export const ChatControllerPath: OpenAPIPath = {
   '/v2/chat/stop': {

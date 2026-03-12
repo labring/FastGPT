@@ -1,5 +1,5 @@
 import type { RequireOnlyOne } from '../common/type/utils';
-import { z } from 'zod';
+import z from 'zod';
 
 export const PaginationSchema = z.object({
   pageSize: z.union([z.number(), z.string()]).optional().describe('每页条数'),
