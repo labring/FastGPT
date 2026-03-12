@@ -32,7 +32,7 @@ export enum QueueNames {
   datasetDelete = 'datasetDelete',
   appDelete = 'appDelete',
   teamDelete = 'teamDelete',
-  // @deprecated
+  /** @deprecated */
   websiteSync = 'websiteSync'
 }
 

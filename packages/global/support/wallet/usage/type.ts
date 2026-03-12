@@ -14,7 +14,7 @@ export type UsageSchemaType = {
   appId?: string;
   datasetId?: string;
 
-  // @deprecated
+  /** @deprecated */
   list?: UsageItemType[];
 };
 export type UsageItemSchemaType = {

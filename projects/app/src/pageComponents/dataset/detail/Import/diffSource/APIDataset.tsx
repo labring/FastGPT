@@ -66,7 +66,12 @@ const CustomAPIFileInput = () => {
       });
     },
     {
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
+      refreshDeps: [
+        datasetDetail._id,
+        datasetDetail.apiDatasetServer?.apiServer,
+        parent,
+        searchKey
+      ],
       throttleWait: 500,
       manual: false
     }
@@ -169,7 +174,7 @@ const CustomAPIFileInput = () => {
               setPaths(paths.slice(0, index + 1));
             }}
           />
-          {datasetDetail.apiServer && (
+          {datasetDetail?.apiDatasetServer?.apiServer && (
             <Box w={'240px'}>
               <SearchInput
                 value={searchKey}
