@@ -345,6 +345,8 @@
   "sandbox.search_files": "搜索文件",
   "sandbox.select_file": "选择一个文件进行编辑",
   "sandbox.unsaved": "未保存",
+  "sandbox_free_not_support": "套餐不支持该功能",
+  "sandbox_free_not_support_tip": "点击升级套餐",
   "sandbox_free_tip": "限时免费",
   "sandbox_not_support_tip": "系统未开启虚拟机功能",
   "save_team_app_log_keys": "保存为团队配置",

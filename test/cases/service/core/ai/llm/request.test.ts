@@ -48,7 +48,16 @@ vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
 }));
 
 vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
-  removeDatasetCiteText: vi.fn((text: string) => text)
+  removeDatasetCiteText: vi.fn((text: string) => text),
+  getLLMSupportParams: vi.fn(() => ({
+    vision: false,
+    temperature: true,
+    reasoning: false,
+    topP: true,
+    stop: true,
+    responseFormat: false,
+    supportToolCall: true
+  }))
 }));
 
 vi.mock('@fastgpt/service/core/ai/utils', () => ({

@@ -37,6 +37,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -72,7 +73,8 @@ const EditForm = ({
   const { t } = useTranslation();
   const { defaultModels, feConfigs } = useSystemStore();
   const showSandbox = feConfigs.show_agent_sandbox;
-
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standardConstants?.enableSandbox;
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
@@ -260,25 +262,29 @@ const EditForm = ({
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
             {showSandbox ? (
-              <>
-                <Box mr={2}>
-                  <SandboxTipTag />
-                </Box>
-                <Switch
-                  isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-                  onChange={(e) => {
-                    setAppForm((state) => ({
-                      ...state,
-                      aiSettings: {
-                        ...state.aiSettings,
-                        useAgentSandbox: e.target.checked
-                      }
-                    }));
-                  }}
-                />
-              </>
+              enableSandbox ? (
+                <>
+                  <Box mr={2}>
+                    <SandboxTipTag />
+                  </Box>
+                  <Switch
+                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+                    onChange={(e) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        aiSettings: {
+                          ...state.aiSettings,
+                          useAgentSandbox: e.target.checked
+                        }
+                      }));
+                    }}
+                  />
+                </>
+              ) : (
+                <SandboxNotSupportTip type="freeDisable" />
+              )
             ) : (
-              <SandboxNotSupportTip />
+              <SandboxNotSupportTip type="systemDisable" />
             )}
           </Flex>
         </Box>
