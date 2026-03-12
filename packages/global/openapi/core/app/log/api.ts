@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { PaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';

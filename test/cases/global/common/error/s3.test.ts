@@ -53,6 +53,23 @@ describe('parseS3UploadError', () => {
     expect(t).toHaveBeenCalledWith('common:error:s3_upload_file_too_large', { max: '2 MB' });
   });
 
+  it('should handle invalid upload file type errors', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            message: 'UploadFileTypeMismatch'
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('common:error:s3_upload_invalid_file_type');
+    expect(t).toHaveBeenCalledWith('common:error:s3_upload_invalid_file_type');
+  });
+
   it('should handle AccessDenied error', () => {
     const t = createTranslator();
     const result = parseS3UploadError({

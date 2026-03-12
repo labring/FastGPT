@@ -2,7 +2,9 @@ import jwt from 'jsonwebtoken';
 import { differenceInSeconds } from 'date-fns';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
+import type { UploadConstraints } from '../contracts/type';
 import path from 'path';
+import { env } from '../../../env';
 
 /* ==================== 路由与类型 ==================== */
 const FileApiPath = {
@@ -25,7 +27,7 @@ type S3UploadTokenPayload = {
   objectKey: string;
   bucketName: string;
   maxSize: number;
-  contentType: string;
+  uploadConstraints: UploadConstraints;
   metadata?: Record<string, string>;
   type: 'upload';
 };
@@ -42,12 +44,12 @@ type SignS3UploadTokenParams = {
   bucketName: string;
   expiredTime: Date;
   maxSize: number;
-  contentType: string;
+  uploadConstraints: UploadConstraints;
   metadata?: Record<string, string>;
 };
 
 /* ==================== 通用工具函数 ==================== */
-const getTokenSecret = () => process.env.FILE_TOKEN_KEY as string;
+const getTokenSecret = () => env.FILE_TOKEN_KEY;
 
 const getExpiresIn = (expiredTime: Date) => {
   return Math.max(1, differenceInSeconds(expiredTime, new Date()));
@@ -57,6 +59,8 @@ const isRecord = (val: unknown): val is Record<string, unknown> =>
   !!val && typeof val === 'object' && !Array.isArray(val);
 
 const isNonEmptyString = (val: unknown): val is string => typeof val === 'string' && val.length > 0;
+const isStringArray = (val: unknown): val is string[] =>
+  Array.isArray(val) && val.every(isNonEmptyString);
 
 const buildFileApiUrl = (apiPath: string, token: string, query = '') => {
   return `${EndpointUrl}${apiPath}/${token}${query}`;
@@ -104,6 +108,14 @@ const isS3DownloadTokenPayload = (value: unknown): value is S3DownloadTokenPaylo
   );
 };
 
+const isUploadConstraints = (value: unknown): value is UploadConstraints => {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.defaultContentType) &&
+    (value.allowedExtensions === undefined || isStringArray(value.allowedExtensions))
+  );
+};
+
 const isS3UploadTokenPayload = (value: unknown): value is S3UploadTokenPayload => {
   return (
     isRecord(value) &&
@@ -112,7 +124,7 @@ const isS3UploadTokenPayload = (value: unknown): value is S3UploadTokenPayload =
     isNonEmptyString(value.bucketName) &&
     typeof value.maxSize === 'number' &&
     value.maxSize > 0 &&
-    isNonEmptyString(value.contentType)
+    isUploadConstraints(value.uploadConstraints)
   );
 };
 
@@ -159,7 +171,7 @@ export function jwtSignS3UploadToken({
   bucketName,
   expiredTime,
   maxSize,
-  contentType,
+  uploadConstraints,
   metadata
 }: SignS3UploadTokenParams) {
   const token = signToken(
@@ -167,7 +179,7 @@ export function jwtSignS3UploadToken({
       objectKey,
       bucketName,
       maxSize,
-      contentType,
+      uploadConstraints,
       metadata,
       type: 'upload'
     } satisfies S3UploadTokenPayload,

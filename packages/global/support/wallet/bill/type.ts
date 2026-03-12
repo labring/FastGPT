@@ -2,7 +2,7 @@ import { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
 import { SubTypeEnum } from '../sub/constants';
 import { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
 import type { TeamInvoiceHeaderType } from '../../user/team/type';
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
 export const BillSchema = z.object({

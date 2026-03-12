@@ -1,16 +1,16 @@
 import { isAfter } from 'date-fns';
 import type { ClientSession } from 'mongoose';
-import { MongoS3TTL } from './schema';
-import { S3Buckets } from './constants';
+import { MongoS3TTL } from './models/ttl';
+import { S3Buckets } from './config/constants';
 import { S3PrivateBucket } from './buckets/private';
-import { S3Sources, type UploadImage2S3BucketParams } from './type';
+import { S3Sources, type UploadImage2S3BucketParams } from './contracts/type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 
-export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from './token';
+export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from './security/token';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;

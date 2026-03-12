@@ -5,12 +5,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
-import { S3Buckets } from '@fastgpt/service/common/s3/constants';
 import {
   GetTrainingDataDetailBodySchema,
   GetTrainingDataDetailResponseSchema,
   type GetTrainingDataDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
   const { datasetId, collectionId, dataId } = GetTrainingDataDetailBodySchema.parse(req.body);

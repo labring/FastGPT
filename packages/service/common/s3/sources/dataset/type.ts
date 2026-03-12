@@ -1,6 +1,6 @@
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { ReadStream } from 'fs';
-import { z } from 'zod';
+import z from 'zod';
 
 export const CreateUploadDatasetFileParamsSchema = z.object({
   filename: z.string().nonempty(),

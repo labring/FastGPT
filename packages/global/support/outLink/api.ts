@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import type { HistoryItemType } from '../../core/chat/type';
 import type { OutLinkSchemaType, PlaygroundVisibilityConfigType } from './type';
 import { PlaygroundVisibilityConfigSchema } from './type';

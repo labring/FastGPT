@@ -3,7 +3,7 @@ import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
 import { isS3ObjectKey, jwtSignS3DownloadToken } from '../../../common/s3/utils';
-import { S3Buckets } from '../../../common/s3/constants';
+import { S3Buckets } from '../../../common/s3/config/constants';
 
 export const formatDatasetDataValue = ({
   q,

@@ -3,10 +3,10 @@ import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
-import { z } from 'zod';
-import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
+import z from 'zod';
 
 const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
   invalidCondition: true

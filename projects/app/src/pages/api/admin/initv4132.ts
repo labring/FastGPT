@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type NextApiRequest, type NextApiResponse } from 'next';
-import { S3Buckets } from '@fastgpt/service/common/s3/constants';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MinioStorageAdapter } from '@fastgpt-sdk/storage';
 
 // 将 S3 原先的 circleLife 策略全部去掉

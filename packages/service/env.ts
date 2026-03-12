@@ -1,17 +1,22 @@
 import { createEnv } from '@t3-oss/env-core';
-import { z } from 'zod';
+import z from 'zod';
 
 const BoolSchema = z
   .string()
   .transform((val) => val === 'true')
   .pipe(z.boolean());
 const NumSchema = z.coerce.number();
+const IntSchema = z.coerce.number().int().nonnegative();
 
+// 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
-const StorageTransferModeSchema = z.enum(['proxy', 'presigned']);
+const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
+const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 
 export const env = createEnv({
   server: {
+    FILE_TOKEN_KEY: z.string().default('filetoken'),
+
     // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
@@ -36,6 +41,28 @@ export const env = createEnv({
 
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.optional(),
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.optional(),
+
+    // 对象存储
+    STORAGE_VENDOR: StorageVendorSchema.default('minio'),
+    STORAGE_PUBLIC_BUCKET: z.string().default('fastgpt-public'),
+    STORAGE_PRIVATE_BUCKET: z.string().default('fastgpt-private'),
+    STORAGE_REGION: z.string().default('us-east-1'),
+    STORAGE_EXTERNAL_ENDPOINT: z.string().optional(),
+    STORAGE_S3_ENDPOINT: z.string().default('http://localhost:9000'),
+    STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
+    STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),
+    STORAGE_SECRET_ACCESS_KEY: z.string().default('minioadmin'),
+    STORAGE_S3_FORCE_PATH_STYLE: BoolSchema.default(false),
+    STORAGE_S3_MAX_RETRIES: IntSchema.default(3),
+    STORAGE_COS_PROTOCOL: StorageCosProtocolSchema.default('https:'),
+    STORAGE_COS_USE_ACCELERATE: BoolSchema.default(false),
+    STORAGE_COS_CNAME_DOMAIN: z.string().optional(),
+    STORAGE_COS_PROXY: z.string().optional(),
+    STORAGE_OSS_ENDPOINT: z.string().optional(),
+    STORAGE_OSS_CNAME: BoolSchema.default(false),
+    STORAGE_OSS_INTERNAL: BoolSchema.default(false),
+    STORAGE_OSS_SECURE: BoolSchema.default(false),
+    STORAGE_OSS_ENABLE_PROXY: BoolSchema.default(true),
 
     // ===== Logging =====
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),

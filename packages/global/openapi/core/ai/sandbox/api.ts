@@ -1,5 +1,5 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { z } from 'zod';
+import z from 'zod';
 
 const SandboxBaseSchema = z.object({
   appId: z.string(),

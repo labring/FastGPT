@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 export const ApiKeyHealthParamsSchema = z.object({
   apiKey: z.string().nonempty()

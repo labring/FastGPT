@@ -1,4 +1,5 @@
 import { formatFileSize } from '../file/tools';
+import { S3ErrEnum } from './code/s3';
 
 /**
  * Parse S3 upload error and return user-friendly error message key
@@ -20,6 +21,16 @@ export function parseS3UploadError({
   if (typeof error === 'string' && error.includes('EntityTooLarge')) {
     return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
   }
+  if (
+    typeof error === 'string' &&
+    (error.includes(S3ErrEnum.uploadFileTypeMismatch) ||
+      error.includes(S3ErrEnum.invalidUploadFileType))
+  ) {
+    return t('common:error:s3_upload_invalid_file_type');
+  }
+  if (typeof error === 'string' && error.includes(S3ErrEnum.fileUploadDisabled)) {
+    return t('common:error.file_upload_disabled');
+  }
 
   // Handle axios error response
   if (error?.response?.data) {
@@ -31,6 +42,20 @@ export function parseS3UploadError({
 
       if (msg.includes('EntityTooLarge') || statusText.includes('EntityTooLarge')) {
         return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
+      }
+      if (
+        msg.includes(S3ErrEnum.uploadFileTypeMismatch) ||
+        statusText.includes(S3ErrEnum.uploadFileTypeMismatch) ||
+        msg.includes(S3ErrEnum.invalidUploadFileType) ||
+        statusText.includes(S3ErrEnum.invalidUploadFileType)
+      ) {
+        return t('common:error:s3_upload_invalid_file_type');
+      }
+      if (
+        msg.includes(S3ErrEnum.fileUploadDisabled) ||
+        statusText.includes(S3ErrEnum.fileUploadDisabled)
+      ) {
+        return t('common:error.file_upload_disabled');
       }
       if (
         msg.includes('unAuthFile') ||
@@ -45,6 +70,15 @@ export function parseS3UploadError({
     if (typeof data === 'string') {
       if (data.includes('EntityTooLarge')) {
         return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
+      }
+      if (
+        data.includes(S3ErrEnum.uploadFileTypeMismatch) ||
+        data.includes(S3ErrEnum.invalidUploadFileType)
+      ) {
+        return t('common:error:s3_upload_invalid_file_type');
+      }
+      if (data.includes(S3ErrEnum.fileUploadDisabled)) {
+        return t('common:error.file_upload_disabled');
       }
       if (data.includes('AccessDenied')) {
         return t('common:error:s3_upload_auth_failed');

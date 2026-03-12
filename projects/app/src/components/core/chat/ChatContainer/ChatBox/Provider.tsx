@@ -23,6 +23,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
+import { ChatTypeEnum as ChatTypeEnumValue } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
@@ -259,6 +260,7 @@ const Provider = ({
       appId={appId}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
+      runtimeFileSelectConfig={chatType === ChatTypeEnumValue.test ? fileSelectConfig : undefined}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>

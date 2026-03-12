@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { HelperBotCompletionsParamsSchema } from '../../../../../global/openapi/core/chat/helperBot/api';
 import {
   AIChatItemValueItemSchema,

@@ -5,6 +5,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import React from 'react';
 import type { onStartChatType } from '../type';
 import { ChatBoxInputFormType } from '../ChatBox/type';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 
 export type PluginRunBoxProps = {
   appId: string;
@@ -14,4 +15,5 @@ export type PluginRunBoxProps = {
   onStartChat?: onStartChatType;
   onNewChat?: () => void;
   showTab?: PluginRunBoxTabEnum; // 如何设置了该字段，全局都 tab 不生效
+  runtimeFileSelectConfig?: AppFileSelectConfigType;
 };

@@ -42,7 +42,8 @@ export type GetHelperBotFilePresignParamsType = z.infer<typeof GetHelperBotFileP
 
 // 获取文件预览链接
 export const GetHelperBotFilePreviewParamsSchema = z.object({
-  key: z.string().min(1)
+  key: z.string().min(1),
+  mode: z.enum(['proxy', 'presigned']).optional()
 });
 export type GetHelperBotFilePreviewParamsType = z.infer<typeof GetHelperBotFilePreviewParamsSchema>;
 export const GetHelperBotFilePreviewResponseSchema = z.string();

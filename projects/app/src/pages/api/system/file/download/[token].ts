@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { jwtVerifyS3DownloadToken } from '@fastgpt/service/common/s3/token';
+import { jwtVerifyS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import path from 'path';
 
 const logger = getLogger(LogCategories.INFRA.FILE);
@@ -13,11 +14,6 @@ const parseRequestFilename = (filename?: string) => {
   } catch {
     return filename;
   }
-};
-
-const getContentDisposition = (filename: string) => {
-  const safeFilename = filename.replace(/["\\]/g, '_') || 'file';
-  return `inline; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(filename || 'file')}`;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -60,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata?.filename ||
       path.basename(objectKey) ||
       'file';
-    res.setHeader('Content-Disposition', getContentDisposition(filename));
+    res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
     res.setHeader('Cache-Control', 'public, max-age=31536000');
 
     if (req.method === 'HEAD') {
