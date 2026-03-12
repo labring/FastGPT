@@ -145,7 +145,7 @@ export const AIChatItemValueSchema = z.object({
   plan: AgentPlanSchema.nullish(),
   stepTitle: StepTitleItemSchema.nullish(),
 
-  // @deprecated
+  /** @deprecated */
   tool: ToolModuleResponseItemSchema.nullish()
 });
 
@@ -166,7 +166,7 @@ export type AIChatItemType = {
   errorMsg?: string;
   citeCollectionIds?: string[];
 
-  // @deprecated 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
+  /** @deprecated */ // 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
 };
 

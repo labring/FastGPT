@@ -68,7 +68,7 @@ export const InputComponentPropsTypeSchema = z.object({
   // dynamic input
   customInputConfig: CustomFieldConfigTypeSchema.optional(),
 
-  // @deprecated
+  /** @deprecated */
   enums: z.array(z.object({ value: z.string(), label: z.string() })).optional()
 });
 export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;

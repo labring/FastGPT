@@ -106,7 +106,7 @@ const ChatSchema = new Schema({
     select: false
   },
 
-  // @deprecated
+  /** @deprecated */
   userId: Schema.Types.ObjectId
 });
 

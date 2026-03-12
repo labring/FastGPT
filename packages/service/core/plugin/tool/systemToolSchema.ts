@@ -49,8 +49,9 @@ const SystemToolSchema = new Schema({
     enum: UserTagsEnum.enum
   },
 
-  // @deprecated
+  /** @deprecated */
   inputConfig: Array,
+  /** @deprecated */
   isActive: Boolean
 });
 
