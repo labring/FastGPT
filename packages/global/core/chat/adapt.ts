@@ -78,10 +78,7 @@ export const chats2GPTMessages = ({
             v.interactive?.type === 'agentPlanAskQuery' ||
             v.interactive?.type === 'agentPlanAskUserForm'
         );
-        const askPlanId =
-          askValue?.interactive && 'planId' in askValue.interactive
-            ? askValue.interactive.planId
-            : undefined;
+        const askPlanId = askValue?.planId ?? undefined;
         const hasPlanAhead =
           askPlanId &&
           messages
@@ -227,7 +224,7 @@ export const chats2GPTMessages = ({
           ) {
             // 有对应 plan 时 ask 已嵌入 COLLECTED INFO，跳过避免重复
             // 无对应 plan 时（对话中断/最后一个 ask）输出以保持上下文完整
-            const planId = 'planId' in interactive ? interactive.planId : undefined;
+            const planId = value.planId ?? undefined;
             const hasPlan = planId && chatAssistantResponses.some((v) => v.plan?.planId === planId);
             if (!hasPlan) {
               if (interactive.type === 'agentPlanAskQuery') {

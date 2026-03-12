@@ -38,6 +38,7 @@ import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
+import * as console from 'node:console';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -275,6 +276,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       agentPlan = plan;
 
       if (askInteractive) {
+        askInteractive.planId = planBuffer?.planId;
         return {
           [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
           [DispatchNodeResponseKeyEnum.memories]: {
@@ -495,6 +497,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
           // 收集用户信息，结束调用，等待用户反馈
           if (askInteractive) {
+            askInteractive.planId = planBuffer?.planId;
             return {
               [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
               [DispatchNodeResponseKeyEnum.memories]: {

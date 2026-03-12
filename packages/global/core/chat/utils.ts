@@ -76,17 +76,7 @@ export const getPlanAsksByPlanId = ({
   assistantResponses: AIChatItemValueItemType[];
 }): PlanAskInfo[] =>
   assistantResponses
-    .filter((item) => {
-      if (!item.interactive) return false;
-      if (
-        item.interactive.type === 'agentPlanAskQuery' ||
-        item.interactive.type === 'agentPlanAskUserForm'
-      ) {
-        return item.interactive.planId === planId || item.planId === planId;
-      }
-
-      return item.planId === planId;
-    })
+    .filter((item) => item.interactive && item.planId === planId)
     .map((item) => getPlanAskInfoFromInteractive(item.interactive))
     .filter((ask): ask is NonNullable<ReturnType<typeof getPlanAskInfoFromInteractive>> =>
       Boolean(ask)
