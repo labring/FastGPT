@@ -1,0 +1,70 @@
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  d8577739b7d1070f 28,32,278
+  2769420512fefecc 17,214,280-282,291-292,295,297
+packages/service/core/agentSkills/sandboxConfig.ts
+  d8577739b7d1070f 167,169-170,172,180-184,270-288
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/types.ts
+  2769420512fefecc 1
+packages/service/core/agentSkills/sandboxController.ts
+  d8577739b7d1070f 19,24,239,254
+  2769420512fefecc 175-176,240,245,255,257,260-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "de0b34af7ddae17596d7f14fe92fa6546eb8c397",
+  "prompts": {
+    "2444e040f125d4c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bead8fec-43d9-4317-b746-ddab313a1ef8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "2769420512fefecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26abfe57-1b96-42b0-b6fb-28c160a34856",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 121,
+      "total_deletions": 138,
+      "accepted_lines": 26,
+      "overriden_lines": 5
+    },
+    "88612d95352c002b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47d3b06f-012d-41f4-9218-8ca7be69fbc7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 149,
+      "total_deletions": 129,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    },
+    "d8577739b7d1070f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d183f502-c008-453a-990c-ede5051db3b1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 108,
+      "total_deletions": 151,
+      "accepted_lines": 46,
+      "overriden_lines": 12
+    }
+  }
+}
