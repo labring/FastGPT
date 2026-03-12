@@ -1,17 +1,22 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/contracts/type';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { getAllowedExtensionsFromFileSelectConfig } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import type { PresignChatFilePostUrlParams } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 
 async function handler(
   req: ApiRequestProps<PresignChatFilePostUrlParams>
 ): Promise<CreatePostPresignedUrlResult> {
-  const { filename, appId, chatId, outLinkAuthData } = req.body;
+  const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } = req.body;
 
   const { teamId, uid } = await authChatCrud({
     req,
@@ -21,7 +26,27 @@ async function handler(
     ...outLinkAuthData
   });
 
-  const planStatus = await getTeamPlanStatus({ teamId });
+  const [planStatus, app] = await Promise.all([
+    getTeamPlanStatus({ teamId }),
+    MongoApp.findById(appId, 'chatConfig.fileSelectConfig').lean()
+  ]);
+  const effectiveFileSelectConfig = fileSelectConfig
+    ? await (async () => {
+        await authApp({
+          req,
+          authToken: true,
+          appId,
+          per: WritePermissionVal
+        });
+        return fileSelectConfig;
+      })()
+    : app?.chatConfig?.fileSelectConfig;
+  const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(effectiveFileSelectConfig);
+
+  if (allowedExtensions.length === 0) {
+    return Promise.reject(S3ErrEnum.fileUploadDisabled);
+  }
+
   await authFrequencyLimit({
     eventId: `${uid}-uploadfile`,
     maxAmount:
@@ -34,6 +59,7 @@ async function handler(
     chatId,
     filename,
     uId: uid,
+    allowedExtensions,
     maxFileSize:
       planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });

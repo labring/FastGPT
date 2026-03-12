@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import type { GetHelperBotFilePresignParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
-import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/contracts/type';
 import { authHelperBotChatCrud } from '@/service/support/permission/auth/chat';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3HelperBotSource } from '../../../../../../../../packages/service/common/s3/sources/helperbot/index';

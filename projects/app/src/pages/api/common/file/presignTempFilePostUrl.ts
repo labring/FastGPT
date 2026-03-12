@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/contracts/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';

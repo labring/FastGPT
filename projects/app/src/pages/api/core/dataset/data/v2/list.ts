@@ -11,8 +11,9 @@ import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/sch
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
-import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3DownloadToken, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 export type GetDatasetDataListProps = PaginationProps & {
   searchText?: string;
@@ -95,7 +96,11 @@ async function handler(
         const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
         const imagePreviewUrl =
           item.imageId && isS3ObjectKey(item.imageId, 'dataset')
-            ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
+            ? jwtSignS3DownloadToken({
+                objectKey: item.imageId,
+                bucketName: S3Buckets.private,
+                expiredTime: addHours(new Date(), 1)
+              })
             : undefined;
 
         return {

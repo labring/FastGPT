@@ -5,7 +5,7 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import type { PresignChatFileGetUrlParams } from '@fastgpt/global/openapi/core/chat/controler/api';
 
 async function handler(req: ApiRequestProps<PresignChatFileGetUrlParams>): Promise<string> {
-  const { key, appId, outLinkAuthData } = req.body;
+  const { key, appId, mode, outLinkAuthData } = req.body;
 
   await authChatCrud({
     req,
@@ -15,7 +15,7 @@ async function handler(req: ApiRequestProps<PresignChatFileGetUrlParams>): Promi
     ...outLinkAuthData
   });
 
-  const { url } = await getS3ChatSource().createGetChatFileURL({ key, external: true });
+  const { url } = await getS3ChatSource().createGetChatFileURL({ key, external: true, mode });
 
   return url;
 }

@@ -5,7 +5,7 @@ import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
-import { z } from 'zod';
+import z from 'zod';
 
 /* Get App Permission */
 export const GetAppPermissionQuerySchema = z.object({

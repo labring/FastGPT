@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { HelperBotTypeEnumSchema } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const HelperBotFileUploadSchema = z.object({

@@ -1,5 +1,5 @@
 import { S3PrivateBucket } from '../../buckets/private';
-import { S3Sources } from '../../type';
+import { S3Sources } from '../../contracts/type';
 import {
   type CheckChatFileKeys,
   type DelChatFileByPrefixParams,
@@ -9,7 +9,7 @@ import {
   type UploadFileParams
 } from './type';
 import { differenceInHours } from 'date-fns';
-import { S3Buckets } from '../../constants';
+import { S3Buckets } from '../../config/constants';
 import path from 'path';
 import { getFileS3Key } from '../../utils';
 
@@ -48,24 +48,32 @@ export class S3ChatSource extends S3PrivateBucket {
     }
   }
 
-  async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
-    const { key, expiredHours = 1, external = false } = params; // 默认一个小时
+  async createGetChatFileURL(params: {
+    key: string;
+    expiredHours?: number;
+    external: boolean;
+    mode?: 'proxy' | 'presigned';
+  }) {
+    const { key, expiredHours = 1, external = false, mode } = params; // 默认一个小时
 
     if (external) {
-      return await this.createExternalUrl({ key, expiredHours });
+      return await this.createExternalUrl({ key, expiredHours, mode });
     }
     return await this.createPreviewUrl({ key, expiredHours });
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename, expiredTime, maxFileSize } =
+    const { appId, chatId, uId, filename, expiredTime, maxFileSize, allowedExtensions } =
       ChatFileUploadSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
     return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
       {
         expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 1,
-        maxFileSize
+        maxFileSize,
+        uploadConstraints: {
+          allowedExtensions
+        }
       }
     );
   }

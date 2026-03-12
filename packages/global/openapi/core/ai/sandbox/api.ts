@@ -1,5 +1,5 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { z } from 'zod';
+import z from 'zod';
 
 /**
  * 文件操作 - 统一请求体

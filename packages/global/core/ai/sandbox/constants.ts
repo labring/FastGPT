@@ -1,7 +1,7 @@
 import type { I18nStringType } from '../../../common/i18n/type';
 import { hashStr } from '../../../common/string/tools';
 import type { ChatCompletionTool } from '../type';
-import { z } from 'zod';
+import z from 'zod';
 
 // ---- 沙盒状态 ----
 export const SandboxStatusEnum = {

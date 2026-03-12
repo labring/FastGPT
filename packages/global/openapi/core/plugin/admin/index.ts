@@ -9,7 +9,7 @@ import {
   InstallPluginFromUrlBodySchema
 } from './api';
 import { TagsMap } from '../../../tag';
-import { z } from 'zod';
+import z from 'zod';
 import { AdminPluginToolPath } from './tool';
 
 export const PluginAdminPath: OpenAPIPath = {

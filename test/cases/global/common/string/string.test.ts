@@ -18,6 +18,15 @@ describe('parseFileExtensionFromUrl', () => {
     );
   });
 
+  it('should parse extension from filename query param for proxy links', () => {
+    expect(
+      parseFileExtensionFromUrl('/api/system/file/download/token123?filename=image.jpeg')
+    ).toBe('jpeg');
+    expect(parseFileExtensionFromUrl('/api/system/file/download/token123?name=document.pdf')).toBe(
+      'pdf'
+    );
+  });
+
   it('should not handle hash in URL (returns extension with hash)', () => {
     expect(parseFileExtensionFromUrl('http://example.com/file.pdf#page=1')).toBe('pdf');
     expect(parseFileExtensionFromUrl('https://example.com/image.jpg#section')).toBe('jpg');
