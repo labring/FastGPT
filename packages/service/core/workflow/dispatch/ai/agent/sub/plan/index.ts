@@ -25,7 +25,7 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import type { PlanAgentRuntimeParamsType } from './constants';
+import type { PlanAgentParamsType } from './constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
@@ -54,7 +54,7 @@ type ContinueParams = {
 };
 
 type DispatchPlanAgentProps = PlanAgentConfig &
-  PlanAgentRuntimeParamsType & {
+  PlanAgentParamsType & {
     checkIsStopping: () => boolean;
     completionTools: ChatCompletionTool[];
     getSubAppInfo: GetSubAppInfoFnType;
@@ -63,7 +63,7 @@ type DispatchPlanAgentProps = PlanAgentConfig &
 export type DispatchPlanAgentResponse = {
   askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
   plan?: AgentPlanType;
-  planBuffer: PlanAgentRuntimeParamsType;
+  planBuffer: PlanAgentParamsType;
   completeMessages: ChatCompletionMessageParam[];
   usages: ChatNodeUsageType[];
   nodeResponse: ChatHistoryItemResType;
@@ -77,7 +77,7 @@ const parsePlan = async ({
   background
 }: {
   text: string;
-} & PlanAgentRuntimeParamsType) => {
+} & PlanAgentParamsType) => {
   if (!text) {
     return;
   }

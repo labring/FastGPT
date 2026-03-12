@@ -31,7 +31,6 @@ export type BuildPlanAgentResponseTextParams = {
     summary?: string | null;
   }>;
   assistantResponses: AIChatItemValueItemType[];
-  asks?: PlanAskInfo[];
 };
 
 export const getPlanAskInfoFromInteractive = (
@@ -96,10 +95,10 @@ export const getPlanAsksByPlanId = ({
 export const buildPlanAgentResponseTextFromAssistantResponses = ({
   planId,
   steps,
-  assistantResponses,
-  asks
+  assistantResponses
 }: BuildPlanAgentResponseTextParams): string => {
-  const askInfoList = (asks || [])
+  const asks = getPlanAsksByPlanId({ planId, assistantResponses });
+  const askInfoList = asks
     .map((ask) => {
       return [
         ask.question ? `question=${ask.question}` : '',
