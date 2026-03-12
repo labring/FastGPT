@@ -37,7 +37,9 @@ export type ListSkillsResponse = {
 export type CreateSkillBody = {
   parentId?: string | null; // Parent folder ID
   name: string;
-  description: string;
+  description?: string; // Optional: manual description
+  requirements?: string; // Optional: skill requirements text for AI generation (max 8000 chars)
+  model?: string; // Optional: LLM model for generation (required if requirements is provided)
   category?: `${AgentSkillCategoryEnum}`[];
   config?: AgentSkillConfigType;
   avatar?: string;

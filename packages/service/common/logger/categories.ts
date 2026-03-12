@@ -77,6 +77,9 @@ export const LogCategories = {
       OPTIMIZE_PROMPT: ['ai', 'optimize-prompt'],
       RERANK: ['ai', 'rerank']
     }),
+    AGENT_SKILLS: Object.assign(['agent-skills'], {
+      CREATION: ['agent-skills', 'create-skill']
+    }),
     USER: Object.assign(['user'], {
       ACCOUNT: ['user', 'account'],
       TEAM: ['user', 'team']
