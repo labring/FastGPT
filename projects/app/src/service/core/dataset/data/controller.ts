@@ -7,6 +7,7 @@ import {
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import {
   type DatasetDataIndexItemType,
   type DatasetDataItemType
@@ -254,6 +255,13 @@ export async function insertData2Dataset({
     await removeS3TTL({ key: imageId, bucketName: 'private', session });
   }
 
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
+  });
+
   return {
     insertId: _id,
     tokens
@@ -414,6 +422,13 @@ export async function updateData2Dataset({
     }
   });
 
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(mongoData.collectionId),
+    datasetId: String(mongoData.datasetId),
+    teamId: String(mongoData.teamId)
+  });
+
   return {
     tokens
   };
@@ -438,5 +453,12 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
       teamId: data.teamId,
       idList: data.indexes.map((item) => item.dataId)
     });
+  });
+
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(data.collectionId),
+    datasetId: String(data.datasetId),
+    teamId: String(data.teamId)
   });
 };
