@@ -156,7 +156,14 @@ const RefinedDataCard = () => {
 
   // Handle active card change
   const handleCardClick = useMemoizedFn((dataId: string) => {
-    if (activeCardId === dataId) return;
+    if (activeCardId === dataId) {
+      // 已激活且折叠时，点击展开
+      const isFolded = foldedCards[dataId] !== undefined ? foldedCards[dataId] : true;
+      if (isFolded) {
+        setFoldedCards((prev) => ({ ...prev, [dataId]: false }));
+      }
+      return;
+    }
 
     setActiveCardId(dataId);
     setIsAddingNewIndex(false);
@@ -564,14 +571,14 @@ const RefinedDataCard = () => {
                         data-id={item._id}
                         p={3}
                         pb={!isFolded ? 9 : 3}
-                        userSelect={'none'}
+                        userSelect={isFolded ? 'none' : 'auto'}
                         border={'sm'}
                         position={'relative'}
                         overflow={'hidden'}
                         bg={activeCardId === item._id ? 'primary.50' : 'transparent'}
                         borderColor={activeCardId === item._id ? 'blue.600' : 'inherit'}
                         boxShadow={activeCardId === item._id ? 'lg' : 'none'}
-                        cursor={'pointer'}
+                        cursor={isFolded ? 'pointer' : 'default'}
                         _hover={{
                           bg: 'primary.50',
                           borderColor: 'blue.600',
@@ -619,9 +626,18 @@ const RefinedDataCard = () => {
 
                         {/* Data content */}
                         <Box
+                          cursor={!isFolded ? 'text' : 'pointer'}
+                          sx={
+                            isFolded
+                              ? {
+                                  '.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6':
+                                    { cursor: 'pointer' }
+                                }
+                              : undefined
+                          }
                           {...(isFolded
                             ? {
-                                maxH: '67px',
+                                maxH: '182px',
                                 overflow: 'hidden'
                               }
                             : {

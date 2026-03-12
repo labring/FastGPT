@@ -529,6 +529,7 @@ export function form2AppWorkflow(
     const nodeIds = {
       variableUpdate: 'variableUpdateNodeId',
       conditionChecker: 'qaFDoVSH4WcXMZPO',
+      fallbackReplySwitch: 'ekVOtsUJMYWg4col',
       fallbackReply: 'vprtN0xvK1dV0c6M',
       aiChat: aiChatNodeId,
       correctionChecker: 'lb9O8Jqhq5RMomsX',
@@ -659,6 +660,12 @@ export function form2AppWorkflow(
               {
                 variable: ['VARIABLE_NODE_ID', 'udQRlgfO'],
                 value: ['', ''],
+                renderType: 'input',
+                valueType: 'string'
+              },
+              {
+                variable: ['VARIABLE_NODE_ID', 'vKEVhtS6'],
+                value: ['', formData.chatConfig.enableFallbackReply || 'useFallbackReply'],
                 renderType: 'input',
                 valueType: 'string'
               }
@@ -794,6 +801,53 @@ export function form2AppWorkflow(
       };
     }
 
+    // 创建兜底回复开关判断节点
+    function createFallbackReplySwitchNode(
+      nodeId: string,
+      position: { x: number; y: number }
+    ): StoreNodeItemType {
+      return {
+        nodeId,
+        name: i18nT('common:fallback_reply_switch_checker'),
+        intro: i18nT('common:execute_different_branches_based_on_conditions'),
+        avatar: 'core/workflow/template/ifelse',
+        flowNodeType: FlowNodeTypeEnum.ifElseNode,
+        showStatus: true,
+        position,
+        version: '481',
+        inputs: [
+          {
+            key: 'ifElseList',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: [
+              {
+                condition: 'AND',
+                list: [
+                  {
+                    variable: ['VARIABLE_NODE_ID', 'vKEVhtS6'],
+                    condition: 'equalTo',
+                    value: 'useFallbackReply',
+                    valueType: 'input'
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        outputs: [
+          {
+            id: 'ifElseResult',
+            key: 'ifElseResult',
+            label: i18nT('workflow:judgment_result'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      };
+    }
+
     const nodes = [
       createUpdatedVariableUpdateNode(
         nodeIds.variableUpdate,
@@ -807,6 +861,10 @@ export function form2AppWorkflow(
       createConditionCheckerNode(nodeIds.conditionChecker, {
         x: 1846.7192302293263,
         y: -1185.140341718712
+      }),
+      createFallbackReplySwitchNode(nodeIds.fallbackReplySwitch, {
+        x: 4357.719230229326,
+        y: -555.6403417187121
       }),
       createFallbackReplyNode(nodeIds.fallbackReply, {
         x: 2709.2192302293265,
@@ -859,9 +917,21 @@ export function form2AppWorkflow(
       },
       {
         source: nodeIds.conditionChecker,
-        target: nodeIds.fallbackReply,
+        target: nodeIds.fallbackReplySwitch,
         sourceHandle: `${nodeIds.conditionChecker}-source-IF`,
+        targetHandle: `${nodeIds.fallbackReplySwitch}-target-left`
+      },
+      {
+        source: nodeIds.fallbackReplySwitch,
+        target: nodeIds.fallbackReply,
+        sourceHandle: `${nodeIds.fallbackReplySwitch}-source-IF`,
         targetHandle: `${nodeIds.fallbackReply}-target-left`
+      },
+      {
+        source: nodeIds.fallbackReplySwitch,
+        target: nodeIds.aiChat,
+        sourceHandle: `${nodeIds.fallbackReplySwitch}-source-ELSE`,
+        targetHandle: `${nodeIds.aiChat}-target-left`
       },
       {
         source: nodeIds.conditionChecker,

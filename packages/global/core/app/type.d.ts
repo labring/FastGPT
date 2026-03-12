@@ -156,6 +156,7 @@ export type AppChatConfigType = {
   chatInputGuide?: ChatInputGuideConfigType;
   fileSelectConfig?: AppFileSelectConfigType;
   faqAnswerMode?: 'quote' | 'llm-summary';
+  enableFallbackReply?: 'useFallbackReply' | 'llmReply';
   fallbackReply?: string;
 
   // plugin

@@ -84,7 +84,8 @@ export enum AppTemplateTypeEnum {
 }
 export const AssistantGlobalVarKey = {
   FAQ_ANSWER_MODE: 'utjZSg8f',
-  FALLBACK_REPLY: 'byG7WNk4'
+  FALLBACK_REPLY: 'byG7WNk4',
+  ENABLE_FALLBACK_REPLY: 'vKEVhtS6'
 } as const;
 
 export const defaultFileExtensionTypes = {
@@ -128,4 +129,3 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
-

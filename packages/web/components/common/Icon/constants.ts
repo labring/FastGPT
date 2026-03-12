@@ -119,6 +119,10 @@ export const iconPaths = {
   'common/solidChevronRight': () => import('./icons/common/solidChevronRight.svg'),
   'common/solidChevronUp': () => import('./icons/common/solidChevronUp.svg'),
   'common/subtract': () => import('./icons/common/subtract.svg'),
+  'common/table/asc': () => import('./icons/common/table/asc.svg'),
+  'common/table/desc': () => import('./icons/common/table/desc.svg'),
+  'common/table/filter': () => import('./icons/common/table/filter.svg'),
+  'common/table/sort': () => import('./icons/common/table/sort.svg'),
   'common/templateMarket': () => import('./icons/common/templateMarket.svg'),
   'common/text/t': () => import('./icons/common/text/t.svg'),
   'common/thirdParty': () => import('./icons/common/thirdParty.svg'),
@@ -584,4 +588,3 @@ export const iconPaths = {
   visible: () => import('./icons/visible.svg'),
   wx: () => import('./icons/wx.svg')
 };
-

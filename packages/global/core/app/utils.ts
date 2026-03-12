@@ -189,6 +189,15 @@ export const appWorkflow2Form = ({
         if (faqAnswerMode) {
           defaultAppForm.chatConfig.faqAnswerMode = faqAnswerMode;
         }
+
+        const enableFallbackReply = extractGlobalVarValue(
+          AssistantGlobalVarKey.ENABLE_FALLBACK_REPLY
+        );
+        if (enableFallbackReply) {
+          defaultAppForm.chatConfig.enableFallbackReply = enableFallbackReply as
+            | 'useFallbackReply'
+            | 'llmReply';
+        }
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({

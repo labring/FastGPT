@@ -3,6 +3,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export async function initRootUser(retry = 3): Promise<any> {
   try {
@@ -16,9 +17,10 @@ export async function initRootUser(retry = 3): Promise<any> {
     await mongoSessionRun(async (session) => {
       // init root user
       if (rootUser) {
-        await rootUser.updateOne({
-          password: hashStr(psw)
-        });
+        // await rootUser.updateOne({
+        //   password: hashStr(psw)
+        // });
+        addLog.debug('root user already exists in database, using existing password');
       } else {
         const [{ _id }] = await MongoUser.create(
           [
@@ -30,6 +32,7 @@ export async function initRootUser(retry = 3): Promise<any> {
           { session, ordered: true }
         );
         rootId = _id;
+        addLog.debug('root user created', { username: 'root' });
       }
       // init root team
       await createDefaultTeam({ userId: rootId, session });

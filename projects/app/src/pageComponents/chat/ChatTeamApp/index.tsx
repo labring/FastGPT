@@ -61,7 +61,7 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
 
       {!isPc && (
         <Flex

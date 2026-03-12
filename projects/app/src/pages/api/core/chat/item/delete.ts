@@ -12,7 +12,7 @@ async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiRe
     return Promise.reject('contentId or chatId is empty');
   }
 
-  await authChatCrud({
+  const { tmbId } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,

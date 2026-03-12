@@ -93,8 +93,11 @@ const OutLink = (props: Props) => {
   }, [customVariables]);
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatMap = useContextSelector(ChatContext, (v) => v.forbidLoadChatMap);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const histories = useContextSelector(ChatContext, (v) => v.histories);
+  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
@@ -112,7 +115,8 @@ const OutLink = (props: Props) => {
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;
-      if (!outLinkUid || !shareId || forbidLoadChat.current) return;
+      // 使用 chatId 级别的禁止加载标记
+      if (!outLinkUid || !shareId || forbidLoadChatMap.current.get(chatId)) return;
 
       const res = await getInitOutLinkChatInfo({
         chatId,
@@ -136,6 +140,8 @@ const OutLink = (props: Props) => {
       manual: false,
       refreshDeps: [shareId, outLinkAuthData, chatId],
       onFinally() {
+        // 清除当前 chatId 的禁止加载标记
+        forbidLoadChatMap.current.delete(chatId);
         forbidLoadChat.current = false;
       }
     }
@@ -158,14 +164,40 @@ const OutLink = (props: Props) => {
       responseChatItemId
     }: StartChatFnProps) => {
       const completionChatId = chatId || getNanoid();
-      const histories = messages.slice(-1);
+      const histories_messages = messages.slice(-1);
+
+      // 立即生成标题并添加新会话到列表
+      const newTitle = getChatTitleFromChatMessage(
+        GPTMessages2Chats({ messages: histories_messages })[0]
+      );
+      const isNewChat = !histories.find((h) => h.chatId === completionChatId);
+
+      if (isNewChat && completionChatId) {
+        // 标记禁止加载，防止切换回来时重新加载空数据
+        forbidLoadChatMap.current.set(completionChatId, true);
+        forbidLoadChat.current = true;
+
+        // 立即添加到历史列表，使用用户输入前20字作为标题
+        // customTitle 设置为 newTitle，确保刷新页面后也使用固定标题
+        setHistories((state) => [
+          {
+            chatId: completionChatId,
+            appId,
+            title: newTitle,
+            updateTime: new Date(),
+            customTitle: newTitle,
+            top: false
+          },
+          ...state
+        ]);
+      }
 
       //post message to report chat start
       window.top?.postMessage(
         {
           type: 'shareChatStart',
           data: {
-            question: histories[0]?.content
+            question: histories_messages[0]?.content
           }
         },
         '*'
@@ -173,7 +205,7 @@ const OutLink = (props: Props) => {
 
       const { responseText } = await streamFetch({
         data: {
-          messages: histories,
+          messages: histories_messages,
           variables: {
             ...variables,
             ...customVariables
@@ -187,15 +219,12 @@ const OutLink = (props: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
-
       // new chat
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
-      // update chat window
+      // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
       setChatBoxData((state) => ({
         ...state,
         title: newTitle
@@ -206,7 +235,7 @@ const OutLink = (props: Props) => {
         {
           type: 'shareChatFinish',
           data: {
-            question: histories[0]?.content,
+            question: histories_messages[0]?.content,
             answer: responseText
           }
         },
@@ -220,10 +249,12 @@ const OutLink = (props: Props) => {
       customVariables,
       outLinkAuthData,
       isShowCite,
-      onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,
-      onChangeChatId
+      onChangeChatId,
+      histories,
+      setHistories,
+      appId
     ]
   );
 
@@ -410,8 +441,12 @@ const Render = (props: Props) => {
         await getInitChatInfo({ appId, chatId: chatId || getNanoid() });
 
         setIsConfirmed(true);
-      } catch (error) {
-        // 5. 自动登录失败，显示登录页面
+      } catch (error: any) {
+        if (error?.code && error.code >= 502000) {
+          // 已登录但无应用权限，显示错误信息
+          toast({ title: t('chat:no_auth_to_chat'), status: 'error' });
+        }
+        // 显示登录页面（允许切换账号或首次登录）
         setShowLoginModal(true);
       } finally {
         setIsChecking(false);
@@ -427,7 +462,6 @@ const Render = (props: Props) => {
         // 验证应用权限
         await getInitChatInfo({ appId, chatId: chatId || getNanoid() });
         setIsConfirmed(true);
-
         return true;
       } catch (e: any) {
         if (e?.code && e.code >= 502000) {
@@ -435,7 +469,6 @@ const Render = (props: Props) => {
         } else {
           toast({ title: t('login:login_failed'), status: 'error' });
         }
-
         return false;
       }
     };

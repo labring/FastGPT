@@ -28,6 +28,7 @@ import {
 } from '@/web/core/chat/feedback/api';
 import { delChatRecordById } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
+import { chatRequestManager } from '@/web/core/chat/utils/chatRequestManager';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type.d';
@@ -120,9 +121,9 @@ const ChatBox = ({
   const { setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
-  const chatController = useRef(new AbortController());
-  const questionGuideController = useRef(new AbortController());
-  const pluginController = useRef(new AbortController());
+
+  // 获取当前会话的 AbortController
+  const getChatControllers = useMemoizedFn(() => chatRequestManager.getControllers(chatId));
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -259,14 +260,17 @@ const ChatBox = ({
       autoTTSResponse,
       variables,
       nodeResponse,
-      durationSeconds
-    }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      setChatRecords((state) =>
-        state.map((item, index) => {
+      durationSeconds,
+      targetChatId // 新增：指定目标会话 ID
+    }: generatingMessageProps & { autoTTSResponse?: boolean; targetChatId?: string }) => {
+      // 如果指定了 targetChatId 且与当前 chatId 不同，只更新缓存
+      const isCurrentChat = !targetChatId || targetChatId === chatId;
+
+      // 处理数据更新的核心逻辑（提取为函数以复用）
+      const updateChatData = (state: ChatSiteItemType[]) => {
+        return state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
-
-          autoTTSResponse && splitText2Audio(formatChatValue2InputType(item.value).text || '');
 
           const lastValue: AIChatItemValueItemType = JSON.parse(
             JSON.stringify(item.value[item.value.length - 1])
@@ -390,8 +394,32 @@ const ChatBox = ({
           }
 
           return item;
-        })
-      );
+        });
+      };
+
+      // 如果不是当前会话，只更新缓存
+      if (!isCurrentChat && targetChatId) {
+        const cachedRecords = chatRequestManager.getChatRecordsCache(targetChatId);
+        if (cachedRecords && cachedRecords.length > 0) {
+          const newState = updateChatData(cachedRecords);
+          chatRequestManager.updateChatRecordsCache(targetChatId, newState);
+        }
+        return; // 不更新 UI
+      }
+
+      // 当前会话，正常更新 UI 和缓存
+      setChatRecords((state) => {
+        autoTTSResponse &&
+          state.length > 0 &&
+          splitText2Audio(formatChatValue2InputType(state[state.length - 1].value).text || '');
+
+        const newState = updateChatData(state);
+
+        // 更新缓存（无论是否为当前会话）
+        chatRequestManager.updateChatRecordsCache(targetChatId || chatId, newState);
+
+        return newState;
+      });
 
       const forceScroll = event === SseResponseEventEnum.interactive;
       generatingScroll(forceScroll);
@@ -416,35 +444,45 @@ const ChatBox = ({
   });
 
   // create question guide
+  // 注意：这个函数会捕获调用时的 chatId，确保 AbortController 和请求使用同一个 chatId
   const createQuestionGuide = useCallback(async () => {
-    if (!questionGuide.open || chatController.current?.signal?.aborted) return;
+    // 捕获当前 chatId，避免闭包问题
+    const currentChatId = chatId;
+    const controllers = chatRequestManager.getControllers(currentChatId);
+
+    if (!questionGuide.open || controllers.chat?.signal?.aborted) return;
     try {
       const abortSignal = new AbortController();
-      questionGuideController.current = abortSignal;
+      controllers.questionGuide = abortSignal;
 
       const result = await postQuestionGuide(
         {
           appId,
-          chatId,
+          chatId: currentChatId,
           questionGuide,
           ...outLinkAuthData
         },
         abortSignal
       );
+
+      // 检查会话是否已切换，如果已切换则不更新 UI，避免会话 A 的猜你想问显示在会话 B
+      if (chatId !== currentChatId) {
+        return;
+      }
+
       if (Array.isArray(result)) {
         setQuestionGuide(result);
         setTimeout(() => {
           scrollToBottom();
         }, 100);
       }
-    } catch (error) { }
+    } catch (error) {}
   }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useMemoizedFn((reason: string = 'stop') => {
-    chatController.current?.abort(new Error(reason));
-    questionGuideController.current?.abort(new Error(reason));
-    pluginController.current?.abort(new Error(reason));
+  const abortRequest = useMemoizedFn((signal: string = 'stop') => {
+    // 只中止当前 chatId 的请求
+    chatRequestManager.abortChat(chatId, signal);
   });
 
   /**
@@ -459,6 +497,9 @@ const ChatBox = ({
       isInteractivePrompt = false,
       hideInUI = false
     }) => {
+      // 捕获发送请求时的 chatId，用于在回调中检查会话是否已切换
+      const requestChatId = chatId;
+
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
@@ -472,7 +513,8 @@ const ChatBox = ({
           }
 
           // Abort the previous request
-          questionGuideController.current?.abort(new Error('stop'));
+          abortRequest();
+          getChatControllers().questionGuide?.abort('stop');
 
           text = text.trim();
 
@@ -570,8 +612,8 @@ const ChatBox = ({
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
             isInteractivePrompt
-              // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-              ? setInteractiveResultToHistories(newChatList.slice(0, -2), text)
+              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
+                setInteractiveResultToHistories(newChatList.slice(0, -2), text)
               : newChatList
           );
 
@@ -580,10 +622,22 @@ const ChatBox = ({
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
 
+          // 标记开始流式输出，并初始化缓存数据
+          chatRequestManager.startStreaming(requestChatId);
+          // 立即将当前的 chatRecords 写入缓存，确保后台更新有初始数据可用
+          chatRequestManager.updateChatRecordsCache(
+            requestChatId,
+            isInteractivePrompt
+              ? setInteractiveResultToHistories(newChatList.slice(0, -2), text)
+              : newChatList
+          );
+
           try {
             // create abort obj
             const abortSignal = new AbortController();
-            chatController.current = abortSignal;
+            // 使用 requestChatId 而非 getChatControllers()，避免闭包读取最新 chatId 导致注册到错误会话
+            const controllers = chatRequestManager.getControllers(requestChatId);
+            controllers.chat = abortSignal;
 
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({
@@ -603,9 +657,20 @@ const ChatBox = ({
               messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
-              generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
+              generatingMessage: (e) => {
+                // 始终传递 targetChatId，让 generatingMessage 正确处理
+                generatingMessage({ ...e, autoTTSResponse, targetChatId: requestChatId });
+              },
               variables: requestVariables
             });
+
+            // 清理流式输出状态、缓存和控制器
+            chatRequestManager.cleanup(requestChatId);
+
+            // 检查会话是否已切换，如果已切换则跳过 UI 更新
+            if (chatId !== requestChatId) {
+              return;
+            }
 
             // Set last chat finish status
             let newChatHistories: ChatSiteItemType[] = [];
@@ -656,6 +721,9 @@ const ChatBox = ({
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
           } catch (err: any) {
+            // 清理流式输出状态、缓存和控制器
+            chatRequestManager.cleanup(requestChatId);
+
             console.log('Chat error', err);
             toast({
               title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
@@ -663,6 +731,17 @@ const ChatBox = ({
               duration: 5000,
               isClosable: true
             });
+
+            // 检查会话是否已切换，如果已切换则跳过错误恢复
+            if (chatId !== requestChatId) {
+              return;
+            }
+
+            if (!err?.responseText) {
+              resetInputVal({ text, files });
+              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
+              setChatRecords(newChatList.slice(0, newChatList.length - 2));
+            }
 
             // set finish status
             setChatRecords((state) =>
@@ -835,7 +914,7 @@ const ChatBox = ({
             dataId: chat.dataId,
             ...outLinkAuthData
           });
-        } catch (error) { }
+        } catch (error) {}
       };
     } else {
       return () => setFeedbackId(chat.dataId);
@@ -910,8 +989,9 @@ const ChatBox = ({
   useEffect(() => {
     setQuestionGuide([]);
     setValue('chatStarted', false);
-    abortRequest('leave');
-  }, [chatId, appId, abortRequest, setValue]);
+    // 不再在切换会话时中止请求，让后台请求继续完成
+    // abortRequest('leave');
+  }, [chatId, appId, setValue]);
 
   const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
 

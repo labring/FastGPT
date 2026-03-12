@@ -70,7 +70,7 @@ const ChatSetting = () => {
 
   return (
     <>
-      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
+      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
 
       <Flex flexDir="column" h="100%">
         {!isPc && (

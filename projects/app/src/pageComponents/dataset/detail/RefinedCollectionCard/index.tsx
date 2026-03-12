@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
+import StatusFilter from './StatusFilter';
 import {
   Box,
   Flex,
@@ -21,7 +22,8 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync,
-  getCollectionSource
+  getCollectionSource,
+  postCheckDuplicateCollection
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -55,6 +57,7 @@ import TagsPopOver from '../CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExceptionInfoModal from './ExceptionInfoModal';
 import DatabaseExceptionModal from './DatabaseExceptionModal';
+import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 
 const Header = dynamic(() => import('./Header'));
@@ -81,6 +84,11 @@ const CollectionCard = () => {
 
   // 格式化数据量的函数
   const formatDataAmount = (collection: any, isStructureDocument: boolean) => {
+    // 文件夹类型显示 "-"
+    if (collection.type === DatasetCollectionTypeEnum.folder) {
+      return '-';
+    }
+
     if (isStructureDocument && collection.metadata) {
       const metadata = collection.metadata;
       if (metadata.rows && metadata.cols) {
@@ -101,7 +109,13 @@ const CollectionCard = () => {
     pageSize,
     handleOpenConfigPage,
     searchText,
-    filterTags
+    filterTags,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   // Add file status icon
@@ -110,6 +124,14 @@ const CollectionCard = () => {
       collections.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
         const status = (() => {
+          // 文件夹类型不显示状态
+          if (collection.type === DatasetCollectionTypeEnum.folder) {
+            return {
+              statusText: '-',
+              colorSchema: 'gray',
+              statusKey: 'folder'
+            };
+          }
           if (collection.tableSchema?.hasOwnProperty('exist') && !collection.tableSchema.exist) {
             return {
               statusText: t('common:table_not_exist'),
@@ -160,11 +182,67 @@ const CollectionCard = () => {
     getItemId: (e) => e._id
   });
 
-  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+  const [moveCollectionData, setMoveCollectionData] = useState<{
+    collectionId: string;
+    collectionName: string;
+  }>();
+  const [moveDuplicateData, setMoveDuplicateData] = useState<{
+    duplicateFiles: string[];
+    parentId: string;
+    collectionId: string;
+  }>();
+  const [isMoveLoading, setIsMoveLoading] = useState(false);
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:Rename')
   });
+
+  /**
+   * 排序处理函数
+   */
+  const handleSort = useCallback(
+    (field: 'name' | 'updateTime' | 'createTime' | 'dataAmount') => {
+      setSortBy((prevSortBy) => {
+        if (prevSortBy === field) {
+          // 同一字段：切换排序顺序 asc -> desc -> asc
+          setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+          return field;
+        } else {
+          // 不同字段：重置为升序
+          setSortOrder('asc');
+          return field;
+        }
+      });
+    },
+    [setSortBy, setSortOrder]
+  );
+
+  /**
+   * 渲染排序图标
+   */
+  const renderSortIcon = useCallback(
+    (field: 'name' | 'updateTime' | 'createTime' | 'dataAmount') => {
+      if (sortBy !== field) {
+        return (
+          <MyIcon
+            name={'common/table/sort'}
+            w={'12px'}
+            cursor={'pointer'}
+            _hover={{ color: 'primary.600' }}
+          />
+        );
+      }
+
+      return (
+        <MyIcon
+          name={sortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'}
+          w={'12px'}
+          cursor={'pointer'}
+        />
+      );
+    },
+    [sortBy, sortOrder]
+  );
 
   // Handler for reading/downloading collection source
   const handleReadSource = useCallback(
@@ -344,26 +422,84 @@ const CollectionCard = () => {
                   <Th py={4}>
                     <HStack>
                       <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
-                      <Box>{t('common:Name')}</Box>
+                      <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('name')}>
+                        <Box>{t('common:Name')}</Box>
+                        {renderSortIcon('name')}
+                      </HStack>
                     </HStack>
                   </Th>
-                  <Th py={4} w="100px">
-                    {isStructureDocument
-                      ? t('dataset:collection_data_count')
-                      : t('dataset:chunk_count')}
-                  </Th>
-                  {!isStructureDocument && (
-                    <Th py={4} w="100px">
-                      {t('common:Status')}
-                    </Th>
-                  )}
-                  <Th py={4} w="150px">
-                    {t('dataset:collection.Create update time')}
-                  </Th>
-                  {!isStructureDocument && (
-                    <Th py={4} w="100px">
-                      {t('dataset:Enable')}
-                    </Th>
+                  {isStructureDocument ? (
+                    <>
+                      <Th py={4} w="100px">
+                        <Box>{t('dataset:collection_data_count')}</Box>
+                      </Th>
+                      <Th py={4} w="150px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('createTime')}
+                        >
+                          <Box>{t('common:create_time')}</Box>
+                          {renderSortIcon('createTime')}
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="150px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('updateTime')}
+                        >
+                          <Box>{t('common:update_time')}</Box>
+                          {renderSortIcon('updateTime')}
+                        </HStack>
+                      </Th>
+                    </>
+                  ) : (
+                    <>
+                      <Th py={4} w="150px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('createTime')}
+                        >
+                          <Box>{t('common:create_time')}</Box>
+                          {renderSortIcon('createTime')}
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="100px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('dataAmount')}
+                        >
+                          <Box>{t('dataset:chunk_count')}</Box>
+                          {renderSortIcon('dataAmount')}
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="100px">
+                        <HStack spacing={1}>
+                          <Box>{t('common:Status')}</Box>
+                          <StatusFilter
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            hideNotExist
+                          />
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="150px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('updateTime')}
+                        >
+                          <Box>{t('common:update_time')}</Box>
+                          {renderSortIcon('updateTime')}
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="100px">
+                        {t('dataset:Enable')}
+                      </Th>
+                    </>
                   )}
                   <Th py={4} w="100px" />
                 </Tr>
@@ -413,12 +549,12 @@ const CollectionCard = () => {
                           <Flex alignItems={'center'}>
                             <MyIcon
                               name={collection.icon as any}
-                              w={'1.25rem'}
+                              w={'16px'}
                               mr={2}
                               flexShrink={0}
                             />
                             {isStructureDocument ? (
-                              <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                              <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
                                 {collection.name}
                               </Box>
                             ) : (
@@ -427,8 +563,8 @@ const CollectionCard = () => {
                                 shouldWrapChildren={false}
                               >
                                 <Box
-                                  color={'myGray.900'}
-                                  fontWeight={'500'}
+                                  fontSize={'xs'}
+                                  color={'myWhite.1000'}
                                   className="textEllipsis"
                                 >
                                   {collection.name}
@@ -442,58 +578,76 @@ const CollectionCard = () => {
                         </Box>
                       </HStack>
                     </Td>
-                    <Td py={2} w="100px">
-                      {formatDataAmount(collection, isStructureDocument)}
-                    </Td>
-                    {!isStructureDocument && (
-                      <Td py={2} w="100px">
-                        {collection.statusKey === 'error' ? (
-                          <MyTooltip label={t('common:Click_to_expand')}>
+                    {isStructureDocument ? (
+                      <>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
+                          {formatDataAmount(collection, isStructureDocument)}
+                        </Td>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                          {formatTime2YMDHM(collection.createTime)}
+                        </Td>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                          {formatTime2YMDHM(collection.updateTime)}
+                        </Td>
+                      </>
+                    ) : (
+                      <>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                          {formatTime2YMDHM(collection.createTime)}
+                        </Td>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
+                          {formatDataAmount(collection, isStructureDocument)}
+                        </Td>
+                        <Td py={2} w="100px">
+                          {collection.statusKey === 'folder' ? (
+                            <Box fontSize={'xs'} color={'myWhite.1000'}>
+                              {collection.statusText}
+                            </Box>
+                          ) : collection.statusKey === 'error' ? (
+                            <MyTooltip label={t('common:Click_to_expand')}>
+                              <MyTag
+                                colorSchema={collection.colorSchema as any}
+                                type={'fill'}
+                                h={'28px'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExceptionInfoCollection({ collectionId: collection._id });
+                                }}
+                              >
+                                <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                                  {t(collection.statusText as any)}
+                                  <MyIcon name={'common/maximize'} w={'11px'} />
+                                </Flex>
+                              </MyTag>
+                            </MyTooltip>
+                          ) : (
                             <MyTag
                               colorSchema={collection.colorSchema as any}
                               type={'fill'}
                               h={'28px'}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExceptionInfoCollection({ collectionId: collection._id });
-                              }}
                             >
                               <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                                 {t(collection.statusText as any)}
-                                <MyIcon name={'common/maximize'} w={'11px'} />
                               </Flex>
                             </MyTag>
-                          </MyTooltip>
-                        ) : (
-                          <MyTag
-                            colorSchema={collection.colorSchema as any}
-                            type={'fill'}
-                            h={'28px'}
-                          >
-                            <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                              {t(collection.statusText as any)}
-                            </Flex>
-                          </MyTag>
-                        )}
-                      </Td>
-                    )}
-                    <Td fontSize={'xs'} py={2} color={'myGray.500'} w="150px">
-                      <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                      <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
-                    </Td>
-                    {!isStructureDocument && (
-                      <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
-                        <Switch
-                          isChecked={!collection.forbid}
-                          size={'sm'}
-                          onChange={(e) =>
-                            onUpdateCollection({
-                              id: collection._id,
-                              forbid: !e.target.checked
-                            })
-                          }
-                        />
-                      </Td>
+                          )}
+                        </Td>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                          {formatTime2YMDHM(collection.updateTime)}
+                        </Td>
+                        <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
+                          <Switch
+                            isChecked={!collection.forbid}
+                            size={'sm'}
+                            onChange={(e) =>
+                              onUpdateCollection({
+                                id: collection._id,
+                                forbid: !e.target.checked
+                              })
+                            }
+                          />
+                        </Td>
+                      </>
                     )}
                     <Td py={2} onClick={(e) => e.stopPropagation()} w="100px">
                       {collection.permission.hasWritePer && (
@@ -586,7 +740,10 @@ const CollectionCard = () => {
                                           </Flex>
                                         ),
                                         onClick: () =>
-                                          setMoveCollectionData({ collectionId: collection._id })
+                                          setMoveCollectionData({
+                                            collectionId: collection._id,
+                                            collectionName: collection.name
+                                          })
                                       }
                                     ]),
                                 ...(isStructureDocument
@@ -709,18 +866,82 @@ const CollectionCard = () => {
             datasetId={datasetDetail._id}
             type="folder"
             defaultSelectedId={[moveCollectionData.collectionId]}
-            onClose={() => setMoveCollectionData(undefined)}
-            onSuccess={async ({ parentId }) => {
-              await putDatasetCollectionById({
-                id: moveCollectionData.collectionId,
-                parentId
-              });
-              getData(pageNum);
+            confirmLoading={isMoveLoading}
+            onClose={() => {
               setMoveCollectionData(undefined);
-              toast({
-                status: 'success',
-                title: t('common:move_success')
+              setMoveDuplicateData(undefined);
+            }}
+            onSuccess={async ({ parentId }) => {
+              const checkResult = await postCheckDuplicateCollection({
+                datasetId: datasetDetail._id,
+                parentId: parentId || undefined,
+                fileNames: [moveCollectionData.collectionName]
               });
+
+              if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+                setMoveDuplicateData({
+                  duplicateFiles: checkResult.duplicateFileNames,
+                  parentId: parentId ?? '',
+                  collectionId: moveCollectionData.collectionId
+                });
+              } else {
+                await putDatasetCollectionById({
+                  id: moveCollectionData.collectionId,
+                  parentId
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              }
+            }}
+          />
+        )}
+
+        {!!moveDuplicateData && (
+          <MoveCollectionDuplicateModal
+            isOpen={true}
+            onClose={() => setMoveDuplicateData(undefined)}
+            duplicateFiles={moveDuplicateData.duplicateFiles}
+            onSkip={() => setMoveDuplicateData(undefined)}
+            onContinueMove={async () => {
+              setMoveDuplicateData(undefined);
+              setIsMoveLoading(true);
+              try {
+                await putDatasetCollectionById({
+                  id: moveDuplicateData.collectionId,
+                  parentId: moveDuplicateData.parentId
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              } finally {
+                setIsMoveLoading(false);
+              }
+            }}
+            onReplaceFiles={async () => {
+              setMoveDuplicateData(undefined);
+              setIsMoveLoading(true);
+              try {
+                await putDatasetCollectionById({
+                  id: moveDuplicateData.collectionId,
+                  parentId: moveDuplicateData.parentId,
+                  overwriteDuplicate: true
+                });
+                getData(pageNum);
+                setMoveCollectionData(undefined);
+                toast({
+                  status: 'success',
+                  title: t('common:move_success')
+                });
+              } finally {
+                setIsMoveLoading(false);
+              }
             }}
           />
         )}

@@ -41,6 +41,7 @@ interface GeneralImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   datasetId: string;
+  parentId?: string;
   onFinish?: () => void;
 }
 
@@ -48,6 +49,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   isOpen,
   onClose,
   datasetId,
+  parentId,
   onFinish
 }) => {
   const { t } = useTranslation();
@@ -194,6 +196,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
           try {
             await postCreateCustomFileIdCollection({
               datasetId,
+              parentId,
               fileId: file.dbFileId!,
               name: file.sourceName,
               overwriteDuplicate,
@@ -209,7 +212,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
         })
       );
     },
-    [datasetId, toast, enableEnhance]
+    [datasetId, parentId, toast, enableEnhance]
   );
 
   // 上传链接集合
@@ -223,6 +226,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
           try {
             await postCreateCustomLinkCollection({
               datasetId,
+              parentId,
               link,
               enableEnhance
             });
@@ -240,7 +244,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
     } finally {
       setUploadingLinks(false);
     }
-  }, [datasetId, linkValidation.validLinks, toast, enableEnhance]);
+  }, [datasetId, parentId, linkValidation.validLinks, toast, enableEnhance]);
 
   const handleConfirm = useCallback(async () => {
     // 验证链接数量和格式
@@ -265,6 +269,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       const fileNames = successFiles.map((file) => file.sourceName);
       const checkResult = await postCheckDuplicateCollection({
         datasetId,
+        parentId: parentId || undefined,
         fileNames
       });
 

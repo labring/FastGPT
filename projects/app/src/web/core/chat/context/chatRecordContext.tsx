@@ -9,6 +9,7 @@ import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { GetChatRecordsProps } from '@/global/core/chat/api';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
+import { chatRequestManager } from '@/web/core/chat/utils/chatRequestManager';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -111,6 +112,19 @@ const ChatRecordContextProvider = ({
       data: LinkedPaginationProps<GetChatRecordsProps>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
       setIsChatRecordsLoaded(false);
+
+      // 检查是否有缓存数据（正在流式输出的会话）
+      if (data.chatId) {
+        const cachedRecords = chatRequestManager.getChatRecordsCache(data.chatId);
+        if (cachedRecords && chatRequestManager.isStreaming(data.chatId)) {
+          // 使用缓存数据，不从服务器加载
+          return {
+            list: cachedRecords,
+            hasMorePrev: false,
+            hasMoreNext: false
+          };
+        }
+      }
 
       const res = await getChatRecords(data);
 

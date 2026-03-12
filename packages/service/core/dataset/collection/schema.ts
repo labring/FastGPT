@@ -151,6 +151,20 @@ DatasetCollectionSchema.virtual('dataset', {
   justOne: true
 });
 
+// 创建和保存时自动更新 updateTime
+DatasetCollectionSchema.pre('save', function (next) {
+  this.updateTime = new Date();
+  next();
+});
+
+// update 操作时自动更新 updateTime
+// 注意：在 query middleware 中，this 指向 Query 对象，不是 Document 对象
+DatasetCollectionSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function (next) {
+  // 使用 Query 的 set 方法来设置 updateTime
+  this.set({ updateTime: new Date() });
+  next();
+});
+
 try {
   // auth file
   DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });

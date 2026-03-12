@@ -58,6 +58,8 @@ import {
 import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -82,9 +84,12 @@ type Props = FlowNodeItemType & {
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
+
+  const { feConfigs } = useSystemStore();
+
   const {
     children,
-    avatar = LOGO_ICON,
+    avatar: _avatar,
     avatarLinear,
     name = t('common:core.module.template.UnKnow Module'),
     intro,
@@ -108,6 +113,7 @@ const NodeCard = (props: Props) => {
     colorSchema
   } = props;
 
+  const avatar = _avatar ?? getWebReqUrl(feConfigs?.systemLogo || LOGO_ICON);
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v

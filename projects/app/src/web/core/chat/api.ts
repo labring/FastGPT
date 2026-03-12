@@ -6,6 +6,7 @@ import type {
   InitOutLinkChatProps,
   InitTeamChatProps
 } from '@/global/core/chat/api.d';
+import { chatRequestManager } from './utils/chatRequestManager';
 
 import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 import type {

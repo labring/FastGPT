@@ -1,5 +1,6 @@
 import { MongoDatasetCollection } from './schema';
 import type { ClientSession } from '../../../common/mongo';
+import { Types } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
@@ -17,6 +18,18 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
+
+// 更新父 folder 的 updateTime
+export async function updateParentFolderTime(parentId: string | null) {
+  if (!parentId) return;
+
+  // 使用 MongoDB 的 $currentDate 操作符，由中间件自动处理 updateTime
+  // 这样可以避免与 Mongoose 中间件冲突，且更高效
+  await MongoDatasetCollection.updateOne(
+    { _id: new Types.ObjectId(parentId) },
+    { $currentDate: { updateTime: true } }
+  );
+}
 
 /**
  * get all collection by top collectionId

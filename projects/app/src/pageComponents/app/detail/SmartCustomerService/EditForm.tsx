@@ -321,6 +321,21 @@ const EditForm = ({
     [t]
   );
 
+  // 兜底回复开关选项配置
+  const FALLBACK_REPLY_OPTIONS = useMemo(
+    () => [
+      {
+        title: t('app:smart_customer_service_use_fallback_reply'),
+        value: 'useFallbackReply'
+      },
+      {
+        title: t('app:smart_customer_service_llm_reply'),
+        value: 'llmReply'
+      }
+    ],
+    [t]
+  );
+
   return (
     <>
       {/* dataset */}
@@ -422,26 +437,39 @@ const EditForm = ({
               />
             </FormItem>
 
-            <Flex alignItems={'start'}>
-              <FormLabel
-                display={'flex'}
-                alignItems={'center'}
-                fontSize={'12px'}
-                fontWeight={'500'}
-                minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM}
+            {/* 兜底回复配置 */}
+            <Box>
+              {/* 兜底回复单选按钮 */}
+              <FormItem
+                label={t('app:smart_customer_service_fallback_reply')}
+                tooltip={t('app:smart_customer_service_fallback_reply_tooltip')}
               >
-                {t('app:smart_customer_service_fallback_reply')}
-                <QuestionTip
-                  ml={1}
-                  label={t('app:smart_customer_service_fallback_reply_tooltip')}
+                <LeftRadio<string>
+                  list={FALLBACK_REPLY_OPTIONS}
+                  px={3}
+                  py={1.5}
+                  value={appForm.chatConfig.enableFallbackReply || 'useFallbackReply'}
+                  onChange={(e) => updateVariableValue('enableFallbackReply', e)}
+                  flex={1}
+                  defaultBg="white"
+                  activeBg="white"
+                  gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
                 />
-              </FormLabel>
-              <MyTextarea
-                value={appForm.chatConfig.fallbackReply}
-                rows={3}
-                onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
-              />
-            </Flex>
+              </FormItem>
+
+              {/* 兜底回复文本框 */}
+              {appForm.chatConfig.enableFallbackReply !== 'llmReply' && (
+                <Flex alignItems={'start'} mt={3}>
+                  <Box minW={SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM} />
+                  <MyTextarea
+                    value={appForm.chatConfig.fallbackReply}
+                    rows={3}
+                    onChange={(e) => updateVariableValue('fallbackReply', e.target.value)}
+                    flex={1}
+                  />
+                </Flex>
+              )}
+            </Box>
           </AccordionSection>
         </Box>
 

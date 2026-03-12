@@ -1,3 +1,4 @@
+import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   TrainingModeEnum,
   DatasetCollectionTypeEnum,
@@ -14,6 +15,7 @@ import type { PaginationProps } from '@fastgpt/web/common/fetch/type';
 /* ===== dataset ===== */
 
 /* ======= collections =========== */
+
 export type GetDatasetCollectionsProps = PaginationProps<{
   datasetId: string;
   parentId?: string;
@@ -21,6 +23,11 @@ export type GetDatasetCollectionsProps = PaginationProps<{
   filterTags?: string[];
   simple?: boolean;
   selectFolder?: boolean;
+  // 排序参数
+  sortBy?: 'name' | 'updateTime' | 'createTime' | 'dataAmount';
+  sortOrder?: 'asc' | 'desc';
+  // 状态筛选参数
+  status?: CollectionStatusEnum | CollectionStatusEnum[];
 }>;
 
 /* ==== data ===== */

@@ -117,7 +117,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       >
         <FormControl isInvalid={!!errors.username}>
           <Input
-            bg={'myGray.50'}
             size={'lg'}
             placeholder={placeholder}
             {...register('username', {
@@ -127,7 +126,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </FormControl>
         <FormControl mt={7} isInvalid={!!errors.password}>
           <Input
-            bg={'myGray.50'}
             size={'lg'}
             type={'password'}
             placeholder={

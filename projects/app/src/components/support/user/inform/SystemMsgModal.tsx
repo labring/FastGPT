@@ -8,10 +8,13 @@ import { getSystemMsgModalData } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const SystemMsgModal = ({}: {}) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { userInfo, systemMsgReadId, setSysMsgReadId } = useUserStore();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -46,7 +49,11 @@ const SystemMsgModal = ({}: {}) => {
   }, [data, onClose, setSysMsgReadId]);
 
   return isOpen ? (
-    <MyModal isOpen iconSrc={LOGO_ICON} title={t('common:support.user.inform.System message')}>
+    <MyModal
+      isOpen
+      iconSrc={getWebReqUrl(feConfigs?.systemLogo || LOGO_ICON)}
+      title={t('common:support.user.inform.System message')}
+    >
       <ModalBody overflow={'auto'}>
         <Markdown source={data?.content} />
       </ModalBody>

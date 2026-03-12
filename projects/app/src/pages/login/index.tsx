@@ -31,7 +31,6 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { getBdVId } from '@/web/support/marketing/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -155,16 +154,16 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
           width={isPc ? 'calc(40% - 88px)' : 'calc(100% - 88px)'}
           zIndex={10}
           alignItems={'center'}
-          justifyContent={'space-between'}
+          justifyContent={'right'}
         >
-          <Flex alignItems={'center'}>
+          {/* <Flex alignItems={'center'}>
             <Flex w={'40px'} h={'40px'} alignItems={'center'} justifyContent={'center'}>
               <MyImage src={LOGO_ICON} w={'24px'} alt={'icon'} />
             </Flex>
             <Box ml={2} fontSize={'lg'} fontWeight={'bold'} color={'myGray.900'}>
               {feConfigs?.systemTitle}
             </Box>
-          </Flex>
+          </Flex> */}
           <I18nLngSelector />
         </Flex>
 
@@ -174,13 +173,12 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
             w={'60%'}
             flexDirection={'column'}
             alignItems={'flex-start'}
-            bg={`url(${getWebReqUrl('/icon/sangfor-login-bg.svg')}) no-repeat`}
-            backgroundSize={'cover'}
+            bg={`url(${feConfigs?.systemBackground ? feConfigs.systemBackground : getWebReqUrl('/icon/sangfor-login-bg2.svg')}) center / cover no-repeat`}
             position={'relative'}
             padding={'6% 5% 0'}
           >
             {/* 左侧文案内容 */}
-            <Box maxW={'680px'}>
+            {/* <Box maxW={'680px'}>
               <Box
                 fontSize={'40px'}
                 fontWeight={'bold'}
@@ -193,7 +191,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
               <Box fontSize={'14px'} color={'#666'} lineHeight={'28px'} letterSpacing={'normal'}>
                 {t('sangfor:support.user.login.sxf_com_platform_desc')}
               </Box>
-            </Box>
+            </Box> */}
           </Flex>
         )}
 

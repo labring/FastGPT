@@ -551,6 +551,21 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
 
           try {
+            // 特殊处理：assistant 应用选择 llmReply 且检索为空时，不传入 systemPrompt 和 quoteQA
+            if (node.flowNodeType === FlowNodeTypeEnum.chatNode) {
+              const enableFallbackReply = data.chatConfig?.enableFallbackReply;
+              const quoteQA = params[NodeInputKeyEnum.aiChatDatasetQuote];
+
+              // 判断条件：
+              // 1. enableFallbackReply 存在且为 'llmReply'（只有 assistant 应用才有此配置，且选择了大模型生成回复）
+              // 2. quoteQA 为空（检索结果为空）
+              if (enableFallbackReply === 'llmReply' && (!quoteQA || quoteQA.length === 0)) {
+                // 将 systemPrompt 和 quoteQA 置空，避免拼接引用提示词模板
+                params[NodeInputKeyEnum.aiSystemPrompt] = '';
+                params[NodeInputKeyEnum.aiChatDatasetQuote] = undefined;
+              }
+            }
+
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
             const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 

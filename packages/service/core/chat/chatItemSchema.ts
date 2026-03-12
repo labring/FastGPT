@@ -92,6 +92,19 @@ const ChatItemSchema = new Schema({
   correctionId: {
     type: Schema.Types.ObjectId,
     ref: ChatCorrectionCollectionName
+  },
+
+  // 逻辑删除字段
+  deleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName
   }
 });
 

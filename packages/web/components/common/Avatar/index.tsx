@@ -5,6 +5,8 @@ import { LOGO_ICON, SANGFOR_LOGO_ICON } from '@fastgpt/global/common/system/cons
 import MyIcon from '../Icon';
 import { iconPaths } from '../Icon/constants';
 import MyImage from '../Image/MyImage';
+import { useSystem } from '../../../hooks/useSystem';
+import { getWebReqUrl } from '../../../common/system/utils';
 
 const Avatar = ({
   w = '30px',
@@ -15,6 +17,8 @@ const Avatar = ({
   // @ts-ignore
   const isIcon = !!iconPaths[src as any];
   const isAicp = src?.toLowerCase()?.includes('aicp');
+  const { systemLogo } = useSystem();
+  const defaultIcon = getWebReqUrl(systemLogo || LOGO_ICON);
 
   return isIcon ? (
     <Box display={'inline-flex'} {...props}>
@@ -27,13 +31,13 @@ const Avatar = ({
     </Box>
   ) : (
     <MyImage
-      fallbackSrc={LOGO_ICON}
+      fallbackSrc={defaultIcon}
       fallbackStrategy={'onError'}
       objectFit={'contain'}
       alt=""
       w={w}
       h={w}
-      src={isAicp ? SANGFOR_LOGO_ICON : src || LOGO_ICON}
+      src={isAicp ? SANGFOR_LOGO_ICON : src || defaultIcon}
       {...props}
     />
   );

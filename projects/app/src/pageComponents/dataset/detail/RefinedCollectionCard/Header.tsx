@@ -786,6 +786,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           concurrency={1}
           confirmText={t('common:Confirm')}
           datasetId={datasetDetail._id}
+          parentId={parentId}
         />
       )}
 
@@ -811,6 +812,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             getData(1);
           }}
           onClose={onCloseFaqImportModal}
+          parentId={parentId}
         />
       )}
       {isOpenGeneralImportModal && (
@@ -818,6 +820,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           isOpen={isOpenGeneralImportModal}
           onClose={onCloseGeneralImportModal}
           datasetId={datasetDetail._id}
+          parentId={parentId}
           onFinish={() => {
             getData(1);
           }}

@@ -190,7 +190,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 canDownloadSource: item.canDownloadSource ?? false,
                                 showFullText: item.showFullText ?? false,
                                 showRunningStatus: item.showRunningStatus ?? false,
-                                allowAnonymous: item.allowAnonymous ?? true,
+                                allowAnonymous: item.allowAnonymous ?? false,
                                 limit: item.limit
                               })
                           },
