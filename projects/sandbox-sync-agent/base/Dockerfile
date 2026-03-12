@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     ripgrep \
     vim-tiny \
     tree \
+    zip \
     unzip \
     curl \
     ca-certificates

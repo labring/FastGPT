@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@fastgpt-sdk/storage": "catalog:",
-    "@anyany/sandbox_provider": "^0.1.2",
+    "@fastgpt-sdk/sandbox-adapter": "^0.0.16",
     "@fastgpt/global": "workspace:*",
     "@logtape/logtape": "^2",
     "@logtape/pretty": "^2",

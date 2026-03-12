@@ -14,8 +14,7 @@
  * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
-import { createSandbox } from '@anyany/sandbox_provider';
-import type { ISandbox } from '@anyany/sandbox_provider';
+import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../agentSkills/sandboxSchema';
@@ -26,7 +25,11 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
-  buildDockerSyncEnv
+  buildDockerSyncEnv,
+  buildSandboxAdapter,
+  connectToProviderSandbox,
+  disconnectFromProviderSandbox,
+  selectSandboxEntrypoint
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
@@ -54,20 +57,6 @@ const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type SkillDoc = HydratedDocument<AgentSkillSchemaType>;
 type VersionDoc = HydratedDocument<AgentSkillsVersionSchemaType>;
-type ProviderConfig = ReturnType<typeof getSandboxProviderConfig>;
-
-/** Build a sandbox SDK instance from the resolved provider config. */
-function buildSandboxInstance(providerConfig: ProviderConfig): ISandbox {
-  return createSandbox({
-    provider: providerConfig.provider,
-    connection: {
-      apiKey: providerConfig.apiKey,
-      baseUrl: providerConfig.baseUrl,
-      runtime: providerConfig.runtime
-    }
-  });
-}
-
 /** Query skills and their active versions, returning a map keyed by skillId string. */
 async function fetchSkillsWithVersionMap(
   skillIds: string[],
@@ -215,15 +204,14 @@ export async function createAgentSandbox(
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
-    const sandbox = buildSandboxInstance(providerConfig);
-    await sandbox.connect(existingInstance.sandboxId);
+    const sandbox = await connectToProviderSandbox(providerConfig, existingInstance.sandboxId);
 
     if (existingInstance.status === SandboxStatusEnum.stopped) {
       logger.info('[Agent Sandbox] Resuming stopped sandbox', {
         sessionId,
         providerSandboxId: existingInstance.sandboxId
       });
-      await sandbox.resume();
+      await sandbox.start();
       await sandbox.waitUntilReady(60000);
     }
 
@@ -287,41 +275,37 @@ export async function createAgentSandbox(
   let sandbox: ISandbox | null = null;
 
   try {
-    sandbox = buildSandboxInstance(providerConfig);
+    const createEntrypoint = selectSandboxEntrypoint(
+      providerConfig.runtime,
+      defaults,
+      'sessionRuntime'
+    );
+
+    const createConfig = {
+      image: image ?? defaults.defaultImage,
+      entrypoint: [entrypoint ?? createEntrypoint],
+      env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
+      metadata: {
+        teamId,
+        tmbId,
+        sandboxType: SandboxTypeEnum.sessionRuntime,
+        skillIds: skillIds.join('-'),
+        sessionId
+      }
+    };
+
+    sandbox = buildSandboxAdapter(providerConfig, {
+      providerSandboxId: sessionId,
+      createConfig
+    });
 
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer', isWarmStart: false });
-    if (providerConfig.runtime === 'kubernetes') {
-      await sandbox.create({
-        image: image ?? defaults.defaultImage,
-        entrypoint: [entrypoint ?? defaults.entrypoint.sessionKubernetes],
-        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
-        metadata: {
-          teamId,
-          tmbId,
-          sandboxType: SandboxTypeEnum.sessionRuntime,
-          skillIds: skillIds.join('-'),
-          sessionId
-        }
-      });
-    } else {
-      // Docker 模式：通过环境变量注入 SESSION_ID，sync agent 据此确定 MinIO 数据路径
-      await sandbox.create({
-        image: image ?? defaults.defaultImage,
-        entrypoint: [entrypoint ?? defaults.entrypoint.docker],
-        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
-        metadata: {
-          teamId,
-          tmbId,
-          sandboxType: SandboxTypeEnum.sessionRuntime,
-          skillIds: skillIds.join('-'),
-          sessionId
-        }
-      });
-    }
+    await sandbox.create();
 
     await sandbox.waitUntilReady(60000);
 
     const sandboxInfo = await sandbox.getInfo();
+    if (!sandboxInfo) throw new Error('Failed to get sandbox info after creation');
 
     logger.info('[Agent Sandbox] Sandbox created', {
       providerSandboxId: sandboxInfo.id,
@@ -394,7 +378,7 @@ export async function createAgentSandbox(
       } catch (cleanupError) {
         logger.error('[Agent Sandbox] Cleanup failed after creation error', { cleanupError });
       }
-      await sandbox.close();
+      await disconnectFromProviderSandbox(sandbox);
     }
 
     throw error;
@@ -409,7 +393,7 @@ export async function createAgentSandbox(
  */
 export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
-    await ctx.sandbox.close();
+    await disconnectFromProviderSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Released sandbox connection', {
       sessionId: ctx.sessionId,
       providerSandboxId: ctx.providerSandboxId
@@ -453,8 +437,7 @@ export async function connectEditDebugSandbox(
     throw new Error('Skill not found');
   }
 
-  const sandbox = buildSandboxInstance(providerConfig);
-  await sandbox.connect(instanceDoc.sandboxId);
+  const sandbox = await connectToProviderSandbox(providerConfig, instanceDoc.sandboxId);
 
   await MongoSandboxInstance.updateOne({ _id: instanceDoc._id }, { lastActiveAt: new Date() });
 
@@ -482,7 +465,7 @@ export async function connectEditDebugSandbox(
  */
 export async function disconnectEditDebugSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
-    await ctx.sandbox.close();
+    await disconnectFromProviderSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Disconnected from edit-debug sandbox', {
       providerSandboxId: ctx.providerSandboxId
     });
