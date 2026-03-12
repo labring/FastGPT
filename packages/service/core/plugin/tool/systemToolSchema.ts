@@ -7,6 +7,7 @@ export const collectionName = 'system_plugin_tools';
 
 const SystemToolSchema = new Schema({
   pluginId: {
+    // commercial-id
     type: String,
     required: true
   },

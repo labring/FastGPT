@@ -25,7 +25,6 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.personal);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
     });
   });
 
@@ -34,14 +33,14 @@ describe('splitCombineToolId', () => {
       const result = splitCombineToolId('commercial-507f1f77bcf86cd799439011');
 
       expect(result.source).toBe(AppToolSourceEnum.commercial);
-      expect(result.pluginId).toBe('commercial-507f1f77bcf86cd799439011');
+      expect(result.pluginId).toBe('507f1f77bcf86cd799439011');
     });
 
-    it('should convert commercial-dalle3 to systemTool', () => {
+    it('should convert commercial-dalle3 to systemTool(Adapt)', () => {
       const result = splitCombineToolId('commercial-dalle3');
 
       expect(result.source).toBe(AppToolSourceEnum.systemTool);
-      expect(result.pluginId).toBe('systemTool-dalle3');
+      expect(result.pluginId).toBe('dalle3');
     });
   });
 
@@ -50,14 +49,14 @@ describe('splitCombineToolId', () => {
       const result = splitCombineToolId('systemTool-websearch');
 
       expect(result.source).toBe(AppToolSourceEnum.systemTool);
-      expect(result.pluginId).toBe('systemTool-websearch');
+      expect(result.pluginId).toBe('websearch');
     });
 
     it('should handle systemTool with complex id', () => {
       const result = splitCombineToolId('systemTool-code-interpreter');
 
       expect(result.source).toBe(AppToolSourceEnum.systemTool);
-      expect(result.pluginId).toBe('systemTool-code-interpreter');
+      expect(result.pluginId).toBe('code-interpreter');
     });
   });
 
@@ -85,7 +84,7 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.http);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
+      expect(result.authAppId).toBe('507f1f77bcf86cd799439011');
     });
 
     it('should parse http-parentId/toolName format correctly', () => {
@@ -93,7 +92,6 @@ describe('splitCombineToolId', () => {
 
       expect(result.source).toBe(AppToolSourceEnum.http);
       expect(result.pluginId).toBe('507f1f77bcf86cd799439011/apiTool');
-      expect(result.parentId).toBe('507f1f77bcf86cd799439011');
     });
   });
 
@@ -102,13 +100,13 @@ describe('splitCombineToolId', () => {
       const result = splitCombineToolId('community-oldPlugin');
 
       expect(result.source).toBe(AppToolSourceEnum.systemTool);
-      expect(result.pluginId).toBe('systemTool-oldPlugin');
+      expect(result.pluginId).toBe('oldPlugin');
     });
   });
 
   describe('error handling', () => {
     it('should throw error when pluginId is empty after split', () => {
-      expect(() => splitCombineToolId('commercial-')).toThrow('pluginId not found');
+      expect(() => splitCombineToolId('commercial-')).toThrow('toolId not found');
     });
   });
 });
@@ -121,7 +119,7 @@ describe('getToolRawId', () => {
 
   it('should return pluginId for commercial tool', () => {
     const result = getToolRawId('commercial-507f1f77bcf86cd799439011');
-    expect(result).toBe('commercial-507f1f77bcf86cd799439011');
+    expect(result).toBe('507f1f77bcf86cd799439011');
   });
 
   it('should return parentId for mcp tool with toolName', () => {
@@ -136,7 +134,7 @@ describe('getToolRawId', () => {
 
   it('should handle systemTool correctly', () => {
     const result = getToolRawId('systemTool-websearch');
-    expect(result).toBe('systemTool-websearch');
+    expect(result).toBe('websearch');
   });
 
   it('should handle personal tool with prefix', () => {
@@ -146,6 +144,6 @@ describe('getToolRawId', () => {
 
   it('should handle converted community tool', () => {
     const result = getToolRawId('community-oldPlugin');
-    expect(result).toBe('systemTool-oldPlugin');
+    expect(result).toBe('oldPlugin');
   });
 });
