@@ -5,7 +5,8 @@ import type { UploadConstraints } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, resolveMimeType } from '../utils/mime';
 import { normalizeAllowedExtensions, normalizeFileExtension } from '../utils/uploadConstraints';
 
-const maxInspectBytes = 8192;
+const defaultInspectBytes = 8192;
+const officeZipInspectBytes = 64 * 1024;
 const textLikeMimePrefixes = ['text/'];
 const textLikeMimeSet = new Set([
   'application/json',
@@ -13,6 +14,23 @@ const textLikeMimeSet = new Set([
   'application/xml',
   'image/svg+xml'
 ]);
+const officeZipFormats = [
+  {
+    extension: '.docx',
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    markers: ['word/', 'word/document.xml']
+  },
+  {
+    extension: '.xlsx',
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    markers: ['xl/', 'xl/workbook.xml']
+  },
+  {
+    extension: '.pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    markers: ['ppt/', 'ppt/presentation.xml']
+  }
+] as const;
 
 const decodeFileName = (filename?: string) => {
   if (!filename) return '';
@@ -56,7 +74,28 @@ const isTextLikeMime = (mime: string) => {
   );
 };
 
-export const getUploadInspectBytes = () => maxInspectBytes;
+const getOfficeZipFormatByExtension = (extension: string) =>
+  officeZipFormats.find((format) => format.extension === extension);
+
+const detectOfficeDocumentMime = ({
+  buffer,
+  detectedMime
+}: {
+  buffer: Buffer;
+  detectedMime?: string;
+}) => {
+  if (detectedMime && detectedMime !== 'application/zip') return;
+
+  return officeZipFormats.find((format) =>
+    format.markers.some((marker) => buffer.includes(Buffer.from(marker, 'utf8')))
+  );
+};
+
+export const getUploadInspectBytes = (filename?: string) => {
+  const extension = normalizeFileExtension(path.extname(decodeFileName(filename)));
+
+  return getOfficeZipFormatByExtension(extension) ? officeZipInspectBytes : defaultInspectBytes;
+};
 
 export async function validateUploadFile({
   buffer,
@@ -86,14 +125,19 @@ export async function validateUploadFile({
     }
     throw error;
   });
+  const officeFormat = detectOfficeDocumentMime({
+    buffer,
+    detectedMime: detected?.mime
+  });
+  const detectedMime = officeFormat?.mime || detected?.mime;
 
-  if (detected?.mime) {
-    if (expectedMime !== DEFAULT_CONTENT_TYPE && detected.mime !== expectedMime) {
+  if (detectedMime) {
+    if (expectedMime !== DEFAULT_CONTENT_TYPE && detectedMime !== expectedMime) {
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
     return {
       filename: normalizedFileName,
-      contentType: detected.mime
+      contentType: detectedMime
     };
   }
 

@@ -8,10 +8,28 @@ const pngBuffer = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
 );
+const docxBuffer = Buffer.from(
+  'UEsDBBQAAAAAANeFbFw1gCIhvQAAAL0AAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbDw/eG1sIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IlVURi04Ij8+PFR5cGVzPjxPdmVycmlkZSBQYXJ0TmFtZT0iL3dvcmQvZG9jdW1lbnQueG1sIiBDb250ZW50VHlwZT0iYXBwbGljYXRpb24vdm5kLm9wZW54bWxmb3JtYXRzLW9mZmljZWRvY3VtZW50LndvcmRwcm9jZXNzaW5nbWwuZG9jdW1lbnQubWFpbit4bWwiLz48L1R5cGVzPlBLAwQUAAAAAADXhWxcjsvbLBkAAAAZAAAAEQAAAHdvcmQvZG9jdW1lbnQueG1sPHc6ZG9jdW1lbnQ+PC93OmRvY3VtZW50PlBLAQIUAxQAAAAAANeFbFw1gCIhvQAAAL0AAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAAA14VsXI7L2ywZAAAAGQAAABEAAAAAAAAAAAAAAIAB7gAAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAACAAIAgAAAADYBAAAAAA==',
+  'base64'
+);
+const paddedDocxBuffer = Buffer.from(
+  'UEsDBBQAAAAAANeFbFw/BDvA4C4AAOAuAAALAAAAcGFkZGluZy5iaW5BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFQSwMEFAAAAAAA14VsXDWAIiG9AAAAvQAAABMAAABbQ29udGVudF9UeXBlc10ueG1sPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48VHlwZXM+PE92ZXJyaWRlIFBhcnROYW1lPSIvd29yZC9kb2N1bWVudC54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQud29yZHByb2Nlc3NpbmdtbC5kb2N1bWVudC5tYWluK3htbCIvPjwvVHlwZXM+UEsDBBQAAAAAANeFbFyOy9ssGQAAABkAAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpkb2N1bWVudD48L3c6ZG9jdW1lbnQ+UEsBAhQDFAAAAAAA14VsXD8EO8DgLgAA4C4AAAsAAAAAAAAAAAAAAIABAAAAAHBhZGRpbmcuYmluUEsBAhQDFAAAAAAA14VsXDWAIiG9AAAAvQAAABMAAAAAAAAAAAAAAIABCS8AAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAAAADXhWxcjsvbLBkAAAAZAAAAEQAAAAAAAAAAAAAAgAH3LwAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAMAAwC5AAAAPzAAAAAA',
+  'base64'
+);
+const genericZipBuffer = Buffer.from(
+  'UEsDBBQAAAAAANeFbFyFEUoNCwAAAAsAAAAJAAAAaGVsbG8udHh0aGVsbG8gd29ybGRQSwECFAMUAAAAAADXhWxchRFKDQsAAAALAAAACQAAAAAAAAAAAAAAgAEAAAAAaGVsbG8udHh0UEsFBgAAAAABAAEANwAAADIAAAAAAA==',
+  'base64'
+);
 
 describe('getUploadInspectBytes', () => {
   it('returns the configured inspection size', () => {
     expect(getUploadInspectBytes()).toBe(8192);
+  });
+
+  it('uses a larger inspection window for OOXML uploads', () => {
+    expect(getUploadInspectBytes('demo.docx')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.xlsx')).toBe(64 * 1024);
+    expect(getUploadInspectBytes('demo.pptx')).toBe(64 * 1024);
   });
 });
 
@@ -127,5 +145,52 @@ describe('validateUploadFile', () => {
         }
       })
     ).rejects.toThrow('InvalidUploadFileType');
+  });
+
+  it('accepts OOXML files even when detection falls back to zip container', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: docxBuffer,
+        filename: 'demo.docx',
+        uploadConstraints: {
+          defaultContentType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+      })
+    ).resolves.toEqual({
+      filename: 'demo.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+  });
+
+  it('accepts padded OOXML files once enough bytes are buffered', async () => {
+    expect(getUploadInspectBytes('demo.docx')).toBeGreaterThan(8192);
+
+    await expect(
+      validateUploadFile({
+        buffer: paddedDocxBuffer,
+        filename: 'demo.docx',
+        uploadConstraints: {
+          defaultContentType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+      })
+    ).resolves.toEqual({
+      filename: 'demo.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+  });
+
+  it('still rejects generic zip files renamed as docx', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: genericZipBuffer,
+        filename: 'demo.docx',
+        uploadConstraints: {
+          defaultContentType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+      })
+    ).rejects.toThrow('UploadFileTypeMismatch');
   });
 });

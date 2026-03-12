@@ -24,7 +24,7 @@ const parseContentLength = (value: string | string[] | undefined) => {
 };
 
 const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: GuardStreamOptions) => {
-  const inspectBytes = getUploadInspectBytes();
+  const inspectBytes = getUploadInspectBytes(filename);
   let uploadedBytes = 0;
   let validated = false;
   let bufferedBytes = 0;
