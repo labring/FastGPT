@@ -25,16 +25,14 @@ async function handler(
   const planStatus = await getTeamPlanStatus({ teamId });
   await authFrequencyLimit({
     eventId: `${userId}-uploadfile`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
   return await getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
     filename,
-    maxFileSize:
-      planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
 }
 

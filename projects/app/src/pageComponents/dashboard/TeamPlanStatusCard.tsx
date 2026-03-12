@@ -90,7 +90,7 @@ const TeamPlanStatusCard = () => {
     setHiddenUntil(hideUntilTime);
   }, [setHiddenUntil, operationalAd]);
 
-  if (!teamPlanStatus?.standardConstants) return null;
+  if (!teamPlanStatus?.standard) return null;
 
   return (
     <Box

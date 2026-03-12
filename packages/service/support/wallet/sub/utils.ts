@@ -7,6 +7,7 @@ import {
 import { MongoTeamSub } from './schema';
 import {
   type TeamPlanStatusType,
+  type TeamPlanStandardType,
   type TeamSubSchemaType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
@@ -38,6 +39,38 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
+const buildStandardPlan = (
+  standard: TeamSubSchemaType | undefined,
+  standardConstants: NonNullable<ReturnType<typeof getStandardPlanConfig>>
+): TeamPlanStandardType => {
+  return {
+    ...(standard as TeamPlanStandardType),
+    name: standardConstants.name,
+    desc: standardConstants.desc,
+    price: standardConstants.price,
+    priceDescription: standardConstants.priceDescription,
+    customFormUrl: standardConstants.customFormUrl,
+    customDescriptions: standardConstants.customDescriptions,
+    wecom: standardConstants.wecom,
+    maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
+    maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
+    maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
+    requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+    chatHistoryStoreDuration:
+      standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+    maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+    websiteSyncPerDataset:
+      standard?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+    appRegistrationCount: standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+    auditLogStoreDuration:
+      standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+    ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+    customDomain: standard?.customDomain ?? standardConstants.customDomain,
+    maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+    maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+  };
+};
+
 export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const plans = await MongoTeamSub.find(
     {
@@ -64,26 +97,8 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
       : undefined;
 
   return {
-    [SubTypeEnum.standard]: standard,
-    standardConstants: standardConstants
-      ? {
-          ...standardConstants,
-          maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
-          maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
-          maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
-          requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-          chatHistoryStoreDuration:
-            standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-          websiteSyncPerDataset:
-            standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
-          appRegistrationCount:
-            standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-          auditLogStoreDuration:
-            standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standard?.customDomain ?? standardConstants.customDomain
-        }
+    [SubTypeEnum.standard]: standardConstants
+      ? buildStandardPlan(standard, standardConstants)
       : undefined
   };
 };
@@ -181,6 +196,7 @@ export const getTeamPlanStatus = async ({
 }: {
   teamId: string;
 }): Promise<TeamPlanStatusType> => {
+  /** 配置里的套餐 */
   const standardPlans = global.subPlans?.standard;
 
   /* Get all plans and datasetSize */
@@ -190,6 +206,7 @@ export const getTeamPlanStatus = async ({
   const teamStandardPlans = sortStandPlans(
     plans.filter((plan) => plan.type === SubTypeEnum.standard)
   );
+  /** 数据库里的，用户目前 active 的套餐 */
   const standardPlan = teamStandardPlans[0];
 
   const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
@@ -230,6 +247,7 @@ export const getTeamPlanStatus = async ({
     standardMaxDatasetSize +
     extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
 
+  /** 静态的套餐配置，如果是 custom 则返回 advanced */
   const standardConstants =
     standardPlan?.currentSubLevel && standardPlans
       ? standardPlans[
@@ -242,56 +260,8 @@ export const getTeamPlanStatus = async ({
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
   return {
-    [SubTypeEnum.standard]:
-      standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
-        ? {
-            ...standardPlan,
-            maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
-            maxApp: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
-            maxDataset: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
-            requestsPerMinute:
-              standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-            chatHistoryStoreDuration:
-              standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-            maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-            websiteSyncPerDataset:
-              standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
-            appRegistrationCount:
-              standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-            auditLogStoreDuration:
-              standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-            ticketResponseTime:
-              standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-            customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
-            maxUploadFileSize:
-              standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-            maxUploadFileCount:
-              standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
-          }
-        : standardPlan,
-    standardConstants: standardConstants
-      ? {
-          ...standardConstants,
-          maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
-          maxAppAmount: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
-          maxDatasetAmount: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
-          requestsPerMinute: standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-          chatHistoryStoreDuration:
-            standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-          websiteSyncPerDataset:
-            standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
-          appRegistrationCount:
-            standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-          auditLogStoreDuration:
-            standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-          ticketResponseTime:
-            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
-          maxUploadFileSize: standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-          maxUploadFileCount:
-            standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
-        }
+    [SubTypeEnum.standard]: standardConstants
+      ? buildStandardPlan(standardPlan, standardConstants)
       : undefined,
 
     totalPoints,
@@ -368,9 +338,7 @@ export const teamQPM = {
 
     // 2. Computed
     const teamPlanStatus = await getTeamPlanStatus({ teamId });
-    const limit =
-      teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
-      teamPlanStatus.standardConstants?.requestsPerMinute;
+    const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
       if (process.env.CHAT_MAX_QPM) return Number(process.env.CHAT_MAX_QPM);

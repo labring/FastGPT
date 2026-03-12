@@ -28,8 +28,7 @@ async function handler(
 
   await authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
@@ -40,8 +39,7 @@ async function handler(
     { rawKey: fileKey, filename },
     {
       expiredHours: 1,
-      maxFileSize:
-        planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+      maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
     }
   );
 }
