@@ -1,0 +1,27 @@
+---
+title: 错误排查方式
+description: FastGPT 私有部署常见问题排查方式
+---
+
+## 一、错误排查方式
+
+可以先找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
+
+### (1)获取后端错误
+
+1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
+2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
+
+---
+
+### (2)前端错误
+
+前端报错时，页面会出现崩溃，并提示检查控制台日志。可以打开浏览器控制台，并查看`console`中的 log 日志。还可以点击对应 log 的超链接，会提示到具体错误文件，可以把这些详细错误信息提供，方便排查。
+
+---
+
+### (3)OneAPI 错误
+
+带有`requestId`的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。可以参考 [OneAPI 常见错误](/docs/self-host/faq/#三常见的-oneapi-错误)
+
+---

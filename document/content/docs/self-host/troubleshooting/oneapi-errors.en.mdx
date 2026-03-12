@@ -1,0 +1,58 @@
+---
+title: Common OneAPI Errors
+description: Errors with requestId are from OneAPI.
+---
+
+### (1)insufficient_user_quota user quota is not enough
+
+OneAPI account balance is insufficient, the default root user only has 200 dollars, which can be manually modified.
+
+Path: Open OneAPI -> User -> Edit on the right side of root user -> Increase remaining balance
+
+---
+
+### (2)xxx channel not found
+
+The model in the FastGPT model configuration file must correspond to the model in the OneAPI channel, otherwise this error will be prompted. Check the following contents:
+
+1. The model channel is not configured in OneAPI, or it is disabled.
+2. FastGPT configuration file has a model that is not configured in OneAPI. If OneAPI does not have the corresponding model configured, do not write it in the configuration file.
+3. Created a knowledge base using an old vector model, and then updated the vector model. At this time, you need to delete the previous knowledge base and rebuild it.
+
+If the corresponding model is not configured in OneAPI, do not configure it in `config.json`, otherwise it is easy to report an error.
+
+---
+
+### (3)Click model test failed
+
+OneAPI will only test the first model of the channel, and will only test the chat model. The vector model cannot be automatically tested and needs to be manually initiated for testing. [View test model command example](/docs/self-host/faq/#如何检查模型问题)
+
+---
+
+### (4)get request url failed: Post `"https://xxx"` dial tcp: xxxx
+
+OneAPI network is not connected to the model, need to check network configuration.
+
+---
+
+### (5)Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
+
+OneAPI API Key configuration error, need to modify `OPENAI_API_KEY` environment variable, and restart the container (docker-compose down first and then docker-compose up -d run once).
+
+You can `exec` into the container, `env` to check if the environment variable is effective.
+
+---
+
+### (6)bad_response_status_code bad response status code 503
+
+1. Model service unavailable
+2. Model interface parameters abnormal (temperature, max token, etc. may not adapt)
+3. ....
+
+---
+
+### (7)Tiktoken download failed
+
+Since OneAPI will download a tiktoken dependency from the network at startup, if the network is abnormal, it will cause startup failure. You can refer to [OneAPI Offline Deployment](https://blog.csdn.net/wanh/article/details/139039216) to solve.
+
+---

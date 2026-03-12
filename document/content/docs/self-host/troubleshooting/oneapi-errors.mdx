@@ -1,0 +1,58 @@
+---
+title: 常见的 OneAPI 错误
+description: 带有 requestId 的都是 OneAPI 的报错。
+---
+
+### (1)insufficient_user_quota user quota is not enough
+
+OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
+
+路径：打开OneAPI -> 用户 -> root用户右边的编辑 -> 剩余余额调大
+
+---
+
+### (2)xxx渠道找不到
+
+FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应上，否则就会提示这个错误。可检查下面内容：
+
+1. OneAPI 中没有配置该模型渠道，或者被禁用了。
+2. FastGPT 配置文件有 OneAPI 没有配置的模型。如果 OneAPI 没有配置对应模型的，配置文件中也不要写。
+3. 使用旧的向量模型创建了知识库，后又更新了向量模型。这时候需要删除以前的知识库，重建。
+
+如果OneAPI中，没有配置对应的模型，`config.json`中也不要配置，否则容易报错。
+
+---
+
+### (3)点击模型测试失败
+
+OneAPI 只会测试渠道的第一个模型，并且只会测试对话模型，向量模型无法自动测试，需要手动发起请求进行测试。[查看测试模型命令示例](/docs/self-host/faq/#如何检查模型问题)
+
+---
+
+### (4)get request url failed: Post `"https://xxx"` dial tcp: xxxx
+
+OneAPI 与模型网络不通，需要检查网络配置。
+
+---
+
+### (5)Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
+
+OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 docker-compose down 然后再 docker-compose up -d 运行一次）。
+
+可以`exec`进入容器，`env`查看环境变量是否生效。
+
+---
+
+### (6)bad_response_status_code bad response status code 503
+
+1. 模型服务不可用
+2. 模型接口参数异常（温度、max token等可能不适配）
+3. ....
+
+---
+
+### (7)Tiktoken 下载失败
+
+由于 OneAPI 会在启动时从网络下载一个 tiktoken 的依赖，如果网络异常，就会导致启动失败。可以参考[OneAPI 离线部署](https://blog.csdn.net/wanh/article/details/139039216)解决。
+
+---
