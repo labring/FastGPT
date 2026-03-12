@@ -417,7 +417,6 @@ export const masterCall = async ({
               }
 
               // plan: 1,3 场景
-              const planId = getNanoid(6);
               planResult = await dispatchPlanAgent({
                 checkIsStopping,
                 completionTools,
@@ -426,10 +425,7 @@ export const masterCall = async ({
                 model,
                 stream,
                 mode: 'initial',
-                planId,
-                task: toolArgs.data.task,
-                description: toolArgs.data.description,
-                background: toolArgs.data.background
+                ...toolArgs.data
               });
 
               return {

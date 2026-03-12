@@ -20,7 +20,7 @@ import type {
 } from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 import { getNanoid } from '../../common/string/tools';
-import { buildPlanAgentResponseTextFromAssistantResponses, getPlanAsksByPlanId } from './utils';
+import { buildPlanAgentResponseTextFromAssistantResponses } from './utils';
 export { buildPlanAgentResponseTextFromAssistantResponses, getPlanAsksByPlanId } from './utils';
 export type { PlanAskInfo, BuildPlanAgentResponseTextParams } from './utils';
 
@@ -189,15 +189,10 @@ export const chats2GPTMessages = ({
           const mergedPlanSteps = item.value
             .filter((item) => item.plan?.planId === planId)
             .flatMap((item) => item.plan?.steps || []);
-          const asks = getPlanAsksByPlanId({
-            planId,
-            assistantResponses: chatAssistantResponses
-          });
           const planResponseText = buildPlanAgentResponseTextFromAssistantResponses({
             planId,
             steps: mergedPlanSteps,
-            assistantResponses: item.value,
-            asks
+            assistantResponses: chatAssistantResponses
           });
           const toolId = getNanoid(6);
           aiResults.push({
