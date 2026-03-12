@@ -132,8 +132,9 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   userGuide: z.string().optional(),
   tags: z.array(z.string()).nullish(),
 
-  // @deprecated
+  /** @deprecated */
   sourceHandle: HandleTypeSchema.optional(),
+  /** @deprecated */
   targetHandle: HandleTypeSchema.optional()
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;

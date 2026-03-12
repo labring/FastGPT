@@ -61,8 +61,9 @@ export type AppToolTemplateItemType = WorkflowTemplateType & {
   hideTags?: UserTagsEnum[] | null;
   promoteTags?: UserTagsEnum[] | null;
 
-  // @deprecated use tags instead
-  isActive?: boolean;
+  /** @deprecated */
+  isActive?: boolean; //use tags instead
+  /** @deprecated */
   templateType?: string;
 };
 

@@ -316,7 +316,7 @@ export enum NodeOutputKeyEnum {
   // File
   fileTitle = 'fileTitle',
 
-  // @deprecated
+  /** @deprecated */
   error = 'error'
 }
 
