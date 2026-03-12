@@ -7,6 +7,9 @@ export const OCEANBASE_ADDRESS = process.env.OCEANBASE_URL;
 export const SEEKDB_ADDRESS = process.env.SEEKDB_URL;
 export const MILVUS_ADDRESS = process.env.MILVUS_ADDRESS;
 export const MILVUS_TOKEN = process.env.MILVUS_TOKEN;
+export const MILVUS_TIMEOUT = process.env.MILVUS_TIMEOUT
+  ? parseInt(process.env.MILVUS_TIMEOUT)
+  : 300000; // Default: 5 minutes
 export const HNSW_M = process.env.HNSW_M || 32;
 export const HNSW_EF_CONSTRUCTION = process.env.HNSW_EF_CONSTRUCTION || 128;
 

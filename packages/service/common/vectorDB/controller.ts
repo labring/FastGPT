@@ -19,6 +19,7 @@ import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { DBDatasetVectorTableName, DBDatasetValueVectorTableName } from './constants';
 import { addLog } from '../system/log';
+import { milvusVersionManager } from './milvus/version';
 
 const getVectorObj = (): VectorControllerType => {
   if (SEEKDB_ADDRESS) return new SeekVectorCtrl({ type: 'seekdb' });
@@ -91,10 +92,19 @@ export const insertDatasetDataVector = async ({
     if (batchVectors.length === 0) return;
 
     try {
+      // 插入 Milvus/PG（带全文内容）
       const { insertIds } = await retryFn(() =>
         Vector.insert({
           ...props,
-          vectors: batchVectors
+          vectors: batchVectors,
+          // Milvus 2.6+ 传入原始文本，由 BM25 Function 自动生成稀疏向量
+          textContents: milvusVersionManager.supportsFullText()
+            ? inputs.slice(startIndex, startIndex + batchSize)
+            : undefined,
+          // Milvus 2.6+ 元数据列表（如果需要）
+          metadataList: milvusVersionManager.supportsFullText()
+            ? inputs.slice(startIndex, startIndex + batchSize).map(() => ({}))
+            : undefined
         })
       );
 

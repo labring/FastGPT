@@ -41,7 +41,10 @@ import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
 import {
   DBDatasetValueVectorTableName,
-  DBDatasetVectorTableName
+  DBDatasetVectorTableName,
+  MILVUS_ADDRESS,
+  PG_ADDRESS,
+  OCEANBASE_ADDRESS
 } from '../../../common/vectorDB/constants';
 import { MongoDataset } from '../schema';
 import { addLog } from '../../../common/system/log';
@@ -62,6 +65,8 @@ import { searchDatasetDataForAssistant } from './customController';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays, addHours } from 'date-fns';
+import { milvusVersionManager } from '../../../common/vectorDB/milvus/version';
+import { MilvusCtrl } from '../../../common/vectorDB/milvus/index';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -708,6 +713,193 @@ export async function searchDatasetData(
       };
     }
 
+    // 决策：使用 Milvus BM25 还是 MongoDB？
+    const useMilvusFullText = (() => {
+      // 条件 1: 必须是 Milvus 环境（非 PG/OceanBase）
+      if (!MILVUS_ADDRESS) return false;
+      if (PG_ADDRESS || OCEANBASE_ADDRESS) return false;
+
+      // 条件 2: Milvus 版本必须 >= 2.6
+      if (!milvusVersionManager.supportsFullText()) return false;
+
+      // 条件 3: 特性开关（可选，用于灰度），默认打开
+      if (process.env.MILVUS_FULL_TEXT_ENABLED === 'false') return false;
+
+      return true;
+    })();
+
+    if (useMilvusFullText) {
+      return await fullTextRecallFromMilvus({
+        queries,
+        limit,
+        filterCollectionIdList,
+        forbidCollectionIdList,
+        teamId,
+        datasetIds
+      });
+    } else {
+      return await fullTextRecallFromMongo({
+        queries,
+        limit,
+        filterCollectionIdList,
+        forbidCollectionIdList
+      });
+    }
+  };
+
+  // Milvus 2.6 BM25 全文检索
+  const fullTextRecallFromMilvus = async ({
+    queries,
+    limit,
+    filterCollectionIdList,
+    forbidCollectionIdList,
+    teamId,
+    datasetIds
+  }: {
+    queries: string[];
+    limit: number;
+    filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
+    teamId: string;
+    datasetIds: string[];
+  }): Promise<{
+    fullTextRecallResults: SearchDataResponseItemType[][];
+  }> => {
+    const milvusCtrl = new MilvusCtrl();
+
+    // 并行执行多个查询的 BM25 检索
+    const recallResults = await Promise.all(
+      queries.map(async (query) => {
+        return await milvusCtrl.fullTextSearch({
+          teamId,
+          datasetIds,
+          query,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+      })
+    );
+
+    // 获取所有 id 和 collectionId
+    const vectorIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.id)).flat())
+    );
+    const collectionIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.collectionId)).flat())
+    );
+
+    // 通过向量 ID 查询 MongoDB 获取完整数据
+    const [dataMap, collectionMaps] = await Promise.all([
+      // 注意：Milvus 返回的 id 是向量 ID，需要通过它查询 MongoDatasetData
+      // 这里假设向量 ID 和 dataId 的对应关系存在（需要根据实际情况调整）
+      MongoDatasetData.find(
+        {
+          'indexes.dataId': { $in: vectorIds }
+        },
+        datasetDataSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+          res.forEach((item) => {
+            // 建立索引 dataId -> 完整数据的映射
+            item.indexes?.forEach((idx: any) => {
+              if (idx.dataId) {
+                map.set(String(idx.dataId), item);
+              }
+            });
+          });
+          return map;
+        }),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }
+        },
+        datsaetCollectionSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+          return map;
+        })
+    ]);
+
+    // 格式化结果
+    const fullTextRecallResults = recallResults.map((queryResults) => {
+      return queryResults
+        .map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            console.log('Collection is not found', item);
+            return;
+          }
+
+          const data = dataMap.get(String(item.id));
+          if (!data) {
+            console.log('Data is not found', item);
+            return;
+          }
+
+          return {
+            id: String(data._id),
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            updateTime: data.updateTime,
+            ...formatDatasetDataValue({
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
+            chunkIndex: data.chunkIndex,
+            metadata: data.metadata,
+            ...getCollectionSourceData(collection),
+            score: [
+              {
+                type: SearchScoreTypeEnum.fullText,
+                value: item.score || 0,
+                index
+              }
+            ]
+          };
+        })
+        .filter((item) => {
+          if (!item) return false;
+          return true;
+        })
+        .map((item, index) => {
+          return {
+            ...item,
+            score: item!.score.map((scoreItem) => ({ ...scoreItem, index }))
+          };
+        }) as SearchDataResponseItemType[];
+    });
+
+    return {
+      fullTextRecallResults
+    };
+  };
+
+  // MongoDB 全文检索
+  const fullTextRecallFromMongo = async ({
+    queries,
+    limit,
+    filterCollectionIdList,
+    forbidCollectionIdList
+  }: {
+    queries: string[];
+    limit: number;
+    filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
+  }): Promise<{
+    fullTextRecallResults: SearchDataResponseItemType[][];
+  }> => {
     const recallResults = await Promise.all(
       queries.map(async (query) => {
         return (await MongoDatasetDataText.aggregate(
@@ -868,6 +1060,124 @@ export async function searchDatasetData(
       getForbidData(),
       filterCollectionByMetadata()
     ]);
+
+    const useMilvusHybrid = (() => {
+      if (!MILVUS_ADDRESS) return false;
+      if (PG_ADDRESS || OCEANBASE_ADDRESS) return false;
+      if (!milvusVersionManager.supportsFullText()) return false;
+      if (process.env.MILVUS_HYBRID_SEARCH_ENABLED === 'true') return true;
+      return false;
+    })();
+
+    if (useMilvusHybrid && searchMode === DatasetSearchModeEnum.mixedRecall) {
+      const { vectors, tokens } = await getVectorsByText({
+        model: getEmbeddingModel(model),
+        input: queries,
+        type: 'query'
+      });
+
+      const milvusCtrl = new MilvusCtrl();
+      const recallResults = await Promise.all(
+        vectors.map(async (vector, index) => {
+          return await milvusCtrl.hybridSearch({
+            teamId,
+            datasetIds,
+            vector,
+            query: queries[index],
+            limit: Math.max(embeddingLimit, fullTextLimit),
+            forbidCollectionIdList,
+            filterCollectionIdList
+          });
+        })
+      );
+
+      const vectorIds = Array.from(
+        new Set(recallResults.map((item) => item.map((item) => item.id)).flat())
+      );
+      const collectionIds = Array.from(
+        new Set(recallResults.map((item) => item.map((item) => item.collectionId)).flat())
+      );
+
+      const [dataMap, collectionMaps] = await Promise.all([
+        MongoDatasetData.find(
+          {
+            'indexes.dataId': { $in: vectorIds }
+          },
+          datasetDataSelectField,
+          { ...readFromSecondary }
+        )
+          .lean()
+          .then((res) => {
+            const map = new Map<string, DatasetDataSchemaType>();
+            res.forEach((item) => {
+              item.indexes?.forEach((idx: any) => {
+                if (idx.dataId) {
+                  map.set(String(idx.dataId), item);
+                }
+              });
+            });
+            return map;
+          }),
+        MongoDatasetCollection.find(
+          {
+            _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }
+          },
+          datsaetCollectionSelectField,
+          { ...readFromSecondary }
+        )
+          .lean()
+          .then((res) => {
+            const map = new Map<string, DatasetCollectionSchemaType>();
+            res.forEach((item) => {
+              map.set(String(item._id), item);
+            });
+            return map;
+          })
+      ]);
+
+      const formatResults = recallResults.map((item) => {
+        return item
+          .map((item, index) => {
+            const collection = collectionMaps.get(String(item.collectionId));
+            const data = dataMap.get(String(item.id));
+            if (!collection || !data) return;
+
+            return {
+              id: String(data._id),
+              datasetId: String(data.datasetId),
+              collectionId: String(data.collectionId),
+              updateTime: data.updateTime,
+              ...formatDatasetDataValue({
+                q: data.q,
+                a: data.a,
+                imageId: data.imageId,
+                imageDescMap: data.imageDescMap
+              }),
+              chunkIndex: data.chunkIndex,
+              metadata: data.metadata,
+              ...getCollectionSourceData(collection),
+              score: [
+                {
+                  type: SearchScoreTypeEnum.rrf,
+                  value: item.score || 0,
+                  index
+                }
+              ]
+            };
+          })
+          .filter(Boolean) as SearchDataResponseItemType[];
+      });
+
+      const rrfHybridRecall = datasetSearchResultConcat(
+        formatResults.map((list) => ({ weight: 1, list }))
+      ).slice(0, Math.max(embeddingLimit, fullTextLimit));
+
+      return {
+        tokens,
+        embeddingRecallResults: rrfHybridRecall,
+        fullTextRecallResults: []
+      };
+    }
 
     const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
       embeddingRecall({
@@ -1050,17 +1360,16 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-
-
-  const { searchQueries, reRankQuery, aiExtensionResult, rewriteTime } = await datasetSearchQueryExtension({
-    query,
-    llmModel: datasetSearchUsingExtensionQuery
-      ? getLLMModel(datasetSearchExtensionModel).model
-      : undefined,
-    embeddingModel: props.model,
-    extensionBg: datasetSearchExtensionBg,
-    histories
-  });
+  const { searchQueries, reRankQuery, aiExtensionResult, rewriteTime } =
+    await datasetSearchQueryExtension({
+      query,
+      llmModel: datasetSearchUsingExtensionQuery
+        ? getLLMModel(datasetSearchExtensionModel).model
+        : undefined,
+      embeddingModel: props.model,
+      extensionBg: datasetSearchExtensionBg,
+      histories
+    });
 
   // 新增：检索开始计时（问题改写之后）
   const retrievalStartTime = Date.now();
@@ -1241,7 +1550,6 @@ export const defaultSearchDatasetData = async ({
         queries: searchQueries,
         datasetIds
       });
-
 
   return {
     ...result,
