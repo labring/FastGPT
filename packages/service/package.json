@@ -7,6 +7,7 @@
     "pnpm": ">=9.x"
   },
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^11.7.2",
     "@fastgpt-sdk/storage": "catalog:",
     "@fastgpt/global": "workspace:*",
     "@logtape/logtape": "^2",
@@ -33,9 +34,9 @@
     "date-fns": "catalog:",
     "dayjs": "catalog:",
     "decompress": "^4.2.1",
+    "doc2markdown": "^1.3.1",
     "domino-ext": "^2.1.4",
     "encoding": "^0.1.13",
-    "doc2markdown": "^1.3.0",
     "file-type": "^19.0.0",
     "form-data": "^4.0.4",
     "http-proxy-agent": "^7.0.2",
@@ -43,7 +44,6 @@
     "iconv-lite": "^0.6.3",
     "ioredis": "^5.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
-    "@apidevtools/json-schema-ref-parser": "^11.7.2",
     "json5": "catalog:",
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
