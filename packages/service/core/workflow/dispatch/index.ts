@@ -1048,8 +1048,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
         });
       });
+      const { planId, ...interactiveResponseWithoutPlanId } = interactiveResponse;
       const interactiveResult: WorkflowInteractiveResponseType = {
-        ...interactiveResponse,
+        ...interactiveResponseWithoutPlanId,
         skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({
           id: item.node.nodeId,
           skippedNodeIdList: Array.from(item.skippedNodeIdList)
@@ -1073,6 +1074,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
 
       return {
+        planId,
         interactive: interactiveResult
       };
     }

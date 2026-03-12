@@ -9,8 +9,7 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
-  AgentPlanAskQueryInteractive,
-  UserInputInteractive,
+  InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseJsonArgs } from '../../../../../../ai/utils';
@@ -61,7 +60,7 @@ type DispatchPlanAgentProps = PlanAgentConfig &
   } & (InitialParams | ContinueParams | InteractiveParams);
 
 export type DispatchPlanAgentResponse = {
-  askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
+  askInteractive?: InteractiveNodeResponseType;
   plan?: AgentPlanType;
   planBuffer: PlanAgentParamsType;
   completeMessages: ChatCompletionMessageParam[];
@@ -102,9 +101,8 @@ const parsePlan = async ({
   return params.data;
 };
 const parseAskInteractive = async (
-  toolCalls: ChatCompletionMessageToolCall[],
-  planId: string
-): Promise<UserInputInteractive | AgentPlanAskQueryInteractive | undefined> => {
+  toolCalls: ChatCompletionMessageToolCall[]
+): Promise<InteractiveNodeResponseType | undefined> => {
   const tooCall = toolCalls[0];
   if (!tooCall) return;
   const params = await AIAskAnswerSchema.safeParseAsync(parseJsonArgs(tooCall.function.arguments));
@@ -114,7 +112,6 @@ const parseAskInteractive = async (
     if (data.form && data.form.length > 0) {
       return {
         type: 'agentPlanAskUserForm',
-        planId,
         params: {
           description: data.question,
           inputForm:
@@ -140,7 +137,6 @@ const parseAskInteractive = async (
     }
     return {
       type: 'agentPlanAskQuery',
-      planId,
       params: {
         content: data.question
       }
@@ -272,7 +268,7 @@ export const dispatchPlanAgent = async ({
     background
   });
   // 获取交互结果
-  const askInteractive = await parseAskInteractive(toolCalls, currentPlanId);
+  const askInteractive = await parseAskInteractive(toolCalls);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,

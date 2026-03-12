@@ -87,7 +87,6 @@ export type AgentPlanCheckInteractive = z.infer<typeof AgentPlanCheckInteractive
 
 export const AgentPlanAskQueryInteractiveSchema = z.object({
   type: z.literal('agentPlanAskQuery'),
-  planId: z.string().optional(),
   params: z.object({
     content: z.string(),
     answer: z.string().optional()
@@ -131,7 +130,6 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput').or(z.literal('agentPlanAskUserForm')),
-  planId: z.string().optional(),
   params: z.object({
     description: z.string(),
     inputForm: z.array(UserInputFormItemSchema),
@@ -160,7 +158,9 @@ export const InteractiveNodeResponseTypeSchema = z.discriminatedUnion('type', [
   AgentPlanCheckInteractiveSchema,
   AgentPlanAskQueryInteractiveSchema
 ]);
-export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;
+export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema> & {
+  planId?: string;
+};
 
 export const WorkflowInteractiveResponseTypeSchema = z.intersection(
   InteractiveBasicTypeSchema,
