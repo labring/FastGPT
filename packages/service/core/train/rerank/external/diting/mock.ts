@@ -26,7 +26,7 @@ export async function mockSynthesizeRerankTrainDatas(
   await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
 
   const minNegativeSamples = request.config.minNegativeSamples ?? 1;
-  const maxNegativeSamples = request.config.maxNegativeSamples ?? 7;
+  const maxNegativeSamples = request.config.maxNegativeSamples ?? 5;
   const includeOriginalQ = request.config.includeOriginalQ ?? true;
 
   const allIndexTexts: string[] = [];

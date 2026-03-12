@@ -19,6 +19,8 @@ export function getRerankTrainDataDir(): string {
 export const TRAIN_DATA_SPLIT_RATIO = 0.8;
 /** Default maximum total pairs to sample in train/eval mode (each pair = 2 synthesis indexes) */
 export const DEFAULT_MAX_SAMPLE_PAIRS = 5000;
+/** Minimum number of eval QA pairs required (used to validate sampledData and final DiTing output) */
+export const MIN_EVAL_QA_COUNT = 200;
 
 // ===== DiTing Service Configuration =====
 /** DiTing API default timeout (milliseconds) */

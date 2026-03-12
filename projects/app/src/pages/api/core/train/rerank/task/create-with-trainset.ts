@@ -93,7 +93,7 @@ async function handler(
       generateConfig: {
         forceRegenerate: false,
         minNegativeSamples: 1,
-        maxNegativeSamples: 7,
+        maxNegativeSamples: 5,
         includeOriginalQ: true
       }
     }

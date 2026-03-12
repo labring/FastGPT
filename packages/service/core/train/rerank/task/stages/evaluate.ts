@@ -31,7 +31,8 @@ import { performDatasetSearch } from '../helpers/dataset-search';
 import {
   DEFAULT_DITING_CONCURRENCY,
   MAX_DITING_CONCURRENCY,
-  DEFAULT_DITING_TIMEOUT
+  DEFAULT_DITING_TIMEOUT,
+  MIN_EVAL_QA_COUNT
 } from '../../constants';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
 import { mockRunGenerateEvalDataset } from './evaluate.mock';
@@ -96,8 +97,11 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
     datasetIds
   });
 
-  // Use last 20% of data as evaluation set
-  const sampledData = await sampleDataFromDataset(datasetIds, { datasetType: 'eval' });
+  // Randomly sample from all data for evaluation
+  const sampledData = await sampleDataFromDataset(datasetIds, {
+    datasetType: 'random',
+    sampleSize: MIN_EVAL_QA_COUNT
+  });
 
   if (sampledData.length === 0) {
     const enhancedError = createEnhancedError(
@@ -108,9 +112,26 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
+  // If sampled data is less than MIN_EVAL_QA_COUNT, repeat samples cyclically to fill the gap
+  let limitedSampledData = sampledData;
+  if (sampledData.length < MIN_EVAL_QA_COUNT) {
+    addLog.warn('Eval sampledData below minimum required count, repeating samples', {
+      taskId: String(task._id),
+      sampledCount: sampledData.length,
+      required: MIN_EVAL_QA_COUNT
+    });
+    limitedSampledData = [];
+    for (let i = 0; i < MIN_EVAL_QA_COUNT; i++) {
+      limitedSampledData.push(sampledData[i % sampledData.length]);
+    }
+  } else {
+    limitedSampledData = sampledData.slice(0, MIN_EVAL_QA_COUNT);
+  }
+
   addLog.info('Sampled data from datasets', {
     taskId: String(task._id),
-    sampleCount: sampledData.length
+    sampleCount: sampledData.length,
+    limitedCount: limitedSampledData.length
   });
 
   const aiModelName = extractModelFromApp(
@@ -131,12 +152,12 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
   addLog.info('DiTing API concurrency configuration', {
     taskId: String(task._id),
     concurrency: ditingConcurrency,
-    totalSamples: sampledData.length
+    totalSamples: limitedSampledData.length
   });
 
   const ditingLimit = pLimit(ditingConcurrency);
   const ditingResults = await Promise.allSettled(
-    sampledData.map((sample) =>
+    limitedSampledData.map((sample) =>
       ditingLimit(async () => {
         const context = [sample.q, sample.a].filter(Boolean);
 
@@ -181,6 +202,20 @@ async function realRunGenerateEvalDataset(task: RerankTrainTaskSchemaType): Prom
     .filter((value) => value !== null);
 
   if (evalDataItems.length === 0) {
+    const enhancedError = createEnhancedError(
+      RerankTaskCheckpointStageEnum.evaluating,
+      RerankTrainErrEnum.evalDitingGenerationFailed,
+      RerankTrainSuggestionEnum.evalDitingGenerationFailed
+    );
+    throw new TrainTaskRetriableError(enhancedError);
+  }
+
+  if (evalDataItems.length < MIN_EVAL_QA_COUNT) {
+    addLog.warn('Generated eval QA pairs below minimum required count', {
+      taskId: String(task._id),
+      generatedCount: evalDataItems.length,
+      required: MIN_EVAL_QA_COUNT
+    });
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.evaluating,
       RerankTrainErrEnum.evalDitingGenerationFailed,

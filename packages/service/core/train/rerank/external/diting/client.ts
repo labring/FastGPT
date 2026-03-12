@@ -59,7 +59,7 @@ export async function synthesizeRerankTrainDatas(
         indexes: sample.indexes
       })),
       min_negative_samples: request.config.minNegativeSamples ?? 1,
-      max_negative_samples: request.config.maxNegativeSamples ?? 7,
+      max_negative_samples: request.config.maxNegativeSamples ?? 5,
       include_original_q: request.config.includeOriginalQ ?? true
     };
 

@@ -327,6 +327,31 @@ function distributeSamplesEvenly<
 }
 
 /**
+ * Hash a string to a 32-bit unsigned integer (djb2 variant)
+ */
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+/**
+ * Seeded pseudo-random number generator (mulberry32 algorithm)
+ * Returns a function that generates uniform [0, 1) values deterministically.
+ */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Sample dataset chunks for training or evaluation
  *
  * Supports three sampling modes:
@@ -430,65 +455,48 @@ export async function sampleDataFromDataset(
           }
         }
       ]);
-    } else if (datasetType === 'eval') {
-      const trainCount = Math.floor(totalCount * TRAIN_DATA_SPLIT_RATIO);
-      const evalCount = totalCount - trainCount;
-
-      addLog.info('Using eval dataset mode (last 20%)', {
-        datasetId,
-        totalCount,
-        trainCount,
-        evalCount
-      });
-
-      sampleData = await MongoDatasetData.aggregate([
-        {
-          $match: match
-        },
-        {
-          $skip: trainCount
-        },
-        {
-          $limit: evalCount
-        },
-        {
-          $project: {
-            _id: 1,
-            q: 1,
-            a: 1,
-            indexes: 1,
-            datasetId: 1,
-            collectionId: 1
-          }
-        }
-      ]);
     } else {
-      const trainCount = Math.floor(totalCount * TRAIN_DATA_SPLIT_RATIO);
+      // Fetch all IDs and apply a deterministic Fisher-Yates shuffle seeded by datasetId,
+      // so train (first 80%) and eval (last 20%) always use the same permutation.
+      const allDocs = await MongoDatasetData.find(match).select('_id').lean();
+      const shuffledIds = allDocs.map((doc: any) => doc._id as Types.ObjectId);
 
-      addLog.info('Using train dataset mode (first 80%)', {
-        datasetId,
-        totalCount,
-        trainCount
-      });
+      const rng = seededRandom(hashString(datasetId));
+      for (let i = shuffledIds.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
+      }
 
-      sampleData = await MongoDatasetData.aggregate([
-        {
-          $match: match
-        },
-        {
-          $limit: trainCount
-        },
-        {
-          $project: {
-            _id: 1,
-            q: 1,
-            a: 1,
-            indexes: 1,
-            datasetId: 1,
-            collectionId: 1
-          }
-        }
-      ]);
+      const trainCount = Math.floor(shuffledIds.length * TRAIN_DATA_SPLIT_RATIO);
+
+      if (datasetType === 'eval') {
+        const evalIds = shuffledIds.slice(trainCount);
+
+        addLog.info('Using eval dataset mode (last 20% of shuffled data)', {
+          datasetId,
+          totalCount: shuffledIds.length,
+          trainCount,
+          evalCount: evalIds.length
+        });
+
+        sampleData = await MongoDatasetData.aggregate([
+          { $match: { _id: { $in: evalIds } } },
+          { $project: { _id: 1, q: 1, a: 1, indexes: 1, datasetId: 1, collectionId: 1 } }
+        ]);
+      } else {
+        const trainIds = shuffledIds.slice(0, trainCount);
+
+        addLog.info('Using train dataset mode (first 80% of shuffled data)', {
+          datasetId,
+          totalCount: shuffledIds.length,
+          trainCount
+        });
+
+        sampleData = await MongoDatasetData.aggregate([
+          { $match: { _id: { $in: trainIds } } },
+          { $project: { _id: 1, q: 1, a: 1, indexes: 1, datasetId: 1, collectionId: 1 } }
+        ]);
+      }
     }
 
     addLog.info('Dataset sampling result', {
