@@ -4,7 +4,13 @@
  * Provides configuration and defaults for sandbox management.
  */
 
-import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/type';
+import type {
+  SandboxImageConfigType,
+  SkillSandboxEndpointType
+} from '@fastgpt/global/core/agentSkills/type';
+import { createSandbox, type ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 
 /** Parse an integer from an env-var string, returning defaultValue when the result is NaN. */
 function safeParseInt(value: string | undefined, defaultValue: number): number {
@@ -12,12 +18,31 @@ function safeParseInt(value: string | undefined, defaultValue: number): number {
   return isNaN(n) ? defaultValue : n;
 }
 
-export type SandboxProviderConfig = {
-  provider: string;
+type SandboxRuntime = 'kubernetes' | 'docker';
+
+type BaseSandboxProviderConfig = {
+  provider: SandboxProviderType;
   baseUrl: string;
-  apiKey?: string;
-  runtime: 'kubernetes' | 'docker';
+  runtime: SandboxRuntime;
 };
+
+export type OpenSandboxProviderConfig = BaseSandboxProviderConfig & {
+  provider: 'opensandbox';
+  apiKey?: string;
+};
+
+export type SealosDevboxProviderConfig = BaseSandboxProviderConfig & {
+  provider: 'sealosdevbox';
+  token: string;
+};
+
+export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProviderConfig;
+
+/**
+ * App-side sandbox create config.
+ * Providers may support only a subset of these fields.
+ */
+export type SandboxCreateConfig = OpenSandboxConfigType;
 
 export type SandboxDefaults = {
   defaultImage: SandboxImageConfigType;
@@ -30,21 +55,57 @@ export type SandboxDefaults = {
   };
 };
 
+export type SkillSizeLimits = {
+  maxUploadBytes: number; // Compressed upload size limit
+  maxUncompressedBytes: number; // Uncompressed size after extraction (Zip Bomb guard)
+  maxDownloadBytes: number; // Download from MinIO/S3
+  maxSandboxPackageBytes: number; // Sandbox directory size before zip
+};
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported sandbox provider: ${String(value)}`);
+}
+
+function createUnsupportedCreateConfigError(provider: SandboxProviderType): Error {
+  return new Error(
+    `Sandbox provider "${provider}" does not support custom image/entrypoint/env/metadata through @fastgpt/sandbox. Agent skill sandboxes currently require those capabilities.`
+  );
+}
+
+function toOpenSandboxCreateConfig(
+  createConfig?: SandboxCreateConfig
+): OpenSandboxConfigType | undefined {
+  return createConfig;
+}
+
 /**
  * Get sandbox provider configuration from environment variables
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
-  const provider = process.env.SANDBOX_PROVIDER_NAME || 'opensandbox';
+  const provider = (process.env.SANDBOX_PROVIDER_NAME || 'opensandbox') as SandboxProviderType;
   const baseUrl = process.env.SANDBOX_PROVIDER_BASE_URL || 'http://127.0.0.1:8080';
-  const apiKey = process.env.SANDBOX_PROVIDER_API_KEY;
-  const runtime = (process.env.SANDBOX_PROVIDER_RUNTIME || 'kubernetes') as 'kubernetes' | 'docker';
+  const runtime = (process.env.SANDBOX_PROVIDER_RUNTIME || 'kubernetes') as SandboxRuntime;
 
-  return {
-    provider,
-    baseUrl,
-    apiKey,
-    runtime
-  };
+  switch (provider) {
+    case 'opensandbox':
+      return {
+        provider,
+        baseUrl,
+        apiKey: process.env.SANDBOX_PROVIDER_API_KEY,
+        runtime
+      };
+
+    case 'sealosdevbox':
+      return {
+        provider,
+        baseUrl,
+        token: process.env.SANDBOX_PROVIDER_TOKEN || process.env.SANDBOX_PROVIDER_API_KEY || '',
+        runtime
+      };
+
+    default:
+      return assertNever(provider);
+  }
 }
 
 /**
@@ -66,13 +127,6 @@ export function getSandboxDefaults(): SandboxDefaults {
     }
   };
 }
-
-export type SkillSizeLimits = {
-  maxUploadBytes: number; // Compressed upload size limit
-  maxUncompressedBytes: number; // Uncompressed size after extraction (Zip Bomb guard)
-  maxDownloadBytes: number; // Download from MinIO/S3
-  maxSandboxPackageBytes: number; // Sandbox directory size before zip
-};
 
 /**
  * Get skill size limits from environment variables
@@ -103,6 +157,135 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
   if (!['kubernetes', 'docker'].includes(config.runtime)) {
     throw new Error(`Invalid runtime: ${config.runtime}`);
   }
+
+  if (config.provider === 'sealosdevbox' && !config.token) {
+    throw new Error('Sandbox provider token is required for sealosdevbox');
+  }
+}
+
+/**
+ * Build a provider-specific sandbox adapter behind the unified ISandbox interface.
+ * For providers that require a sandboxId at construction time, pass providerSandboxId.
+ */
+export function buildSandboxAdapter(
+  providerConfig: SandboxProviderConfig,
+  {
+    providerSandboxId,
+    createConfig
+  }: {
+    providerSandboxId?: string;
+    createConfig?: SandboxCreateConfig;
+  } = {}
+): ISandbox {
+  switch (providerConfig.provider) {
+    case 'opensandbox':
+      return createSandbox(
+        'opensandbox',
+        {
+          apiKey: providerConfig.apiKey,
+          baseUrl: providerConfig.baseUrl,
+          runtime: providerConfig.runtime
+        },
+        toOpenSandboxCreateConfig(createConfig)
+      );
+
+    case 'sealosdevbox': {
+      if (!providerSandboxId) {
+        throw new Error(
+          'Sandbox provider "sealosdevbox" requires providerSandboxId when initializing the adapter'
+        );
+      }
+      if (createConfig) {
+        throw createUnsupportedCreateConfigError(providerConfig.provider);
+      }
+
+      const connection = {
+        baseUrl: providerConfig.baseUrl,
+        token: providerConfig.token,
+        sandboxId: providerSandboxId
+      };
+
+      return createSandbox('sealosdevbox', connection);
+    }
+
+    default:
+      return assertNever(providerConfig);
+  }
+}
+
+/**
+ * Connect to an existing provider sandbox and return a unified adapter instance.
+ *
+ * OpenSandbox requires an explicit SDK connect call. Other providers, like
+ * Sealos Devbox, identify the target sandbox during adapter construction.
+ */
+export async function connectToProviderSandbox(
+  providerConfig: SandboxProviderConfig,
+  providerSandboxId: string
+): Promise<ISandbox> {
+  const sandbox = buildSandboxAdapter(providerConfig, { providerSandboxId });
+
+  if (sandbox.provider === 'opensandbox') {
+    await (sandbox as OpenSandboxAdapter).connect(providerSandboxId);
+  }
+
+  return sandbox;
+}
+
+/**
+ * Release any provider-specific client resources tied to the sandbox handle.
+ *
+ * `close()` is not part of the shared ISandbox contract today, so keep the
+ * OpenSandbox branch here instead of leaking adapter-specific casts into
+ * business code. Other providers currently have no equivalent method.
+ */
+export async function disconnectFromProviderSandbox(sandbox: ISandbox): Promise<void> {
+  if (sandbox.provider === 'opensandbox') {
+    await (sandbox as OpenSandboxAdapter).close();
+  }
+}
+
+/**
+ * Resolve the externally reachable endpoint for a sandbox service.
+ *
+ * `getEndpoint()` is an OpenSandbox-specific extension. If another provider adds
+ * a similar capability later, extend this function instead of branching again
+ * in application code.
+ */
+export async function getProviderSandboxEndpoint(
+  sandbox: ISandbox,
+  port: number
+): Promise<SkillSandboxEndpointType> {
+  if (sandbox.provider === 'opensandbox') {
+    const endpoint = await (sandbox as OpenSandboxAdapter).getEndpoint(port);
+    return {
+      host: endpoint.host,
+      port: endpoint.port,
+      protocol: endpoint.protocol,
+      url: endpoint.url
+    };
+  }
+
+  throw new Error(
+    `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
+  );
+}
+
+/**
+ * Select the correct entrypoint based on runtime and sandbox type.
+ * Centralises the kubernetes/docker branching that was duplicated in two files.
+ */
+export function selectSandboxEntrypoint(
+  runtime: SandboxProviderConfig['runtime'],
+  defaults: SandboxDefaults,
+  type: 'editDebug' | 'sessionRuntime'
+): string {
+  if (runtime === 'kubernetes') {
+    return type === 'editDebug'
+      ? defaults.entrypoint.editDebugKubernetes
+      : defaults.entrypoint.sessionKubernetes;
+  }
+  return defaults.entrypoint.docker;
 }
 
 /**

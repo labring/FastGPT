@@ -1,4 +1,4 @@
-import type { ISandbox } from '@anyany/sandbox_provider';
+import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 // Info about a single skill directory discovered inside a deployed package.zip
