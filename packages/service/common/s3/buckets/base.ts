@@ -72,14 +72,15 @@ export class S3BaseBucket {
 
   async checkBucketHealth() {
     const key = `health-check/${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
+    const filename = 'health-check.txt';
 
     await this.client.uploadObject({
       key,
       body: 'ok',
       contentType: 'text/plain',
       metadata: {
-        contentDisposition: 'attachment; filename="health-check.txt"',
-        originFilename: 'health-check.txt',
+        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
+        originFilename: filename,
         uploadTime: new Date().toISOString()
       }
     });
