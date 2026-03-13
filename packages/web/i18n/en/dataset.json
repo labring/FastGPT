@@ -470,7 +470,7 @@
   "web_link": "Web Link",
   "question_generation_desc": "Generate hypothetical questions based on content to improve retrieval recall",
   "summary_generation_desc": "Generate text summaries based on content to improve retrieval accuracy",
-  "image_index_desc": "When Vision Language Model is available and enabled, automatically parse and generate image content indexes",
+  "image_index_desc": "When Vision-Language Model is available, enabling this will automatically parse and generate indexes for image content in documents",
   "synthetic_index_desc": "Sample document content to generate hypothetical questions, which can also be used for knowledge reranking model tuning (time-consuming)",
   "small2big_desc": "When enabled, if the answer content is large, it will be split to generate indexes for small chunks"
 }

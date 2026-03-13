@@ -470,7 +470,7 @@
   "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头",
   "question_generation_desc": "基于内容生成假设性问题，提升检索召回率",
   "summary_generation_desc": "基于内容生成文本摘要，提升检索召回率",
-  "image_index_desc": "在具备 Vision Language Model 时，并启用后将自动解析并生成图片内容的索引",
+  "image_index_desc": "在具备 Vision-Language Model 时，开启后将自动解析并生成文档中图片内容的索引",
   "synthetic_index_desc": "基于文档内容抽样，生成假设问，同时可用于知识重排模型调优（耗时较长）",
   "small2big_desc": "开启后，当答案部分内容较多时将进行拆分，生成小块内容的索引"
 }
