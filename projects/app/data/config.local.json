@@ -34,6 +34,7 @@
           },
           "enhanceConfig": {
             "autoIndexes": true, // 是否开启AI自动索引生成
+            "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "small2bigIndexes": true, // 是否开启small2big索引
             "syntheticIndex": true, // 是否开启合成索引（默认开启）
             "hypeIndexes": false, // 是否开启超参数索引
@@ -75,6 +76,7 @@
             "dataEnhanceCollectionName": false,
             "imageIndex": true,
             "autoIndexes": true,
+            "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false,
             "indexPrefixTitle": false,
             "small2bigIndexes": false,
@@ -112,6 +114,7 @@
           },
           "enhanceConfig": {
             "autoIndexes": true,
+            "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false,
             "imageIndex": false
           },
@@ -122,8 +125,6 @@
         }
       ]
     },
-    "enableStandaloneSummary": true, // 是否启用独立摘要生成（Pentomino SummaryEnhancer）
-    "summaryMinLength": 500, // 独立摘要最小长度阈值（字符数），低于此长度不生成摘要，默认500（参考 Pentomino data_splitter_config.chunk_size）
     "datasetSqlResultLimit": 100 // 数据集SQL查询结果数量限制（默认：100）
   },
   "llmModels": [

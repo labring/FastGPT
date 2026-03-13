@@ -220,10 +220,6 @@ export type SystemEnvType = {
   // Custom link import configuration
   customLinkImport?: CustomLinkImportConfigType;
 
-  // Pentomino auto index configuration
-  enableStandaloneSummary?: boolean; // 是否启用独立摘要生成（Pentomino SummaryEnhancer）
-  summaryMinLength?: number; // 独立摘要最小长度阈值（字符数），低于此长度不生成摘要，默认500（参考 Pentomino data_splitter_config.chunk_size）
-
   // Dataset SQL query result limit (default: 100)
   datasetSqlResultLimit?: number;
 };
@@ -345,7 +341,6 @@ export type DatasetIndexConfigType = {
     autoIndexes?: boolean;
     small2bigIndexes?: boolean;
     syntheticIndex?: boolean;
-    small2Big?: boolean; // Small2Big (FAQ专用)
   };
   link?: {
     questionIndex?: boolean; // 问题索引（细粒度）
