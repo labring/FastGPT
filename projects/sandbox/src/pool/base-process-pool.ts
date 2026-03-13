@@ -12,6 +12,7 @@ import { promisify } from 'util';
 import { platform } from 'os';
 import { config } from '../config';
 import type { ExecuteOptions, ExecuteResult } from '../types';
+import { env } from '../env';
 
 const execAsync = promisify(exec);
 
@@ -116,7 +117,8 @@ export abstract class BaseProcessPool {
       const proc = spawn('sh', ['-c', cmd], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
-          PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin'
+          PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+          CHECK_INTERNAL_IP: process.env.CHECK_INTERNAL_IP
         }
       });
 

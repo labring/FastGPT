@@ -191,10 +191,11 @@ const SystemHelper = {
     if (!REQUEST_LIMITS.allowedProtocols.includes(parsed.protocol)) {
       throw new Error('Protocol not allowed');
     }
-    const ips = await dnsResolve(parsed.hostname);
-    for (const ip of ips) {
-      if (await isInternalAddress(ip)) throw new Error('Request to private network not allowed');
+    // 先检查 URL 是否指向内部地址
+    if (await isInternalAddress(url)) {
+      throw new Error('Request to private network not allowed');
     }
+    const ips = await dnsResolve(parsed.hostname);
     const method = (opts.method || 'GET').toUpperCase();
     const headers = opts.headers || {};
     const body =

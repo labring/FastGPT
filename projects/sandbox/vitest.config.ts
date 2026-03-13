@@ -18,6 +18,7 @@ export default defineConfig({
     maxConcurrency: 1,
     isolate: false,
     env: {
+      CHECK_INTERNAL_IP: 'true',
       SANDBOX_MAX_TIMEOUT: '5000',
       SANDBOX_TOKEN: 'test'
     }
