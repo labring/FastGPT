@@ -3,6 +3,7 @@ import { getAIApi } from '../config';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { VECTOR_DIMENSION } from '../../../common/vectorDB/constants';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
@@ -133,16 +134,16 @@ export function formatVectors(vector: number[], normalization = false) {
   }
 
   // 超过上限，截断，并强制归一化
-  if (vector.length > 1536) {
-    logger.warn('Embedding vector dimension exceeded, truncating to 1536', {
+  if (vector.length > VECTOR_DIMENSION) {
+    logger.warn('Embedding vector dimension exceeded, truncating', {
       vectorLength: vector.length,
-      limit: 1536
+      limit: VECTOR_DIMENSION
     });
-    return normalizationVector(vector.slice(0, 1536));
-  } else if (vector.length < 1536) {
+    return normalizationVector(vector.slice(0, VECTOR_DIMENSION));
+  } else if (vector.length < VECTOR_DIMENSION) {
     const vectorLen = vector.length;
 
-    const zeroVector = new Array(1536 - vectorLen).fill(0);
+    const zeroVector = new Array(VECTOR_DIMENSION - vectorLen).fill(0);
 
     vector = vector.concat(zeroVector);
   }

@@ -1,5 +1,5 @@
 /* oceanbase vector crud */
-import { DatasetVectorTableName, OceanBaseIndexConfig } from '../constants';
+import { DatasetVectorTableName, OceanBaseIndexConfig, VECTOR_DIMENSION } from '../constants';
 import { ObClass } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
@@ -20,7 +20,7 @@ export class ObVectorCtrl implements VectorControllerType {
       await this.obClient.query(`
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            vector VECTOR(1536) NOT NULL,
+            vector VECTOR(${VECTOR_DIMENSION}) NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,

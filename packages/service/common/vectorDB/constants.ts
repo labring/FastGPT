@@ -1,6 +1,11 @@
 export const DatasetVectorDbName = 'fastgpt';
 export const DatasetVectorTableName = 'modeldata';
 
+export const VECTOR_DIMENSION = (() => {
+  const dim = Number(process.env.VECTOR_DIMENSION);
+  return isNaN(dim) || dim <= 0 ? 1536 : dim;
+})();
+
 export const PG_ADDRESS = process.env.PG_URL;
 export const OCEANBASE_ADDRESS = process.env.OCEANBASE_URL;
 export const SEEKDB_ADDRESS = process.env.SEEKDB_URL;
