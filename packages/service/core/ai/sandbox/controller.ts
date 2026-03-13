@@ -70,7 +70,6 @@ export class SandboxClient {
         throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
       }
     })();
-
     this.provider = createSandbox(params.provider, params.config, params.createConfig);
   }
 
@@ -91,7 +90,6 @@ export class SandboxClient {
       },
       { upsert: true }
     );
-
     await this.provider.ensureRunning();
   }
 

@@ -9,7 +9,7 @@ export const SandboxFileOperationBodySchema = z.discriminatedUnion('action', [
     action: z.literal('list'),
     appId: z.string(),
     chatId: z.string(),
-    path: z.string().default('/workspace').describe('目录路径'),
+    path: z.string().default('.').describe('目录路径'),
     outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
   }),
   z.object({
