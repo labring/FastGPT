@@ -6,13 +6,16 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { feishuDocToMarkdown } from './feishuDocToMarkdown';
 
 type ResponseDataType = {
   success: boolean;
   message: string;
-  data: any;
+  data: unknown;
 };
 
 type FeishuFileListResponse = {
@@ -33,13 +36,17 @@ type FeishuFileListResponse = {
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
+/**
+ * Feishu/Lark dataset API.
+ * Uses doc2markdown (feishu2markdown) for doc→markdown with images; the caller
+ * (read.ts) reuses the KB image pipeline (matchMdImg → uploadImage2S3Bucket).
+ */
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
   const instance = createProxyAxios({
     baseURL: feishuBaseUrl,
     timeout: 60000
   });
 
-  // 添加请求拦截器
   instance.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
       const { data } = await axios.post<{ tenant_access_token: string }>(
@@ -49,16 +56,12 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
           app_secret: feishuServer.appSecret
         }
       );
-
       config.headers['Authorization'] = `Bearer ${data.tenant_access_token}`;
       config.headers['Content-Type'] = 'application/json; charset=utf-8';
     }
     return config;
   });
 
-  /**
-   * 响应数据检查
-   */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
       logger.warn('Feishu dataset response data is empty');
@@ -66,43 +69,33 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     }
     return data.data;
   };
-  const responseError = (err: any) => {
-    logger.error('Feishu dataset request failed', { error: err });
 
-    if (!err) {
-      return Promise.reject({ message: '未知错误' });
-    }
-    if (typeof err === 'string') {
-      return Promise.reject({ message: err });
-    }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: err.message });
-    }
-    if (typeof err.data === 'string') {
-      return Promise.reject({ message: err.data });
-    }
-    if (err?.response?.data) {
-      return Promise.reject(err?.response?.data);
-    }
+  const responseError = (err: unknown) => {
+    logger.error('Feishu dataset request failed', { error: err });
+    if (!err) return Promise.reject({ message: '未知错误' });
+    if (typeof err === 'string') return Promise.reject({ message: err });
+    if (typeof (err as Error).message === 'string')
+      return Promise.reject({ message: (err as Error).message });
+    if (typeof (err as { data?: string })?.data === 'string')
+      return Promise.reject({ message: (err as { data: string }).data });
+    if ((err as { response?: { data?: unknown } })?.response?.data)
+      return Promise.reject((err as { response: { data: unknown } }).response.data);
     return Promise.reject(err);
   };
 
-  const request = <T>(url: string, data: any, method: Method): Promise<T> => {
-    /* 去空 */
-    for (const key in data) {
-      if (data[key] === undefined) {
-        delete data[key];
-      }
+  const request = <T>(url: string, data: Record<string, unknown>, method: Method): Promise<T> => {
+    const cleaned = { ...data };
+    for (const key of Object.keys(cleaned)) {
+      if (cleaned[key] === undefined) delete cleaned[key];
     }
-
     return instance
       .request({
         url,
         method,
-        data: ['POST', 'PUT'].includes(method) ? data : undefined,
-        params: !['POST', 'PUT'].includes(method) ? data : undefined
+        data: ['POST', 'PUT'].includes(method) ? cleaned : undefined,
+        params: !['POST', 'PUT'].includes(method) ? cleaned : undefined
       })
-      .then((res) => checkRes(res.data))
+      .then((res) => checkRes(res.data as ResponseDataType) as T)
       .catch((err) => responseError(err));
   };
 
@@ -113,7 +106,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   }): Promise<APIFileItemType[]> => {
     const fetchFiles = async (pageToken?: string): Promise<FeishuFileListResponse['files']> => {
       const data = await request<FeishuFileListResponse>(
-        `/open-apis/drive/v1/files`,
+        '/open-apis/drive/v1/files',
         {
           folder_token: parentId || feishuServer.folderToken,
           page_size: 200,
@@ -121,17 +114,14 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         },
         'GET'
       );
-
       if (data.has_more) {
         const nextFiles = await fetchFiles(data.next_page_token);
         return [...data.files, ...nextFiles];
       }
-
       return data.files;
     };
 
     const allFiles = await fetchFiles();
-
     return allFiles
       .filter((file) => ['folder', 'docx'].includes(file.type))
       .map((file) => ({
@@ -146,12 +136,52 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       }));
   };
 
+  /**
+   * Get document content as markdown with images (base64).
+   * Uses doc2markdown; on failure falls back to raw_content (text only, no images).
+   * Caller (read.ts) runs base64 images through the KB pipeline (matchMdImg → S3 upload).
+   */
   const getFileContent = async ({
     apiFileId
   }: {
     apiFileId: string;
   }): Promise<ApiFileReadContentResponse> => {
-    const [{ content }, { document }] = await Promise.all([
+    const result = await feishuDocToMarkdown({
+      baseUrl: feishuBaseUrl,
+      appId: feishuServer.appId,
+      appSecret: feishuServer.appSecret!,
+      docToken: apiFileId,
+      handleImage: async (localImagePath: string) => {
+        try {
+          const buffer = await fs.promises.readFile(localImagePath);
+          const ext = path.extname(localImagePath).toLowerCase().replace('.', '');
+          const mime: Record<string, string> = {
+            png: 'image/png',
+            gif: 'image/gif',
+            webp: 'image/webp'
+          };
+          const mimeType = mime[ext] || 'image/jpeg';
+          return `data:${mimeType};base64,${buffer.toString('base64')}`;
+        } catch (err) {
+          logger.warn('Feishu image read failed', { localImagePath, error: err });
+          return '';
+        }
+      }
+    });
+
+    if (result) {
+      return { title: result.title, rawText: result.markdown };
+    }
+
+    return getFileContentRaw({ apiFileId });
+  };
+
+  const getFileContentRaw = async ({
+    apiFileId
+  }: {
+    apiFileId: string;
+  }): Promise<ApiFileReadContentResponse> => {
+    const [contentRes, docRes] = await Promise.all([
       request<{ content: string }>(
         `/open-apis/docx/v1/documents/${apiFileId}/raw_content`,
         {},
@@ -163,28 +193,21 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         'GET'
       )
     ]);
-
     return {
-      title: document?.title,
-      rawText: content
+      title: docRes?.document?.title,
+      rawText: contentRes?.content ?? ''
     };
   };
 
   const getFilePreviewUrl = async ({ apiFileId }: { apiFileId: string }): Promise<string> => {
     const { metas } = await request<{ metas: { url: string }[] }>(
-      `/open-apis/drive/v1/metas/batch_query`,
+      '/open-apis/drive/v1/metas/batch_query',
       {
-        request_docs: [
-          {
-            doc_token: apiFileId,
-            doc_type: 'docx'
-          }
-        ],
+        request_docs: [{ doc_token: apiFileId, doc_type: 'docx' }],
         with_url: true
       },
       'POST'
     );
-
     return metas[0].url;
   };
 
@@ -198,7 +221,6 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       {},
       'GET'
     );
-
     return {
       rawId: apiFileId,
       name: document?.title,
@@ -211,9 +233,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     };
   };
 
-  const getFileRawId = (fileId: string) => {
-    return fileId;
-  };
+  const getFileRawId = (fileId: string) => fileId;
 
   return {
     getFileContent,
