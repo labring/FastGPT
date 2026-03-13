@@ -81,9 +81,47 @@ describe('SSRF Protection - isInternalAddress', () => {
     });
   });
 
-  describe('CHECK_INTERNAL_IP 未设置时（默认行为）', () => {
+  describe('CHECK_INTERNAL_IP 未设置时（默认行为 - 安全优先）', () => {
     beforeEach(() => {
       delete process.env.CHECK_INTERNAL_IP;
+    });
+
+    test('应该允许公共 IP 地址', async () => {
+      expect(await isInternalAddress('http://8.8.8.8/')).toBe(false);
+      expect(await isInternalAddress('http://1.1.1.1/')).toBe(false);
+      expect(await isInternalAddress('http://93.184.216.34/')).toBe(false);
+    });
+
+    test('应该阻止私有 IP 地址（默认启用安全检查）', async () => {
+      expect(await isInternalAddress('http://10.0.0.1/')).toBe(true);
+      expect(await isInternalAddress('http://172.16.0.1/')).toBe(true);
+      expect(await isInternalAddress('http://192.168.1.1/')).toBe(true);
+    });
+
+    test('应该阻止解析到私有 IP 的域名', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['10.0.0.1']);
+      vi.mocked(dns.resolve6).mockRejectedValue(new Error('No AAAA records'));
+
+      expect(await isInternalAddress('http://internal.example.com/')).toBe(true);
+    });
+
+    test('应该允许解析到公共 IP 的域名', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['8.8.8.8']);
+      vi.mocked(dns.resolve6).mockRejectedValue(new Error('No AAAA records'));
+
+      expect(await isInternalAddress('http://example.com/')).toBe(false);
+    });
+
+    test('应该阻止 localhost 和元数据端点', async () => {
+      expect(await isInternalAddress('http://localhost/')).toBe(true);
+      expect(await isInternalAddress('http://127.0.0.1/')).toBe(true);
+      expect(await isInternalAddress('http://169.254.169.254/')).toBe(true);
+    });
+  });
+
+  describe('CHECK_INTERNAL_IP=false 时（向后兼容模式）', () => {
+    beforeEach(() => {
+      process.env.CHECK_INTERNAL_IP = 'false';
     });
 
     test('应该允许公共 IP 地址', async () => {

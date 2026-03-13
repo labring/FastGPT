@@ -422,7 +422,7 @@ export const replaceJsonBodyString = (
       continue;
     }
 
-    const escapedPattern = `\\{\\{\\$(${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\$\\}\\}`;
+    const escapedPattern = `\\{\\{\\$${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\$\\}\\}`;
 
     replacements1.push({
       pattern: escapedPattern,
@@ -461,7 +461,7 @@ export const replaceJsonBodyString = (
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     replacements2.push({
-      pattern: `{{(${escapedKey})}}`,
+      pattern: `{{${escapedKey}}}`,
       replacement: formatVal
     });
 

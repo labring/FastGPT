@@ -20,6 +20,7 @@ import { getAppVersionById } from '../../../../../../app/version/controller';
 import { MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
 import { getS3ChatSource } from '../../../../../../../common/s3/sources/chat';
+import { parseToolId } from '../../../../child/runTool';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -175,8 +176,7 @@ export const dispatchTool = async ({
         ]
       };
     } else if (toolConfig?.mcpTool?.toolId) {
-      const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -203,8 +203,7 @@ export const dispatchTool = async ({
         usages: []
       };
     } else if (toolConfig?.httpTool?.toolId) {
-      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }

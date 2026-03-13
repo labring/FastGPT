@@ -6,6 +6,7 @@ import {
   Worker,
   type WorkerOptions
 } from 'bullmq';
+import './type';
 import { getLogger, LogCategories } from '../logger';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 import { delay } from '@fastgpt/global/common/system/utils';
@@ -31,7 +32,7 @@ export enum QueueNames {
   datasetDelete = 'datasetDelete',
   appDelete = 'appDelete',
   teamDelete = 'teamDelete',
-  // @deprecated
+  /** @deprecated */
   websiteSync = 'websiteSync'
 }
 

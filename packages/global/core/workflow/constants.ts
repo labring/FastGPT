@@ -172,6 +172,7 @@ export enum NodeInputKeyEnum {
   selectedTools = 'agent_selectedTools',
   datasetParams = 'agent_datasetParams',
   skills = 'skills',
+  useEditDebugSandbox = 'useEditDebugSandbox',
 
   // dataset
   datasetSelectList = 'datasets',
@@ -316,7 +317,7 @@ export enum NodeOutputKeyEnum {
   // File
   fileTitle = 'fileTitle',
 
-  // @deprecated
+  /** @deprecated */
   error = 'error'
 }
 

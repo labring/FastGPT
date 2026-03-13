@@ -28,7 +28,7 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Tag from '@fastgpt/web/components/common/Tag';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useCallback } from 'react';

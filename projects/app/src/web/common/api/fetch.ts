@@ -12,7 +12,11 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type { StepTitleItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  StepTitleItemType,
+  ToolModuleResponseItemType,
+  SkillCallItemType
+} from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
@@ -64,6 +68,10 @@ type ResponseQueueItemType = CommonResponseType &
     | {
         event: SseResponseEventEnum.stepTitle;
         stepTitle: StepTitleItemType;
+      }
+    | {
+        event: SseResponseEventEnum.skillCall;
+        skill: SkillCallItemType;
       }
   );
 
@@ -256,7 +264,8 @@ export const streamFetch = ({
             event === SseResponseEventEnum.toolResponse ||
             event === SseResponseEventEnum.interactive ||
             event === SseResponseEventEnum.plan ||
-            event === SseResponseEventEnum.stepTitle
+            event === SseResponseEventEnum.stepTitle ||
+            event === SseResponseEventEnum.skillCall
           ) {
             pushDataToQueue({
               responseValueId,
@@ -298,6 +307,12 @@ export const streamFetch = ({
             onMessage({
               event,
               ...rest
+            });
+          } else if (event === SseResponseEventEnum.sandboxStatus) {
+            // Wrap the flat sandbox status fields into a nested sandboxStatus object
+            onMessage({
+              event,
+              sandboxStatus: rest
             });
           }
         },

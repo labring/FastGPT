@@ -92,6 +92,47 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       .catch((err) => responseError(err));
   };
 
+  const getPreviewUrlFilename = (previewUrl: string) => {
+    const parseFilename = (pathname: string) => {
+      const filename = pathname.split('/').pop() || '';
+      if (!filename) return '';
+
+      try {
+        return decodeURIComponent(filename);
+      } catch {
+        return filename;
+      }
+    };
+
+    try {
+      return parseFilename(new URL(previewUrl).pathname);
+    } catch {
+      return parseFilename(previewUrl.split('?')[0].split('#')[0]);
+    }
+  };
+
+  const getFallbackTitle = async ({
+    apiFileId,
+    previewUrl
+  }: {
+    apiFileId: string;
+    previewUrl: string;
+  }) => {
+    try {
+      const fileDetail = await getFileDetail({ apiFileId });
+      if (fileDetail.name) {
+        return fileDetail.name;
+      }
+    } catch (error) {
+      logger.warn('Get api dataset file detail for title fallback failed', {
+        apiFileId,
+        error
+      });
+    }
+
+    return getPreviewUrlFilename(previewUrl) || getNanoid();
+  };
+
   const listFiles = async ({
     searchKey,
     parentId
@@ -156,6 +197,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       };
     }
     if (previewUrl) {
+      const fallbackTitle = title || (await getFallbackTitle({ apiFileId, previewUrl }));
+
       // Get from buffer
       const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
         sourceId: previewUrl,
@@ -163,7 +206,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       });
       if (rawTextBuffer) {
         return {
-          title,
+          title: title || rawTextBuffer.filename || fallbackTitle,
           rawText: rawTextBuffer.text
         };
       }
@@ -178,7 +221,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         getFormatText: true
       });
 
-      const sourceName = title || getNanoid();
+      const sourceName = fallbackTitle;
 
       getS3RawTextSource().addRawTextBuffer({
         sourceId: previewUrl,
@@ -188,7 +231,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       });
 
       return {
-        title: sourceName,
+        title: fallbackTitle,
         rawText
       };
     }

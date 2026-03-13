@@ -72,6 +72,7 @@ export const modelTypeList = [
 
 export enum ChatCompletionRequestMessageRoleEnum {
   'System' = 'system',
+  'Developer' = 'developer',
   'User' = 'user',
   'Assistant' = 'assistant',
   'Function' = 'function',

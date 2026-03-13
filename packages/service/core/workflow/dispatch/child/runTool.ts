@@ -19,7 +19,6 @@ import { getSystemToolById } from '../../../app/tool/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getS3ChatSource } from '../../../../common/s3/sources/chat';
@@ -207,8 +206,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       // pluginId: toolSetAppId/toolsetName/toolName
-      const { pluginId } = splitCombineToolId(toolConfig.mcpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -241,8 +239,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     } else if (toolConfig?.httpTool?.toolId) {
-      const { pluginId } = splitCombineToolId(toolConfig.httpTool.toolId);
-      const [parentId, toolSetName, toolName] = pluginId.split('/');
+      const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       const toolset = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -346,4 +343,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
     });
   }
+};
+
+export const parseToolId = (id: string) => {
+  const formatId = id.split('-').slice(1).join('-');
+  const [parentId, toolsetNameOrToolName, legacyToolName] = formatId.split('/');
+
+  if (legacyToolName) {
+    // 旧版格式: source-appId/toolsetName/toolName
+    return { parentId, toolName: legacyToolName };
+  }
+
+  // 新版格式: source-appId/toolName
+  return { parentId, toolName: toolsetNameOrToolName };
 };

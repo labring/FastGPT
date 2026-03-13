@@ -11,7 +11,6 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { getMCPParentId } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 
 export type getToolVersionListProps = PaginationProps<{
   pluginId?: string;
@@ -40,7 +39,7 @@ async function handler(
 
   // System tool plugin
   if (source === AppToolSourceEnum.systemTool) {
-    const item = await getSystemToolByIdAndVersionId(formatPluginId);
+    const item = await getSystemToolByIdAndVersionId(pluginId);
 
     return {
       total: 0,
@@ -63,9 +62,7 @@ async function handler(
       });
       return app._id;
     } else {
-      const item = await getSystemToolByIdAndVersionId(formatPluginId);
-      if (!item) return Promise.reject(PluginErrEnum.unAuth);
-      return item.associatedPluginId;
+      return formatPluginId;
     }
   })();
 

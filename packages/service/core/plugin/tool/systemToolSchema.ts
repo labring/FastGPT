@@ -7,6 +7,7 @@ export const collectionName = 'system_plugin_tools';
 
 const SystemToolSchema = new Schema({
   pluginId: {
+    // commercial-id
     type: String,
     required: true
   },
@@ -48,8 +49,9 @@ const SystemToolSchema = new Schema({
     enum: UserTagsEnum.enum
   },
 
-  // @deprecated
+  /** @deprecated */
   inputConfig: Array,
+  /** @deprecated */
   isActive: Boolean
 });
 

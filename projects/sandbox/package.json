@@ -11,6 +11,10 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "engines": {
+    "node": ">=20.x",
+    "pnpm": ">=9.x"
+  },
   "dependencies": {
     "axios": "^1.7.9",
     "crypto-js": "^4.2.0",

@@ -1,6 +1,10 @@
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 
-export const getMasterSystemPrompt = (systemPrompt?: string, hasUserTools: boolean = true) => {
+export const getMasterSystemPrompt = (
+  systemPrompt?: string,
+  hasUserTools: boolean = true,
+  hasSandboxSkills: boolean = false
+) => {
   return `<!-- Master Agent 决策系统 -->
 
 <role>
@@ -19,10 +23,15 @@ ${systemPrompt}
 
 
 <decision_paths>
-三种执行路径：
+${hasSandboxSkills ? '四' : '三'}种执行路径：
 1. **规划模式**：调用 ${SubAppIds.plan} 进行任务分解和规划，或者重新进入规划
 2. **工具模式**：直接调用工具完成单步操作
-3. **总结模式**：基于已有信息直接输出结论
+3. **总结模式**：基于已有信息直接输出结论${
+    hasSandboxSkills
+      ? `
+4. **技能执行模式**：当任务匹配可用技能的描述时，先用 sandbox_read_file 加载技能文档，然后通过沙箱工具执行`
+      : ''
+  }
 </decision_paths>
 
 ${
@@ -45,7 +54,12 @@ ${
 ${
   hasUserTools
     ? `**有工具场景**：用户选择了至少一个可用工具（搜索、文件、数据集、自定义工具等）
-- ✅ 可以根据后续决策矩阵选择任意执行路径
+- ✅ 可以根据后续决策矩阵选择任意执行路径${
+        hasSandboxSkills
+          ? `
+- 💡 **注意**：当前有可用技能（见 <available_skills>），优先检查任务是否匹配技能描述，匹配时使用技能执行模式`
+          : ''
+      }
 - 继续进行后续的上下文评估和任务复杂度判断`
     : `**无工具场景**：用户未选择任何可用工具
 - 必须严格遵守 <tool_constraint> 中的约束

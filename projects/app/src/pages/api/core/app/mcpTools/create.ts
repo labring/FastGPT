@@ -55,8 +55,7 @@ async function handler(
           toolList,
           name,
           avatar,
-          headerSecret: formatedHeaderAuth,
-          toolId: ''
+          headerSecret: formatedHeaderAuth
         })
       ],
       session

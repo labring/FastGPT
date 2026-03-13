@@ -2,7 +2,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import type { SubAppRuntimeType } from './type';
-import { agentSkillToToolRuntime } from './sub/tool/utils';
+import { getAgentRuntimeTools } from './sub/tool/utils';
 import { readFileTool } from './sub/file/utils';
 import { PlanAgentTool } from './sub/plan/constants';
 import { datasetSearchTool } from './sub/dataset/utils';
@@ -13,7 +13,8 @@ export const getSubapps = async ({
   lang,
   getPlanTool,
   hasDataset,
-  hasFiles
+  hasFiles,
+  extraTools
 }: {
   tmbId: string;
   tools: SkillToolType[];
@@ -21,6 +22,7 @@ export const getSubapps = async ({
   getPlanTool?: Boolean;
   hasDataset?: boolean;
   hasFiles: boolean;
+  extraTools?: ChatCompletionTool[];
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -42,8 +44,13 @@ export const getSubapps = async ({
     completionTools.push(datasetSearchTool);
   }
 
+  /* Capability extra tools (e.g. sandbox skills) */
+  if (extraTools && extraTools.length > 0) {
+    completionTools.push(...extraTools);
+  }
+
   /* System tool */
-  const formatTools = await agentSkillToToolRuntime({
+  const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang

@@ -86,12 +86,17 @@ export type DatasetSchemaType = {
   // 软删除字段
   deleteTime?: Date | null;
 
-  // abandon
+  /** @deprecated */
   autoSync?: boolean;
+  /** @deprecated */
   externalReadUrl?: string;
+  /** @deprecated */
   defaultPermission?: number;
+  /** @deprecated */
   apiServer?: APIFileServer;
+  /** @deprecated */
   feishuServer?: FeishuServer;
+  /** @deprecated */
   yuqueServer?: YuqueServer;
 };
 
