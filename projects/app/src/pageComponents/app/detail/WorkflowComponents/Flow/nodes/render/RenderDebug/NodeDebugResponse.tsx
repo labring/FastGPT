@@ -63,10 +63,8 @@ const RenderUserFormInteractive = function RenderFormInput({
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
 
-  const { onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowDebugContext,
-    (v) => v
-  );
+  const { onStopNodeDebug, onNextNodeDebug, onRunToBreakpoint, debugVariables, workflowDebugData } =
+    useContextSelector(WorkflowDebugContext, (v) => v);
   const { onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
 
   const statusMap = useRef({
@@ -204,15 +202,26 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                   !debugResult.isExpired &&
                   workflowDebugData?.entryNodeIds &&
                   workflowDebugData.entryNodeIds.length > 0 && (
-                    <Button
-                      ml={2}
-                      size={'sm'}
-                      leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
-                      variant={'primary'}
-                      onClick={() => onNextNodeDebug(workflowDebugData)}
-                    >
-                      {t('common:next_step')}
-                    </Button>
+                    <>
+                      <Button
+                        ml={2}
+                        size={'sm'}
+                        leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
+                        variant={'primary'}
+                        onClick={() => onNextNodeDebug(workflowDebugData)}
+                      >
+                        {t('common:next_step')}
+                      </Button>
+                      <Button
+                        ml={2}
+                        size={'sm'}
+                        variant={'primaryOutline'}
+                        onClick={() => onRunToBreakpoint(workflowDebugData)}
+                        title={t('workflow:debug.Run to breakpoint')}
+                      >
+                        {t('workflow:debug.Continue')}
+                      </Button>
+                    </>
                   )}
                 {workflowDebugData?.entryNodeIds &&
                   workflowDebugData?.entryNodeIds.length === 0 && (
@@ -255,6 +264,87 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                 </>
               )}
               {response && <WholeResponseContent activeModule={response} />}
+              {/* Node Logs */}
+              {debugResult.nodeLogs && debugResult.nodeLogs.length > 0 && (
+                <Box px={3} py={2} borderTop={'base'}>
+                  <Box fontSize={'xs'} fontWeight={'bold'} mb={1} color={'myGray.800'}>
+                    {t('workflow:response.Node logs')}
+                  </Box>
+                  {debugResult.nodeLogs.map((log, i) => {
+                    const levelColor: Record<string, string> = {
+                      debug: 'myGray.500',
+                      info: 'blue.600',
+                      warn: 'orange.600',
+                      error: 'red.600'
+                    };
+                    return (
+                      <Box
+                        key={i}
+                        fontSize={'xs'}
+                        _notLast={{
+                          borderBottom: '1px solid',
+                          borderBottomColor: 'myWhite.700',
+                          mb: 1,
+                          pb: 1
+                        }}
+                      >
+                        <Flex alignItems={'center'} gap={2}>
+                          <Box color={'myGray.500'} fontFamily={'monospace'} fontSize={'2xs'}>
+                            {new Date(log.time).toLocaleTimeString()}
+                          </Box>
+                          <Box
+                            color={levelColor[log.level] || 'myGray.600'}
+                            fontWeight={'bold'}
+                            textTransform={'uppercase'}
+                            fontSize={'2xs'}
+                          >
+                            {log.level}
+                          </Box>
+                          <Box flex={1}>{log.message}</Box>
+                        </Flex>
+                        {log.data && (
+                          <Box
+                            mt={0.5}
+                            pl={4}
+                            color={'myGray.600'}
+                            fontFamily={'monospace'}
+                            fontSize={'2xs'}
+                            whiteSpace={'pre-wrap'}
+                          >
+                            {JSON.stringify(log.data, null, 2)}
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+            </Box>
+          )}
+          {/* Variables Watch Panel */}
+          {debugVariables && Object.keys(debugVariables).length > 0 && (
+            <Box borderTop={'base'} px={3} py={2}>
+              <Box fontSize={'xs'} fontWeight={'bold'} mb={1} color={'myGray.800'}>
+                {t('workflow:debug.Variables watch')}
+              </Box>
+              <Box
+                fontSize={'xs'}
+                fontFamily={'monospace'}
+                bg={'myGray.50'}
+                borderRadius={'md'}
+                p={2}
+              >
+                {Object.entries(debugVariables).map(([key, value]) => (
+                  <Flex key={key} mb={1} _last={{ mb: 0 }}>
+                    <Box color={'purple.600'} mr={2} flexShrink={0}>
+                      {key}:
+                    </Box>
+                    <Box color={'myGray.700'} wordBreak={'break-all'}>
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')}
+                    </Box>
+                  </Flex>
+                ))}
+              </Box>
             </Box>
           )}
         </Card>
