@@ -129,8 +129,9 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
     ...(errorText ? { errorText } : {}),
 
-    // @deprecated
+    /** @deprecated */
     llmModuleAccount,
+    /** @deprecated */
     historyPreviewLength
   };
 }

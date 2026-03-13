@@ -202,8 +202,9 @@ export type ResponseTagItemType = {
   toolCiteLinks?: ToolCiteLinksType[];
   errorText?: ErrorTextItemType;
 
-  // @deprecated
+  /** @deprecated */
   llmModuleAccount?: number;
+  /** @deprecated */
   historyPreviewLength?: number;
 };
 

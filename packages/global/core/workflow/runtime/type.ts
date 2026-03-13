@@ -397,9 +397,11 @@ export type DispatchNodeResponseType = {
   // Tools
   toolId?: string;
 
-  // @deprecated
+  /** @deprecated */
   extensionModel?: string;
+  /** @deprecated */
   extensionResult?: string;
+  /** @deprecated */
   extensionTokens?: number;
 };
 

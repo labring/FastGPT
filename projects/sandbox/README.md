@@ -58,7 +58,7 @@ docker build -f projects/sandbox/Dockerfile -t fastgpt-sandbox .
 
 # 运行
 docker run -p 3000:3000 \
-  -e CODE_SANDBOX_TOKEN=your-secret-token \
+  -e SANDBOX_TOKEN=your-secret-token \
   -e SANDBOX_POOL_SIZE=20 \
   fastgpt-sandbox
 ```
@@ -130,7 +130,7 @@ docker run -p 3000:3000 \
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `SANDBOX_PORT` | 服务端口 | `3000` |
-| `CODE_SANDBOX_TOKEN` | Bearer Token 认证密钥 | 空（不鉴权） |
+| `SANDBOX_TOKEN` | Bearer Token 认证密钥 | 空（不鉴权） |
 
 ### 进程池
 

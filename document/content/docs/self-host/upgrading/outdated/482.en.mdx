@@ -11,7 +11,7 @@ description: FastGPT V4.8.2 Release Notes
 4. Click "Update" on FastGPT, modify the environment variables, and add the following:
 
 ```
-CODE_SANDBOX_URL=internal-network-address
+SANDBOX_URL=internal-network-address
 ```
 
 ## Docker Deployment
@@ -19,7 +19,7 @@ CODE_SANDBOX_URL=internal-network-address
 You can pull the latest [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker/docker-compose.yml) file for reference.
 
 1. Add a new `sandbox` container.
-2. Add the `CODE_SANDBOX_URL` environment variable to the fastgpt and fastgpt-pro (commercial edition) containers.
+2. Add the `SANDBOX_URL` environment variable to the fastgpt and fastgpt-pro (commercial edition) containers.
 3. It's recommended not to expose the sandbox to the public network, as it has no credential verification.
 
 ## V4.8.2 Release Notes

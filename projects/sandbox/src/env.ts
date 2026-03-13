@@ -19,12 +19,12 @@ const envSchema = z.object({
   // ===== 服务 =====
   SANDBOX_PORT: int(3000),
   /** Bearer token，仅允许 ASCII 可打印字符（RFC 6750） */
-  CODE_SANDBOX_TOKEN: z
+  SANDBOX_TOKEN: z
     .string()
     .default('')
     .refine((v) => v === '' || /^[\x21-\x7E]+$/.test(v), {
       message:
-        'CODE_SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
+        'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
 
   // Logger
@@ -82,7 +82,7 @@ const e = parsed.data;
 export const env = {
   // 服务
   port: e.SANDBOX_PORT,
-  token: e.CODE_SANDBOX_TOKEN,
+  token: e.SANDBOX_TOKEN,
 
   // 资源限制
   maxTimeoutMs: e.SANDBOX_MAX_TIMEOUT,

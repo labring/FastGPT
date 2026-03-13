@@ -48,11 +48,12 @@ const SandboxInstanceSchema = new Schema({
 });
 
 SandboxInstanceSchema.index(
-  { appId: 1, chatId: 1 },
+  { appId: 1, userId: 1, chatId: 1 },
   {
     unique: true,
     partialFilterExpression: {
       appId: { $exists: true, $ne: null },
+      userId: { $exists: true, $ne: null },
       chatId: { $exists: true, $ne: null }
     }
   }

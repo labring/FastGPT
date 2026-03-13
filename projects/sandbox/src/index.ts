@@ -99,7 +99,7 @@ if (config.token) {
   app.use('/sandbox/*', bearerAuth({ token: config.token }));
 } else {
   apiLogger.warn(
-    '⚠️  WARNING: CODE_SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set CODE_SANDBOX_TOKEN in production!'
+    '⚠️  WARNING: SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set SANDBOX_TOKEN in production!'
   );
 }
 
