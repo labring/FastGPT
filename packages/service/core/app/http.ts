@@ -139,12 +139,12 @@ export const runHTTPTool = async ({
   try {
     // Construct full base URL
     const fullBaseUrl =
-      baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+      baseUrl.startsWith('http://') || baseUrl.startsWith('https://') || !baseUrl
         ? baseUrl
         : `https://${baseUrl}`;
 
     // SSRF Protection: Validate URL before making request
-    const fullUrl = baseUrl ? new URL(toolPath, fullBaseUrl).toString() : '';
+    const fullUrl = new URL(toolPath, fullBaseUrl || undefined).toString();
 
     if (await isInternalAddress(fullUrl)) {
       return { errorMsg: 'Access to internal addresses is not allowed' };
@@ -171,7 +171,8 @@ export const runHTTPTool = async ({
     });
 
     return { data };
-  } catch (error: any) {
+  } catch (error) {
+    console.log(error);
     return { errorMsg: getErrText(error) };
   }
 };
