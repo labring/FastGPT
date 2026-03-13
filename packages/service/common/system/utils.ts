@@ -138,8 +138,7 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
       return true;
     }
 
-    // 3. 默认启用内部 IP 检查（安全优先）
-    // 只有显式设置 CHECK_INTERNAL_IP=false 时才禁用检查
+    // 3. 只有显式设置 CHECK_INTERNAL_IP=true 时才启用私有 IP 检查
     if (process.env.CHECK_INTERNAL_IP !== 'true') {
       return false;
     }
