@@ -304,6 +304,44 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
   });
 
+  describe('Empty BaseUrl with Complete URL in toolPath', () => {
+    it('should block internal address when baseUrl is empty and toolPath is complete URL', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://localhost:8080/api/test',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.data).toBeUndefined();
+    });
+
+    it('should block AWS metadata when baseUrl is empty', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://169.254.169.254/latest/meta-data/',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.data).toBeUndefined();
+    });
+
+    it('should block private IP when baseUrl is empty', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://192.168.1.1/admin',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.data).toBeUndefined();
+    });
+  });
+
   describe('Legitimate External URLs', () => {
     // 注意：这些测试会实际发起网络请求，可能需要 mock
     it('should allow legitimate external URLs (example.com)', async () => {
