@@ -35,6 +35,7 @@ const envSchema = z.object({
   SANDBOX_MAX_MEMORY_MB: int(256).pipe(z.number().min(32).max(4096)),
 
   // ===== 网络请求限制 =====
+  CHECK_INTERNAL_IP: z.coerce.boolean().default(false),
   SANDBOX_REQUEST_MAX_COUNT: int(30).pipe(z.number().min(1).max(1000)),
   SANDBOX_REQUEST_TIMEOUT: int(60000).pipe(z.number().min(1000).max(300000)),
   SANDBOX_REQUEST_MAX_RESPONSE_MB: int(10).pipe(z.number().min(1).max(100)),
@@ -84,6 +85,7 @@ export const env = {
   poolSize: e.SANDBOX_POOL_SIZE,
 
   // 网络请求限制
+  checkInternalIp: e.CHECK_INTERNAL_IP,
   maxRequests: e.SANDBOX_REQUEST_MAX_COUNT,
   requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
   maxResponseSize: e.SANDBOX_REQUEST_MAX_RESPONSE_MB,

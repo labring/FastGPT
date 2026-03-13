@@ -14,7 +14,7 @@ import * as crypto from 'crypto';
 import * as http from 'http';
 import * as https from 'https';
 import * as dns from 'dns';
-import * as net from 'net';
+import { isInternalAddress } from '../utils/network';
 const _OriginalFunction = Function;
 
 // ===== 安全 shim =====
@@ -143,29 +143,6 @@ function ipToLong(ip: string): number {
   return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
 }
 
-function isBlockedIP(rawIp: string): boolean {
-  let ip = rawIp;
-  if (!ip) return true;
-  if (ip === '::1' || ip === '::') return true;
-  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
-  if (ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80')) return true;
-  if (!net.isIPv4(ip)) return false;
-  const ipLong = ipToLong(ip);
-  const cidrs: [string, number][] = [
-    ['10.0.0.0', 8],
-    ['172.16.0.0', 12],
-    ['192.168.0.0', 16],
-    ['169.254.0.0', 16],
-    ['127.0.0.0', 8],
-    ['0.0.0.0', 8]
-  ];
-  for (const [base, bits] of cidrs) {
-    const mask = (0xffffffff << (32 - bits)) >>> 0;
-    if ((ipLong & mask) === (ipToLong(base) & mask)) return true;
-  }
-  return false;
-}
-
 function dnsResolve(hostname: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     dns.lookup(hostname, { all: true }, (err, addresses) => {
@@ -214,10 +191,11 @@ const SystemHelper = {
     if (!REQUEST_LIMITS.allowedProtocols.includes(parsed.protocol)) {
       throw new Error('Protocol not allowed');
     }
-    const ips = await dnsResolve(parsed.hostname);
-    for (const ip of ips) {
-      if (isBlockedIP(ip)) throw new Error('Request to private network not allowed');
+    // 先检查 URL 是否指向内部地址
+    if (await isInternalAddress(url)) {
+      throw new Error('Request to private network not allowed');
     }
+    const ips = await dnsResolve(parsed.hostname);
     const method = (opts.method || 'GET').toUpperCase();
     const headers = opts.headers || {};
     const body =

@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
+import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 
 describe('SSRF Vulnerability Fix Tests', () => {
   const originalEnv = process.env.CHECK_INTERNAL_IP;
 
   beforeEach(() => {
     // 确保测试环境启用内部 IP 检查
-    delete process.env.CHECK_INTERNAL_IP;
+    process.env.CHECK_INTERNAL_IP = 'true';
   });
 
   afterEach(() => {
@@ -27,7 +28,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -39,7 +40,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -53,7 +54,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -65,7 +66,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -79,7 +80,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -91,7 +92,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -103,7 +104,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -117,7 +118,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -129,7 +130,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -141,7 +142,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -155,7 +156,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -167,7 +168,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -179,7 +180,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -193,7 +194,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -205,7 +206,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -219,7 +220,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -231,7 +232,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
 
@@ -243,7 +244,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
     });
   });
@@ -260,7 +261,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
     });
 
     it('should always block localhost even when CHECK_INTERNAL_IP=false', async () => {
@@ -274,7 +275,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
     });
 
     it('should block internal addresses by default (no env var)', async () => {
@@ -287,7 +288,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
     });
 
     it('should block internal addresses when CHECK_INTERNAL_IP=true', async () => {
@@ -300,7 +301,45 @@ describe('SSRF Vulnerability Fix Tests', () => {
         params: {}
       });
 
-      expect(result.errorMsg).toBe('Access to internal addresses is not allowed');
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
+    });
+  });
+
+  describe('Empty BaseUrl with Complete URL in toolPath', () => {
+    it('should block internal address when baseUrl is empty and toolPath is complete URL', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://localhost:8080/api/test',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
+      expect(result.data).toBeUndefined();
+    });
+
+    it('should block AWS metadata when baseUrl is empty', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://169.254.169.254/latest/meta-data/',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
+      expect(result.data).toBeUndefined();
+    });
+
+    it('should block private IP when baseUrl is empty', async () => {
+      const result = await runHTTPTool({
+        baseUrl: '',
+        toolPath: 'http://192.168.1.1/admin',
+        method: 'GET',
+        params: {}
+      });
+
+      expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
+      expect(result.data).toBeUndefined();
     });
   });
 
