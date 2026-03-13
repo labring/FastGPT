@@ -476,10 +476,10 @@ const AutoLearn = () => {
     const tunedDetailedResults = (tunedEvalResult as any)?.detailed_results ?? {};
 
     return {
-      precisionBefore: baseDetailedResults?.rerank_top10_precision,
-      precisionAfter: tunedDetailedResults?.rerank_top10_precision,
-      mrrBefore: baseDetailedResults?.rerank_top10_mrr,
-      mrrAfter: tunedDetailedResults?.rerank_top10_mrr
+      precisionBefore: baseDetailedResults?.rerank_top5_precision,
+      precisionAfter: tunedDetailedResults?.rerank_top5_precision,
+      mrrBefore: baseDetailedResults?.rerank_top5_mrr,
+      mrrAfter: tunedDetailedResults?.rerank_top5_mrr
     };
   }, []);
 
@@ -623,7 +623,7 @@ const AutoLearn = () => {
                       ) : (
                         <HStack spacing={1}>
                           <Text color={'myGray.600'}>
-                            {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(2) : '-'}
+                            {metrics.mrrBefore !== undefined ? metrics.mrrBefore.toFixed(3) : '-'}
                           </Text>
                           <MyIcon
                             name={'common/arrowRight'}
@@ -633,7 +633,7 @@ const AutoLearn = () => {
                             mx={2}
                           />
                           <Text color={'myGray.600'}>
-                            {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(2) : '-'}
+                            {metrics.mrrAfter !== undefined ? metrics.mrrAfter.toFixed(3) : '-'}
                           </Text>
                         </HStack>
                       )}
