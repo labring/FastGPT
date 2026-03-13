@@ -442,16 +442,6 @@ export const compressToolResponse = async ({
   // 取静态阈值和动态可用空间的较小值
   const maxTokens = Math.min(staticMaxTokens, availableSpace);
 
-  logger.info('Tool Response Compression', {
-    responseTokens: await countGptMessagesTokens([{ role: 'user', content: response }]),
-    currentMessagesTokens,
-    maxContext: model.maxContext,
-    reservedTokens,
-    availableSpace,
-    staticMaxTokens,
-    finalMaxTokens: maxTokens
-  });
-
   // 调用通用压缩函数
   return compressLargeContent({
     content: response,

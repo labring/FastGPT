@@ -9,6 +9,7 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
+import { deleteSandboxesByChatIds } from '@fastgpt/service/core/ai/sandbox/controller';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);
@@ -50,6 +51,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       },
       { session }
     );
+
+    // Delete sandboxes
+    await deleteSandboxesByChatIds({ appId, chatIds });
+
+    // Delete s3
     await Promise.all(
       chatList.map((item) => {
         return getS3ChatSource().deleteChatFilesByPrefix({

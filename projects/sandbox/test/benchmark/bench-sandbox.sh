@@ -1,11 +1,11 @@
 #!/bin/bash
 # FastGPT Sandbox JS 压测脚本
 # 用法: SANDBOX_TOKEN=xxx ./bench-sandbox.sh
-#       SANDBOX_URL=http://host:3000 SANDBOX_TOKEN=xxx ./bench-sandbox.sh
+#       CODE_SANDBOX_URL=http://host:3000 SANDBOX_TOKEN=xxx ./bench-sandbox.sh
 
 set -eo pipefail
 
-BASE="${SANDBOX_URL:-http://localhost:3000}"
+BASE="${CODE_SANDBOX_URL:-http://localhost:3000}"
 TOKEN="${SANDBOX_TOKEN:-}"
 DURATION="${BENCH_DURATION:-10}"
 

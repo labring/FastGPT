@@ -485,7 +485,10 @@ export const checkWorkflowNodeAndConnection = ({
         (edge) =>
           edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
       );
-      if (toolConnections.length === 0) {
+      const useAgentSandbox = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.useAgentSandbox
+      )?.value;
+      if (toolConnections.length === 0 && !useAgentSandbox) {
         return [data.nodeId];
       }
     }
@@ -493,6 +496,12 @@ export const checkWorkflowNodeAndConnection = ({
     // check node input
     if (
       inputs.some((input) => {
+        if (
+          !input.valueType ||
+          [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
+        ) {
+          return false;
+        }
         // check is tool input
         if (isToolNode && input.toolDescription) {
           return false;

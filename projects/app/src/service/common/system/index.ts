@@ -23,6 +23,7 @@ import type {
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { env } from '@fastgpt/service/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -155,7 +156,10 @@ export async function initSystemConfig() {
       show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      payFormUrl: process.env.PAY_FORM_URL || ''
+      show_agent_sandbox: !!env.AGENT_SANDBOX_PROVIDER,
+      payFormUrl: process.env.PAY_FORM_URL || '',
+
+      agentSandboxFree: process.env.AGENT_SANDBOX_FREE_TIP === 'true'
     },
     systemEnv: {
       ...fileRes.systemEnv,

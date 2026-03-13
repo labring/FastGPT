@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo } from 'react';
-import { Box, Flex, Grid, type BoxProps, useDisclosure, Button, HStack } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Grid,
+  type BoxProps,
+  useDisclosure,
+  Button,
+  HStack,
+  Switch
+} from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -11,8 +20,6 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
@@ -20,6 +27,12 @@ import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { useSkillManager } from './hooks/useSkillManager';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import SandboxTipTag from '../../components/SandboxTipTag';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -46,6 +59,10 @@ const EditForm = ({
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standardConstants?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
@@ -197,6 +214,43 @@ const EditForm = ({
               />
             </Box>
           </Box>
+        </Box>
+
+        {/* Sandbox (虚拟机) */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <MyIcon name={SANDBOX_ICON} w={'20px'} />
+              <FormLabel ml={2}>{t('app:use_agent_sandbox')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
+            </Flex>
+
+            {showSandbox ? (
+              enableSandbox ? (
+                <>
+                  <Box mr={2}>
+                    <SandboxTipTag />
+                  </Box>
+                  <Switch
+                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+                    onChange={(e) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        aiSettings: {
+                          ...state.aiSettings,
+                          useAgentSandbox: e.target.checked
+                        }
+                      }));
+                    }}
+                  />
+                </>
+              ) : (
+                <SandboxNotSupportTip type="freeDisable" />
+              )
+            ) : (
+              <SandboxNotSupportTip type="systemDisable" />
+            )}
+          </Flex>
         </Box>
 
         {/* tool choice */}

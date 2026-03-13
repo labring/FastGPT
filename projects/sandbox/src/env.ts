@@ -13,6 +13,7 @@ const int = (defaultValue: number) => z.coerce.number().int().default(defaultVal
 
 /** 字符串，带默认值 */
 const str = (defaultValue: string) => z.string().default(defaultValue);
+const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
 const envSchema = z.object({
   // ===== 服务 =====
@@ -25,6 +26,14 @@ const envSchema = z.object({
       message:
         'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
+
+  // Logger
+  LOG_ENABLE_CONSOLE: z.boolean().default(true),
+  LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
+  LOG_ENABLE_OTEL: z.boolean().default(false),
+  LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
+  LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-code-sandbox'),
+  LOG_OTEL_URL: z.url().optional(),
 
   // ===== 进程池 =====
   /** 进程池大小（预热 worker 数量） */

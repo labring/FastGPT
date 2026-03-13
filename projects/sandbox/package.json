@@ -12,10 +12,11 @@
     "test:watch": "vitest"
   },
   "engines": {
-    "node": ">=20.x",
-    "pnpm": ">=9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
+    "@fastgpt-sdk/logger": "^0.1.1",
     "axios": "^1.7.9",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
