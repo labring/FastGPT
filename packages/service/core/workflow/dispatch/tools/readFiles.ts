@@ -13,7 +13,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
-import { isInternalAddress } from '../../../../common/system/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
@@ -188,7 +188,7 @@ export const getFileContentFromLinks = async ({
 
         try {
           if (await isInternalAddress(url)) {
-            return Promise.reject('Url is invalid');
+            return Promise.reject(PRIVATE_URL_TEXT);
           }
 
           // Get file buffer data

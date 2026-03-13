@@ -144,7 +144,8 @@ export const runHTTPTool = async ({
         : `https://${baseUrl}`;
 
     // SSRF Protection: Validate URL before making request
-    const fullUrl = new URL(toolPath, fullBaseUrl).toString();
+    const fullUrl = baseUrl ? new URL(toolPath, fullBaseUrl).toString() : '';
+
     if (await isInternalAddress(fullUrl)) {
       return { errorMsg: 'Access to internal addresses is not allowed' };
     }

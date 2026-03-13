@@ -1,4 +1,4 @@
-import { isInternalAddress } from '../../../../../../../common/system/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../../../../common/system/utils';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
@@ -59,7 +59,7 @@ export const dispatchFileRead = async ({
             return {
               index,
               name: '',
-              content: Promise.reject('Url is invalid')
+              content: Promise.reject(PRIVATE_URL_TEXT)
             };
           }
           // Get file buffer data
