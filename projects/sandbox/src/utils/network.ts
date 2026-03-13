@@ -146,7 +146,7 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
 
     // 3. 默认启用内部 IP 检查（安全优先）
     // 只有显式设置 CHECK_INTERNAL_IP=false 时才禁用检查
-    if (env.checkInternalIp) {
+    if (!env.checkInternalIp) {
       return false;
     }
 
