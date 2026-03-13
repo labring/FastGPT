@@ -663,5 +663,7 @@
   "input_template_name": "请输入模板名称",
   "display_card": "展示卡片",
   "featured_app": "精选应用",
-  "normal_app": "普通应用"
+  "normal_app": "普通应用",
+  "dataset_index_config": "索引配置",
+  "dataset_index_config_title": "知识库索引配置"
 }

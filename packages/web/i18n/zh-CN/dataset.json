@@ -387,8 +387,16 @@
   "hype_enhanced_index_tips": "使用Hypothetical Prompt Embeddings技术生成假设问,并模拟检索召回筛选真正高质量的问题作为索引,提高检索的精度。(数据量大时需要较长时间)",
   "template_csv_format_tip": "模板包含以下列:\nq: 问题列,存放用户可能提出的问题\na: 答案列,存放对应问题的标准答案\nmetadata:元数据列,列名自定义,非必须,用于存放数据相关属性,可在检索后返回,根据需要调用属性参数\nindexes: 索引列,用于存放与该问题相关的索引",
   "segment_enhanced_index": "分段增强索引",
-  "segment_enhanced_index_tips": "将数据中的“回答（A）”部分进行进一步分段作为索引内容，提高检索的精度。",
+  "segment_enhanced_index_tips": "将数据中的 \"回答（A）\" 部分进行进一步分段作为索引内容，提高检索的精度。",
   "process.segment_enhanced_index": "分段增强索引生成",
+  "synthetic_index": "合成索引",
+  "synthetic_index_tips": "自动生成合成索引，提高检索效果。",
+  "web_link": "网页链接",
+  "general_file": "通用文件",
+  "question_generation": "问题生成",
+  "summary_generation": "摘要生成",
+  "image_index": "图片索引",
+  "small2big": "Small2Big",
   "start_upload": "开始上传",
   "uploading_progress_with_count": "上传中 {{completedCount}}/{{totalCount}}",
   "file_upload_tip": "单次最多上传 {{maxCount}} 个文件，单个文件最大 {{maxSize}}，仅读取第一个 sheet",
@@ -459,6 +467,11 @@
   "build_database_by_import": "通过导入文件、直连数据库形式构建数据库",
   "database_auth_desc": "授权 MySQL、SQL server 等数据库，检索时连接数据库获取相关信息",
   "filename_validation_error": "文件名不符合要求",
-  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头"
+  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头",
+  "question_generation_desc": "基于内容生成假设性问题，提升检索召回率",
+  "summary_generation_desc": "基于内容生成文本摘要，提升检索召回率",
+  "image_index_desc": "在具备 Vision Language Model 时，并启用后将自动解析并生成图片内容的索引",
+  "synthetic_index_desc": "基于文档内容抽样，生成假设问，同时可用于知识重排模型调优（耗时较长）",
+  "small2big_desc": "开启后，当答案部分内容较多时将进行拆分，生成小块内容的索引"
 }
 

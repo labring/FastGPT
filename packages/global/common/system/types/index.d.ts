@@ -201,6 +201,7 @@ export type SystemEnvType = {
       };
       enhanceConfig?: {
         autoIndexes?: boolean;
+        autoIndexesConfig?: { questionIndex?: boolean; summaryIndex?: boolean }; // 自动索引细粒度配置
         small2bigIndexes?: boolean;
         syntheticIndex?: boolean;
         hypeIndexes?: boolean;
@@ -275,6 +276,7 @@ export type CustomEnhanceConfigType = {
   dataEnhanceCollectionName?: boolean;
   imageIndex?: boolean;
   autoIndexes?: boolean;
+  autoIndexesConfig?: { questionIndex?: boolean; summaryIndex?: boolean }; // 自动索引细粒度配置
   hypeIndexes?: boolean;
   indexPrefixTitle?: boolean;
   small2bigIndexes?: boolean;
@@ -329,6 +331,27 @@ export type CustomLinkImportModeType = {
 export type CustomLinkImportConfigType = {
   defaultActivateMode?: string;
   modes?: CustomLinkImportModeType[];
+};
+
+// 数据集索引配置类型
+export type DatasetIndexConfigType = {
+  file?: {
+    questionIndex?: boolean; // 问题索引（细粒度）
+    summaryIndex?: boolean; // 摘要索引（细粒度）
+    imageIndex?: boolean; // 图片索引
+    syntheticIndex?: boolean; // 合成索引
+  };
+  qa?: {
+    autoIndexes?: boolean;
+    small2bigIndexes?: boolean;
+    syntheticIndex?: boolean;
+    small2Big?: boolean; // Small2Big (FAQ专用)
+  };
+  link?: {
+    questionIndex?: boolean; // 问题索引（细粒度）
+    summaryIndex?: boolean; // 摘要索引（细粒度）
+    imageIndex?: boolean; // 图片索引
+  };
 };
 
 export type customPdfParseType = {

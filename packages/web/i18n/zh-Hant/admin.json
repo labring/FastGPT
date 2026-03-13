@@ -663,5 +663,7 @@
   "input_template_name": "請輸入模板名稱",
   "display_card": "展示卡片",
   "featured_app": "精選應用",
-  "normal_app": "普通應用"
+  "normal_app": "普通應用",
+  "dataset_index_config": "索引配置",
+  "dataset_index_config_title": "知識庫索引配置"
 }

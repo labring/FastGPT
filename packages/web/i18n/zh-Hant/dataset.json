@@ -457,6 +457,18 @@
   "build_database_by_import": "通過導入文件、直連數據庫形式構建數據庫",
   "database_auth_desc": "授權 MySQL、SQL server 等數據庫，檢索時連接數據庫獲取相關信息",
   "filename_validation_error": "文件名不符合要求",
-  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头"
+  "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头",
+  "question_generation": "問題生成",
+  "summary_generation": "摘要生成",
+  "image_index": "圖片索引",
+  "synthetic_index": "合成索引",
+  "small2big": "Small2Big",
+  "general_file": "通用文件",
+  "web_link": "網頁鏈接",
+  "question_generation_desc": "基於內容生成假設性問題，提升檢索召回率",
+  "summary_generation_desc": "基於內容生成文本摘要，提升檢索召回率",
+  "image_index_desc": "在具備 Vision Language Model 時，並啟用後將自動解析並生成圖片內容的索引",
+  "synthetic_index_desc": "基於文檔內容抽樣，生成假設問，同時可用於知識重排模型調優（耗時較長）",
+  "small2big_desc": "開啟後，當答案部分內容較多時將進行拆分，生成小塊內容的索引"
 }
 

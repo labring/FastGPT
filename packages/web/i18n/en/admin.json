@@ -663,5 +663,7 @@
   "input_template_name": "Enter template name",
   "display_card": "Display card",
   "featured_app": "Featured app",
-  "normal_app": "Standard app"
+  "normal_app": "Standard app",
+  "dataset_index_config": "Index Config",
+  "dataset_index_config_title": "Dataset Index Configuration"
 }
