@@ -49,8 +49,7 @@ async function handler(
     const planStatus = await getTeamPlanStatus({ teamId });
     await authFrequencyLimit({
       eventId: `${tmbId}-uploadfile`,
-      maxAmount:
-        planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       expiredTime: addSeconds(new Date(), 30), // 30s
       num: result.fileMetadata.length
     });

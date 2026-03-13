@@ -24,8 +24,7 @@ async function handler(
   const planStatus = await getTeamPlanStatus({ teamId });
   await authFrequencyLimit({
     eventId: `${uid}-uploadfile`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
@@ -34,8 +33,7 @@ async function handler(
     chatId,
     filename,
     uId: uid,
-    maxFileSize:
-      planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
 }
 

@@ -57,12 +57,12 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   // 文件数量限制：配置的maxFiles || 团队套餐 || 系统配置 || 默认值
   const maxSelectFiles =
     fileSelectConfig?.maxFiles ||
-    teamPlanStatus?.standardConstants?.maxUploadFileCount ||
+    teamPlanStatus?.standard?.maxUploadFileCount ||
     feConfigs?.uploadFileMaxAmount ||
     10;
   // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
   const maxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
+    (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
     1024 *
     1024;
   const canSelectFileAmount = maxSelectFiles - fileList.length;
