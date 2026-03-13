@@ -252,7 +252,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   // 初始化加载根目录
   useMount(() => {
     setLoadingRoot(true);
-    loadDirectory('', 0).finally(() => {
+    loadDirectory('.', 0).finally(() => {
       setLoadingRoot(false);
     });
   });

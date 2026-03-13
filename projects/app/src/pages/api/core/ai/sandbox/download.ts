@@ -10,7 +10,7 @@ import { OutLinkChatAuthSchema } from '@fastgpt/global/support/permission/chat';
 const DownloadBodySchema = z.object({
   appId: z.string(),
   chatId: z.string(),
-  path: z.string().default('/workspace').describe('要下载的路径(文件或目录)'),
+  path: z.string().default('.').describe('要下载的路径(文件或目录)'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 

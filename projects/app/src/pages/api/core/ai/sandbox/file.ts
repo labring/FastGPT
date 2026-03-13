@@ -33,58 +33,67 @@ async function handler(
     chatId
   });
 
-  await sandbox.ensureAvailable();
+  try {
+    await sandbox.ensureAvailable();
 
-  // 根据 action 分类执行
-  switch (action) {
-    case 'list': {
-      const entries = await sandbox.provider.listDirectory(body.path);
-      const files = entries.map((entry) => ({
-        name: entry.name,
-        path: entry.path,
-        type: entry.isDirectory ? ('directory' as const) : ('file' as const),
-        size: entry.isFile ? entry.size : undefined
-      }));
-      return { action: 'list', files };
-    }
+    // 根据 action 分类执行
+    switch (action) {
+      case 'list': {
+        const entries = await sandbox.provider.listDirectory(body.path);
 
-    case 'read': {
-      const results = await sandbox.provider.readFiles([body.path]);
-      const result = results[0];
-
-      if (result.error) {
-        return Promise.reject(result.error);
+        const files = entries.map((entry) => ({
+          name: entry.name,
+          path: entry.path,
+          type: entry.isDirectory ? ('directory' as const) : ('file' as const),
+          size: entry.isFile ? entry.size : undefined
+        }));
+        return { action: 'list', files };
       }
 
-      // 尝试将 Uint8Array 转换为 UTF-8 字符串
-      try {
-        const decoder = new TextDecoder('utf-8', { fatal: true });
-        const content = decoder.decode(result.content);
-        return { action: 'read', content };
-      } catch (error) {
-        // 非 UTF-8 内容,返回特殊标记
-        return { action: 'read', content: '[Binary File - Cannot Display]' };
-      }
-    }
+      case 'read': {
+        const results = await sandbox.provider.readFiles([body.path]);
+        const result = results[0];
 
-    case 'write': {
-      const results = await sandbox.provider.writeFiles([
-        {
-          path: body.path,
-          data: body.content
+        if (result.error) {
+          return Promise.reject(result.error);
         }
-      ]);
-      const result = results[0];
 
-      if (result.error) {
-        return Promise.reject(result.error);
+        // 尝试将 Uint8Array 转换为 UTF-8 字符串
+        try {
+          const decoder = new TextDecoder('utf-8', { fatal: true });
+          const content = decoder.decode(result.content);
+          return { action: 'read', content };
+        } catch (error) {
+          // 非 UTF-8 内容,返回特殊标记
+          return { action: 'read', content: '[Binary File - Cannot Display]' };
+        }
       }
 
-      return { action: 'write', success: true };
-    }
+      case 'write': {
+        const results = await sandbox.provider.writeFiles([
+          {
+            path: body.path,
+            data: body.content
+          }
+        ]);
+        const result = results[0];
 
-    default:
-      return Promise.reject('Invalid action');
+        if (result.error) {
+          return Promise.reject(result.error);
+        }
+
+        return { action: 'write', success: true };
+      }
+
+      default:
+        return Promise.reject('Invalid action');
+    }
+  } catch (error: any) {
+    if (error?.toJSON) {
+      const err = error.toJSON();
+      return Promise.reject(`[${err.name}] ${err.message}`);
+    }
+    return Promise.reject(error);
   }
 }
 
