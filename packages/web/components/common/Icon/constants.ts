@@ -496,6 +496,7 @@ export const iconPaths = {
   'modal/selectSource': () => import('./icons/modal/selectSource.svg'),
   'modal/setting': () => import('./icons/modal/setting.svg'),
   'modal/teamPlans': () => import('./icons/modal/teamPlans.svg'),
+  'model/avian': () => import('./icons/model/avian.svg'),
   'model/aws': () => import('./icons/model/aws.svg'),
   'model/azure': () => import('./icons/model/azure.svg'),
   'model/cloudflare': () => import('./icons/model/cloudflare.svg'),

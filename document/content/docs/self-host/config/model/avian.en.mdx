@@ -1,0 +1,71 @@
+---
+title: Connect Models via Avian
+description: Connect Models via Avian API
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+[Avian](https://avian.io) is an OpenAI-compatible LLM API provider offering access to leading open-source models at competitive prices.
+
+## Available Models
+
+| Model | Max Context | Max Output | Input Price | Output Price |
+|-------|------------|------------|-------------|--------------|
+| deepseek/deepseek-v3.2 | 164K | 65K | $0.26/1M tokens | $0.38/1M tokens |
+| moonshotai/kimi-k2.5 | 131K | 8K | $0.45/1M tokens | $2.20/1M tokens |
+| z-ai/glm-5 | 131K | 16K | $0.30/1M tokens | $2.55/1M tokens |
+| minimax/minimax-m2.5 | 1M | 1M | $0.30/1M tokens | $1.10/1M tokens |
+
+## 1. Prerequisites
+
+### Get an API Key
+
+1. Sign up at [avian.io](https://avian.io)
+2. Navigate to the API Keys section in your dashboard
+3. Create a new API key and save it securely
+
+### API Base URL
+
+```
+https://api.avian.io/v1
+```
+
+## 2. Configure in FastGPT
+
+<Alert context="warning">
+  Requires FastGPT v4.8.23 or above with AI Proxy enabled. See [Deploy FastGPT](/docs/introduction/development/intro/) for setup instructions.
+</Alert>
+
+### Method 1: Via AI Proxy (Recommended)
+
+1. Go to **Account > Model Providers > Model Channels**
+2. Click **Add Channel**
+3. Configure the channel:
+   - **Channel Name**: Avian
+   - **Provider**: Select **OpenAI** (Avian uses an OpenAI-compatible API)
+   - **Models**: Add the model IDs listed above (e.g., `deepseek/deepseek-v3.2`)
+   - **Proxy Address**: `https://api.avian.io/v1`
+   - **API Key**: Your Avian API key
+4. Click **Add** to save
+5. Test the channel to verify connectivity
+
+### Method 2: Via Environment Variables
+
+Set the following environment variables in your FastGPT deployment:
+
+```
+OPENAI_BASE_URL=https://api.avian.io/v1
+CHAT_API_KEY=your-avian-api-key
+```
+
+Then restart FastGPT and configure the models in **Account > Model Providers > Model Configuration**.
+
+## 3. Features
+
+- **OpenAI-compatible**: Standard chat completions API with streaming support
+- **Function calling**: Supported on all models
+- **Bearer token auth**: Uses standard `Authorization: Bearer` header
+
+## 4. Verify the Connection
+
+After configuring, go to the Model Channels page and use the **Model Test** feature to verify that the connection is working. A green success indicator confirms the setup is complete.
