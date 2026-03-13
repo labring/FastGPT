@@ -182,7 +182,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
                   response: result.response,
                   showResult: true,
                   isExpired: false,
-                  interactiveResponse: result.interactiveResponse
+                  interactiveResponse: result.interactiveResponse,
+                  nodeLogs: result.nodeLogs
                 }
               }
             };

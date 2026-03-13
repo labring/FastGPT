@@ -445,6 +445,63 @@ export const WholeResponseContent = ({
         <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
       </>
 
+      {/* node logs */}
+      {activeModule?.nodeLogs && activeModule.nodeLogs.length > 0 && (
+        <Row
+          label={t('workflow:response.Node logs')}
+          rawDom={
+            <Box px={3} py={2} border={'base'} borderRadius={'md'} fontSize={'xs'}>
+              {activeModule.nodeLogs.map((log, i) => {
+                const levelColor: Record<string, string> = {
+                  debug: 'myGray.500',
+                  info: 'blue.600',
+                  warn: 'orange.600',
+                  error: 'red.600'
+                };
+                return (
+                  <Box
+                    key={i}
+                    _notLast={{
+                      borderBottom: '1px solid',
+                      borderBottomColor: 'myWhite.700',
+                      mb: 1,
+                      pb: 1
+                    }}
+                  >
+                    <Flex alignItems={'center'} gap={2}>
+                      <Box color={'myGray.500'} fontFamily={'monospace'} fontSize={'2xs'}>
+                        {new Date(log.time).toLocaleTimeString()}
+                      </Box>
+                      <Box
+                        color={levelColor[log.level] || 'myGray.600'}
+                        fontWeight={'bold'}
+                        textTransform={'uppercase'}
+                        fontSize={'2xs'}
+                      >
+                        {log.level}
+                      </Box>
+                      <Box flex={1}>{log.message}</Box>
+                    </Flex>
+                    {log.data && (
+                      <Box
+                        mt={0.5}
+                        pl={4}
+                        color={'myGray.600'}
+                        fontFamily={'monospace'}
+                        fontSize={'2xs'}
+                        whiteSpace={'pre-wrap'}
+                      >
+                        {JSON.stringify(log.data, null, 2)}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+            </Box>
+          }
+        />
+      )}
+
       {/* read files */}
       <>
         {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
