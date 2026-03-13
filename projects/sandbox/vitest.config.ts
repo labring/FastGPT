@@ -20,7 +20,7 @@ export default defineConfig({
     env: {
       CHECK_INTERNAL_IP: 'true',
       SANDBOX_MAX_TIMEOUT: '5000',
-      CODE_SANDBOX_TOKEN: 'test'
+      SANDBOX_TOKEN: 'test'
     }
   }
 });

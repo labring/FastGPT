@@ -6,14 +6,14 @@ description: 'FastGPT V4.14.9 更新说明'
 ### 环境变量更新
 
 ```bash
-# 调整 CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
+# 调整 FastGPT 环境变量：CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
 SANDBOX_URL=代码运行沙盒的地址
 SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
-
 # 新增 Agent sandbox 沙盒环境变量
 AGENT_SANDBOX_PROVIDER=
 AGENT_SANDBOX_SEALOS_BASEURL=
 AGENT_SANDBOX_SEALOS_TOKEN=
+
 ```
 
 ## 接口变更
@@ -40,3 +40,4 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 4. 工作流变量值，包含特殊值($.)的时候，导致值替换异常。
 5. 工作流引用 agent 工具时，获取版本异常。
 6. 不支持某些属性的参数的模型，从支持该参数的模型切换过来时，该模型未被去掉，导致模型调用失败。
+7. 分享链接关闭状态显示后，会导致历史记录里的 AI 回复内容无法正常展示。

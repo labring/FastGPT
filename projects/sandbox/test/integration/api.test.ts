@@ -237,10 +237,10 @@ describe('API Zod 校验失败', () => {
 
 /**
  * Auth 测试
- * 默认 CODE_SANDBOX_TOKEN 为空，auth 中间件不启用。
- * 设置 CODE_SANDBOX_TOKEN=xxx 运行可测试鉴权逻辑。
+ * 默认 SANDBOX_TOKEN 为空，auth 中间件不启用。
+ * 设置 SANDBOX_TOKEN=xxx 运行可测试鉴权逻辑。
  */
-describe.skipIf(!config.token)('API Auth (requires CODE_SANDBOX_TOKEN)', () => {
+describe.skipIf(!config.token)('API Auth (requires SANDBOX_TOKEN)', () => {
   it('无 Token 返回 401', async () => {
     const res = await app.request('/sandbox/js', {
       method: 'POST',

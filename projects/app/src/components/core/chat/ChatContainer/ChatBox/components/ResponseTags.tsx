@@ -69,7 +69,7 @@ const ResponseTags = ({
         : {})
     };
   }, [historyItem, isShowCite]);
-  console.log(useAgentSandbox, historyItem);
+
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
