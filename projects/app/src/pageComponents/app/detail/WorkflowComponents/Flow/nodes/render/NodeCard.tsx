@@ -525,8 +525,9 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const nodeIsTool = useContextSelector(WorkflowUtilsContext, (ctx) =>
-    ctx.splitToolInputs([], nodeId)
+  const nodeIsTool = useContextSelector(
+    WorkflowUtilsContext,
+    (ctx) => ctx.splitToolInputs([], nodeId)?.isTool
   );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
@@ -544,32 +545,32 @@ const NodeIntro = React.memo(function NodeIntro({
           <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
             {t(intro as any) || t('app:node_not_intro')}
           </Box>
-          {nodeIsTool && (
-            <Flex
-              p={'7px'}
-              rounded={'sm'}
-              alignItems={'center'}
-              _hover={{
-                bg: 'myGray.100'
-              }}
-              cursor={'pointer'}
-              onClick={() => {
-                onOpenIntroModal({
-                  defaultVal: intro,
-                  onSuccess(e) {
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'intro',
-                      value: e
-                    });
-                  }
-                });
-              }}
-            >
-              <MyIcon name={'edit'} w={'18px'} />
-            </Flex>
-          )}
+          <Flex
+            className="node-hover-controller"
+            visibility={nodeIsTool ? 'visible' : 'hidden'}
+            p={'7px'}
+            rounded={'sm'}
+            alignItems={'center'}
+            _hover={{
+              bg: 'myGray.100'
+            }}
+            cursor={'pointer'}
+            onClick={() => {
+              onOpenIntroModal({
+                defaultVal: intro,
+                onSuccess(e) {
+                  onChangeNode({
+                    nodeId,
+                    type: 'attr',
+                    key: 'intro',
+                    value: e
+                  });
+                }
+              });
+            }}
+          >
+            <MyIcon name={'edit'} w={'18px'} />
+          </Flex>
         </Flex>
         <EditIntroModal maxLength={500} />
       </>

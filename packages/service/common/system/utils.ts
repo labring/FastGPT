@@ -1,8 +1,11 @@
 import { isIP } from 'net';
 import * as dns from 'node:dns/promises';
 import { SERVICE_LOCAL_HOST } from './tools';
+import { isDevEnv } from '@fastgpt/global/common/system/constants';
 
 export const isInternalAddress = async (url: string): Promise<boolean> => {
+  if (isDevEnv) return false;
+
   const isInternalIPv6 = (ip: string): boolean => {
     // 移除 IPv6 地址中的方括号（如果有）
     const cleanIp = ip.replace(/^\[|\]$/g, '');
