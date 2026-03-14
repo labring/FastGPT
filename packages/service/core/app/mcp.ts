@@ -125,7 +125,7 @@ export class MCPClient {
               try {
                 // Deep clone to avoid dereference() mutating the original object
                 const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
-                return $RefParser.dereference(schemaClone, {
+                return await $RefParser.dereference(schemaClone, {
                   resolve: {
                     // Disable file and HTTP $ref resolution to prevent SSRF
                     file: false,
