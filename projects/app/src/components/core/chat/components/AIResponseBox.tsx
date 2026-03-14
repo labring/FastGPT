@@ -245,34 +245,9 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
         }
       });
 
-      if (typeof window !== 'undefined') {
-        const dataToSave = { ...data };
-        interactive.params.inputForm?.forEach((item) => {
-          // 这是干啥的？
-          if (
-            item.type === 'fileSelect' &&
-            Array.isArray(dataToSave[item.key]) &&
-            dataToSave[item.key].length > 0
-          ) {
-            const files = dataToSave[item.key];
-            if (files[0]?.url !== undefined) {
-              dataToSave[item.key] = files
-                .map((file: any) => ({
-                  url: file.url,
-                  key: file.key,
-                  name: file.name,
-                  type: file.type
-                }))
-                .filter((file: any) => file.url);
-            }
-          }
-        });
-        sessionStorage.setItem(`interactiveForm_${chatItemDataId}`, JSON.stringify(dataToSave));
-      }
-
       onSendPrompt(JSON.stringify(finalData));
     },
-    [chatItemDataId, interactive.params.inputForm]
+    [interactive.params.inputForm]
   );
 
   return (

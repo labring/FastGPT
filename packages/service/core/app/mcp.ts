@@ -120,24 +120,24 @@ export class MCPClient {
 
       const tools = await Promise.all(
         response.tools.map(async (tool) => {
-          let processedSchema;
-
-          if (tool.inputSchema) {
-            try {
-              // Deep clone to avoid dereference() mutating the original object
-              const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
-              processedSchema = await $RefParser.dereference(schemaClone, {
-                resolve: {
-                  // Disable file and HTTP $ref resolution to prevent SSRF
-                  file: false,
-                  http: false
-                }
-              });
-            } catch (error) {
-              logger.error(`Failed to dereference schema for tool "${tool.name}":`, { error });
-              processedSchema = tool.inputSchema;
+          const processedSchema = await (async () => {
+            if (tool.inputSchema) {
+              try {
+                // Deep clone to avoid dereference() mutating the original object
+                const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
+                return await $RefParser.dereference(schemaClone, {
+                  resolve: {
+                    // Disable file and HTTP $ref resolution to prevent SSRF
+                    file: false,
+                    http: false
+                  }
+                });
+              } catch (error) {
+                logger.error(`Failed to dereference schema for tool "${tool.name}":`, { error });
+                return tool.inputSchema;
+              }
             }
-          }
+          })();
 
           return {
             name: tool.name,

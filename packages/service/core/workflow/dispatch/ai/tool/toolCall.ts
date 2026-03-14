@@ -17,6 +17,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
 type ResponseType = {
   requestIds: string[];
@@ -70,18 +71,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       };
     }
 
-    const properties: Record<
-      string,
-      {
-        type: string;
-        description: string;
-        enum?: string[];
-        required?: boolean;
-        items?: {
-          type: string;
-        };
-      }
-    > = {};
+    const properties: Record<string, JsonSchemaPropertiesItemType> = {};
     item.toolParams.forEach((item) => {
       const jsonSchema = item.valueType
         ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
