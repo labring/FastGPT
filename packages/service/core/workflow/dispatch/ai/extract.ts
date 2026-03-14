@@ -31,6 +31,7 @@ import {
   getExtractJsonToolPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { createLLMResponse } from '../../../ai/llm/request';
+import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -162,13 +163,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 }
 
 const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {
-  const properties: Record<
-    string,
-    {
-      type: string;
-      description: string;
-    }
-  > = {};
+  const properties: Record<string, JsonSchemaPropertiesItemType> = {};
   extractKeys.forEach((item) => {
     const jsonSchema = item.valueType
       ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema

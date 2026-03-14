@@ -242,7 +242,7 @@ export const getTeamPlanStatus = async ({
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
   return {
-    [SubTypeEnum.standard]:
+    standard:
       standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
         ? {
             ...standardPlan,
