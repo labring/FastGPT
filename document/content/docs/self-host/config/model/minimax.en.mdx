@@ -1,0 +1,106 @@
+---
+title: Connect Models via MiniMax
+description: Connect Models via MiniMax
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+[MiniMax](https://www.minimaxi.com) is an AI technology company that provides high-performance large language model API services. MiniMax's API is compatible with the OpenAI format, making it easy to integrate with FastGPT.
+
+## 1. Get a MiniMax API Key
+
+1. Visit [MiniMax Platform](https://platform.minimaxi.com), register and log in.
+2. Go to the console and create an API Key.
+
+## 2. Configure Models
+
+### Option 1: Via OneAPI
+
+Refer to the [OneAPI Integration Guide](/docs/self-host/config/model/one-api) to add a MiniMax channel in OneAPI:
+
+- Channel type: Select **MiniMax** or **Custom Channel**
+- Base URL: `https://api.minimax.io/v1`
+- Enter your MiniMax API Key
+- Model: `MiniMax-M2.5` or `MiniMax-M2.5-highspeed`
+
+Once configured, enable the corresponding model in FastGPT.
+
+### Option 2: Direct Integration (without OneAPI)
+
+In the FastGPT model configuration page, add a custom model with the following information:
+
+- **Model ID**: `MiniMax-M2.5`
+- **Custom Request URL**: `https://api.minimax.io/v1/chat/completions`
+- **Custom Request Key**: Enter your MiniMax API Key
+
+<Alert icon="⚠️" context="warning">
+  MiniMax models require temperature to be in the range (0.0, 1.0]. A value of 0 is not supported. It is recommended to set the maximum temperature to 1.0.
+</Alert>
+
+### Via Configuration File
+
+If you prefer configuring models via a configuration file, refer to the following JSON:
+
+```json
+[
+  {
+    "model": "MiniMax-M2.5",
+    "metadata": {
+      "isCustom": true,
+      "isActive": true,
+      "provider": "MiniMax",
+      "model": "MiniMax-M2.5",
+      "name": "MiniMax-M2.5",
+      "maxContext": 204000,
+      "maxResponse": 16000,
+      "quoteMaxToken": 200000,
+      "maxTemperature": 1.0,
+      "vision": true,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {},
+      "requestUrl": "https://api.minimax.io/v1/chat/completions",
+      "requestAuth": "your-minimax-api-key"
+    }
+  },
+  {
+    "model": "MiniMax-M2.5-highspeed",
+    "metadata": {
+      "isCustom": true,
+      "isActive": true,
+      "provider": "MiniMax",
+      "model": "MiniMax-M2.5-highspeed",
+      "name": "MiniMax-M2.5-highspeed",
+      "maxContext": 204000,
+      "maxResponse": 16000,
+      "quoteMaxToken": 200000,
+      "maxTemperature": 1.0,
+      "vision": true,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    }
+  }
+]
+```
+
+## 3. Available Models
+
+| Model Name | Max Context | Features |
+| --- | --- | --- |
+| MiniMax-M2.5 | 204K tokens | High-performance general model with vision and function calling support |
+| MiniMax-M2.5-highspeed | 204K tokens | High-speed version, ideal for latency-sensitive scenarios |
+
+## 4. Testing
+
+After configuration, click the test button on the FastGPT model configuration page to verify the model is working properly.
