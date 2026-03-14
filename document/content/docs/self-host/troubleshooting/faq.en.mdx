@@ -36,26 +36,21 @@ Change the port mapping to 3307 or similar, for example 3307:3306.
 
 ---
 
-### (5)Limitations of local deployment
 
-For details, refer to https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg.
-
----
-
-### (6)Can it run purely locally?
+### (5)Can it run purely locally?
 
 Yes. You need to prepare the vector model and LLM model.
 
 ---
 
-### (7)Other models cannot perform question classification/content extraction
+### (6)Other models cannot perform question classification/content extraction
 
 1. Check the logs. If it prompts JSON invalid, not support tool, etc., it means that the model does not support tool calling or function calling. You need to set `toolChoice=false` and `functionCall=false`, and it will default to the prompt mode. Currently, the built-in prompts are only tested for commercial model APIs. Question classification is basically usable, but content extraction is not very good.
 2. If the configuration is normal and there are no error logs, it means that the prompt may not be suitable for the model. You can customize the prompt by modifying `customCQPrompt`.
 
 ---
 
-### (8)Page Crash
+### (7)Page Crash
 
 1. Turn off translation.
 2. Check if the configuration file is loaded normally. If it is not loaded normally, system information will be missing, and it will cause a null pointer in some operations.
@@ -67,21 +62,21 @@ Yes. You need to prepare the vector model and LLM model.
 
 ---
 
-### (9)After enabling content completion, the response speed becomes slow
+### (8)After enabling content completion, the response speed becomes slow
 
 1. Question completion requires a round of AI generation.
 2. 3~5 rounds of queries will be performed. If the database performance is insufficient, there will be a significant impact.
 
 ---
 
-### (10)Normal reply in the page, API error
+### (9)Normal reply in the page, API error
 
 The page uses stream=true mode, so the API also needs to set stream=true for testing. Some model interfaces (mostly domestic) are a bit garbage in non-Stream compatibility.
 Same as the previous question, curl test.
 
 ---
 
-### (11)Knowledge base indexing has no progress/indexing is very slow
+### (10)Knowledge base indexing has no progress/indexing is very slow
 
 First look at the log error information. There are several situations:
 
@@ -91,7 +86,7 @@ First look at the log error information. There are several situations:
 
 ---
 
-### (12)Connection error
+### (11)Connection error
 
 Network exception. Domestic servers cannot request OpenAI, check whether the connection with the AI model is normal.
 
