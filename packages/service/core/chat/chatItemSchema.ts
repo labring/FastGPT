@@ -86,7 +86,7 @@ const ChatItemSchema = new Schema({
     default: null
   },
 
-  // @deprecated
+  /** @deprecated */
   [DispatchNodeResponseKeyEnum.nodeResponse]: Array
 });
 

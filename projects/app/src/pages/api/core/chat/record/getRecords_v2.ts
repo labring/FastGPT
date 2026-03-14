@@ -99,7 +99,9 @@ async function handler(
         });
 
         if (showRunningStatus === false) {
-          item.value = item.value.filter((v) => v.tools);
+          item.value = item.value.filter(
+            (v) => v.text?.content || v.reasoning?.content || v.interactive || v.plan || !v.tools
+          );
         }
       }
     });

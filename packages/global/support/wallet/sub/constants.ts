@@ -48,9 +48,11 @@ export enum StandardSubLevelEnum {
   advanced = 'advanced',
   custom = 'custom',
 
-  // @deprecated
+  /** @deprecated */
   experience = 'experience',
+  /** @deprecated */
   team = 'team',
+  /** @deprecated */
   enterprise = 'enterprise'
 }
 

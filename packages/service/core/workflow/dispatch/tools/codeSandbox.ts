@@ -12,9 +12,11 @@ type RunCodeType = ModuleDispatchProps<{
 }>;
 type RunCodeResponse = DispatchNodeResultType<
   {
-    [NodeOutputKeyEnum.error]?: any; // @deprecated
     [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
     [key: string]: any;
+
+    /** @deprecated */
+    [NodeOutputKeyEnum.error]?: any;
   },
   {
     [NodeOutputKeyEnum.error]: string;

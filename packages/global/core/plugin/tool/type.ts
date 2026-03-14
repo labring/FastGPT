@@ -32,8 +32,9 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
     .optional(),
   inputListVal: z.record(z.string(), z.any()).optional(),
 
-  // @deprecated
+  /** @deprecated */
   isActive: z.boolean().optional(),
+  /** @deprecated */
   inputConfig: z
     .array(
       z.object({

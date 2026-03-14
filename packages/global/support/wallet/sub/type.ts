@@ -41,7 +41,7 @@ export const TeamStandardSubPlanItemSchema = z.object({
     })
     .nullish(),
 
-  // @deprecated
+  /** @deprecated */
   pointPrice: z.number().optional()
 });
 export type TeamStandardSubPlanItemType = z.infer<typeof TeamStandardSubPlanItemSchema>;
