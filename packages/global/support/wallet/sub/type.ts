@@ -107,45 +107,16 @@ export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
 
 // Merged plan type: combines DB subscription record metadata with effective plan limits
 export const TeamPlanStandardSchema = z.object({
-  // DB metadata (from TeamSubSchema)
-  _id: ObjectIdSchema,
-  teamId: ObjectIdSchema,
-  type: z.enum(SubTypeEnum),
-  startTime: z.date(),
-  expiredTime: z.date(),
-  currentMode: z.enum(SubModeEnum),
-  nextMode: z.enum(SubModeEnum),
-  currentSubLevel: z.enum(StandardSubLevelEnum),
-  nextSubLevel: z.enum(StandardSubLevelEnum),
-  totalPoints: z.int(),
-  annualBonusPoints: z.int().optional(),
-  surplusPoints: z.int(),
-  currentExtraDatasetSize: z.int(),
-
-  // Plan display fields (from TeamStandardSubPlanItemSchema)
-  name: z.string().optional(),
-  desc: z.string().optional(),
-  price: z.number().optional(),
-  priceDescription: z.string().optional(),
-  customFormUrl: z.string().optional(),
-  customDescriptions: z.array(z.string()).optional(),
-  wecom: z.object({ price: z.number(), points: z.number() }).nullish(),
-
-  // Unified effective limit fields (DB override ?? plan config default)
-  maxTeamMember: z.int(),
-  maxAppAmount: z.int(),
-  maxDatasetAmount: z.int(),
-  maxDatasetSize: z.int(),
-  chatHistoryStoreDuration: z.int(),
-  requestsPerMinute: z.int().optional(),
-  appRegistrationCount: z.int().optional(),
-  websiteSyncPerDataset: z.int().optional(),
-  auditLogStoreDuration: z.int().optional(),
-  ticketResponseTime: z.int().optional(),
-  customDomain: z.int().optional(),
-  maxUploadFileSize: z.int().optional(),
-  maxUploadFileCount: z.int().optional()
+  ...TeamSubSchema.omit({
+    maxApp: true,
+    maxDataset: true
+  }).shape,
+  ...TeamStandardSubPlanItemSchema.omit({
+    pointPrice: true
+  }).shape,
+  price: z.number().optional()
 });
+
 export type TeamPlanStandardType = z.infer<typeof TeamPlanStandardSchema>;
 
 export const TeamPlanStatusSchema = z.object({
