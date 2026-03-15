@@ -1,11 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getSkillById } from '@fastgpt/service/core/agentSkills/controller';
+import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { downloadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import type { ExportSkillQuery } from '@fastgpt/global/core/agentSkills/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { isValidObjectId } from '@fastgpt/service/common/mongo';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 export const config = {
   api: {
@@ -13,33 +15,23 @@ export const config = {
   }
 };
 
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.EXPORT);
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'GET') {
       return jsonRes(res, { code: 405, error: 'Method not allowed' });
     }
 
-    const { teamId } = await authUserPer({
+    const { skillId } = req.query as unknown as ExportSkillQuery;
+
+    const { teamId, tmbId, skill } = await authSkill({
       req,
+      skillId,
+      per: ReadPermissionVal,
       authToken: true,
       authApiKey: true
     });
-
-    const { skillId } = req.query as unknown as ExportSkillQuery;
-
-    if (!skillId) {
-      return jsonRes(res, { code: 400, error: 'Skill ID is required' });
-    }
-
-    if (!isValidObjectId(skillId)) {
-      return jsonRes(res, { code: 400, error: 'Invalid skill ID format' });
-    }
-
-    const skill = await getSkillById(skillId);
-
-    if (!skill) {
-      return jsonRes(res, { code: 404, error: 'Skill not found' });
-    }
 
     if (skill.type === AgentSkillTypeEnum.folder) {
       return jsonRes(res, { code: 400, error: 'Folders cannot be exported' });
@@ -49,9 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 404, error: 'No active version available for download' });
     }
 
-    if (skill.source === 'personal' && skill.teamId?.toString() !== String(teamId)) {
-      return jsonRes(res, { code: 403, error: 'You do not have access to this skill' });
-    }
+    logger.debug('Exporting skill', { skillId, skillName: skill.name });
 
     const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
 
@@ -61,7 +51,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Content-Length', zipBuffer.length);
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).end(zipBuffer);
-  } catch (err) {
-    jsonRes(res, { code: 500, error: err });
+
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.EXPORT_SKILL,
+        params: {
+          skillName: skill.name
+        }
+      });
+    })();
+  } catch (err: any) {
+    logger.error('Export skill error', { error: err });
+    jsonRes(res, { code: 500, error: err?.message || 'Failed to export skill' });
   }
 }

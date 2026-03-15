@@ -541,5 +541,10 @@ export const auditLogMap = {
     content: i18nT('account_team:log_create_skill_folder'),
     typeLabel: i18nT('account_team:create_skill_folder'),
     params: {} as { name?: string; folderName: string }
+  },
+  [AuditEventEnum.EXPORT_SKILL]: {
+    content: i18nT('account_team:log_export_skill'),
+    typeLabel: i18nT('account_team:export_skill'),
+    params: {} as { name?: string; skillName: string }
   }
 } as const;

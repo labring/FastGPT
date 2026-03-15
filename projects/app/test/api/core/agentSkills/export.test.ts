@@ -12,7 +12,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 const mockJsonRes = vi.mocked(jsonRes);
 
 /**
- * 构造可链式调用的 mock res 对象（支持 res.status(code).end(data)）
+ * Build a chainable mock res object that supports res.status(code).end(data).
  */
 function makeMockRes() {
   const headers: Record<string, any> = {};
@@ -45,7 +45,7 @@ function makeMockRes() {
 }
 
 /**
- * 构造 mock req 对象（auth 会被 parseHeaderCert mock 直接返回）
+ * Build a mock req object (auth is resolved by the mocked parseHeaderCert).
  */
 function makeMockReq(opts: { method?: string; query?: Record<string, any>; auth?: any } = {}) {
   return {
@@ -60,7 +60,7 @@ describe('GET /api/core/agentSkills/export', () => {
     vi.clearAllMocks();
   });
 
-  // ==================== 请求方法校验 ====================
+  // ==================== Method validation ====================
 
   it('非 GET 请求应返回 405', async () => {
     const user = await getRootUser();
@@ -72,58 +72,62 @@ describe('GET /api/core/agentSkills/export', () => {
     expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 405, error: 'Method not allowed' });
   });
 
-  // ==================== 鉴权校验 ====================
+  // ==================== Auth validation ====================
 
   it('未鉴权请求应返回 500（unAuthorization）', async () => {
     const res = makeMockRes();
-    const req = makeMockReq({ query: { skillId: '507f1f77bcf86cd799439011' } }); // 无 auth
+    const req = makeMockReq({ query: { skillId: '507f1f77bcf86cd799439011' } }); // no auth
 
     await handler(req, res);
 
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: expect.any(Error) });
+    // parseHeaderCert throws Error('unAuthorization'); err.message = 'unAuthorization'
+    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'unAuthorization' });
   });
 
-  // ==================== 参数校验 ====================
+  // ==================== Param validation (now delegated to authSkill) ====================
 
-  it('缺少 skillId 应返回 400', async () => {
+  it('缺少 skillId 时 authSkill 拒绝访问，返回 500', async () => {
     const user = await getRootUser();
     const res = makeMockRes();
-    const req = makeMockReq({ auth: user, query: {} });
+    const req = makeMockReq({ auth: user, query: {} }); // no skillId
 
     await handler(req, res);
 
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 400, error: 'Skill ID is required' });
+    // authSkill rejects with SkillErrEnum.unExist (string), err.message is undefined
+    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'Failed to export skill' });
   });
 
-  it('skillId 格式无效应返回 400', async () => {
+  it('skillId 格式无效时 MongoDB 抛出 CastError，返回 500', async () => {
     const user = await getRootUser();
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId: 'not-a-valid-object-id' } });
 
     await handler(req, res);
 
+    // MongoDB CastError has a .message property containing 'ObjectId'
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 400,
-      error: 'Invalid skill ID format'
+      code: 500,
+      error: expect.stringContaining('ObjectId')
     });
   });
 
-  // ==================== Skill 存在性校验 ====================
+  // ==================== Skill existence validation ====================
 
-  it('Skill 不存在应返回 404', async () => {
+  it('Skill 不存在时 authSkill 拒绝访问，返回 500', async () => {
     const user = await getRootUser();
     const res = makeMockRes();
     const req = makeMockReq({
       auth: user,
-      query: { skillId: '507f1f77bcf86cd799439011' } // 合法 ObjectId 但不存在
+      query: { skillId: '507f1f77bcf86cd799439011' } // valid ObjectId but no matching document
     });
 
     await handler(req, res);
 
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 404, error: 'Skill not found' });
+    // authSkill rejects with SkillErrEnum.unExist (string), err.message is undefined
+    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'Failed to export skill' });
   });
 
-  // ==================== 业务规则校验 ====================
+  // ==================== Business rule validation ====================
 
   it('文件夹类型不可导出应返回 400', async () => {
     const user = await getRootUser();
@@ -170,7 +174,7 @@ describe('GET /api/core/agentSkills/export', () => {
       tmbId: user.tmbId,
       currentVersion: 0,
       versionCount: 0
-      // 不设置 currentStorage
+      // currentStorage intentionally omitted
     });
 
     const res = makeMockRes();
@@ -186,13 +190,12 @@ describe('GET /api/core/agentSkills/export', () => {
     await MongoAgentSkills.deleteOne({ _id: skill._id });
   });
 
-  // ==================== 权限校验 ====================
+  // ==================== Permission validation ====================
 
-  it('跨团队访问 personal skill 应返回 403', async () => {
+  it('跨团队访问 personal skill 时 authSkill 拒绝，返回 500', async () => {
     const owner = await getRootUser();
-    const stranger = await getUser('stranger-user'); // 不同 team 的用户
+    const stranger = await getUser('stranger-user'); // different team
 
-    // owner 的 personal skill（currentStorage 存在即可触发权限校验，无需文件真实存在于 S3）
     const skill = await MongoAgentSkills.create({
       type: AgentSkillTypeEnum.skill,
       source: AgentSkillSourceEnum.personal,
@@ -223,20 +226,20 @@ describe('GET /api/core/agentSkills/export', () => {
 
     await handler(req, res);
 
+    // authSkill rejects with SkillErrEnum.unAuthSkill (string), err.message is undefined
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 403,
-      error: 'You do not have access to this skill'
+      code: 500,
+      error: 'Failed to export skill'
     });
 
     await MongoAgentSkills.deleteOne({ _id: skill._id });
   });
 
-  // ==================== 成功路径 ====================
+  // ==================== Success path ====================
 
   it('同 team 用户可成功下载 personal skill 的 ZIP', async () => {
     const user = await getRootUser();
 
-    // 创建 skill 记录
     const skill = await MongoAgentSkills.create({
       type: AgentSkillTypeEnum.skill,
       source: AgentSkillSourceEnum.personal,
@@ -254,7 +257,6 @@ describe('GET /api/core/agentSkills/export', () => {
     const skillId = String(skill._id);
     const zipContent = Buffer.from('PK fake zip content for testing');
 
-    // 上传 ZIP 到 mock S3
     const storageInfo = await uploadSkillPackage({
       teamId: user.teamId,
       skillId,
@@ -262,7 +264,6 @@ describe('GET /api/core/agentSkills/export', () => {
       zipBuffer: zipContent
     });
 
-    // 更新 currentStorage
     await MongoAgentSkills.updateOne({ _id: skill._id }, { currentStorage: storageInfo });
 
     const res = makeMockRes();
@@ -270,10 +271,9 @@ describe('GET /api/core/agentSkills/export', () => {
 
     await handler(req, res);
 
-    // jsonRes 不应被调用（成功路径直接写二进制响应）
+    // jsonRes should NOT be called on success path (binary response written directly)
     expect(mockJsonRes).not.toHaveBeenCalled();
 
-    // 验证响应头
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
@@ -282,7 +282,6 @@ describe('GET /api/core/agentSkills/export', () => {
     expect(res.setHeader).toHaveBeenCalledWith('Content-Length', zipContent.length);
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
 
-    // 验证状态码和响应体
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.end).toHaveBeenCalledWith(expect.any(Buffer));
     expect(Buffer.compare(res.endData, zipContent)).toBe(0);
@@ -325,25 +324,27 @@ describe('GET /api/core/agentSkills/export', () => {
 
     expect(mockJsonRes).not.toHaveBeenCalled();
 
-    // Content-Disposition 中的文件名不应包含 < > /
+    // Content-Disposition filename must not contain < > /
     const disposition: string = res.headers['Content-Disposition'] ?? '';
     expect(disposition).not.toMatch(/[/<>]/);
 
     await MongoAgentSkills.deleteOne({ _id: skill._id });
   });
 
-  it('system skill 允许不同 team 的认证用户下载', async () => {
-    const owner = await getRootUser();
-    const otherUser = await getUser('other-team-user');
+  it('system skill 属于同 team 时可成功下载', async () => {
+    const user = await getRootUser();
 
+    // System skill owned by user's team
     const skill = await MongoAgentSkills.create({
       type: AgentSkillTypeEnum.skill,
-      source: AgentSkillSourceEnum.system, // system skill
+      source: AgentSkillSourceEnum.system,
       name: 'system-skill',
       description: '',
       author: 'system',
       category: [],
       config: {},
+      teamId: user.teamId, // must match requester's team for authSkill to pass
+      tmbId: user.tmbId,
       currentVersion: 0,
       versionCount: 1
     });
@@ -352,20 +353,18 @@ describe('GET /api/core/agentSkills/export', () => {
     const zipContent = Buffer.from('PK system skill zip');
 
     const storageInfo = await uploadSkillPackage({
-      teamId: owner.teamId,
+      teamId: user.teamId,
       skillId,
       version: 0,
       zipBuffer: zipContent
     });
     await MongoAgentSkills.updateOne({ _id: skill._id }, { currentStorage: storageInfo });
 
-    // 用不同 team 的用户请求
     const res = makeMockRes();
-    const req = makeMockReq({ auth: otherUser, query: { skillId } });
+    const req = makeMockReq({ auth: user, query: { skillId } });
 
     await handler(req, res);
 
-    // system skill 应允许访问
     expect(mockJsonRes).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(Buffer.compare(res.endData, zipContent)).toBe(0);

@@ -178,6 +178,38 @@ export type SaveDeploySkillResponse = {
 // ==================== Export Types from type.d.ts ====================
 export type { ExtractedSkillPackage, SkillPackageType, ZipEntryInfo };
 
+// ==================== Skill Debug Chat ====================
+export type SkillDebugChatBody = {
+  skillId: string;
+  chatId: string;
+  responseChatItemId?: string; // optional: server auto-generates if not provided
+  messages: import('../ai/type').ChatCompletionMessageParam[];
+  model?: string;
+  systemPrompt?: string;
+};
+
+// ==================== Skill Debug Session List ====================
+export type SkillDebugSessionListQuery = {
+  skillId: string;
+  pageNum?: number;
+  pageSize?: number;
+};
+
+export type SkillDebugSessionListResponse = {
+  list: {
+    chatId: string;
+    title: string;
+    updateTime: string;
+  }[];
+  total: number;
+};
+
+// ==================== Skill Debug Session Delete ====================
+export type SkillDebugSessionDeleteBody = {
+  skillId: string;
+  chatId: string;
+};
+
 // ==================== Create Skill Folder ====================
 export type CreateSkillFolderBody = {
   parentId?: string | null;
