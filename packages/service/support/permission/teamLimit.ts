@@ -35,7 +35,7 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
     })
   ]);
 
-  if (standard && newCount + memberCount > standard.maxTeamMember) {
+  if (standard?.maxTeamMember && newCount + memberCount > standard.maxTeamMember) {
     return Promise.reject(TeamErrEnum.teamOverSize);
   }
 };
@@ -60,7 +60,7 @@ export const checkTeamAppTypeLimit = async ({
       })
     ]);
 
-    if (standard && appCount + amount > standard.maxAppAmount) {
+    if (standard?.maxAppAmount && appCount + amount > standard.maxAppAmount) {
       return Promise.reject(TeamErrEnum.appAmountNotEnough);
     }
 
@@ -132,7 +132,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
   ]);
 
   // User check
-  if (standard && datasetCount >= standard.maxDatasetAmount) {
+  if (standard?.maxDatasetAmount && datasetCount >= standard.maxDatasetAmount) {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
 

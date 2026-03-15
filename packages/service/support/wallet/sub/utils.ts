@@ -5,10 +5,11 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import {
-  type TeamPlanStatusType,
-  type TeamPlanStandardType,
-  type TeamSubSchemaType
+import type {
+  TeamStandardSubPlanItemType,
+  TeamPlanStatusType,
+  TeamPlanStandardType,
+  TeamSubSchemaType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
@@ -41,7 +42,7 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
 };
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
-  standardConstants: NonNullable<ReturnType<typeof getStandardPlanConfig>>
+  standardConstants: TeamStandardSubPlanItemType
 ): TeamPlanStandardType => ({
   ...standard,
   name: standardConstants.name,
@@ -66,38 +67,6 @@ export const buildStandardPlan = (
   maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
   maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
 });
-
-export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
-  const plans = await MongoTeamSub.find(
-    {
-      teamId,
-      type: SubTypeEnum.standard
-    },
-    undefined,
-    {
-      ...readFromSecondary
-    }
-  );
-  sortStandPlans(plans);
-
-  const standardPlans = global.subPlans?.standard;
-  const standard = plans[0];
-
-  const standardConstants =
-    standard.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
-
-  return {
-    [SubTypeEnum.standard]: standardConstants
-      ? buildStandardPlan(standard, standardConstants)
-      : undefined
-  };
-};
 
 export const initTeamFreePlan = async ({
   teamId,
@@ -187,6 +156,40 @@ export const initTeamFreePlan = async ({
   );
 };
 
+// 获取团队标准套餐
+export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+  const plans = await MongoTeamSub.find(
+    {
+      teamId,
+      type: SubTypeEnum.standard
+    },
+    undefined,
+    {
+      ...readFromSecondary
+    }
+  );
+  sortStandPlans(plans);
+
+  const standardPlans = global.subPlans?.standard;
+  const standard = plans[0];
+
+  const standardConstants =
+    standard.currentSubLevel && standardPlans
+      ? standardPlans[
+          standard.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standard.currentSubLevel
+        ]
+      : undefined;
+
+  return {
+    [SubTypeEnum.standard]: standardConstants
+      ? buildStandardPlan(standard, standardConstants)
+      : undefined
+  };
+};
+
+// 获取团队所有套餐内容
 export const getTeamPlanStatus = async ({
   teamId
 }: {
@@ -267,6 +270,7 @@ export const getTeamPlanStatus = async ({
   };
 };
 
+/* ===== Buffer controller ===== */
 export const teamPoint = {
   getTeamPoints: async ({ teamId }: { teamId: string }) => {
     const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
