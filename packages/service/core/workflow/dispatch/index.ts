@@ -462,8 +462,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
           if (node) {
             // 不再递归调用，异步执行节点（不等待完成）
-            let nodePromise: Promise<unknown>;
-            nodePromise = this.checkNodeCanRun(node).finally(() => {
+            const nodePromise: Promise<unknown> = this.checkNodeCanRun(node).finally(() => {
               runningNodePromises.delete(nodePromise);
             });
             runningNodePromises.add(nodePromise);
@@ -491,7 +490,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       if (skipItem) {
         this.skipNodeQueue.delete(skipItem.node.nodeId);
         await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).catch((error) => {
-          logger.error('Workflow skip node run error', { error });
+          logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
         });
       }
     }
