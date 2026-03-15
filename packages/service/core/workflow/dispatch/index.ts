@@ -444,6 +444,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           // 检查并发限制
           if (this.activeRunQueue.size === 0 || runningNodeCount >= this.maxConcurrency) {
             if (runningNodeCount > 0) {
+              // 当上一个节点运行结束时，立即运行下一轮
               await Promise.race(runningNodePromises);
             } else {
               // 理论上不应出现此情况，防御性退回到让出进程
