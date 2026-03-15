@@ -414,6 +414,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       this.processingActive = true;
 
       try {
+        const runningNodePromises = new Set<Promise<unknown>>();
+
         // 迭代循环替代递归
         while (true) {
           // 检查结束条件
@@ -441,13 +443,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
           // 检查并发限制
           if (this.activeRunQueue.size === 0 || this.runningNodeCount >= this.maxConcurrency) {
-            // 等待正在运行的节点完成
-            await surrenderProcess();
+            if (runningNodePromises.size > 0) {
+              await Promise.race(runningNodePromises);
+            } else {
+              // 理论上不应出现此情况，防御性退回到让出进程
+              await surrenderProcess();
+            }
             continue;
           }
 
           // 处理下一个节点
-          await surrenderProcess();
           const nodeId = this.activeRunQueue.keys().next().value;
           const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
 
@@ -459,9 +464,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             this.runningNodeCount++;
 
             // 不再递归调用，异步执行节点（不等待完成）
-            this.checkNodeCanRun(node).finally(() => {
+            let nodePromise: Promise<unknown>;
+            nodePromise = this.checkNodeCanRun(node).finally(() => {
               this.runningNodeCount--;
+              runningNodePromises.delete(nodePromise);
             });
+            runningNodePromises.add(nodePromise);
           }
         }
       } finally {

@@ -32,6 +32,7 @@ const getFlattenedErrorKeys = (errors: any, prefix = ''): string[] => {
 const LabelAndFormRender = ({
   label,
   required,
+  description,
   placeholder,
   inputType,
   showValueType,
@@ -40,6 +41,7 @@ const LabelAndFormRender = ({
 }: {
   label: string | React.ReactNode;
   required?: boolean;
+  description?: string;
   placeholder?: string;
   showValueType?: boolean;
   form: UseFormReturn<any>;
@@ -57,7 +59,7 @@ const LabelAndFormRender = ({
     <Box _notLast={{ mb: 4 }}>
       <Flex alignItems={'center'} mb={1}>
         {typeof label === 'string' ? <FormLabel required={required}>{t(label)}</FormLabel> : label}
-        {placeholder && <QuestionTip ml={1} label={placeholder} />}
+        {description && <QuestionTip ml={1} label={description} />}
       </Flex>
 
       <Controller
